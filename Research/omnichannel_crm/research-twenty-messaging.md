@@ -4,7 +4,9 @@
 
 ## Главный результат
 
-В коде есть **две разные системы переписки**. `modules/messaging` импортирует и отправляет электронную почту. В `engine/metadata-modules/ai` существует внутренний Inbox с совместными диалогами сотрудников и ИИ, назначением, непрочитанным, каналами и подписками. Ни одна из проверенных цепочек не является готовым транспортом Telegram/MAX.
+В коде есть **две разные модели переписки**. `Message/MessageThread` обслуживает email pipeline и отдельный APP API приёма внешних сообщений; исходящая доставка пока поддерживает только почтовые драйверы. В `engine/metadata-modules/ai` существует внутренний Inbox с совместными диалогами сотрудников и ИИ, назначением, непрочитанным, каналами и подписками. Ни одна из проверенных цепочек не является готовым транспортом Telegram/MAX.
+
+Уточнение 26.10.2026: первоначальное исследование проследило email import/outbound и пропустило APP ingestion. После сравнения 2.51→2.52 это исправлено; см. раздел ниже и [принятую базу](reuse-2.52.md). Готовая основа внешнего текстового импорта уже есть в 2.51, полный операторский чат поверх неё ещё не подключён.
 
 У внутреннего Inbox есть полезные уже реализованные механизмы для R-02/R-09: авторство менеджера, участники, общий диалог, назначение, связь с CRM, история, права и обновления экрана. Однако внешняя идентичность клиента, адрес доставки, состояния отправки мессенджера, импорт старой переписки и разделение внутреннего/внешнего сообщения требуют отдельного контракта. Прямо выдавать внешнего клиента за сотрудника или сообщение клиента за ответ ИИ текущая модель не обосновывает.
 
@@ -46,7 +48,15 @@
 
 `ConnectedAccount` → поддерживаемый email driver → `MessagingGetMessagesService` → `MessagingSaveMessagesAndEnqueueContactCreationService` → транзакция `message/messageThread/association/participant` → очередь создания CRM-контактов. Обратное направление использует почтовый `SendMessageInput` и конкретный outbound driver.
 
-Это полезный образец транзакционного сохранения, связи с контактом, отображения и импортной очереди. Добавление Telegram/MAX требует проверки всех предположений о теме, email-участниках, RFC message ID, папках, драйверах, приватности и удалении. Наличие общей сущности `Message` не доказывает, что достаточно добавить значение enum провайдера.
+Это существующий email-путь. Для внешнего приёма не нужно превращать Telegram/MAX в email driver: есть отдельная точка входа APP, которая использует то же транзакционное сохранение.
+
+### APP-каналы и приём внешней истории
+
+`packages/twenty-server/src/engine/metadata-modules/message-channel/services/application-message-channels.service.ts` проверяет владение/доступ к каналу. Соседний `application-message-ingestion.service.ts::ingest` проверяет sync, одного отправителя, уникальность externalId внутри пакета и существование ссылок Person/WorkspaceMember, затем под блокировкой канала вызывает сохранение сообщений. `toMessageWithParticipants` сохраняет исходные дату и ID, но задаёт `attachments: []`.
+
+SDK `createMessageChannel`/`ingestMessages` и [документация](../../packages/twenty-docs/developers/extend/apps/logic/messaging-channels.mdx) уже есть в 2.51; их diff с принятым снимком 2.52 пуст. Пакет ограничен 100 сообщениями. Дедупликация — внутри канала, text повторным ingest не меняется; поздняя привязка участника поддержана, сброс identity через null — нет. Person link строит CRM targets, workspaceMember link отвечает только за авторство. APP-каналы не создают контакты автоматически и не отправляют ответы провайдеру.
+
+Это готовая основа хранения текста и backfill, но не готовый импорт наших архивов: нужны преобразование источников, составные ID при локальной уникальности, checkpoints, файлы, обработка edit/delete и исключение автоответов/бизнес-процессов на истории. `bc3096f1` в 2.52 сохраняет APP identity links при изменении email клиента. Проверочная опора — `app-message-channels.integration-spec.ts` и `person-participant-rematch.integration-spec.ts`.
 
 ### Общий внутренний диалог
 
@@ -88,12 +98,12 @@ Application principal → `sendInboxMessage` → `AgentInboxService.sendMessage`
 
 | Требование | Есть в проверенном коде | Что ещё должно быть определено/проверено |
 |---|---|---|
-| F-01, R-03: каналы Telegram/MAX | Общие workspace/custom objects, connections/apps, HTTP functions | Драйверы/маршруты/account health/userbot auth не реализованы перечисленными email/AI API |
+| F-01, R-03: каналы Telegram/MAX | Connections/apps, APP message channels, ingestMessages, HTTP functions | Транспорт/маршруты/account health/userbot auth, внешняя отправка и соединение APP-сообщений с операторским Inbox |
 | F-02: рабочее место | Inbox list, shared threads, assignment, read/archive/snooze, UI message parts | Внешний клиент, платформенные delivery states, notes vs replies, служебные/внешние события, takeover и stale AI reply |
 | F-03: карточки CRM | Person/company/opportunity, polymorphic target patterns, открытие side panel | Подтверждённая identity link между каналами; работа при скрытой связанной сущности |
 | R-09: несколько менеджеров | Участники и авторство `senderWorkspaceMemberId`, sharing, права потоков | Автор CRM vs отправляющий userbot; одновременные ответы и присутствие коллег в клиентском диалоге |
 | F-04/F-06: ИИ/workflow | AI conversation и tools; app notification; logic functions | Контекст именно клиента и разрешённых данных; внешняя отправка как инструмент; отмена устаревшего ответа |
-| F-07/R-05: импорт | Импорт email и детерминированная идемпотентность внутренних уведомлений | Импорт исходных дат/авторов/attachments; отдельный origin=import и запрет автоответов; границы истории/live; нет подтверждённого готового chat import endpoint |
+| F-07/R-05: импорт | APP ingestion текста, исходных дат/авторов, person links и дедуп внутри канала | Преобразование архивов, вложения, edit/delete, checkpoints; отдельный режим импорта и запрет автоответов; границы истории/live |
 | F-08: права | User-context guards, record sharing, periodic subscription auth | Один и тот же запрет в списке, тексте, related records, файлах, поиске/агрегациях; проверить на выбранном релизе |
 
 ## Файлы: отдельная граница доступа

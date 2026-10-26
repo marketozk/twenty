@@ -1,0 +1,56 @@
+{
+  "repository": "https://github.com/twentyhq/twenty.git",
+  "sourceCommit": "729f6236126eddaa68d176fb766bc349b19de11d",
+  "sourceVersion": "2.52.0",
+  "sourceStatus": "development-snapshot",
+  "comparisonTag": "twenty/v2.51.0",
+  "comparisonCommit": "15e4826d3b5fc5867baeabeeb42b253892b2d4da",
+  "adoption": "complete-source-snapshot-already-present-in-fork",
+  "runtimeQualification": "not-run",
+  "selectedChanges": [
+    {
+      "area": "inbox-sharing-and-assignment",
+      "commits": ["242e0412931cde9f70d1a34c833287f32e05342f"]
+    },
+    {
+      "area": "external-participant-identity",
+      "commits": ["bc3096f1a255be6b8d72789ab24dadaf726b5aed"]
+    },
+    {
+      "area": "queued-ai-auth-context",
+      "commits": ["cab75c67719d97514697aadc9dc33ae7bd480663"]
+    },
+    {
+      "area": "workflow-draft-code-output-and-form-conditions",
+      "commits": [
+        "13de9e02861750b7b4a3a3c56b26df3c3a420be0",
+        "617518d010f8ec5923d57622b81c15569e3c665e",
+        "5f305d11198bf427184e730c85bf2b03b274d279",
+        "f08ce7111b25ad2dedc1382dd32114166e1afbac"
+      ]
+    },
+    {
+      "area": "restricted-message-and-calendar-fields",
+      "commits": ["8fd4b96d2c3df256a78b059ca883ea1b484b7667"]
+    },
+    {
+      "area": "admin-and-session-correctness",
+      "commits": [
+        "a055a5b5f3ca26c82ac7f51a8541d668f15ab6e1",
+        "b682ae535e4b2e6050c0f6162b2bc02b3e208489",
+        "a83c8dcb97dfb43f528f0dfbae7cac2514f95786"
+      ]
+    },
+    {
+      "area": "app-component-host-properties",
+      "commits": ["7f1e04c438d49fbfa45d66ae6ce2444e21988e95"]
+    },
+    {
+      "area": "metadata-event-and-cache-consistency",
+      "commits": [
+        "d57791cb1c065585dc94b75065ffd9d0e251d20e",
+        "c13b414b7a5a8a0a9c4f967be40bfa2c5a3a175e"
+      ]
+    }
+  ]
+}
