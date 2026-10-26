@@ -154,3 +154,5 @@
 - Дальше конечный контроль таблиц roots/catalog/permissions/Command lifecycle для допуска; runtime доказательства будут в реализации. Без нового автоматического широкого круга, без принятия риска за владельца. Проверки документов, публикация и синхронизация Linear ниже.
 
 - Проверки LOG-012 перед публикацией: 454 локальных Markdown-ссылок без пропусков; JSON валидны; 53 уникальных ID/53 closed_in_plan; SHA256 всех 37 source файлов совпадают. Diff --check пройден; runtime/ops и исходные raw R1–R7 не менялись. Эти механические проверки не являются fresh full pass или тестами приложения.
+
+- Публикация LOG-012: commit `621ebe66f328527d5f97bf32c1ae7e90967edfd1` отправлен в origin/codex/omnichannel-requirements (42 файла). API read-back подтвердил все11 описаний после стандартной Markdown-нормализации, прежние статусы и ROB-772 blocks ROB-764. [Отчёт](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-7dc64c45) существует ровно один. ROB-772 не помечена Done; ROB-764 не начата. Последняя запись фиксирует именно публикацию, не новый review/runtime result.
