@@ -27,6 +27,8 @@ GraphQL queries/mutations для команд и чтения; существу�
 | sendConversationMessage (manual replacement) | replacesCommandId дополнительно к обычному входу; [Command/FIFO](../plan/contracts/sending-ui.md#command-admission) |
 | linkExternalIdentity / createPersonForIdentity | identityId, targetPersonId или разрешённые поля Person, expected revision, idempotencyKey; [identity/lifecycle](../plan/implementation-spec.md#152-идентичность-источника-контакта-и-внешнего-автора) |
 | requestExecutionReplay | source execution, reason, idempotencyKey; [ReplayRequest schema](../plan/implementation-spec.md#3-схема--rob-764), отдельное разрешение и предупреждение об эффектах |
+| resolveCommandOutcome | commandId,evidenceRef,idempotencyKey; отдельное право и [серверная проверка evidence](../plan/contracts/sending-ui.md#outcome-resolution), без ручного terminal override |
+| startOmniWorkflow | coreWorkflowVersionId,idempotencyKey,payload; [governed MANUAL ingress](../plan/contracts/workflow-execution.md#manual-editor-ingress), server root/run ID, опубликованная версия |
 | markConversationRead | lastReadSequence, current conversation ACL; монотонный read cursor в ConversationMember, [SSE/UI](../plan/contracts/sending-ui.md#ui) |
 | summarizeConversation / rephraseDraft | conversationId, разрешённый input; явный [read-only assist](../plan/contracts/access-control.md#scope) |
 | auditEntries / requestAuditExport / auditExportStatus | scope/filter/cursor; [audit contract](08-audit.md), current audit/field/data ACL до query/export |

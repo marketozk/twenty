@@ -72,7 +72,7 @@ Filter-miss вычисляется при admission commit по pinned декл�
 | P12 | Смена статуса без close/reopen | UPDATE/policyEpoch++; controlEpoch++; без automationEpoch | Новый stale UI CAS конфликтует; принятая Command проверяет current rights |
 | P13 | Explicit workflow deactivate/delete | Policy/lifecycle UPDATE; cancellationEpoch++ и cancel outbox атомарно | Локальные pending отменяются; переданные Commands получают cancelRequested. Dispatch/recovery сверяет workflowCancellationRefs, ancestor refs наследуются; publish не равен cancel |
 
-Общий порядок locks: policy → sorted bindings/routes → conversations → identities → CRM records → dispatch/budgets(sorted roots) → commands/receipts/turns. Нет SHARE→UPDATE upgrade; bounded restart с прежним idempotency key. LLM/network вне locks. Проверки реализации: T10/T13/T18/T19/T22/T29/T31.
+Порядок и режимы блокировок: единственный [нормативный lock protocol](contracts/access-control.md#lock-protocol). Проверки реализации: T10/T13/T18/T19/T22/T29/T31.
 
 ### Отправитель × режим (только открытый диалог)
 

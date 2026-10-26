@@ -34,3 +34,6 @@ Composer reply передаёт replyToMessageLinkId; native reference вычи�
 Human send observedReplyRevision обязателен; stale_view → показ нового события и явное подтверждение, key/hash сохраняются. Manual replacement также ждёт неизвестный acceptance предыдущего Command, ordering waiver нет. Лента сортируется по времени сообщения и его стабильному идентификатору, SSE sequence только доставка/unread; replyRevision для stale-view; T12/T13/T16.
 
 Проверки уточнённого контракта: T12/T13 — поток delivery receipts/notes не вызывает stale_view, два конкурентных ответа с одной replyRevision вызывают один conflict, следующий ответ использует revision из send response. API index покрывает close/reopen, claim/queue, cancel/replacement, identity link, markRead и read-only assist; определения только у владельцев.
+
+
+Реализовать [resolveCommandOutcome](contracts/sending-ui.md#outcome-resolution) и CommandResolutionRequest; T11/T28 проверяют доверенное evidence и сохранение unknown при недостатке доказательств. Send response/control revision проверять по [владельцу](contracts/sending-ui.md#human-stale-view), включая takeover_on_send.

@@ -1,0 +1,21 @@
+{
+  "local_links_checked": 692,
+  "missing_links": [],
+  "json_valid_count": 69,
+  "source_hashes_verified": 45,
+  "bad_hashes": [],
+  "stable_ids": 63,
+  "unique_ids": 63,
+  "diff_check_exit": 0,
+  "diff_check_output": "",
+  "out_of_scope_changes": [],
+  "abstract_model": {
+    "exit": 0,
+    "cases": 1712,
+    "failures": 0,
+    "negative_controls": 23,
+    "all_controls_caught": true,
+    "runtime_tests": false
+  },
+  "limits": "Mechanical document/source checks and finite abstract model only. SQL, transport, concurrency, UI and external connectors runtime tests not run."
+}

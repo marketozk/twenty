@@ -49,3 +49,6 @@ F-04 summary/rephrase по явному запросу менеджера раз
 
 Run identity: [единственное определение](contracts/workflow-execution.md#run-identity). T14 проверяет два event receipts/один run и восстановление по intent.
 Реализация и проверки [AI turn lifecycle](contracts/workflow-execution.md#turn-lifecycle) и [stable effect invocation](contracts/workflow-execution.md#action-idempotency): PostgreSQL heartbeat/scanner/fence, late-worker negative control, один DurableHandoff, ReplayRequest и сохранённый effect ordinal. T26–T28 проверяют crash до/после terminal и Command commit, без повторной генерации/эффекта. G13 требует решения владельца об unknown-send liveness до activation; решение не принято планом.
+
+
+OmniExecutionReference и reference FK вводятся по schema §3 до activation. Закрыть legacy/editor DRAFT bypass по [MANUAL ingress](contracts/workflow-execution.md#manual-editor-ingress); T25-F проверяет прямой resolver, supplied runId и ordinary regression.

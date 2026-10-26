@@ -1,3 +1,9 @@
+# Проверка документов и задач — R14, 26.10.2026
+
+Нормативные owners/schema/API и этапы исправлены по fresh A и B; отдельный авторский отчёт сохранён до Claude. Исторические raw reviews неизменны. Актуальный допуск — [review-result](plan/cross-review/review-result.md). Публикация и Linear read-back фиксируются в LOG-016.
+
+## Предыдущие проверки (история)
+
 # Проверка документов и задач — R13, 26.10.2026
 
 Консолидированы normative owners, сохранены старые адреса §15.x, убраны schema/formula/identity/epoch/send дубли и obsolete banners. Current API, phases, coverage, behavior/testing и decision tables синхронизированы с owners. Raw historical review artifacts неизменны.

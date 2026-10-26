@@ -349,3 +349,12 @@ computeAutomatedTriggerFromWorkflowVersion возвращает null для OMNI
 
 
 Stable workflow executionId+actionId определяют локальный ключ шага; общий reply slot имеет отдельного владельца в §4. Publish agent/workflow policy version атомарно с audit. UI показывает draft author/run/error/mode/takeover outcome.
+
+
+<a id="manual-editor-ingress"></a>
+
+## Запуск и тест из редактора
+
+CoreWorkflowRunResolver.runCoreWorkflowVersion и все прямые callers CoreWorkflowRunnerService.run классифицируют полный snapshot flow по omni capabilities до первого шага, включая DRAFT; publish marker не единственное условие защиты. В v1 legacy runCoreWorkflowVersion для governed flow явно отказывает до runner, включая переданный клиентом workflowRunId. Обычные non-omni запускаются по прежнему контракту. Governed MANUAL использует отдельный startOmniWorkflow с idempotencyKey + payloadHash, authenticated actor, server-derived root и canonical run identity; его reference/intent создаются атомарно перед enqueue. Client runId запрещён.
+
+Кнопка «Тест» для governed DRAFT показывает явный запрет до появления отдельного qualified synthetic режима G14; она не вызывает legacy runner. Это ограничение v1, не разрешение незаметно запустить боевой канал. Опубликованный governed MANUAL запускается через защищённую операцию; arbitrary payload не определяет principal, conversation или scope. T25-F: DRAFT/published, AI_AGENT+SEND_OMNI_MESSAGE, supplied workflowRunId, duplicate manual key/hash и ordinary workflow regression; forbidden path даёт ноль runs/tools/sends. Reference storage определяется только schema §3 (OmniExecutionReference), queue передаёт его ID.

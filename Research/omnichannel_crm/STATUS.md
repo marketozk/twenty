@@ -1,9 +1,7 @@
 # Текущее состояние Twenty CRM
 
-R13: по явному разрешению выполнен четвёртый свежий полный проход после консолидации определений. A — needs_revision; найденное исправлено у владельцев контрактов. B и finalcheck подтвердили63 closed_in_plan. Это не свежий полный pass после последних правок. ROB-772 In Progress, ROB-764 Todo; новый runtime не начат.
+R14: выполнены авторская проверка и свежий полный Claude A (39 документов). A — needs_revision: 1 Medium/6 Low, без Critical/High. Исправления внесены в план; B подтвердил F1–F7 и 63 причины, дополнительно найдены и исправлены 2 Low. Итоговые доказательства — review-result. Последний fresh A был до правок: общий fresh full pass не заявлен. ROB-772 In Progress, ROB-764 Todo; runtime не начат.
 
-База2.52 развёрнута ранее; этот шаг не проверял live runtime и не менял его. Чаты Telegram/MAX, права, аудит и AI/workflow остаются спроектированными.
+[Результат R14](plan/cross-review/review-result.md) · [Владельцы контрактов](plan/contracts/README.md) · [Журнал](DEVLOG.md) · [Задачи](linear.md).
 
-[Владельцы контрактов](plan/contracts/README.md) · [результат и пределы R13](plan/cross-review/review-result.md) · [журнал](DEVLOG.md) · [задачи](linear.md).
-
-Известные причины:63 closed_in_plan по B/finalcheck. Fresh acceptance последней редакции ещё нет. ROB-772 In Progress блокирует ROB-764 Todo; ROB-765–771 Backlog, ROB-762/763 исторические Done. Новый код, runtime-тесты и деплой не начинались.
+База 2.52 развёрнута ранее; этот review её live-состояние не проверял и не менял. Новый omnichannel runtime ещё не написан. G01–G20 и T01–T33 остаются решениями/проверками соответствующих этапов; внешние коннекторы требуют квалификации. ROB-765–771 Backlog, ROB-762/763 исторические Done.

@@ -13,7 +13,7 @@
 1. Capability matrix text/photo/document/voice/video/reply/edit/delete/read receipt для каждой версии адаптера. Неподдержанное — явный результат, не молчаливый drop. Форматы/размеры согласовать с реальными ограничениями.
 2. File ingestion: защищённая загрузка, hash, размер/тип/SSRF limits, ACL выдачи; credential/token links не логировать. Недоступное старое вложение остаётся missing marker.
 3. Edit/delete ordering, связь по stable native identity, audit; обновление поиска и AI context. Без provider revision использовать reconciliation, не timestamp поступления как истину.
-4. Import source adapters SaleBot/connector journal/native history -> общий ingest с trusted origin=import. Checkpoints, bounded batches, watermark, overlap с live, повтор после crash; ноль новых бизнес-действий.
+4. Import source adapters SaleBot/connector journal/native history -> общий ingest с trusted origin=history_import. Checkpoints, bounded batches, watermark, overlap с live, повтор после crash; ноль новых бизнес-действий.
 5. Сверка количества/диапазона/attachment gaps/participants, отчёт completed_with_gaps. Retention источника 30 дней по умолчанию и ограничения выгрузки не выдаются за полноту истории — читать фактические настройки и доступные данные перед импортом.
 6. Зафиксировать RouteActivation boundary до включения automation; проверить import→live, live→import и параллельный порядок для одного Message до/после границы. До границы — ноль эффектов; после границы импорт сам ничего не запускает, доверенный live/replay допускается ровно один раз через AutomationAdmission независимо от первого insert. Без доказуемой позиции — reconciliation, не угадывание. Сохранить replay новых событий при overlap.
 
