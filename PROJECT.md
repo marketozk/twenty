@@ -8,6 +8,9 @@
 
 ## Документы проекта
 
+- [Журнал разработки](Research/omnichannel_crm/DEVLOG.md) — выполненные шаги, проверки, коммиты, ограничения и следующий шаг.
+- [Проект в Linear](https://linear.app/robotrts/project/twenty-crm-obshenie-s-klientami-eccda8a60c7b) — актуальные задачи и зависимости; [карта задач](Research/omnichannel_crm/linear.md).
+
 - [Требования](Research/omnichannel_crm/requirements.md) — подтверждённые решения, функциональный состав и критерии результата.
 - [Архитектура v1](Research/omnichannel_crm/design/01-architecture.md) — модули, потоки, данные, API и проверки; выбраны собственные права без подписки Twenty. [Что переиспользуем и пишем сами](Research/omnichannel_crm/design/07-license-boundary.md).
 - [Исследование](Research/omnichannel_crm/research.md) — проверенные возможности Twenty и коннекторов, матрица переиспользования и ограничения. Прежний раздел об API робота исключён из действующего объёма.

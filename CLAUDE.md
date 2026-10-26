@@ -29,6 +29,12 @@ The same ceiling applies to a comment's neighbours: do not restate one fact in t
 
 Docstrings carry the what and the design; they are not exempt from terseness, but they are the right home for anything a comment is too small to hold.
 
+## Omnichannel CRM development tracking
+
+- For our omnichannel CRM work, read `PROJECT.md`, `Research/omnichannel_crm/DEVLOG.md`, the relevant plan phase and its Linear issue before starting.
+- Append results, verification, limitations and the next step to DEVLOG after each work step or interruption; commit the entry with the work. After push, add a concise evidence-linked report to the corresponding Linear issue. If Linear is unavailable, record pending synchronization locally and avoid duplicate reports when recovering.
+- Use `Research/omnichannel_crm/linear.md` for existing issue IDs. Mark Done only after the issue's acceptance checks; distinguish implementation, tests, deployment and customer acceptance. Keep credentials and customer content out of all reports.
+
 ## Commands
 
 ```bash
