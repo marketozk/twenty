@@ -31,3 +31,6 @@ R14: выполнены авторская проверка и свежий по
 [Итог R14](plan/cross-review/review-result.md). ROB-762/763 Done; ROB-772 In Progress; ROB-764 Todo; ROB-765–771 Backlog. Связь ROB-772 blocks ROB-764 сохранена. Публикация и API read-back R14 — DEVLOG LOG-016.
 
 Предыдущая публикация R13: `183039a3c16b0e4b4a3495805ba42bf9e0d51e76`, [комментарий LOG-015](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-1df99847); read-back всех11 описаний и прежних статусов подтверждён.
+
+
+Публикация R14: `be6f6cf93ad834fdade377f01ca98201850477c2`, [отчёт LOG-016](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-a1e260b1); read-back11 descriptions/unchanged states и dependency подтверждены.
