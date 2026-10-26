@@ -1,0 +1,128 @@
+[
+  {
+    "stage": "R8-targeted",
+    "session_id": "796e6b58-6182-4101-bfdb-fec4a30412d7",
+    "models": [
+      "claude-opus-5-5"
+    ],
+    "is_error": false,
+    "duration_ms": 340258,
+    "tools_session_cumulative": {
+      "Glob": 2,
+      "Read": 18,
+      "Grep": 22
+    }
+  },
+  {
+    "stage": "R8-A",
+    "session_id": "f06ceb9f-433c-450d-b6af-9d6ef9d0bbf9",
+    "models": [
+      "claude-opus-5-5"
+    ],
+    "is_error": false,
+    "duration_ms": 435445,
+    "tools_session_cumulative": {
+      "Glob": 4,
+      "Read": 35,
+      "Grep": 17
+    }
+  },
+  {
+    "stage": "R8-B",
+    "session_id": "f06ceb9f-433c-450d-b6af-9d6ef9d0bbf9",
+    "models": [
+      "claude-opus-5-5"
+    ],
+    "is_error": false,
+    "duration_ms": 96604,
+    "tools_session_cumulative": {
+      "Glob": 4,
+      "Read": 35,
+      "Grep": 17
+    }
+  },
+  {
+    "stage": "R9-A",
+    "session_id": "9aeb8d46-3b5f-41e9-aea1-068d32b520cd",
+    "models": [
+      "claude-opus-5-5"
+    ],
+    "is_error": false,
+    "duration_ms": 506075,
+    "tools_session_cumulative": {
+      "Glob": 2,
+      "Read": 45,
+      "Grep": 37
+    }
+  },
+  {
+    "stage": "R9-B",
+    "session_id": "9aeb8d46-3b5f-41e9-aea1-068d32b520cd",
+    "models": [
+      "claude-opus-5-5"
+    ],
+    "is_error": false,
+    "duration_ms": 146370,
+    "tools_session_cumulative": {
+      "Glob": 2,
+      "Read": 45,
+      "Grep": 37
+    }
+  },
+  {
+    "stage": "R9-B-final",
+    "session_id": "9aeb8d46-3b5f-41e9-aea1-068d32b520cd",
+    "models": [
+      "claude-opus-5-5"
+    ],
+    "is_error": false,
+    "duration_ms": 110519,
+    "tools_session_cumulative": {
+      "Glob": 2,
+      "Read": 45,
+      "Grep": 37
+    }
+  },
+  {
+    "stage": "R10-A",
+    "session_id": "3f2601ac-8aaa-4036-8790-15f06ac7453e",
+    "models": [
+      "claude-opus-5-5"
+    ],
+    "is_error": false,
+    "duration_ms": 463534,
+    "tools_session_cumulative": {
+      "Glob": 1,
+      "Read": 32,
+      "Grep": 21
+    }
+  },
+  {
+    "stage": "R10-B",
+    "session_id": "3f2601ac-8aaa-4036-8790-15f06ac7453e",
+    "models": [
+      "claude-opus-5-5"
+    ],
+    "is_error": false,
+    "duration_ms": 137910,
+    "tools_session_cumulative": {
+      "Glob": 1,
+      "Read": 32,
+      "Grep": 21
+    }
+  },
+  {
+    "stage": "R10-final",
+    "session_id": "3f2601ac-8aaa-4036-8790-15f06ac7453e",
+    "models": [
+      "claude-opus-5-5"
+    ],
+    "is_error": false,
+    "duration_ms": 42190,
+    "tools_session_cumulative": {
+      "Glob": 1,
+      "Read": 32,
+      "Grep": 21
+    }
+  }
+]

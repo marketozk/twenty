@@ -34,6 +34,12 @@
 
 ## Уточнения для реализации после кроссревью
 
-Единый актуальный перечень — [implementation-spec, раздел 13](plan/implementation-spec.md#13-единый-реестр-решений-и-gates), G01–G18. Он включает роли/воронки, аккаунты, onboarding, AI/provider/knowledge/budget, externalHumanReplyPolicy, managerReplyPolicy, burst, очередь/минимальную Person projection, custodian, import/retention, нагрузку, backup/recovery, размещение транспорта и backup owner, изоляцию тестов, операционное разделение ролей БД, внешние интеграции, служебные уведомления и dependency preflight. Это условия соответствующей активации, не выдуманные значения. D-18 о собственной реализации без подписки сохраняется; G18 не предлагает покупку.
+Единый актуальный перечень — [implementation-spec, раздел 13](plan/implementation-spec.md#13-единый-реестр-решений-и-gates), G01–G20. Он включает роли/воронки, аккаунты, onboarding, AI/provider/knowledge/budget, externalHumanReplyPolicy, managerReplyPolicy, burst, очередь/минимальную Person projection, custodian, import/retention, нагрузку, backup/recovery, размещение транспорта и backup owner, изоляцию тестов, операционное разделение ролей БД, внешние интеграции, служебные уведомления и dependency preflight. Это условия соответствующей активации, не выдуманные значения. D-18 о собственной реализации без подписки сохраняется; G18 не предлагает покупку.
 
 Уточнение G07 после R7: выбирается общий набор responders (agent/workflow) и customer-visible reply budget на root admission. Конкретное значение не назначено автором; до его выбора совместная отправляющая конфигурация не активируется. Техническая модель этой настройки уже внесена в [design/09](design/09-automation-contract.md), ожидает review.
+
+G19 уточняет подпись менеджера клиенту; пока подпись не включена. G12 включает access reconciliation после restore, не только возврат сообщений.
+
+G20 — explicit route auto-reopen; пока не включён, closed сохраняется, новые сообщения видны менеджерам без автоматической отправки.
+
+G04 включает решение о допустимом раскрытии CRM-данных в общей клиентской переписке: readers видят уже отправленный текст. До auto выбрать output scope/читателей по spec §15.23.

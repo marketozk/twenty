@@ -32,7 +32,7 @@ AI Inbox предоставляет полезные UI и patterns, но его
 
 ## ADR-05. Переиспользовать ИИ Twenty с областью разговора
 
-Providers/models, agent execution, skills, tool registry и workflow остаются Twenty. Новый orchestration layer добавляет trusted conversation scope, controlEpoch, аудит и единую отправку. Ни app-wide token, ни системный workspace context не дают автоматически полномочия клиента. Prompt не назначает права. Для workflow хранится scoped инициатор; потеря/отзыв scope означает отказ, а не fallback к admin.
+Providers/models, agent execution, skills, tool registry и workflow остаются Twenty. Новый orchestration layer добавляет trusted conversation scope, automationEpoch (отдельно от controlEpoch UI CAS), аудит и единую отправку. Ни app-wide token, ни системный workspace context не дают автоматически полномочия клиента. Prompt не назначает права. Для workflow хранится scoped инициатор; потеря/отзыв scope означает отказ, а не fallback к admin.
 
 Редактирование полномочий черновика должно использовать отдельную версию политики/роли; опубликованный run остаётся на своей версии до публикации. Текущий upstream копирует агенту ту же роль — это отдельная необходимая доработка, а не готовая изоляция. Изменение общих настроек роли вне workflow остаётся самостоятельным административным действием с аудитом.
 

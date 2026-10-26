@@ -1,6 +1,6 @@
 # Технический план реализации CRM — v1
 
-**Текущая редакция: четыре исправления R7 внесены, ожидают независимой проверки.** Последний reviewer result — 45/49 closed_in_plan, 4 open. [Единый контракт](../design/09-automation-contract.md), [source matrix](../implementation/automation-source-matrix.md), [реестр](cross-review/registry.md), [остаток](cross-review/residual.md). ROB-772 In Progress; ROB-764 не начинается до положительного результата новой редакции.
+Текущий итог R10: все53 известные причины closed_in_plan, open0; чистого полного pass последней редакции нет. ROB-772 In Progress, ROB-764 не начата. [Результаты и ограничения](cross-review/review-result.md).
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 

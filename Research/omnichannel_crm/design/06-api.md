@@ -16,7 +16,7 @@ GraphQL queries/mutations для команд и чтения; существу�
 | sendConversationMessage | conversationId, текст/готовые file IDs, idempotencyKey, expectedControlEpoch; сервер назначает actor/workspace, создаёт Command |
 | addInternalNote | conversationId, body, idempotencyKey; не вызывает внешнюю отправку |
 | assignConversation / changeParticipants | expectedControlEpoch, разрешённые workspaceMember IDs; проверка права назначения и доступа получателя |
-| setConversationMode / takeover | mode, expectedControlEpoch; атомарное увеличение epoch и отмена pending non-human команд прежнего controlEpoch |
+| setConversationMode / takeover | mode, expectedControlEpoch; атомарное увеличение controlEpoch + automationEpoch и отмена pending non-human команд прежнего automationEpoch |
 | transitionOpportunity | opportunityId, targetStageValue, expectedStageOptionsHash, expectedRevision; серверная матрица переходов и актуальные права |
 | connectionStatus / registerBinding / disableBinding | Привязка к transport account, capabilities/health; отключение сохраняет историю |
 | startImport / importStatus / pauseImport | Утверждённый источник/диапазон и checkpoint; отдельное право администратора |
@@ -61,9 +61,9 @@ commandId обязателен и стабилен; повтор с тем же 
 
 ## ИИ и workflow
 
-- Trusted execution scope: workspace, conversation, initiating actor/application, policyVersion, controlEpoch, permitted account. Не содержится в редактируемом пользователем prompt.
+- Trusted execution scope: workspace, conversation, initiating actor/application, policyVersion, automationEpoch, permitted account. Не содержится в редактируемом пользователем prompt.
 - Tools: чтение разрешённой CRM/knowledge, CRUD в разрешённой области, workflow start, send via CommandService, internal note, takeover/escalate. Конкретные разрешённые инструменты — настройки роли/агента; инфраструктурные и credential-management операции не выдаются клиентскому AI по умолчанию.
-- Для общих CRM tools требуется тот же scope на query/mutation/export; не ограничиваться только новым send tool. При передаче через logic function/очередь scope восстанавливается и проверяется, не теряется.
+- Для общих CRM tools требуется тот же scope на query/mutation/export; не ограничиваться только новым send tool. При передаче через разрешённую очередь/дочернее исполнение scope и полный covered admission set восстанавливаются из trusted reference. Произвольные logic function/CODE/HTTP под omni reference запрещены по design/09; generic token не выпускается.
 - Knowledge retrieval фильтрует workspace/resource ACL до формирования prompt. Вложения/текст клиента не переопределяют инструкции и выбор tools. Scope меняется — старый AI-контекст инвалидируется.
 - Workflow action «Отправить в диалог» идёт через тот же send contract. Event consumers передают causation/origin и не запускаются на импортированных записях.
 - Существующий `sendInboxMessage` остаётся внутренним уведомлением сотрудникам; он не становится способом импорта клиентской истории.
@@ -71,3 +71,7 @@ commandId обязателен и стабилен; повтор с тем же 
 ## Ошибки и версионирование
 
 Различать denied/not-found без раскрытия существования чужого ресурса; revision conflict; invalid input; unsupported capability; unavailable/retryable; outcome unknown. Client retry не меняет idempotencyKey. Переход несовместимого envelope — новая schemaVersion с явной проверкой поддержки; неизвестное событие сохраняется в карантин с причиной, не отбрасывается как успешно обработанное.
+
+Omni-capable workflow независимо от trigger проходит governance до первого шага. WEBHOOK/MANUAL требуют idempotency key; same key/different hash — conflict. SEND_OMNI_MESSAGE без trusted reference запрещён. DATABASE_EVENT/CRON получают server source key, root/scope/budget по design/09; replay не сбрасывает ancestry.
+
+setMode→auto возвращает pending_human_commands при pending/dispatching/unknown человеческих Commands. addInternalNote дедуплицируется UNIQUE(workspace,author,key) с payload hash; mismatch conflict. Stage/identity link/unlink меняют policyEpoch и invalidation контекста по spec §15.23.

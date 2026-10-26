@@ -1,6 +1,6 @@
 # Кроссревью подробного плана — реестр
 
-**Последний независимый итог R7: needs_revision, 49 причин / 45 closed_in_plan / 4 open. После R7 четыре исправления внесены автором в основной spec и design/09, статус addressed_pending_review. Независимого результата новой редакции нет; ROB-772 In Progress, ROB-764 не начинается. [Текущее состояние](residual.md), [единый контракт](../../design/09-automation-contract.md).**
+Последний свежий полный R10 A: needs_revision. Все выявленные правки внесены; R10 B и финальная узкая сверка подтвердили **53/53 closed_in_plan, 0 open**. Это закрытие известных причин, не чистый полный pass последней редакции. ROB-772 остаётся In Progress, ROB-764 Todo; код новых функций и runtime-тесты не начаты.
 
 Объект: весь проект, requirements/design/phase_1–7 и implementation-spec.md. Baseline 475e2753. Режим: fix-and-recheck только документов, полный протокол. Нового runtime-кода/тестов/деплоя нет. User подтвердил весь проект. Оракулы этого review: source trace, consistency constraints, requirement→phase→test mapping. Будущие runtime tests не выдаются за пройденные.
 
@@ -12,33 +12,33 @@ R1: независимый Claude Code 2.1.296, reported model claude-opus-5-5, 
 
 | ID | Severity | Корневая причина | Контракт/проверка | Статус |
 |---|---|---|---|---|
-| H-1 | major | Таймлайн обходит conversation ACL | 15.1 / T21 | closed_in_plan (R7 B) |
-| H-2 | major | Cleaner lifecycle удаляет историю | 15.1 / T22 | closed_in_plan (R7 B) |
-| H-3 | major | Auto principal/read scope | 15.3 / T25 | open (R7 B); addressed_pending_review (author) |
-| H-4 | major | Повтор AI effect после crash | 15.3 / T26 | closed_in_plan (R7 B) |
-| H-5 | major | Restore inbound/admission gap | 15.4 / T29 | closed_in_plan (R7 B) |
-| H-6 | major | External outgoing без команды | 15.2 / T24 | closed_in_plan (R7 B) |
-| M-1 | major | Dispatch recovery после takeover | 15.3 / T28 | closed_in_plan (R7 B) |
-| M-2 | major | Cancel connector queued command | 15.3 / T28 | closed_in_plan (R7 B) |
-| M-3 | major | SaleBot ID не доказан native | 15.2 / T16 | closed_in_plan (R7 B) |
-| M-4 | major | MAX event variants vs logical identity | 15.2 / T01,T11 | closed_in_plan (R7 B) |
-| M-5 | major | Person merge identity lifecycle | 15.2 / T23 | closed_in_plan (R7 B) |
-| M-6 | minor | Message revision retention | 15.5 / T32, explicit gate | closed_in_plan (R7 B) |
-| M-7 | major | Canonical durable workflow trigger | 15.3 / T14 | open (R7 B); addressed_pending_review (author) |
-| M-8 | major | Audit DB owner privileges | 15.5 / T06 | closed_in_plan (R7 B) |
-| M-9 | major | Stage SELECT vs nonexistent Stage ID | 15.5 / T30 | closed_in_plan (R7 B) |
-| M-10 | minor | Test environment identity | 15.5 / test preflight | closed_in_plan (R7 B) |
-| M-11 | major | Fork migrations before existing cursor | 15.5 / T33; source reader groups command kinds | closed_in_plan (R7 B) |
-| M-12 | major | Unknown Person creation | 4 / T02,T05 | closed_in_plan (R7 B) |
-| M-13 | minor | Burst AI turns | 15.3 / T27 | open (R7 B); addressed_pending_review (author) |
-| M-14 | minor | Workflow send route selection | 15.3 / T14 | closed_in_plan (R7 B) |
-| L-1 | minor | Audit writer phase cycle | 3 / T02,T06 | closed_in_plan (R7 B) |
-| L-2 | minor | Stale status/spike in open questions | open-questions.md updated | closed_in_plan (R7 B) |
-| L-3 | minor | Audit catalog volume | 15.5 / T19 | closed_in_plan (R7 B) |
-| L-4 | minor | Binding identity on reconnect | 15.1 / T11 | closed_in_plan (R7 B) |
-| L-5 | major | Native role changes bypass own fence | 15.5 / T31 | closed_in_plan (R7 B) |
-| L-6 | major | Import actor revoke per batch | 15.5 / T10,T16 | closed_in_plan (R7 B) |
-| L-7 | minor | Generic mutation of Message | 15.1 / T22 | closed_in_plan (R7 B) |
+| H-1 | major | Таймлайн обходит conversation ACL | 15.1 / T21 | closed_in_plan (R10 B/finalcheck) |
+| H-2 | major | Cleaner lifecycle удаляет историю | 15.1 / T22 | closed_in_plan (R10 B/finalcheck) |
+| H-3 | major | Auto principal/read scope | 15.3 / T25 | closed_in_plan (R10 B/finalcheck) |
+| H-4 | major | Повтор AI effect после crash | 15.3 / T26 | closed_in_plan (R10 B/finalcheck) |
+| H-5 | major | Restore inbound/admission gap | 15.4 / T29 | closed_in_plan (R10 B/finalcheck) |
+| H-6 | major | External outgoing без команды | 15.2 / T24 | closed_in_plan (R10 B/finalcheck) |
+| M-1 | major | Dispatch recovery после takeover | 15.3 / T28 | closed_in_plan (R10 B/finalcheck) |
+| M-2 | major | Cancel connector queued command | 15.3 / T28 | closed_in_plan (R10 B/finalcheck) |
+| M-3 | major | SaleBot ID не доказан native | 15.2 / T16 | closed_in_plan (R10 B/finalcheck) |
+| M-4 | major | MAX event variants vs logical identity | 15.2 / T01,T11 | closed_in_plan (R10 B/finalcheck) |
+| M-5 | major | Person merge identity lifecycle | 15.2 / T23 | closed_in_plan (R10 B/finalcheck) |
+| M-6 | minor | Message revision retention | 15.5 / T32, explicit gate | closed_in_plan (R10 B/finalcheck) |
+| M-7 | major | Canonical durable workflow trigger | 15.3 / T14 | closed_in_plan (R10 B/finalcheck) |
+| M-8 | major | Audit DB owner privileges | 15.5 / T06 | closed_in_plan (R10 B/finalcheck) |
+| M-9 | major | Stage SELECT vs nonexistent Stage ID | 15.5 / T30 | closed_in_plan (R10 B/finalcheck) |
+| M-10 | minor | Test environment identity | 15.5 / test preflight | closed_in_plan (R10 B/finalcheck) |
+| M-11 | major | Fork migrations before existing cursor | 15.5 / T33; source reader groups command kinds | closed_in_plan (R10 B/finalcheck) |
+| M-12 | major | Unknown Person creation | 4 / T02,T05 | closed_in_plan (R10 B/finalcheck) |
+| M-13 | minor | Burst AI turns | 15.3 / T27 | closed_in_plan (R10 B/finalcheck) |
+| M-14 | minor | Workflow send route selection | 15.3 / T14 | closed_in_plan (R10 B/finalcheck) |
+| L-1 | minor | Audit writer phase cycle | 3 / T02,T06 | closed_in_plan (R10 B/finalcheck) |
+| L-2 | minor | Stale status/spike in open questions | open-questions.md updated | closed_in_plan (R10 B/finalcheck) |
+| L-3 | minor | Audit catalog volume | 15.5 / T19 | closed_in_plan (R10 B/finalcheck) |
+| L-4 | minor | Binding identity on reconnect | 15.1 / T11 | closed_in_plan (R10 B/finalcheck) |
+| L-5 | major | Native role changes bypass own fence | 15.5 / T31 | closed_in_plan (R10 B/finalcheck) |
+| L-6 | major | Import actor revoke per batch | 15.5 / T10,T16 | closed_in_plan (R10 B/finalcheck) |
+| L-7 | minor | Generic mutation of Message | 15.1 / T22 | closed_in_plan (R10 B/finalcheck) |
 
 ## Журнал экземпляров
 
@@ -56,16 +56,16 @@ Claude session `4e9c1793-d8e3-4eb9-9659-5e985aad75e9`, claude-opus-5-5, is_error
 
 | Новый ID | Severity | Причина / R2 A | План и тест | Статус / происхождение |
 |---|---|---|---|---|
-| N-1 | major | Производные объекты и inheritance / H2 | §15.6, T08,T21, inventory до patch ROB-766 | closed_in_plan (R7 B) |
-| N-2 | major | Невидимый unassigned queue / H9 | §15.6 QueueGrant, activation gate, T12 | closed_in_plan (R7 B) |
-| N-3 | minor | Pausing AI занимает turn / M10 | §15.9, T27 | open (R7 B); addressed_pending_review (author) |
-| N-4 | major | Instance-admin export/impersonation / M11 | §15.6, T07,T08 | closed_in_plan (R7 B) |
-| N-5 | major | Connector journal/owner/cancel границы / M13 | §15.7, T11,T28, deployment gate | closed_in_plan (R7 B) |
-| N-6 | major | Lock ordering только takeover / M12 | §15.9, T02,T10,T23,T28 | closed_in_plan (R7 B) |
-| N-7 | major | Generation cutover replay / H8 | §15.7, T11,T18 | closed_in_plan (R7 B) |
-| N-8a | minor | Хранилище поиска / L15 | §15.9, T12,T17,T19 | closed_in_plan (R7 B) |
-| N-8b | minor | Автор зависит от mutable participant / L16 | §15.7, T24 | closed_in_plan (R7 B) |
-| N-8c | minor | API-key principal fixture / L17 | §15.6, T08 | closed_in_plan (R7 B) |
+| N-1 | major | Производные объекты и inheritance / H2 | §15.6, T08,T21, inventory до patch ROB-766 | closed_in_plan (R10 B/finalcheck) |
+| N-2 | major | Невидимый unassigned queue / H9 | §15.6 QueueGrant, activation gate, T12 | closed_in_plan (R10 B/finalcheck) |
+| N-3 | minor | Pausing AI занимает turn / M10 | §15.9, T27 | closed_in_plan (R10 B/finalcheck) |
+| N-4 | major | Instance-admin export/impersonation / M11 | §15.6, T07,T08 | closed_in_plan (R10 B/finalcheck) |
+| N-5 | major | Connector journal/owner/cancel границы / M13 | §15.7, T11,T28, deployment gate | closed_in_plan (R10 B/finalcheck) |
+| N-6 | major | Lock ordering только takeover / M12 | §15.9, T02,T10,T23,T28 | closed_in_plan (R10 B/finalcheck) |
+| N-7 | major | Generation cutover replay / H8 | §15.7, T11,T18 | closed_in_plan (R10 B/finalcheck) |
+| N-8a | minor | Хранилище поиска / L15 | §15.9, T12,T17,T19 | closed_in_plan (R10 B/finalcheck) |
+| N-8b | minor | Автор зависит от mutable participant / L16 | §15.7, T24 | closed_in_plan (R10 B/finalcheck) |
+| N-8c | minor | API-key principal fixture / L17 | §15.6, T08 | closed_in_plan (R10 B/finalcheck) |
 
 R2 уточнение экземпляров старых причин: H-6 (классификация без correlation) и M-9 (global metadataVersion) порождены первой правкой; M-10 (synthetic workspace assumption) и M-11 (generator registration) также уточнения первой правки. H-2/M-7/M-8 — неполное исправление baseline. Не скрываются как новые независимые ID. Всего 17 незакрытых причин после reconciliation: 7 повторов + 10 новых, из них 5 проявлений порождены правкой; снижение против исходных 27. Требуется fresh полный проход после второй правки, затем B; no pass по утверждению автора.
 
@@ -75,10 +75,10 @@ Fresh Claude session `6d0fc063-434c-4708-a96e-aba061cd00b2`, is_error=false. [A]
 
 | Новый ID | Severity | Причина | Fix / будущий oracle | Статус |
 |---|---|---|---|---|
-| N-9 | major | Mapping omni key в global headerMessageId helper + placeholder no-op | §15.10, T01,T17, namespace collision/revision | closed_in_plan (R7 B) |
-| N-10 | major | Manager composer send vs active auto без takeover | §15.11 managerReplyPolicy activation gate, T13,T24 | closed_in_plan (R7 B) |
-| N-11 | major | Ownership transfer архивирует общий канал | §15.11 WORKSPACE/custodian domain transfer, T22,T31 | closed_in_plan (R7 B) |
-| N-12 | minor | Импорт не сохраняет исторического автора | §15.11 source provenance+explicit mapping, T16 | closed_in_plan (R7 B) |
+| N-9 | major | Mapping omni key в global headerMessageId helper + placeholder no-op | §15.10, T01,T17, namespace collision/revision | closed_in_plan (R10 B/finalcheck) |
+| N-10 | major | Manager composer send vs active auto без takeover | §15.11 managerReplyPolicy activation gate, T13,T24 | closed_in_plan (R10 B/finalcheck) |
+| N-11 | major | Ownership transfer архивирует общий канал | §15.11 WORKSPACE/custodian domain transfer, T22,T31 | closed_in_plan (R10 B/finalcheck) |
+| N-12 | minor | Импорт не сохраняет исторического автора | §15.11 source provenance+explicit mapping, T16 | closed_in_plan (R10 B/finalcheck) |
 
 Повтор M-7 в R3: два проявления — отсутствие исполнимой typed workflow projection и неявное suppression helpers. Первое baseline, второе выявлено на границе уточнения R2. Самопроверка автора подтвердила WorkspaceTransactionScope.getRepository options, workspace-wide header query, optional workflowRunId runner и transferOwnership archive/isSyncEnabled mutations. Третья правка выбирает concrete wrapper и typed trigger, не требует переписывания email pipeline. R4 — проверка третьего fix, не разрешение четвёртой правки при новом существенном остатке.
 
@@ -88,11 +88,11 @@ Fresh session `82f878e4-8885-42d6-ba1f-266a2c9bb2e4`, is_error=false, claude-opu
 
 | Новый ID | Severity | Причина | Проверка/следующая правка | Статус / origin |
 |---|---|---|---|---|
-| N-13 | minor | Неполный inventory Enterprise-marked imports в общем ORM пути; независимость own ACL не доказана | Source fact отдельно от прав использования; license text/dependency boundary + T20 PRIVATE/INHERITED | closed_in_plan (R7 B) |
-| N-14 | major | Workflow send после takeover получает новый epoch | Матрица sender×mode, AI workflow provenance, T13/T24 | closed_in_plan (R7 B) |
-| N-15 | major | Epoch mismatch/lock mode не определены | Reauthorize vs reject; SHARE/UPDATE без upgrade, T10 | closed_in_plan (R7 B) |
-| N-16 | major | Нет pull transport для native/archive import | Источник страниц/контракт/auth/cursor; убрать внешний origin, T11/T16 | closed_in_plan (R7 B) |
-| N-17 | minor | Opportunity.expectedRevision не имеет источника | Выбрать CAS token и T30 | closed_in_plan (R7 B) |
+| N-13 | minor | Неполный inventory Enterprise-marked imports в общем ORM пути; независимость own ACL не доказана | Source fact отдельно от прав использования; license text/dependency boundary + T20 PRIVATE/INHERITED | closed_in_plan (R10 B/finalcheck) |
+| N-14 | major | Workflow send после takeover получает новый epoch | Матрица sender×mode, AI workflow provenance, T13/T24 | closed_in_plan (R10 B/finalcheck) |
+| N-15 | major | Epoch mismatch/lock mode не определены | Reauthorize vs reject; SHARE/UPDATE без upgrade, T10 | closed_in_plan (R10 B/finalcheck) |
+| N-16 | major | Нет pull transport для native/archive import | Источник страниц/контракт/auth/cursor; убрать внешний origin, T11/T16 | closed_in_plan (R10 B/finalcheck) |
+| N-17 | minor | Opportunity.expectedRevision не имеет источника | Выбрать CAS token и T30 | closed_in_plan (R10 B/finalcheck) |
 
 Число open major по независимым сверкам: R1=20; R2=13; R3=4; R4=5. Total causes: 27→37→41→46. R2: 10 новых причин/7 существенных повторов; R3: 4 новых/2 старых незакрытых; R4: 5 новых/3 повторно открытых. В R4 минимум 4 проявления явно порождены уточнениями (N-15,N-17,M-7,L-2), остальные baseline/раскрытые интеграцией. Ни одно не принято как допустимый риск. Повышение числа major и достигнутый потолок третьего fix требуют остановки перед четвёртой правкой и конкретного решения владельца, не продолжения до желаемого pass.
 
@@ -117,8 +117,8 @@ R5 результат: [A](claude-r5-fresh.md), [B](claude-r5-reconciliation.md)
 
 | Новый ID | Severity | Причина | Контракт / oracle | Статус |
 |---|---|---|---|---|
-| N-18 | minor | Account metadata visible with WORKSPACE scope | §15.18, T08 | closed_in_plan (R7 B) |
-| N-20 | minor | Workflow send action integration incomplete | §15.18, T14/T28 | closed_in_plan (R7 B) |
+| N-18 | minor | Account metadata visible with WORKSPACE scope | §15.18, T08 | closed_in_plan (R10 B/finalcheck) |
+| N-20 | minor | Workflow send action integration incomplete | §15.18, T14/T28 | closed_in_plan (R10 B/finalcheck) |
 
 ## R6 — результат и R7 — завершение lifecycle контракта
 
@@ -126,7 +126,7 @@ R5 результат: [A](claude-r5-fresh.md), [B](claude-r5-reconciliation.md)
 
 | Новый ID | Severity | Причина | Контракт / oracle | Статус |
 |---|---|---|---|---|
-| N-21 | minor | Message revision ошибочно служит CAS управления | §15.19, T10/T12 | closed_in_plan (R7 B) |
+| N-21 | minor | Message revision ошибочно служит CAS управления | §15.19, T10/T12 | closed_in_plan (R10 B/finalcheck) |
 
 R7 разрешение: то же явное продолжение владельца; полный protocol. Окупаемость: три конкретных остатка, total open4→3, один major прежнего M-7, модель отказов не расширена. §15.19 завершает registration/lifecycle/recovery; unknown generic external effect не переисполняется автоматически. N-13 дополняется оставшимися consumer families, N-21 разделяет revision/controlEpoch. Это шестой fix-and-recheck после initial R1; если новый проход не уменьшит major повторно, применять stop-condition с листом остатка, а не искать формальный pass.
 
@@ -149,3 +149,76 @@ R7 разрешение: то же явное продолжение владе�
 По просьбе пользователя актуализировать документы выполнена структурная правка, а не очередной слепой проход. Canonical design/09 объединяет capability/reference boundary, immutable admission target snapshot и reply budget. Исправлены исходные §3/5/9/15.3/15.9/15.10/15.17/15.19, G07/G18 и связанные design/API/phase/coverage. Старые version-based receipt/run keys удалены из нормативного spec. Source matrix содержит 14 фактических файлов и будущие изменения; таблица сценариев входит в тот же контракт.
 
 H-3/M-7/N-3/M-13: автор addressed_pending_review; независимый open сохраняется. Исторические A/B и manifests R1–R7 не переписаны, результаты не перенесены на изменённый snapshot. Следующий шаг — целевая проверка новой модели, затем fresh full review и B. R8 не запускался; T01–T33 не реализованы/не выполнены. Никакие live изменения или новое пользовательское принятие риска не подразумеваются.
+
+## R8 — целевой разбор новой модели и подготовка свежего полного прохода
+
+Режим fix-and-recheck документов, полный протокол после structural rewrite ceda4f6e/6ab6085f. Targeted Claude session 796e6b58-6182-4101-bfdb-fec4a30412d7, reported claude-opus-5-5, exit0/is_error=false. [Ответ](claude-r8-targeted.md), snapshot review-r8-targeted-manifest.json. Это не blind full review и не pass проекта. Targeted подтвердил stable workflow key M-7, но нашёл дополнительный путь Retry того же корня — M-7 остаётся open до полного reconciliation. Все пути подтверждены автором по исходникам, поправлены в основном spec/design/API/matrix; авторский статус addressed_pending_review.
+
+| Раунд/ID/проявление | Severity | Происхождение / порождено исправлением | Evidence и авторская правка |
+|---|---|---|---|
+| R8 H-3 workflow actions | major | исходный план; неполное исправление прошлых раундов | CODE/LOGIC_FUNCTION issuer → closed action policy для всех omni descendants, T25-D |
+| R8 H-3 native model tools | major | исходный план; неполное исправление прошлых раундов | AgentToolset вне registry → native options empty + final toolset guard, T25-E |
+| R8 H-3 API wording | minor | старый API; противоречие внесено запретом raw functions после R7 | design/06 больше не предлагает logic function delegation |
+| R8 N-3 canAskHumans / workflow AI_AGENT | minor | исходный путь; неполное исправление после R7 | canAskHumans=false/waitTools empty во всех AgentRunner calls; workflow waits отделены, T27-A |
+| R8 M-7 native Retry | major | исходный путь не покрыт прежним recovery контрактом; не новый runtime defect | retryWorkflowRun deny до mutation/enqueue, общий terminal finalizer, T14-D |
+| R8 M-13 mixed exhausted burst | minor | порождено новой атомарной reservation моделью после R7 | terminal budget_exhausted + idempotent durable handoff; без новой автоматики split/rebuild, T27-D |
+| R8 M-13 descendants covered set | minor | неполное исправление новой burst модели после R7 | все потомки наследуют весь covered set, T27-C |
+
+7 проявлений / 0 новых stable IDs / 4 повторных корня; никаких refuted/accepted-risk. Модель отказов прежняя §1, все сценарии внутри. Severity Retry нормализована как major по возможному повтору эффекта; native tools — major по обходу scope. После правки нужен fresh full A в другой сессии, затем B для всех 49 ID. Оракулы плана: source trace, decision table, counterexample coverage; runtime T01–T33 не исполнялись.
+
+### R8 A/B — полный независимый результат и следующая авторская правка
+
+Fresh A session f06ceb9f-433c-450d-b6af-9d6ef9d0bbf9, затем B той же сессии только после сохранения A. [A](claude-r8-fresh.md), [B](claude-r8-reconciliation.md), snapshot review-r8-full-manifest.json. Итог **47/49 closed_in_plan, open H-3 и M-5 (major), новых ID нет**. Реальные инструменты сверяются по session log; runtime не запускался. A прочитал полный план/requirements/phases/design и точечно Twenty source; Python-коннекторы и внешние репозитории не проверены заново, их source-квалификация остаётся pre-activation gate.
+
+| Проявление | Классификация | Авторская правка / oracle |
+|---|---|---|
+| R8 A F1 → H-3 | major, исходный план + неполные правки governance | Любой omni-capable flow governed до первого шага; typed durable roots для всех triggers, общий budget/causation, deny missing reference; T14-E/T25-F |
+| R8 A F2 → M-5 | major, конфликт lifecycle и suppression порождён предыдущими правками | Mixed merge partition по ownership, domain lifecycle adapter participants/targets в той же transaction; T23 |
+| R8 A F3 → M-7 | checklist, не новый/open ID | scheduleStepRetry перечислен; в omni v1 выключен, error terminal с audit/unknown outcome; T14-F |
+| R8 A performance → N-15 | checklist, не дефект корректности | T19 измеряет policy SHARE contention |
+
+Все замечания учтены, ни одно не отклонено/принято за владельца. 2 open major как в R7; новая структурная модель получила первый full pass-попытку, улучшение по общему числу 45→47 не подменяет major count. Перед следующим fresh R9 внесены H-3/M-5 в основной текст, согласованы schema/API/phases. Если R9 снова не уменьшит major или будет преобладание patch-caused дефектов, повтор той же формы прекращается по stop-condition. Candidate требует fresh A+B, а не self-closure.
+
+## R9 — свежий полный A, исправление контракта и B
+
+Fresh session 9aeb8d46-3b5f-41e9-aea1-068d32b520cd, reported claude-opus-5-5. [A](claude-r9-fresh.md) на review-r9-manifest.json: needs_revision, два блокирующих medium нормализованы major (N-21/N-15, M-13). После source/contract проверки автор исправил реальные paragraphs/spec/schema/API; [B](claude-r9-reconciliation.md) на review-r9-b-manifest.json закрыл все49 и новый N-22, обнаружил N-23 minor. [Финальная узкая сверка B](claude-r9-finalcheck.md) подтвердила N-23. Никакой из этих B не назван свежим полным A.
+
+| Раунд/ID/проявление | Severity / происхождение | Исправление и проверка |
+|---|---|---|
+| R9 N-21/N-15 control/automation epoch collision | major, порождено прежним CAS исправлением | отдельный automationEpoch, human accepted dispatch не зависит от UI CAS; stale non-human outcome visible, T13/T24 |
+| R9 M-13 ambiguous slot reservation | major, порождено budget redesign | только bound slot в одной transaction с Command ПОСЛЕ генерации; no auto regeneration/crash retry, T26/T27 |
+| R9 N-22 restore access rollback | major, baseline | внешний access fence, invalidation sessions/API keys, external grants/revoke evidence, T18/T29 |
+| R9 H-2 TrashCleanup | minor, baseline missing inventory | domain lifecycle destroy до SQL, unbind/audit/omni exclusions, T22 |
+| R9 L-2 signature gate | minor, baseline | G19 явно выбирается до подписи, по умолчанию выключено |
+| R9 N-23 closed status vs auto | minor, порождено текущим epoch split | close/reopen fence, current status gate, G20 incoming/reopen policy; T13/T24 |
+
+| Новый ID | Severity | Причина | План/тест | Статус |
+|---|---|---|---|---|
+| N-22 | major | Restore оживлял отозванные права/сессии | §15.21, T18/T29 | closed_in_plan (R10 B/finalcheck) |
+| N-23 | minor | Closed диалог не останавливал automation после epoch split | §15.22, T13/T24, G20 | closed_in_plan (R10 B/finalcheck) |
+
+Итого 51/51 известных причин closed_in_plan, open major/minor=0. Все исходные контрпримеры проверены независимым reviewer; runtime tests будущие. Последний A был needs_revision; после B остаётся формальный gap свежего полного прохода новой редакции. Major count R8 B2→R9 B0 уменьшился, поэтому количественный stop не запрещает финальный candidate R10. Не считаем каждый новый подпункт новым ID и не скрываем patch-induced проявления.
+
+Редакционные заметки B: G12/§12 access fence уточнён непосредственно в runbook; human pending после close явно cancelled_conversation_closed до provider boundary. Доказательства новой версии заморожены в review-r10-manifest.json перед свежим A; статус финального pass пока не выставлен.
+
+## R10 — финальный полный проход, исправления и ограниченная сверка
+
+Fresh A session 3f2601ac-8aaa-4036-8790-15f06ac7453e, model claude-opus-5-5. [A](claude-r10-fresh.md) на review-r10-manifest.json: needs_revision, три существенных контрпримера и пять локальных замечаний. Автор сверил исходники listener/job/cache и encryption/JWT, внёс все исправления в сам план. [B](claude-r10-reconciliation.md) на review-r10-b-manifest.json:52/53 закрыты, один M-7 minor (governed→ordinary publish). После точной правки event snapshot reference [узкая сверка](claude-r10-finalcheck.md) подтвердила53/53. Snapshot до финальной сверки — review-r10-final-manifest.json. Reviewer по ошибке называет6ab6085f «snapshot A» в одном старом ответе: это база ветки, точные рассматривавшиеся working-tree файлы определяются manifests, не тем SHA.
+
+| Проявление R10 | Stable ID / severity | Происхождение / решение |
+|---|---|---|
+| F1 event kinds/root budgets | M-13, major | baseline incomplete mapping; message/conversation.created общий root, domain events наследуют causation; T27-B |
+| F2 governed catalog/publish | M-7, major; остаток minor | неполное расширение после R8; durable all-trigger catalog, per-record event snapshot, подавление native enqueue в обоих направлениях publish; T14-E |
+| F3 stage/link policy invalidation | N-15, major | неполный policy field catalog; UPDATE+epoch и semantic ResourceScope edges, T10/T13 |
+| L1 takeover control token exception | N-21, minor | порождено epoch split; явное исключение takeover_on_send/T12 |
+| L2 human pending→auto | N-10, minor | порождено epoch split; deny до завершения/reconciliation human Commands, T12/T24 |
+| L3 note idempotency | N-24, minor | baseline; UNIQUE(workspace,author,key)+hash conflict |
+| L4 attachment ownership transition | N-25, minor | baseline; atomic Command→Message reparent+ACL/audit, T15/T17 |
+| L5 signing/encryption shared secret | N-22, major contract safety (A low) | baseline runbook; effective encryption key закрепляется перед APP_SECRET rotation, T18 |
+
+| Новый ID | Severity | Причина | План/тест | Статус |
+|---|---|---|---|---|
+| N-24 | minor | Дубликат InternalNote при повторе команды | UNIQUE + payloadHash, schema/API | closed_in_plan (R10 B) |
+| N-25 | minor | Вложения оставались у Command после canonical Message | §15.23, T15/T17 | closed_in_plan (R10 B) |
+
+Все 53 причины учтены; ни одна не снята молча, не принята за владельца. Нет новых open major/minor, но **общий fresh full pass не получен**: полные A последовательно обнаруживали новые границы, а B подтверждают только известный список и delta. Не повторяем ещё одну широкую серию в этом запуске. Планирование не выдаётся за выполненные тесты приложения или самостоятельное разрешение live cutover. ROB-772 не закрыта; её следующий контроль — согласованность конечных таблиц event/root/catalog, permission mutation и command lifecycle, затем независимый критерий допуска реализации. Подробный итог — [review-result.md](review-result.md).

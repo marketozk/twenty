@@ -1,6 +1,6 @@
 # Этап 5. ИИ и рабочие процессы
 
-Авторская редакция после R7 внесена: [единый контракт](../design/09-automation-contract.md) и [source matrix](../implementation/automation-source-matrix.md). EventDispatchPlan/receipts фиксируют stable consumerId и pinned version атомарно; общий reply budget охватывает agent/workflow. Closed tool registry, запрет generic token issuance и полный pausing inventory обязательны. H-3/M-7/N-3/M-13: addressed_pending_review, не closed.
+Редакция после R10: [единый контракт](../design/09-automation-contract.md) и [source matrix](../implementation/automation-source-matrix.md). EventDispatchPlan/receipts фиксируют stable consumerId и pinned version атомарно; общий reply budget охватывает agent/workflow. Closed tool registry, запрет generic token issuance и полный pausing inventory обязательны. R10 reconciliation: все53 известные причины closed_in_plan, это не общий fresh full pass.
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
@@ -32,3 +32,5 @@
 SEND_OMNI_MESSAGE интегрируется в shared schema, server factory/validation/DI и front editor/registry; trusted sender provenance и стабильный effect key по §15.18. Это отдельное действие от внутреннего SEND_CHAT_MESSAGE.
 
 Обязателен §15.19: trigger switches/metrics/activation/schema, durable OmniWorkflowSubscription, run watchdog с fenced terminal stalled при потере очереди, без автоматического повторения произвольных эффектов. T14 до COMPLETED в норме и до видимого исхода при отказе.
+
+R8: Omni reference обязателен для workflow descendants независимо от trigger type; closed action table и final sentTools guard, native/pausing overrides, запрет обычного Retry omni runs, полный inherited admission set и durable budget_exhausted handoff — design/09. Это авторские исправления после targeted review, ещё не full pass.

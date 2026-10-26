@@ -23,3 +23,11 @@
 Выбор внешних групп и дополнительных Bot API аккаунтов не подтверждён и не подменяется совместной работой сотрудников внутри CRM. Все настройки реальных аккаунтов/ролей/моделей и опасные операции остаются отдельными gates, как указано в спецификации. План не требует отдельного постоянного демонстрационного экземпляра.
 
 Авторская редакция после R7: R-06/R-10/F-04/F-06 и надёжность детализированы в [design/09](../design/09-automation-contract.md), включая T25-A/B/C, T14-A/B/C, T27-A/B/C и T28-A. Это расширения существующих групп T01–T33, не выполненные тесты и не дополнительные закрытые замечания. Source matrix связывает реальные entry points с изменениями и ожидаемыми исходами.
+
+R8 targeted correction: T25-D/E — workflow action и provider-native paths; T27-A — canAskHumans/AI_AGENT; T14-D — native Retry до/после disposition; T27-C/D — inherited burst set и видимый handoff при занятом slot. Всё остаётся планом тестов.
+
+После R8 A/B: F-06 проверяется также T14-E/T25-F (DATABASE_EVENT/CRON/WEBHOOK/MANUAL, causation, budget, цикл); F-03 — T23 mixed email/omni merge; T14-F — отсутствие скрытого upstream step retry; T19 — policy row contention. Все проверки будущие.
+
+После R9 A: T13/T24 — controlEpoch отдельно от automationEpoch; T26/T27 — reply quota только в Command commit; T18/T29 — invalidation и external access reconciliation после restore; T22 — TrashCleanup lifecycle; G19 — подпись менеджера. Ни один runtime тест не запускался.
+
+R10 corrections: T27-B root sharing разных omni event kinds; T14-E durable governed catalog vs publish/cache; T10/T13 stage/identity policy writers; T12/T24 accepted human vs auto; T15/T17 attachment reparent; T18 signing/encryption legacy fallback; T22 workspace destroy inventory. Это всё будущие тесты, не результаты.

@@ -1,6 +1,6 @@
 # Этап 1. Модель общения, inbox/outbox и журнал
 
-Авторская редакция после R7 внесена: [единый контракт](../design/09-automation-contract.md) и [source matrix](../implementation/automation-source-matrix.md). EventDispatchPlan/receipts фиксируют stable consumerId и pinned version атомарно; общий reply budget охватывает agent/workflow. Closed tool registry, запрет generic token issuance и полный pausing inventory обязательны. H-3/M-7/N-3/M-13: addressed_pending_review, не closed.
+Редакция после R10: [единый контракт](../design/09-automation-contract.md) и [source matrix](../implementation/automation-source-matrix.md). EventDispatchPlan/receipts фиксируют stable consumerId и pinned version атомарно; общий reply budget охватывает agent/workflow. Closed tool registry, запрет generic token issuance и полный pausing inventory обязательны. R10 reconciliation: все53 известные причины closed_in_plan, это не общий fresh full pass.
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
@@ -14,7 +14,7 @@
 
 ## Порции реализации
 
-1. Entities/indexes: AccountBinding, ExternalIdentity, Conversation, Member, MessageLink, Receipt, Command, DomainEvent, ConsumerReceipt; отдельная audit entity. Ограничения уникальности из design, миграции apply/rollback на пустой и заполненной тестовой БД.
+1. Entities/indexes: AccountBinding, ExternalIdentity, Conversation, Member, MessageLink, Receipt, Command, DomainEvent, ConsumerReceipt, OmniRootExecution, EventDispatchPlan, OmniReplyBudget; отдельная audit entity. Ограничения уникальности из design, миграции apply/rollback на пустой и заполненной тестовой БД.
 2. Сохранение ingress: узкие credentials, schema validation, durable receipt/ACK, проверка generation; eventId+payload конфликт вместо overwrite. Из raw события нельзя назначить actor/право/import-origin.
 3. Общая транзакционная часть messaging persistence: Message+participants+link+revision+DomainEvent+audit атомарно. Email pipeline использует прежнее поведение; добавить email-regression. DB constraints и блокировка не зависят только от cache lock TTL.
    Выделить из aggregate scope-accepting метод; вызвать существующий saveMessagesWithinTransaction и scope-aware participant/folder/reconcile с withOmniRepositoryOptions(scope) и namespaced header mapping по implementation-spec §15.10. Только transactionScope.getRepository/executeRawQuery: обычный getRepository использует другой pool. Postcommit надёжные jobs — через DB outbox.
@@ -31,3 +31,5 @@
 С первого patch: baseline import/DI manifest и CI no-new Enterprise dependencies; participant rematch исключает omni до update, сохраняя email batch. Подробные решения §15.18, T05/T20/T22.
 
 Fork-only IDs не используются в upstream upgrade-aware decorators; preflight/ledger и T33 по §15.19. Conversation revision и controlEpoch разделены; будущий API управления принимает expectedControlEpoch.
+
+Генерализация roots на non-message governed triggers и lifecycle merge для omni-owned references — обязательный контракт design/09 и spec §15.2/15.20; producers/consumers публикуются вместе, неполная миграция не включает automation.

@@ -142,3 +142,15 @@
 - Проверка LOG-011 до публикации: 414 локальных Markdown-ссылок разрешаются; JSON валидны; 49 уникальных ID / 45 historical closed / 4 addressed_pending_review; 14 source SHA256 совпадают. Raw review/manifests и runtime/ops не менялись; git diff --check пройден. Это проверки документов и исходников, не runtime-тесты.
 
 - Публикация LOG-011: commit `ceda4f6ec33657e0e3b26eb361440ff0659a450f` отправлен в origin/codex/omnichannel-requirements. Все 11 описаний ROB-762–772 обновлены; обратное чтение подтвердило текст после стандартной нормализации Markdown Linear (угловые скобки ссылок, bullets, checkbox case), прежние статусы и связь ROB-772 blocks ROB-764. [Отчёт](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-da9b6a34) подтверждён ровно один. ROB-762/763 сохраняют исторический Done; ROB-772 In Progress, ROB-764 Todo, остальные Backlog. Нового независимого verdict нет.
+
+### 2026-10-26 — LOG-012 — независимая проверка исправленной модели
+
+- Пользователь разрешил целевую проверку и полное ревью. Применены cross-review-convergence и read-only Claude CLI с неизменными auth/model; reported claude-opus-5-5. Внешние сервисы/сообщения и runtime не меняются.
+- Targeted R8 обнаружил непокрытые workflow/native-tool/pausing/Retry paths и burst liveness/descendant semantics. Все замечания сверены с исходниками, внесены в основной план, API и source matrix; 7 проявлений сведены к четырём существующим ID, история не затёрта.
+- Вместо новой автоматической пересборки burst принято fail-closed завершение с durable handoff: не терять unresolved входящие и не расширять retry поверхность. Следом — свежий полный review и reconciliation; результата пока нет.
+
+- Итог LOG-012: targeted + R8/R9/R10 fresh A и последующие B выполнены; модель claude-opus-5-5, все CLI вызовы только Read/Grep/Glob. Все53 известные причины независимо closed_in_plan, open0. Каждый полный A был needs_revision; последний набор правок подтверждён B, но свежего полного pass после него нет. ROB-772 оставлена In Progress, ROB-764 не начата.
+- Существенные правки внесены в действующий план, не только реестр: закрытые tools/actions; все governed triggers/roots/catalog; общий reply quota только с Command commit; epochs/mode/closed; lifecycle merge/destroy; restore auth/encryption; notes/attachments. Reviewer reports/manifests сохранены, старые raw R1–R7 не менялись.
+- Дальше конечный контроль таблиц roots/catalog/permissions/Command lifecycle для допуска; runtime доказательства будут в реализации. Без нового автоматического широкого круга, без принятия риска за владельца. Проверки документов, публикация и синхронизация Linear ниже.
+
+- Проверки LOG-012 перед публикацией: 454 локальных Markdown-ссылок без пропусков; JSON валидны; 53 уникальных ID/53 closed_in_plan; SHA256 всех 37 source файлов совпадают. Diff --check пройден; runtime/ops и исходные raw R1–R7 не менялись. Эти механические проверки не являются fresh full pass или тестами приложения.

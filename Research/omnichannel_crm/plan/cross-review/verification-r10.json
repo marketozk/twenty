@@ -1,0 +1,13 @@
+{
+  "local_links": 454,
+  "missing_links": 0,
+  "json_valid": true,
+  "stable_ids": 53,
+  "known_closed_in_plan": 53,
+  "open_known": 0,
+  "fresh_full_pass": false,
+  "runtime_tests": "not run: planning only",
+  "verified_source_sha256": 37,
+  "original_R1_R7_reports_unchanged": true,
+  "git_diff_check": true
+}

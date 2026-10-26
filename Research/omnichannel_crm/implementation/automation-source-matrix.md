@@ -22,3 +22,45 @@
 У нового кода OmniWorkflowTriggerConsumer/DispatchPlan/ReplyBudget пока нет реализации или call sites. Для него источник контракта — требования и таблицы гонок в design/09, а не выдуманный существующий метод Twenty. Сохранение Message/admission/dispatch plan должно использовать общий transaction executor; lifecycle, mutation, sender fences сохраняют общий lock order.
 
 В прямом tool call и child execution scope только сужается; запуск из ordinary MCP не наследует automation privileges. Все клиентские отправки проходят CommandService и общий reply budget. В реализации дополнительно трассировать ToolExecutorService.dispatch и controller→toolSet construction: одной модификации ActionToolProvider недостаточно.
+
+## Дополнено после целевого source review R8
+
+| Источник | Факт | Планируемое изменение | Oracle |
+|---|---|---|---|
+| [agent-toolset.service.ts](../../../packages/twenty-server/src/engine/metadata-modules/ai/ai-agent-execution/services/agent-toolset.service.ts) | build: native/pausing/extra merge | Защитить итоговый набор; native options пусты, canAskHumans false, waitTools empty | T25-E/T27-A |
+| [agent-run-turn.service.ts](../../../packages/twenty-server/src/engine/metadata-modules/ai/ai-agent-execution/services/agent-run-turn.service.ts) | run: modelConfiguration → native options | Server omni override до сборки provider request | T25-E |
+| [ai-model-config.service.ts](../../../packages/twenty-server/src/engine/metadata-modules/ai/ai-models/services/ai-model-config.service.ts) | getNativeModelTools: provider-executed search | В omni v1 не выдавать provider-native tools | T25-E |
+| [build-workflow-agent-run-spec.util.ts](../../../packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/ai-agent/utils/build-workflow-agent-run-spec.util.ts) | humanInputInstructions → canAskHumans | Publish rejects; runtime override для любого omni reference | T27-A |
+| [ai-agent.workflow-action.ts](../../../packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/ai-agent/ai-agent.workflow-action.ts) | run agent внутри workflow | Наследовать reference и весь covered admission set | T27-A/C |
+| [logic-function-executor.service.ts](../../../packages/twenty-server/src/engine/core-modules/logic-function/logic-function-executor/logic-function-executor.service.ts) | application + delegated token issuer | До issuer deny для omni v1 | T25-D |
+| [code.workflow-action.ts](../../../packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/code/code.workflow-action.ts) | CODE → logic function executor | Закрытый action policy до dispatch | T25-D |
+| [logic-function.workflow-action.ts](../../../packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/logic-function/logic-function.workflow-action.ts) | LOGIC_FUNCTION → executor | Закрытый action policy до dispatch | T25-D |
+| [workflow-executor.workspace-service.ts](../../../packages/twenty-server/src/modules/workflow/workflow-executor/workspace-services/workflow-executor.workspace-service.ts) | executeFromStep / computeWorkflowRunStatus | Action policy на каждый step/resume и terminal finalizer | T25-D/T14-D |
+| [workflow-runner.workspace-service.ts](../../../packages/twenty-server/src/modules/workflow/workflow-runner/workspace-services/workflow-runner.workspace-service.ts) | retryWorkflowRun: FAILED→RUNNING + queue | Omni deny до mutation/enqueue, ordinary regression | T14-D |
+| [workflow-trigger.resolver.ts](../../../packages/twenty-server/src/engine/core-modules/workflow/resolvers/workflow-trigger.resolver.ts) | retryWorkflowRun resolver | UI не является защитой; общий server guard | T14-D |
+| [RetryWorkflowRunSingleRecordCommand.tsx](../../../packages/twenty-front/src/modules/command-menu-item/engine-command/record/single-record/workflow-runs/components/RetryWorkflowRunSingleRecordCommand.tsx) | UI Retry bulk command | Отображать отдельный controlled replay, server guard обязателен | T14-D |
+| [workflow-run.workspace-service.ts](../../../packages/twenty-server/src/modules/workflow/workflow-runner/workflow-run/workflow-run.workspace-service.ts) | endWorkflowRun status writer | Native terminal + intent disposition в одной transaction | T14-D |
+| [WorkflowActionType.ts](../../../packages/twenty-shared/src/workflow/types/WorkflowActionType.ts) | полный enum actions | Полная decision table: новый type default deny | T25-D |
+
+## Дополнено после полного R8
+
+| Источник | Факт | Изменение | Oracle |
+|---|---|---|---|
+| [common-merge-many-query-runner.service.ts](../../../packages/twenty-server/src/engine/api/common/common-query-runners/common-merge-many-query-runner.service.ts) | mergeRelatedRecordsIntoPriorityRecord → getRepository/runMutation без skip | Разделить omni-owned и ordinary строки до update/soft-delete | T23 |
+| [person.workspace-entity.ts](../../../packages/twenty-server/src/modules/person/standard-objects/person.workspace-entity.ts) | messageParticipants relation | Полный lifecycle inventory зависимых ссылок | T23 |
+| [workflow-database-event-trigger.listener.ts](../../../packages/twenty-server/src/modules/workflow/workflow-trigger/automated-trigger/listeners/workflow-database-event-trigger.listener.ts) | post-mutation event dispatch | Governed target из durable transaction ingress; native enqueue его пропускает | T14-E |
+| [workflow-trigger.job.ts](../../../packages/twenty-server/src/modules/workflow/workflow-trigger/jobs/workflow-trigger.job.ts) | handle CORE/legacy dispatch | Governance marker/reference проверяется перед первым шагом, оба пути | T14-E |
+| [assert-version-can-be-activated.util.ts](../../../packages/twenty-server/src/modules/workflow/workflow-trigger/utils/assert-version-can-be-activated.util.ts) | activation validation | Omni capability classification всего flow, независимо от trigger | T25-F |
+
+WorkflowExecutor.scheduleStepRetry/stepIdsToRetry (файл уже в таблице): для omni отключены на error, publish retryCount>0 rejected; queued retry не снимает intent fence, T14-F. Все CRON/WEBHOOK/MANUAL call sites должны идти через тот же governance ingress до CoreWorkflowRunner; полный call-site inventory — обязательный шаг реализации.
+
+## Lifecycle/restore дополнения R9
+
+- [TrashCleanup](../../../packages/twenty-server/src/engine/trash-cleanup/services/trash-cleanup.service.ts): bypass repository hard delete; omni-owned rows исключаются, Person/Company destroy через lifecycle adapter, T22.
+- [Participant FK metadata](../../../packages/twenty-server/src/engine/workspace-manager/twenty-standard-application/utils/field-metadata/compute-message-participant-standard-flat-field-metadata.util.ts): person relation SET NULL не обновляет ExternalIdentity и не заменяет audit/lifecycle.
+- Restore fence и invalidation авторизационных sessions/keys — новый operational контракт spec §15.21; механизм текущих auth/session/token issuers проверяется при реализации G12, live rotation сейчас не выполнялась.
+
+## R10 source уточнения
+
+- WorkflowDatabaseEventTriggerListener.getDatabaseEventListeners читает workflowAutomatedTriggerMaps cache; WorkflowTriggerJob legacy path проверяет ACTIVE. Поэтому governed catalog/immutable event snapshot и dispatch обязаны быть durable (spec §15.23).
+- [Encryption resolver](../../../packages/twenty-server/src/engine/core-modules/secret-encryption/utils/resolve-encryption-keys-or-throw.util.ts) и [JWT wrapper](../../../packages/twenty-server/src/engine/core-modules/jwt/services/jwt-wrapper.service.ts): legacy encryption и JWT могут использовать один APP_SECRET; restore сначала отделяет effective encryption key, затем rotation/auth checks.
