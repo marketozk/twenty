@@ -49,3 +49,8 @@ Cross-review-convergence: изменена форма работы (единые
 ## R15 / LOG-017
 
 Cross-review-convergence: новый blind A, затем B по66 stable roots, исправления у нормативных owners и targeted checks; учтены27 проявлений и16 порождённых правками, общий pass не подменяется закрытием списка. Claude consult / claude-cli-transparent-integration: официальный read-only CLI, reported claude-opus-5-5, без model/auth override, tool audit. Linear-api: подготовка существующих задач с проверкой конкурирующих изменений и read-back после push. Другие planning/runtime/UI skills заново не запускались и не объявляются выполненными.
+
+
+## R16 / LOG-018
+
+Cross-review-convergence: fresh A, отдельный B и targeted; root dedup/causality, author self-check, canonical owners; количественный stop (16/27 и21/30), лист остаточного риска без owner acceptance. Claude consult/transparent integration: официальный CLI read-only, новая сессия, reported claude-opus-5-5, без model/auth override; source packet и tool audit. Linear-api: существующие11 задач, concurrency guard, permalink и read-back после push. Не объявляются выполненными все skills каталога, runtime tests или deployment. Следующий широкий круг той же формы не запущен.

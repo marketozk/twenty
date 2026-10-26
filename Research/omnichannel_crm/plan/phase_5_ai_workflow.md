@@ -55,3 +55,5 @@ OmniExecutionReference и reference FK вводятся по schema §3 до act
 
 
 Реализовать signed governed WEBHOOK и credential lifecycle по workflow-execution#webhook-auth, сохраняя обычные webhook. Durable CRON cursor/gap по #cron-gap. T25-F/T14-E проверяют current auth/revoke, rotation idempotency, lost Redis и отсутствие catch-up sends.
+
+ROB-764 уже вводит schema/disabled v0 AutomationPolicy/Version; ROB-769 добавляет full publish/validation и общий root effect/hop ledger по owners automation-policy-version/root-effect-budget. CLASSIFY явно deny. Unassigned automatic assist использует scoped service principal и artifact ACL; internal notes только по G04. T14/T25/T27 покрывают concurrent quota, publish fences и lost webhook secret response.

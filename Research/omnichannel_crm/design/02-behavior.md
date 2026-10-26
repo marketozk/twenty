@@ -12,7 +12,7 @@
                                  v
                worker -> один commit PostgreSQL:
                  Message + participants + OmniMessageLink
-                 Conversation revision + DomainEvent
+                 Conversation.conversationSequence + DomainEvent
                                  |
                                  v
                    подписки / workflow / AI / карточки

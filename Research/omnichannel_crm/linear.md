@@ -26,9 +26,9 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 
 ## Сверка текущего состояния — 26.10.2026
 
-R15 / LOG-017: свежий независимый Claude A проверил39 документов и доступные исходники; needs_revision (3 Medium/5 Low). Исправления внесены в план. B и адресные перепроверки закрыли27 проявлений этого раунда и66 известных корневых причин. Открытых известных замечаний нет; новый полный blind pass после изменений не выполнен. ROB-772 In Progress, ROB-764 Todo; новый runtime не начат.
+R16 / LOG-018: независимый Claude A проверил 39 технических документов и исходники; needs_revision (3 Medium/7 Low). Исправления внесены в нормативные владельцы, API и этапы. B и адресные проверки закрыли 30 проявлений раунда и все 66 известных причин. Общий fresh full pass исправленной редакции не заявлен. Два раунда с большинством замечаний от правок: широкий цикл той же формы остановлен; следующий подход требует решения владельца. ROB-772 In Progress, ROB-764 Todo; новый omnichannel runtime не начат.
 
-[Итог R15](plan/cross-review/review-result.md). ROB-762/763 Done; ROB-772 In Progress; ROB-764 Todo; ROB-765–771 Backlog. Связь ROB-772 blocks ROB-764 сохранена. Публикация и API read-back R15 фиксируются в DEVLOG LOG-017.
+[Итог R16](plan/cross-review/review-result.md). ROB-762/763 Done; ROB-772 In Progress; ROB-764 Todo; ROB-765–771 Backlog. Связь ROB-772 blocks ROB-764 сохранена. Публикация и API read-back R16 фиксируются в DEVLOG LOG-018.
 
 Предыдущая публикация R13: `183039a3c16b0e4b4a3495805ba42bf9e0d51e76`, [комментарий LOG-015](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-1df99847); read-back всех11 описаний и прежних статусов подтверждён.
 

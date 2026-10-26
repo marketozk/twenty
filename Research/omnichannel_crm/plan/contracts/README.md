@@ -8,6 +8,8 @@
 | IDs, roots, run identity, dispatch, tools, budgets, отмена и recovery workflow | [Выполнение workflow](workflow-execution.md) |
 | Permissions snapshot, scope, epochs, locks, sender×mode, control CAS, close/reopen | [Права и управление](access-control.md) |
 | Command, reply, FIFO, human stale-view, timeline и SSE | [Отправка и UI](sending-ui.md) |
+| Immutable automation policy/settings, publish/version-head fence | [Права: версии политики](access-control.md#automation-policy-version) |
+| Administrative CAS/idempotency/lost-secret response | [Права: единый writer](access-control.md#policy-mutation) |
 | Прочие контракты, аудит, миграции, lifecycle, эксплуатация | [Спецификация](../implementation-spec.md) |
 | Настройки владельца G01–G20 | [Спецификация §13](../implementation-spec.md#13-единый-реестр-решений-и-gates) |
 

@@ -62,7 +62,7 @@ Filter-miss вычисляется при admission commit по pinned декл�
 | P02 | Assignment/owner/ConversationMember | Policy UPDATE; policyEpoch++, controlEpoch++ для управления диалогом | Human dispatch не сравнивает старый controlEpoch; текущие права обязательны. AutomationEpoch только от assignment не меняется |
 | P03 | Stage/pipeline/options/StageRule | Policy UPDATE; policyEpoch++ | Пересчитать stage visibility/transition и captured context, не только conversation grant |
 | P04 | Identity person link/unlink, CRM targets, parent edges | Policy UPDATE; policyEpoch++ | Rebind A→B блокирует старый output с A; grant на A сам по себе недостаточен; scope на B не расширяется |
-| P05 | Mode/takeover/managerReplyPolicy/pause external reply | UPDATE policy lock + policyEpoch++; controlEpoch/automationEpoch++ по spec | Старый non-human intent terminal stale + durable handoff, без refresh |
+| P05 | Mode/takeover/pause external reply | UPDATE policy lock + policyEpoch++; controlEpoch/automationEpoch++ по spec | Старый non-human intent terminal stale + durable handoff, без refresh |
 | P06 | Close/reopen | UPDATE policy lock + policyEpoch++; controlEpoch++/automationEpoch++; короткая общая transaction | Close запрещает новый dispatch; remote cancel подтверждается отдельно. Reopen старые commands/turns не оживляет |
 | P07 | Новое сообщение | sequence++ и replyRevision по владельцу; без controlEpoch/automationEpoch | Входящее не меняет controlEpoch, но требует stale_view/подтверждения нового observedReplyRevision по §15.26 |
 | P08 | Несвязанный policy change | policyEpoch++ | Повторная авторизация прежнего scope/edges разрешает продолжить; export не начинается заново |
@@ -71,6 +71,7 @@ Filter-miss вычисляется при admission commit по pinned декл�
 | P11 | Restore старой БД | Внешний access fence; invalidate sessions/keys; reconciliation grants | Старые grants не доказательство; без внешнего evidence default deny |
 | P12 | Смена статуса без close/reopen | UPDATE/policyEpoch++; controlEpoch++; без automationEpoch | Новый stale UI CAS конфликтует; принятая Command проверяет current rights |
 | P13 | Explicit workflow deactivate/delete | Policy/lifecycle UPDATE; cancellationEpoch++ и cancel outbox атомарно | Локальные pending отменяются; переданные Commands получают cancelRequested. Dispatch/recovery сверяет workflowCancellationRefs, ancestor refs наследуются; publish не равен cancel |
+| P14 | Publish automation settings (включая managerReplyPolicy) | Policy UPDATE; immutable version/head CAS + policyEpoch + receipt/audit/outbox; без fanout по Conversation | Non-human context/effect/dispatch/resume требует captured version = current head; stale terminal/handoff, bounded cleanup, no root budget reset |
 
 Порядок и режимы блокировок: единственный [нормативный lock protocol](contracts/access-control.md#lock-protocol). Проверки реализации: T10/T13/T18/T19/T22/T29/T31.
 
@@ -135,3 +136,5 @@ Closed сильнее любой строки/G17. Missing provenance не сч�
 Правила §4/7/15.24 implementation-spec дополняют таблицы: protected reads только primary; canonical ConversationTarget/revision; reply native snapshot/hash; FIFO первого durable enqueue с отдельным monotonic acceptance evidence. Это ещё не охвачено абстрактной моделью. ConsumerReceipt и OmniWorkflowRunIntent — разные сущности (два event kinds одного root могут иметь один intent). Unknown human command сохраняет C-gate на auto; административное подтверждение без provider evidence его не снимает. T08/T10/T11/T12/T14/T23 — будущие integration fixtures.
 
 Human stale-view admission использует observedReplyRevision (§15.26), отдельно от controlEpoch и dispatch epochs; duplicate key/hash возвращает старую Command. Native permission snapshot для protected query загружается из primary в fenced transaction. C17 manual replacement не обходит FIFO unknown-acceptance predecessor. Эти дополнительные правила не покрываются check_decisions.py; T10/T12/T14/T31 предстоят.
+
+P14 проверяется будущими T10/T14/T19/T27; существующая абстрактная модель не доказывает новый version-head fence или SQL cleanup.

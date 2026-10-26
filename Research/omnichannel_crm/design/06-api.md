@@ -20,6 +20,12 @@ GraphQL queries/mutations для команд и чтения; существу�
 | setConversationMode / takeover | mode, expectedControlEpoch; атомарное увеличение controlEpoch + automationEpoch и отмена pending non-human команд прежнего automationEpoch |
 | transitionOpportunity | opportunityId, targetStageValue, expectedStageOptionsHash, expectedRevision; серверная матрица переходов и актуальные права |
 | activateBinding / updateBindingDefaults | bindingId,defaultQueueId/defaultConversationMode/autoCreatePersonEnabled,expectedRevision,idempotencyKey; admin policy writer, gates/defaults/retry по spec §15.27 |
+| createOmniQueue | bindingId,name,expectedRevision=0,idempotencyKey; admin policy writer, same-binding identity, grants отдельно до activation |
+| manageTeam / manageTeamMember | create/update/delete, expectedRevision,idempotencyKey; active workspace membership и policy writer, без неявной выдачи grants |
+| manageKnowledgeSource | sourceKind/id/version,visibilityPolicy,active,expectedRevision,idempotencyKey; current source ACL и protected artifact scope |
+| transferBindingCustodian | bindingId,successorWorkspaceMemberId,expectedRevision,idempotencyKey; successor проверен, lifecycle §15.11, actor/audit сохранены |
+| mapHistoricalAuthor | bindingId/sourceSystem/sourceAuthorId,verified workspaceMember target,HistoricalAuthorMapping.expectedRevision (0 при создании),idempotencyKey; явная audited mapping, immutable historical snapshot не переписывается |
+| requestControlledPurge / purgeStatus | target scope,approved retention/G10,reason,idempotencyKey; отдельное admin permission, durable operation/ledger, queued не означает завершённое удаление |
 | updateOmniQueue | queueId,name/active,expectedRevision,idempotencyKey; admin policy writer, nonempty/default queue disable запрещён по spec §15.27 |
 | workflowScheduleGaps | workspace/workflow filter,cursor,limit; admin workflow permission и current ACL; DomainEvent schedule.gap, чтение не запускает replay |
 | connectionStatus / registerBinding / disableBinding | Привязка к transport account, capabilities/health; отключение сохраняет историю |
@@ -117,3 +123,5 @@ setMode→auto возвращает pending_human_commands при pending/dispat
 ### Администрирование webhook
 
 createOmniWebhookBinding / rotateOmniWebhookCredential / revokeOmniWebhookCredential требуют admin policy-management permission, expectedRevision и idempotencyKey; секреты выдаются только при создании. Signed POST ingress и ограничения определены единственным [webhook-auth](../plan/contracts/workflow-execution.md#webhook-auth); legacy public endpoint для governed flow не используется.
+
+Административные idempotency/CAS и lost-secret response — [единый writer](../plan/contracts/access-control.md#policy-mutation). updateAutomationPolicy публикует [immutable version](../plan/contracts/access-control.md#automation-policy-version), а не изменяет settings принятого root.

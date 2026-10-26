@@ -33,3 +33,5 @@ G10 manifest охватывает operational payload copies (receipt/event/comm
 Хронология UI при позднем импорте определяется временем сообщения и его стабильным идентификатором; event sequence остаётся apply cursor. При отсутствии provider time явно используется capture fallback; T16 проверяет этот предел (§15.26).
 
 ImportPageReceipt/Item по schema §3: T16 проверяет concurrent page persistence, changed response hash, crash после сохранения/частичного применения и checkpoint только после всех items. Author snapshots/provenance сохраняются при повторе/merge; никакого guessing личности.
+
+HistoricalAuthorMapping и mapHistoricalAuthor реализуются ROB-770 по schema §3/lifecycle §15.11; admin CAS/receipt, actor attribution не меняет grants и immutable source author snapshot.

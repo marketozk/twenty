@@ -244,3 +244,17 @@ LOG-017 итог: адресные проверки подтвердили27/27 
 
 
 LOG-017 опубликован: commit `41e3b3667d006c1651dc2a7e72925c06ae53fd24` отправлен в origin/codex/omnichannel-requirements. Linear обновлены11 описаний с permalink на этот commit; API read-back подтвердил все11 и неизменные статусы, ROB-772 blocks ROB-764 сохранена. [Единственный отчёт LOG-017](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-bd21f234); повторная выборка подтвердила один комментарий. [Метаданные публикации](plan/cross-review/publication-r15.json). Рабочий каталог после первого push чистый, ahead/behind0/0. Следующий commit фиксирует только эту публикацию; техдокументы после reviewer confirmation не менялись.
+
+
+## LOG-018 — R16, новый независимый полный проход (27.10.2026)
+
+Пользователь явно разрешил следующий круг: «Да, запускай». Режим fix-and-recheck, полный протокол; план/документы/Linear, без runtime/деплоя. Baseline `b896cee207526a33c475550f317bdacb98fd0bab`. Основание: предыдущий fresh A нашёл существенные дефекты, текущие исправления подтверждены только targeted. Новый A проверяет весь итоговый план без прошлых findings. Изолированный packet39 документов,49 source hashes, preflight source links/history/auto-instructions выполнен до запуска; технические тексты не изменены. Fresh Linear snapshot: ROB-772 In Progress, ROB-764 Todo, ROB-765–771 Backlog, ROB-762/763 Done. Старые memory-заметки SaleBot-backed не применяются к нынешнему replacement scope.
+
+
+LOG-018: A needs_revision (3 Medium/7 Low), без Critical/High. Author подтвердил dynamic WorkspaceMember schema и CLASSIFY→AiEvaluationService. Исправлены owners: immutable AutomationPolicyVersion, общий root effects/hops ledger, административный receipt/CAS, FK/lifecycle, cancel authority, API index, sequence/state, SSE recheck и assist scope. Self-check устранил stage dependency через disabled v0 bootstrap, добавил author mapping storage, стабильный receipt tombstone и полные captured policy IDs.17 проявлений,8 порождённых patch,66 root IDs, B ожидается. Скрипт первой правки остановился на несовпадении русского заголовка lock protocol; последующие шаги выполнены отдельно по точному HTML-якорю, первая часть не повторялась. Runtime не менялся.
+
+
+LOG-018 B:17 проявлений закрыты, но1 Medium/4 Low регрессии. Исправлены: policy-head fence вместо массового UPDATE, канонический порядок locks, zero-hop initial plan, schema table/owner index, удаление неиспользуемой revision и human policy provenance. С учётом отдельных producers —25 проявлений,16 порождены patch. Количественный стоп достигнут вместе с R15 (16/27): после адресной проверки новый широкий раунд той же формы не запускается. Требуется решение о смене подхода, не скрытый pass.
+
+
+LOG-018 итог: C1–C5 исправлены и подтверждены;30/30 проявлений и66/66 причин closed_in_plan. Итог широкого цикла escalate по quantitative stop, не full fresh pass. Предложено решение владельца о переходе от повторного план-ревью к реализации ROB-764 с SQL/contract tests; acceptance самостоятельно не изменена. Все текущие сводки, registry и audit skills обновлены. Механические проверки и52 source hashes проходят;31441 файлов source packet совпали с pinned базой. Новый runtime/деплой не начат. Commit/push и Linear read-back фиксируются после публикации.

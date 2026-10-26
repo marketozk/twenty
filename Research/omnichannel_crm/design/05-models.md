@@ -28,7 +28,7 @@
 
 Состояния Conversation и режимы: [права/управление](../plan/contracts/access-control.md#closed-status). Command: [отправка](../plan/contracts/sending-ui.md#command-states).
 
-- Receipt: `accepted -> processing -> applied`; отдельно `retryable_error`, `quarantined`. Lease после сбоя освобождает обработку, а unique keys сохраняют идемпотентность.
+- Receipt: `accepted -> processing -> applied`; отдельно `retryable_error`, `blocked_config`, `quarantined`; recovery blocked_config — по spec §15.27. Lease после сбоя освобождает обработку, а unique keys сохраняют идемпотентность.
 - Attachment: `pending/ready/unavailable/rejected`; недоступный файл не маскируется как успешно перенесённый.
 - Import: `planned/running/paused/completed/completed_with_gaps/failed`.
 

@@ -47,5 +47,8 @@
   "packages/twenty-server/src/engine/core-modules/workflow/controllers/workflow-trigger.controller.ts": "6c3cd9be9f9930cb4d074c1ac929e81f4fd9c399c7003da261c9c1c8fed8bde6",
   "packages/twenty-server/src/modules/match-participant/jobs/reconcile-person-company-targets.job.ts": "c6691a31a14fa640e0f1278fbbf337caadc575c727535bf3c1a5eef0e90f5799",
   "packages/twenty-server/src/modules/match-participant/participant-target-reconciliation.service.ts": "8342e3a28735f0aa1c925d560e49d122439784da2513fef633f65c6a6777aeb1",
-  "packages/twenty-server/src/modules/workflow/workflow-trigger/automated-trigger/crons/jobs/workflow-cron-trigger-cron.job.ts": "c8a38aedd7848a56b80d1ef34018dfae2c5b78918fbc35a240b7351e24704083"
+  "packages/twenty-server/src/modules/workflow/workflow-trigger/automated-trigger/crons/jobs/workflow-cron-trigger-cron.job.ts": "c8a38aedd7848a56b80d1ef34018dfae2c5b78918fbc35a240b7351e24704083",
+  "packages/twenty-server/src/modules/workspace-member/standard-objects/workspace-member.workspace-entity.ts": "25ef17f443d3804be770f2bff2a724668093a7e3c97e69feb9faed4dc882a6e1",
+  "packages/twenty-server/src/engine/workspace-datasource/utils/get-workspace-schema-name.util.ts": "c5b19f03f1d3dd8a5b6a05b9a7511ea7825879de6a8bef5508630ad6f5f03586",
+  "packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/classify/classify.workflow-action.ts": "186f5c54d497b0233e95ed90c0becfcfc280d0be699c45a3ed32d1ffa4c80630"
 }

@@ -32,7 +32,7 @@
 
 С первого patch: baseline import/DI manifest и CI no-new Enterprise dependencies; participant rematch исключает omni до update, сохраняя email batch. Подробные решения §15.18, T05/T20/T22.
 
-Fork-only IDs не используются в upstream upgrade-aware decorators; preflight/ledger и T33 по §15.19. Conversation revision и controlEpoch разделены; будущий API управления принимает expectedControlEpoch.
+Fork-only IDs не используются в upstream upgrade-aware decorators; preflight/ledger и T33 по §15.19. conversationSequence и controlEpoch разделены; будущий API управления принимает expectedControlEpoch.
 
 Генерализация roots на non-message governed triggers и lifecycle merge для omni-owned references — обязательный контракт design/09 и spec §15.2/15.20; producers/consumers публикуются вместе, неполная миграция не включает automation.
 
@@ -53,3 +53,7 @@ T05/T23: новый explicit target projector не вызывает APP targetsO
 До ROB-766 критерий синтетического входящего проверяется интеграционным fixture чтением с isolated test authorization и явным synthetic queue grant. Боевой binding не активируется; test helper не является runtime bypass. Blocked receipt wake-up/retry и queue/default lifecycle — spec §15.27; T12/T10 включают autoCreatePerson writer UPDATE с начала.
 
 ConversationReadCursor создаётся отдельно от ConversationMember по spec §3; чтение не меняет участие/права. T12 и API markConversationRead подчиняются sending-ui#ui.
+
+PolicyMutationReceipt и ExternalIdentity.revision входят в ROB-764 для identity/binding операций. FK на WorkspaceMember не создаётся; server validation/lifecycle по §3. Conversation.conversationSequence — отдельный atomic DomainEvent counter.
+
+Минимальные AutomationPolicy/Version и disabled v0 bootstrap нужны уже здесь для captured policy FK ранних roots/dispatch. Full policy publish и effects остаются ROB-769; v0 roots не реактивируются.

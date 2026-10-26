@@ -76,3 +76,5 @@ WorkflowExecutor.scheduleStepRetry/stepIdsToRetry (файл уже в табли
 ## Дополнительные ingress и target writers
 
 WorkflowTriggerController (engine/core-modules/workflow/controllers/workflow-trigger.controller.ts): legacy public GET/POST, отдельный signed governed ingress по webhook-auth. WorkflowCronTriggerCronJob (modules/workflow/workflow-trigger/automated-trigger/crons/jobs/workflow-cron-trigger-cron.job.ts): Redis/now scheduling, новый PG cursor/gap по cron-gap. ParticipantTargetReconciliationService и ReconcilePersonCompanyTargetsJob: native derived targets не projector canonical ConversationTarget; persisted exclusion до mixed batch. См. spec §15.18/15.27, T05/T23/T25-F/T14-E.
+
+WorkspaceMemberWorkspaceEntity + getWorkspaceSchemaName подтверждают dynamic workspace identity: core FK на membership не выдумывается. WorkflowActionType.CLASSIFY и ClassifyWorkflowAction вызывают AiEvaluationService; omni v1 явно deny до отдельного scoped контракта. Эти source files включены в source hashes.

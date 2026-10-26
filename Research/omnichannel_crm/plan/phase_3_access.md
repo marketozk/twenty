@@ -43,3 +43,5 @@ Native role/permission inputs для protected context читать через p
 
 
 Assignment authority/projection и initial queue/default edits — policy writers по spec §15.27; G08/G08b до activation. Проверить единственного primary owner, rollback и запрет generic projection update.
+
+Все административные policy APIs используют policy-mutation receipt/CAS; Team/Member/Grant/StageRule revision и queue/custodian/author-mapping operations синхронизированы с §3/API. T10 проверяет duplicate/lost ACK/current authorization.
