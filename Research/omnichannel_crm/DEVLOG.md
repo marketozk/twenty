@@ -241,3 +241,6 @@ LOG-017, продолжение: R15 B — needs_revision, девять Low пр
 
 
 LOG-017 итог: адресные проверки подтвердили27/27 проявлений и66/66 root IDs closed_in_plan. Отдельный ConversationReadCursor устранил смешение участия/прочтения; минимальный audit context и T06 входят ROB-764, ROB-765 расширяет ORM/merge/bulk. Все текущие сводки и skill/document audits обновлены; raw reports сохранены. Full A исправленной редакции не выполнялся; ROB-772 In Progress, ROB-764 Todo. Следующий широкий цикл автоматически не запускался по правилу повторных раундов cross-review-convergence. Коммит/push и Linear read-back фиксируются после публикации ниже.
+
+
+LOG-017 опубликован: commit `41e3b3667d006c1651dc2a7e72925c06ae53fd24` отправлен в origin/codex/omnichannel-requirements. Linear обновлены11 описаний с permalink на этот commit; API read-back подтвердил все11 и неизменные статусы, ROB-772 blocks ROB-764 сохранена. [Единственный отчёт LOG-017](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-bd21f234); повторная выборка подтвердила один комментарий. [Метаданные публикации](plan/cross-review/publication-r15.json). Рабочий каталог после первого push чистый, ahead/behind0/0. Следующий commit фиксирует только эту публикацию; техдокументы после reviewer confirmation не менялись.

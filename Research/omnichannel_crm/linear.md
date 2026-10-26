@@ -34,3 +34,6 @@ R15 / LOG-017: свежий независимый Claude A проверил39 �
 
 
 Публикация R14: `be6f6cf93ad834fdade377f01ca98201850477c2`, [отчёт LOG-016](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-a1e260b1); read-back11 descriptions/unchanged states и dependency подтверждены.
+
+
+Публикация R15: `41e3b3667d006c1651dc2a7e72925c06ae53fd24`, [отчёт LOG-017](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-bd21f234). Проверены11 описаний, прежние статусы и зависимость ROB-772 blocks ROB-764.
