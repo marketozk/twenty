@@ -19,12 +19,12 @@
 1. Entities/indexes: AccountBinding, ExternalIdentity, Conversation, Member, MessageLink, Receipt, Command, DomainEvent, ConsumerReceipt, OmniRootExecution, EventDispatchPlan, OmniReplyBudget; отдельная audit entity. Ограничения уникальности из design, миграции apply/rollback на пустой и заполненной тестовой БД.
 2. Сохранение ingress: узкие credentials, schema validation, durable receipt/ACK, проверка generation; eventId+payload конфликт вместо overwrite. Из raw события нельзя назначить actor/право/import-origin.
 3. Общая транзакционная часть messaging persistence: Message+participants+link+revision+DomainEvent+audit атомарно. Email pipeline использует прежнее поведение; добавить email-regression. DB constraints и блокировка не зависят только от cache lock TTL.
-   Выделить из aggregate scope-accepting метод; вызвать существующий saveMessagesWithinTransaction и scope-aware participant/folder/reconcile с withOmniRepositoryOptions(scope) и namespaced header mapping по implementation-spec §15.10. Только transactionScope.getRepository/executeRawQuery: обычный getRepository использует другой pool. Postcommit надёжные jobs — через DB outbox.
+   Выделить из aggregate scope-accepting метод; вызвать существующий saveMessagesWithinTransaction и scope-aware participant/folder/domain projection с withOmniRepositoryOptions(scope) и namespaced header mapping по implementation-spec §15.10. Только transactionScope.getRepository/executeRawQuery: обычный getRepository использует другой pool. Postcommit надёжные jobs — через DB outbox.
 4. Outbox: state machine, lease/recovery, immutable commandId, optimistic revision. Worker checkpoint и enqueue recovery из PostgreSQL. Пустой Redis не означает потерю бизнес-команд.
 5. Event consumer: стабильный execution ID, pending/running/completed, восстановление после claim; импортный origin переносится, публикация только после commit.
 6. RouteActivation и AutomationAdmission: отдельная дедупликация бизнес-эффекта относительно доверенной границы активации. Сохранение текста import не занимает навсегда право на обработку нового live-события; admission/event/outbox атомарны. Полный контракт — design/02-behavior.md.
 
-**Verify:** параллельные повторы/конфликт payload; fault injection перед каждым commit; DB unique keys; задержка дольше TTL; потеря Redis; late receipts; один audit success на одну committed mutation. Все на PostgreSQL, а не только mock.
+**Verify:** параллельные повторы/конфликт payload; fault injection перед каждым commit; DB unique keys; задержка дольше TTL; потеря Redis; late receipts; один audit success на одну committed mutation. Все на PostgreSQL, а не только mock. Минимальный audit transaction context/flush до COMMIT по spec §15.27 входит уже в ROB-764 для собственных omni-мутаций: два UPDATE одной строки одним action в одной операции агрегируются first-before/last-after; T06 проверяет один success, верный diff и полный rollback при flush failure. ROB-765 расширяет этот же writer на native ORM/merge/bulk, не вводит второй протокол.
 
 **Done when:** один синтетический входящий виден в штатном Message и связан с Person; любой crash даёт либо полный commit, либо безопасный replay; нет открытого auto CRUD системных полей.
 
@@ -45,3 +45,11 @@ ROB-764 вводит минимальный WorkspacePolicyState/bootstrap до 
 Согласовать wire replyToMessageLinkId, immutable reply snapshot/hash, outboundSequence и natural-key/revision CAS link/unlink с design/06. Тесты этапа: identity/target projection rollback, tenant isolation и schema uniqueness; полноценные ACL/FIFO/UI checks дополняются этапами 3–4.
 
 При подготовке миграций использовать единственную [schema §3](implementation-spec.md#3-схема--rob-764), включая Queue и принадлежность диалога, author/provenance snapshots, cancel/replacement/producer fence fields и replyRevision. T01/T16: повтор той же MessageLink после новой activationVersion не создаёт второй automatic admission; более ранняя или несравнимая boundary отклоняется.
+
+
+T05/T23: новый explicit target projector не вызывает APP targetsOnly; Person company/pointOfContact updates и background target reconciliation исключают omni до mixed-batch write. T12: defaultQueue/mode при first inbound по spec §15.27; missing configuration даёт durable blocked receipt. Schema audit/migration ledgers также в §3.
+
+
+До ROB-766 критерий синтетического входящего проверяется интеграционным fixture чтением с isolated test authorization и явным synthetic queue grant. Боевой binding не активируется; test helper не является runtime bypass. Blocked receipt wake-up/retry и queue/default lifecycle — spec §15.27; T12/T10 включают autoCreatePerson writer UPDATE с начала.
+
+ConversationReadCursor создаётся отдельно от ConversationMember по spec §3; чтение не меняет участие/права. T12 и API markConversationRead подчиняются sending-ui#ui.

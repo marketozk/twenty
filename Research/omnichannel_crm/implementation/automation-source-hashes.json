@@ -43,5 +43,9 @@
   "packages/twenty-server/src/engine/core-modules/workspace-data-export/services/workspace-data-export-part-writer.service.ts": "63ecb1291f0022d5178e6ef4fa903cd23b3bf2efc1c9b65b678dfec55ed80b1a",
   "packages/twenty-server/src/engine/twenty-orm/datasource/workspace-data-source.service.ts": "afad6ddd22cdaced5042a9319984af435588cbb04f1b3e8fdcbc9324c30b87cd",
   "packages/twenty-server/src/modules/messaging/common/standard-objects/message-thread-target.workspace-entity.ts": "fe3a91c705c679365a0ef9850ff74fe2ff839469e220260af6da4e1453345ab9",
-  "packages/twenty-server/src/engine/twenty-orm/workspace-orm.manager.ts": "f07bbca584018975710893d0ff9f976a4caac63d3aafb65342cc79f7c9da9ea7"
+  "packages/twenty-server/src/engine/twenty-orm/workspace-orm.manager.ts": "f07bbca584018975710893d0ff9f976a4caac63d3aafb65342cc79f7c9da9ea7",
+  "packages/twenty-server/src/engine/core-modules/workflow/controllers/workflow-trigger.controller.ts": "6c3cd9be9f9930cb4d074c1ac929e81f4fd9c399c7003da261c9c1c8fed8bde6",
+  "packages/twenty-server/src/modules/match-participant/jobs/reconcile-person-company-targets.job.ts": "c6691a31a14fa640e0f1278fbbf337caadc575c727535bf3c1a5eef0e90f5799",
+  "packages/twenty-server/src/modules/match-participant/participant-target-reconciliation.service.ts": "8342e3a28735f0aa1c925d560e49d122439784da2513fef633f65c6a6777aeb1",
+  "packages/twenty-server/src/modules/workflow/workflow-trigger/automated-trigger/crons/jobs/workflow-cron-trigger-cron.job.ts": "c8a38aedd7848a56b80d1ef34018dfae2c5b78918fbc35a240b7351e24704083"
 }

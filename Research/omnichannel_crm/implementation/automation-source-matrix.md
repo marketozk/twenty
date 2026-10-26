@@ -70,4 +70,9 @@ WorkflowExecutor.scheduleStepRetry/stepIdsToRetry (файл уже в табли
 - `CachedWorkflowAutomatedTrigger` содержит core/legacy IDs; listener enqueue выбирает legacyWorkflowId??workflowId. Новый ingress нормализует canonical core IDs до keys/сравнений; alias не отдельный consumer.
 - `WorkspaceEventEmitter.emitDatabaseBatchEvent` и WorkspaceEventBatch не содержат durable per-record reference. EventCoverageRegistry/referenceRequired требует полного producer inventory до governed activation; empty snapshot также обязателен. Sticky coverage сохраняется после ordinary publish.
 - `CoreWorkflowLifecycleService` при publish архивирует прошлую версию, explicit deactivate ставит DEACTIVATED. Новый retained cancellationEpoch различает эти действия и наследуется в workflowCancellationRefs каждой Command; cancel действует на pending и remote journal, не только на runner.
-- [Конечные таблицы](../plan/decision-tables.md) и T14/T28 задают ожидаемые outcomes. [40 source hashes](automation-source-hashes.json) проверены; это не реализация новых guards.
+- [Конечные таблицы](../plan/decision-tables.md) и T14/T28 задают ожидаемые outcomes. [Source hashes закреплённой базы](automation-source-hashes.json) проверены; это не реализация новых guards.
+
+
+## Дополнительные ingress и target writers
+
+WorkflowTriggerController (engine/core-modules/workflow/controllers/workflow-trigger.controller.ts): legacy public GET/POST, отдельный signed governed ingress по webhook-auth. WorkflowCronTriggerCronJob (modules/workflow/workflow-trigger/automated-trigger/crons/jobs/workflow-cron-trigger-cron.job.ts): Redis/now scheduling, новый PG cursor/gap по cron-gap. ParticipantTargetReconciliationService и ReconcilePersonCompanyTargetsJob: native derived targets не projector canonical ConversationTarget; persisted exclusion до mixed batch. См. spec §15.18/15.27, T05/T23/T25-F/T14-E.

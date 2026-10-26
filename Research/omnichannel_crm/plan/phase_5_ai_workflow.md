@@ -52,3 +52,6 @@ Run identity: [единственное определение](contracts/workfl
 
 
 OmniExecutionReference и reference FK вводятся по schema §3 до activation. Закрыть legacy/editor DRAFT bypass по [MANUAL ingress](contracts/workflow-execution.md#manual-editor-ingress); T25-F проверяет прямой resolver, supplied runId и ordinary regression.
+
+
+Реализовать signed governed WEBHOOK и credential lifecycle по workflow-execution#webhook-auth, сохраняя обычные webhook. Durable CRON cursor/gap по #cron-gap. T25-F/T14-E проверяют current auth/revoke, rotation idempotency, lost Redis и отсутствие catch-up sends.

@@ -1,23 +1,27 @@
-# R14 — проверка плана Codex и Claude Code, 26.10.2026
+# R15 — независимый полный проход и исправление плана
 
-R14: выполнены авторская проверка и свежий полный Claude A (39 документов). A — needs_revision: 1 Medium/6 Low, без Critical/High. Исправления внесены в план; B подтвердил F1–F7 и 63 причины, дополнительно найдены и исправлены 2 Low. Итоговые доказательства — review-result. Последний fresh A был до правок: общий fresh full pass не заявлен. ROB-772 In Progress, ROB-764 Todo; runtime не начат.
+R15 / LOG-017: свежий независимый Claude A проверил39 документов и доступные исходники; needs_revision (3 Medium/5 Low). Исправления внесены в план. B и адресные перепроверки закрыли27 проявлений этого раунда и66 известных корневых причин. Открытых известных замечаний нет; новый полный blind pass после изменений не выполнен. ROB-772 In Progress, ROB-764 Todo; новый runtime не начат.
 
-## Что проверено и исправлено
+## Что сделано
 
-[Авторский проход](codex-r14-review.md) записан до чтения Claude; автор знает историю, поэтому не называется вторым слепым reviewer. [Fresh A](claude-r14-full-a.md) выполнен новой сессией `bbe0ee5d-b689-4c16-8ba4-ea22d3d4ee02`, reported model `claude-opus-5-5`, по 39 документам и доступным исходникам pinned 2.52. История/реестр переданы только после A.
+[Fresh A](claude-r15-full-a.md): новая Claude Code сессия `a8b015e0-4be3-4169-a037-ae14d545609b`, reported model `claude-opus-5-5`. В пакете39 технических документов, исходники закреплённой базы2.52; прежних выводов и реестра в A не было. [Авторская проверка](codex-r15-review.md) описывает прочитанные тела исходников и границы доказательств; автор знаком с историей и не называется вторым слепым reviewer.
 
-- Добавлена schema immutable OmniExecutionReference и ссылки из automation consumers/turns/Commands.
-- Закрыт legacy DRAFT/manual workflow start; защищённая операция startOmniWorkflow имеет собственный admission, клиентский runId запрещён.
-- Убрана дублирующая формула lock order; добавлен порядок для запроса reconciliation.
-- Согласован глобальный commandId в connector с авторизацией исторического owner.
-- Send response возвращает актуальные reply/control revisions и mode, UI применяет их монотонно.
-- Унифицирован history_import; исправлена разорванная Markdown-таблица.
-- Описаны API, durable request и проверка evidence для outcome_unknown; произвольный ручной status override отсутствует.
+По A исправлены canonical targets и native/background writers, аутентификация governed webhook, начальные queue/mode диалога, audit/ledger schema и identity, источник назначений, явный gate автоматического создания контактов, durable CRON cursor/gaps. Результаты внесены в нормативные definitions, а не только в список пожеланий.
 
-[Reconciliation B](claude-r14-reconciliation.md) закрывает F1–F7/63 известных причины и добавляет два Low проявления N-6/L-2. Это 9 проявлений в раунде, без новых root IDs. Исправления сделаны в нормативных owners/schema и отражены в API/этапах; не просто записаны пожеланиями. [Finalcheck](claude-r14-finalcheck.md) проверяет lock protocol и исправляет ошибочный довод reviewer о секретности commandId. Command ID не секрет; безопасность опирается на tenant/owner authorization. [Отдельное подтверждение](claude-r14-table-confirmation.md) закрыло B14-2 после удаления оставшейся пустой строки. Все 9 проявлений закрыты в плане.
+[B](claude-r15-reconciliation.md) проверил все66 root IDs и нашёл9 Low остаточных проявлений. [Targeted](claude-r15-finalcheck.md), [подтверждение](claude-r15-confirmation.md), [последняя дельта](claude-r15-lastcheck.md) и [E3](claude-r15-table-confirmation.md) проверили исправления: expiry vs explicit revoke, queue disable/recovery, audit aggregation/flush, отдельный read cursor, API и зависимости этапов. Минимальный audit writer/transaction context входит уже в ROB-764; ROB-765 расширяет тот же механизм на ORM/merge/bulk.
 
-## Доказательства и пределы
+Всего27 проявлений:8 A +3 self +9 B + V1/V2/E1/E2/Self4/S4-1/E3. Из них16 порождены правками текущего/предыдущего раунда; все отражены в [реестре](registry.md), без сокрытия редакционных и собственных находок. Новых корневых причин3, всего66. Финальное подтверждение:27/27 проявлений и66/66 причин closed_in_plan; открытых известных замечаний нет.
 
-[Механические проверки](verification-r14.json), [45 source files против pinned SHA](source-baseline-r14.json), [audit fresh A](cli-tool-audit-r14-a.json). Абстрактная модель реально выполнена: 1712 случаев, 0 failures, 23 negative controls обнаружены. Она не проверяет новые reference/resolution/editor contracts, SQL concurrency, транспорт и UI. Source coverage и непрочитанные тела файлов перечислены в raw A; внешний connector/userbot code не входил в packet.
+## Проверки и границы
 
-ROB-772 пока не закрыта: после fresh A изменена техническая спецификация, B/targeted не являются новым слепым полным проходом. ROB-764 не начата. Разрешённая совместная проверка выполнена; следующий широкий цикл автоматически не запущен. G01–G20, runtime tests, production/cutover не объявляются выполненными. [Предыдущий итог R13](review-result-r13.md) сохранён.
+[Проверки документов](verification-r15.json): local links/JSON/уникальные IDs/diff scope. [49 source files](source-baseline-r15.json) совпали с pinned `729f6236126eddaa68d176fb766bc349b19de11d` после нормализации LF. Абстрактная модель выполнена:1712 случаев,0 failures,23 negative controls обнаружены. Она не проверяет новые R15 webhook/queue/read-cursor/audit contracts и не заменяет SQL/transport/UI tests. Хэши проверял автор, а не read-only Claude.
+
+[Audit A](cli-tool-audit-r15-a.json) и [audit всей сессии](cli-tool-audit-r15-final.json): только Read/Grep/Glob, вне packet не выходил. Перед B старые findings были переданы явно. В A исправлялись только source-link prefixes/editorial headings; initial manifest/snapshot сохранены, технические изменения начались после завершения A. Current packet index после исправлений пересчитан.
+
+Внешние репозитории юзерботов и live state не проверялись. Runtime/БД/деплой/клиентские сообщения не менялись. T01–T33 — будущие проверки; G01–G20 с подгейтами — остающиеся решения владельца по активации.
+
+## Статус и следующий шаг
+
+Запрошенный независимый проход выполнен, найденное исправлено и адресно проверено. Общий fresh full pass не ставится: A нашёл3 Medium, после него изменены контракты; B/targeted не заменяют независимый A исправленной редакции. ROB-772 остаётся In Progress и blocks ROB-764 (Todo). ROB-765–771 Backlog; ROB-762/763 сохраняют исторические Done.
+
+Новый широкий цикл автоматически не запускается. Правило cross-review-convergence: «начиная с четвёртого продолжай только с явного решения владельца». Пользователь разрешил этот R15; следующий требует отдельного решения с учётом остаточного риска. Остаток: неизвестные дефекты исправленного полного плана, производительность global policy lock (T19), реальные транзакции/транспорт и квалификация коннекторов. Известные дефекты не переносились в accepted-risk. [Итог R14](review-result-r14.md) сохранён.

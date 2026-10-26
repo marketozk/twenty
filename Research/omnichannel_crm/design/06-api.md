@@ -19,6 +19,9 @@ GraphQL queries/mutations для команд и чтения; существу�
 | assignConversation / changeParticipants | expectedControlEpoch, разрешённые workspaceMember IDs; проверка права назначения и доступа получателя |
 | setConversationMode / takeover | mode, expectedControlEpoch; атомарное увеличение controlEpoch + automationEpoch и отмена pending non-human команд прежнего automationEpoch |
 | transitionOpportunity | opportunityId, targetStageValue, expectedStageOptionsHash, expectedRevision; серверная матрица переходов и актуальные права |
+| activateBinding / updateBindingDefaults | bindingId,defaultQueueId/defaultConversationMode/autoCreatePersonEnabled,expectedRevision,idempotencyKey; admin policy writer, gates/defaults/retry по spec §15.27 |
+| updateOmniQueue | queueId,name/active,expectedRevision,idempotencyKey; admin policy writer, nonempty/default queue disable запрещён по spec §15.27 |
+| workflowScheduleGaps | workspace/workflow filter,cursor,limit; admin workflow permission и current ACL; DomainEvent schedule.gap, чтение не запускает replay |
 | connectionStatus / registerBinding / disableBinding | Привязка к transport account, capabilities/health; отключение сохраняет историю |
 | startImport / importStatus / pauseImport | Утверждённый источник/диапазон и checkpoint; отдельное право администратора |
 | closeConversation / reopenConversation | expectedControlEpoch; [status contract](../plan/contracts/access-control.md#closed-status) |
@@ -29,7 +32,7 @@ GraphQL queries/mutations для команд и чтения; существу�
 | requestExecutionReplay | source execution, reason, idempotencyKey; [ReplayRequest schema](../plan/implementation-spec.md#3-схема--rob-764), отдельное разрешение и предупреждение об эффектах |
 | resolveCommandOutcome | commandId,evidenceRef,idempotencyKey; отдельное право и [серверная проверка evidence](../plan/contracts/sending-ui.md#outcome-resolution), без ручного terminal override |
 | startOmniWorkflow | coreWorkflowVersionId,idempotencyKey,payload; [governed MANUAL ingress](../plan/contracts/workflow-execution.md#manual-editor-ingress), server root/run ID, опубликованная версия |
-| markConversationRead | lastReadSequence, current conversation ACL; монотонный read cursor в ConversationMember, [SSE/UI](../plan/contracts/sending-ui.md#ui) |
+| markConversationRead | lastReadSequence, current conversation ACL; монотонный read cursor в ConversationReadCursor только для current workspaceMember; без изменения участия/epoch, [SSE/UI](../plan/contracts/sending-ui.md#ui) |
 | summarizeConversation / rephraseDraft | conversationId, разрешённый input; явный [read-only assist](../plan/contracts/access-control.md#scope) |
 | auditEntries / requestAuditExport / auditExportStatus | scope/filter/cursor; [audit contract](08-audit.md), current audit/field/data ACL до query/export |
 | updateResourceGrants / updateQueueGrants / updateStageRules / updateAutomationPolicy | admin policy-management permission, expectedRevision, idempotencyKey; [policy writers](../plan/contracts/access-control.md#policy-writers), атомарный audit |
@@ -109,3 +112,8 @@ setMode→auto возвращает pending_human_commands при pending/dispat
 Семантика операций: [access-control — scope](../plan/contracts/access-control.md#scope).
 
 Семантика операций: [sending-ui — human-stale-view](../plan/contracts/sending-ui.md#human-stale-view).
+
+
+### Администрирование webhook
+
+createOmniWebhookBinding / rotateOmniWebhookCredential / revokeOmniWebhookCredential требуют admin policy-management permission, expectedRevision и idempotencyKey; секреты выдаются только при создании. Signed POST ingress и ограничения определены единственным [webhook-auth](../plan/contracts/workflow-execution.md#webhook-auth); legacy public endpoint для governed flow не используется.

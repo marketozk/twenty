@@ -40,3 +40,6 @@ ConversationTarget — canonical core edge; native MessageThreadTarget толь�
 StageRule read/edit используют optionValue; transition — from/to; configure — wildcard. Полный UNIQUE с action/principal по §3. T30 проверяет оба вида без NULL/wildcard двусмысленности.
 
 Native role/permission inputs для protected context читать через primary executor внутри policy fence, не из ранее загруженного WorkspaceCacheService map. T10/T31 проверяют stale role cache после revoke. Mode/status/close/takeover используют UPDATE policy lock; G20/takeover_on_send не делают SHARE→UPDATE upgrade (spec §15.26).
+
+
+Assignment authority/projection и initial queue/default edits — policy writers по spec §15.27; G08/G08b до activation. Проверить единственного primary owner, rollback и запрет generic projection update.

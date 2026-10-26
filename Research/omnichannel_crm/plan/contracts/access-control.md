@@ -99,3 +99,6 @@ T13/T24: conversation.created assignment параллельно с message.recei
 
 
 CommandResolutionRequest claim выполняется отдельной короткой CAS-транзакцией без удержания lock на время сети; применение result и receipt reducer начинают с общего порядка locks, не держат request lock перед Command. OmniExecutionReference immutable: при чтении не требует FOR UPDATE; FK/retention запрещают удалять reference при живых ссылках, текущие права и restoreIncarnation проверяются под policy fence. T28 проверяет scanner/ordinary receipt/resolution с обратным scheduling.
+
+
+Queue/default edits и webhook binding/credential lifecycle — policy writers: WorkspacePolicyState FOR UPDATE до любых row locks. CRON admission (включая обычное продвижение cursor) и gap scanner также берут этот UPDATE с начала. Под SHARE эти строки не изменяются; FOR UPDATE сериализует их с общим порядком binding/conversation/intent, запрет SHARE→UPDATE upgrade сохраняется. T14-E/T19 проверяют concurrent admission/scanner/config/revoke.
