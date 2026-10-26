@@ -169,3 +169,5 @@
 - Вторая A-сессия раскрыла случайное попадание старых строк через Grep; не считаем её чистым blind full pass. Третий одинаковый круг не запускается. ROB-772 остаётся In Progress, ROB-764 Todo. Следующий общий review должен получать изолированный технический пакет без архива findings; текущая работа завершает конкретную таблицу, не общий gate.
 
 - Проверка LOG-013 перед публикацией: 500 локальных ссылок без пропусков, JSON валидны,40 source hashes совпадают,53 уникальных ID/53 closed_in_plan; модель1712/23 повторно выполнена. Diff --check пройден, runtime/ops diff отсутствует. [Результат](plan/cross-review/verification-r11.json).
+
+- Публикация LOG-013: commit `24bd66cd3d2414622e2dc362b79198fa5a93cdd5` отправлен в origin/codex/omnichannel-requirements (32 файла). Все11 описаний Linear обновлены; API read-back подтвердил нормализованный Markdown, прежние статусы и ROB-772 blocks ROB-764. [Отчёт](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-baf07d66) подтверждён ровно один. Эта запись фиксирует публикацию и синхронизацию, не новый review verdict.
