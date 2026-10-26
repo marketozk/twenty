@@ -90,7 +90,7 @@ Fresh session `82f878e4-8885-42d6-ba1f-266a2c9bb2e4`, is_error=false, claude-opu
 |---|---|---|---|---|
 | N-13 | minor | Неполный inventory Enterprise-marked imports в общем ORM пути; независимость own ACL не доказана | Source fact отдельно от прав использования; license text/dependency boundary + T20 PRIVATE/INHERITED | closed_in_plan (R13 B/finalcheck) |
 | N-14 | major | Workflow send после takeover получает новый epoch | Матрица sender×mode, AI workflow provenance, T13/T24 | closed_in_plan (R13 B/finalcheck) |
-| N-15 | major | Epoch mismatch/lock mode не определены | Reauthorize vs reject; SHARE/UPDATE без upgrade, T10 | closed_in_plan (R12 B; future runtime evidence pending) |
+| N-15 | major | Epoch mismatch/lock mode не определены | Reauthorize vs reject; SHARE/UPDATE без upgrade, T10 | closed_in_plan (R13 B/finalcheck; future runtime evidence pending) |
 | N-16 | major | Нет pull transport для native/archive import | Источник страниц/контракт/auth/cursor; убрать внешний origin, T11/T16 | closed_in_plan (R13 B/finalcheck) |
 | N-17 | minor | Opportunity.expectedRevision не имеет источника | Выбрать CAS token и T30 | closed_in_plan (R13 B/finalcheck) |
 
@@ -311,7 +311,7 @@ Fresh session0931eb04-bbde-4eac-bc59-b43f51c7ea3a, [полный отзыв](cla
 
 | ID | Severity | Причина | Контракт / будущая проверка | Статус |
 |---|---|---|---|---|
-| N-31 | major | Native cached permission inputs могут пережить revoke | spec §15.26, source WorkspaceOrmManager, T10/T31 | closed_in_plan (R12 B; future runtime evidence pending) |
+| N-31 | major | Native cached permission inputs могут пережить revoke | spec §15.26, source WorkspaceOrmManager, T10/T31 | closed_in_plan (R13 B/finalcheck; future runtime evidence pending) |
 | N-32 | minor | Хронология UI смешивалась с apply cursor | spec §15.26, T12/T16 | closed_in_plan (R13 B/finalcheck) |
 | N-33 | major | Неполная canonical схема для команд, provenance, страниц, очередей, handoff и replay | spec §3; T01/T16/T26–28 | closed_in_plan (R13 B/finalcheck) |
 | N-34 | major | API index не перечисляет требуемые доменные операции | design/06; T12/T13 | closed_in_plan (R13 B/finalcheck) |
