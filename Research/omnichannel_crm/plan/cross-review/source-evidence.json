@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-26",
+  "purpose": "Author source checks supporting plan corrections; no runtime execution",
+  "rootAliases": "Twenty=current fork; C=research-connectors.md source C working copy. Hashes are observed file bytes, not assertion that runtime matches.",
+  "sha256": {
+    "Twenty/entity-events-to-db.listener.ts": "75c8cb9f23abce4502f5e4e065379a2eaeac3161e3e079da83053f15eaad6232",
+    "Twenty/pending-wake-up-database-event.listener.ts": "684aa6d5a671f50d8b139cf8968d1a123581e91dca37aa0b4a49959f72949f45",
+    "Twenty/generate-instance-command.command.ts": "9bfc08571a8bf1300a7be8550706ce2d8d18b3905057307ae014b58d939b857c",
+    "Twenty/connected-account.entity.ts": "cfdf7b24967e45d3a9f770bdf5ba2ffe75c1ea90c9d6b149ee082ef19d7e6308",
+    "Twenty/message-channel.entity.ts": "6b3d16228509f63d8df32e06182c2131e4da7341116cd57e6b3f0a433cb7d016",
+    "Twenty/docker-entrypoint.sh": "94a4655bb8a810b77eeae5288016744b9b2cb507a051a2164a4d08486cbc8a0b",
+    "C/bridge/schema.sql": "03f2b1223d5f4f7fd28cab61b2e91785a39c54b1861069903a56e652f2e5d6f9",
+    "C/bridge/store.py": "1cf8ae074de5f5e017fde5583f4761c56fcfebfe8fdbd5454e3809281df02013",
+    "C/telegram-userbot/app/store.py": "e28e79eb8be0e70b356c586e19a17fa7143d8374b696f83d2337f3eb1a3b2257",
+    "packages/twenty-server/src/engine/twenty-orm/types/workspace-transaction-scope.type.ts": "7a5b4c7376377e57f7a5da19b667e22c621d10c64df969ee5174c48bedf022aa",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-message.service.ts": "14b536b7ec3115158cf2b98b2c63bfe47511a5f624bf880b7ec80fdb6f635464",
+    "packages/twenty-server/src/modules/workflow/workflow-runner/services/core-workflow-runner.service.ts": "70abbe482e4432d1876c524ffbe54dee7f17295c8da3cfdaaca27995e4c614e7",
+    "packages/twenty-server/src/engine/metadata-modules/connected-account/services/connected-account-ownership-transfer.service.ts": "8389e9fe5f3c198b090c935e97bc7045695d150fe95cd8023dc288f1bd0e2861",
+    "packages/twenty-server/src/engine/metadata-modules/connected-account/connected-account-metadata.service.ts": "edcec98cf8b6e784f0ea5ba16b3c4d5aeea079bef33ca1a9ca6edc140e3d68f2"
+  }
+}

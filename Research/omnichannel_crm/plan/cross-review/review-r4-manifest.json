@@ -1,0 +1,16 @@
+{
+  "source": "729f6236126eddaa68d176fb766bc349b19de11d",
+  "sha256": {
+    "Research/omnichannel_crm/plan/implementation-spec.md": "a036e3783f821c09966508ee5687ddd9e5b07822237989bed40ea3baf26d4c18",
+    "Research/omnichannel_crm/plan/phase_0_environment.md": "bc18e6764a8d536d519283a1263bee6eba757f83e6573f97f51ddfa706dbed61",
+    "Research/omnichannel_crm/plan/phase_1_data.md": "5f0947d40c307dd69baebd501286ba137bc059fa9f3b5714151e2c82eccb9a31",
+    "Research/omnichannel_crm/plan/phase_2_audit.md": "5118cf9f9eae105759135abeefe86b960ffd6fddbfbd3ec0fec748c8541f199e",
+    "Research/omnichannel_crm/plan/phase_3_access.md": "717eb42b05c2cdc1744fdad99bab9d92d89ab33031dceabeafbd43dc681cd801",
+    "Research/omnichannel_crm/plan/phase_4_chat.md": "afd41d413a4b8cd60a6c9f1996231766eca175ada2b0dfbab18f443dfdf85c90",
+    "Research/omnichannel_crm/plan/phase_5_ai_workflow.md": "14f0330a5e320311086e833f8019a6173a8f57a09477544f789f0a15faf1faac",
+    "Research/omnichannel_crm/plan/phase_6_history.md": "8e0730ffdca19bd85958ca17c7c032233b747b5f0f95ff0b34b265edd99128cc",
+    "Research/omnichannel_crm/plan/phase_7_acceptance.md": "9b7d699a23ebbf342b668675b1a892141d9f1d3ec1b2fb1e08cbcf2113251983",
+    "Research/omnichannel_crm/design/06-api.md": "a2d27b5a4d41f23b7b1c7e4dcac70e5e050a399c77b2b79b8f3a3a9c9443aaed",
+    "Research/omnichannel_crm/open-questions.md": "b6e127e1be035b3b46dafa9cedb27f0d0f435fc9093b0c271eecedd01e4b6e01"
+  }
+}

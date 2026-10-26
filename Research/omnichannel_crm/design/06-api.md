@@ -1,5 +1,7 @@
 # Контракты API v1
 
+Уточнение 26.10.2026: [подробный план всего проекта](../plan/implementation-spec.md), особенно раздел 15, задаёт lifecycle, canonical source keys, scoped AI, restore и fork migrations. Схематичные ключи/названия ниже не заменяют эти точные контракты.
+
 Ниже **проектируемые**, ещё не работающие операции. Публичные API Twenty сохраняются; новые команды используют те же session/workspace guards, а транспортные credentials имеют отдельную узкую область. Проверенные существующие точки расширения: APP channels/ingestMessages, messaging transaction services, AgentRunService и workflow executor.
 
 ## Браузер -> Twenty
@@ -13,7 +15,7 @@ GraphQL queries/mutations для команд и чтения; существу�
 | addInternalNote | conversationId, body, idempotencyKey; не вызывает внешнюю отправку |
 | assignConversation / changeParticipants | Ожидаемая revision, разрешённые workspaceMember IDs; проверка права назначения и доступа получателя |
 | setConversationMode / takeover | mode, expectedRevision; атомарное увеличение epoch и отмена pending AI-команд |
-| transitionOpportunity | opportunityId, targetStageId, expectedRevision; серверная матрица переходов и актуальные права |
+| transitionOpportunity | opportunityId, targetStageValue, expectedStageOptionsHash, expectedRevision; серверная матрица переходов и актуальные права |
 | connectionStatus / registerBinding / disableBinding | Привязка к transport account, capabilities/health; отключение сохраняет историю |
 | startImport / importStatus / pauseImport | Утверждённый источник/диапазон и checkpoint; отдельное право администратора |
 
@@ -44,7 +46,7 @@ Subscription выдаёт только разрешённые conversation event
 
 Ответ после durable receipt: accepted + receiptId; повтор того же payload — тот же receiptId. Неверная подпись/отозванное поколение — отказ; ID с изменённым payload — conflict; перегрузка — retryable отказ до ACK. Kind имеет отдельную schema: received/edited/deleted, command.receipt, connection.state. Не доверять присланным полям actor/admin, URL для скачивания или relationship IDs.
 
-`origin=import` разрешается только import job/credential; обычный внешний отправитель не может отключить аудит или workflow таким параметром. Проекция receipt в generic record events сохраняет origin и trusted provenance.
+`origin=import` разрешается только import job/credential; обычный внешний отправитель не может отключить аудит или workflow таким параметром. Omni generic record events полностью подавлены. Safe projection из DomainEvent поступает в типизированный OMNICHANNEL_EVENT workflow trigger по implementation-spec §15.10, не в общий WorkspaceEventBatch.
 
 ## Twenty -> Connector
 

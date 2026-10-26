@@ -1,5 +1,7 @@
 # Этап 4. Коннекторы и рабочий чат Telegram/MAX
 
+Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
+
 Зависимости: 1, 2a, 3; fake transport можно проверять раньше в изолированных тестах. Статус: не выполнен.
 
 **Новые:** server `modules/omnichannel/{controllers/connector-events.controller.ts,services/conversation-command.service.ts,jobs/dispatch-outgoing.job.ts,services/connector-client.service.ts}`; front `modules/omnichannel/{pages/,components/,hooks/}`; contract fixtures в `integrations/messaging/contracts/`.

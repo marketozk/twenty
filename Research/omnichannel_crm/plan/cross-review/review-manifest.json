@@ -1,0 +1,23 @@
+{
+  "source": "729f6236126eddaa68d176fb766bc349b19de11d",
+  "documentBaseline": "475e27531d6a2b8d04327223d73afd8767f60a07",
+  "review": "fresh stage A after first corrections",
+  "sha256": {
+    "Research/omnichannel_crm/plan/implementation-spec.md": "acaf6092815a1faff942d24091057bee45b51418ae9013a25069eb80b73cb365",
+    "Research/omnichannel_crm/plan/README.md": "ffda4b7447e0bc0628d6f225577f45dc65fd414ff4ccaaa132b98acba2e1d3be",
+    "Research/omnichannel_crm/plan/phase_0_environment.md": "bc18e6764a8d536d519283a1263bee6eba757f83e6573f97f51ddfa706dbed61",
+    "Research/omnichannel_crm/plan/phase_1_data.md": "03986213548b3ea0d7e89edfb7cb3d231bec85f6ef7598aaa89d6b7cd0d27e2e",
+    "Research/omnichannel_crm/plan/phase_2_audit.md": "5118cf9f9eae105759135abeefe86b960ffd6fddbfbd3ec0fec748c8541f199e",
+    "Research/omnichannel_crm/plan/phase_3_access.md": "717eb42b05c2cdc1744fdad99bab9d92d89ab33031dceabeafbd43dc681cd801",
+    "Research/omnichannel_crm/plan/phase_4_chat.md": "afd41d413a4b8cd60a6c9f1996231766eca175ada2b0dfbab18f443dfdf85c90",
+    "Research/omnichannel_crm/plan/phase_5_ai_workflow.md": "ae5aaeed6805e675a276409462244386423ad477b1bd7b8c68d0f775a993f9ca",
+    "Research/omnichannel_crm/plan/phase_6_history.md": "8e0730ffdca19bd85958ca17c7c032233b747b5f0f95ff0b34b265edd99128cc",
+    "Research/omnichannel_crm/plan/phase_7_acceptance.md": "9b7d699a23ebbf342b668675b1a892141d9f1d3ec1b2fb1e08cbcf2113251983",
+    "Research/omnichannel_crm/design/01-architecture.md": "67a791db5d4ac4d0b79a390a762356e929fbfe90b54ff1c0758413d78c4ec1fc",
+    "Research/omnichannel_crm/design/02-behavior.md": "4a5736e65d3148fe29a5da8a0b6f77df8ca9c0c1d86e9d11e5b70719e39f66c6",
+    "Research/omnichannel_crm/design/05-models.md": "871645560cdbab4e1452a18177ac31faa29d3399239a77c4d883ffb218053651",
+    "Research/omnichannel_crm/design/06-api.md": "8ee3cc5a0b5d7dc8e54c1c8a7e0d01187797ccfbf39e768098699054f4015ebd",
+    "Research/omnichannel_crm/design/08-audit.md": "bcccdf12727e46bee111642baee421827b1d75cb6e0cc9fe042db801071a3ab2",
+    "Research/omnichannel_crm/requirements.md": "7781a81c1837a794007810da42cf6115156fd9cc63082852e8d04ebac3861ff8"
+  }
+}

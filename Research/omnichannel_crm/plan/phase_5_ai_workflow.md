@@ -1,8 +1,10 @@
 # Этап 5. ИИ и рабочие процессы
 
+Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
+
 Зависимости: 2–4. Статус: не выполнен. Полный конечный объём включает auto replies и действия CRM, не только drafts.
 
-Подтверждённый call graph и изменения: [AI/workflow source audit](../implementation/ai-workflow-source.md). AgentRun/ToolContext/generic CRUD получают trusted domain reference и общий mutation fence; workflow context проверяет его до fallback стандартного приложения. EventBatch/Emitter/listener передают trusted origin/admission. Штатные stream claim/cancel и BullMQ recovery переиспользуются, но не считаются готовой гарантией takeover или дедупликации внешних событий.
+Подтверждённый call graph и изменения: [AI/workflow source audit](../implementation/ai-workflow-source.md). AgentRun/ToolContext/generic CRUD получают trusted domain reference и общий mutation fence; workflow context проверяет его до fallback стандартного приложения. Типизированный OMNICHANNEL_EVENT trigger и OmniWorkflowTriggerConsumer получают DomainEvent admission/projection; generic EventBatch для omni подавлен. Контракт редактора, run intent и stable workflowRunId — implementation-spec §15.10. Штатные stream claim/cancel и BullMQ recovery переиспользуются, но не считаются готовой гарантией takeover или дедупликации внешних событий.
 
 **Существующие:** server `engine/metadata-modules/ai/ai-agent-execution/services/agent-run.service.ts`, `utils/build-agent-role-permission-config.util.ts`; `modules/workflow/workflow-trigger/automated-trigger/listeners/workflow-database-event-trigger.listener.ts`; `workflow-executor/services/workflow-execution-context.service.ts`; `workflow-builder/workflow-version-step/workflow-version-step-operations.workspace-service.ts`; `engine/workspace-event-emitter/{workspace-event-emitter.ts,types/workspace-event-batch.type.ts}`.
 
@@ -12,7 +14,7 @@
 2. Разрешённый CRM/knowledge context; новое сообщение не может подменить role/tool arguments. Не вводить отдельную LLM платформу. Модель/key/budget остаются конфигурацией, секрет вне Git; тесты сначала с stub provider.
 3. Human/assist/auto, обновление epoch, cancel pending, повторная проверка перед каждым изменяющим tool/send. Внутренние notes не отправляются; accepted external send не обещать отозвать задним числом.
 4. События и workflow action «Отправить в диалог»: единый CommandService, command id от execution/action ID. Consumer pending/running/completed, replay после crash; causation и own echo не запускают циклы.
-5. Import origin доходит до общего dispatch, включая стандартные CREATED/UPDATED triggers. Старый sendInboxMessage остаётся внутренним уведомлением. Подавление ИИ не опирается только на shouldAssistantReply флаг AI Inbox.
+5. Import/replay подавляет omni generic events, включая стандартные CREATED/UPDATED triggers. Typed consumer допускает только разрешённые DomainEvent; в общий emitter их обратно не публикует. Старый sendInboxMessage остаётся внутренним уведомлением. Подавление ИИ не опирается только на shouldAssistantReply флаг AI Inbox.
 6. Отдельная role/policy version draft-agent; публикация атомарно меняет активную версию, сохраняет audit. Общие административные role changes отдельно проверяются.
 7. Epoch/policy check + CRM mutation + audit в одной транзакции под общим fence с takeover/revoke, включая generic AI tools и conversation-triggered workflow. Постоянный integration test приостанавливает check/write и проверяет оба порядка takeover и отсутствие deadlock. Статические точки реализации установлены; отдельный предварительный прототип не требуется.
 

@@ -1,5 +1,7 @@
 # Этап 6. Вложения, изменения сообщений и импорт
 
+Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
+
 Зависимости: 1, 2a, 3, 4; финальный suppression test с 5. Статус: не выполнен.
 
 **Существующие:** Twenty `ApplicationMessageIngestionService` (сейчас attachments:[]), DTO `engine/metadata-modules/message-channel/dtos/ingest-app-messages.input.ts`, file upload/storage/download; connector `bridge/{archive.py,media.py,partner_api.py}` и Telegram/MAX native history из research.

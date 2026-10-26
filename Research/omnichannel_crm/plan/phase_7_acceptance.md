@@ -1,5 +1,7 @@
 # Этап 7. Приёмка, эксплуатация и переход
 
+Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
+
 Зависимости: все предыдущие этапы. Статус: не выполнен.
 
 **Файлы:** `ops/omnichannel/` и актуальная конфигурация единственного экземпляра после проверки среды; `Research/omnichannel_crm/implementation/{acceptance.md,restore.md,cutover.md}`; тесты в existing server integration/front/e2e conventions. Ни реальные credentials, ни архивы переписки не входят в Git.

@@ -8,7 +8,8 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 |---|---|---|
 | [ROB-762](https://linear.app/robotrts/issue/ROB-762) | [Архитектура и ревью плана](review.md), выполнено | — |
 | [ROB-763](https://linear.app/robotrts/issue/ROB-763) | [0. Обновление экземпляра и завершение исследования кода](plan/current-steps.md) | ROB-762 |
-| [ROB-764](https://linear.app/robotrts/issue/ROB-764) | [1. Модель, inbox/outbox, надёжное сохранение](plan/phase_1_data.md) | ROB-763 |
+| [ROB-772](https://linear.app/robotrts/issue/ROB-772) | [Подробный план всего проекта](plan/implementation-spec.md), [кроссревью Claude Code](plan/cross-review/registry.md) | После исследования ROB-763 |
+| [ROB-764](https://linear.app/robotrts/issue/ROB-764) | [1. Модель, inbox/outbox, надёжное сохранение](plan/phase_1_data.md) | ROB-763, ROB-772 |
 | [ROB-765](https://linear.app/robotrts/issue/ROB-765) | [2a. Сбор аудита](plan/phase_2_audit.md) | ROB-764 |
 | [ROB-766](https://linear.app/robotrts/issue/ROB-766) | [3. Собственные права и переходы сделок](plan/phase_3_access.md) | ROB-764, ROB-765 |
 | [ROB-767](https://linear.app/robotrts/issue/ROB-767) | [2b. Просмотр и экспорт аудита](plan/phase_2_audit.md) | ROB-765, ROB-766 |

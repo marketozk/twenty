@@ -1,5 +1,7 @@
 # Этап 3. Собственные права и переходы сделок
 
+Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
+
 Зависимости: 1 и аудит 2a. Статус: не выполнен. Без Enterprise key, без модификации коммерческой RLS реализации.
 
 По [исходникам](../implementation/access-source.md) выбираем один общий `engine/core-modules/crm-access`, а conversation-access — адаптер. Основной hook WorkspaceRepository.onBeforeExecute плюс mutation kernels; raw queries имеют отдельный контролируемый purpose. Export получает own policy epoch; SSE — независимую admission; protected file download — актуальный ACL вместо одного file JWT. Точные файлы/методы и новые компоненты перечислены в отчёте и [карте](../implementation/integration-map.md); CommonBase не единственный барьер.
