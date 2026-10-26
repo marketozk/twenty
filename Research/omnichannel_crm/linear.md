@@ -29,3 +29,5 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 R13: по явному разрешению выполнен четвёртый свежий полный проход после консолидации определений. A — needs_revision; найденное исправлено у владельцев контрактов. B и finalcheck подтвердили63 closed_in_plan. Это не свежий полный pass после последних правок. ROB-772 In Progress, ROB-764 Todo; новый runtime не начат.
 
 [Итог R13](plan/cross-review/review-result.md). ROB-762/763 Done; ROB-772 In Progress; ROB-764 Todo; ROB-765–771 Backlog. Связь ROB-772 blocks ROB-764 сохранена. Публикация и API read-back — DEVLOG LOG-015.
+
+Публикация R13: `183039a3c16b0e4b4a3495805ba42bf9e0d51e76`, [комментарий LOG-015](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-1df99847); read-back всех11 описаний и прежних статусов подтверждён.

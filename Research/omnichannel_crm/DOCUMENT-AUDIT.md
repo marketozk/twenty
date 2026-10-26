@@ -4,7 +4,7 @@
 
 R13: по явному разрешению выполнен четвёртый свежий полный проход после консолидации определений. A — needs_revision; найденное исправлено у владельцев контрактов. B и finalcheck подтвердили63 closed_in_plan. Это не свежий полный pass после последних правок. ROB-772 In Progress, ROB-764 Todo; новый runtime не начат.
 
-[Relocation manifest](plan/cross-review/dedup-r13-manifest.json), [checks](plan/cross-review/dedup-r13-check.json), [verification](plan/cross-review/verification-r13.json). Linear11 descriptions синхронизируются после push с текущим commit; фактическая публикация/read-back фиксируются в DEVLOG LOG-015. Runtime/ops не менялись.
+[Relocation manifest](plan/cross-review/dedup-r13-manifest.json), [checks](plan/cross-review/dedup-r13-check.json), [verification](plan/cross-review/verification-r13.json). Linear11 descriptions синхронизированы после push; API read-back подтвердил тексты и прежние статусы. Фактическая публикация/read-back — DEVLOG LOG-015. Runtime/ops не менялись.
 
 
 ## Исторические проверки до R13
