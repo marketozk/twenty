@@ -28,4 +28,4 @@
 
 G10 manifest охватывает operational payload copies (receipt/event/command/AI artifacts/connector/userbot journal) по spec §15.25; business search/AI никогда не читает эти копии. Tombstone сразу скрывает content, purge сохраняет dedup/outcome keys/hash и запрещает resurrection через replay. Pending effects/недоступные stores не позволяют объявить purge completed; T17/T32.
 
-Хронология UI при позднем импорте определяется displayOccurredAt+MessageLink.id; event sequence остаётся apply cursor. При отсутствии provider time явно используется capture fallback; T16 проверяет этот предел (§15.26).
+Хронология UI при позднем импорте определяется временем сообщения и его стабильным идентификатором; event sequence остаётся apply cursor. При отсутствии provider time явно используется capture fallback; T16 проверяет этот предел (§15.26).

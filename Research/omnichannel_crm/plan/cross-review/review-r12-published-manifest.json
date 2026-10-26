@@ -74,7 +74,7 @@
       "B_packet_sha256": "62815d4470ecc8117c5dd6f218e5919596ac64652c798a1e513a07bed7866a9d"
     },
     "Research/omnichannel_crm/plan/phase_4_chat.md": {
-      "published_file_sha256": "bdbb996257b22ba7eb083e9a97875290aaaaaa6d27969697305670cb91ba0852",
+      "published_file_sha256": "1bb7b0ce3243bbb6f0495aad374ecc586a720e94d7d98bfd161a692a1d142bf5",
       "B_packet_sha256": "bdbb996257b22ba7eb083e9a97875290aaaaaa6d27969697305670cb91ba0852"
     },
     "Research/omnichannel_crm/plan/phase_5_ai_workflow.md": {
@@ -82,7 +82,7 @@
       "B_packet_sha256": "0ad797fb8b9449a859cc4f20607d3dbe7cd2d02e0d6c0e4318a1abcf444b7976"
     },
     "Research/omnichannel_crm/plan/phase_6_history.md": {
-      "published_file_sha256": "87c3f6695f13fd65ccaee9dec714ddc32820dcf76bd5701331d7c5a1aa17278d",
+      "published_file_sha256": "385fa4dace13e52d91ce30139d590d326f47740b092c3fd412afbfe2ad211bf2",
       "B_packet_sha256": "87c3f6695f13fd65ccaee9dec714ddc32820dcf76bd5701331d7c5a1aa17278d"
     },
     "Research/omnichannel_crm/plan/phase_7_acceptance.md": {
@@ -143,7 +143,16 @@
     }
   },
   "publication_metadata_edits": [
-    "Review/status banners and links updated after technical B; normative contracts unchanged after targeted N-21 fix."
+    "Review/status banners and links updated after technical B; normative contracts unchanged after targeted N-21 fix.",
+    "Two phase chronology phrases rendered as plain Russian to prevent Linear from turning a field name into an external link; semantics unchanged."
   ],
-  "source_hashes_verified": 45
+  "source_hashes_verified": 45,
+  "linear_publication": {
+    "commit": "c528af60543e9c29a11eea0b23f64e2df20a61da",
+    "issues": 11,
+    "states_unchanged": true,
+    "block_relation": true,
+    "comment_id": "25b870fd-7092-4c6a-b5ed-9757c59384d1",
+    "comment_url": "https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-25b870fd"
+  }
 }

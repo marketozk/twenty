@@ -29,4 +29,4 @@ Composer reply передаёт replyToMessageLinkId; native reference вычи�
 
 Выбран единственный существующий session-owner process с обновлением provider boundary и сохранением journal. Temporary authenticated legacy principal generation0 допускается только до switch; затем unversioned C отклоняется userbot. Rollback требует нового поколения/credential и совместимого adapter, иначе fenced. Exact handshake/failure cases — spec §15.25. Развёртывание выполняется отдельно после квалификации, не при переносе исходников.
 
-Human send observedSequence обязателен; stale_view → показ нового события и явное подтверждение, key/hash сохраняются. Manual replacement также ждёт неизвестный acceptance предыдущего Command, ordering waiver нет. Timeline UI использует displayOccurredAt+MessageLink.id, sequence только доставка/unread/CAS; T12/T13/T16.
+Human send observedSequence обязателен; stale_view → показ нового события и явное подтверждение, key/hash сохраняются. Manual replacement также ждёт неизвестный acceptance предыдущего Command, ordering waiver нет. Лента сортируется по времени сообщения и его стабильному идентификатору, sequence только доставка/unread/CAS; T12/T13/T16.
