@@ -24,12 +24,14 @@
 | OmniConversationMember | conversationId, workspaceMemberId, participation/read state | Отвечает за участие/непрочитанное, не заменяет общий ACL. Assignee и разрешённые участники различаются. |
 | OmniMessageLink | bindingId, providerChatId, nativeMessageId, messageId, providerRevision, origin, outgoingCommandId | DB UNIQUE(bindingId, providerChatId, nativeMessageId). Для исходящего до native ID существует Command, а не фиктивное подтверждённое сообщение. |
 | OmniIncomingReceipt | bindingId, eventId, payloadHash, kind, origin, payload, state, attempts, error | UNIQUE(bindingId,eventId). Надёжный ACK после commit; исходный payload ограниченно хранится для replay/расследования. |
+| OmniAutomationAdmission | bindingId, nativeMessageKey, effectKind, activationVersion, trustedSourcePosition, eventId | UNIQUE(bindingId,nativeMessageKey,effectKind,activationVersion). Допуск live-эффекта отдельно от дедупликации текста; атомарно с DomainEvent/outbox. Origin первого insert не решает, нужен ли live-ответ. |
 | OmniOutgoingCommand | commandId, conversationId, actor, idempotencyKey, payloadHash, payload/files, expectedEpoch, policyVersion, state, connectorJobId, error | UNIQUE(workspaceId,actor,idempotencyKey) с проверкой целевого conversation и payload. Повтор не меняет адресата. |
 | OmniDomainEvent / ConsumerReceipt | eventId, type, conversationId, origin, causationId, revision; consumerId | Публикация после commit; UNIQUE(consumerId,eventId) для приёма. Выполнение внешнего действия дополнительно идемпотентно. |
 | OmniInternalNote | conversationId, authorWorkspaceMemberId, body, timestamps | Не является Message для отправки; отдельная операция/права. |
 | OmniAttachmentLink | Message или Command, fileId, providerAttachmentId, state, original metadata | Проверка прав связанного объекта; не хранить внешний URL как постоянную доступную всем ссылку. |
 | OmniImportBatch | bindingId, source, cursor, watermark, counts, incompleteReasons, state | Возобновление и сверка; не хранить пароль SaleBot в batch. |
-| OmniAuditEntry | actor, action, resource, decision, correlationId, timestamp | Аудит действий и решений доступа, без токенов и полных текстов. Отдельный append-only контракт, даже если платный audit UI недоступен. |
+| OmniRouteActivation | bindingId, activationVersion, activationBoundary, sourcePositionType | Зафиксированная граница исторических и новых событий. Меняется отдельной операцией с аудитом; не переактивирует прежнюю историю автоматически. |
+| CrmAuditEntry | actor, initiatingActor, action, resource, outcome, safe diff, correlationId, timestamp | Общий аудит CRM и omnichannel в собственном `engine/core-modules/crm-audit`; прежнее проектное имя OmniAuditEntry заменено. Append-only контракт и собственный UI без подписки; [полная модель](08-audit.md). |
 
 Физические таблицы, индексы, ORM metadata и FK выбираются в file-level плане после проверки workspace migration conventions. Таблица выше фиксирует доменные связи и уникальность; не утверждает существование FK между core и workspace schemas. Все ссылки на connection/member/person проверяются на тот же workspace, мягко удалённые записи обрабатываются явно.
 

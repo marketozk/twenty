@@ -32,6 +32,8 @@
 
 ## Существующие тестовые опоры
 
+Дополнения ревью плана: (1) пауза generic AI/workflow tool между epoch check и CRM write, конкурирующий takeover/revoke, общий transaction fence и audit; оба порядка должны давать согласованный результат; (2) import→live, live→import и параллельная обработка одинакового сообщения до/после activationBoundary; дедупликация текста не теряет допустимый новый live-эффект и не активирует историю. Неизвестная позиция требует reconciliation. Собственный аудит проверяется по [08-audit.md](08-audit.md), включая rollback и сквозные ограничения чтения.
+
 Пути ниже найдены в принятом snapshot; они проверяют части upstream, но не наш новый модуль:
 
 - Server integration: `test/integration/metadata/suites/message-channel/app-message-channels.integration-spec.ts`.
