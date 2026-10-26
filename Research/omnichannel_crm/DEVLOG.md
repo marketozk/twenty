@@ -258,3 +258,6 @@ LOG-018 B:17 проявлений закрыты, но1 Medium/4 Low регре�
 
 
 LOG-018 итог: C1–C5 исправлены и подтверждены;30/30 проявлений и66/66 причин closed_in_plan. Итог широкого цикла escalate по quantitative stop, не full fresh pass. Предложено решение владельца о переходе от повторного план-ревью к реализации ROB-764 с SQL/contract tests; acceptance самостоятельно не изменена. Все текущие сводки, registry и audit skills обновлены. Механические проверки и52 source hashes проходят;31441 файлов source packet совпали с pinned базой. Новый runtime/деплой не начат. Commit/push и Linear read-back фиксируются после публикации.
+
+
+LOG-018 опубликован: commit `f5d806119250cdf589de20cd755da1552e079b14` отправлен в origin/codex/omnichannel-requirements. Linear: обновлены и прочитаны обратно все 11 описаний; статусы не изменены, ROB-772 blocks ROB-764 сохранена. [Единственный отчёт LOG-018](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-5cfabfd8); повторная выборка подтвердила один комментарий. [Метаданные публикации](plan/cross-review/publication-r16.json). После основного push рабочий каталог чистый, ahead/behind 0/0. Следующий commit фиксирует только публикацию и дату сверки; технические контракты не менялись.
