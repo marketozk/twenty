@@ -1,3 +1,16 @@
+# Проверка документов и задач — R13, 26.10.2026
+
+Консолидированы normative owners, сохранены старые адреса §15.x, убраны schema/formula/identity/epoch/send дубли и obsolete banners. Current API, phases, coverage, behavior/testing и decision tables синхронизированы с owners. Raw historical review artifacts неизменны.
+
+R13: по явному разрешению выполнен четвёртый свежий полный проход после консолидации определений. A — needs_revision; найденное исправлено у владельцев контрактов. B и finalcheck подтвердили63 closed_in_plan. Это не свежий полный pass после последних правок. ROB-772 In Progress, ROB-764 Todo; новый runtime не начат.
+
+[Relocation manifest](plan/cross-review/dedup-r13-manifest.json), [checks](plan/cross-review/dedup-r13-check.json), [verification](plan/cross-review/verification-r13.json). Linear11 descriptions синхронизируются после push с текущим commit; фактическая публикация/read-back фиксируются в DEVLOG LOG-015. Runtime/ops не менялись.
+
+
+## Исторические проверки до R13
+
+Ниже сохранён прежний audit для трассировки; его статусы относятся к моменту соответствующего раунда, текущий результат указан выше.
+
 # Проверка документов и задач — R12, 26.10.2026
 
 Три full A проверили34 технических документа из изолированного пакета; B и targeted finalcheck сверили60 причин. Текущие spec/API/schema/этапы и заголовки актуализированы. Исторические отзывы/snapshots не переписывались. Индекс/ссылки/JSON не означают независимое чтение каждой исторической строки или runtime proof. [Итог](plan/cross-review/review-result.md).

@@ -1,5 +1,7 @@
 # Этап 5. ИИ и рабочие процессы
 
+Нормативные определения: [индекс владельцев](contracts/README.md). Этот документ содержит производные работы и проверочные сценарии; изменение семантики вносится у владельца и затем отражается в сценарии.
+
 Действующий план: [единый контракт](../design/09-automation-contract.md) и [source matrix](../implementation/automation-source-matrix.md). EventDispatchPlan/receipts фиксируют stable consumerId и pinned version атомарно; общий reply budget охватывает agent/workflow. Closed tool registry, запрет generic token issuance и полный pausing inventory обязательны. Текущий verdict — [review-result](cross-review/review-result.md).
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
@@ -45,4 +47,5 @@ R11: [таблицы](decision-tables.md) дополняют whole-flow governan
 
 F-04 summary/rephrase по явному запросу менеджера разрешены и в human mode как read-only assist; scoped artifact, без Command/customer reply slot и mutating tools. T12/T25 проверяют запреты и revoke перед выдачей; autonomous AI в human остаётся отключён.
 
-Единственный automatic runId: UUIDv5 omni namespace от canonical JSON workspace + sorted covered root pairs + coreWorkflowId. EventId/version не входят; recovery читает intent, не вычисляет из event. AutomationAdmission.effectKind v1 только customer_inbound; consumers AI/workflow используют общий root. T14 проверяет два event receipts/один run (spec §15.26).
+Run identity: [единственное определение](contracts/workflow-execution.md#run-identity). T14 проверяет два event receipts/один run и восстановление по intent.
+Реализация и проверки [AI turn lifecycle](contracts/workflow-execution.md#turn-lifecycle) и [stable effect invocation](contracts/workflow-execution.md#action-idempotency): PostgreSQL heartbeat/scanner/fence, late-worker negative control, один DurableHandoff, ReplayRequest и сохранённый effect ordinal. T26–T28 проверяют crash до/после terminal и Command commit, без повторной генерации/эффекта. G13 требует решения владельца об unknown-send liveness до activation; решение не принято планом.

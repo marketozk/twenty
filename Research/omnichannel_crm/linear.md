@@ -26,6 +26,6 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 
 ## Сверка текущего состояния — 26.10.2026
 
-R12: выполнены три свежих полных прохода из изолированного пакета. Последний A дал needs_revision; исправления внесены в действующий план, после B и точечной перепроверки все60 известных причин closed_in_plan, B — ready_for_implementation. Это не свежий полный pass исправленной редакции. ROB-772 In Progress, ROB-764 Todo; новый runtime и его тесты не начаты.
+R13: по явному разрешению выполнен четвёртый свежий полный проход после консолидации определений. A — needs_revision; найденное исправлено у владельцев контрактов. B и finalcheck подтвердили63 closed_in_plan. Это не свежий полный pass после последних правок. ROB-772 In Progress, ROB-764 Todo; новый runtime не начат.
 
-[Итог R12](plan/cross-review/review-result.md). ROB-762/763 Done; ROB-772 In Progress; ROB-764 Todo; ROB-765–771 Backlog. Связь ROB-772 blocks ROB-764 сохранена. Публикация и API read-back — DEVLOG LOG-014.
+[Итог R13](plan/cross-review/review-result.md). ROB-762/763 Done; ROB-772 In Progress; ROB-764 Todo; ROB-765–771 Backlog. Связь ROB-772 blocks ROB-764 сохранена. Публикация и API read-back — DEVLOG LOG-015.

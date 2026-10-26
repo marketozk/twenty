@@ -1,8 +1,8 @@
 # Контракты API v1
 
-[Единый контракт автоматизации](09-automation-contract.md) определяет инструменты, stable workflow identity, pausing и общую квоту ответов. Текущий допуск и ограничения — [STATUS](../STATUS.md); проектируемые функции ещё не реализованы.
+Актуальные определения: [индекс владельцев](../plan/contracts/README.md). Этот документ описывает архитектуру/сценарии; точные контракты и schema находятся у указанных владельцев.
 
-Уточнение 26.10.2026: [подробный план всего проекта](../plan/implementation-spec.md), особенно раздел 15, задаёт lifecycle, canonical source keys, scoped AI, restore и fork migrations. Схематичные ключи/названия ниже не заменяют эти точные контракты.
+[Единый контракт автоматизации](09-automation-contract.md) определяет инструменты, stable workflow identity, pausing и общую квоту ответов. Текущий допуск и ограничения — [STATUS](../STATUS.md); проектируемые функции ещё не реализованы.
 
 Ниже **проектируемые**, ещё не работающие операции. Публичные API Twenty сохраняются; новые команды используют те же session/workspace guards, а транспортные credentials имеют отдельную узкую область. Проверенные существующие точки расширения: APP channels/ingestMessages, messaging transaction services, AgentRunService и workflow executor.
 
@@ -13,7 +13,7 @@ GraphQL queries/mutations для команд и чтения; существу�
 | Операция | Вход / эффект |
 |---|---|
 | conversations / conversationMessages | Фильтры, cursor, page limit; ACL применяется до выдачи, count и сумм |
-| sendConversationMessage | conversationId, текст/готовые file IDs, replyToMessageLinkId nullable, idempotencyKey, expectedControlEpoch, observedSequence (human); сервер назначает actor/workspace, создаёт Command |
+| sendConversationMessage | conversationId, текст/готовые file IDs, replyToMessageLinkId nullable, idempotencyKey, expectedControlEpoch, observedReplyRevision (human); сервер назначает actor/workspace, создаёт Command |
 | linkConversationTarget / unlinkConversationTarget | conversationId, objectMetadataId, recordId, expectedTargetRevision (0 для отсутствующего edge); current ACL обеих сторон, canonical core edge и native projection атомарно; повтор/stale правила spec §7 |
 | addInternalNote | conversationId, body, idempotencyKey; не вызывает внешнюю отправку |
 | assignConversation / changeParticipants | expectedControlEpoch, разрешённые workspaceMember IDs; проверка права назначения и доступа получателя |
@@ -21,6 +21,17 @@ GraphQL queries/mutations для команд и чтения; существу�
 | transitionOpportunity | opportunityId, targetStageValue, expectedStageOptionsHash, expectedRevision; серверная матрица переходов и актуальные права |
 | connectionStatus / registerBinding / disableBinding | Привязка к transport account, capabilities/health; отключение сохраняет историю |
 | startImport / importStatus / pauseImport | Утверждённый источник/диапазон и checkpoint; отдельное право администратора |
+| closeConversation / reopenConversation | expectedControlEpoch; [status contract](../plan/contracts/access-control.md#closed-status) |
+| claimConversation / moveConversationQueue | queueId, expectedControlEpoch; server authorization и [queue schema](../plan/implementation-spec.md#3-схема--rob-764), policy fence |
+| cancelOwnCommand | commandId, idempotencyKey; current author/explicit cancel permission; [remote cancellation](../plan/implementation-spec.md#157-коннектор-схема-состояние-эхо-и-поколения), ACK запроса не send outcome |
+| sendConversationMessage (manual replacement) | replacesCommandId дополнительно к обычному входу; [Command/FIFO](../plan/contracts/sending-ui.md#command-admission) |
+| linkExternalIdentity / createPersonForIdentity | identityId, targetPersonId или разрешённые поля Person, expected revision, idempotencyKey; [identity/lifecycle](../plan/implementation-spec.md#152-идентичность-источника-контакта-и-внешнего-автора) |
+| requestExecutionReplay | source execution, reason, idempotencyKey; [ReplayRequest schema](../plan/implementation-spec.md#3-схема--rob-764), отдельное разрешение и предупреждение об эффектах |
+| markConversationRead | lastReadSequence, current conversation ACL; монотонный read cursor в ConversationMember, [SSE/UI](../plan/contracts/sending-ui.md#ui) |
+| summarizeConversation / rephraseDraft | conversationId, разрешённый input; явный [read-only assist](../plan/contracts/access-control.md#scope) |
+| auditEntries / requestAuditExport / auditExportStatus | scope/filter/cursor; [audit contract](08-audit.md), current audit/field/data ACL до query/export |
+| updateResourceGrants / updateQueueGrants / updateStageRules / updateAutomationPolicy | admin policy-management permission, expectedRevision, idempotencyKey; [policy writers](../plan/contracts/access-control.md#policy-writers), атомарный audit |
+
 
 Безопасность нельзя обеспечить только этими командами: существующие generic record mutations должны запрещать обход переходов/состояний/системных полей. AI/workflow tools вызывают те же domain services с инициатором, а не обходят их raw SQL или unrestricted application token.
 
@@ -40,6 +51,8 @@ Subscription выдаёт только разрешённые conversation event
   "providerChatId": "opaque-provider-id",
   "providerMessageId": "opaque-provider-id",
   "occurredAt": "provider-timestamp",
+  "sourcePosition": {"type": "adapter-defined", "value": "opaque-position"},
+  "sourceVariant": "complete",
   "payload": {}
 }
 ```
@@ -73,24 +86,24 @@ commandId обязателен и стабилен; повтор с тем же 
 
 Различать denied/not-found без раскрытия существования чужого ресурса; revision conflict; invalid input; unsupported capability; unavailable/retryable; outcome unknown. Client retry не меняет idempotencyKey. Переход несовместимого envelope — новая schemaVersion с явной проверкой поддержки; неизвестное событие сохраняется в карантин с причиной, не отбрасывается как успешно обработанное.
 
-Omni-capable workflow независимо от trigger проходит governance до первого шага. WEBHOOK/MANUAL требуют idempotency key; same key/different hash — conflict. SEND_OMNI_MESSAGE без trusted reference запрещён. DATABASE_EVENT/CRON получают server source key, root/scope/budget по design/09; replay не сбрасывает ancestry.
+Семантика операций: [workflow-execution — design-24](../plan/contracts/workflow-execution.md#design-24).
 
 setMode→auto возвращает pending_human_commands при pending/dispatching/accepted/outcome_unknown человеческих Commands (включая cancelRequested без доказанного terminal outcome). addInternalNote дедуплицируется UNIQUE(workspace,author,key) с payload hash; mismatch conflict. Stage/identity link/unlink меняют policyEpoch и invalidation контекста по spec §15.23.
 
-Workflow ID на границе нормализуется из legacy alias в tenant-scoped canonical core ID до idempotency/intent lookup. Explicit deactivate/delete обновляет retained cancellationEpoch даже после ordinary publish; publish/archive не отменяет старые pinned intents. Source coverage/referenceRequired — spec §15.19 и decision-tables, не клиентское поле.
+Семантика операций: [workflow-execution — workflow-ids](../plan/contracts/workflow-execution.md#workflow-ids).
 
-Отмена транспортной команды: cancelCommand(commandId) — idempotent, tenant/owner/generation scoped, durable tombstone действует и до enqueue. Только journal юзербота у provider boundary подтверждает cancelled либо too_late; недоступность/timeout = unresolved cancelRequested, не cancelled. Центральный ACK запроса отмены не доказывает provider outcome. Spec §15.3/15.7; поздний enqueue того же ID сверяет tombstone. Workflow cancellation refs в Command и отмена при explicit deactivate/delete — spec §15.19.
+Отмена транспорта cancelCommand(commandId): [provider boundary и tombstone, spec §15.7](../plan/implementation-spec.md#157-коннектор-схема-состояние-эхо-и-поколения). Отмена workflow: [lineage](../plan/contracts/workflow-execution.md#command-cancellation).
 
 ## Уточнения reply, связей и trusted provenance
 
-Reply разрешён только на MessageLink того же workspace/conversation после текущей ACL-проверки и проверки capability. Сервер сохраняет immutable native reply reference; target и native snapshot включены в payloadHash. expectedControlEpoch — только CAS precondition и не входит в hash: конфликт до commit не занимает idempotency key; после commit тот же key/hash возвращает прежний Command после текущей авторизации. Недоступный/удалённый reply target и unsupported reply дают видимую ошибку, без тихой отправки без цитирования.
+Семантика операций: [sending-ui — reply](../plan/contracts/sending-ui.md#reply).
 
-Transport payload передаёт outboundSequence и resolvedReplyNativeRef; очередь следует §4 implementation-spec. FIFO — порядок первого durable enqueue, не обещание порядка доставки/прочтения. Unknown acceptance предшественника блокирует автоматическое продвижение; known accepted journal proof сохраняется отдельно от последующего unknown provider outcome. Явный ручной replacesCommandId сохраняет старый unknown и предупреждает о возможном дубле/порядке.
+Семантика операций: [sending-ui — fifo](../plan/contracts/sending-ui.md#fifo).
 
 Входящий внешний JSON не определяет origin или trusted actor. Provenance external_human / external_service / unresolved_external выводится только из квалифицированного журнала userbot и correlation, не из отсутствия commandId или текста. External service требует проверяемого service principal; правило G11 отдельно от externalHumanReplyPolicy, до выбора — pause/handoff. Такие outgoing не создают customer admission.
 
-Non-message workflow до первого шага получает server-provided root.conversationId/route через G07 domain resolver по разрешённым ConversationTarget. Missing/multiple → deny; FIND_RECORDS не используется для core Conversation и клиент не может подменить trusted variable.
+Семантика операций: [workflow-execution — design-49](../plan/contracts/workflow-execution.md#design-49).
 
-Explicit manager summarize/rephrase — read-only assist в любом mode; current manager∩agent ACL, AutomationArtifactScope, без Command/reply slot/mutating tools. Transport outboundSequence диагностический для connector, его unique key — commandId и порядок — durable journal; после restore применяются §15.25 fence/reconciliation, не reuse потерянных command IDs.
+Семантика операций: [access-control — scope](../plan/contracts/access-control.md#scope).
 
-Human observedSequence — обязательный stale-view precondition, не payloadHash и не dispatch fence. Два одновременных ответа → первый commit/новый event cursor, второй stale_view; UI показывает изменения и получает явное подтверждение с новым cursor. Уже принятый key/hash возвращает ту же Command. Exact transaction/idempotency rules — spec §15.26. Explicit replacesCommandId не обходит FIFO: при неизвестном acceptance предшественника также waiting_predecessor.
+Семантика операций: [sending-ui — human-stale-view](../plan/contracts/sending-ui.md#human-stale-view).

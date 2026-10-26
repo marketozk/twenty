@@ -38,4 +38,4 @@ R12 уточнения плана: T08/T10 — protected primary routing со st
 
 Дополнительное покрытие: F-04 summary/rephrase — T12/T25 (explicit read-only assist даже в human); T30 — StageRule read/edit vs transition; T11/T18 — legacy session owner/cutoff/rollback; T29 — sequence reuse после restore; T17/T32 — operational payload purge без replay resurrection. Это будущие тесты.
 
-Уточнения §15.26: T14 — единая root-set run identity и customer_inbound effectKind; T10/T31 — fenced primary permission inputs вместо stale cache; T12/T13 — observedSequence/подтверждение ответа коллеги; T11 — replacement не обходит FIFO; T16 — chronology отдельно от apply cursor; T10/T28 — UPDATE mode/status/G20 без lock upgrade.
+Уточнения §15.26: T14 — единая root-set run identity и customer_inbound effectKind; T10/T31 — fenced primary permission inputs вместо stale cache; T12/T13 — observedReplyRevision/подтверждение ответа коллеги; T11 — replacement не обходит FIFO; T16 — chronology отдельно от apply cursor; T10/T28 — UPDATE mode/status/G20 без lock upgrade.

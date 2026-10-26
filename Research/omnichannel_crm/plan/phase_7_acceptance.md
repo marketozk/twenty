@@ -1,5 +1,7 @@
 # Этап 7. Приёмка, эксплуатация и переход
 
+Нормативные определения: [индекс владельцев](contracts/README.md). Этот документ содержит производные работы и проверочные сценарии; изменение семантики вносится у владельца и затем отражается в сценарии.
+
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
 Зависимости: все предыдущие этапы. Статус: не выполнен.
@@ -28,3 +30,5 @@ Restore acceptance также проверяет access fence, invalidation sess
 Restore без достоверного внешнего журнала актуальных изменений доступа заканчивается access fence/default deny; проверенный recovery-admin назначает права заново с audit. Это ожидаемый безопасный runbook outcome, не обещание автоматического возврата всех доступов. T18/T29 проверяют наличие/отсутствие доказательств. Внешний writer журнала не считается спроектированным или созданным.
 
 T11/T18 квалифицируют single session-owner, legacy generation0 cutoff у userbot, asymmetric switch crash и fenced rollback. T29: после restore connector order определяется durable journal, outboundSequence не unique key; orphan evidence не создаёт новый send. T17/T32 проверяют payload purge manifest всех stores и отдельную backup retention. Детали §15.25.
+
+T18/T29 проверяют fresh restoreIncarnation перед снятием fence: прежний reference/cursor с совпавшей numeric epoch отклонён; новый reference создаётся лишь после current auth/reconciliation. Это проверка [restore контракта](implementation-spec.md#1524-учёт-посторонних-отправителей-и-ожидаемый-restore-fallback), не заявление об успешном restore.

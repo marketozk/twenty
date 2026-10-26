@@ -1,24 +1,22 @@
-# Итог кроссревью — R12, 26.10.2026
+# Итог четвёртого полного круга — R13, 26.10.2026
 
-R12: выполнены три свежих полных прохода из изолированного пакета. Последний A дал needs_revision; исправления внесены в действующий план, после B и точечной перепроверки все60 известных причин closed_in_plan, B — ready_for_implementation. Это не свежий полный pass исправленной редакции. ROB-772 In Progress, ROB-764 Todo; новый runtime и его тесты не начаты.
+R13: по явному разрешению выполнен четвёртый свежий полный проход после консолидации определений. A — needs_revision; найденное исправлено у владельцев контрактов. B и finalcheck подтвердили63 closed_in_plan. Это не свежий полный pass после последних правок. ROB-772 In Progress, ROB-764 Todo; новый runtime не начат.
 
-## Результат и доказательства
+[Нормативные владельцы](../contracts/README.md): workflow execution, access/control, sending/UI. Полная schema/UNIQUE — spec §3; API перечисляет операции, этапы/decision-tables содержат производные проверки.130 переносов/замен и4 точных дубля зафиксированы в [manifest](dedup-r13-manifest.json);8 устаревших редакционных абзацев удалены. Historical raw reports/snapshots сохранены.
 
-- Три независимые Claude Code сессии, reported model claude-opus-5-5; каждая получила34 технических документа и31 441 source/config/test files без реестра/статусов/истории Git. [Initial A](claude-r12-full-a.md), [corrected A](claude-r12-corrected-a.md), [final A](claude-r12-final-a.md). История передана только после последнего A для B. Manifests, точные snapshots и tool audits сохранены.
-- [B всех60 причин](claude-r12-reconciliation.md) и [точечное закрытие N-21](claude-r12-b-finalcheck.md) подтверждают исправления в плане. Учитываются25 проявлений R12:11+6+7 в A и1 остаток B. Прежние53 причины плюс7 новых; риски за владельца не принимались.
-- Проверены45 исходников: SHA256 совпадают, сравнение с pinned729f6236 после нормализации CRLF/LF также без различий. [Source evidence](source-baseline-r12.json), [механические проверки](verification-r12.json).
-- Абстрактная модель реально выполнена:1712 случаев,0 failures,23 контрольные поломки обнаружены. Она не покрывает новые replica/cache/target/FIFO/UI contracts и не является тестом SQL, UI или транспорта.
+## Результаты независимой проверки
 
-## Что изменено в основном плане
+- [Fresh A](claude-r13-full-a.md):1 high,4 medium,4 low и5 editorial.38 документов и31441 source/config/test file; прежних findings в пакете не было. Reported model claude-opus-5-5, session6605f5c2-68f2-4604-ba2e-d515107aef62.
+- Исправлены AI-turn lease/fence и stable effect invocation; schema страниц/очередей/handoff/replay/provenance; отдельный replyRevision; полнота API; activation dedup; generation outcome; restoreIncarnation. G13b требует owner choice об indefinite unknown-send auto block до activation, риск не принят планом.
+- [B](claude-r13-reconciliation.md) подтвердил63 причины и нашёл4 low расхождения в производных местах. Они исправлены; общий lock order уточнён по self-review. [Finalcheck](claude-r13-finalcheck.md) подтвердил B-1/B-2/B-4/N-6; оставшийся B-3 исправлен и закрыт [отдельным подтверждением](claude-r13-b3-confirmation.md).24 проявления:19 A (схемное M1 раскрыто в6 местах),4 B,1 self-review;3 новых stable roots, всего63.
+- [Tool audit](cli-tool-audit-r13.json): только Read/Grep/Glob внутри packet; A audit сохранён отдельно до добавления registry.
 
-Protected reads и native permission inputs идут в primary внутри policy fence; проверка stale role cache и ранний contention gate вынесены в ROB-766. ConversationTarget выбран canonical storage, native targets используются как projection. Уточнены reply/hash/FIFO, sole session owner и legacy sender cutoff, post-restore sequence, operational payload purge. ConsumerReceipt отделён от RunIntent; единая root-set run identity, constant customer_inbound effectKind и trusted workflow target. Добавлены explicit read-only AI assist, human observedSequence с подтверждением и chronology UI отдельно от apply cursor. Изменены API, schema, phase docs и test oracles, не только список замечаний.
+## Проверки и ограничения
 
-## Пределы и дальнейший шаг
+[Механические проверки](verification-r13.json): local links/JSON/diff,45 source hashes, unique registry IDs; [сравнение45 source files с pinned729f6236](source-baseline-r13.json) совпало после LF normalization. Абстрактная модель1712 случаев/0 failures/23 negative controls реально выполнена. Она не проверяет новый turn fence/replyRevision/restoreIncarnation, SQL/transport/UI; T01–T33 ещё будущие.
 
-B подтверждает готовность текущих контрактов к реализации с будущими проверками. Общий gate ROB-772 ещё открыт: последний свежий полный A обнаружил новые противоречия, последующие исправления проверены в B. Поэтому task не закрыта и ROB-764 не начата; runtime/deploy/client acceptance отсутствуют.
+Reviewers не проверяли frontend source и все bypass entry points исчерпывающе. Внешние connector/userbot исходники в пакете отсутствуют; qualification перед переносом обязательна. G01–G20 остаются активационными решениями/проверками; нового runtime/deploy/customer acceptance нет.
 
-Следующий шаг для общего допуска — свести дублирующиеся нормативные определения в один актуальный источник, затем проверить согласованную редакцию независимо; не запускать четвёртый идентичный широкий круг без изменения формы работы. Правило остановки взято из cross-review-convergence, не из ограничения инструментов или автоматического approval rejection.
+## Текущий допуск
 
-До реальной активации остаются G01–G20, qualification внешних connector/userbot исходников, полная классификация bypass entry points, T19 capacity, T31 stale cache и T01–T33. Это будущие implementation/acceptance evidence, не скрытые закрытые tests. Неизвестная human отправка может сохранять запрет auto без срока; обход без доказательства не добавлен. Реальный Twenty и внешние сервисы не менялись.
-
-[Реестр](registry.md) · [Спецификация](../implementation-spec.md) · [Статус](../../STATUS.md) · [Журнал](../../DEVLOG.md).
+B считает контракты готовыми к реализации. Однако последний fresh full A был needs_revision; после существенных исправлений выполнена reconciliation, а не новый независимый full A. По принятому cross-review protocol ROB-772 остаётся In Progress, ROB-764 не начата. Пятый широкий круг автоматически не запускался. Структурная консолидация и разрешённый четвёртый круг завершены; незакрытых известных причин нет.

@@ -1,5 +1,7 @@
 # Этап 6. Вложения, изменения сообщений и импорт
 
+Нормативные определения: [индекс владельцев](contracts/README.md). Этот документ содержит производные работы и проверочные сценарии; изменение семантики вносится у владельца и затем отражается в сценарии.
+
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
 Зависимости: 1, 2a, 3, 4; финальный suppression test с 5. Статус: не выполнен.
@@ -29,3 +31,5 @@
 G10 manifest охватывает operational payload copies (receipt/event/command/AI artifacts/connector/userbot journal) по spec §15.25; business search/AI никогда не читает эти копии. Tombstone сразу скрывает content, purge сохраняет dedup/outcome keys/hash и запрещает resurrection через replay. Pending effects/недоступные stores не позволяют объявить purge completed; T17/T32.
 
 Хронология UI при позднем импорте определяется временем сообщения и его стабильным идентификатором; event sequence остаётся apply cursor. При отсутствии provider time явно используется capture fallback; T16 проверяет этот предел (§15.26).
+
+ImportPageReceipt/Item по schema §3: T16 проверяет concurrent page persistence, changed response hash, crash после сохранения/частичного применения и checkpoint только после всех items. Author snapshots/provenance сохраняются при повторе/merge; никакого guessing личности.

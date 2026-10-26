@@ -34,3 +34,8 @@ Cross-review-convergence применён к конечным таблицам �
 ## Дополнение R12
 
 Применены cross-review-convergence (stable IDs, source-backed fixes, отдельные A/B, явное отсутствие общего pass), claude consult (официальный read-only CLI), claude-cli-transparent-integration (фактическая модель, без override/auth spoofing, tool audit), linear-api (публикация и read-back). Три свежих A получили изолированные пакеты; реестр добавлен только для B. Использовать весь каталог скиллов не требовалось; plan-eng-review/UI phases и runtime testing не объявляются выполненными. Четвёртый одинаковый широкий цикл не запускался.
+
+
+## Дополнение R13
+
+Cross-review-convergence: изменена форма работы (единые owners вместо новых addenda), полный свежий A отдельно от B, стабильные причины/24 проявления, source evidence и self-review lock order. Claude consult и transparent integration: официальный CLI без model/auth override, только Read/Grep/Glob, A в отдельном packet без history. Linear-api: existing issues, concurrency check и read-back после push. Это не запуск всех доступных skills и не выполнение runtime phases. Пользователь явно разрешил четвёртый круг; пятый автоматически не выполнялся.

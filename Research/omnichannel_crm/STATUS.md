@@ -1,12 +1,9 @@
 # Текущее состояние Twenty CRM
 
-26.10.2026. R12: выполнены три свежих полных прохода из изолированного пакета. Последний A дал needs_revision; исправления внесены в действующий план, после B и точечной перепроверки все60 известных причин closed_in_plan, B — ready_for_implementation. Это не свежий полный pass исправленной редакции. ROB-772 In Progress, ROB-764 Todo; новый runtime и его тесты не начаты.
+R13: по явному разрешению выполнен четвёртый свежий полный проход после консолидации определений. A — needs_revision; найденное исправлено у владельцев контрактов. B и finalcheck подтвердили63 closed_in_plan. Это не свежий полный pass после последних правок. ROB-772 In Progress, ROB-764 Todo; новый runtime не начат.
 
-База2.52 была развёрнута раньше; R12 не проверял live runtime и не менял его. Чаты Telegram/MAX, собственные права/аудит и новые AI/workflow функции остаются спроектированными.
+База2.52 развёрнута ранее; этот шаг не проверял live runtime и не менял его. Чаты Telegram/MAX, права, аудит и AI/workflow остаются спроектированными.
 
-- ROB-762/763 Done — исторические архитектура и обновление.
-- ROB-772 In Progress — исправления подтверждены B, общий fresh acceptance ещё открыт.
-- ROB-764 Todo — реализация не начата.
-- ROB-765–771 Backlog.
+[Владельцы контрактов](plan/contracts/README.md) · [результат и пределы R13](plan/cross-review/review-result.md) · [журнал](DEVLOG.md) · [задачи](linear.md).
 
-[Итог R12](plan/cross-review/review-result.md), [реестр](plan/cross-review/registry.md), [план](plan/implementation-spec.md). Далее — устранение дублирующихся нормативных определений перед общим допуском, после него ROB-764 с настоящими DB-тестами. Модель1712/23 — только executable plan;45 исходников сверены с pinned2.52.
+Известные причины:63 closed_in_plan по B/finalcheck. Fresh acceptance последней редакции ещё нет. ROB-772 In Progress блокирует ROB-764 Todo; ROB-765–771 Backlog, ROB-762/763 исторические Done. Новый код, runtime-тесты и деплой не начинались.

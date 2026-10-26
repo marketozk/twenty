@@ -1,0 +1,98 @@
+# Права и управление диалогом
+
+Нормативный контракт. Схема и UNIQUE: [спецификация §3](../implementation-spec.md#3-схема--rob-764). Владельцы правил: [индекс](README.md). Ссылки «§15.x» ниже означают сохранённые разделы спецификации. Новый runtime ещё не реализован.
+
+<a id="read-authority"></a>
+
+## Авторитетное чтение и native permissions
+
+Protected reads при включённой own policy идут только в primary под тем же policy fence, включая global search, export, AI search/tools, nested relations и raw/domain readers. Workspace ORM facade/datasource selection принудительно выбирает useReplica=false для protected context; caller useReplica:true не отменяет правило. Policy/ACL и protected data не читаются из разных pools. Если запрос смешивает protected и ordinary объекты, весь он идёт в primary. Primary unavailable → visible error/fail closed, не fallback к replica. Ordinary незащищённый контекст сохраняет upstream routing. T08/T10: настроенная отстающая replica с прежними grants/stage/links, revoke на primary → 0 protected leakage из search/export/AI; mutation отрицательного контроля возвращает useReplica:true и должна нарушить проверку. Это будущий fixture, не изменение текущей конфигурации.
+
+Native permission inputs rolesPermissions, roleIdsWithAllRecordsAccess, userWorkspaceRoleMap, apiKeyRoleMap, agent-role bindings для own protected context загружаются из primary внутри той же fenced transaction через её executor после policy lock. Ранее собранные WorkspaceCacheService/getOrRecompute maps не используются как authoritative grants этого запроса. Frozen per-operation snapshot передаётся в permission evaluation и workspace datasource для всех object/field/row checks; нельзя потом снова подмешать старый cache map. Нативные role/grant writers изменяют БД и policyEpoch одним commit. Primary unavailable — deny/error; обычный unprotected context сохраняет upstream caching. T31/T10: старый контекст загружен до revoke, Redis держит stale roles, операция после E+1 получает запрет; negative control возвращает cache map и должен провалить тест.
+
+<a id="scope"></a>
+
+## Principal и область доступа
+
+Auto run имеет scoped service principal `(workspace,binding,conversation,automationPolicyVersion)`, без вымышленного user caller. Разрешённое чтение — пересечение application/agent grants и явно разрешённого ResourceScope диалога: verified Person и только явно связанные разрешённые Company/Opportunity/Task/knowledge. Связь Person с компанией сама по себе не открывает все её данные. Assist дополнительно пересекает права конкретного менеджера. Workflow без originating human имеет explicit service policy, с human — пересечение, child context не расширяется. Generic read/search/groupBy/execute_tool/export подчиняются тому же ResourceScope; scope применяется и к чтению, не только mutation. Unbound identity допускает только conversation и разрешённые общие knowledge entries, не workspace-wide CRM.
+
+human не запускает автономный AI; явный запрос менеджера на резюме/переформулировку разрешён в любом mode как read-only assist: principal = текущие права менеджера ∩ агента, разрешённая история/knowledge, AutomationArtifactScope и reauthorization перед выдачей. Такой run не создаёт Command, не занимает customer reply slot и не вызывает mutating/send tools, mode не меняет. Отправка полученного текста — отдельная human command с текущими grants/CAS. T12/T25 проверяют human-mode summary, hidden data/revoke и отсутствие внешнего эффекта. assist создаёт draft; auto вызывает разрешённые инструменты и send. Auto activation требует provider/budget/role/policy и audit. Prompt/client attachment не меняют настройки. Knowledge sources явные, retrieval ACL до prompt; нет новой платформы LLM или робота. Limits бюджета/chain/timeouts дают видимую ошибку/эскалацию, не ложный успешный ответ.
+
+<a id="policy-writers"></a>
+
+## Каталог изменений прав
+
+Policy attribute catalog v1 включает все поля, используемые StageRule (stage, pipeline/option set), assignment/owner/member/grants, ExternalIdentity.personId и link/unlink, conversation↔CRM targets, parent relations и security descriptors производных сущностей. Любой writer этих атрибутов (domain transition, generic CRUD, AI/workflow/import, merge/lifecycle, metadata sync) определяет UPDATE mode до lock acquisition и атомарно повышает policyEpoch с mutation/audit; нельзя менять их под SHARE как обычные content fields. Новая политика обязана зарегистрировать свои поля и writers, иначе activation rejected. Version mismatch заставляет пересмотреть captured resource set и текущие relationship edges, не только формальные grants. Link A→B инвалидирует контекст с A даже если service principal имеет глобальный grant на A; расширять captured scope на B и повторно использовать старый LLM output нельзя. Удаление ребра/скрытие stage → blocked turn/send + durable handoff. T10/T13: rebind и hide stage во время LLM →0 sends с прежними данными; выключенный epoch bump — отрицательный контроль.
+
+<a id="epochs"></a>
+
+## Значение epochs
+
+`policyEpoch` — версия для invalidation/проверки актуальности, не неизменный токен согласия пользователя. Mismatch запускает повторную авторизацию captured principal + immutable original ResourceScope + текущие object/field/row grants. Несвязанные изменения при том же разрешённом решении продолжают операцию и обновляют lastEvaluatedEpoch. Новые grants не расширяют captured scope автоматически. Если revoked ресурс уже попал в LLM context, текущий turn/output/send blocked; нельзя продолжить с прежним текстом только потому, что остаётся доступ к conversation. `automationEpoch` отдельно: mode change/takeover/close/managerReplyPolicy и выбранное pause правило externalHumanReplyPolicy повышают automationEpoch; для прежнего non-human intent требуется точное совпадение. Назначение/участники и не закрывающий статус меняют controlEpoch для UI CAS, но не automationEpoch; close/reopen увеличивают automationEpoch по §15.22; изменение доступа всё равно проверяется через текущие grants/policyEpoch. Reauthorize не оживляет старый automation intent после mode fence. Stale automationEpoch → terminal cancelled_stale_control + один durable handoff с unanswered roots, без автоматической пересборки/отправки. Человеческая принятая Command не зависит от равенства controlEpoch: dispatch проверяет текущие права автора, маршрут, generation и действующую manager policy; потеря права → visible denied, сохранённые права → send.
+
+<a id="lock-protocol"></a>
+
+## Порядок и режимы блокировок
+
+Один lock protocol для всех доменных операций: WorkspacePolicyState → AccountBinding/RouteActivation (sorted IDs) → Conversation (sorted IDs) → ExternalIdentity → изменяемые CRM records (stable object/id order) → DispatchPlan/ReplyBudget (sorted rootKind/rootId) → AutomationTurn/WorkflowRunIntent (sorted IDs) → EffectLedger (sorted execution/key) → Command (sorted IDs) → Receipt (sorted IDs). Dispatch читает producer refs без удержания Command lock, затем берёт parent turn/intent и Command в указанном порядке и перечитывает row. Terminal scanner берёт turn/intent до отменяемых Commands; операция с budget сначала берёт budget rows. Новые parent refs во время повторного чтения требуют rollback/bounded restart, не обратного lock acquisition. Claims receipt/job делаются короткой отдельной транзакцией; apply transaction не держит lock claim из предыдущего порядка, повторно проверяет token. Merge предварительно собирает references, берёт locks по порядку и перечитывает graph; при изменении начинает заново. Ingress без CRM операции использует совместимый prefix. Outbound provider calls вне locks. Retry 40P01/40001 ограничен configured budget и повторяет ту же idempotent domain command; exhausted error visible, external send не входит в retry transaction. T02/T10/T23/T28 добавляют merge+ingest+takeover+disable interleaving и control test обратного lock order.
+
+Lock order §15.9 общий; режим объявляется до входа: обычное authorized чтение/эффект берёт WorkspacePolicyState FOR SHARE на короткую DB transaction; grant/role/assignment/target/merge/stage/identity-link mutation из policy attribute catalog §15.23, а также mode/takeover/close/reopen/status, берёт FOR UPDATE сразу и увеличивает policyEpoch с mutation. Mode/status fence не заменяет отдельные controlEpoch/automationEpoch правила. SHARE→UPDATE upgrade запрещён. Если поздно обнаружена потребность изменить policy, rollback и новый bounded attempt с UPDATE в начале, с тем же idempotency identity. Policy row предварительно существует (bootstrap), её создание не lazy внутри share-locked операции. Остальные row locks по стабильному порядку; network/LLM/длительный stream вне locks.
+
+G20 auto-reopen и takeover_on_send требуют этого режима с начала transaction: если потребность обнаружена при SHARE, rollback до effects и новый bounded attempt с UPDATE/тем же receipt/command identity; SHARE→UPDATE не допускается. Недоступность повторного attempt — видимая retryable ошибка, не потерянный ACK/эффект. T10/T13/T28 проверяют оба порядка с revoke и отсутствие lock upgrade.
+
+<a id="control-cas"></a>
+
+## CAS управления
+
+**CAS управления диалогом (ROB-764/768).** expectedControlEpoch применяется к admission новых send/assign/changeParticipants/setMode/takeover/close/reopen команд после authorization. Назначение/участники/режим/статус увеличивают controlEpoch; входящие сообщения не меняют его. Эффект на automationEpoch определён только в [epochs](#epochs). Stale UI token → conflict до Command; принятая human Command не проверяет equality этого token на dispatch. Проверка актуального клиентского содержания, concurrent sends и исключения для служебных событий определены только в [human stale-view](sending-ui.md#human-stale-view). Opportunity.expectedRevision — отдельный CrmRecordRevision (§15.17). T10/T12: два менеджера не перетирают control update; текущие права проверяются независимо от UI CAS.
+
+<a id="sender-mode"></a>
+
+## Класс отправителя и допустимый режим
+
+CommandService получает trusted senderClass/contentProvenance из execution reference, не из аргументов tool. Workflow с AI step/tool/result считается AI-generated до конца descendant chain; название workflow или новый controlEpoch это не очищают. Смешанный/неизвестный provenance не допускается как deterministic notification.
+
+| Отправитель | human | assist | auto |
+|---|---|---|---|
+| Менеджер, direct composer | Разрешён по grants | Разрешён; отправляет сам | managerReplyPolicy: atomic takeover или явный предварительный takeover |
+| ai_turn / AI-generated workflow / descendants | Отправка запрещена | Только draft, без Command dispatch | По current auto policy и captured scope/epoch |
+| Workflow без ИИ, обычный ответ клиенту | Отправка запрещена | Отправка запрещена | Разрешён по явной route automation policy |
+| Deterministic service notification | Только explicit G17 | Только explicit G17 | По route policy и G17 |
+
+Non-message workflow также требует durable root/reference/budget до первого шага по design/09; обычная роль/token не заменяет этот контекст. Служебное исключение G17 — заранее опубликованный approved template/event kind с ограниченными разрешёнными полями, а не произвольный текст или вывод ИИ; data/field ACL и audit сохраняются. По умолчанию disabled. Управление записью/задачей workflow отдельно от разрешения внешней отправки; takeover не обязан отключать все фоновые CRM процессы.
+
+<a id="takeover"></a>
+
+## Ответ менеджера и takeover
+
+Stream cancel — только оптимизация, не mutation fence. Mutation tool проверяет epoch под теми же locks перед записью и фиксирует audit в этом commit.
+
+`managerReplyPolicy` — обязательная настройка до auto activation: `takeover_on_send` или `require_explicit_takeover`. Первый вариант в той же транзакции sendCommand делает human mode/controlEpoch++/automationEpoch++/cancel pending non-human commands/audit, затем создаёт человеческую Command; второй отклоняет composer send до явного takeover, UI предлагает эту операцию. Независимые конкурирующие human+AI sends не предлагаются как default, поскольку противоречат F-04. До выбора auto denied. Перед provider boundary отмена и fencing по §15.7, после зарегистрированного начала внешней отправки возможен too_late/unknown — UI честно показывает уже начатый AI send. T13/T24: менеджер отправляет во время LLM generation, перед claim и после внешней границы; исход соответствует выбранной политике, нет stale новых AI sends. Ответ менеджера в assist/human не требует лишнего auto takeover.
+
+Takeover в одной транзакции повышает controlEpoch и automationEpoch, устанавливает human, отменяет все ещё не начатые non-human команды прежнего epoch (включая service notifications) и пишет audit. Новая service notification после takeover допустима лишь по явной G17/current policy; новая AI workflow send — denied независимо от совпадения свежего epoch. Проверка класса/режима обязательна при создании, перед dispatch и recovery. Если provider call уже начался, cancelled не обещается, receipt/reconciliation продолжается. T13/T24/T28: после takeover новое входящее запускает workflow с AI step → 0 sends; подмена class через tool denied; разрешённое/запрещённое уведомление и старый pending отрабатывают по таблице.
+
+<a id="closed-status"></a>
+
+## Закрытие и переоткрытие
+
+| Событие | Атомарный результат под общими locks |
+|---|---|
+| close | status=closed, controlEpoch++ и automationEpoch++; отменить локальные pending и запросить durable cancel для уже переданных Commands (human reason: conversation_closed; confirmed outcome по §15.3) и non-human turns; audit и durable visible outcome. Уже начатую внешнюю отправку нельзя отозвать |
+| non-human dispatch при closed | Deny независимо от совпадения epoch, auto mode и G17; queued/recovery paths проверяют status так же |
+| входящее в closed, G20 auto-reopen не включено | Сохранить Message/unread, показать в разрешённой очереди менеджеров; immutable empty/suppressed dispatch reason=conversation_closed, без автоответа и без silent drop |
+| входящее в closed, явно включён G20 auto-reopen | В одной ingestion transaction перевести status=open, увеличить controlEpoch/automationEpoch и принять только новое событие по current mode/ACL/G07. Reopen не переводит human в auto |
+| явный authorized reopen | status=open, controlEpoch++/automationEpoch++, audit. Не сбрасывать прежний ledger/budget; cancelled/stalled turns и suppressed events не оживлять. Обработка прошлого требует отдельного explicit replay/human command |
+
+T13/T24: close во время LLM/до dispatch даёт 0 новых non-human sends; поздний worker после close→reopen не проходит прежний automationEpoch. Входящее при default closed видно менеджерам, auto-reopen по G20 допускает только новый admission и сохраняет режим; G17 не обходит status. Human composer в closed требует явного reopen либо видимого отказа до создания новой команды. Для уже принятой human Command close запрашивает durable cancel с причиной conversation_closed. Локальная pending без возможного remote enqueue отменяется в CRM; dispatching/accepted/outcome_unknown требуют подтверждения userbot journal по §15.3/15.7. Только winning cancel до provider boundary даёт cancelled_conversation_closed и 0 sends; при too_late/timeout сохраняются cancelRequested и реальный sent/unknown outcome, без ложного обещания мгновенной отмены. Начатую provider send нельзя отозвать. При open dispatch сохраняет проверку текущих прав/route/generation; переназначение само по себе не отменяет human Command.
+
+<a id="auto-admission"></a>
+
+## Возврат в auto
+
+SetMode→auto под общими locks отказывает с visible pending_human_commands, если есть человеческие pending/dispatching/accepted/outcome_unknown Commands. Accepted означает durable enqueue, не завершение send; cancelRequested без подтверждённой отмены также остаётся незавершённым. Сначала завершить/подтверждённо отменить или reconcile их; неизвестный внешний исход не считается завершённым. Auto не начинается параллельно с принятым human reply. Возможный бессрочный запрет при отсутствии terminal proof раскрывается владельцу и требует решения G13 до activation; план не принимает этот риск за него. Это не дополнительный takeover на dispatch: выбранная managerReplyPolicy сохраняется, T12/T24 проверяют гонку send/setMode.
+
+<a id="epoch-tests"></a>
+
+## Проверки смены прав
+
+T13/T24: conversation.created assignment параллельно с message.received AI не меняет automationEpoch; при сохранении прав auto ответ проходит, при revoke — видимый handoff. Takeover/mode flip инвалидирует прежний non-human intent даже после возврата в auto. Pending human Command после reassignment отправляется только если автор всё ещё имеет права; stale UI control token влияет лишь на приём новой команды.

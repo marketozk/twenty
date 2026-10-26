@@ -1,5 +1,7 @@
 # Этап 4. Коннекторы и рабочий чат Telegram/MAX
 
+Нормативные определения: [индекс владельцев](contracts/README.md). Этот документ содержит производные работы и проверочные сценарии; изменение семантики вносится у владельца и затем отражается в сценарии.
+
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
 Зависимости: 1, 2a, 3; fake transport можно проверять раньше в изолированных тестах. Статус: не выполнен.
@@ -29,4 +31,6 @@ Composer reply передаёт replyToMessageLinkId; native reference вычи�
 
 Выбран единственный существующий session-owner process с обновлением provider boundary и сохранением journal. Temporary authenticated legacy principal generation0 допускается только до switch; затем unversioned C отклоняется userbot. Rollback требует нового поколения/credential и совместимого adapter, иначе fenced. Exact handshake/failure cases — spec §15.25. Развёртывание выполняется отдельно после квалификации, не при переносе исходников.
 
-Human send observedSequence обязателен; stale_view → показ нового события и явное подтверждение, key/hash сохраняются. Manual replacement также ждёт неизвестный acceptance предыдущего Command, ordering waiver нет. Лента сортируется по времени сообщения и его стабильному идентификатору, sequence только доставка/unread/CAS; T12/T13/T16.
+Human send observedReplyRevision обязателен; stale_view → показ нового события и явное подтверждение, key/hash сохраняются. Manual replacement также ждёт неизвестный acceptance предыдущего Command, ordering waiver нет. Лента сортируется по времени сообщения и его стабильному идентификатору, SSE sequence только доставка/unread; replyRevision для stale-view; T12/T13/T16.
+
+Проверки уточнённого контракта: T12/T13 — поток delivery receipts/notes не вызывает stale_view, два конкурентных ответа с одной replyRevision вызывают один conflict, следующий ответ использует revision из send response. API index покрывает close/reopen, claim/queue, cancel/replacement, identity link, markRead и read-only assist; определения только у владельцев.

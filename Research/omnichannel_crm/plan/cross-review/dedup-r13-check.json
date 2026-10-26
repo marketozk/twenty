@@ -1,0 +1,9 @@
+{
+  "baseline_block_hashes": 130,
+  "bad_hashes": [],
+  "anchor_links_checked": 124,
+  "bad_anchors": [],
+  "scope": "Changed normative/derived documents. Historical snapshots retain original definitions as immutable evidence; not runtime tests.",
+  "identical_normative_paragraphs_over_250_chars": [],
+  "remaining_editorial_duplicates_removed": 8
+}

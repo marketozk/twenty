@@ -1,0 +1,1072 @@
+{
+  "baseline": "01beb156d34bfb4acea15ba8aec51a4b4e574a52",
+  "method": "Move reviewed definitions to owners, retain aliases and replace duplicated prose with owner links. Original block hashes identify baseline evidence. Derived test scenarios remain checks, not separate contracts.",
+  "relocations": [
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 44,
+      "original_sha256": "f1a0f7563ed3b9f55ad63e07b69aa269f09afced8a64cc1d72eaf36e501d0ef8",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "read-authority",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 240,
+      "original_sha256": "e33ce9902b82118d228d163326d1d50f640c3a7b2db72e206b2f65d32067e32e",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "read-authority",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 103,
+      "original_sha256": "6a7ca7803a78d3c5d161f14a0b21def5baed4dfc61b138b271348223ea8bff60",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "scope",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 63,
+      "original_sha256": "c31b8c542ea3732e6e8f5cfea061d347c3c4995bed71e0cb12aaca0cf5d94423",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "scope",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 222,
+      "original_sha256": "97b791975554790e67464d23dc2fc86f41095859ea5216de1d0b4898e6d53ab6",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "policy-writers",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 175,
+      "original_sha256": "dd611342dd44b7d86a57ea8c6b034fc3fc53e0b611ac849084e3645f4f740af9",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "epochs",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 144,
+      "original_sha256": "072a0ff71ed28bcfeb92b48f5fa3b5af804dc2a0e37e1e0ec88ecd21491d05fa",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "lock-protocol",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 176,
+      "original_sha256": "0161bf4f236b8e354d723475efb899b59cef89441d4cce7ea9ff2150279bc479",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "lock-protocol",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 242,
+      "original_sha256": "a19320b4a815ea19d0c950b1810934f420020d3822899fda33532c976b16b0ba",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "lock-protocol",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 202,
+      "original_sha256": "2dbd53b4a1ea075b44756085e21559ef18903ab3b49b6e964cbe25e59130d87e",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "control-cas",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 170,
+      "original_sha256": "36468d0e5ca3a86da1c01a0818c5903bf21f1b236360ccad788a87379770242c",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "sender-mode",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 171,
+      "original_sha256": "9dcbb6c3679a5c47ab06de3cbada579daa0b9e0dc76c60f357f5c79b9382a9a5",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "sender-mode",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 172,
+      "original_sha256": "b4447d19b41559af2e0deedeffd841fb1036f9c89ae01d8c4e62ce20f2a82e20",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "sender-mode",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 155,
+      "original_sha256": "0585cde3eee8e7901812730ab7803cb162fa0e59afb44c517084bd316558ebb7",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "takeover",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 173,
+      "original_sha256": "e4f605686858ed1276704d2bc97a6cb19a9724a3435e06ad5b3c8b8c99b9b81a",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "takeover",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 218,
+      "original_sha256": "0900137a49716fedc60b276b999ffe3907e0ab1dc2b641c7328c579b18a45627",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "closed-status",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 219,
+      "original_sha256": "cb3dd154aa34d8494cb404acb61e87308c809a8a3577d12e14a60da7b33794e4",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "closed-status",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 223,
+      "original_sha256": "d33163c616a81b94cadaa402a266163b041a4020888eb694d4f11f9728282746",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "auto-admission",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 213,
+      "original_sha256": "f7d9d00fbd2ab566c809a1af94fbb59fa167f424d1e59b07e41e56416521827f",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "epoch-tests",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 64,
+      "original_sha256": "b4b5226acf387b37c245ea1043e4023475bad5708ff130a7e11d46f7d824a3c3",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "takeover",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 25,
+      "original_sha256": "f214150a4b8083e2191e09fbf4f5b03b069c9a99092e653b059f26963c0978e5",
+      "owner": "Research/omnichannel_crm/plan/contracts/sending-ui.md",
+      "anchor": "command-admission",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 26,
+      "original_sha256": "81940e3603559c9d91961e099ead11c14fc0311f6b9877cd7f3227bc8f5ffaa9",
+      "owner": "Research/omnichannel_crm/plan/contracts/sending-ui.md",
+      "anchor": "command-states",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 27,
+      "original_sha256": "a3750a11acf805d51474b69ccf58e72ae1648142dc9550ea2bd32d8f8483ac01",
+      "owner": "Research/omnichannel_crm/plan/contracts/sending-ui.md",
+      "anchor": "command-states",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 195,
+      "original_sha256": "11e2cd36dd6cddec155cc77807d9f7ce0e57bf32d6dbc45109a1c8b2da2af334",
+      "owner": "Research/omnichannel_crm/plan/contracts/sending-ui.md",
+      "anchor": "command-states",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 28,
+      "original_sha256": "06e72d642626bb8481e6c15766b77cb4f6d6ee253f3834bca2f2ee527d04411b",
+      "owner": "Research/omnichannel_crm/plan/contracts/sending-ui.md",
+      "anchor": "reply",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 29,
+      "original_sha256": "17559c5b2653f570a2b1ee96996d63865e300c4bc8be49b9407182482ad0147a",
+      "owner": "Research/omnichannel_crm/plan/contracts/sending-ui.md",
+      "anchor": "fifo",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 236,
+      "original_sha256": "62019185ed80a6da8c099cca241a5bc4af1ec353be38c3007f9baaa9c8449a98",
+      "owner": "Research/omnichannel_crm/plan/contracts/sending-ui.md",
+      "anchor": "fifo",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 30,
+      "original_sha256": "9dc71d7f88e3a97f15a90420ee5d6f302aff85e518812ce9950217081517454b",
+      "owner": "Research/omnichannel_crm/plan/contracts/sending-ui.md",
+      "anchor": "echo",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 241,
+      "original_sha256": "183bb3fbc6d544df8b0ac1c10eafc42980d31561bc4a623838bb210944f28cf3",
+      "owner": "Research/omnichannel_crm/plan/contracts/sending-ui.md",
+      "anchor": "human-stale-view",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 243,
+      "original_sha256": "0728b5f99ed4b71b4ceed01ee79eae3fc433790b32aba2aafdf721ae9b3fa467",
+      "owner": "Research/omnichannel_crm/plan/contracts/sending-ui.md",
+      "anchor": "timeline",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 55,
+      "original_sha256": "b3172c15ca91c5f3883ac271ee2488e62b852f8773cfe97792783c47c51ccec1",
+      "owner": "Research/omnichannel_crm/plan/contracts/sending-ui.md",
+      "anchor": "ui",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 56,
+      "original_sha256": "a7c53fe35335663152e373d7ae8c391447562e3e0c74029cb65371f39575a9f3",
+      "owner": "Research/omnichannel_crm/plan/contracts/sending-ui.md",
+      "anchor": "ui",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 57,
+      "original_sha256": "d9afd52f16f5afad511d5dd51d14acd258c40ec2ba66bcd4e1cb09897fbde001",
+      "owner": "Research/omnichannel_crm/plan/contracts/sending-ui.md",
+      "anchor": "ui",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 0,
+      "original_sha256": "4979e8a86094b3e19b6f6cea0ee9953dafd1bc956ca45cdd989f12c1489ce87d",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-0",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 1,
+      "original_sha256": "3c610c1c2527b8db307ed6424c2d99b341fbef51cd116f7ea24fafc642183a3b",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-1",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 2,
+      "original_sha256": "b2179803c6f369f8e83a51e5e1cfd061ba6b8096f2bacacead15613235b9301f",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-2",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 3,
+      "original_sha256": "6cdd1655641dc0840205a3117b4cd54e80b15be6bea3e26bce0d55748bc66a63",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-3",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 4,
+      "original_sha256": "46e0cc2a29a8ffe8e718ce97f5916b07ffb3e14c9173380f3e874cdec377ba7a",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-4",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 5,
+      "original_sha256": "eba76c939fbc184e74875927a9c053c208a3271b4b3b4d97231f96ece8149daf",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-5",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 6,
+      "original_sha256": "9a16b6c595502dda007b05736e9d77e0287fc458a5b707d33d6ff7160c3337ed",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-6",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 7,
+      "original_sha256": "aecde5b6cf701c4c5939e7e539b314d16dfdad3feccb91928676d93ff1987984",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-7",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 8,
+      "original_sha256": "2f7090ae72af17d73f82ce944f990c8706a0b384c57a5a796b28ce64a74b5e4c",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-8",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 9,
+      "original_sha256": "6ba9e3137997ada5326f1e3b4eadad1d8912b930680252f348419e714ea9e91f",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-9",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 10,
+      "original_sha256": "1cc2a9b16900bb7664e08650ffc82a9db31fe690d56b43da85bcd964aa73491c",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-10",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 11,
+      "original_sha256": "7beef465f42bdb2cee09dfa459f47515a57cd0b1efae637ef598b64693b3bf97",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-11",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 12,
+      "original_sha256": "e89997870eb952c2ba83cef5c7b540c2b5cb285148a9c2057aae54f7d14a50a8",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-12",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 13,
+      "original_sha256": "6b8127298736433a180bd4140178bc9485c70e7cefd1ec2206a60546b6bebff5",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-13",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 14,
+      "original_sha256": "a90ffda3322acd1ce1d514942202dc91f2b1f098a3be9dd8c9252b756a3b2256",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-14",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 15,
+      "original_sha256": "2e32fc06663de3a60d429ad46ed6b8c56a50753a716b6e8e87f2ef0e438e2032",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-15",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 16,
+      "original_sha256": "62a93acbb23260bada022f80b0c3b6b81edb08972eded925e01e57ce6423cd88",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-16",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 17,
+      "original_sha256": "e81b0fb94764f9ea18daf937b7fcb89ed206fb4f08abfc1932329debbcd2e85e",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-17",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 18,
+      "original_sha256": "14170c81947a6d8ff9d90f4cf8e42c4b610f72df9680862e568fb0cf23b84717",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-18",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 19,
+      "original_sha256": "b95b0b90810ab892d36dcf9cf51f5ba11456a49c53008b6b890dd13890719baf",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-19",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 20,
+      "original_sha256": "109886d98fc8f76670b9317c32ecdb0e2e8091787652ff72cf6f5ead8bba0351",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-20",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 21,
+      "original_sha256": "eb08b15615deea0ad103805a9a19f6ce531eba141cb0e50657e01cf9888ad969",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-21",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 22,
+      "original_sha256": "d96bb4cc45d0faa8bc3d5792e5e9dc72af9937f933be54db14f92bb873a34df0",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-22",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 23,
+      "original_sha256": "1b038403df2dd93159ef4ad57ac69193e6a30059169512fefdd3ef493f2ce8ca",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-23",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 24,
+      "original_sha256": "d22e45a502a6799eb83ea3c7ca52d6a7aa020fe0b07f7f49c58e7aa7f6d39335",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-24",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 25,
+      "original_sha256": "98a734a13935f9eff46baf69f9f16a858227abff0b90e924b456b5687dab1fd1",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-25",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 26,
+      "original_sha256": "810c09e7e8a4be3931c6e3e3251bcf73288127f9bd32e728d464fc722834d847",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-26",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 27,
+      "original_sha256": "357ddd0208bc71e7417f6ffc73db32dfb3c05a3be1429768d8080bede10f116e",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-27",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 28,
+      "original_sha256": "914a0f1605c879ee930d71cf8c925bdd01a195ebc19203a56564712a90097c7a",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-28",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 29,
+      "original_sha256": "04f4373f5876c8d25aed10a9c3287395247c1e5ab27420aa99447a5d38d8b4d2",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-29",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 30,
+      "original_sha256": "1b4695692f5e5dd9bb243ac0dc222b2102a618b96ce8be880dbe301f109cfc93",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-30",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 31,
+      "original_sha256": "3b776c96943f42b54e233d645b89166e1b59e8df87339e23fae0cb9c9d084a8a",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-31",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 32,
+      "original_sha256": "e6f38736fce2f80927c0f0b32f4da0b7c09e63e8a65485a7fce548ea4f20b51a",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-32",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 33,
+      "original_sha256": "20f03ff6e8cee57aba93ca3d0d6bca903d38b120de9cb868f2d1dabc431bd095",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-33",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 34,
+      "original_sha256": "3f125d9819db805ecc77e6863c17e262d7e2307ab9af85052230e902bb99b109",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-34",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 35,
+      "original_sha256": "8effa98ae67855e0a19a9cfd39532073ec9b79a7293bb8573404d922f5fa9a5b",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-35",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 36,
+      "original_sha256": "13410c4279e6f851cf7dd7605ad54cb8ea74bf728d100268566cf7093a6527a0",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "epochs",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 37,
+      "original_sha256": "1eb80a726e96bc02c877af550086689db57e2f27f3e830d96a35eca5088348f3",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "closed-status",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 38,
+      "original_sha256": "68d6c83ce6a9c1887c68ddea5b680a893f613effd832baaeb831d973284c02f3",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-38",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 39,
+      "original_sha256": "70684ca8a69efaacdc1856ed3ac933be204ee449aeca72a3b55edd645e862176",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-39",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 40,
+      "original_sha256": "e9c645aa158916c1543b45a077789daac1181c4079eff4b8227f3bf4486130e7",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-40",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 41,
+      "original_sha256": "460b3f49f738fced6399957c807798378050e2ce9b9d6f9d323f71bb7ff29823",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-41",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 42,
+      "original_sha256": "76d24e630ca79ca296e05cbfbb2df19b5269201d16c7873e5591996248b98f5b",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-42",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 43,
+      "original_sha256": "03c2548045f39eef5d9323b3bdcc1c672d489f6d41146f9902c188fea0a5fd73",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "workflow-ids",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 44,
+      "original_sha256": "eb8deaaa49d74d809f346d81790b23a8c9207189910842bba7b412c0d55b112a",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "coverage",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 45,
+      "original_sha256": "ce15d12bb6886564a3f6c8e741e669e5e1fb8b7878beec2bcae0bf9404a96b93",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "cancellation",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 46,
+      "original_sha256": "f549a8f1d786773fb87f48ca73140e118dcd128649c549dc28431e3fdfa8c5a2",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "command-cancellation",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 47,
+      "original_sha256": "749157638b71610532671190a6b0f566e262e961c6e549c12f5b31f5407481aa",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-47",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 48,
+      "original_sha256": "e7feb8837e6b3616a136c0dd90884482dc5c89174a6875f1b025fc7423a15e88",
+      "owner": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "anchor": "3-схема--rob-764",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 49,
+      "original_sha256": "6695ea123b269cc76256348d2d194fe19f8fd71b6edf494e57fb53078b272f07",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-49",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "block": 50,
+      "original_sha256": "d817006997b706a03d2f128aad062626f307654fb893f52903fac9b250a9a507",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "auto-admission",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 204,
+      "original_sha256": "03c2548045f39eef5d9323b3bdcc1c672d489f6d41146f9902c188fea0a5fd73",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "workflow-ids",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 239,
+      "original_sha256": "663b00fd85fad63a822b65e57eaf1dceeb49307dc348cc061ba8ffe31356c905",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "run-identity",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 205,
+      "original_sha256": "eb8deaaa49d74d809f346d81790b23a8c9207189910842bba7b412c0d55b112a",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "coverage",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 206,
+      "original_sha256": "ce15d12bb6886564a3f6c8e741e669e5e1fb8b7878beec2bcae0bf9404a96b93",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "cancellation",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 207,
+      "original_sha256": "f549a8f1d786773fb87f48ca73140e118dcd128649c549dc28431e3fdfa8c5a2",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "command-cancellation",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 106,
+      "original_sha256": "3fd6a31062b164aa95459254b71ca7c7cebee6f008dd7a34c224627b3a7efb21",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "turn-lifecycle",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 148,
+      "original_sha256": "c134b335a0ce4e346d067ce090e033eef4d251fd2e2485d685432f53cc784048",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "trigger-registration",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 197,
+      "original_sha256": "b99144139d76fea050ee3614210e6e900941be1b0ad8526b809427a2930920ee",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "trigger-registration",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 150,
+      "original_sha256": "27a2a2b7094b914bfd1ff801c06e6d25d928c08081e6d347ce599c7ce66e0ad2",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "event-projection",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 151,
+      "original_sha256": "4766db50bafd88491cbd7bf78404b3f9f51358fcf6bbfae54e31e947477c2bce",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "repository-adapter",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 194,
+      "original_sha256": "9ac07c636335596ee3123382916b83a311124501050d27bb8922e38e46cd32c1",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "send-action",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 185,
+      "original_sha256": "a2c15630bd5b4bcfddcaf813e82df028dbe8e0244e406590f9f31c95585eece4",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "runner-terminal",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 199,
+      "original_sha256": "e6d5084dfc6b83fc78ddd5555784fe7edfd0e4121604b03e3cbde1aff563484a",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "runner-recovery",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 200,
+      "original_sha256": "72c3a11f81cb81bcbc365a8022ebcd91f3dc9c21676ec8a6f5b705e51f3f1194",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "runner-recovery",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 201,
+      "original_sha256": "733fa69eb4f0fd3aca371b8391dd5d26f7c110eea941843ae8e730d48cbf2e08",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "runner-recovery",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 210,
+      "original_sha256": "60e211aa5d4d042a6759ccf061c79d107910f631cbc6adca3467e1243b05d2ba",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "hidden-retry",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 209,
+      "original_sha256": "c1263da3ce4b58774b8e79e7d12dfbf12647ce541d6f513c2fecc7e5d3b2eee5",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "producer-inventory",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 32,
+      "original_sha256": "4b24df18a3bbf9e5bdcb5c3f85bb422d987a3eda2af6a2148d24cc2f8bf7c804",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-19",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 60,
+      "original_sha256": "a76f308e825192363e532c7ebf6ecf99c514693a1685f56154a57ae0286e26a6",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-24",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 61,
+      "original_sha256": "03d746c8f6c1be1fe5e342e657814551acdb3a4341cc356c13023487be6e35d1",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-6",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 62,
+      "original_sha256": "a3777dda60dd4376c0c5fffd5165cf9cf8f5e3839567cb758289479972240393",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-13",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 65,
+      "original_sha256": "40027000958dd12ec28f9652310c46089ad8297be86beb20165889061384b086",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-8",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 66,
+      "original_sha256": "cc9339e0090701e4a3f43d86e13e1d2bd4374b4c81813e2d2b7fb5f7c46456ce",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-31",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 67,
+      "original_sha256": "24df9c6cbfbcd9ec7350bba48be63ebeef6bf4dae54e8902b1c2cdb91925dea1",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-20",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 105,
+      "original_sha256": "d3ada994b8507aff9955a233725c8a0e63ad962372225727fd90f77b7ff87f72",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-31",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 108,
+      "original_sha256": "1409663236107ce83a96807a88a66b8ede4514fbf9039bebcf771dca7211f620",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-49",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 145,
+      "original_sha256": "e59319e6ba0cfaacc23242f2644d63359f3422c13c114993409146c1fb659863",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-11",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 149,
+      "original_sha256": "0d5399ccfeb6e028890dfc6fcbfcb2fe430387cd96d6f91805807c5b3e48775b",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-18",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 184,
+      "original_sha256": "3bb2882956435beeba242b330ea6240322f796ccd8aaaedb26e293832c645007",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-22",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 198,
+      "original_sha256": "0ed22507bbcc6a7ee451698735925facff956a65d7d6dc7aa63907d4aa34c5c6",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-39",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 214,
+      "original_sha256": "421c68094e9566eeffa7548f0abfbbae6625b8af9e815112f7f1865309546e15",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-31",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 221,
+      "original_sha256": "e64ae0d3cb18c44ee9bf77085257546a1ef607dddaa37023c97c2430a7829953",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-26",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "block": 227,
+      "original_sha256": "460b3f49f738fced6399957c807798378050e2ce9b9d6f9d323f71bb7ff29823",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-41",
+      "operation": "moved"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/05-models.md",
+      "block": 7,
+      "original_sha256": "54606c9b8e2d13206788e31e107d4d4b7f60fc809bfcce695ba73424c9175cb4",
+      "owner": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "anchor": "3-схема--rob-764",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/05-models.md",
+      "block": 10,
+      "original_sha256": "8bb525937ad4d9547a87b4db5c63af6801ab1214ce907789f445f7b1e39dc7bb",
+      "owner": "Research/omnichannel_crm/plan/contracts/sending-ui.md",
+      "anchor": "command-states",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/05-models.md",
+      "block": 19,
+      "original_sha256": "4fc6b2087c0c760e83283af2645baed48073aa8c50842cfc30c3844dfc9cc9c4",
+      "owner": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "anchor": "7-права-и-сделки--rob-766",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/05-models.md",
+      "block": 20,
+      "original_sha256": "885909add47488f547cd503975ef17e73568b99dd2ac1168e1722ac3e428f3f9",
+      "owner": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "anchor": "3-схема--rob-764",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/05-models.md",
+      "block": 21,
+      "original_sha256": "187d9dc3fd9122358370afa28ef900c4b8cfedf349f638550b2206ba6e88e8c0",
+      "owner": "Research/omnichannel_crm/plan/contracts/sending-ui.md",
+      "anchor": "fifo",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/06-api.md",
+      "block": 24,
+      "original_sha256": "2c837cf89f424d9984e4721bb28b5e7c8fd58b49f111617a5d0f65692999516b",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-24",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/06-api.md",
+      "block": 26,
+      "original_sha256": "a4adc4a53f9fd4a629f6e0896b8da08abdc8a893c3aa53f5a41f9668c2a208f7",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "workflow-ids",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/06-api.md",
+      "block": 27,
+      "original_sha256": "ce0f7093912e7d5cd414d7b15bd1d66bc08e6650c4634631cb94ecf9b755ea59",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "command-cancellation",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/06-api.md",
+      "block": 29,
+      "original_sha256": "7193b143bf4bb6f83938b4c05b15248b53f50f75eb7b92d8b6a23d0aa715e557",
+      "owner": "Research/omnichannel_crm/plan/contracts/sending-ui.md",
+      "anchor": "reply",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/06-api.md",
+      "block": 30,
+      "original_sha256": "65bb87df496a93117d7d808ae2257316b5362554eecd4466f1df6ed4fe58649f",
+      "owner": "Research/omnichannel_crm/plan/contracts/sending-ui.md",
+      "anchor": "fifo",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/06-api.md",
+      "block": 32,
+      "original_sha256": "e184055e8bc60af176c517beacce6d3b55b9aedb3448534436b3cf80f3d51c91",
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "design-49",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/06-api.md",
+      "block": 33,
+      "original_sha256": "0df5b2257268428a7d8a96b850c62c397f9fbf43848ad13aa3a7758cbd7b8d63",
+      "owner": "Research/omnichannel_crm/plan/contracts/access-control.md",
+      "anchor": "scope",
+      "operation": "duplicate-replaced"
+    },
+    {
+      "source": "Research/omnichannel_crm/design/06-api.md",
+      "block": 34,
+      "original_sha256": "bc975f5d80d60373f9c56937be5f93e29f6bdeb9d57143100a3a84cea5306a29",
+      "owner": "Research/omnichannel_crm/plan/contracts/sending-ui.md",
+      "anchor": "human-stale-view",
+      "operation": "duplicate-replaced"
+    }
+  ],
+  "additional_exact_duplicates": [
+    {
+      "path": "Research/omnichannel_crm/plan/decision-tables.md",
+      "block": 8,
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "workflow-ids"
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/decision-tables.md",
+      "block": 9,
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "coverage"
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/decision-tables.md",
+      "block": 10,
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "cancellation"
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/decision-tables.md",
+      "block": 11,
+      "owner": "Research/omnichannel_crm/plan/contracts/workflow-execution.md",
+      "anchor": "command-cancellation"
+    }
+  ]
+}

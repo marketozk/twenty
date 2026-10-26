@@ -1,5 +1,7 @@
 # Этап 1. Модель общения, inbox/outbox и журнал
 
+Нормативные определения: [индекс владельцев](contracts/README.md). Этот документ содержит производные работы и проверочные сценарии; изменение семантики вносится у владельца и затем отражается в сценарии.
+
 Действующий план: [единый контракт](../design/09-automation-contract.md) и [source matrix](../implementation/automation-source-matrix.md). EventDispatchPlan/receipts фиксируют stable consumerId и pinned version атомарно; общий reply budget охватывает agent/workflow. Closed tool registry, запрет generic token issuance и полный pausing inventory обязательны. Текущий verdict — [review-result](cross-review/review-result.md).
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
@@ -41,3 +43,5 @@ R11: schema/contract обязаны учитывать immutable workflowCancell
 ROB-764 вводит минимальный WorkspacePolicyState/bootstrap до ingress, canonical ConversationTarget и раннюю revision metadata; полноценная политика — этап 3. Все apply-транзакции берут policy lock раньше binding/conversation. Логический каталог §3 не переносит Turn/Effect/Knowledge/RunIntent из этапа 5 в этот этап.
 
 Согласовать wire replyToMessageLinkId, immutable reply snapshot/hash, outboundSequence и natural-key/revision CAS link/unlink с design/06. Тесты этапа: identity/target projection rollback, tenant isolation и schema uniqueness; полноценные ACL/FIFO/UI checks дополняются этапами 3–4.
+
+При подготовке миграций использовать единственную [schema §3](implementation-spec.md#3-схема--rob-764), включая Queue и принадлежность диалога, author/provenance snapshots, cancel/replacement/producer fence fields и replyRevision. T01/T16: повтор той же MessageLink после новой activationVersion не создаёт второй automatic admission; более ранняя или несравнимая boundary отклоняется.

@@ -1,5 +1,7 @@
 # Конечные таблицы допуска реализации
 
+Нормативные определения: [индекс владельцев](contracts/README.md). Этот документ содержит производные работы и проверочные сценарии; изменение семантики вносится у владельца и затем отражается в сценарии.
+
 26.10.2026. Объект R11: события, права и жизненный цикл отправки. Это свод контрактов [spec](implementation-spec.md) и [automation](../design/09-automation-contract.md), а не реализованный движок. При противоречии исправляются оба документа. Продуктовые G01–G20 не выбираются автором; таблицы определяют поведение после явной настройки либо безопасный отказ до неё.
 
 Модель отказов: concurrent duplicate/reordered events; crash процесса в любой точке; недоступность одной зависимости; timeout/потеря ответа; Redis loss при сохранной PostgreSQL; revoke/takeover/import-live race; восстановление известного backup с reconciliation. Одновременная утрата данных и всех копий, захват root или ложь провайдера вне гарантии. При неизвестном исходе внешнего send — outcome_unknown, не exactly-once доставка.
@@ -28,13 +30,13 @@
 
 ### Публикация между commit события и native listener
 
-Канонические workflow IDs во всех omni keys/catalog/intents/исключениях — core.workflow.id и core.workflowVersion.id. Legacy workspaceWorkflowId/workspaceWorkflowVersionId допускаются только на входной границе: authoritative tenant-scoped mapping разрешает их в core IDs до сравнения, UNIQUE и UUIDv5; missing/ambiguous/cross-workspace mapping → deny/gap, не fallback к legacy key. Название workflowId в этом контракте всегда означает нормализованный core ID.
+Определение: [workflow-execution](contracts/workflow-execution.md#workflow-ids).
 
-Для DATABASE_EVENT обязателен durable EventCoverageRegistry(workspaceId,objectMetadataId,eventKind,referenceRequired=true): активация governed подписки разрешена только после миграции и проверки всех producers данного object/event, включая generic CRUD/import/merge/lifecycle. Каждый их record event получает reference, даже при empty catalog. referenceRequired sticky: ordinary publish/deactivate/delete не снимают требование. Старые queued events без reference после включения получают visible gap/deny, не восстановление снимка по cache; обработка — отдельный explicit replay после reconciliation. Недоказанная полнота producers блокирует активацию; автоматический replay не добавляется.
+Определение: [workflow-execution](contracts/workflow-execution.md#coverage).
 
-OmniWorkflowSubscription сохраняет workflow-level cancellationEpoch и tombstone по coreWorkflowId, в том числе после ordinary publish/delete. Admission фиксирует capturedCancellationEpoch в intent. Publish/archive меняет active subscription/target eligibility для новых событий, но НЕ cancellationEpoch; ordinary publish отключает новое governed matching, не отменяя pinned intents. Explicit deactivate/delete через любой API/SDK/sync путь повышает cancellationEpoch под тем же policy/lifecycle fence и пишет audit. Start/resume/effect сравнивает captured epoch с текущей retained row: mismatch → terminal cancelled+audit/handoff; reactivation epoch не сбрасывает. Отсутствие обязательной row — gap/deny. CoreWorkflowVersionStatus ACTIVE/ARCHIVED/DEACTIVATED не является oracle отмены старого intent; hooks должны работать и при деактивации текущей ordinary версии.
+Определение: [workflow-execution](contracts/workflow-execution.md#cancellation).
 
-Workflow cancellation применяется и к уже созданной исходящей Command. Она хранит immutable workflowCancellationRefs (canonical workflowId + capturedCancellationEpoch всех governed workflow в producer lineage; прямой agent без такого предка имеет пустой набор). Dispatch/recovery проверяет все refs до нового enqueue. Explicit deactivate/delete под общим UPDATE fence повышает epoch, отменяет соответствующие локальные pending Commands и пишет durable cancelRequested/outbox для dispatching/accepted/outcome_unknown; индексация workspace+referenced workflowId обязательна. Late remote enqueue покрывается tombstone userbot, too_late/timeout остаётся reconciliation; уже начатую отправку нельзя отозвать. Publish/archive не меняет refs или epoch, unrelated workflow не отменяется.
+Определение: [workflow-execution](contracts/workflow-execution.md#command-cancellation).
 
 Ниже один canonical coreWorkflowId, обе версии соответствуют одному виду события. G — governed, O — ordinary. «Target нет» включает сохранённый empty/filter-miss. Explicit deactivation/current deny отменяет governed intent; archive при публикации сам по себе его не отменяет.
 
@@ -62,7 +64,7 @@ Filter-miss вычисляется при admission commit по pinned декл�
 | P04 | Identity person link/unlink, CRM targets, parent edges | Policy UPDATE; policyEpoch++ | Rebind A→B блокирует старый output с A; grant на A сам по себе недостаточен; scope на B не расширяется |
 | P05 | Mode/takeover/managerReplyPolicy/pause external reply | UPDATE policy lock + policyEpoch++; controlEpoch/automationEpoch++ по spec | Старый non-human intent terminal stale + durable handoff, без refresh |
 | P06 | Close/reopen | UPDATE policy lock + policyEpoch++; controlEpoch++/automationEpoch++; короткая общая transaction | Close запрещает новый dispatch; remote cancel подтверждается отдельно. Reopen старые commands/turns не оживляет |
-| P07 | Новое сообщение | revision/sequence++; без controlEpoch/automationEpoch | Входящее не меняет controlEpoch, но требует stale_view/подтверждения нового observedSequence по §15.26 |
+| P07 | Новое сообщение | sequence++ и replyRevision по владельцу; без controlEpoch/automationEpoch | Входящее не меняет controlEpoch, но требует stale_view/подтверждения нового observedReplyRevision по §15.26 |
 | P08 | Несвязанный policy change | policyEpoch++ | Повторная авторизация прежнего scope/edges разрешает продолжить; export не начинается заново |
 | P09 | Metadata sync/import/AI/generic CRUD/merge/lifecycle пишет P01–P04 | Тот же UPDATE до начала, mutation+epoch+audit одним executor | Нет обхода через другой writer; неизвестный policy attribute/writer блокирует activation |
 | P10 | SSE/export/download | SHARE на короткую transaction выборки, каждый новый пакет/retrieval recheck | Отзыв блокирует следующую выдачу; отданные байты не возвращаются |
@@ -93,7 +95,7 @@ Closed сильнее любой строки/G17. Missing provenance не сч�
 |---|---|---|
 | C01 | Admission с новым key | pending + audit/event одним commit; non-human slot/effect mapping в том же commit после LLM |
 | C02 | Повтор key+тот же hash | Тот же Command; другой target/body/files hash → conflict |
-| C03 | pending + current authorization и workflowCancellationRefs | dispatching, immutable commandId; network после commit |
+| C03 | pending + current authorization и workflowCancellationRefs | dispatching, immutable commandId; network после commit; для ai_turn — retained producer fence по [владельцу](contracts/workflow-execution.md#turn-lifecycle) |
 | C04 | dispatching + durable connector ACK; outcome_unknown + актуальный authoritative accepted status | accepted; ещё не sent, блокирует human→auto |
 | C05 | dispatching/accepted + timeout/потеря ответа | outcome_unknown; status/reconciliation по тому же ID, без нового provider send |
 | C06 | dispatching/accepted/outcome_unknown + доказанный send/native echo | sent + один canonical Message/MessageLink |
@@ -132,4 +134,4 @@ Closed сильнее любой строки/G17. Missing provenance не сч�
 
 Правила §4/7/15.24 implementation-spec дополняют таблицы: protected reads только primary; canonical ConversationTarget/revision; reply native snapshot/hash; FIFO первого durable enqueue с отдельным monotonic acceptance evidence. Это ещё не охвачено абстрактной моделью. ConsumerReceipt и OmniWorkflowRunIntent — разные сущности (два event kinds одного root могут иметь один intent). Unknown human command сохраняет C-gate на auto; административное подтверждение без provider evidence его не снимает. T08/T10/T11/T12/T14/T23 — будущие integration fixtures.
 
-Human stale-view admission использует observedSequence (§15.26), отдельно от controlEpoch и dispatch epochs; duplicate key/hash возвращает старую Command. Native permission snapshot для protected query загружается из primary в fenced transaction. C17 manual replacement не обходит FIFO unknown-acceptance predecessor. Эти дополнительные правила не покрываются check_decisions.py; T10/T12/T14/T31 предстоят.
+Human stale-view admission использует observedReplyRevision (§15.26), отдельно от controlEpoch и dispatch epochs; duplicate key/hash возвращает старую Command. Native permission snapshot для protected query загружается из primary в fenced transaction. C17 manual replacement не обходит FIFO unknown-acceptance predecessor. Эти дополнительные правила не покрываются check_decisions.py; T10/T12/T14/T31 предстоят.

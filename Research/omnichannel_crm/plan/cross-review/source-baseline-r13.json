@@ -1,0 +1,276 @@
+{
+  "pinned": "729f6236126eddaa68d176fb766bc349b19de11d",
+  "files": [
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/tool-provider/providers/action-tool.provider.ts",
+      "current_sha256": "82be8043d10b845dc0bb2722fec1f9387b1cd6f22c4779e88c68d9f0998aab98",
+      "pinned_lf_sha256": "82be8043d10b845dc0bb2722fec1f9387b1cd6f22c4779e88c68d9f0998aab98",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/tool-provider/services/tool-registry.service.ts",
+      "current_sha256": "a29a7401484d16e79200cd088017f6d2c7e91163ba50d3464c1546db5e5f52e9",
+      "pinned_lf_sha256": "a29a7401484d16e79200cd088017f6d2c7e91163ba50d3464c1546db5e5f52e9",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/tool-provider/tools/execute-tool.tool.ts",
+      "current_sha256": "38498e48e430885e4c3fc3c22fad61150da536757f200e026a43a9ebf4f1fad8",
+      "pinned_lf_sha256": "38498e48e430885e4c3fc3c22fad61150da536757f200e026a43a9ebf4f1fad8",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/tool-provider/tools/learn-tools.tool.ts",
+      "current_sha256": "2bf41bbf4ecea152d01204d57697ec7a508aa4ba894286c8d70b37aa2477db39",
+      "pinned_lf_sha256": "2bf41bbf4ecea152d01204d57697ec7a508aa4ba894286c8d70b37aa2477db39",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/api/mcp/controllers/mcp-core.controller.ts",
+      "current_sha256": "d968c9103f50598e5215c58a43b6e6e6e6017cab358b9e357867cbf014a46bf4",
+      "pinned_lf_sha256": "d968c9103f50598e5215c58a43b6e6e6e6017cab358b9e357867cbf014a46bf4",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/api/mcp/guards/mcp-auth.guard.ts",
+      "current_sha256": "c609508af673d4d6570af5858790379c1936d36ee8d5923bafc3d14bc9c14f8c",
+      "pinned_lf_sha256": "c609508af673d4d6570af5858790379c1936d36ee8d5923bafc3d14bc9c14f8c",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/api/mcp/services/mcp-tool-executor.service.ts",
+      "current_sha256": "a54716f37ed188b2e1f816dacbfe16eac478322d71773f7359fd6919c0a725a9",
+      "pinned_lf_sha256": "a54716f37ed188b2e1f816dacbfe16eac478322d71773f7359fd6919c0a725a9",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/tool/tools/code-interpreter-tool/code-interpreter-tool.ts",
+      "current_sha256": "a7a22f85152828e2e4b2faa23a370539d6889ba89ca800b577bed88ffaf91077",
+      "pinned_lf_sha256": "a7a22f85152828e2e4b2faa23a370539d6889ba89ca800b577bed88ffaf91077",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/metadata-modules/ai/ai-agent-execution/services/agent-runner.service.ts",
+      "current_sha256": "7fb810ea02fa412444cc1d8918ee575d340549c31f4c25b2d8cdc2afbe97b0c0",
+      "pinned_lf_sha256": "7fb810ea02fa412444cc1d8918ee575d340549c31f4c25b2d8cdc2afbe97b0c0",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/metadata-modules/ai/ai-agent-execution/pausing-tools/constants/pausing-tools.constant.ts",
+      "current_sha256": "769e7765a74ab68e51283589e80b6eef1091c80592e430ed5a8665e03a1e298b",
+      "pinned_lf_sha256": "769e7765a74ab68e51283589e80b6eef1091c80592e430ed5a8665e03a1e298b",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/metadata-modules/ai/ai-agent-execution/pausing-tools/constants/agent-wait-tool-names.constant.ts",
+      "current_sha256": "bac6dfce0136264be19b220ec359580b23dd72b73bdc68f1f53b768356fbd86e",
+      "pinned_lf_sha256": "bac6dfce0136264be19b220ec359580b23dd72b73bdc68f1f53b768356fbd86e",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/workflow/services/core-workflow-lifecycle.workspace-service.ts",
+      "current_sha256": "11b40e4c05a6ed3734ea8fb0b3ed052f863c223c76a8255b79531e35d10944f2",
+      "pinned_lf_sha256": "11b40e4c05a6ed3734ea8fb0b3ed052f863c223c76a8255b79531e35d10944f2",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/modules/workflow/workflow-runner/jobs/run-workflow.job.ts",
+      "current_sha256": "dcb6210425b8d1e94707477e19df1cf004ca08a96e13a0f4571cdb969faef589",
+      "pinned_lf_sha256": "dcb6210425b8d1e94707477e19df1cf004ca08a96e13a0f4571cdb969faef589",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/modules/workflow/workflow-runner/workflow-run-queue/jobs/workflow-clean-workflow-runs.job.ts",
+      "current_sha256": "f5b78ae6b71461e0fcdbb9ec24105eb4e47571a8bf08f2a794e13ca61f2a7b17",
+      "pinned_lf_sha256": "f5b78ae6b71461e0fcdbb9ec24105eb4e47571a8bf08f2a794e13ca61f2a7b17",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/metadata-modules/ai/ai-agent-execution/services/agent-toolset.service.ts",
+      "current_sha256": "4fb8aa67edf65af644de6a76de0ab8bbdd479571bf1af11881692407ad7c46c5",
+      "pinned_lf_sha256": "4fb8aa67edf65af644de6a76de0ab8bbdd479571bf1af11881692407ad7c46c5",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/metadata-modules/ai/ai-agent-execution/services/agent-run-turn.service.ts",
+      "current_sha256": "e1d48dd548822d7e2d4e82a6d1f1e7bd570b829af9070f3377b1131e5ea23c07",
+      "pinned_lf_sha256": "e1d48dd548822d7e2d4e82a6d1f1e7bd570b829af9070f3377b1131e5ea23c07",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/metadata-modules/ai/ai-models/services/ai-model-config.service.ts",
+      "current_sha256": "6ee52f59725201522144ef486b706b4b6340d61a0185a804f830e0c724cc43c2",
+      "pinned_lf_sha256": "6ee52f59725201522144ef486b706b4b6340d61a0185a804f830e0c724cc43c2",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/ai-agent/utils/build-workflow-agent-run-spec.util.ts",
+      "current_sha256": "fe249323af01fe2b0e936b4432c977c55cccdff5ed0b6df1aea6957d0a5af79a",
+      "pinned_lf_sha256": "fe249323af01fe2b0e936b4432c977c55cccdff5ed0b6df1aea6957d0a5af79a",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/ai-agent/ai-agent.workflow-action.ts",
+      "current_sha256": "dc5e57509c06d1e15ffd9231713a03c0543b6ce700508b27560ce080002594a7",
+      "pinned_lf_sha256": "dc5e57509c06d1e15ffd9231713a03c0543b6ce700508b27560ce080002594a7",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/logic-function/logic-function-executor/logic-function-executor.service.ts",
+      "current_sha256": "6473ee8a60584820a7144bd8a299cda9891267107ff2e62c788bcea5a3bc8000",
+      "pinned_lf_sha256": "6473ee8a60584820a7144bd8a299cda9891267107ff2e62c788bcea5a3bc8000",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/code/code.workflow-action.ts",
+      "current_sha256": "d4dc3ab26600a054dbcfe36a2d80333fbf08afc9411f0282cffb11f62f81bd0b",
+      "pinned_lf_sha256": "d4dc3ab26600a054dbcfe36a2d80333fbf08afc9411f0282cffb11f62f81bd0b",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/logic-function/logic-function.workflow-action.ts",
+      "current_sha256": "bcf3368720202ab0621487db7784e98fb62589ea8a412e941621e78ef8ee0064",
+      "pinned_lf_sha256": "bcf3368720202ab0621487db7784e98fb62589ea8a412e941621e78ef8ee0064",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/modules/workflow/workflow-executor/workspace-services/workflow-executor.workspace-service.ts",
+      "current_sha256": "6f6d148bc45d0c089e9f5e9abdebe59bf7070166de236a1da95b3d0f5987c0df",
+      "pinned_lf_sha256": "6f6d148bc45d0c089e9f5e9abdebe59bf7070166de236a1da95b3d0f5987c0df",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/modules/workflow/workflow-runner/workspace-services/workflow-runner.workspace-service.ts",
+      "current_sha256": "10a0952d7771ea7c8b9e26721e32198937d3e77c8bfdc3f833419106507c9d21",
+      "pinned_lf_sha256": "10a0952d7771ea7c8b9e26721e32198937d3e77c8bfdc3f833419106507c9d21",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/workflow/resolvers/workflow-trigger.resolver.ts",
+      "current_sha256": "fef0d7c4e627537f9476930e1bbe1724ed391b731cad904eb04ddcafdeb55b5f",
+      "pinned_lf_sha256": "fef0d7c4e627537f9476930e1bbe1724ed391b731cad904eb04ddcafdeb55b5f",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-front/src/modules/command-menu-item/engine-command/record/single-record/workflow-runs/components/RetryWorkflowRunSingleRecordCommand.tsx",
+      "current_sha256": "dda1cabe45b422bc2a2dfcebf8e1d35d2d16e0b2b3414bb8e0d573e0d7f3fa1e",
+      "pinned_lf_sha256": "dda1cabe45b422bc2a2dfcebf8e1d35d2d16e0b2b3414bb8e0d573e0d7f3fa1e",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/modules/workflow/workflow-runner/workflow-run/workflow-run.workspace-service.ts",
+      "current_sha256": "9d879ad82d9191b46b87c1ab3c8c13922634265dae73a28b35d0708798875724",
+      "pinned_lf_sha256": "9d879ad82d9191b46b87c1ab3c8c13922634265dae73a28b35d0708798875724",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-shared/src/workflow/types/WorkflowActionType.ts",
+      "current_sha256": "a0a1ad26d6fad098fbdda4278a51f10870a1ed3f68c766fa7268aba51b22f409",
+      "pinned_lf_sha256": "a0a1ad26d6fad098fbdda4278a51f10870a1ed3f68c766fa7268aba51b22f409",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/api/common/common-query-runners/common-merge-many-query-runner.service.ts",
+      "current_sha256": "a41de25f8efbf81eb1fe0809a91b24e21d6ea206c6f13d3100cb065395c08e99",
+      "pinned_lf_sha256": "a41de25f8efbf81eb1fe0809a91b24e21d6ea206c6f13d3100cb065395c08e99",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/modules/person/standard-objects/person.workspace-entity.ts",
+      "current_sha256": "5755cf29c51941e6a596a315455742ad8524f49629e6c41738cb27fa74ef39df",
+      "pinned_lf_sha256": "5755cf29c51941e6a596a315455742ad8524f49629e6c41738cb27fa74ef39df",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/modules/workflow/workflow-trigger/automated-trigger/listeners/workflow-database-event-trigger.listener.ts",
+      "current_sha256": "3b7c623dbdcc5d06453fe1f6e57ec1eceed0c422d9d623b8d2852df5d675dc69",
+      "pinned_lf_sha256": "3b7c623dbdcc5d06453fe1f6e57ec1eceed0c422d9d623b8d2852df5d675dc69",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/modules/workflow/workflow-trigger/jobs/workflow-trigger.job.ts",
+      "current_sha256": "f6ead68cccb47e512ca9a3305229f9ef79a48a797d1dd3678b7872c4137b10c0",
+      "pinned_lf_sha256": "f6ead68cccb47e512ca9a3305229f9ef79a48a797d1dd3678b7872c4137b10c0",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/modules/workflow/workflow-trigger/utils/assert-version-can-be-activated.util.ts",
+      "current_sha256": "1e2bac2b9692c355dd6332f259583e4f63daee3bae93fe3eca19bf370a424779",
+      "pinned_lf_sha256": "1e2bac2b9692c355dd6332f259583e4f63daee3bae93fe3eca19bf370a424779",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/trash-cleanup/services/trash-cleanup.service.ts",
+      "current_sha256": "2486992ce637570a36cdc8445db98b0fee8b4fca29a54ce49ceba3f9b92ce826",
+      "pinned_lf_sha256": "2486992ce637570a36cdc8445db98b0fee8b4fca29a54ce49ceba3f9b92ce826",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/workspace-manager/twenty-standard-application/utils/field-metadata/compute-message-participant-standard-flat-field-metadata.util.ts",
+      "current_sha256": "726b3d3d7c4b1e637848671ffb300b34bd1eab1dfb6bddff8b463513874552b1",
+      "pinned_lf_sha256": "726b3d3d7c4b1e637848671ffb300b34bd1eab1dfb6bddff8b463513874552b1",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/secret-encryption/utils/resolve-encryption-keys-or-throw.util.ts",
+      "current_sha256": "1380da120dcf7d110785ada64f4111a157e6840852e86833978ac728960d00fd",
+      "pinned_lf_sha256": "1380da120dcf7d110785ada64f4111a157e6840852e86833978ac728960d00fd",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/jwt/services/jwt-wrapper.service.ts",
+      "current_sha256": "5cfa6f78124b39aee3c1c9f820f91d1b18ced93e0d0a375989ce5596c61f2824",
+      "pinned_lf_sha256": "5cfa6f78124b39aee3c1c9f820f91d1b18ced93e0d0a375989ce5596c61f2824",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/workspace-event-emitter/workspace-event-emitter.ts",
+      "current_sha256": "70e81ae2780c829740e82d2d49441a4aa55a5de81c211bc26a5715f42f24e7d0",
+      "pinned_lf_sha256": "70e81ae2780c829740e82d2d49441a4aa55a5de81c211bc26a5715f42f24e7d0",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/workspace-event-emitter/types/workspace-event-batch.type.ts",
+      "current_sha256": "d74cba658d0f8e7882d6b6d1c53940562cb6bb04a21857db83a1ca309d14cddb",
+      "pinned_lf_sha256": "d74cba658d0f8e7882d6b6d1c53940562cb6bb04a21857db83a1ca309d14cddb",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/workflow/types/workflow-automated-trigger-maps.type.ts",
+      "current_sha256": "abae3e117251cfd78ed070e0cb1a0ceff62dba20435837a7639320cb84d19cb8",
+      "pinned_lf_sha256": "abae3e117251cfd78ed070e0cb1a0ceff62dba20435837a7639320cb84d19cb8",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/search/services/search.service.ts",
+      "current_sha256": "109e3c8ae0469f2df4cb499806dc28795908dff8d55f940e60e40433628fd696",
+      "pinned_lf_sha256": "109e3c8ae0469f2df4cb499806dc28795908dff8d55f940e60e40433628fd696",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/workspace-data-export/services/workspace-data-export-part-writer.service.ts",
+      "current_sha256": "63ecb1291f0022d5178e6ef4fa903cd23b3bf2efc1c9b65b678dfec55ed80b1a",
+      "pinned_lf_sha256": "63ecb1291f0022d5178e6ef4fa903cd23b3bf2efc1c9b65b678dfec55ed80b1a",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/twenty-orm/datasource/workspace-data-source.service.ts",
+      "current_sha256": "afad6ddd22cdaced5042a9319984af435588cbb04f1b3e8fdcbc9324c30b87cd",
+      "pinned_lf_sha256": "afad6ddd22cdaced5042a9319984af435588cbb04f1b3e8fdcbc9324c30b87cd",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/modules/messaging/common/standard-objects/message-thread-target.workspace-entity.ts",
+      "current_sha256": "fe3a91c705c679365a0ef9850ff74fe2ff839469e220260af6da4e1453345ab9",
+      "pinned_lf_sha256": "fe3a91c705c679365a0ef9850ff74fe2ff839469e220260af6da4e1453345ab9",
+      "equal_lf": true
+    },
+    {
+      "path": "packages/twenty-server/src/engine/twenty-orm/workspace-orm.manager.ts",
+      "current_sha256": "f07bbca584018975710893d0ff9f976a4caac63d3aafb65342cc79f7c9da9ea7",
+      "pinned_lf_sha256": "f07bbca584018975710893d0ff9f976a4caac63d3aafb65342cc79f7c9da9ea7",
+      "equal_lf": true
+    }
+  ],
+  "scope": "45 source evidence files; not an exhaustive runtime equivalence or deployment check"
+}
