@@ -21,3 +21,8 @@
 **Done when:** матрица запретов проходит на Free/self-hosted, включая прямой API; не осталось немаркированного system bypass. Можно безопасно проверять multi-manager UI.
 
 **Rollback:** при выключении новой политики protected объекты недоступны, а не возвращаются к широким upstream grants. Не выкатывать fallback «разрешить всё» ради доступности.
+
+
+Четвёртый раунд уточняет обязательные AutomationArtifactScope и own baseline readability (§15.12–15.13), policy reauthorization/lock modes (§15.15), core CrmRecordRevision для CAS сделки (§15.17). Эти механизмы входят в этап, до активации прав; production зависит от G18.
+
+Обязателен §15.18: собственный admission обычных SSE/webhook/logic-function events; guard всех metadata usable account/channel/folder paths; feature inventory до удаления Enterprise функций и G18.

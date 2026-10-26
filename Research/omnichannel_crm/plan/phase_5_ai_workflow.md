@@ -23,3 +23,10 @@
 **Done when:** auto и assist работают обоими каналами в разрешённых сценариях, человек останавливает будущие AI actions, ни один tool/экспорт не раскрывает чужую область.
 
 **Rollback:** переключить conversations в human, инвалидировать epoch, дренировать dispatch; не выключать аудит/чтение истории и не пересылать неизвестные команды повторно.
+
+
+Четвёртый раунд: sender×mode/provenance (§15.14), protected AI/workflow artifacts (§15.12), terminal throttled disposition (§15.17). Takeover не обходится новой workflow-командой с новым epoch.
+
+SEND_OMNI_MESSAGE интегрируется в shared schema, server factory/validation/DI и front editor/registry; trusted sender provenance и стабильный effect key по §15.18. Это отдельное действие от внутреннего SEND_CHAT_MESSAGE.
+
+Обязателен §15.19: trigger switches/metrics/activation/schema, durable OmniWorkflowSubscription, run watchdog с fenced terminal stalled при потере очереди, без автоматического повторения произвольных эффектов. T14 до COMPLETED в норме и до видимого исхода при отказе.

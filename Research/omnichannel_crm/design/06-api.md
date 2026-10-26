@@ -11,10 +11,10 @@ GraphQL queries/mutations для команд и чтения; существу�
 | Операция | Вход / эффект |
 |---|---|
 | conversations / conversationMessages | Фильтры, cursor, page limit; ACL применяется до выдачи, count и сумм |
-| sendConversationMessage | conversationId, текст/готовые file IDs, idempotencyKey, expectedRevision; сервер назначает actor/workspace, создаёт Command |
+| sendConversationMessage | conversationId, текст/готовые file IDs, idempotencyKey, expectedControlEpoch; сервер назначает actor/workspace, создаёт Command |
 | addInternalNote | conversationId, body, idempotencyKey; не вызывает внешнюю отправку |
-| assignConversation / changeParticipants | Ожидаемая revision, разрешённые workspaceMember IDs; проверка права назначения и доступа получателя |
-| setConversationMode / takeover | mode, expectedRevision; атомарное увеличение epoch и отмена pending AI-команд |
+| assignConversation / changeParticipants | expectedControlEpoch, разрешённые workspaceMember IDs; проверка права назначения и доступа получателя |
+| setConversationMode / takeover | mode, expectedControlEpoch; атомарное увеличение epoch и отмена pending non-human команд прежнего controlEpoch |
 | transitionOpportunity | opportunityId, targetStageValue, expectedStageOptionsHash, expectedRevision; серверная матрица переходов и актуальные права |
 | connectionStatus / registerBinding / disableBinding | Привязка к transport account, capabilities/health; отключение сохраняет историю |
 | startImport / importStatus / pauseImport | Утверждённый источник/диапазон и checkpoint; отдельное право администратора |
@@ -37,7 +37,6 @@ Subscription выдаёт только разрешённые conversation event
   "providerChatId": "opaque-provider-id",
   "providerMessageId": "opaque-provider-id",
   "occurredAt": "provider-timestamp",
-  "origin": "live",
   "payload": {}
 }
 ```
@@ -46,9 +45,11 @@ Subscription выдаёт только разрешённые conversation event
 
 Ответ после durable receipt: accepted + receiptId; повтор того же payload — тот же receiptId. Неверная подпись/отозванное поколение — отказ; ID с изменённым payload — conflict; перегрузка — retryable отказ до ACK. Kind имеет отдельную schema: received/edited/deleted, command.receipt, connection.state. Не доверять присланным полям actor/admin, URL для скачивания или relationship IDs.
 
-`origin=import` разрешается только import job/credential; обычный внешний отправитель не может отключить аудит или workflow таким параметром. Omni generic record events полностью подавлены. Safe projection из DomainEvent поступает в типизированный OMNICHANNEL_EVENT workflow trigger по implementation-spec §15.10, не в общий WorkspaceEventBatch.
+Поле origin запрещено во внешнем envelope. Trusted history_import назначает только внутренний import job после pull страницы по scoped history.read credential; источник не управляет suppression. Omni generic record events полностью подавлены. Safe projection из DomainEvent поступает в типизированный OMNICHANNEL_EVENT workflow trigger по implementation-spec §15.10, не в общий WorkspaceEventBatch.
 
 ## Twenty -> Connector
+
+Полный контракт history pull, envelope schema и страницы — implementation-spec §15.16. `fetchHistoryPage(importBatchId,binding,chat,sourceType,cursor,window,limit,expectedAccountIdentity)` использует отдельный history.read credential без права send. Происхождение назначает внутренний job Twenty; сохранение page receipt предшествует cursor advance.
 
 Минимальные операции: enqueue(commandId, binding, routeGeneration, providerChatId, payload/files), commandStatus(commandId), accountStatus(binding), pauseAccount(binding). Это адаптация существующего enqueue_send/jobs/Partner API, не заявление об их текущей совместимости.
 

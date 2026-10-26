@@ -34,4 +34,4 @@
 
 ## Уточнения для реализации после кроссревью
 
-Дополнительно перед production activation выбрать externalHumanReplyPolicy, AI burst/debounce/max effects, retention старых текстов/ревизий, recovery window и backup policy. Несколько воронок — отдельный вопрос; текущий Opportunity.stage является SELECT-значением. [Подробные gates и контракты](plan/implementation-spec.md) не подменяют эти настройки fixtures.
+Единый актуальный перечень — [implementation-spec, раздел 13](plan/implementation-spec.md#13-единый-реестр-решений-и-gates), G01–G18. Он включает роли/воронки, аккаунты, onboarding, AI/provider/knowledge/budget, externalHumanReplyPolicy, managerReplyPolicy, burst, очередь/минимальную Person projection, custodian, import/retention, нагрузку, backup/recovery, размещение транспорта и backup owner, изоляцию тестов, операционное разделение ролей БД, внешние интеграции, служебные уведомления и dependency preflight. Это условия соответствующей активации, не выдуманные значения. D-18 о собственной реализации без подписки сохраняется; G18 не предлагает покупку.

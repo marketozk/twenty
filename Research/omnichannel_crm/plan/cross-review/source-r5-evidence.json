@@ -1,0 +1,11 @@
+{
+  "date": "2026-10-26",
+  "scope": "Read-only author evidence for fourth planning correction; no runtime tests",
+  "sha256": {
+    "LICENSE": "caece25ff05e7058a8fd98c34313757ed48d5e9304e0aeb7875d4b11de77bc01",
+    "packages/twenty-server/src/modules/workflow/workflow-runner/services/core-workflow-runner.service.ts": "70abbe482e4432d1876c524ffbe54dee7f17295c8da3cfdaaca27995e4c614e7",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-history/services/agent-turn-recorder.service.ts": "8a1d6115074267e557be7a311d65107d99be9ffb218ae1279d8d47d08a6207f1",
+    "packages/twenty-server/src/engine/twenty-orm/base.workspace-entity.ts": "d9e335a38d2e9a2d90313bcb4ce8a8dacd44773b8e8fc740172c7ea11ac5386b",
+    "packages/twenty-server/src/modules/opportunity/standard-objects/opportunity.workspace-entity.ts": "ecd3da2e93e227deaa9ea19ecc5d8501068536088c00a7eb4e638be952e604b6"
+  }
+}

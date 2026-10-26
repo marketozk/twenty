@@ -1,0 +1,9 @@
+{
+  "packages/twenty-server/src/engine/metadata-modules/connected-account/connected-account-metadata.service.ts": "edcec98cf8b6e784f0ea5ba16b3c4d5aeea079bef33ca1a9ca6edc140e3d68f2",
+  "packages/twenty-server/src/engine/api/common/common-query-runners/common-create-many-query-runner/common-create-many-query-runner.service.ts": "1bffc495f6f91599b215769c234f47136739bee3ecdc687206bf0991338b392a",
+  "packages/twenty-server/src/modules/match-participant/match-participant.service.ts": "453a6026cdf3a56a3b40d50ed01a12f9001ee3416c37444e8bd69daac701a742",
+  "packages/twenty-server/src/modules/workflow/workflow-executor/factories/workflow-action.factory.ts": "24f8233cc5fcdae031f60e05a080899632df7039e545884ba37c390da9ed0254",
+  "packages/twenty-shared/src/workflow/schemas/workflow-action-schema.ts": "258230ac9931167d2401b86af7a8a87ad47329cd4c7171be7700ed6c4abbc567",
+  "packages/twenty-server/src/engine/subscriptions/object-record-event/object-record-event-publisher.ts": "81f028334afb6cf8795136df37ec1ec81638a0ebaf044a7b8fa8555a4c65711b",
+  "packages/twenty-server/src/engine/core-modules/core-engine.module.ts": "3370825e939f10ce2ef42d81b6bac6ede1f738686c11a979b903549bf58a33a5"
+}

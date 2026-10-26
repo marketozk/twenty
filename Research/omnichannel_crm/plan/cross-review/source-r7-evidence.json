@@ -1,0 +1,7 @@
+{
+  "packages/twenty-server/src/modules/workflow/workflow-runner/jobs/run-workflow.job.ts": "dcb6210425b8d1e94707477e19df1cf004ca08a96e13a0f4571cdb969faef589",
+  "packages/twenty-server/src/modules/workflow/workflow-runner/workflow-run-queue/workspace-services/workflow-handle-staled-runs.workspace-service.ts": "5ae5fee63932faf5ef49f1bc42a71276efd3c50be2b2e16a33ba103d1d163a25",
+  "packages/twenty-server/src/engine/core-modules/workflow/utils/compute-automated-trigger-from-workflow-version.util.ts": "9aae6b10180cabbd11f8475701cfcbcf6f8b9833d75f58b0e5dd34e5544b4c5f",
+  "packages/twenty-server/src/engine/twenty-orm/upgrade-aware/upgrade-aware-entity-metadata.adapter.ts": "c873d423451b94e57d8fc722465a5199309a8ecd032a5959d6310beb02110e5f",
+  "packages/twenty-server/src/modules/workflow/workflow-trigger/utils/assert-version-can-be-activated.util.ts": "1e2bac2b9692c355dd6332f259583e4f63daee3bae93fe3eca19bf370a424779"
+}

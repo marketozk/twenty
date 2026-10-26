@@ -25,3 +25,7 @@
 **Done when:** один синтетический входящий виден в штатном Message и связан с Person; любой crash даёт либо полный commit, либо безопасный replay; нет открытого auto CRUD системных полей.
 
 **Rollback:** выключить только omni consumers; сохранить receipts/outbox для replay. Откат схемы с реальными сообщениями не делать вслепую; сначала восстановленный тестовый backup.
+
+С первого patch: baseline import/DI manifest и CI no-new Enterprise dependencies; participant rematch исключает omni до update, сохраняя email batch. Подробные решения §15.18, T05/T20/T22.
+
+Fork-only IDs не используются в upstream upgrade-aware decorators; preflight/ledger и T33 по §15.19. Conversation revision и controlEpoch разделены; будущий API управления принимает expectedControlEpoch.

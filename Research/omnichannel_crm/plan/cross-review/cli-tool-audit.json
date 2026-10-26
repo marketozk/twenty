@@ -1,0 +1,19 @@
+{
+  "b2754c16-3600-4c60-ac8c-e3ef861c8d76": {
+    "Glob": 4,
+    "Read": 34,
+    "mcp__task-card__update": 3,
+    "Grep": 34
+  },
+  "239822bd-f6ad-4a5a-bdc1-ea95169342ac": {
+    "Glob": 3,
+    "Read": 36,
+    "Grep": 41,
+    "mcp__task-card__update": 1
+  },
+  "792e21e8-4d4b-4119-9ac2-cb768ea053b1": {
+    "Glob": 5,
+    "Read": 43,
+    "Grep": 34
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "baseline": "96ddf21e",
+  "source": "729f6236126eddaa68d176fb766bc349b19de11d",
+  "authorization": "user: да продолжаем, fourth fix-and-recheck",
+  "sha256": {
+    "Research/omnichannel_crm/plan/implementation-spec.md": "0b7427786d8066007cf52d4c5d554a6806b9e998db7900121faee419e71c2a38",
+    "Research/omnichannel_crm/plan/phase_0_environment.md": "bc18e6764a8d536d519283a1263bee6eba757f83e6573f97f51ddfa706dbed61",
+    "Research/omnichannel_crm/plan/phase_1_data.md": "5f0947d40c307dd69baebd501286ba137bc059fa9f3b5714151e2c82eccb9a31",
+    "Research/omnichannel_crm/plan/phase_2_audit.md": "5118cf9f9eae105759135abeefe86b960ffd6fddbfbd3ec0fec748c8541f199e",
+    "Research/omnichannel_crm/plan/phase_3_access.md": "8c62a9effaca7cc5c8a0e3b57145bbc3138e592b7a719504a80c31fa03764f24",
+    "Research/omnichannel_crm/plan/phase_4_chat.md": "afd41d413a4b8cd60a6c9f1996231766eca175ada2b0dfbab18f443dfdf85c90",
+    "Research/omnichannel_crm/plan/phase_5_ai_workflow.md": "cff61daef424de0e26519af250d248cc61a0b63e3a18014bce20eda4c02745e0",
+    "Research/omnichannel_crm/plan/phase_6_history.md": "5afb171ae58a9a14b2b377ad7da672d9b6b58c05c8b4bb736ee69117f29a5218",
+    "Research/omnichannel_crm/plan/phase_7_acceptance.md": "9b7d699a23ebbf342b668675b1a892141d9f1d3ec1b2fb1e08cbcf2113251983",
+    "Research/omnichannel_crm/design/06-api.md": "49966dd20ede5f91620dc477a0051f54a54f0c6bbfca47fad39f3b515a77a45c",
+    "Research/omnichannel_crm/open-questions.md": "65c7ed304768131c78b38e0ec36c0e660e0a0171e9c64c467c686f7984c81a3f",
+    "Research/omnichannel_crm/implementation/license-inventory.md": "a9fac4e084cdfddd84eb978d86051c80373287d92edaa8ea54cd08fe39ac48a7"
+  }
+}

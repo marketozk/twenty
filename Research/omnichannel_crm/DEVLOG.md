@@ -101,3 +101,17 @@
 - Linear: восемь описаний ROB-764–771 дополнены подробным контрактом и открытым остатком; ROB-772 содержит весь scope и needs_revision. Обратное чтение подтвердило 11 задач, ROB-772 In Progress, ROB-764 Todo, семь этапов Backlog и связь ROB-772 blocks ROB-764. [Итоговый комментарий](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-654c7ac4) ровно один.
 - Все завершённые CLI-проходы exit 0/is_error=false; свежие R2/R3/R4 и последняя сверка сообщают claude-opus-5-5. Это подтверждение исполнения review, не положительного вердикта: needs_revision сохраняется.
 - Следующее действие: явное решение владельца о четвёртом пакете правок плана по листу остатка. Никаких accepted-risk, runtime/deploy или отправок клиентам этой синхронизацией не добавлено.
+
+### 2026-10-26 — LOG-008 — четвёртый раунд разрешён и выполнена авторская правка
+
+- Пользователь разрешил продолжение ответом «да продолжаем». ROB-772, только документы. Baseline `96ddf21e`, runtime исходники неизменны.
+- Исправлены контракты восьми остатков R4: защищённые artifacts AI/workflow, независимый baseline ACL/dependency inventory, sender×mode после takeover, policy reauthorize и SHARE/UPDATE без upgrade, pull history pages, terminal workflow throttle, единый реестр G01–G18, core revision для CAS сделки. API/phase3/5/6/open-questions/license inventory согласованы.
+- Прочитаны pinned LICENSE, CoreWorkflowRunnerService (FAILED hard throttle), BaseWorkspaceEntity/Opportunity (revision отсутствует), recorder и actual native history bounds (24h; request limit≤100, MAX effective≤30). Никаких запросов истории/отправок/изменений БД не было.
+- Начат fresh blind R5 через Claude Code default model, Read/Grep/Glob, без Bash/Edit/Write/MCP/hooks/slash skills. Snapshot review-r5-manifest.json. Вердикт ещё не предполагается; прежние open ID сохраняются до независимой сверки.
+
+- R5/R6/R7 выполнены последовательно в пределах разрешённого продолжения: open major 1→1→2, итог R7 45/49 closed_in_plan, два major и два minor open. Все ответы A/B и manifest сохранены. Следующий круг той же формы остановлен по правилу сходимости; подготовлено конкретное предложение структурно пересобрать capability boundary/admission/reply budget. Оно не считается внесённой архитектурой или pass.
+- R7 закрыл собственные baseline/event consumers, account metadata, rematch, workflow action wiring, trigger lifecycle/recovery и control CAS; вновь выявлены delegated token boundary и version-based replay, уточнены общий budget и pausing tools. Полный остаток — plan/cross-review/residual.md. ROB-772 остаётся In Progress, ROB-764 не начата.
+- Исправление точности отчёта: raw CLI audit показал служебный mcp__task-card__update в R5 (3) и R6 (1), несмотря на prompt/strict-mcp-config. Это карточка CLI, не Linear; вызовов Bash/Edit/Write/Linear не было. В R7 tool явно запрещён; фактический аудит прилагается. Секреты/сырые диалоги CLI не публикуются.
+- Работали только с документами Twenty CRM; пакеты runtime, ops и чужой репозиторий не менялись, реальные сообщения не отправлялись. T01–T33 остаются будущими проверками. Проверка, commit/push и синхронизация Linear фиксируются при публикации ниже.
+
+- Проверка пакета LOG-008: 267 локальных Markdown-ссылок существуют; JSON валидны; снимок R7 не изменён после review; 49 уникальных ID / 45 closed / 4 open подтверждены механически. git diff --check и отсутствие runtime diff проверяются перед commit.

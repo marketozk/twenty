@@ -1,0 +1,21 @@
+{
+  "baseline": "96ddf21e",
+  "source": "729f6236126eddaa68d176fb766bc349b19de11d",
+  "authorization": "user: да продолжаем; scoped documentation cross-review continuation",
+  "sha256": {
+    "Research/omnichannel_crm/plan/implementation-spec.md": "2f85af948533005497ed4f66a64366dc44e6341e19b1bacfa366f7bf3cfd0b58",
+    "Research/omnichannel_crm/plan/phase_0_environment.md": "bc18e6764a8d536d519283a1263bee6eba757f83e6573f97f51ddfa706dbed61",
+    "Research/omnichannel_crm/plan/phase_1_data.md": "88c72b833eae51f9f137197d9ed4e02b5cbd3ef45f37fa153d56798ce1157919",
+    "Research/omnichannel_crm/plan/phase_2_audit.md": "5118cf9f9eae105759135abeefe86b960ffd6fddbfbd3ec0fec748c8541f199e",
+    "Research/omnichannel_crm/plan/phase_3_access.md": "cc149aaf3f53614c9104f2bf2d8aa1778e776ab9b16384f5bd0370dacfcceb98",
+    "Research/omnichannel_crm/plan/phase_4_chat.md": "afd41d413a4b8cd60a6c9f1996231766eca175ada2b0dfbab18f443dfdf85c90",
+    "Research/omnichannel_crm/plan/phase_5_ai_workflow.md": "afce9f0dc4029da60bb92f1d70698a05a924253613c5490c66c82ff2694ec981",
+    "Research/omnichannel_crm/plan/phase_6_history.md": "d6c9e30d6e550ce65eb70820cc2a6d70960326404421c04cc0493124890e5118",
+    "Research/omnichannel_crm/plan/phase_7_acceptance.md": "9b7d699a23ebbf342b668675b1a892141d9f1d3ec1b2fb1e08cbcf2113251983",
+    "Research/omnichannel_crm/design/06-api.md": "d055115d57aef7f345d7b092118c7bb70aecb5170782f58e15e3bae62829996a",
+    "Research/omnichannel_crm/open-questions.md": "65c7ed304768131c78b38e0ec36c0e660e0a0171e9c64c467c686f7984c81a3f",
+    "Research/omnichannel_crm/implementation/license-inventory.md": "a9fac4e084cdfddd84eb978d86051c80373287d92edaa8ea54cd08fe39ac48a7",
+    "Research/omnichannel_crm/requirements.md": "7781a81c1837a794007810da42cf6115156fd9cc63082852e8d04ebac3861ff8",
+    "Research/omnichannel_crm/plan/coverage.md": "cd16aa64216b4e6cd58599e16928a043137efcc0bec99ca1fafec2d078d5521e"
+  }
+}

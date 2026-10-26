@@ -1,20 +1,18 @@
-# Остаток после трёх раундов правок
+# Остаток после R7 и следующий метод работы
 
-26.10.2026. Итог: **needs_revision / escalate**, реализации новых функций ещё нет. Полные сценарии, сигналы и обратимость — [независимая сверка R4 B](claude-r4-reconciliation.md). [Реестр](registry.md) сохраняет все 46 причин и историю. 38 закрыты только в плане; 8 открыты. Этот документ предлагает следующий пакет, но не применяет четвёртую правку спецификации и не принимает риски за владельца.
+26.10.2026. **needs_revision / escalate**: 49 причин, 45 закрыты только в плане, четыре открыты. [Независимая сверка R7 B](claude-r7-reconciliation.md), [полный реестр](registry.md). Новая реализация и её runtime-тесты отсутствуют.
 
-| ID | Сценарий и последствия | Наблюдение / обратимость | Конкретная предлагаемая правка плана |
+| ID | Риск и подтверждение | Следующее решение | Проверка |
 |---|---|---|---|
-| N-1 major | Разрешённый workflow/ИИ сохраняет секретный клиентский контент; другой сотрудник читает историю запуска | Негативный API test показывает body; раскрытые данные не вернуть | Охватить workflowRun и AI thread/message/parts/turn/targets собственным derived ACL либо redaction+protected references; T08/T21 |
-| N-13 major | Собственный ACL фактически опирается на Enterprise-marked helper | Source import/dependency test; технически обратимо, юридический вывод не установлен | Дополнить inventory, проверить текст лицензий, явно отделить own ACL от record-share; T20. Не просить подписку и не отключать защиту |
-| N-14 major | После takeover новый workflow с ИИ создаёт отправку с новым epoch | Command/audit после human mode; отправку не отменить задним числом | Полная матрица sender×mode, provenance AI-контента, cancellation всех соответствующих non-human commands; T13/T24 |
-| N-15 major | Несвязанная правка повышает workspace epoch и обрывает все операции; upgrade shared lock вызывает deadlock | Interrupted export/turn, 40P01; обратимо | Значение mismatch = reauthorize, explicit SHARE/UPDATE до начала операции, без lock upgrade; T10 |
-| N-16 major | Import job не имеет API источника native/archive pages | Batch не может получить страницу; обратимо | Pull history contract с limited import credential/cursor/window/page hash, origin назначает только job; T11/T16 |
-| M-7 minor | Hard throttle создаёт FAILED run с детерминированным ID, resume повторяет INSERT | FAILED/throttle error; явный reprocess возможен | Terminal throttled disposition, notification, explicit reprocess; T14 |
-| L-2 minor | Таблица решений владельца не перечисляет все введённые настройки | Неожиданный activation denial; обратимо | Единая таблица gates с моментом выбора, ссылками на контракты и отсутствием implicit defaults |
-| N-17 minor | expectedRevision сделки не связан с реальным CAS token | Обнаружится при реализации; обратимо | Выбрать core revision либо проверенный updatedAt contract, охватить все writers; T30 |
+| H-3 major | Code interpreter выпускает широкий application token; новый MCP HTTP request теряет captured conversation scope | Закрытый tool allowlist для discovery/execution; запрет generic delegation из omni либо отдельный bounded-token контракт | T25: direct / execute_tool / sandbox, revoke, чужая запись |
+| M-7 major | receipt/run keys содержат workflowVersionId; publish после crash даёт второй запуск на событие | Stable consumer=workflowId, version immutable внутри receipt, атомарный snapshot получателей | T14: publish до/после intent, crash/replay → один run и effect |
+| N-3 minor | Пропущены wait_for_duration/ask_questions и отдельный pausingTools runner path | Набор из PAUSING_TOOLS ∪ AGENT_WAIT_TOOL_NAMES, pausingTools=[] для auto omni | T27: полный каталог, legacy invocation, новые имена не обходят запрет |
+| M-13 minor | Agent и workflow имеют разные reply budgets; одно событие может дать два независимых ответа | Общий budget/admission; G07 определяет responders, отсутствие выбора закрывает совместную активацию | T27: agent+workflow, simultaneous scheduling, общий slot |
 
-Цена продолжения: ограниченный пакет документальных исправлений и проверка затронутых исходников, затем свежий полный review и reconciliation. Прототип, перенос данных или деплой для этого не нужны. N-1/N-14 остаются open: необратимые нарушения не выносятся на принятие как «достаточно безопасно».
+Раскрытие данных и повтор отправки необратимы; accepted-risk не предлагается. Выбранные значения продуктовых gates не выдумываются. Штатный cleaner, ToolModule→RecordShare и исходный текст AGPL §13 внесены в чек-лист следующего пересмотра, а не отдельные blocker IDs.
 
-Применённый скилл cross-review-convergence требует: «начиная с четвёртого продолжай только с явного решения владельца». Первичное R1 + три fix-and-recheck выполнены (R2, R3, R4). Поэтому следующий запрос владельцу — разрешить четвёртый пакет исправлений и проверку, а не принять перечисленные дефекты или купить платную редакцию.
+Последовательность major 1→1→2 в R5/R6/R7 не показывает сходимости. Скилл [cross-review-convergence](C:/Users/regis/.codex/skills/cross-review-convergence/SKILL.md) требует: «если два последовательных fix-and-recheck раунда не уменьшили число открытых blocker/major ... не запускай третий раунд той же формы». Дальше допускается структурная перестройка либо эскалация; это не требование покупать подписку или принимать дефекты.
 
-ROB-772 остаётся In Progress, ROB-764 Todo и заблокирована этой задачей. Работающий Twenty не менялся, реальные сообщения не отправлялись. Тесты T01–T33 описаны, не написаны и не пройдены.
+Подготовлен [конкретный структурный пересмотр](automation-redesign-proposal.md): два единых инварианта, таблица границ, набор сценариев и порядок проверки. Он пока не заменяет основной spec. Повторный fresh pass без такой переработки не запускается. ROB-772 остаётся In Progress, ROB-764 Todo и заблокирована. Рабочий Twenty не изменён.
+
+[Исторический остаток R4](residual-r4.md) сохранён; он больше не задаёт актуальные статусы или необходимость нового разрешения на четвёртый раунд.

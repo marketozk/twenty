@@ -1,0 +1,27 @@
+{
+  "local_markdown_links": 267,
+  "missing_links": 0,
+  "json_valid": true,
+  "r7_snapshot_unchanged": true,
+  "stable_ids": 49,
+  "closed_in_plan": 45,
+  "open": {
+    "H-3": [
+      "major",
+      "open (R7 B)"
+    ],
+    "M-7": [
+      "major",
+      "open (R7 B)"
+    ],
+    "M-13": [
+      "minor",
+      "open (R7 B)"
+    ],
+    "N-3": [
+      "minor",
+      "open (R7 B)"
+    ]
+  },
+  "runtime_tests": "not_run; documentation-only task"
+}
