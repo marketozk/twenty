@@ -62,6 +62,38 @@ def inventory():
             if x['Config']['Labels'].get('com.docker.compose.project') != 'twenty-demo'}
 
 
+def verify_runtime(container, service, config):
+    image_config = json.loads(read(['docker', 'image', 'inspect', container['Image']]))[0]['Config']
+    actual = container['Config']
+    image_env = dict(item.split('=', 1) for item in image_config.get('Env', []))
+    expected_env = {**image_env, **{k: str(v) for k, v in service.get('environment', {}).items()}}
+    assert dict(item.split('=', 1) for item in actual.get('Env', [])) == expected_env, 'Runtime env drift'
+    assert actual['Cmd'] == (service.get('command') if service.get('command') is not None else image_config.get('Cmd'))
+    assert actual['Entrypoint'] == (service.get('entrypoint') if service.get('entrypoint') is not None else image_config.get('Entrypoint'))
+    assert actual['User'] == service.get('user', image_config.get('User', ''))
+    assert actual['WorkingDir'] == service.get('working_dir', image_config.get('WorkingDir', ''))
+    expected_mounts = sorted((v['type'], config['volumes'][v['source']]['name'], v['target'], not v.get('read_only', False)) for v in service.get('volumes', []))
+    actual_mounts = sorted((v['Type'], v.get('Name', v['Source']), v['Destination'], v['RW']) for v in container['Mounts'])
+    assert actual_mounts == expected_mounts, 'Runtime mounts drift'
+    host = container['HostConfig']
+    expected_ports = {}
+    for port in service.get('ports', []):
+        expected_ports[f"{port['target']}/{port.get('protocol', 'tcp')}"] = [{'HostIp': port.get('host_ip', ''), 'HostPort': str(port['published'])}]
+    assert (host.get('PortBindings') or {}) == expected_ports, 'Runtime ports drift'
+    assert host['Memory'] == int(service.get('mem_limit', 0))
+    assert host['NanoCpus'] == int(float(service.get('cpus', 0)) * 1_000_000_000)
+    assert host['RestartPolicy'] == {'Name': service.get('restart', 'no'), 'MaximumRetryCount': 0}
+    assert host['LogConfig'] == {'Type': service['logging']['driver'], 'Config': service['logging'].get('options', {})}
+    for runtime_key, compose_key, default in [('Privileged', 'privileged', False), ('ReadonlyRootfs', 'read_only', False), ('CapAdd', 'cap_add', None), ('CapDrop', 'cap_drop', None), ('SecurityOpt', 'security_opt', None), ('Init', 'init', None)]:
+        assert host.get(runtime_key) == service.get(compose_key, default), f'Runtime {runtime_key} drift'
+    assert host['CpuQuota'] == 0 and host['CpuPeriod'] == 0
+    assert set(container['NetworkSettings']['Networks']) == {config['networks'][name]['name'] for name in service['networks']}
+    if service.get('healthcheck'):
+        check = service['healthcheck']
+        expected_health = {'Test': check['test'], 'Interval': int(check['interval'][:-1]) * 1_000_000_000, 'Timeout': int(check['timeout'][:-1]) * 1_000_000_000, 'Retries': check['retries']}
+        assert actual.get('Healthcheck') == expected_health
+
+
 def main():
     os.umask(0o077)
     with (ROOT / '.fork-upgrade.lock').open('w') as lock:
@@ -72,6 +104,8 @@ def main():
         assert all(config['services'][x]['image'] == OLD for x in ['server', 'worker'])
         current = json.loads(read(['docker', 'inspect', 'twenty-demo-server-1', 'twenty-demo-worker-1']))
         assert all(x['Config']['Image'] == OLD and x['State']['Running'] for x in current)
+        for container, name in zip(current, ['server', 'worker']):
+            verify_runtime(container, config['services'][name], config)
         image = json.loads(read(['docker', 'image', 'inspect', IMAGE]))[0]
         assert image['Config']['Labels']['org.opencontainers.image.revision'] == SOURCE_SHA
         assert 'APP_VERSION=v2.52.0' in image['Config']['Env']
@@ -119,6 +153,8 @@ def main():
             assert json.loads(read(['docker', 'inspect', 'twenty-demo-' + service + '-1']))[0]['Id'] == container_id
         apps = json.loads(read(['docker', 'inspect', 'twenty-demo-server-1', 'twenty-demo-worker-1']))
         assert all(x['Image'] == image['Id'] and x['State']['Running'] for x in apps)
+        for container, name in zip(apps, ['server', 'worker']):
+            verify_runtime(container, candidate['services'][name], candidate)
         summary = {'source': SOURCE_SHA, 'image': IMAGE, 'imageId': image['Id'], 'version': 'v2.52.0',
                    'backupCreated': False, 'crmContentFingerprintsUnchanged': True,
                    'tablesVerified': len(before), 'infraContainersUnchanged': True, 'otherContainersUnchanged': True}
