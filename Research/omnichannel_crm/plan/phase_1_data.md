@@ -1,5 +1,7 @@
 # Этап 1. Модель общения, inbox/outbox и журнал
 
+Авторская редакция после R7 внесена: [единый контракт](../design/09-automation-contract.md) и [source matrix](../implementation/automation-source-matrix.md). EventDispatchPlan/receipts фиксируют stable consumerId и pinned version атомарно; общий reply budget охватывает agent/workflow. Closed tool registry, запрет generic token issuance и полный pausing inventory обязательны. H-3/M-7/N-3/M-13: addressed_pending_review, не closed.
+
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
 Зависимость: этап 0. Статус: не выполнен.

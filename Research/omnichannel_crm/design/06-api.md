@@ -1,5 +1,7 @@
 # Контракты API v1
 
+Авторская актуализация после R7: [единый контракт автоматизации](09-automation-contract.md) внесён в основной план; независимая проверка ещё требуется. Инструменты/делегирование, stable workflow identity, полный запрет pausing и общая квота ответов определены этим контрактом.
+
 Уточнение 26.10.2026: [подробный план всего проекта](../plan/implementation-spec.md), особенно раздел 15, задаёт lifecycle, canonical source keys, scoped AI, restore и fork migrations. Схематичные ключи/названия ниже не заменяют эти точные контракты.
 
 Ниже **проектируемые**, ещё не работающие операции. Публичные API Twenty сохраняются; новые команды используют те же session/workspace guards, а транспортные credentials имеют отдельную узкую область. Проверенные существующие точки расширения: APP channels/ingestMessages, messaging transaction services, AgentRunService и workflow executor.

@@ -1,18 +1,14 @@
-# Остаток после R7 и следующий метод работы
+# Текущий остаток после авторской актуализации
 
-26.10.2026. **needs_revision / escalate**: 49 причин, 45 закрыты только в плане, четыре открыты. [Независимая сверка R7 B](claude-r7-reconciliation.md), [полный реестр](registry.md). Новая реализация и её runtime-тесты отсутствуют.
+Последний независимый результат [R7 B](claude-r7-reconciliation.md): 49 причин, 45 closed_in_plan, 2 major + 2 minor open. **Теперь все четыре исправления внесены в основной план; состояние addressed_pending_review.** Новый независимый verdict не получен, runtime-кода/тестов нет.
 
-| ID | Риск и подтверждение | Следующее решение | Проверка |
-|---|---|---|---|
-| H-3 major | Code interpreter выпускает широкий application token; новый MCP HTTP request теряет captured conversation scope | Закрытый tool allowlist для discovery/execution; запрет generic delegation из omni либо отдельный bounded-token контракт | T25: direct / execute_tool / sandbox, revoke, чужая запись |
-| M-7 major | receipt/run keys содержат workflowVersionId; publish после crash даёт второй запуск на событие | Stable consumer=workflowId, version immutable внутри receipt, атомарный snapshot получателей | T14: publish до/после intent, crash/replay → один run и effect |
-| N-3 minor | Пропущены wait_for_duration/ask_questions и отдельный pausingTools runner path | Набор из PAUSING_TOOLS ∪ AGENT_WAIT_TOOL_NAMES, pausingTools=[] для auto omni | T27: полный каталог, legacy invocation, новые имена не обходят запрет |
-| M-13 minor | Agent и workflow имеют разные reply budgets; одно событие может дать два независимых ответа | Общий budget/admission; G07 определяет responders, отсутствие выбора закрывает совместную активацию | T27: agent+workflow, simultaneous scheduling, общий slot |
+| ID | Внесено автором | Где / будущая проверка |
+|---|---|---|
+| H-3 major | Closed capability registry на discovery/execution/MCP/child; generic token issuer/code interpreter запрещены в omni v1 | [design/09 §2](../../design/09-automation-contract.md), spec §9/15.3, T25-A/B/C |
+| M-7 major | Stable workflowId в consumer/run keys; атомарный DispatchPlan и pinned version; canonical intent переживает cleaner | design/09 §3, spec §3/5/15.10/15.17/15.19, T14-A/B/C |
+| N-3 minor | Union обеих pausing констант, background pausingTools=[] | design/09 §2, spec §15.9, T27-A |
+| M-13 minor | Общая reply quota/root admission и effect slots для agent/workflow/descendants, G07 activation gate | design/09 §4, spec §15.3/G07, T27-B/C |
 
-Раскрытие данных и повтор отправки необратимы; accepted-risk не предлагается. Выбранные значения продуктовых gates не выдумываются. Штатный cleaner, ToolModule→RecordShare и исходный текст AGPL §13 внесены в чек-лист следующего пересмотра, а не отдельные blocker IDs.
+Следующий шаг — проверить новую модель по [source matrix](../../implementation/automation-source-matrix.md) и сценариям, затем выполнить независимый полный review. До этого open не закрываются, ROB-772 In Progress, ROB-764 Todo/blocked. Авторская правка не означает доказанную runtime-корректность.
 
-Последовательность major 1→1→2 в R5/R6/R7 не показывает сходимости. Скилл [cross-review-convergence](C:/Users/regis/.codex/skills/cross-review-convergence/SKILL.md) требует: «если два последовательных fix-and-recheck раунда не уменьшили число открытых blocker/major ... не запускай третий раунд той же формы». Дальше допускается структурная перестройка либо эскалация; это не требование покупать подписку или принимать дефекты.
-
-Подготовлен [конкретный структурный пересмотр](automation-redesign-proposal.md): два единых инварианта, таблица границ, набор сценариев и порядок проверки. Он пока не заменяет основной spec. Повторный fresh pass без такой переработки не запускается. ROB-772 остаётся In Progress, ROB-764 Todo и заблокирована. Рабочий Twenty не изменён.
-
-[Исторический остаток R4](residual-r4.md) сохранён; он больше не задаёт актуальные статусы или необходимость нового разрешения на четвёртый раунд.
+Предыдущий цикл остановлен по правилу сходимости; это запрещало повторять ту же форму без переработки, а не менять план. [Исходное предложение](automation-redesign-proposal.md) теперь историческое; его решения перенесены в нормативные документы. [Остаток R4](residual-r4.md) и исходные отзывы сохранены без переписывания.

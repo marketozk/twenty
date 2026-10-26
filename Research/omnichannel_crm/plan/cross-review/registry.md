@@ -1,6 +1,6 @@
 # Кроссревью подробного плана — реестр
 
-**Итог R7: needs_revision / escalate. 49 причин, 45 closed_in_plan, 2 major и 2 minor открыты. ROB-772 не завершена, ROB-764 не начинается. Два последовательных прохода не уменьшили число major; повторение той же формы остановлено. [Остаток](residual.md), [конкретное предложение структурного пересмотра](automation-redesign-proposal.md).**
+**Последний независимый итог R7: needs_revision, 49 причин / 45 closed_in_plan / 4 open. После R7 четыре исправления внесены автором в основной spec и design/09, статус addressed_pending_review. Независимого результата новой редакции нет; ROB-772 In Progress, ROB-764 не начинается. [Текущее состояние](residual.md), [единый контракт](../../design/09-automation-contract.md).**
 
 Объект: весь проект, requirements/design/phase_1–7 и implementation-spec.md. Baseline 475e2753. Режим: fix-and-recheck только документов, полный протокол. Нового runtime-кода/тестов/деплоя нет. User подтвердил весь проект. Оракулы этого review: source trace, consistency constraints, requirement→phase→test mapping. Будущие runtime tests не выдаются за пройденные.
 
@@ -14,7 +14,7 @@ R1: независимый Claude Code 2.1.296, reported model claude-opus-5-5, 
 |---|---|---|---|---|
 | H-1 | major | Таймлайн обходит conversation ACL | 15.1 / T21 | closed_in_plan (R7 B) |
 | H-2 | major | Cleaner lifecycle удаляет историю | 15.1 / T22 | closed_in_plan (R7 B) |
-| H-3 | major | Auto principal/read scope | 15.3 / T25 | open (R7 B) |
+| H-3 | major | Auto principal/read scope | 15.3 / T25 | open (R7 B); addressed_pending_review (author) |
 | H-4 | major | Повтор AI effect после crash | 15.3 / T26 | closed_in_plan (R7 B) |
 | H-5 | major | Restore inbound/admission gap | 15.4 / T29 | closed_in_plan (R7 B) |
 | H-6 | major | External outgoing без команды | 15.2 / T24 | closed_in_plan (R7 B) |
@@ -24,13 +24,13 @@ R1: независимый Claude Code 2.1.296, reported model claude-opus-5-5, 
 | M-4 | major | MAX event variants vs logical identity | 15.2 / T01,T11 | closed_in_plan (R7 B) |
 | M-5 | major | Person merge identity lifecycle | 15.2 / T23 | closed_in_plan (R7 B) |
 | M-6 | minor | Message revision retention | 15.5 / T32, explicit gate | closed_in_plan (R7 B) |
-| M-7 | major | Canonical durable workflow trigger | 15.3 / T14 | open (R7 B) |
+| M-7 | major | Canonical durable workflow trigger | 15.3 / T14 | open (R7 B); addressed_pending_review (author) |
 | M-8 | major | Audit DB owner privileges | 15.5 / T06 | closed_in_plan (R7 B) |
 | M-9 | major | Stage SELECT vs nonexistent Stage ID | 15.5 / T30 | closed_in_plan (R7 B) |
 | M-10 | minor | Test environment identity | 15.5 / test preflight | closed_in_plan (R7 B) |
 | M-11 | major | Fork migrations before existing cursor | 15.5 / T33; source reader groups command kinds | closed_in_plan (R7 B) |
 | M-12 | major | Unknown Person creation | 4 / T02,T05 | closed_in_plan (R7 B) |
-| M-13 | minor | Burst AI turns | 15.3 / T27 | open (R7 B) |
+| M-13 | minor | Burst AI turns | 15.3 / T27 | open (R7 B); addressed_pending_review (author) |
 | M-14 | minor | Workflow send route selection | 15.3 / T14 | closed_in_plan (R7 B) |
 | L-1 | minor | Audit writer phase cycle | 3 / T02,T06 | closed_in_plan (R7 B) |
 | L-2 | minor | Stale status/spike in open questions | open-questions.md updated | closed_in_plan (R7 B) |
@@ -58,7 +58,7 @@ Claude session `4e9c1793-d8e3-4eb9-9659-5e985aad75e9`, claude-opus-5-5, is_error
 |---|---|---|---|---|
 | N-1 | major | Производные объекты и inheritance / H2 | §15.6, T08,T21, inventory до patch ROB-766 | closed_in_plan (R7 B) |
 | N-2 | major | Невидимый unassigned queue / H9 | §15.6 QueueGrant, activation gate, T12 | closed_in_plan (R7 B) |
-| N-3 | minor | Pausing AI занимает turn / M10 | §15.9, T27 | open (R7 B) |
+| N-3 | minor | Pausing AI занимает turn / M10 | §15.9, T27 | open (R7 B); addressed_pending_review (author) |
 | N-4 | major | Instance-admin export/impersonation / M11 | §15.6, T07,T08 | closed_in_plan (R7 B) |
 | N-5 | major | Connector journal/owner/cancel границы / M13 | §15.7, T11,T28, deployment gate | closed_in_plan (R7 B) |
 | N-6 | major | Lock ordering только takeover / M12 | §15.9, T02,T10,T23,T28 | closed_in_plan (R7 B) |
@@ -143,3 +143,9 @@ R7 разрешение: то же явное продолжение владе�
 Тренд open major R4=5 → R5=1 → R6=1 → R7=2: два последних прохода не снизили major. По cross-review-convergence не запускаем следующий круг той же формы. Сохранён [лист остатка](residual.md) и [проверяемое предложение](automation-redesign-proposal.md): единая capability/execution boundary и устойчивый admission/response owner. Это proposal, не уже применённая смена архитектуры или готовый runtime. Основная спецификация по-прежнему имеет четыре явно открытые причины; R8 не запускался. Перестройка требует переписать исходные разделы вокруг инвариантов, затем целевой source review и один fresh full pass.
 
 Это результат планового review, не исправление выявленных runtime дефектов: новая omni-функциональность ещё не реализована, T01–T33 не запускались. Live feature inventory/аккаунты/политики остаются gates. Формального pass нет, реализация ROB-764 остаётся заблокирована ROB-772.
+
+## После R7 — исправления внесены в основной план, нового review ещё нет
+
+По просьбе пользователя актуализировать документы выполнена структурная правка, а не очередной слепой проход. Canonical design/09 объединяет capability/reference boundary, immutable admission target snapshot и reply budget. Исправлены исходные §3/5/9/15.3/15.9/15.10/15.17/15.19, G07/G18 и связанные design/API/phase/coverage. Старые version-based receipt/run keys удалены из нормативного spec. Source matrix содержит 14 фактических файлов и будущие изменения; таблица сценариев входит в тот же контракт.
+
+H-3/M-7/N-3/M-13: автор addressed_pending_review; независимый open сохраняется. Исторические A/B и manifests R1–R7 не переписаны, результаты не перенесены на изменённый snapshot. Следующий шаг — целевая проверка новой модели, затем fresh full review и B. R8 не запускался; T01–T33 не реализованы/не выполнены. Никакие live изменения или новое пользовательское принятие риска не подразумеваются.

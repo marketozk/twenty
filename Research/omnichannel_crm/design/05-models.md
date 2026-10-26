@@ -1,5 +1,7 @@
 # Модель данных и инварианты
 
+Авторская актуализация после R7: [единый контракт автоматизации](09-automation-contract.md) внесён в основной план; независимая проверка ещё требуется. Инструменты/делегирование, stable workflow identity, полный запрет pausing и общая квота ответов определены этим контрактом.
+
 Уточнение 26.10.2026: [подробный план всего проекта](../plan/implementation-spec.md), особенно раздел 15, задаёт lifecycle, canonical source keys, scoped AI, restore и fork migrations. Схематичные ключи/названия ниже не заменяют эти точные контракты.
 
 Имена `Omni*` — предлагаемые сущности, не найденные готовые таблицы. Новые данные находятся в PostgreSQL Twenty с изоляцией workspace и миграциями его lifecycle. Для транзакционно связанных записей используется та же workspace transaction scope, что у Message; не разносить их по разным БД. Регистрация служебных сущностей не должна открыть автоматический публичный CRUD: запись через доменные команды; проверка generic API включена в приёмку.
@@ -28,7 +30,7 @@
 | OmniIncomingReceipt | bindingId, eventId, payloadHash, kind, origin, payload, state, attempts, error | UNIQUE(bindingId,eventId). Надёжный ACK после commit; исходный payload ограниченно хранится для replay/расследования. |
 | OmniAutomationAdmission | bindingId, nativeMessageKey, effectKind, activationVersion, trustedSourcePosition, eventId | UNIQUE(bindingId,nativeMessageKey,effectKind,activationVersion). Допуск live-эффекта отдельно от дедупликации текста; атомарно с DomainEvent/outbox. Origin первого insert не решает, нужен ли live-ответ. |
 | OmniOutgoingCommand | commandId, conversationId, actor, idempotencyKey, payloadHash, payload/files, expectedEpoch, policyVersion, state, connectorJobId, error | UNIQUE(workspaceId,actor,idempotencyKey) с проверкой целевого conversation и payload. Повтор не меняет адресата. |
-| OmniDomainEvent / ConsumerReceipt | eventId, type, conversationId, origin, causationId, revision; consumerId | Публикация после commit; UNIQUE(consumerId,eventId) для приёма. Выполнение внешнего действия дополнительно идемпотентно. |
+| OmniDomainEvent / ConsumerReceipt | eventId, type, conversationId, origin, causationId, revision; consumerId | Публикация после commit; UNIQUE(workspaceId,consumerId,eventId), workflow consumerId основан на workflowId, version pinned в receipt для приёма. Выполнение внешнего действия дополнительно идемпотентно. |
 | OmniInternalNote | conversationId, authorWorkspaceMemberId, body, timestamps | Не является Message для отправки; отдельная операция/права. |
 | OmniAttachmentLink | Message или Command, fileId, providerAttachmentId, state, original metadata | Проверка прав связанного объекта; не хранить внешний URL как постоянную доступную всем ссылку. |
 | OmniImportBatch | bindingId, source, cursor, watermark, counts, incompleteReasons, state | Возобновление и сверка; не хранить пароль SaleBot в batch. |

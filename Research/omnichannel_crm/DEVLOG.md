@@ -130,3 +130,13 @@
 - Проверка ограничена документами и API учёта задач. Живой Twenty не перепроверялся; сохранённый отчёт обновления не выдан за новую runtime-проверку. Публикация и обратная сверка Linear фиксируются после push.
 
 - Публикация LOG-010: commit `2945849029dd0564df42b690255fa01fb1589cab` отправлен в origin; проверены 78 локальных ссылок и diff --check. В Linear обновлены checklist ROB-772 и условие старта ROB-764; обратное чтение подтвердило по одному блоку, прежние статусы и связь blocks. [Отчёт](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-f6b8e62d) существует ровно один.
+
+### 2026-10-26 — LOG-011 — актуализация документов и внесение последних правок в основной план
+
+- Пользователь попросил проверить все документы/задачи и объяснить, вносятся ли review findings в план, какие skills реально использовались. Проверен корпус Research/omnichannel_crm, PROJECT/CLAUDE/SKILLS и все 11 задач проекта Linear; подробный индекс — DOCUMENT-AUDIT.md.
+- Раньше R1–R7 меняли основной spec, но последние четыре причины были оставлены proposal. Сейчас H-3/M-7/N-3/M-13 внесены в основной план: closed tool policy/delegation, full pausing union/runner, stable workflowId + atomic dispatch snapshot, общий reply budget. Новый design/09 и source matrix объединяют модель; связанные §3/5/9/15, API/design/phase1/5/coverage согласованы. Авторский статус addressed_pending_review, не независимый closed/pass.
+- Исправлены устаревшие текущие статусы и ссылки; датированные source reports явно отделены от нормативного плана. Исходные отзывы Claude и manifests R1–R7 сохранены, их доказательства не выданы за проверки новой редакции.
+- SKILLS-AUDIT.md различает подтверждённые процедуры, историческое упоминание и отсутствие доказательства выполнения. System-design применён сейчас для DFD/таблицы границ. Не заявляем все пять фаз ai-dev-workflow или прохождение plan-eng-review/ui-design-workflow; ограничения CLI tools отражены честно.
+- В этой работе новый blind review не запускался: сначала исправлен документ согласно запросу. Далее нужен целевой разбор новой модели и независимая проверка. Код/БД/сервисы/клиентские сообщения не менялись; tests T01–T33 будущие. Commit/push и Linear synchronization фиксируются после проверки.
+
+- Проверка LOG-011 до публикации: 414 локальных Markdown-ссылок разрешаются; JSON валидны; 49 уникальных ID / 45 historical closed / 4 addressed_pending_review; 14 source SHA256 совпадают. Raw review/manifests и runtime/ops не менялись; git diff --check пройден. Это проверки документов и исходников, не runtime-тесты.
