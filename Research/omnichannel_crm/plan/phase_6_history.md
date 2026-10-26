@@ -25,3 +25,7 @@
 Четвёртый раунд: обязательный scoped fetchHistoryPage для native/archive, durable page receipt и cursor, запрет внешнего origin (§15.16). Permission revoke и changed native page имеют явное поведение.
 
 Импорт не создаёт Person автоматически и не порождает Person-created effects; отдельное создание после импорта явно инициируется и проверяется, §15.18/T16.
+
+G10 manifest охватывает operational payload copies (receipt/event/command/AI artifacts/connector/userbot journal) по spec §15.25; business search/AI никогда не читает эти копии. Tombstone сразу скрывает content, purge сохраняет dedup/outcome keys/hash и запрещает resurrection через replay. Pending effects/недоступные stores не позволяют объявить purge completed; T17/T32.
+
+Хронология UI при позднем импорте определяется displayOccurredAt+MessageLink.id; event sequence остаётся apply cursor. При отсутствии provider time явно используется capture fallback; T16 проверяет этот предел (§15.26).

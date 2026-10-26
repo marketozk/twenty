@@ -20,3 +20,11 @@
 **Rollback:** остановить новые business sends, сохранить/сверить доставленные и неизвестные команды, восстановить проверенный пакет состояния, переключить generation единственного владельца. Откат БД не отменяет отправки провайдеру; требуется reconciliation, а не слепое повторение журнала.
 
 Restore acceptance также проверяет access fence, invalidation sessions/API keys и сверку revoke по внешнему источнику (spec §15.21); не открывать восстановленный экземпляр только по восстановленным grants.
+
+## Уточнённые условия приёмки
+
+Повторить T19 после раннего contention gate ROB-766. G11/G13 inventory проверяет единственного CRM-dispatch owner и посторонние источники каждого выбранного аккаунта; это не разрешение изменять внешние системы.
+
+Restore без достоверного внешнего журнала актуальных изменений доступа заканчивается access fence/default deny; проверенный recovery-admin назначает права заново с audit. Это ожидаемый безопасный runbook outcome, не обещание автоматического возврата всех доступов. T18/T29 проверяют наличие/отсутствие доказательств. Внешний writer журнала не считается спроектированным или созданным.
+
+T11/T18 квалифицируют single session-owner, legacy generation0 cutoff у userbot, asymmetric switch crash и fenced rollback. T29: после restore connector order определяется durable journal, outboundSequence не unique key; orphan evidence не создаёт новый send. T17/T32 проверяют payload purge manifest всех stores и отдельную backup retention. Детали §15.25.

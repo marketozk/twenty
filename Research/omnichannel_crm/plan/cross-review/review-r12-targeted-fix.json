@@ -1,0 +1,35 @@
+{
+  "phase": "B finalcheck; review history already supplied; not blind A",
+  "changes": [
+    {
+      "path": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "replacements": [
+        [
+          "Timeline с sequence и command correlation",
+          "Timeline по displayOccurredAt + MessageLink.id, sequence для cursor/unread и command correlation"
+        ],
+        [
+          "Две человеческие send commands с одинаковым ещё действующим controlEpoch допускаются;",
+          "Две человеческие send commands с одинаковым ещё действующим controlEpoch допустимы лишь при актуальном observedSequence каждой; конкурентная вторая получает stale_view по §15.26;"
+        ],
+        [
+          "T10/T12: входящее во время набора не мешает send, смена режима/назначения",
+          "T10/T12: входящее во время набора не вызывает controlEpoch conflict, но вызывает stale_view с явным подтверждением нового observedSequence; смена режима/назначения"
+        ]
+      ],
+      "original_sha256": "1ec094a8bcf789f3d8541fd711a61a661354a6e2244db3f54b7da74bccb130ec",
+      "packet_sha256": "abe432df3ae2f2cbaf2abf8886bab20de28010d8e35895395e7f3f94c95c7478"
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/decision-tables.md",
+      "replacements": [
+        [
+          "Набор ответа менеджером не конфликтует из-за входящего",
+          "Входящее не меняет controlEpoch, но требует stale_view/подтверждения нового observedSequence по §15.26"
+        ]
+      ],
+      "original_sha256": "18134ca0bec2e078ffc5560f69322a0ce76a158ab4bd7aa1887a8882f6cd1286",
+      "packet_sha256": "bb35f822fce2e76a09c09e65401bab03e909466295bf4f483ecc3bcecc605416"
+    }
+  ]
+}

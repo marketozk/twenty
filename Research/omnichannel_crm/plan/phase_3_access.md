@@ -26,3 +26,15 @@
 Четвёртый раунд уточняет обязательные AutomationArtifactScope и own baseline readability (§15.12–15.13), policy reauthorization/lock modes (§15.15), core CrmRecordRevision для CAS сделки (§15.17). Эти механизмы входят в этап, до активации прав; production зависит от G18.
 
 Обязателен §15.18: собственный admission обычных SSE/webhook/logic-function events; guard всех metadata usable account/channel/folder paths; feature inventory до удаления Enterprise функций и G18.
+
+## Primary reads, links и ранняя проверка contention
+
+Protected query context принудительно выбирает primary для policy и данных, включая caller useReplica:true, search/export/AI/raw readers. Смешанный запрос целиком primary; недоступность primary не вызывает replica fallback. T08/T10: stale replica после revoke не раскрывает данные; отрицательный контроль возвращает replica routing. Ordinary unprotected routing сохраняется. Проверенные точки: SearchService, WorkspaceDataExportPartWriterService, WorkspaceDataSourceService (см. source inventory).
+
+ConversationTarget — canonical core edge; native MessageThreadTarget только projection для Person/Company/Opportunity, Task/custom — domain query. Реализовать link/unlink expectedTargetRevision с текущими ACL обеих сторон, policy UPDATE/epoch/audit; generic target mutations/rematch omni запрещены. T10/T13/T23 включают unlink/relink во время LLM, Task link, hidden target и rollback projection.
+
+До массового подключения mutation/read kernels и UI выполнить micro-load T19 по policy row: долгие readers, concurrent stage/assignment/revoke, bounded timeout/deadlock metrics по G13. При непрохождении остановить расширение и отдельно пересмотреть протокол с revoke/atomicity доказательством. Не убирать fence и не вводить split epochs по умолчанию. Этап 7 повторяет системную нагрузку.
+
+StageRule read/edit используют optionValue; transition — from/to; configure — wildcard. Полный UNIQUE с action/principal по §3. T30 проверяет оба вида без NULL/wildcard двусмысленности.
+
+Native role/permission inputs для protected context читать через primary executor внутри policy fence, не из ранее загруженного WorkspaceCacheService map. T10/T31 проверяют stale role cache после revoke. Mode/status/close/takeover используют UPDATE policy lock; G20/takeover_on_send не делают SHARE→UPDATE upgrade (spec §15.26).

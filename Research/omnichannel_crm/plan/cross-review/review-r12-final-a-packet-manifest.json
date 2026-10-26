@@ -1,0 +1,635 @@
+{
+  "baseline": "c030e2e4bce19ce8704657bfe5bb8ff04e26c2ee",
+  "packet_path": "C:\\Users\\regis\\AppData\\Local\\Temp\\twenty-review-clean-36b511ae",
+  "documents": {
+    "Research/omnichannel_crm/requirements.md": {
+      "original_sha256": "7781a81c1837a794007810da42cf6115156fd9cc63082852e8d04ebac3861ff8",
+      "packet_sha256": "bd742e01c90af7eacf1b7c9e0256af8a028acb926173f179ba6ec50f121cd1c5"
+    },
+    "Research/omnichannel_crm/decisions.md": {
+      "original_sha256": "5d30e8d1afcae0d1355391395d900eaeec0d0a3680476f307f99c82a28981080",
+      "packet_sha256": "994bb78fc3da57b4e186c27e69ccec4482ed440c4301cf9fcef458c5318a1ecf"
+    },
+    "Research/omnichannel_crm/open-questions.md": {
+      "original_sha256": "2ecab045fcfd7d50b33708120575082e6a8bb1b9bd66c961e1afdb6f03334afb",
+      "packet_sha256": "beeb76ac57d2c98a70101725413ac267f9259b99627366616be33b1d813c4847"
+    },
+    "Research/omnichannel_crm/design/01-architecture.md": {
+      "original_sha256": "23e46ef5f9ab1b8bc4ff858884b5b7978c7aae9c2e4aed19165c0bf23e81a53b",
+      "packet_sha256": "e1f7a28c032e015525bacb8767e79b382137b71cbae10fd1240c50b5e436559a"
+    },
+    "Research/omnichannel_crm/design/02-behavior.md": {
+      "original_sha256": "8d68fb9369f45ebc0519eb8d032bc6e806ba631c48ff432e88947495811a8bae",
+      "packet_sha256": "a54ee28d7eaf3fd1134032aa22f0cfb0c3cde6edf9b7adcf5f5b421dc5a2a47f"
+    },
+    "Research/omnichannel_crm/design/03-decisions.md": {
+      "original_sha256": "9b442ee514ad587c1ec9a25e10a0af52344050d3285ec4a6876f6c7e99269154",
+      "packet_sha256": "04aa25118950f17c4efe4e65f29d71bb2fd96bb9eca0172e0f6545f9ba4730ef"
+    },
+    "Research/omnichannel_crm/design/04-testing.md": {
+      "original_sha256": "566f6bd818af2910ecf468e0af3de478e37447878ff597ab1666e83344138ebb",
+      "packet_sha256": "57d13f8cf1bb90889d0178ede25ac3b4a87ad6f2a9c46ac237cf44569d0c1517"
+    },
+    "Research/omnichannel_crm/design/05-models.md": {
+      "original_sha256": "938eeb7884a804a1c6797923920ca35d18a34bd31571cd33f7107fd7e6d02c1c",
+      "packet_sha256": "2e91ad8b38cb12a4d76ef4066b707180ed0525683d9468768c7beec021716264"
+    },
+    "Research/omnichannel_crm/design/06-api.md": {
+      "original_sha256": "4cdf6f5ecd498d4a8c7b8cbc543f58f6b34551e5225ac141232568770c16cfb3",
+      "packet_sha256": "e19bae0dbb84e79d3d06a84c98c55d295541c4b651171ebf9c456d243d666324"
+    },
+    "Research/omnichannel_crm/design/07-license-boundary.md": {
+      "original_sha256": "9cff317b4c5952cb3f39a3e1a82115a94707eb4e9e43e146fb7baa00e4479f06",
+      "packet_sha256": "ecaab061f90baf0bb3b3bb4e9b9209157eb1324dd28d9ce777de39a8278ed8ff"
+    },
+    "Research/omnichannel_crm/design/08-audit.md": {
+      "original_sha256": "bcccdf12727e46bee111642baee421827b1d75cb6e0cc9fe042db801071a3ab2",
+      "packet_sha256": "d11c5a7d0c2841d2b382acdd8f41151509098e7e670ea5d241974ad9b84fea96"
+    },
+    "Research/omnichannel_crm/design/09-automation-contract.md": {
+      "original_sha256": "06fe62321f0e8661ca7dac36daa685a129c43265c8d7e4cd2871bb04fc179449",
+      "packet_sha256": "94f8658c7aa8b6211c5804e69ad907c4e3b80d665fd629e25958b47f2c0417b3"
+    },
+    "Research/omnichannel_crm/plan/implementation-spec.md": {
+      "original_sha256": "af608850639c0ab7884c3a1551fbb0df829cc97535f3f845302a92df08ed8644",
+      "packet_sha256": "0a35ad3b9f7e603a6fed759eba395c02fe187789ddcb2a60d1d02ecd4207c4ae"
+    },
+    "Research/omnichannel_crm/plan/decision-tables.md": {
+      "original_sha256": "320b6445f80d7e6d7e10067dc88f9602b6ff4bd9557768628e89f312933be78d",
+      "packet_sha256": "c0a46b8bd1d5139ce9949e8740c6e6833b55a0182bde2213267f7c139827c207"
+    },
+    "Research/omnichannel_crm/plan/phase_1_data.md": {
+      "original_sha256": "57303ad5af136b82165ed4d3d746fff72cb227669707055e96faa247a561f358",
+      "packet_sha256": "889129b4cc590191a24235bf8713c4a96561093260ae24c5517f7e703d4cc582"
+    },
+    "Research/omnichannel_crm/plan/phase_2_audit.md": {
+      "original_sha256": "5118cf9f9eae105759135abeefe86b960ffd6fddbfbd3ec0fec748c8541f199e",
+      "packet_sha256": "17480a5851163aa52777166fd828ad0b1c0077437dddbab07d1c93f3b78c628a"
+    },
+    "Research/omnichannel_crm/plan/phase_3_access.md": {
+      "original_sha256": "926654c4e8ecde10035523d8506774564e4e1a11183acefb2f27314c3b735e4e",
+      "packet_sha256": "926654c4e8ecde10035523d8506774564e4e1a11183acefb2f27314c3b735e4e"
+    },
+    "Research/omnichannel_crm/plan/phase_4_chat.md": {
+      "original_sha256": "2cf91568c08a041f8042098ade972bc324355617c5a1bd079c98c03dfa7274f2",
+      "packet_sha256": "2cf91568c08a041f8042098ade972bc324355617c5a1bd079c98c03dfa7274f2"
+    },
+    "Research/omnichannel_crm/plan/phase_5_ai_workflow.md": {
+      "original_sha256": "c38ef6dac785bd517b598147c9d4556ed1db0d091214c0bf0b24fd1593dc5c89",
+      "packet_sha256": "d56cb0382a7bacd13feab7856adff6c76e94a74ebdc1f0cc4fe7e6af1e67502e"
+    },
+    "Research/omnichannel_crm/plan/phase_6_history.md": {
+      "original_sha256": "271362a65ad7795fa53e12d439a5e26dfd80c21319f8e9c9b8a5d2fb0f79d9a1",
+      "packet_sha256": "271362a65ad7795fa53e12d439a5e26dfd80c21319f8e9c9b8a5d2fb0f79d9a1"
+    },
+    "Research/omnichannel_crm/plan/phase_7_acceptance.md": {
+      "original_sha256": "e3f182ed24be3ef982b3f65892e1acd1e605ea879843947d979565fca448b768",
+      "packet_sha256": "e3f182ed24be3ef982b3f65892e1acd1e605ea879843947d979565fca448b768"
+    },
+    "Research/omnichannel_crm/plan/coverage.md": {
+      "original_sha256": "e0a780113ab718430c51734e16d43f7a0568f8e07e755728fe6e8ecf57cf225e",
+      "packet_sha256": "29f43cd14b59d676b788b145648dc839fd02ef37e6a6993616adedaa3d06dd04"
+    },
+    "Research/omnichannel_crm/implementation/access-source.md": {
+      "original_sha256": "d075248f5f93fe72edfa977890d670c49a0e8016dd3ef751e6f48a9b8248563b",
+      "packet_sha256": "283446b79dc63a4ce35caf05d5d54584f9821a4b4751634081c54d0c91031efc"
+    },
+    "Research/omnichannel_crm/implementation/ai-workflow-source.md": {
+      "original_sha256": "103b984a41b75584517a956476848f3da2f721ea06337b766d2b3858c78687c3",
+      "packet_sha256": "9be3fb0736a99109be0f995d4ee9a4bbdd9b3a39c510ee69f90f2e16271b38cc"
+    },
+    "Research/omnichannel_crm/implementation/automation-source-matrix.md": {
+      "original_sha256": "e7de8c77ba2b8b6267d4f9991f05028013a780e002ecc818a65a6f5e4cf26c9d",
+      "packet_sha256": "3257b342a7e8ca1a22d0b1880e99244804090228506fe6d14bfa943c7f4c5f53"
+    },
+    "Research/omnichannel_crm/implementation/transactions-audit-source.md": {
+      "original_sha256": "38365bd3d35c3ff6cf57454d27518a584198b1f24c3c81b3e42ebbe698b5cc84",
+      "packet_sha256": "a23ed4bd2c5a59ef75e512739682a30eabb381f5ec189dd580a12dee7d8f47cb"
+    },
+    "Research/omnichannel_crm/implementation/integration-map.md": {
+      "original_sha256": "9d5dbe7a40e6f32a05ac656a24de68ded1ba05d359d56ced71fdc5ace8b8e092",
+      "packet_sha256": "66677211a7ea5de934271ded0f337a83f6fcc2bb44960b73e2617ccedba503eb"
+    },
+    "Research/omnichannel_crm/implementation/bypass-candidates.md": {
+      "original_sha256": "d97ab3a43947cfbc832fa61e76fbc9cb8964a27de6f84e1526a34ab14282a285",
+      "packet_sha256": "d97ab3a43947cfbc832fa61e76fbc9cb8964a27de6f84e1526a34ab14282a285"
+    },
+    "Research/omnichannel_crm/implementation/license-inventory.md": {
+      "original_sha256": "718b6c3f99201f98101daa51f1ae2e72d5bcd73a3b6be0aab2a2d81509ee1dfa",
+      "packet_sha256": "e6413fcb78a880a0d131aadc682bd2769591f7dcdf10a2a72d88e1ae275eb9a7"
+    },
+    "Research/omnichannel_crm/research-connectors.md": {
+      "original_sha256": "8353aef50e3f765d1b1fdfdc385bdd86cafd6d131d74bbd3836dbfe1100ae797",
+      "packet_sha256": "e30d3e31177126eb6aaf34acd355dfa60f90080fff7567c2aa5376415c95a173"
+    },
+    "Research/omnichannel_crm/upstream-2.52.json": {
+      "original_sha256": "3f41883fbe766dc4de8ab4fb0796c37d0d7c3cda82c876ecec16a87b2d74d083",
+      "packet_sha256": "055fd132148d0f3b41ee8dcf819f6308f9eaf404d9f57ec8e3794ceb2147d2d0"
+    },
+    "Research/omnichannel_crm/implementation/automation-source-hashes.json": {
+      "original_sha256": "9b0c78b3e88a615eaa285b9e399eedc705a15139d21dfad0a39a78cf4127e4f8",
+      "packet_sha256": "9b0c78b3e88a615eaa285b9e399eedc705a15139d21dfad0a39a78cf4127e4f8"
+    },
+    "Research/omnichannel_crm/plan/verification/check_decisions.py": {
+      "original_sha256": "86e3bf8aa31189eabfc1cac96741fad35ebc6bce04e57c0000d539966384c39d",
+      "packet_sha256": "86e3bf8aa31189eabfc1cac96741fad35ebc6bce04e57c0000d539966384c39d"
+    },
+    "Research/omnichannel_crm/plan/verification/model-result.json": {
+      "original_sha256": "cc66bf75d1994f03c451919f558911c4c752d1b766e0f3700a2783a9a455599f",
+      "packet_sha256": "cc66bf75d1994f03c451919f558911c4c752d1b766e0f3700a2783a9a455599f"
+    }
+  },
+  "source_file_count": 31441,
+  "source_bytes": 113277386,
+  "source_aggregate_sha256": "72035a4715d12429e2ca0bec5ee384e5d0236087c4cee7bc0b718979e2c60e06",
+  "excluded": [
+    "cross-review archive",
+    "STATUS",
+    "DEVLOG",
+    "Linear descriptions",
+    "Git history",
+    "CLAUDE/AGENTS/SKILL automatic instructions"
+  ],
+  "edits": [
+    {
+      "path": "Research/omnichannel_crm/decisions.md",
+      "line": 25,
+      "original": "**D-22 — подтверждено пользователем 26.10.2026:** «да продолжаем» — разрешён четвёртый раунд исправлений плана и независимого кроссревью по восьми остаткам R4. Это не принятие рисков и не разрешение runtime/deploy. Разрешение используется для доведения документов: уточнения §15.12–15.19 и единый реестр G01–G18; обоснование каждого дополнительного прохода и независимые результаты фиксируются в реестре. Никакие дефекты не принимаются за владельца.",
+      "packet": ""
+    },
+    {
+      "path": "Research/omnichannel_crm/decisions.md",
+      "line": 27,
+      "original": "**D-21 — подтверждено пользователем 26.10.2026:** до реализации подробно расписать весь проект, затем выполнить кроссревью с Claude Code; не ограничивать проверку ближайшим ROB-764. Результат — [подробная спецификация](plan/implementation-spec.md), [реестр замечаний](plan/cross-review/registry.md) и задача [ROB-772](https://linear.app/robotrts/issue/ROB-772). В этой работе меняются документы и учёт задач. Runtime-код, выкат, реальная переписка и переключение SaleBot не входят; продуктовые gates и будущие проверки не объявляются выполненными.",
+      "packet": "**D-21 — подтверждено пользователем 26.10.2026:** до реализации подробно расписать весь проект, затем выполнить кроссревью с Claude Code; не ограничивать проверку ближайшим ROB-764. Результат — [подробная спецификация](plan/implementation-spec.md), реестр замечаний (операционный журнал исключён из пакета) и задача [ROB-772](https://linear.app/robotrts/issue/ROB-772). В этой работе меняются документы и учёт задач. Runtime-код, выкат, реальная переписка и переключение SaleBot не входят; продуктовые gates и будущие проверки не объявляются выполненными."
+    },
+    {
+      "path": "Research/omnichannel_crm/open-questions.md",
+      "line": 39,
+      "original": "Уточнение G07 после R7: выбирается общий набор responders (agent/workflow) и customer-visible reply budget на root admission. Конкретное значение не назначено автором; до его выбора совместная отправляющая конфигурация не активируется. Техническая модель этой настройки уже внесена в [design/09](design/09-automation-contract.md), ожидает review.",
+      "packet": "Уточнение G07 после : выбирается общий набор responders (agent/workflow) и customer-visible reply budget на root admission. Конкретное значение не назначено автором; до его выбора совместная отправляющая конфигурация не активируется. Техническая модель этой настройки уже внесена в [design/09](design/09-automation-contract.md), ожидает review."
+    },
+    {
+      "path": "Research/omnichannel_crm/design/01-architecture.md",
+      "line": 3,
+      "original": "Авторская актуализация после R7: [единый контракт автоматизации](09-automation-contract.md) внесён в основной план; независимая проверка ещё требуется. Инструменты/делегирование, stable workflow identity, полный запрет pausing и общая квота ответов определены этим контрактом.",
+      "packet": "Контракт: [единый контракт автоматизации](09-automation-contract.md) внесён в основной план. Инструменты/делегирование, stable workflow identity, полный запрет pausing и общая квота ответов определены этим контрактом."
+    },
+    {
+      "path": "Research/omnichannel_crm/design/02-behavior.md",
+      "line": 3,
+      "original": "Авторская актуализация после R7: [единый контракт автоматизации](09-automation-contract.md) внесён в основной план; независимая проверка ещё требуется. Инструменты/делегирование, stable workflow identity, полный запрет pausing и общая квота ответов определены этим контрактом.",
+      "packet": "Контракт: [единый контракт автоматизации](09-automation-contract.md) внесён в основной план. Инструменты/делегирование, stable workflow identity, полный запрет pausing и общая квота ответов определены этим контрактом."
+    },
+    {
+      "path": "Research/omnichannel_crm/design/03-decisions.md",
+      "line": 3,
+      "original": "Авторская актуализация после R7: [единый контракт автоматизации](09-automation-contract.md) внесён в основной план; независимая проверка ещё требуется. Инструменты/делегирование, stable workflow identity, полный запрет pausing и общая квота ответов определены этим контрактом.",
+      "packet": "Контракт: [единый контракт автоматизации](09-automation-contract.md) внесён в основной план. Инструменты/делегирование, stable workflow identity, полный запрет pausing и общая квота ответов определены этим контрактом."
+    },
+    {
+      "path": "Research/omnichannel_crm/design/04-testing.md",
+      "line": 3,
+      "original": "Авторская актуализация после R7: [единый контракт автоматизации](09-automation-contract.md) внесён в основной план; независимая проверка ещё требуется. Инструменты/делегирование, stable workflow identity, полный запрет pausing и общая квота ответов определены этим контрактом.",
+      "packet": "Контракт: [единый контракт автоматизации](09-automation-contract.md) внесён в основной план. Инструменты/делегирование, stable workflow identity, полный запрет pausing и общая квота ответов определены этим контрактом."
+    },
+    {
+      "path": "Research/omnichannel_crm/design/05-models.md",
+      "line": 3,
+      "original": "Авторская актуализация после R7: [единый контракт автоматизации](09-automation-contract.md) внесён в основной план; независимая проверка ещё требуется. Инструменты/делегирование, stable workflow identity, полный запрет pausing и общая квота ответов определены этим контрактом.",
+      "packet": "Контракт: [единый контракт автоматизации](09-automation-contract.md) внесён в основной план. Инструменты/делегирование, stable workflow identity, полный запрет pausing и общая квота ответов определены этим контрактом."
+    },
+    {
+      "path": "Research/omnichannel_crm/design/06-api.md",
+      "line": 3,
+      "original": "Авторская актуализация после R7: [единый контракт автоматизации](09-automation-contract.md) внесён в основной план; независимая проверка ещё требуется. Инструменты/делегирование, stable workflow identity, полный запрет pausing и общая квота ответов определены этим контрактом.",
+      "packet": "Контракт: [единый контракт автоматизации](09-automation-contract.md) внесён в основной план. Инструменты/делегирование, stable workflow identity, полный запрет pausing и общая квота ответов определены этим контрактом."
+    },
+    {
+      "path": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "line": 1,
+      "original": "# Единый контракт автоматизации — авторская редакция после R7",
+      "packet": "# Единый контракт автоматизации — авторская редакция после "
+    },
+    {
+      "path": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "line": 3,
+      "original": "26.10.2026. **Действующий план: известные замечания независимо закрыты; полного чистого pass последней редакции нет.** Это проектируемое поведение, не готовый код. Документ вместе с согласованными разделами [implementation-spec](../plan/implementation-spec.md) заменяет противоречивые правила R7. После R10 reconciliation все53 известные причины закрыты в плане; чистого полного pass последней редакции нет. Предыдущие отчёты сохраняются как история.",
+      "packet": "Проектируемое поведение, не готовый код; согласовано с implementation-spec.md. При противоречии укажите конкретный контрпример."
+    },
+    {
+      "path": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "line": 22,
+      "original": "## 2. Закрытый каталог инструментов и передача полномочий — H-3/N-3",
+      "packet": "## 2. Закрытый каталог инструментов и передача полномочий — /N-3"
+    },
+    {
+      "path": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "line": 51,
+      "original": "## 3. Стабильная раздача событий — M-7",
+      "packet": "## 3. Стабильная раздача событий — "
+    },
+    {
+      "path": "Research/omnichannel_crm/design/09-automation-contract.md",
+      "line": 83,
+      "original": "## 4. Один бюджет автоматических ответов — M-13",
+      "packet": "## 4. Один бюджет автоматических ответов — "
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/implementation-spec.md",
+      "line": 3,
+      "original": "26.10.2026. Проект плана для независимого кроссревью; новый runtime-код не написан. Baseline документов `475e27531d6a2b8d04327223d73afd8767f60a07`, исходники Twenty `729f6236126eddaa68d176fb766bc349b19de11d`. Документ детализирует этапы 1–7, не разрешает реальные отправки или переключение SaleBot. Раздел 15 содержит согласованные уточнения review. Авторская редакция после R7 внесена в этот документ и [единый контракт автоматизации](../design/09-automation-contract.md); после R10 все53 известные причины closed_in_plan; чистого полного pass последней редакции пока нет.",
+      "packet": "Проектируемые контракты всех этапов. Исходники Twenty 729f6236126eddaa68d176fb766bc349b19de11d. Новый runtime-код не написан; реальные отправки и переключение каналов не разрешены."
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/decision-tables.md",
+      "line": 3,
+      "original": "26.10.2026. Объект R11: события, права и жизненный цикл отправки. Это свод контрактов [spec](implementation-spec.md) и [automation](../design/09-automation-contract.md), а не реализованный движок. При противоречии исправляются оба документа. Продуктовые G01–G20 не выбираются автором; таблицы определяют поведение после явной настройки либо безопасный отказ до неё.",
+      "packet": "26.10.2026. Объект : события, права и жизненный цикл отправки. Это свод контрактов [spec](implementation-spec.md) и [automation](../design/09-automation-contract.md), а не реализованный движок. При противоречии исправляются оба документа. Продуктовые G01–G20 не выбираются автором; таблицы определяют поведение после явной настройки либо безопасный отказ до неё."
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/decision-tables.md",
+      "line": 128,
+      "original": "3. Независимый Claude Code consult проверяет весь этот конечный объект и его соответствие spec/source. Его verdict отдельно от общего fresh full pass проекта. Новые дефекты исправляются в spec/API/таблице вместе и учитываются в registry.",
+      "packet": ""
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/decision-tables.md",
+      "line": 129,
+      "original": "4. ROB-772 можно закрыть только по её общему acceptance, не автоматически по зелёному счётчику модели. Начало ROB-764, rollout и приёмка остаются разными решениями. Результат текущей проверки фиксируется в [review-result](cross-review/review-result.md).",
+      "packet": ""
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/phase_1_data.md",
+      "line": 3,
+      "original": "Редакция после R10: [единый контракт](../design/09-automation-contract.md) и [source matrix](../implementation/automation-source-matrix.md). EventDispatchPlan/receipts фиксируют stable consumerId и pinned version атомарно; общий reply budget охватывает agent/workflow. Closed tool registry, запрет generic token issuance и полный pausing inventory обязательны. R10 reconciliation: все53 известные причины closed_in_plan, это не общий fresh full pass.",
+      "packet": "Редакция после : [единый контракт](../design/09-automation-contract.md) и [source matrix](../implementation/automation-source-matrix.md). EventDispatchPlan/receipts фиксируют stable consumerId и pinned version атомарно; общий reply budget охватывает agent/workflow. Closed tool registry, запрет generic token issuance и полный pausing inventory обязательны. "
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/phase_1_data.md",
+      "line": 37,
+      "original": "R11: schema/contract обязаны учитывать immutable workflowCancellationRefs в Command и canonical core IDs до idempotency. EventCoverageRegistry и retained subscription cancellationEpoch вводятся вместе с governed producer/consumer integration; реальные endpoints остаются выключены до покрытия. [Таблицы](decision-tables.md) уточняют accepted/cancelRequested human gate и локальную/remote отмену.",
+      "packet": ": schema/contract обязаны учитывать immutable workflowCancellationRefs в Command и canonical core IDs до idempotency. EventCoverageRegistry и retained subscription cancellationEpoch вводятся вместе с governed producer/consumer integration; реальные endpoints остаются выключены до покрытия. [Таблицы](decision-tables.md) уточняют accepted/cancelRequested human gate и локальную/remote отмену."
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/phase_5_ai_workflow.md",
+      "line": 3,
+      "original": "Редакция после R10: [единый контракт](../design/09-automation-contract.md) и [source matrix](../implementation/automation-source-matrix.md). EventDispatchPlan/receipts фиксируют stable consumerId и pinned version атомарно; общий reply budget охватывает agent/workflow. Closed tool registry, запрет generic token issuance и полный pausing inventory обязательны. R10 reconciliation: все53 известные причины closed_in_plan, это не общий fresh full pass.",
+      "packet": "Редакция после : [единый контракт](../design/09-automation-contract.md) и [source matrix](../implementation/automation-source-matrix.md). EventDispatchPlan/receipts фиксируют stable consumerId и pinned version атомарно; общий reply budget охватывает agent/workflow. Closed tool registry, запрет generic token issuance и полный pausing inventory обязательны. "
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/phase_5_ai_workflow.md",
+      "line": 36,
+      "original": "R8: Omni reference обязателен для workflow descendants независимо от trigger type; closed action table и final sentTools guard, native/pausing overrides, запрет обычного Retry omni runs, полный inherited admission set и durable budget_exhausted handoff — design/09. Это авторские исправления после targeted review, ещё не full pass.",
+      "packet": ": Omni reference обязателен для workflow descendants независимо от trigger type; closed action table и final sentTools guard, native/pausing overrides, запрет обычного Retry omni runs, полный inherited admission set и durable budget_exhausted handoff — design/09. Это авторские исправления после targeted review, проектируемое поведение."
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/phase_5_ai_workflow.md",
+      "line": 38,
+      "original": "R11: [таблицы](decision-tables.md) дополняют whole-flow governance. Core workflow/version IDs нормализуются до keys; sticky referenceRequired и coverage всех producers до activation; cancellationEpoch меняется при explicit deactivate/delete, но не publish/archive. Immutable workflowCancellationRefs (включая governed ancestors) проверяются при Command dispatch/recovery, remote cancel требует journal proof. T14/T28 проверяют эти границы вместе, а не только отмену runner.",
+      "packet": ": [таблицы](decision-tables.md) дополняют whole-flow governance. Core workflow/version IDs нормализуются до keys; sticky referenceRequired и coverage всех producers до activation; cancellationEpoch меняется при explicit deactivate/delete, но не publish/archive. Immutable workflowCancellationRefs (включая governed ancestors) проверяются при Command dispatch/recovery, remote cancel требует journal proof. T14/T28 проверяют эти границы вместе, а не только отмену runner."
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/coverage.md",
+      "line": 25,
+      "original": "Авторская редакция после R7: R-06/R-10/F-04/F-06 и надёжность детализированы в [design/09](../design/09-automation-contract.md), включая T25-A/B/C, T14-A/B/C, T27-A/B/C и T28-A. Это расширения существующих групп T01–T33, не выполненные тесты и не дополнительные закрытые замечания. Source matrix связывает реальные entry points с изменениями и ожидаемыми исходами.",
+      "packet": "Авторская редакция после : R-06/R-10/F-04/F-06 и надёжность детализированы в [design/09](../design/09-automation-contract.md), включая T25-A/B/C, T14-A/B/C, T27-A/B/C и T28-A. Это расширения существующих групп T01–T33, не выполненные тесты и не дополнительные закрытые замечания. Source matrix связывает реальные entry points с изменениями и ожидаемыми исходами."
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/coverage.md",
+      "line": 27,
+      "original": "R8 targeted correction: T25-D/E — workflow action и provider-native paths; T27-A — canAskHumans/AI_AGENT; T14-D — native Retry до/после disposition; T27-C/D — inherited burst set и видимый handoff при занятом slot. Всё остаётся планом тестов.",
+      "packet": " targeted correction: T25-D/E — workflow action и provider-native paths; T27-A — canAskHumans/AI_AGENT; T14-D — native Retry до/после disposition; T27-C/D — inherited burst set и видимый handoff при занятом slot. Всё остаётся планом тестов."
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/coverage.md",
+      "line": 29,
+      "original": "После R8 A/B: F-06 проверяется также T14-E/T25-F (DATABASE_EVENT/CRON/WEBHOOK/MANUAL, causation, budget, цикл); F-03 — T23 mixed email/omni merge; T14-F — отсутствие скрытого upstream step retry; T19 — policy row contention. Все проверки будущие.",
+      "packet": "После : F-06 проверяется также T14-E/T25-F (DATABASE_EVENT/CRON/WEBHOOK/MANUAL, causation, budget, цикл); F-03 — T23 mixed email/omni merge; T14-F — отсутствие скрытого upstream step retry; T19 — policy row contention. Все проверки будущие."
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/coverage.md",
+      "line": 31,
+      "original": "После R9 A: T13/T24 — controlEpoch отдельно от automationEpoch; T26/T27 — reply quota только в Command commit; T18/T29 — invalidation и external access reconciliation после restore; T22 — TrashCleanup lifecycle; G19 — подпись менеджера. Ни один runtime тест не запускался.",
+      "packet": "После : T13/T24 — controlEpoch отдельно от automationEpoch; T26/T27 — reply quota только в Command commit; T18/T29 — invalidation и external access reconciliation после restore; T22 — TrashCleanup lifecycle; G19 — подпись менеджера. Ни один runtime тест не запускался."
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/coverage.md",
+      "line": 33,
+      "original": "R10 corrections: T27-B root sharing разных omni event kinds; T14-E durable governed catalog vs publish/cache; T10/T13 stage/identity policy writers; T12/T24 accepted human vs auto; T15/T17 attachment reparent; T18 signing/encryption legacy fallback; T22 workspace destroy inventory. Это всё будущие тесты, не результаты.",
+      "packet": " corrections: T27-B root sharing разных omni event kinds; T14-E durable governed catalog vs publish/cache; T10/T13 stage/identity policy writers; T12/T24 accepted human vs auto; T15/T17 attachment reparent; T18 signing/encryption legacy fallback; T22 workspace destroy inventory. Это всё будущие тесты, не результаты."
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/coverage.md",
+      "line": 35,
+      "original": "R11: [decision-tables](decision-tables.md) содержит E01–E15, P01–P13 и C01–C18. T14 дополняется canonical core/legacy alias, sticky producer coverage/empty snapshot, pinned version и cancellationEpoch; T28 проверяет уже созданные Commands после deactivate/delete; T12/T24 — accepted/cancelRequested human gate; T10 — human target binding отдельно от non-human captured scope. [Абстрактная модель](verification/check_decisions.py) — executable specification ограниченной части таблиц, не пройденные T-тесты; результаты runtime остаются неизвестны.",
+      "packet": ": [decision-tables](decision-tables.md) содержит E01–E15, P01–P13 и C01–C18. T14 дополняется canonical core/legacy alias, sticky producer coverage/empty snapshot, pinned version и cancellationEpoch; T28 проверяет уже созданные Commands после deactivate/delete; T12/T24 — accepted/cancelRequested human gate; T10 — human target binding отдельно от non-human captured scope. [Абстрактная модель](verification/check_decisions.py) — executable specification ограниченной части таблиц, не пройденные T-тесты; результаты runtime остаются неизвестны."
+    },
+    {
+      "path": "Research/omnichannel_crm/plan/coverage.md",
+      "line": 37,
+      "original": "R12 уточнения плана: T08/T10 — protected primary routing со stale replica; T10/T13/T23 — canonical ConversationTarget и link revision; T11/T12 — reply/hash и FIFO durable enqueue; T14 — два event receipts/один RunIntent и trusted non-message target; T19 — ранний contention gate ROB-766 плюс повтор ROB-771; T18/T29 — access fence без внешней истории. G11/G13 квалифицируют сторонних отправителей. Абстрактная модель 1712/23 этих новых контрактов не доказывает; все перечисленные runtime tests предстоят.",
+      "packet": " уточнения плана: T08/T10 — protected primary routing со stale replica; T10/T13/T23 — canonical ConversationTarget и link revision; T11/T12 — reply/hash и FIFO durable enqueue; T14 — два event receipts/один RunIntent и trusted non-message target; T19 — ранний contention gate ROB-766 плюс повтор ROB-771; T18/T29 — access fence без внешней истории. G11/G13 квалифицируют сторонних отправителей. Абстрактная модель 1712/23 этих новых контрактов не доказывает; все перечисленные runtime tests предстоят."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/access-source.md",
+      "line": 3,
+      "original": "Актуальный проектируемый контракт автоматизации — [design/09](../design/09-automation-contract.md), связанный с [source matrix](automation-source-matrix.md). Исторические предположения/сокращения ниже не заменяют его; факты pinned source сохраняются. Авторские исправления ожидают независимой проверки.",
+      "packet": "Актуальный проектируемый контракт автоматизации — [design/09](../design/09-automation-contract.md), связанный с [source matrix](automation-source-matrix.md). Исторические предположения/сокращения ниже не заменяют его; факты pinned source сохраняются. "
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/ai-workflow-source.md",
+      "line": 3,
+      "original": "Актуальный проектируемый контракт автоматизации — [design/09](../design/09-automation-contract.md), связанный с [source matrix](automation-source-matrix.md). Исторические предположения/сокращения ниже не заменяют его; факты pinned source сохраняются. Авторские исправления ожидают независимой проверки.",
+      "packet": "Актуальный проектируемый контракт автоматизации — [design/09](../design/09-automation-contract.md), связанный с [source matrix](automation-source-matrix.md). Исторические предположения/сокращения ниже не заменяют его; факты pinned source сохраняются. "
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/ai-workflow-source.md",
+      "line": 9,
+      "original": "Все пути ниже относительно `C:\\Users\\regis\\OneDrive\\Рабочий стол\\Twenty CRM\\packages\\twenty-server\\src\\`, кроме явно обозначенных `test/`. Для компактности:",
+      "packet": "Все пути ниже относительно `C:\\Users\\regis\\AppData\\Local\\Temp\\twenty-review-clean-36b511ae\\packages\\twenty-server\\src\\`, кроме явно обозначенных `test/`. Для компактности:"
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/automation-source-matrix.md",
+      "line": 26,
+      "original": "## Дополнено после целевого source review R8",
+      "packet": "## Дополнено после целевого source review "
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/automation-source-matrix.md",
+      "line": 45,
+      "original": "## Дополнено после полного R8",
+      "packet": "## Дополнено после полного "
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/automation-source-matrix.md",
+      "line": 57,
+      "original": "## Lifecycle/restore дополнения R9",
+      "packet": "## Lifecycle/restore дополнения "
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/automation-source-matrix.md",
+      "line": 63,
+      "original": "## R10 source уточнения",
+      "packet": "##  source уточнения"
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/automation-source-matrix.md",
+      "line": 68,
+      "original": "## R11: конечная таблица и обязательная связь до dispatch",
+      "packet": "## : конечная таблица и обязательная связь до dispatch"
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 3,
+      "original": "Дата: 26.10.2026. База: `729f6236126eddaa68d176fb766bc349b19de11d` (принятый snapshot разработки 2.52). Корень исходников: `C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/`. Сверка `git diff --name-only 729f6236126eddaa68d176fb766bc349b19de11d --` по исследованным каталогам ORM, common-query-runners, messaging и message-channel не обнаружила отличий runtime-кода.",
+      "packet": "Дата: 26.10.2026. База: `729f6236126eddaa68d176fb766bc349b19de11d` (принятый snapshot разработки 2.52). Корень исходников: `C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/`. Сверка `git diff --name-only 729f6236126eddaa68d176fb766bc349b19de11d --` по исследованным каталогам ORM, common-query-runners, messaging и message-channel не обнаружила отличий runtime-кода."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 13,
+      "original": "| [workspace-orm.manager.ts:115](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/twenty-orm/workspace-orm.manager.ts:115>) — `WorkspaceOrmManager.runInWorkspaceTransaction` | Вызывает `getDataSource({useReplica:false}).transaction(work)`. |",
+      "packet": "| [workspace-orm.manager.ts:115](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/twenty-orm/workspace-orm.manager.ts:115>) — `WorkspaceOrmManager.runInWorkspaceTransaction` | Вызывает `getDataSource({useReplica:false}).transaction(work)`. |"
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 14,
+      "original": "| [workspace-data-source.ts:74](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/twenty-orm/datasource/workspace-data-source.ts:74>) — `WorkspaceDataSource.transaction` | Создаёт `WorkspaceTransactionScope`: `getRepository` использует один переданный executor и `isTransactional:true` (105–121); `executeRawQuery` использует тот же executor (122–123). |",
+      "packet": "| [workspace-data-source.ts:74](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/twenty-orm/datasource/workspace-data-source.ts:74>) — `WorkspaceDataSource.transaction` | Создаёт `WorkspaceTransactionScope`: `getRepository` использует один переданный executor и `isTransactional:true` (105–121); `executeRawQuery` использует тот же executor (122–123). |"
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 15,
+      "original": "| [run-in-rollback-safe-transaction.util.ts:9](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:9>) — `runInRollbackSafeTransaction` | `pool.connect()` → `BEGIN` → callback → `COMMIT`; при ошибке пытается `ROLLBACK`, затем освобождает/уничтожает соединение (16–46). |",
+      "packet": "| [run-in-rollback-safe-transaction.util.ts:9](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:9>) — `runInRollbackSafeTransaction` | `pool.connect()` → `BEGIN` → callback → `COMMIT`; при ошибке пытается `ROLLBACK`, затем освобождает/уничтожает соединение (16–46). |"
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 16,
+      "original": "| [workspace-transaction-scope.type.ts:8](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/twenty-orm/types/workspace-transaction-scope.type.ts:8>) | Публичный scope предоставляет repositories, raw SQL и `afterCommit`; TypeORM manager в нём отсутствует. |",
+      "packet": "| [workspace-transaction-scope.type.ts:8](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/twenty-orm/types/workspace-transaction-scope.type.ts:8>) | Публичный scope предоставляет repositories, raw SQL и `afterCommit`; TypeORM manager в нём отсутствует. |"
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 20,
+      "original": "**Ambient workspace context не является ambient transaction.** [WorkspaceOrmManager.executeInWorkspaceContext:123](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/twenty-orm/workspace-orm.manager.ts:123>) только загружает контекст и вызывает `withWorkspaceContext`. Обычный [WorkspaceDataSource.getRepository:60](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/twenty-orm/datasource/workspace-data-source.ts:60>) создаёт `PoolQueryExecutor`; его [execute:14](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/twenty-orm/executor/pool-query-executor.ts:14>) делает `pool.query`. Поэтому вызов `workspaceOrmManager.getRepository(...)` внутри callback общей транзакции может записать через другое соединение. Повторный `runInWorkspaceTransaction` также создаёт самостоятельную транзакцию, а не savepoint.",
+      "packet": "**Ambient workspace context не является ambient transaction.** [WorkspaceOrmManager.executeInWorkspaceContext:123](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/twenty-orm/workspace-orm.manager.ts:123>) только загружает контекст и вызывает `withWorkspaceContext`. Обычный [WorkspaceDataSource.getRepository:60](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/twenty-orm/datasource/workspace-data-source.ts:60>) создаёт `PoolQueryExecutor`; его [execute:14](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/twenty-orm/executor/pool-query-executor.ts:14>) делает `pool.query`. Поэтому вызов `workspaceOrmManager.getRepository(...)` внутри callback общей транзакции может записать через другое соединение. Повторный `runInWorkspaceTransaction` также создаёт самостоятельную транзакцию, а не savepoint."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 41,
+      "original": "1. [ApplicationMessageIngestionService.ingest:54](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/metadata-modules/message-channel/services/application-message-ingestion.service.ts:54>): ownership/sync проверки в 61–78 выполняются **до** транзакции сохранения. `assertReferencedIdentitiesExist:176` использует обычный repository (231). Они не заменяют финальную проверку разрешения/activation/policy под общим fence в нашей команде.",
+      "packet": "1. [ApplicationMessageIngestionService.ingest:54](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/metadata-modules/message-channel/services/application-message-ingestion.service.ts:54>): ownership/sync проверки в 61–78 выполняются **до** транзакции сохранения. `assertReferencedIdentitiesExist:176` использует обычный repository (231). Они не заменяют финальную проверку разрешения/activation/policy под общим fence в нашей команде."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 42,
+      "original": "2. Там же [withLock:88](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/metadata-modules/message-channel/services/application-message-ingestion.service.ts:88>): комментарий явно объясняет отсутствие unique index у `headerMessageId` и read-before-write dedup. Cache lock — текущая сериализация канала, не постоянный журнал приёма и не уникальность нашего provider event в БД.",
+      "packet": "2. Там же [withLock:88](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/metadata-modules/message-channel/services/application-message-ingestion.service.ts:88>): комментарий явно объясняет отсутствие unique index у `headerMessageId` и read-before-write dedup. Cache lock — текущая сериализация канала, не постоянный журнал приёма и не уникальность нашего provider event в БД."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 43,
+      "original": "3. [saveMessagesAndEnqueueContactCreation:45](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts:45>): метод сам открывает транзакцию в 63–64. Вызов этого публичного метода из новой внешней транзакции **не объединит** коммиты.",
+      "packet": "3. [saveMessagesAndEnqueueContactCreation:45](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts:45>): метод сам открывает транзакцию в 63–64. Вызов этого публичного метода из новой внешней транзакции **не объединит** коммиты."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 44,
+      "original": "4. [MessagingMessageService.saveMessagesWithinTransaction:46](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-message.service.ts:46>) уже принимает scope. Repositories для association/message/thread берутся из него (65/71/76); чтения dedup — 83–100; вставка threads — 252–253; upsert subject — 257; messages — 269; associations — 275. Это готовое ядро повторного использования.",
+      "packet": "4. [MessagingMessageService.saveMessagesWithinTransaction:46](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-message.service.ts:46>) уже принимает scope. Repositories для association/message/thread берутся из него (65/71/76); чтения dedup — 83–100; вставка threads — 252–253; upsert subject — 257; messages — 269; associations — 275. Это готовое ядро повторного использования."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 45,
+      "original": "5. [MessagingMessageParticipantService.saveMessageParticipants:26](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/modules/messaging/message-participant-manager/services/messaging-message-participant.service.ts:26>) использует scope repository (36), обновляет identity/displayName (134), вставляет участников (138). [saveMessageFolderAssociations:16](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-message-folder-association.service.ts:16>) также принимает scope и вставляет связи через него (38–55).",
+      "packet": "5. [MessagingMessageParticipantService.saveMessageParticipants:26](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/modules/messaging/message-participant-manager/services/messaging-message-participant.service.ts:26>) использует scope repository (36), обновляет identity/displayName (134), вставляет участников (138). [saveMessageFolderAssociations:16](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-message-folder-association.service.ts:16>) также принимает scope и вставляет связи через него (38–55)."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 46,
+      "original": "6. **После commit:** contact job добавляется в [aggregate:179–193](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts:179>); matching/targets — 209–217. Ошибка здесь может вернуть ошибку API уже после сохранения сообщений. Нельзя трактовать её как доказательство отсутствия записи.",
+      "packet": "6. **После commit:** contact job добавляется в [aggregate:179–193](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts:179>); matching/targets — 209–217. Ошибка здесь может вернуть ошибку API уже после сохранения сообщений. Нельзя трактовать её как доказательство отсутствия записи."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 47,
+      "original": "7. Для APP используется `targetsOnly`. [MatchParticipantService.matchParticipants:95](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/modules/match-participant/match-participant.service.ts:95>) уже принимает optional scope и передаёт его в target reconciliation (107–113). [ParticipantTargetReconciliationService.reconcileParticipantTargets:94](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/modules/match-participant/participant-target-reconciliation.service.ts:94>) далее прокидывает scope в чтения и изменения target records (164, 205, 227, 290, 322–361). Но wrapper `MessagingMessageParticipantService.matchMessageParticipants:154` сейчас не принимает/не передаёт scope.",
+      "packet": "7. Для APP используется `targetsOnly`. [MatchParticipantService.matchParticipants:95](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/modules/match-participant/match-participant.service.ts:95>) уже принимает optional scope и передаёт его в target reconciliation (107–113). [ParticipantTargetReconciliationService.reconcileParticipantTargets:94](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/modules/match-participant/participant-target-reconciliation.service.ts:94>) далее прокидывает scope в чтения и изменения target records (164, 205, 227, 290, 322–361). Но wrapper `MessagingMessageParticipantService.matchMessageParticipants:154` сейчас не принимает/не передаёт scope."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 57,
+      "original": "- REST: [RestApiUpdateOneHandler:46](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/api/rest/core/handlers/rest-api-update-one.handler.ts:46>), create-one handler:47.",
+      "packet": "- REST: [RestApiUpdateOneHandler:46](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/api/rest/core/handlers/rest-api-update-one.handler.ts:46>), create-one handler:47."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 58,
+      "original": "- GraphQL: [UpdateOneResolverFactory:40](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/update-one-resolver.factory.ts:40>), create-one factory:40.",
+      "packet": "- GraphQL: [UpdateOneResolverFactory:40](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/update-one-resolver.factory.ts:40>), create-one factory:40."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 59,
+      "original": "- Record tools: [UpdateRecordService.execute:96](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/core-modules/record-crud/services/update-record.service.ts:96>), CreateRecordService:69, DeleteRecordService:64/81; [UpdateRecordWorkflowAction:123](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/record-crud/update-record.workflow-action.ts:123>) вызывает UpdateRecordService.",
+      "packet": "- Record tools: [UpdateRecordService.execute:96](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/core-modules/record-crud/services/update-record.service.ts:96>), CreateRecordService:69, DeleteRecordService:64/81; [UpdateRecordWorkflowAction:123](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/record-crud/update-record.workflow-action.ts:123>) вызывает UpdateRecordService."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 61,
+      "original": "[CommonBaseQueryRunnerService.execute:121](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/api/common/common-query-runners/common-base-query-runner.service.ts:121>) делает validate → compute/pre-query hooks → workspace context → run → result getters/visibility/post-query hooks. **Сам по себе этот метод не открывает общую write transaction.** В `prepareExtendedQueryRunnerContextWithGlobalDatasource:367` scope repository выбирается только когда scope уже передан; иначе берётся обычный repository.",
+      "packet": "[CommonBaseQueryRunnerService.execute:121](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/api/common/common-query-runners/common-base-query-runner.service.ts:121>) делает validate → compute/pre-query hooks → workspace context → run → result getters/visibility/post-query hooks. **Сам по себе этот метод не открывает общую write transaction.** В `prepareExtendedQueryRunnerContextWithGlobalDatasource:367` scope repository выбирается только когда scope уже передан; иначе берётся обычный repository."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 65,
+      "original": "- [CommonCreateManyQueryRunnerService.run:96](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/api/common/common-query-runners/common-create-many-query-runner/common-create-many-query-runner.service.ts:96>) открывает transaction для record shares / nested relation create, если scope отсутствует, и заменяет repository на scope repository (109–119).",
+      "packet": "- [CommonCreateManyQueryRunnerService.run:96](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/api/common/common-query-runners/common-create-many-query-runner/common-create-many-query-runner.service.ts:96>) открывает transaction для record shares / nested relation create, если scope отсутствует, и заменяет repository на scope repository (109–119)."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 66,
+      "original": "- [CommonMergeManyQueryRunnerService:485](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/api/common/common-query-runners/common-merge-many-query-runner.service.ts:485>) имеет отдельного transaction owner. Его необходимо научить присоединяться к переданному scope перед общей обёрткой audited commands; иначе останутся независимые коммиты.",
+      "packet": "- [CommonMergeManyQueryRunnerService:485](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/api/common/common-query-runners/common-merge-many-query-runner.service.ts:485>) имеет отдельного transaction owner. Его необходимо научить присоединяться к переданному scope перед общей обёрткой audited commands; иначе останутся независимые коммиты."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 67,
+      "original": "- [WorkspaceRepository.runAtomically:769](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts:769>) переиспользует уже transactional repository, иначе вызывает `runInNewTransaction`. `save:839` и `upsert:927` используют эту обёртку.",
+      "packet": "- [WorkspaceRepository.runAtomically:769](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts:769>) переиспользует уже transactional repository, иначе вызывает `runInNewTransaction`. `save:839` и `upsert:927` используют эту обёртку."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 80,
+      "original": "[WorkspaceDataSource.transaction:80–101](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/twenty-orm/datasource/workspace-data-source.ts:80>) заменяет `emitDatabaseBatchEvent` и record-stock side effects на `afterCommit` callbacks. Массив callbacks живёт в памяти (77–79). После commit callbacks вызываются последовательно; ошибка логируется и подавляется (128–136). Между COMMIT и callback возможна потеря процесса; persisted retry row тут нет.",
+      "packet": "[WorkspaceDataSource.transaction:80–101](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/twenty-orm/datasource/workspace-data-source.ts:80>) заменяет `emitDatabaseBatchEvent` и record-stock side effects на `afterCommit` callbacks. Массив callbacks живёт в памяти (77–79). После commit callbacks вызываются последовательно; ошибка логируется и подавляется (128–136). Между COMMIT и callback возможна потеря процесса; persisted retry row тут нет."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 82,
+      "original": "[WorkspaceEventEmitter.emitDatabaseBatchEvent:42](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/workspace-event-emitter/workspace-event-emitter.ts:42>) заканчивается обычным `EventEmitter2.emit` (70). [CommonBaseQueryRunnerService.enrichResultsWithGettersAndHooks:328](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/api/common/common-query-runners/common-base-query-runner.service.ts:328>) также откладывает post-query hooks через `afterCommit` при наличии scope; без scope запускает их после `run`. Это notification hooks, не commit-coupled durable audit.",
+      "packet": "[WorkspaceEventEmitter.emitDatabaseBatchEvent:42](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/workspace-event-emitter/workspace-event-emitter.ts:42>) заканчивается обычным `EventEmitter2.emit` (70). [CommonBaseQueryRunnerService.enrichResultsWithGettersAndHooks:328](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/api/common/common-query-runners/common-base-query-runner.service.ts:328>) также откладывает post-query hooks через `afterCommit` при наличии scope; без scope запускает их после `run`. Это notification hooks, не commit-coupled durable audit."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 84,
+      "original": "Существующий [EventLogsService:1](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/core-modules/event-logs/event-logs.service.ts:1>) помечен Enterprise; его не берём за обязательную основу. Даже независимо от лицензии [EventLogEmitterService.emit:108](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/core-modules/event-logs/emit/event-log-emitter.service.ts:108>) ловит ошибку и возвращает `{success:false}` (115–118); это не rollback caller mutation.",
+      "packet": "Существующий [EventLogsService:1](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/core-modules/event-logs/event-logs.service.ts:1>) помечен Enterprise; его не берём за обязательную основу. Даже независимо от лицензии [EventLogEmitterService.emit:108](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/core-modules/event-logs/emit/event-log-emitter.service.ts:108>) ловит ошибку и возвращает `{success:false}` (115–118); это не rollback caller mutation."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 90,
+      "original": "[FilesFieldSync.constructor:53](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/twenty-orm/field-operations/files-field-sync/files-field-sync.ts:53>) берёт `coreDataSource.getRepository(FileEntity)` — TypeORM repository другого transaction owner. `updateFileEntityRecords:584` выполняет update/softDelete через него (590/602). Его вызывает workspace insert:1101 и mutation:1775. Поэтому даже внутри `WorkspaceTransactionScope` соответствующая смена file metadata не присоединяется автоматически к общему commit. Физическое содержимое в файловом/S3 storage также не становится частью PostgreSQL transaction.",
+      "packet": "[FilesFieldSync.constructor:53](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/twenty-orm/field-operations/files-field-sync/files-field-sync.ts:53>) берёт `coreDataSource.getRepository(FileEntity)` — TypeORM repository другого transaction owner. `updateFileEntityRecords:584` выполняет update/softDelete через него (590/602). Его вызывает workspace insert:1101 и mutation:1775. Поэтому даже внутри `WorkspaceTransactionScope` соответствующая смена file metadata не присоединяется автоматически к общему commit. Физическое содержимое в файловом/S3 storage также не становится частью PostgreSQL transaction."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 100,
+      "original": "- [run-in-rollback-safe-transaction.util.spec.ts:20](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/twenty-orm/datasource/utils/__tests__/run-in-rollback-safe-transaction.util.spec.ts:20>): BEGIN/COMMIT/release (41), rollback (55), rollback failure (72/92), COMMIT error (191). Это unit mocks, не доказательство разрешения неизвестного commit outcome.",
+      "packet": "- [run-in-rollback-safe-transaction.util.spec.ts:20](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/twenty-orm/datasource/utils/__tests__/run-in-rollback-safe-transaction.util.spec.ts:20>): BEGIN/COMMIT/release (41), rollback (55), rollback failure (72/92), COMMIT error (191). Это unit mocks, не доказательство разрешения неизвестного commit outcome."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 101,
+      "original": "- [google/messaging/transient-database-error.integration-spec.ts:64](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/test/integration/google/messaging/transient-database-error.integration-spec.ts:64>): transient error во время participant save; тест 92–140 отдельно проверяет завершение import transaction **до** participant matching через `pg_backend_pid()` и состояние backend.",
+      "packet": "- [google/messaging/transient-database-error.integration-spec.ts:64](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/test/integration/google/messaging/transient-database-error.integration-spec.ts:64>): transient error во время participant save; тест 92–140 отдельно проверяет завершение import transaction **до** participant matching через `pg_backend_pid()` и состояние backend."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 102,
+      "original": "- [app-message-channels.integration-spec.ts:639](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/test/integration/metadata/suites/message-channel/app-message-channels.integration-spec.ts:639>): общий thread (639), redelivery stable IDs (681), direction (710), чужое приложение (745), sync off (763), sender/identity/batch validation (787/815/835).",
+      "packet": "- [app-message-channels.integration-spec.ts:639](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/test/integration/metadata/suites/message-channel/app-message-channels.integration-spec.ts:639>): общий thread (639), redelivery stable IDs (681), direction (710), чужое приложение (745), sync off (763), sender/identity/batch validation (787/815/835)."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 103,
+      "original": "- [workspace-repository.spec.ts:144](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/src/engine/twenty-orm/repository/__tests__/workspace-repository.spec.ts:144>): before/after image, обход event emission и files-field exception. Audit semantics здесь пока отсутствуют.",
+      "packet": "- [workspace-repository.spec.ts:144](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/src/engine/twenty-orm/repository/__tests__/workspace-repository.spec.ts:144>): before/after image, обход event emission и files-field exception. Audit semantics здесь пока отсутствуют."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/transactions-audit-source.md",
+      "line": 104,
+      "original": "- [nested-relation-queries.integration-spec.ts:381](<C:/Users/regis/OneDrive/Рабочий стол/Twenty CRM/packages/twenty-server/test/integration/graphql/suites/object-generated/nested-relation-queries.integration-spec.ts:381>): rollback nested create при failure parent; 418 — rollback nested targets create-many. Это полезная существующая точка регрессии общей transaction propagation.",
+      "packet": "- [nested-relation-queries.integration-spec.ts:381](<C:/Users/regis/AppData/Local/Temp/twenty-review-clean-36b511ae/packages/twenty-server/test/integration/graphql/suites/object-generated/nested-relation-queries.integration-spec.ts:381>): rollback nested create при failure parent; 418 — rollback nested targets create-many. Это полезная существующая точка регрессии общей transaction propagation."
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/integration-map.md",
+      "line": 3,
+      "original": "Актуальный проектируемый контракт автоматизации — [design/09](../design/09-automation-contract.md), связанный с [source matrix](automation-source-matrix.md). Исторические предположения/сокращения ниже не заменяют его; факты pinned source сохраняются. Авторские исправления ожидают независимой проверки.",
+      "packet": "Актуальный проектируемый контракт автоматизации — [design/09](../design/09-automation-contract.md), связанный с [source matrix](automation-source-matrix.md). Исторические предположения/сокращения ниже не заменяют его; факты pinned source сохраняются. "
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/integration-map.md",
+      "line": 5,
+      "original": "Историческая source-карта после обновления. Последующие решения и уточнения (в том числе отдельная схема аудита, fork migration runner, typed workflow events) — в [подробной спецификации](../plan/implementation-spec.md). [Кроссревью](../plan/cross-review/registry.md) оставляет открытые блокирующие вопросы; эта карта сама по себе не является допуском реализации.",
+      "packet": "Историческая source-карта после обновления. Последующие решения и уточнения (в том числе отдельная схема аудита, fork migration runner, typed workflow events) — в [подробной спецификации](../plan/implementation-spec.md). "
+    },
+    {
+      "path": "Research/omnichannel_crm/implementation/license-inventory.md",
+      "line": 3,
+      "original": "Актуальный проектируемый контракт автоматизации — [design/09](../design/09-automation-contract.md), связанный с [source matrix](automation-source-matrix.md). Исторические предположения/сокращения ниже не заменяют его; факты pinned source сохраняются. Авторские исправления ожидают независимой проверки.",
+      "packet": "Актуальный проектируемый контракт автоматизации — [design/09](../design/09-automation-contract.md), связанный с [source matrix](automation-source-matrix.md). Исторические предположения/сокращения ниже не заменяют его; факты pinned source сохраняются. "
+    },
+    {
+      "path": "Research/omnichannel_crm/research-connectors.md",
+      "line": 3,
+      "original": "Статус документа: датированное исследование закреплённых исходников; описания тогдашней среды и «следующих шагов» ниже исторические. Текущие результаты обновления, состояние плана и порядок работы — [STATUS.md](STATUS.md). Нормативные решения по автоматизации — [design/09](design/09-automation-contract.md); runtime этой доработки ещё не написан.",
+      "packet": "Статус документа: датированное исследование закреплённых исходников; описания тогдашней среды и «следующих шагов» ниже исторические. Текущие результаты обновления, состояние плана и порядок работы — STATUS.md (операционный журнал исключён из пакета). Нормативные решения по автоматизации — [design/09](design/09-automation-contract.md); runtime этой доработки ещё не написан."
+    }
+  ],
+  "source_selection": {
+    "prefixes": [
+      "packages/twenty-server",
+      "packages/twenty-front",
+      "packages/twenty-shared",
+      "packages/twenty-ui",
+      "packages/twenty-sdk",
+      "packages/twenty-cli",
+      "packages/twenty-apps",
+      ".github"
+    ],
+    "extensions": [
+      ".ts",
+      ".tsx",
+      ".js",
+      ".jsx",
+      ".mjs",
+      ".cjs",
+      ".json",
+      ".graphql",
+      ".sql",
+      ".md",
+      ".yml",
+      ".yaml",
+      ".css",
+      ".html",
+      ".toml",
+      ".txt",
+      ".prisma",
+      ".sh",
+      ".py"
+    ],
+    "root_files": [
+      "package.json",
+      "nx.json",
+      "yarn.lock",
+      "LICENSE",
+      "README.md",
+      "tsconfig.base.json"
+    ],
+    "excluded_names": [
+      "CLAUDE.md",
+      "AGENTS.md",
+      "SKILL.md"
+    ],
+    "symlinks_copied": false
+  },
+  "preflight": {
+    "documents_match": 34,
+    "verified_source_hashes": 44,
+    "review_archive_absent": true,
+    "status_absent": true
+  },
+  "revision": "current working-tree candidate; immutable snapshot stored separately"
+}

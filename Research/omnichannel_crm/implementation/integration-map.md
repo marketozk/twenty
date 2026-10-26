@@ -1,8 +1,8 @@
 # Карта реализации по исходникам 2.52
 
-Актуальный проектируемый контракт автоматизации — [design/09](../design/09-automation-contract.md), связанный с [source matrix](automation-source-matrix.md). Исторические предположения/сокращения ниже не заменяют его; факты pinned source сохраняются. Авторские исправления ожидают независимой проверки.
+Актуальный проектируемый контракт автоматизации — [design/09](../design/09-automation-contract.md), связанный с [source matrix](automation-source-matrix.md). Исторические предположения/сокращения ниже не заменяют его; факты pinned source сохраняются. Актуальный verdict и границы — [STATUS](../STATUS.md).
 
-Историческая source-карта после обновления. Последующие решения и уточнения (в том числе отдельная схема аудита, fork migration runner, typed workflow events) — в [подробной спецификации](../plan/implementation-spec.md). [Кроссревью](../plan/cross-review/registry.md) оставляет открытые блокирующие вопросы; эта карта сама по себе не является допуском реализации.
+Историческая source-карта после обновления. Последующие решения и уточнения (в том числе отдельная схема аудита, fork migration runner, typed workflow events) — в [подробной спецификации](../plan/implementation-spec.md). [Кроссревью](../plan/cross-review/registry.md) фиксирует текущую независимую сверку; эта историческая source-карта сама по себе не является допуском реализации.
 
 База `729f6236126eddaa68d176fb766bc349b19de11d`; собираемый коммит форка `44e1449c` имеет тот же runtime. Это завершённое статическое исследование названных путей, а не результат тестов будущих функций.
 
@@ -15,7 +15,7 @@
 - Определения core entities расположить в `engine/core-modules/omnichannel-storage/entities/`, `crm-access/entities/`, `crm-audit/entities/`. Доменный модуль общения остаётся `modules/omnichannel/`. Причина: `database/typeorm/core/core.datasource.ts:45–54` автоматически обнаруживает entities только под engine/core-modules и engine/metadata-modules; произвольный `modules/omnichannel/entities/` туда не попадает.
 - Core TypeORM datasource (`core.datasource.ts:41`) и workspace primary pool (`workspace-data-source.service.ts:57–58`) используют `PG_DATABASE_URL`. Это позволяет одной PostgreSQL транзакции писать обе схемы, но НЕ делает независимые соединения одной транзакцией.
 - Writer служебных таблиц принимает узкий интерфейс `query(sql, params)` от конкретного владельца транзакции: workspace scope.executeRawQuery либо core QueryRunner.query. Нельзя незаметно переходить на injected repository/другой pool. SQL names — константы, tenant/actor/данные — параметры.
-- Новые entities требуют instance command в текущем `2-52`, timestamp новее всех существующих; использовать генератор из CLAUDE/UPGRADE_COMMANDS. В legacy TypeORM migrations не добавлять. В текущем пункте 1–5 схема не создаётся.
+- Новые entities сначала проходят штатный генератор из CLAUDE/UPGRADE_COMMANDS, затем команды изолируются в fork-only migration manifest/runner по spec §15.5/15.8. Не добавлять команду в уже пройденный upstream 2-52 sequence или legacy TypeORM migrations. В историческом пункте 1–5 схема не создавалась.
 
 ## Точные порции изменения
 
@@ -44,3 +44,9 @@ Takeover и mutation используют одну короткую DB transacti
 ## Что остаётся проверить при реализации
 
 Свой SQL predicate, полный registry служебных raw/bypass, race/revoke, rollback всех новых writes, email regression, отсутствие side effects импорта, устойчивость отправки и миграции. Эти проверки нельзя отметить пройденными до появления кода. Продуктовые входные данные — реальные роли, аккаунты, форматы/объём истории, retention, AI provider — остаются явными настройками; они не мешают написать серверные контракты и синтетические тесты.
+
+## Дополнительные подтверждённые точки интеграции
+
+- SearchService.getRepository и WorkspaceDataExportPartWriterService.readRecords передают useReplica:true. WorkspaceDataSourceService.getDataSource выбирает replica pool при таком option. Own protected context обязан маршрутизировать policy и data в primary до исполнения запроса; caller option не разрешает replica. Ordinary context не меняется.
+- MessageThreadTargetWorkspaceEntity поддерживает targetPersonId/targetCompanyId/targetOpportunityId, но не Task/custom. Canonical core ConversationTarget выбран для всех явных связей, штатная entity — синхронная projection поддержанных типов. Generic rematch/target mutation для omni не второй writer.
+- SHA256 этих четырёх исходников включены в automation-source-hashes.json; runtime исходники сейчас не изменены. T08/T10/T23 предстоят.

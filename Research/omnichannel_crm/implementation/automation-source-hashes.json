@@ -38,5 +38,10 @@
   "packages/twenty-server/src/engine/core-modules/jwt/services/jwt-wrapper.service.ts": "5cfa6f78124b39aee3c1c9f820f91d1b18ced93e0d0a375989ce5596c61f2824",
   "packages/twenty-server/src/engine/workspace-event-emitter/workspace-event-emitter.ts": "70e81ae2780c829740e82d2d49441a4aa55a5de81c211bc26a5715f42f24e7d0",
   "packages/twenty-server/src/engine/workspace-event-emitter/types/workspace-event-batch.type.ts": "d74cba658d0f8e7882d6b6d1c53940562cb6bb04a21857db83a1ca309d14cddb",
-  "packages/twenty-server/src/engine/core-modules/workflow/types/workflow-automated-trigger-maps.type.ts": "abae3e117251cfd78ed070e0cb1a0ceff62dba20435837a7639320cb84d19cb8"
+  "packages/twenty-server/src/engine/core-modules/workflow/types/workflow-automated-trigger-maps.type.ts": "abae3e117251cfd78ed070e0cb1a0ceff62dba20435837a7639320cb84d19cb8",
+  "packages/twenty-server/src/engine/core-modules/search/services/search.service.ts": "109e3c8ae0469f2df4cb499806dc28795908dff8d55f940e60e40433628fd696",
+  "packages/twenty-server/src/engine/core-modules/workspace-data-export/services/workspace-data-export-part-writer.service.ts": "63ecb1291f0022d5178e6ef4fa903cd23b3bf2efc1c9b65b678dfec55ed80b1a",
+  "packages/twenty-server/src/engine/twenty-orm/datasource/workspace-data-source.service.ts": "afad6ddd22cdaced5042a9319984af435588cbb04f1b3e8fdcbc9324c30b87cd",
+  "packages/twenty-server/src/modules/messaging/common/standard-objects/message-thread-target.workspace-entity.ts": "fe3a91c705c679365a0ef9850ff74fe2ff839469e220260af6da4e1453345ab9",
+  "packages/twenty-server/src/engine/twenty-orm/workspace-orm.manager.ts": "f07bbca584018975710893d0ff9f976a4caac63d3aafb65342cc79f7c9da9ea7"
 }

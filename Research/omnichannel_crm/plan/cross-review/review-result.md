@@ -1,21 +1,24 @@
-# Итог кроссревью — R11, 26.10.2026
+# Итог кроссревью — R12, 26.10.2026
 
-R11 завершил конечную проверку таблиц событий, прав и Command lifecycle. После исправлений Claude Code дал `bounded_tables_ready` в reconciliation: пять переоткрытых причин закрыты в пределах R11; остальные48 сохраняют прежнюю сверку. Всего53 известных ID closed_in_plan, open0. Это **не свежий полный pass проекта**. ROB-772 In Progress, ROB-764 Todo; новые функции и runtime-тесты не начаты.
+R12: выполнены три свежих полных прохода из изолированного пакета. Последний A дал needs_revision; исправления внесены в действующий план, после B и точечной перепроверки все60 известных причин closed_in_plan, B — ready_for_implementation. Это не свежий полный pass исправленной редакции. ROB-772 In Progress, ROB-764 Todo; новый runtime и его тесты не начаты.
 
-## Что сделано
+## Результат и доказательства
 
-- [Конечные таблицы](../decision-tables.md): E01–E15, P01–P13, sender×mode и C01–C18. Включают roots/catalog/ID/version, policy writers, отмену, Message/Attachment ownership и ссылки на будущие T-тесты.
-- Исправления внесены в spec, design/09, API, схему и этапы1/5. Accepted и cancelRequested учитываются до auto; локальная отмена отделена от подтверждения userbot; workflow IDs нормализуются; sticky coverage требует snapshot даже для empty; explicit deactivate отменяет также уже созданные Commands через workflowCancellationRefs. Human не требует captured LLM scope.
-- [Модель](../verification/check_decisions.py) реально выполнена: **1712 случая,23 контрольные поломки обнаружены**. [Вывод](../verification/model-result.json). Это исполняемые примеры плана; guards не являются независимым доказательством runtime. SQL/locks, полный inventory writers/producers, Message uniqueness/Attachment XOR, актуальность ACK и fencing транспорта требуют будущих T-тестов.
-- [Первый bounded A](claude-r11-finite-a.md) и [повторный bounded A](claude-r11-finite-final.md) нашли по3 major; второй содержал patch-induced omissions. Исправлены конкретные контракты и oracle, затем [B](claude-r11-reconciliation.md) подтвердил пять затронутых ID. Все отзывы и snapshots сохранены.
-- Claude Code reported model claude-opus-5-5, только Read/Grep/Glob; [audit](cli-tool-audit-r11.json). Во втором A Grep случайно показал строки STATUS/cross-review: это раскрыто reviewer, чистым blind проходом его не объявляем.
+- Три независимые Claude Code сессии, reported model claude-opus-5-5; каждая получила34 технических документа и31 441 source/config/test files без реестра/статусов/истории Git. [Initial A](claude-r12-full-a.md), [corrected A](claude-r12-corrected-a.md), [final A](claude-r12-final-a.md). История передана только после последнего A для B. Manifests, точные snapshots и tool audits сохранены.
+- [B всех60 причин](claude-r12-reconciliation.md) и [точечное закрытие N-21](claude-r12-b-finalcheck.md) подтверждают исправления в плане. Учитываются25 проявлений R12:11+6+7 в A и1 остаток B. Прежние53 причины плюс7 новых; риски за владельца не принимались.
+- Проверены45 исходников: SHA256 совпадают, сравнение с pinned729f6236 после нормализации CRLF/LF также без различий. [Source evidence](source-baseline-r12.json), [механические проверки](verification-r12.json).
+- Абстрактная модель реально выполнена:1712 случаев,0 failures,23 контрольные поломки обнаружены. Она не покрывает новые replica/cache/target/FIFO/UI contracts и не является тестом SQL, UI или транспорта.
 
-## Допуск и следующий шаг
+## Что изменено в основном плане
 
-Конечная сверка выполнена; конкретных незакрытых findings R11 нет. Однако её scope уже полного проекта и итог получен в reconciliation. Поэтому ROB-772 не переводится в Done, а ROB-764 пока не начинается. Общий acceptance требует итогового свежего прохода всей исправленной спецификации без старых реестров в контексте; ещё одна одинаковая серия в этой работе не запускается.
+Protected reads и native permission inputs идут в primary внутри policy fence; проверка stale role cache и ранний contention gate вынесены в ROB-766. ConversationTarget выбран canonical storage, native targets используются как projection. Уточнены reply/hash/FIFO, sole session owner и legacy sender cutoff, post-restore sequence, operational payload purge. ConsumerReceipt отделён от RunIntent; единая root-set run identity, constant customer_inbound effectKind и trusted workflow target. Добавлены explicit read-only AI assist, human observedSequence с подтверждением и chronology UI отдельно от apply cursor. Изменены API, schema, phase docs и test oracles, не только список замечаний.
 
-Следующий проверяемый результат — общий verdict по уже зафиксированной редакции, с изолированным пакетом технических документов вместо Grep по архиву ревью. После положительного общего допуска — ROB-764: additive schema/inbox/outbox/audit skeleton с реальными transaction/duplicate/crash tests. G01–G20 остаются настройками до соответствующей активации; реальные сообщения и переключение каналов этой проверкой не разрешены.
+## Пределы и дальнейший шаг
 
-Статический контроль источников и документов не заменяет T01–T33. Внешние Python connectors в R11 не перепроверялись; квалификация SHA/контрактов обязательна до переноса. Работающий экземпляр Twenty не менялся.
+B подтверждает готовность текущих контрактов к реализации с будущими проверками. Общий gate ROB-772 ещё открыт: последний свежий полный A обнаружил новые противоречия, последующие исправления проверены в B. Поэтому task не закрыта и ROB-764 не начата; runtime/deploy/client acceptance отсутствуют.
+
+Следующий шаг для общего допуска — свести дублирующиеся нормативные определения в один актуальный источник, затем проверить согласованную редакцию независимо; не запускать четвёртый идентичный широкий круг без изменения формы работы. Правило остановки взято из cross-review-convergence, не из ограничения инструментов или автоматического approval rejection.
+
+До реальной активации остаются G01–G20, qualification внешних connector/userbot исходников, полная классификация bypass entry points, T19 capacity, T31 stale cache и T01–T33. Это будущие implementation/acceptance evidence, не скрытые закрытые tests. Неизвестная human отправка может сохранять запрет auto без срока; обход без доказательства не добавлен. Реальный Twenty и внешние сервисы не менялись.
 
 [Реестр](registry.md) · [Спецификация](../implementation-spec.md) · [Статус](../../STATUS.md) · [Журнал](../../DEVLOG.md).

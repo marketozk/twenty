@@ -20,3 +20,13 @@
 **Done when:** оба канала проходят полный путь и сбои, история/отправки работают при недоступном SaleBot на тестовом маршруте; отсутствуют общие пароли менеджеров и прямой browser send.
 
 **Rollback:** остановить omni dispatch, дренировать/разобрать accepted/unknown; сохранить журнал и generation. Откат UI сам по себе не переключает транспорт.
+
+## Обязательные уточнения transport и Composer
+
+Перед активацией выбранного аккаунта G11/G13: read-only inventory владельцев CRM dispatch и сторонних отправителей/маршрутов. Один sender означает одного CRM-dispatch owner на generation; внешние сервисы/люди отдельно классифицированы. Никакой интеграции с тендерным роботом и побочных изменений его сервисов. Unknown source/conflicting owners блокируют activation до разрешения конфликта; external_service требует journal provenance и отдельной выбранной policy, до выбора pause/handoff.
+
+Composer reply передаёт replyToMessageLinkId; native reference вычисляет сервер, unsupported/deleted target даёт ошибку. T12 проверяет foreign target, capability, payloadHash и CAS/idempotency. T11 проверяет FIFO первого durable enqueue: задержка A, конкурентный B, потерянный ACK, accepted A с неизвестным provider outcome. Нет гарантии порядка provider delivery; явный manual replacement сохраняет unknown и предупреждение. Точное правило §4 spec, не скрытый retry.
+
+Выбран единственный существующий session-owner process с обновлением provider boundary и сохранением journal. Temporary authenticated legacy principal generation0 допускается только до switch; затем unversioned C отклоняется userbot. Rollback требует нового поколения/credential и совместимого adapter, иначе fenced. Exact handshake/failure cases — spec §15.25. Развёртывание выполняется отдельно после квалификации, не при переносе исходников.
+
+Human send observedSequence обязателен; stale_view → показ нового события и явное подтверждение, key/hash сохраняются. Manual replacement также ждёт неизвестный acceptance предыдущего Command, ordering waiver нет. Timeline UI использует displayOccurredAt+MessageLink.id, sequence только доставка/unread/CAS; T12/T13/T16.

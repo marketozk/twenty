@@ -1,0 +1,149 @@
+{
+  "baseline": "c030e2e4bce19ce8704657bfe5bb8ff04e26c2ee",
+  "phase": "published contracts after B/targeted check plus status/banner metadata edits",
+  "full_A_verdict": "needs_revision",
+  "B_final_verdict": "ready_for_implementation",
+  "full_fresh_pass_after_last_delta": false,
+  "documents": {
+    "Research/omnichannel_crm/requirements.md": {
+      "published_file_sha256": "7781a81c1837a794007810da42cf6115156fd9cc63082852e8d04ebac3861ff8",
+      "B_packet_sha256": "bd742e01c90af7eacf1b7c9e0256af8a028acb926173f179ba6ec50f121cd1c5"
+    },
+    "Research/omnichannel_crm/decisions.md": {
+      "published_file_sha256": "5d30e8d1afcae0d1355391395d900eaeec0d0a3680476f307f99c82a28981080",
+      "B_packet_sha256": "994bb78fc3da57b4e186c27e69ccec4482ed440c4301cf9fcef458c5318a1ecf"
+    },
+    "Research/omnichannel_crm/open-questions.md": {
+      "published_file_sha256": "6dedb9af2fbb140c18f6e2953a4fb6cb0f322447c3cd15c2e571a5ccc620dd99",
+      "B_packet_sha256": "beeb76ac57d2c98a70101725413ac267f9259b99627366616be33b1d813c4847"
+    },
+    "Research/omnichannel_crm/design/01-architecture.md": {
+      "published_file_sha256": "8e07846cc18151c4b4bcc35d1d197d892acbeffdb2020df9c6f151a8c0eb912f",
+      "B_packet_sha256": "e1f7a28c032e015525bacb8767e79b382137b71cbae10fd1240c50b5e436559a"
+    },
+    "Research/omnichannel_crm/design/02-behavior.md": {
+      "published_file_sha256": "8d68fb9369f45ebc0519eb8d032bc6e806ba631c48ff432e88947495811a8bae",
+      "B_packet_sha256": "a54ee28d7eaf3fd1134032aa22f0cfb0c3cde6edf9b7adcf5f5b421dc5a2a47f"
+    },
+    "Research/omnichannel_crm/design/03-decisions.md": {
+      "published_file_sha256": "9b442ee514ad587c1ec9a25e10a0af52344050d3285ec4a6876f6c7e99269154",
+      "B_packet_sha256": "04aa25118950f17c4efe4e65f29d71bb2fd96bb9eca0172e0f6545f9ba4730ef"
+    },
+    "Research/omnichannel_crm/design/04-testing.md": {
+      "published_file_sha256": "c3c878de87a86f756fe647e10e4a66d888ab309bc6dea9383aba1524b2987891",
+      "B_packet_sha256": "a0da97e808a62102fd7d9c4c132d43d533f840fc2ec9c0d86f82c4fff0ccaad7"
+    },
+    "Research/omnichannel_crm/design/05-models.md": {
+      "published_file_sha256": "c99e5fd74f76de576c8500d903c96ff0b5c24090e4cf4dbea6524f5499797675",
+      "B_packet_sha256": "279ee65992341a45ee9f1809ce76b3249416eb4bf29d5a3bb329513db35446c7"
+    },
+    "Research/omnichannel_crm/design/06-api.md": {
+      "published_file_sha256": "4ad21e8a225a8cf716ccc479e110ce597b181eebba39c378104cd615b8730938",
+      "B_packet_sha256": "d6be658805c606d74f8cb69c86ab4b77eb4bc439fdec6cf6cf252755c0ba0d19"
+    },
+    "Research/omnichannel_crm/design/07-license-boundary.md": {
+      "published_file_sha256": "9cff317b4c5952cb3f39a3e1a82115a94707eb4e9e43e146fb7baa00e4479f06",
+      "B_packet_sha256": "ecaab061f90baf0bb3b3bb4e9b9209157eb1324dd28d9ce777de39a8278ed8ff"
+    },
+    "Research/omnichannel_crm/design/08-audit.md": {
+      "published_file_sha256": "bcccdf12727e46bee111642baee421827b1d75cb6e0cc9fe042db801071a3ab2",
+      "B_packet_sha256": "d11c5a7d0c2841d2b382acdd8f41151509098e7e670ea5d241974ad9b84fea96"
+    },
+    "Research/omnichannel_crm/design/09-automation-contract.md": {
+      "published_file_sha256": "46273367a0b142966e5e86cb30b342c958a70d487bd50c44919948e450cee044",
+      "B_packet_sha256": "70948289622caacbf2ecd4111d57531590cbd1a2e49898e6bf65ba7eb31855a8"
+    },
+    "Research/omnichannel_crm/plan/implementation-spec.md": {
+      "published_file_sha256": "58acfdb670f0b2bbf1c97754875b1d9904917d56d5ba3e2a5ce41cdb3485dbf4",
+      "B_packet_sha256": "abe432df3ae2f2cbaf2abf8886bab20de28010d8e35895395e7f3f94c95c7478"
+    },
+    "Research/omnichannel_crm/plan/decision-tables.md": {
+      "published_file_sha256": "18134ca0bec2e078ffc5560f69322a0ce76a158ab4bd7aa1887a8882f6cd1286",
+      "B_packet_sha256": "bb35f822fce2e76a09c09e65401bab03e909466295bf4f483ecc3bcecc605416"
+    },
+    "Research/omnichannel_crm/plan/phase_1_data.md": {
+      "published_file_sha256": "dd7cfdaa43d5865b2a4a3c12e0c12f45c1f8901ae287338554b5d8fa9638fc42",
+      "B_packet_sha256": "889129b4cc590191a24235bf8713c4a96561093260ae24c5517f7e703d4cc582"
+    },
+    "Research/omnichannel_crm/plan/phase_2_audit.md": {
+      "published_file_sha256": "5118cf9f9eae105759135abeefe86b960ffd6fddbfbd3ec0fec748c8541f199e",
+      "B_packet_sha256": "17480a5851163aa52777166fd828ad0b1c0077437dddbab07d1c93f3b78c628a"
+    },
+    "Research/omnichannel_crm/plan/phase_3_access.md": {
+      "published_file_sha256": "62815d4470ecc8117c5dd6f218e5919596ac64652c798a1e513a07bed7866a9d",
+      "B_packet_sha256": "62815d4470ecc8117c5dd6f218e5919596ac64652c798a1e513a07bed7866a9d"
+    },
+    "Research/omnichannel_crm/plan/phase_4_chat.md": {
+      "published_file_sha256": "bdbb996257b22ba7eb083e9a97875290aaaaaa6d27969697305670cb91ba0852",
+      "B_packet_sha256": "bdbb996257b22ba7eb083e9a97875290aaaaaa6d27969697305670cb91ba0852"
+    },
+    "Research/omnichannel_crm/plan/phase_5_ai_workflow.md": {
+      "published_file_sha256": "e98b23fb2483339902772b4c6e070f0794de80e7ad767a9831efbb658acf2d99",
+      "B_packet_sha256": "0ad797fb8b9449a859cc4f20607d3dbe7cd2d02e0d6c0e4318a1abcf444b7976"
+    },
+    "Research/omnichannel_crm/plan/phase_6_history.md": {
+      "published_file_sha256": "87c3f6695f13fd65ccaee9dec714ddc32820dcf76bd5701331d7c5a1aa17278d",
+      "B_packet_sha256": "87c3f6695f13fd65ccaee9dec714ddc32820dcf76bd5701331d7c5a1aa17278d"
+    },
+    "Research/omnichannel_crm/plan/phase_7_acceptance.md": {
+      "published_file_sha256": "e3f182ed24be3ef982b3f65892e1acd1e605ea879843947d979565fca448b768",
+      "B_packet_sha256": "e3f182ed24be3ef982b3f65892e1acd1e605ea879843947d979565fca448b768"
+    },
+    "Research/omnichannel_crm/plan/coverage.md": {
+      "published_file_sha256": "174a460fe70a25e691075b2e1735d3753d00adc91630b6f92bc19ee7eddd89c0",
+      "B_packet_sha256": "3e1a3bf779b8dc2a79ef96d8032f474c3618a11f15b95864d89df5f2e8786966"
+    },
+    "Research/omnichannel_crm/implementation/access-source.md": {
+      "published_file_sha256": "d075248f5f93fe72edfa977890d670c49a0e8016dd3ef751e6f48a9b8248563b",
+      "B_packet_sha256": "283446b79dc63a4ce35caf05d5d54584f9821a4b4751634081c54d0c91031efc"
+    },
+    "Research/omnichannel_crm/implementation/ai-workflow-source.md": {
+      "published_file_sha256": "103b984a41b75584517a956476848f3da2f721ea06337b766d2b3858c78687c3",
+      "B_packet_sha256": "9be3fb0736a99109be0f995d4ee9a4bbdd9b3a39c510ee69f90f2e16271b38cc"
+    },
+    "Research/omnichannel_crm/implementation/automation-source-matrix.md": {
+      "published_file_sha256": "e7de8c77ba2b8b6267d4f9991f05028013a780e002ecc818a65a6f5e4cf26c9d",
+      "B_packet_sha256": "3257b342a7e8ca1a22d0b1880e99244804090228506fe6d14bfa943c7f4c5f53"
+    },
+    "Research/omnichannel_crm/implementation/transactions-audit-source.md": {
+      "published_file_sha256": "38365bd3d35c3ff6cf57454d27518a584198b1f24c3c81b3e42ebbe698b5cc84",
+      "B_packet_sha256": "a23ed4bd2c5a59ef75e512739682a30eabb381f5ec189dd580a12dee7d8f47cb"
+    },
+    "Research/omnichannel_crm/implementation/integration-map.md": {
+      "published_file_sha256": "27fb7ae7405e16f364d2d3980346e2d6b7ca92d7d3ef641b12014ea98ad71cdd",
+      "B_packet_sha256": "66677211a7ea5de934271ded0f337a83f6fcc2bb44960b73e2617ccedba503eb"
+    },
+    "Research/omnichannel_crm/implementation/bypass-candidates.md": {
+      "published_file_sha256": "d97ab3a43947cfbc832fa61e76fbc9cb8964a27de6f84e1526a34ab14282a285",
+      "B_packet_sha256": "d97ab3a43947cfbc832fa61e76fbc9cb8964a27de6f84e1526a34ab14282a285"
+    },
+    "Research/omnichannel_crm/implementation/license-inventory.md": {
+      "published_file_sha256": "718b6c3f99201f98101daa51f1ae2e72d5bcd73a3b6be0aab2a2d81509ee1dfa",
+      "B_packet_sha256": "e6413fcb78a880a0d131aadc682bd2769591f7dcdf10a2a72d88e1ae275eb9a7"
+    },
+    "Research/omnichannel_crm/research-connectors.md": {
+      "published_file_sha256": "8353aef50e3f765d1b1fdfdc385bdd86cafd6d131d74bbd3836dbfe1100ae797",
+      "B_packet_sha256": "e30d3e31177126eb6aaf34acd355dfa60f90080fff7567c2aa5376415c95a173"
+    },
+    "Research/omnichannel_crm/upstream-2.52.json": {
+      "published_file_sha256": "3f41883fbe766dc4de8ab4fb0796c37d0d7c3cda82c876ecec16a87b2d74d083",
+      "B_packet_sha256": "055fd132148d0f3b41ee8dcf819f6308f9eaf404d9f57ec8e3794ceb2147d2d0"
+    },
+    "Research/omnichannel_crm/implementation/automation-source-hashes.json": {
+      "published_file_sha256": "3ee41d028e86ea6fa67287791cf7b544d032d50ad4d60890d259e833e0f2259e",
+      "B_packet_sha256": "3ee41d028e86ea6fa67287791cf7b544d032d50ad4d60890d259e833e0f2259e"
+    },
+    "Research/omnichannel_crm/plan/verification/check_decisions.py": {
+      "published_file_sha256": "86e3bf8aa31189eabfc1cac96741fad35ebc6bce04e57c0000d539966384c39d",
+      "B_packet_sha256": "86e3bf8aa31189eabfc1cac96741fad35ebc6bce04e57c0000d539966384c39d"
+    },
+    "Research/omnichannel_crm/plan/verification/model-result.json": {
+      "published_file_sha256": "cc66bf75d1994f03c451919f558911c4c752d1b766e0f3700a2783a9a455599f",
+      "B_packet_sha256": "cc66bf75d1994f03c451919f558911c4c752d1b766e0f3700a2783a9a455599f"
+    }
+  },
+  "publication_metadata_edits": [
+    "Review/status banners and links updated after technical B; normative contracts unchanged after targeted N-21 fix."
+  ],
+  "source_hashes_verified": 45
+}

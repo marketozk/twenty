@@ -1,6 +1,6 @@
 # Этап 1. Модель общения, inbox/outbox и журнал
 
-Редакция после R10: [единый контракт](../design/09-automation-contract.md) и [source matrix](../implementation/automation-source-matrix.md). EventDispatchPlan/receipts фиксируют stable consumerId и pinned version атомарно; общий reply budget охватывает agent/workflow. Closed tool registry, запрет generic token issuance и полный pausing inventory обязательны. R10 reconciliation: все53 известные причины closed_in_plan, это не общий fresh full pass.
+Действующий план: [единый контракт](../design/09-automation-contract.md) и [source matrix](../implementation/automation-source-matrix.md). EventDispatchPlan/receipts фиксируют stable consumerId и pinned version атомарно; общий reply budget охватывает agent/workflow. Closed tool registry, запрет generic token issuance и полный pausing inventory обязательны. Текущий verdict — [review-result](cross-review/review-result.md).
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
@@ -35,3 +35,9 @@ Fork-only IDs не используются в upstream upgrade-aware decorators
 Генерализация roots на non-message governed triggers и lifecycle merge для omni-owned references — обязательный контракт design/09 и spec §15.2/15.20; producers/consumers публикуются вместе, неполная миграция не включает automation.
 
 R11: schema/contract обязаны учитывать immutable workflowCancellationRefs в Command и canonical core IDs до idempotency. EventCoverageRegistry и retained subscription cancellationEpoch вводятся вместе с governed producer/consumer integration; реальные endpoints остаются выключены до покрытия. [Таблицы](decision-tables.md) уточняют accepted/cancelRequested human gate и локальную/remote отмену.
+
+## Уточнения схемы и контрактов
+
+ROB-764 вводит минимальный WorkspacePolicyState/bootstrap до ingress, canonical ConversationTarget и раннюю revision metadata; полноценная политика — этап 3. Все apply-транзакции берут policy lock раньше binding/conversation. Логический каталог §3 не переносит Turn/Effect/Knowledge/RunIntent из этапа 5 в этот этап.
+
+Согласовать wire replyToMessageLinkId, immutable reply snapshot/hash, outboundSequence и natural-key/revision CAS link/unlink с design/06. Тесты этапа: identity/target projection rollback, tenant isolation и schema uniqueness; полноценные ACL/FIFO/UI checks дополняются этапами 3–4.

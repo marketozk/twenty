@@ -1,6 +1,6 @@
 # Контракты API v1
 
-Авторская актуализация после R7: [единый контракт автоматизации](09-automation-contract.md) внесён в основной план; независимая проверка ещё требуется. Инструменты/делегирование, stable workflow identity, полный запрет pausing и общая квота ответов определены этим контрактом.
+[Единый контракт автоматизации](09-automation-contract.md) определяет инструменты, stable workflow identity, pausing и общую квоту ответов. Текущий допуск и ограничения — [STATUS](../STATUS.md); проектируемые функции ещё не реализованы.
 
 Уточнение 26.10.2026: [подробный план всего проекта](../plan/implementation-spec.md), особенно раздел 15, задаёт lifecycle, canonical source keys, scoped AI, restore и fork migrations. Схематичные ключи/названия ниже не заменяют эти точные контракты.
 
@@ -13,7 +13,8 @@ GraphQL queries/mutations для команд и чтения; существу�
 | Операция | Вход / эффект |
 |---|---|
 | conversations / conversationMessages | Фильтры, cursor, page limit; ACL применяется до выдачи, count и сумм |
-| sendConversationMessage | conversationId, текст/готовые file IDs, idempotencyKey, expectedControlEpoch; сервер назначает actor/workspace, создаёт Command |
+| sendConversationMessage | conversationId, текст/готовые file IDs, replyToMessageLinkId nullable, idempotencyKey, expectedControlEpoch, observedSequence (human); сервер назначает actor/workspace, создаёт Command |
+| linkConversationTarget / unlinkConversationTarget | conversationId, objectMetadataId, recordId, expectedTargetRevision (0 для отсутствующего edge); current ACL обеих сторон, canonical core edge и native projection атомарно; повтор/stale правила spec §7 |
 | addInternalNote | conversationId, body, idempotencyKey; не вызывает внешнюю отправку |
 | assignConversation / changeParticipants | expectedControlEpoch, разрешённые workspaceMember IDs; проверка права назначения и доступа получателя |
 | setConversationMode / takeover | mode, expectedControlEpoch; атомарное увеличение controlEpoch + automationEpoch и отмена pending non-human команд прежнего automationEpoch |
@@ -79,3 +80,17 @@ setMode→auto возвращает pending_human_commands при pending/dispat
 Workflow ID на границе нормализуется из legacy alias в tenant-scoped canonical core ID до idempotency/intent lookup. Explicit deactivate/delete обновляет retained cancellationEpoch даже после ordinary publish; publish/archive не отменяет старые pinned intents. Source coverage/referenceRequired — spec §15.19 и decision-tables, не клиентское поле.
 
 Отмена транспортной команды: cancelCommand(commandId) — idempotent, tenant/owner/generation scoped, durable tombstone действует и до enqueue. Только journal юзербота у provider boundary подтверждает cancelled либо too_late; недоступность/timeout = unresolved cancelRequested, не cancelled. Центральный ACK запроса отмены не доказывает provider outcome. Spec §15.3/15.7; поздний enqueue того же ID сверяет tombstone. Workflow cancellation refs в Command и отмена при explicit deactivate/delete — spec §15.19.
+
+## Уточнения reply, связей и trusted provenance
+
+Reply разрешён только на MessageLink того же workspace/conversation после текущей ACL-проверки и проверки capability. Сервер сохраняет immutable native reply reference; target и native snapshot включены в payloadHash. expectedControlEpoch — только CAS precondition и не входит в hash: конфликт до commit не занимает idempotency key; после commit тот же key/hash возвращает прежний Command после текущей авторизации. Недоступный/удалённый reply target и unsupported reply дают видимую ошибку, без тихой отправки без цитирования.
+
+Transport payload передаёт outboundSequence и resolvedReplyNativeRef; очередь следует §4 implementation-spec. FIFO — порядок первого durable enqueue, не обещание порядка доставки/прочтения. Unknown acceptance предшественника блокирует автоматическое продвижение; known accepted journal proof сохраняется отдельно от последующего unknown provider outcome. Явный ручной replacesCommandId сохраняет старый unknown и предупреждает о возможном дубле/порядке.
+
+Входящий внешний JSON не определяет origin или trusted actor. Provenance external_human / external_service / unresolved_external выводится только из квалифицированного журнала userbot и correlation, не из отсутствия commandId или текста. External service требует проверяемого service principal; правило G11 отдельно от externalHumanReplyPolicy, до выбора — pause/handoff. Такие outgoing не создают customer admission.
+
+Non-message workflow до первого шага получает server-provided root.conversationId/route через G07 domain resolver по разрешённым ConversationTarget. Missing/multiple → deny; FIND_RECORDS не используется для core Conversation и клиент не может подменить trusted variable.
+
+Explicit manager summarize/rephrase — read-only assist в любом mode; current manager∩agent ACL, AutomationArtifactScope, без Command/reply slot/mutating tools. Transport outboundSequence диагностический для connector, его unique key — commandId и порядок — durable journal; после restore применяются §15.25 fence/reconciliation, не reuse потерянных command IDs.
+
+Human observedSequence — обязательный stale-view precondition, не payloadHash и не dispatch fence. Два одновременных ответа → первый commit/новый event cursor, второй stale_view; UI показывает изменения и получает явное подтверждение с новым cursor. Уже принятый key/hash возвращает ту же Command. Exact transaction/idempotency rules — spec §15.26. Explicit replacesCommandId не обходит FIFO: при неизвестном acceptance предшественника также waiting_predecessor.

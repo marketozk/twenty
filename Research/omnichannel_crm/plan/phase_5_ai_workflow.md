@@ -1,6 +1,6 @@
 # Этап 5. ИИ и рабочие процессы
 
-Редакция после R10: [единый контракт](../design/09-automation-contract.md) и [source matrix](../implementation/automation-source-matrix.md). EventDispatchPlan/receipts фиксируют stable consumerId и pinned version атомарно; общий reply budget охватывает agent/workflow. Closed tool registry, запрет generic token issuance и полный pausing inventory обязательны. R10 reconciliation: все53 известные причины closed_in_plan, это не общий fresh full pass.
+Действующий план: [единый контракт](../design/09-automation-contract.md) и [source matrix](../implementation/automation-source-matrix.md). EventDispatchPlan/receipts фиксируют stable consumerId и pinned version атомарно; общий reply budget охватывает agent/workflow. Closed tool registry, запрет generic token issuance и полный pausing inventory обязательны. Текущий verdict — [review-result](cross-review/review-result.md).
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
@@ -36,3 +36,13 @@ SEND_OMNI_MESSAGE интегрируется в shared schema, server factory/va
 R8: Omni reference обязателен для workflow descendants независимо от trigger type; closed action table и final sentTools guard, native/pausing overrides, запрет обычного Retry omni runs, полный inherited admission set и durable budget_exhausted handoff — design/09. Это авторские исправления после targeted review, ещё не full pass.
 
 R11: [таблицы](decision-tables.md) дополняют whole-flow governance. Core workflow/version IDs нормализуются до keys; sticky referenceRequired и coverage всех producers до activation; cancellationEpoch меняется при explicit deactivate/delete, но не publish/archive. Immutable workflowCancellationRefs (включая governed ancestors) проверяются при Command dispatch/recovery, remote cancel требует journal proof. T14/T28 проверяют эти границы вместе, а не только отмену runner.
+
+## Идентичность запуска и non-message target
+
+Создать отдельные OmniWorkflowRunIntent/OmniWorkflowTargetClaim по §3, не отождествлять intent с ConsumerReceipt. T14: conversation.created и message.received одного root/target дают два receipts и один запуск, повтор и cleanup native run его не дублируют. G07 resolver фиксирует root.conversationId/route до первого шага; non-message workflow использует domain query разрешённых ConversationTarget, missing/multiple deny. Captured edge revision проверяется при каждом эффекте.
+
+Схема Turn/Effect/Knowledge и UNIQUE приведены §3; tenant/role ограничения действуют до retrieval. Не добавлять новую платформу ИИ или векторный индекс без необходимости. Не вводить acknowledge_unresolved: неизвестная human send блокирует auto согласно существующим таблицам; UI объясняет pending_human_commands и доступный ручной разбор.
+
+F-04 summary/rephrase по явному запросу менеджера разрешены и в human mode как read-only assist; scoped artifact, без Command/customer reply slot и mutating tools. T12/T25 проверяют запреты и revoke перед выдачей; autonomous AI в human остаётся отключён.
+
+Единственный automatic runId: UUIDv5 omni namespace от canonical JSON workspace + sorted covered root pairs + coreWorkflowId. EventId/version не входят; recovery читает intent, не вычисляет из event. AutomationAdmission.effectKind v1 только customer_inbound; consumers AI/workflow используют общий root. T14 проверяет два event receipts/один run (spec §15.26).

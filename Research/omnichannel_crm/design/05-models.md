@@ -1,6 +1,6 @@
 # Модель данных и инварианты
 
-Авторская актуализация после R7: [единый контракт автоматизации](09-automation-contract.md) внесён в основной план; независимая проверка ещё требуется. Инструменты/делегирование, stable workflow identity, полный запрет pausing и общая квота ответов определены этим контрактом.
+[Единый контракт автоматизации](09-automation-contract.md) определяет инструменты, stable workflow identity, pausing и общую квоту ответов. Текущий допуск и ограничения — [STATUS](../STATUS.md); проектируемые функции ещё не реализованы.
 
 Уточнение 26.10.2026: [подробный план всего проекта](../plan/implementation-spec.md), особенно раздел 15, задаёт lifecycle, canonical source keys, scoped AI, restore и fork migrations. Схематичные ключи/названия ниже не заменяют эти точные контракты.
 
@@ -24,11 +24,11 @@
 |---|---|---|
 | OmniAccountBinding | workspaceId, platform, connectorAccountId, connectedAccountId, messageChannelId, routeGeneration, capabilities, status | Уникальный platform+account внутри workspace; один transport account не становится аккаунтом другого workspace по входящему payload. Доступ к connectedAccount проверяется сервером. |
 | OmniExternalIdentity | bindingId, providerPeerId, personId, verificationSource | Явная привязка клиента. Не объединять по имени/username. Один Person может иметь несколько подтверждённых identity. |
-| OmniConversation | bindingId, providerChatId, messageThreadId, assigneeWorkspaceMemberId, status, mode, revision, controlEpoch, automationEpoch, policyVersion | UNIQUE(bindingId, providerChatId); маршрут не меняется при смене контакта. Изменения состояния через команды. |
+| OmniConversation | bindingId, providerChatId, messageThreadId, assigneeWorkspaceMemberId, status, mode, revision, controlEpoch, automationEpoch, policyVersion | UNIQUE(workspaceId,bindingId,providerChatId); маршрут не меняется при смене контакта. Изменения состояния через команды. |
 | OmniConversationMember | conversationId, workspaceMemberId, participation/read state | Отвечает за участие/непрочитанное, не заменяет общий ACL. Assignee и разрешённые участники различаются. |
-| OmniMessageLink | bindingId, providerChatId, nativeMessageId, messageId, providerRevision, origin, outgoingCommandId | DB UNIQUE(bindingId, providerChatId, nativeMessageId). Для исходящего до native ID существует Command, а не фиктивное подтверждённое сообщение. |
-| OmniIncomingReceipt | bindingId, eventId, payloadHash, kind, origin, payload, state, attempts, error | UNIQUE(bindingId,eventId). Надёжный ACK после commit; исходный payload ограниченно хранится для replay/расследования. |
-| OmniAutomationAdmission | bindingId, nativeMessageKey, effectKind, activationVersion, trustedSourcePosition, eventId | UNIQUE(bindingId,nativeMessageKey,effectKind,activationVersion). Допуск live-эффекта отдельно от дедупликации текста; атомарно с DomainEvent/outbox. Origin первого insert не решает, нужен ли live-ответ. |
+| OmniMessageLink | bindingId, conversationId, nativeMessageKey, rawNativeMessageId, messageId, providerRevision, origin, outgoingCommandId | DB UNIQUE(workspaceId,bindingId,conversationId,nativeMessageKey). Для исходящего до native ID существует Command, а не фиктивное подтверждённое сообщение. |
+| OmniIncomingReceipt | bindingId, eventId, payloadHash, kind, origin, payload, state, attempts, error | UNIQUE(workspaceId,bindingId,eventId). Надёжный ACK после commit; исходный payload ограниченно хранится для replay/расследования. |
+| OmniAutomationAdmission | bindingId, messageLinkId, effectKind=customer_inbound, activationVersion, trustedSourcePosition, eventId | UNIQUE(workspaceId,bindingId,messageLinkId,effectKind,activationVersion). Допуск live-эффекта отдельно от дедупликации текста; атомарно с DomainEvent/outbox. Origin первого insert не решает, нужен ли live-ответ. |
 | OmniOutgoingCommand | commandId, conversationId, actor, idempotencyKey, payloadHash, payload/files, expectedAutomationEpoch (non-human), policyVersion, state, connectorJobId, error | UNIQUE(workspaceId,actor,idempotencyKey) с проверкой целевого conversation и payload. Повтор не меняет адресата. |
 | OmniRootExecution / ReplyBudget | rootKind, rootId, sourceKey, captured scope, coveredRoots, policy, budget slots | Stable trusted ingress для message и DATABASE_EVENT/CRON/WEBHOOK/MANUAL; UNIQUE(workspaceId,rootKind,sourceKey), reply slot UNIQUE(workspaceId,rootKind,rootId,slot); design/09 |
 | OmniDomainEvent / ConsumerReceipt | eventId, type, conversationId, origin, causationId, revision; consumerId | Публикация после commit; UNIQUE(workspaceId,consumerId,eventId), workflow consumerId основан на workflowId, version pinned в receipt для приёма. Выполнение внешнего действия дополнительно идемпотентно. |
@@ -67,3 +67,11 @@
 Merge Person/Company partition-ит omni-owned participants/target associations до generic relation migration; domain lifecycle adapter переносит их в общей transaction с suppression/audit и неизменяемым author snapshot. Email relations сохраняют штатный путь. Подробно spec §15.2/T23.
 
 AttachmentLink переходит Command→Message атомарно с receipt/MessageLink/audit, сохраняя XOR и current ACL; echo/retry идемпотентны (spec §15.23).
+
+## Канонические связи и инвентарь служебных сущностей
+
+Полный логический каталог и UNIQUE-ключи — implementation-spec §3. ConversationTarget — единый canonical core edge для Person/Company/Opportunity/Task/custom. MessageThreadTarget — только синхронная projection первых трёх типов; Task/custom доступны через domain query. Link/unlink и lifecycle изменяют edge/projection/epoch/audit в одной transactionScope; soft unlink сохраняет revision. Связь не выдаёт права, старый captured edge revision не оживает при повторном link.
+
+ConsumerReceipt и OmniWorkflowRunIntent различны: два события одного root для одного workflow дают два receipts, но один intent через OmniWorkflowTargetClaim. RunIntent сохраняется независимо от native run retention. Минимальный WorkspacePolicyState нужен ROB-764; ACL policy tables и AutomationArtifactScope — ROB-766; Turn/Effect/RunIntent/Knowledge — ROB-769. Каталог не означает одной миграции всего проекта.
+
+OutgoingCommand хранит immutable reply reference и outboundSequence; Conversation выделяет sequence атомарно. FIFO dispatch и unknown acceptance — §4, это не гарантия порядка доставки провайдером.

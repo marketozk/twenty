@@ -30,3 +30,7 @@
 ## Дополнение R11
 
 Cross-review-convergence применён к конечным таблицам и связанным контрактам: авторская сверка источников, сохранение стабильных причин, явная граница executable specification, фактические semantic negative controls, новый fresh контекст для исправленного объекта. Claude consult/transparent integration сохраняют официальный CLI и модель/auth; только Read/Grep/Glob. Linear-api синхронизирует существующие задачи после публикации. Полный fresh pass всего проекта не выводится из ограниченного table verdict; новые runtime phases не заявляются.
+
+## Дополнение R12
+
+Применены cross-review-convergence (stable IDs, source-backed fixes, отдельные A/B, явное отсутствие общего pass), claude consult (официальный read-only CLI), claude-cli-transparent-integration (фактическая модель, без override/auth spoofing, tool audit), linear-api (публикация и read-back). Три свежих A получили изолированные пакеты; реестр добавлен только для B. Использовать весь каталог скиллов не требовалось; plan-eng-review/UI phases и runtime testing не объявляются выполненными. Четвёртый одинаковый широкий цикл не запускался.
