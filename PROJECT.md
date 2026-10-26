@@ -8,6 +8,8 @@
 
 ## Документы проекта
 
+- [Краткая сводка и следующие действия](Research/omnichannel_crm/STATUS.md) — что сделано, четыре открытые причины и порядок продолжения.
+
 - [Журнал разработки](Research/omnichannel_crm/DEVLOG.md) — выполненные шаги, проверки, коммиты, ограничения и следующий шаг.
 - [Проект в Linear](https://linear.app/robotrts/project/twenty-crm-obshenie-s-klientami-eccda8a60c7b) — актуальные задачи и зависимости; [карта задач](Research/omnichannel_crm/linear.md).
 
