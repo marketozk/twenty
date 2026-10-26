@@ -8,7 +8,7 @@
 
 ## Документы проекта
 
-- [Краткая сводка и следующие действия](Research/omnichannel_crm/STATUS.md) — что сделано, четыре открытые причины и порядок продолжения.
+- [Краткая сводка и следующие действия](Research/omnichannel_crm/STATUS.md) — что сделано, текущий допуск и порядок продолжения.
 
 - [Журнал разработки](Research/omnichannel_crm/DEVLOG.md) — выполненные шаги, проверки, коммиты, ограничения и следующий шаг.
 - [Проект в Linear](https://linear.app/robotrts/project/twenty-crm-obshenie-s-klientami-eccda8a60c7b) — актуальные задачи и зависимости; [карта задач](Research/omnichannel_crm/linear.md).
@@ -53,6 +53,6 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-Последний свежий полный R10 A: needs_revision. Все выявленные правки внесены; R10 B и финальная узкая сверка подтвердили **53/53 closed_in_plan, 0 open**. Это закрытие известных причин, не чистый полный pass последней редакции. ROB-772 остаётся In Progress, ROB-764 Todo; код новых функций и runtime-тесты не начаты. [Итог ревью](Research/omnichannel_crm/plan/cross-review/review-result.md).
+R11 завершил конечную проверку таблиц событий, прав и Command lifecycle. После исправлений Claude Code дал `bounded_tables_ready` в reconciliation: пять переоткрытых причин закрыты в пределах R11; остальные48 сохраняют прежнюю сверку. Всего53 известных ID closed_in_plan, open0. Это **не свежий полный pass проекта**. ROB-772 In Progress, ROB-764 Todo; новые функции и runtime-тесты не начаты. [Итог ревью](Research/omnichannel_crm/plan/cross-review/review-result.md).
 
 Установка и команды upstream находятся в [README.md](README.md) и [CLAUDE.md](CLAUDE.md). Исходники и документы хранятся в этой папке на Рабочем столе; сборка выполнена на Schrodinger официальным Dockerfile с ограничением ресурсов.

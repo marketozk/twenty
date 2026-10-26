@@ -1,0 +1,20 @@
+{
+  "note": "B plus two editorial suggestions: pending-row cross reference, E14/E15 order",
+  "files": {
+    "plan/decision-tables.md": "e1051523aa413e9f542ab073143d2e229942e7c1593e96f93d0449d48431b4f8",
+    "plan/implementation-spec.md": "4e2862fe12cab9228c92aedaa25c95602c422081215e27b3ee76d4265f9e93ba",
+    "design/06-api.md": "bd2b2d32e0decd22a21e0d37c9f49199ccd5d939db89991c67fe0dbc0eec8b51",
+    "design/09-automation-contract.md": "74e27f5f20e200b1bbecb9c4e9b336761b508aeeae2abaf7b1d0ebde7a3f4899",
+    "plan/verification/check_decisions.py": "86e3bf8aa31189eabfc1cac96741fad35ebc6bce04e57c0000d539966384c39d",
+    "plan/verification/model-result.json": "cc66bf75d1994f03c451919f558911c4c752d1b766e0f3700a2783a9a455599f"
+  },
+  "hash_note": "SHA256 byte hashes of Windows working tree; Git normalizes CRLF to LF. Normalized hashes supplied below.",
+  "lf_sha256": {
+    "plan/decision-tables.md": "ece4595d8fc2870142535fcc72c21f5c55eed7bd241ae01da19894b73d3312f9",
+    "plan/implementation-spec.md": "717c022436716b7c80417598248387e52bdb8f00e51eeb27c5413150ba2d02fc",
+    "design/06-api.md": "8ed09f66e94da4cc1182086f6d8f49cb08e63316e49a0b72db7baf135889a48a",
+    "design/09-automation-contract.md": "31d9461879d25a41e1f71aa41ab9ec32d8353d363b51f34c5a783d320740393a",
+    "plan/verification/check_decisions.py": "fefc8227f086a242093383744473a3d39358905f2d21831c35cc49d3f4244c0e",
+    "plan/verification/model-result.json": "6c8b30cc739ef1c1093cf0071cb47319b1729b9ef2754ffda8c85a869e40ec8a"
+  }
+}

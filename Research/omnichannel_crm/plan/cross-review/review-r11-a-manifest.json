@@ -1,0 +1,13 @@
+{
+  "baseline": "c1a6100d34f2efe6e698a0796668f8480ead9c2c",
+  "scope": "finite tables + direct contracts; not full project pass",
+  "files": {
+    "Research/omnichannel_crm/plan/decision-tables.md": "ed78aeec68304a09461e1c23b15c321beae97fc8ccb8d558834ed4380d88fd7a",
+    "Research/omnichannel_crm/plan/implementation-spec.md": "19b79b048acf868f86a2c55457284262f1e3f4d35e474eedef66f3c248961bfa",
+    "Research/omnichannel_crm/design/06-api.md": "c6b8a72322fb235d0eec011fb73b7193909f409838f8dfc109c190c74ce16d3c",
+    "Research/omnichannel_crm/design/09-automation-contract.md": "e637149e4d154863217b98d52e55b66028016e1aa13dc7edcb3cf2dcb53d6eba",
+    "Research/omnichannel_crm/plan/cross-review/registry.md": "b28655e66f64bb80b2a151c0b9d87556fbbeedd71d67189cacdcbc824c5d1623",
+    "Research/omnichannel_crm/plan/verification/check_decisions.py": "413c7a0d6f51b6cb4d653c92388c1d6d30733d59b81412f6ab55ba4f810b96fb",
+    "Research/omnichannel_crm/plan/verification/model-result.json": "15e23feb41052dcdf7c4bc85b186cc69212ea697f26af87a70595e33cf2c9bc5"
+  }
+}

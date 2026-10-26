@@ -1,0 +1,15 @@
+{
+  "local_links": 500,
+  "missing_links": [],
+  "json_files_valid": 32,
+  "source_hashes_match": 40,
+  "unique_known_ids": 53,
+  "closed_in_plan": 53,
+  "model_cases": 1712,
+  "caught_negative_controls": 23,
+  "runtime_tests": false,
+  "fresh_full_project_pass": false,
+  "bounded_reconciliation_verdict": "bounded_tables_ready",
+  "git_diff_check": true,
+  "runtime_or_ops_diff": false
+}

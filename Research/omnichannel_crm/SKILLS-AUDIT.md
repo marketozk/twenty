@@ -26,3 +26,7 @@
 ## Дополнение R8–R10
 
 Применены cross-review-convergence, claude consult (read-only), claude-cli-transparent-integration, linear-api. Targeted и свежие A отделены от reconciliation B, точная модель/фактические инструменты сохранены в cli-tool-audit-r8-r10.json. Все53 известные причины закрыты в плане; полный pass не заявлен. ai-dev implementation/runtime phases не выполнены; plan-eng-review/ui-design-workflow отдельно не запускались.
+
+## Дополнение R11
+
+Cross-review-convergence применён к конечным таблицам и связанным контрактам: авторская сверка источников, сохранение стабильных причин, явная граница executable specification, фактические semantic negative controls, новый fresh контекст для исправленного объекта. Claude consult/transparent integration сохраняют официальный CLI и модель/auth; только Read/Grep/Glob. Linear-api синхронизирует существующие задачи после публикации. Полный fresh pass всего проекта не выводится из ограниченного table verdict; новые runtime phases не заявляются.

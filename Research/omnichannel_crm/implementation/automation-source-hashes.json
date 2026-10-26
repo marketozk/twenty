@@ -35,5 +35,8 @@
   "packages/twenty-server/src/engine/trash-cleanup/services/trash-cleanup.service.ts": "2486992ce637570a36cdc8445db98b0fee8b4fca29a54ce49ceba3f9b92ce826",
   "packages/twenty-server/src/engine/workspace-manager/twenty-standard-application/utils/field-metadata/compute-message-participant-standard-flat-field-metadata.util.ts": "726b3d3d7c4b1e637848671ffb300b34bd1eab1dfb6bddff8b463513874552b1",
   "packages/twenty-server/src/engine/core-modules/secret-encryption/utils/resolve-encryption-keys-or-throw.util.ts": "1380da120dcf7d110785ada64f4111a157e6840852e86833978ac728960d00fd",
-  "packages/twenty-server/src/engine/core-modules/jwt/services/jwt-wrapper.service.ts": "5cfa6f78124b39aee3c1c9f820f91d1b18ced93e0d0a375989ce5596c61f2824"
+  "packages/twenty-server/src/engine/core-modules/jwt/services/jwt-wrapper.service.ts": "5cfa6f78124b39aee3c1c9f820f91d1b18ced93e0d0a375989ce5596c61f2824",
+  "packages/twenty-server/src/engine/workspace-event-emitter/workspace-event-emitter.ts": "70e81ae2780c829740e82d2d49441a4aa55a5de81c211bc26a5715f42f24e7d0",
+  "packages/twenty-server/src/engine/workspace-event-emitter/types/workspace-event-batch.type.ts": "d74cba658d0f8e7882d6b6d1c53940562cb6bb04a21857db83a1ca309d14cddb",
+  "packages/twenty-server/src/engine/core-modules/workflow/types/workflow-automated-trigger-maps.type.ts": "abae3e117251cfd78ed070e0cb1a0ceff62dba20435837a7639320cb84d19cb8"
 }

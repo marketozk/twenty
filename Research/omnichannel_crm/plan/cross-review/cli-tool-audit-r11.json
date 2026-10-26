@@ -1,0 +1,28 @@
+[
+  {
+    "session": "da13e796-7991-4182-b516-72c40e2e3719",
+    "models": [
+      "claude-opus-5-5"
+    ],
+    "tool_counts": {
+      "Read": 14,
+      "Glob": 1,
+      "Grep": 11
+    },
+    "allowed_only": true,
+    "counts_scope": "cumulative session; second includes B"
+  },
+  {
+    "session": "0d22f524-3f7b-4457-8ef8-b3e70e2634fa",
+    "models": [
+      "claude-opus-5-5"
+    ],
+    "tool_counts": {
+      "Read": 24,
+      "Glob": 2,
+      "Grep": 24
+    },
+    "allowed_only": true,
+    "counts_scope": "cumulative session; second includes B"
+  }
+]

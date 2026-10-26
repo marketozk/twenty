@@ -1,0 +1,12 @@
+{
+  "baseline": "c1a6100d34f2efe6e698a0796668f8480ead9c2c",
+  "files": {
+    "Research/omnichannel_crm/plan/decision-tables.md": "ad658f6e56a2fb0375ea7dceb665f44292621c70c0d2ae38508d540185998a7a",
+    "Research/omnichannel_crm/plan/implementation-spec.md": "6d19e27320a20915e086a6bf1a20cf30d753d78c28bc271923ee809307111cd8",
+    "Research/omnichannel_crm/design/06-api.md": "bd2b2d32e0decd22a21e0d37c9f49199ccd5d939db89991c67fe0dbc0eec8b51",
+    "Research/omnichannel_crm/design/09-automation-contract.md": "74e27f5f20e200b1bbecb9c4e9b336761b508aeeae2abaf7b1d0ebde7a3f4899",
+    "Research/omnichannel_crm/plan/verification/check_decisions.py": "86e3bf8aa31189eabfc1cac96741fad35ebc6bce04e57c0000d539966384c39d",
+    "Research/omnichannel_crm/plan/verification/model-result.json": "cc66bf75d1994f03c451919f558911c4c752d1b766e0f3700a2783a9a455599f",
+    "Research/omnichannel_crm/plan/cross-review/registry.md": "f3ec966ae532027a3f105a673effb9d4764bde54ed41343404f14db0c3499c6f"
+  }
+}

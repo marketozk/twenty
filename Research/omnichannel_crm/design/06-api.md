@@ -53,7 +53,7 @@ Subscription выдаёт только разрешённые conversation event
 
 Полный контракт history pull, envelope schema и страницы — implementation-spec §15.16. `fetchHistoryPage(importBatchId,binding,chat,sourceType,cursor,window,limit,expectedAccountIdentity)` использует отдельный history.read credential без права send. Происхождение назначает внутренний job Twenty; сохранение page receipt предшествует cursor advance.
 
-Минимальные операции: enqueue(commandId, binding, routeGeneration, providerChatId, payload/files), commandStatus(commandId), accountStatus(binding), pauseAccount(binding). Это адаптация существующего enqueue_send/jobs/Partner API, не заявление об их текущей совместимости.
+Минимальные операции: enqueue(commandId, binding, routeGeneration, providerChatId, payload/files), commandStatus(commandId), accountStatus(binding), pauseAccount(binding), cancelCommand(commandId). Это адаптация существующего enqueue_send/jobs/Partner API, не заявление об их текущей совместимости.
 
 commandId обязателен и стабилен; повтор с тем же телом возвращает прежнее задание, с другим — conflict. Credentials серверные, scopes ограничивают workspace/bindings. Connector проверяет владение маршрутом и поколение перед вызовом адаптера. Результат enqueue подтверждает сохранение, а не доставку.
 
@@ -74,4 +74,8 @@ commandId обязателен и стабилен; повтор с тем же 
 
 Omni-capable workflow независимо от trigger проходит governance до первого шага. WEBHOOK/MANUAL требуют idempotency key; same key/different hash — conflict. SEND_OMNI_MESSAGE без trusted reference запрещён. DATABASE_EVENT/CRON получают server source key, root/scope/budget по design/09; replay не сбрасывает ancestry.
 
-setMode→auto возвращает pending_human_commands при pending/dispatching/unknown человеческих Commands. addInternalNote дедуплицируется UNIQUE(workspace,author,key) с payload hash; mismatch conflict. Stage/identity link/unlink меняют policyEpoch и invalidation контекста по spec §15.23.
+setMode→auto возвращает pending_human_commands при pending/dispatching/accepted/outcome_unknown человеческих Commands (включая cancelRequested без доказанного terminal outcome). addInternalNote дедуплицируется UNIQUE(workspace,author,key) с payload hash; mismatch conflict. Stage/identity link/unlink меняют policyEpoch и invalidation контекста по spec §15.23.
+
+Workflow ID на границе нормализуется из legacy alias в tenant-scoped canonical core ID до idempotency/intent lookup. Explicit deactivate/delete обновляет retained cancellationEpoch даже после ordinary publish; publish/archive не отменяет старые pinned intents. Source coverage/referenceRequired — spec §15.19 и decision-tables, не клиентское поле.
+
+Отмена транспортной команды: cancelCommand(commandId) — idempotent, tenant/owner/generation scoped, durable tombstone действует и до enqueue. Только journal юзербота у provider boundary подтверждает cancelled либо too_late; недоступность/timeout = unresolved cancelRequested, не cancelled. Центральный ACK запроса отмены не доказывает provider outcome. Spec §15.3/15.7; поздний enqueue того же ID сверяет tombstone. Workflow cancellation refs в Command и отмена при explicit deactivate/delete — spec §15.19.

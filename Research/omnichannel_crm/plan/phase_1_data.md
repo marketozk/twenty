@@ -33,3 +33,5 @@
 Fork-only IDs не используются в upstream upgrade-aware decorators; preflight/ledger и T33 по §15.19. Conversation revision и controlEpoch разделены; будущий API управления принимает expectedControlEpoch.
 
 Генерализация roots на non-message governed triggers и lifecycle merge для omni-owned references — обязательный контракт design/09 и spec §15.2/15.20; producers/consumers публикуются вместе, неполная миграция не включает automation.
+
+R11: schema/contract обязаны учитывать immutable workflowCancellationRefs в Command и canonical core IDs до idempotency. EventCoverageRegistry и retained subscription cancellationEpoch вводятся вместе с governed producer/consumer integration; реальные endpoints остаются выключены до покрытия. [Таблицы](decision-tables.md) уточняют accepted/cancelRequested human gate и локальную/remote отмену.

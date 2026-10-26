@@ -64,3 +64,10 @@ WorkflowExecutor.scheduleStepRetry/stepIdsToRetry (файл уже в табли
 
 - WorkflowDatabaseEventTriggerListener.getDatabaseEventListeners читает workflowAutomatedTriggerMaps cache; WorkflowTriggerJob legacy path проверяет ACTIVE. Поэтому governed catalog/immutable event snapshot и dispatch обязаны быть durable (spec §15.23).
 - [Encryption resolver](../../../packages/twenty-server/src/engine/core-modules/secret-encryption/utils/resolve-encryption-keys-or-throw.util.ts) и [JWT wrapper](../../../packages/twenty-server/src/engine/core-modules/jwt/services/jwt-wrapper.service.ts): legacy encryption и JWT могут использовать один APP_SECRET; restore сначала отделяет effective encryption key, затем rotation/auth checks.
+
+## R11: конечная таблица и обязательная связь до dispatch
+
+- `CachedWorkflowAutomatedTrigger` содержит core/legacy IDs; listener enqueue выбирает legacyWorkflowId??workflowId. Новый ingress нормализует canonical core IDs до keys/сравнений; alias не отдельный consumer.
+- `WorkspaceEventEmitter.emitDatabaseBatchEvent` и WorkspaceEventBatch не содержат durable per-record reference. EventCoverageRegistry/referenceRequired требует полного producer inventory до governed activation; empty snapshot также обязателен. Sticky coverage сохраняется после ordinary publish.
+- `CoreWorkflowLifecycleService` при publish архивирует прошлую версию, explicit deactivate ставит DEACTIVATED. Новый retained cancellationEpoch различает эти действия и наследуется в workflowCancellationRefs каждой Command; cancel действует на pending и remote journal, не только на runner.
+- [Конечные таблицы](../plan/decision-tables.md) и T14/T28 задают ожидаемые outcomes. [40 source hashes](automation-source-hashes.json) проверены; это не реализация новых guards.

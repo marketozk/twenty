@@ -1,0 +1,424 @@
+{
+  "scope": "abstract plan only",
+  "cases": {
+    "publish": 6,
+    "identity_reference_cancel": 7,
+    "dispatch": 1536,
+    "human_mode_gate": 120,
+    "lifecycle": 43
+  },
+  "total": 1712,
+  "failures": 0,
+  "negative_controls": {
+    "drop_captured_catalog": {
+      "caught": 1,
+      "witness": {
+        "group": "publish",
+        "case": [
+          true,
+          false,
+          false
+        ],
+        "actual": [
+          null,
+          true
+        ],
+        "expected": [
+          null,
+          false
+        ]
+      }
+    },
+    "replace_pinned_version": {
+      "caught": 2,
+      "witness": {
+        "group": "publish",
+        "case": [
+          true,
+          false,
+          true
+        ],
+        "actual": [
+          "core-v2",
+          false
+        ],
+        "expected": [
+          "core-v1",
+          false
+        ]
+      }
+    },
+    "compare_legacy_id": {
+      "caught": 3,
+      "witness": {
+        "group": "identity_reference_cancel",
+        "case": [
+          "legacy-w",
+          true,
+          true,
+          7,
+          7
+        ],
+        "actual": "native",
+        "expected": "core-v1"
+      }
+    },
+    "missing_reference_fallback": {
+      "caught": 1,
+      "witness": {
+        "group": "identity_reference_cancel",
+        "case": [
+          "core-w",
+          false,
+          true,
+          7,
+          7
+        ],
+        "actual": "core-v1",
+        "expected": "gap"
+      }
+    },
+    "ignore_cancellation_epoch": {
+      "caught": 2,
+      "witness": {
+        "group": "identity_reference_cancel",
+        "case": [
+          "legacy-w",
+          true,
+          true,
+          7,
+          8
+        ],
+        "actual": "core-v1",
+        "expected": "cancelled"
+      }
+    },
+    "ignore_scope_edges": {
+      "caught": 7,
+      "witness": {
+        "group": "dispatch",
+        "case": [
+          "ai",
+          "auto",
+          false,
+          true,
+          true,
+          true,
+          false,
+          false,
+          true
+        ],
+        "actual": true,
+        "expected": false
+      }
+    },
+    "ignore_automation_epoch": {
+      "caught": 7,
+      "witness": {
+        "group": "dispatch",
+        "case": [
+          "ai",
+          "auto",
+          false,
+          true,
+          true,
+          false,
+          true,
+          false,
+          true
+        ],
+        "actual": true,
+        "expected": false
+      }
+    },
+    "ignore_closed": {
+      "caught": 39,
+      "witness": {
+        "group": "dispatch",
+        "case": [
+          "human",
+          "human",
+          true,
+          true,
+          true,
+          false,
+          false,
+          false,
+          false
+        ],
+        "actual": true,
+        "expected": false
+      }
+    },
+    "ignore_rights": {
+      "caught": 39,
+      "witness": {
+        "group": "dispatch",
+        "case": [
+          "human",
+          "human",
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false
+        ],
+        "actual": true,
+        "expected": false
+      }
+    },
+    "ignore_route": {
+      "caught": 39,
+      "witness": {
+        "group": "dispatch",
+        "case": [
+          "human",
+          "human",
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "actual": true,
+        "expected": false
+      }
+    },
+    "human_uses_automation_epoch": {
+      "caught": 16,
+      "witness": {
+        "group": "dispatch",
+        "case": [
+          "human",
+          "human",
+          false,
+          true,
+          true,
+          false,
+          false,
+          false,
+          false
+        ],
+        "actual": false,
+        "expected": true
+      }
+    },
+    "ignore_g17": {
+      "caught": 3,
+      "witness": {
+        "group": "dispatch",
+        "case": [
+          "template",
+          "human",
+          false,
+          true,
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "actual": true,
+        "expected": false
+      }
+    },
+    "ai_sends_in_assist": {
+      "caught": 2,
+      "witness": {
+        "group": "dispatch",
+        "case": [
+          "ai",
+          "assist",
+          false,
+          true,
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "actual": true,
+        "expected": false
+      }
+    },
+    "accepted_not_outstanding": {
+      "caught": 17,
+      "witness": {
+        "group": "human_mode_gate",
+        "case": [
+          [
+            "accepted",
+            false
+          ]
+        ],
+        "actual": true,
+        "expected": false
+      }
+    },
+    "cancel_request_unblocks_auto": {
+      "caught": 38,
+      "witness": {
+        "group": "human_mode_gate",
+        "case": [
+          [
+            "pending",
+            true
+          ]
+        ],
+        "actual": true,
+        "expected": false
+      }
+    },
+    "late_timeout_regresses_sent": {
+      "caught": 1,
+      "witness": {
+        "group": "lifecycle",
+        "case": [
+          "sent",
+          "timeout"
+        ],
+        "actual": [
+          "outcome_unknown",
+          "none"
+        ],
+        "expected": [
+          "sent",
+          "none"
+        ]
+      }
+    },
+    "request_equals_cancel": {
+      "caught": 3,
+      "witness": {
+        "group": "lifecycle",
+        "case": [
+          "dispatching",
+          "cancel_request"
+        ],
+        "actual": [
+          "cancelled",
+          "none"
+        ],
+        "expected": [
+          "dispatching",
+          "cancel_requested"
+        ]
+      }
+    },
+    "timeout_resends": {
+      "caught": 3,
+      "witness": {
+        "group": "lifecycle",
+        "case": [
+          "dispatching",
+          "timeout"
+        ],
+        "actual": [
+          "pending",
+          "enqueue_same_id"
+        ],
+        "expected": [
+          "outcome_unknown",
+          "status_only"
+        ]
+      }
+    },
+    "pending_cannot_cancel": {
+      "caught": 1,
+      "witness": {
+        "group": "lifecycle",
+        "case": [
+          "pending",
+          "cancel_request"
+        ],
+        "actual": [
+          "pending",
+          "cancel_requested"
+        ],
+        "expected": [
+          "cancelled",
+          "none"
+        ]
+      }
+    },
+    "silent_conflicting_proof": {
+      "caught": 8,
+      "witness": {
+        "group": "lifecycle",
+        "case": [
+          "sent",
+          "reject_proof"
+        ],
+        "actual": [
+          "sent",
+          "none"
+        ],
+        "expected": [
+          "sent",
+          "reconcile"
+        ]
+      }
+    },
+    "ack_after_terminal_silent": {
+      "caught": 2,
+      "witness": {
+        "group": "lifecycle",
+        "case": [
+          "failed",
+          "ack"
+        ],
+        "actual": [
+          "failed",
+          "none"
+        ],
+        "expected": [
+          "failed",
+          "reconcile"
+        ]
+      }
+    },
+    "ignore_dispatch_cancellation": {
+      "caught": 7,
+      "witness": {
+        "group": "dispatch",
+        "case": [
+          "ai",
+          "auto",
+          false,
+          true,
+          true,
+          true,
+          true,
+          false,
+          false
+        ],
+        "actual": true,
+        "expected": false
+      }
+    },
+    "human_requires_captured_scope": {
+      "caught": 16,
+      "witness": {
+        "group": "dispatch",
+        "case": [
+          "human",
+          "human",
+          false,
+          true,
+          true,
+          false,
+          false,
+          false,
+          false
+        ],
+        "actual": false,
+        "expected": true
+      }
+    }
+  },
+  "runtime_tests": false
+}

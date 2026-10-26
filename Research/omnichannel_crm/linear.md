@@ -26,6 +26,6 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 
 ## Сверка текущего состояния — 26.10.2026
 
-Последний свежий полный R10 A: needs_revision. Все выявленные правки внесены; R10 B и финальная узкая сверка подтвердили **53/53 closed_in_plan, 0 open**. Это закрытие известных причин, не чистый полный pass последней редакции. ROB-772 остаётся In Progress, ROB-764 Todo; код новых функций и runtime-тесты не начаты.
+R11 завершил конечную проверку таблиц событий, прав и Command lifecycle. После исправлений Claude Code дал `bounded_tables_ready` в reconciliation: пять переоткрытых причин закрыты в пределах R11; остальные48 сохраняют прежнюю сверку. Всего53 известных ID closed_in_plan, open0. Это **не свежий полный pass проекта**. ROB-772 In Progress, ROB-764 Todo; новые функции и runtime-тесты не начаты.
 
-[Итог R8–R10](plan/cross-review/review-result.md). Статусы: ROB-762/763 Done; ROB-772 In Progress; ROB-764 Todo; ROB-765–771 Backlog. Связь ROB-772 blocks ROB-764 сохраняется. Обновление описаний всех 11 задач и API read-back фиксируются в DEVLOG LOG-012.
+[Итог R11](plan/cross-review/review-result.md). ROB-762/763 Done; ROB-772 In Progress; ROB-764 Todo; ROB-765–771 Backlog. Связь ROB-772 blocks ROB-764 сохранена. Публикация и API read-back — DEVLOG LOG-013.

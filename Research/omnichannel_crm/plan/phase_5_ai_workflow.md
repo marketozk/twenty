@@ -34,3 +34,5 @@ SEND_OMNI_MESSAGE интегрируется в shared schema, server factory/va
 Обязателен §15.19: trigger switches/metrics/activation/schema, durable OmniWorkflowSubscription, run watchdog с fenced terminal stalled при потере очереди, без автоматического повторения произвольных эффектов. T14 до COMPLETED в норме и до видимого исхода при отказе.
 
 R8: Omni reference обязателен для workflow descendants независимо от trigger type; closed action table и final sentTools guard, native/pausing overrides, запрет обычного Retry omni runs, полный inherited admission set и durable budget_exhausted handoff — design/09. Это авторские исправления после targeted review, ещё не full pass.
+
+R11: [таблицы](decision-tables.md) дополняют whole-flow governance. Core workflow/version IDs нормализуются до keys; sticky referenceRequired и coverage всех producers до activation; cancellationEpoch меняется при explicit deactivate/delete, но не publish/archive. Immutable workflowCancellationRefs (включая governed ancestors) проверяются при Command dispatch/recovery, remote cancel требует journal proof. T14/T28 проверяют эти границы вместе, а не только отмену runner.
