@@ -2,6 +2,8 @@
 
 Зависимости: 2–4. Статус: не выполнен. Полный конечный объём включает auto replies и действия CRM, не только drafts.
 
+Подтверждённый call graph и изменения: [AI/workflow source audit](../implementation/ai-workflow-source.md). AgentRun/ToolContext/generic CRUD получают trusted domain reference и общий mutation fence; workflow context проверяет его до fallback стандартного приложения. EventBatch/Emitter/listener передают trusted origin/admission. Штатные stream claim/cancel и BullMQ recovery переиспользуются, но не считаются готовой гарантией takeover или дедупликации внешних событий.
+
 **Существующие:** server `engine/metadata-modules/ai/ai-agent-execution/services/agent-run.service.ts`, `utils/build-agent-role-permission-config.util.ts`; `modules/workflow/workflow-trigger/automated-trigger/listeners/workflow-database-event-trigger.listener.ts`; `workflow-executor/services/workflow-execution-context.service.ts`; `workflow-builder/workflow-version-step/workflow-version-step-operations.workspace-service.ts`; `engine/workspace-event-emitter/{workspace-event-emitter.ts,types/workspace-event-batch.type.ts}`.
 
 **Новые:** `modules/omnichannel/ai/{conversation-agent.service.ts,conversation-tool-policy.ts}` и `workflow/` adapters/actions; соответствующие test fixtures и UI mode/takeover controls.
@@ -12,7 +14,7 @@
 4. События и workflow action «Отправить в диалог»: единый CommandService, command id от execution/action ID. Consumer pending/running/completed, replay после crash; causation и own echo не запускают циклы.
 5. Import origin доходит до общего dispatch, включая стандартные CREATED/UPDATED triggers. Старый sendInboxMessage остаётся внутренним уведомлением. Подавление ИИ не опирается только на shouldAssistantReply флаг AI Inbox.
 6. Отдельная role/policy version draft-agent; публикация атомарно меняет активную версию, сохраняет audit. Общие административные role changes отдельно проверяются.
-7. Epoch/policy check + CRM mutation + audit в одной транзакции под общим fence с takeover/revoke, включая generic AI tools и conversation-triggered workflow. Тестовая пауза между check/write не позволяет stale mutation закоммититься после победившего takeover. Проверить оба порядка и отсутствие deadlock; результат этапа 0 обязателен.
+7. Epoch/policy check + CRM mutation + audit в одной транзакции под общим fence с takeover/revoke, включая generic AI tools и conversation-triggered workflow. Постоянный integration test приостанавливает check/write и проверяет оба порядка takeover и отсутствие deadlock. Статические точки реализации установлены; отдельный предварительный прототип не требуется.
 
 **Verify:** injection fixtures без внешних действий, cross-client tools denied, role revoke mid-run, takeover barrier, 2 workers на одном событии, runtime timeout/unknown, импорт не запускает ни AI, ни обычный record trigger. Каждый изменяющий tool имеет audit инициатора/результата. Сначала тесты из design/04, затем e2e со stub и после настройки отдельного provider — тестовый чат.
 

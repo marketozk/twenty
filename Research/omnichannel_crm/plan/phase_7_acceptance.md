@@ -2,7 +2,7 @@
 
 Зависимости: все предыдущие этапы. Статус: не выполнен.
 
-**Файлы:** `ops/omnichannel-demo/` и отдельный production manifest после проверки среды; `Research/omnichannel_crm/implementation/{acceptance.md,restore.md,cutover.md}`; тесты в existing server integration/front/e2e conventions. Ни реальные credentials, ни архивы переписки не входят в Git.
+**Файлы:** `ops/omnichannel/` и актуальная конфигурация единственного экземпляра после проверки среды; `Research/omnichannel_crm/implementation/{acceptance.md,restore.md,cutover.md}`; тесты в existing server integration/front/e2e conventions. Ни реальные credentials, ни архивы переписки не входят в Git.
 
 1. Запустить [полную матрицу](../design/04-testing.md) и аудит [08-audit](../design/08-audit.md) на Free/self-hosted без Enterprise key. Отдельно generic API, hidden groupBy labels, файлы и admin/system bypass.
 2. Зафиксировать приложение/image SHA, migrator version, schema и worker version. Пробный upgrade из восстановленной копии; `upgrade:status`, записи/связи до-после, UI и jobs. HTTP health недостаточно.

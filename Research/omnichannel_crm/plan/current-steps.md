@@ -11,3 +11,7 @@
 Чтения кода допустимы во время сборки: база закреплена и совпадает с исходниками образа. Перед остановкой сверить image/config/mounts и SHA; после — upgrade:status, server/worker, HTTP и CRM-данные. Не заменять актуальные конфиги шаблонами и не запускать database:reset.
 
 Артефакты: `implementation/version-and-deploy.md`, `implementation/integration-map.md`, `implementation/license-inventory.md`; build/deploy scripts в `ops/omnichannel/`. Статусы — [DEVLOG](../DEVLOG.md) и [ROB-763](https://linear.app/robotrts/issue/ROB-763).
+
+## Завершение
+
+Пункты 1–5 выполнены 26.10.2026. [Сборка и выкат](../implementation/version-and-deploy.md), [результаты исследования](../implementation/integration-map.md), [журнал LOG-004](../DEVLOG.md). Разработка новых функций начинается с ROB-764.

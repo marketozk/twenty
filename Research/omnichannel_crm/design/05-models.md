@@ -33,7 +33,7 @@
 | OmniRouteActivation | bindingId, activationVersion, activationBoundary, sourcePositionType | Зафиксированная граница исторических и новых событий. Меняется отдельной операцией с аудитом; не переактивирует прежнюю историю автоматически. |
 | CrmAuditEntry | actor, initiatingActor, action, resource, outcome, safe diff, correlationId, timestamp | Общий аудит CRM и omnichannel в собственном `engine/core-modules/crm-audit`; прежнее проектное имя OmniAuditEntry заменено. Append-only контракт и собственный UI без подписки; [полная модель](08-audit.md). |
 
-Физические таблицы, индексы, ORM metadata и FK выбираются в file-level плане после проверки workspace migration conventions. Таблица выше фиксирует доменные связи и уникальность; не утверждает существование FK между core и workspace schemas. Все ссылки на connection/member/person проверяются на тот же workspace, мягко удалённые записи обрабатываются явно.
+Физическое хранение служебных сущностей выбрано в core той же БД, определения entities под engine/core-modules, без workspace objectMetadata/generated CRUD — [integration-map](../implementation/integration-map.md). Message/MessageThread остаются штатными workspace entities. Instance commands создают таблицы/составные индексы; динамические связи с workspace records проверяются сервером, FK между ними не объявляются существующими. Все ссылки на connection/member/person проверяются на тот же workspace, мягко удалённые записи обрабатываются явно.
 
 ## Состояния
 

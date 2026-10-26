@@ -7,7 +7,7 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 | Задача | Документ / объём | Зависит от |
 |---|---|---|
 | [ROB-762](https://linear.app/robotrts/issue/ROB-762) | [Архитектура и ревью плана](review.md), выполнено | — |
-| [ROB-763](https://linear.app/robotrts/issue/ROB-763) | [0. Среда разработки и транзакционные прототипы](plan/phase_0_environment.md) | ROB-762 |
+| [ROB-763](https://linear.app/robotrts/issue/ROB-763) | [0. Обновление экземпляра и завершение исследования кода](plan/current-steps.md) | ROB-762 |
 | [ROB-764](https://linear.app/robotrts/issue/ROB-764) | [1. Модель, inbox/outbox, надёжное сохранение](plan/phase_1_data.md) | ROB-763 |
 | [ROB-765](https://linear.app/robotrts/issue/ROB-765) | [2a. Сбор аудита](plan/phase_2_audit.md) | ROB-764 |
 | [ROB-766](https://linear.app/robotrts/issue/ROB-766) | [3. Собственные права и переходы сделок](plan/phase_3_access.md) | ROB-764, ROB-765 |
