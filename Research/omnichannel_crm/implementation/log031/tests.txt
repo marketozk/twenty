@@ -1,0 +1,8 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-app-ingestion-guard.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-channel-ownership.postgres-spec.ts (8.868 s)
+
+Test Suites: 2 passed, 2 total
+Tests:       17 passed, 17 total
+Snapshots:   0 total
+Time:        12.748 s
+Ran all test suites within paths "/source/packages/twenty-server/test/fork-migration/omni-app-ingestion-guard.spec.ts", "/source/packages/twenty-server/test/fork-migration/omni-channel-ownership.postgres-spec.ts".

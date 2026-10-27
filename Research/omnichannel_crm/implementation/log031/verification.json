@@ -1,0 +1,19 @@
+{
+  "postgresTests": 7,
+  "serviceUnitTests": 10,
+  "guardTests": 20,
+  "checksumTests": 5,
+  "totalExecutedTests": 42,
+  "fullJestSuiteRerun": false,
+  "previousFullSuite": "LOG030: 440 Jest +25 guards",
+  "typecheckRootFiles": 110,
+  "baselineTypeDiagnostics": 155,
+  "newTypeDiagnostics": 0,
+  "changedFileTypeDiagnostics": 0,
+  "fullServerTypecheck": false,
+  "allFiveMigrationSourcesUnchanged": true,
+  "independentScopedReview": "PASS no confirmed blocker/major",
+  "fullT05Acceptance": false,
+  "liveDemoChanged": false,
+  "githubActionsUsed": false
+}

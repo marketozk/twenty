@@ -1,0 +1,11 @@
+{
+  "baseCommit": "96a1761cd30b7aa095dd56335d3def74e9338f37",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/metadata-modules/message-channel/services/application-message-ingestion.service.ts": "3d3ba9c42695b3c8af4b1cb810030bef82a6ad80d9dcf0d79fff755a5958cd1a",
+    "packages/twenty-server/src/modules/omnichannel/services/is-omni-owned-message-channel.ts": "1b75df7f44a83cc205bd4720ada27f05dd873e9d871c72dc90d1d99e0ea2c5b7",
+    "packages/twenty-server/test/fork-migration/omni-app-ingestion-guard.spec.ts": "23a2e96aa82c98424923f9df7c0c708dbaec3bfe1ad5af9ba26cfa1269201ace",
+    "packages/twenty-server/test/fork-migration/omni-channel-ownership.postgres-spec.ts": "34393bf2ea407ba8209cf335a239c37f9de67d6d2223a146d291c3cd61ae1163"
+  }
+}

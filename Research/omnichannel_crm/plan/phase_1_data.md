@@ -6,15 +6,15 @@
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
-Зависимость: этап0. LOG-030 / ROB-764 In Progress: receipt сохраняет trusted capture context/hash,
-с обязательной текущей авторизацией при приёме и replay. Изменённый context и
-NULL↔qualified дают conflict; старые строки остаются неквалифицированными.
-465 тестов PASS; новых ошибок типов нет (141 baseline, 106 roots).
-Пятая миграция штатно сгенерирована; старые четыре неизменны. Native up/down/up,
-apply/replay/readiness и итоговый zero-diff подтверждены, 256 history rows сохранены.
-[Доказательства и границы](../implementation/log030/README.md).
-Далее — ownership guards APP/background и полный Message+link+revision+event+audit
-apply, inbox/outbox/recovery. Полный ingress acceptance ещё не выполнен.
+Зависимость: этап0. LOG-031 / ROB-764 In Progress: обычный APP ingestion теперь отказывает для
+persisted omni-owned канала до identities/cache/aggregate. Все статусы binding
+учитываются, ошибки SQL закрывают путь; обычный APP сохраняет прежнее поведение.
+42 адресные проверки PASS (7 PG,10 service unit,25 guards); предыдущий полный
+прогон LOG-030 —440 Jest+25 guards. Новых type diagnostics нет,155 baseline
+расширенного APP graph сохраняется. Все5 миграций неизменны.
+[Доказательства и границы](../implementation/log031/README.md).
+Далее — background rematch/target exclusions и полный domain receipt apply,
+inbox/outbox/recovery. TOCTOU binding lifecycle и полный T05 ещё не закрыты.
 HTTP/own ACL/UI/живые коннекторы не подключены; демо прежнее. Actions не используется.
 
 Предыдущая порция LOG-022: реализованы fork migrations,

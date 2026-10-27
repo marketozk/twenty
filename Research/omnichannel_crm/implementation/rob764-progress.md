@@ -1,4 +1,4 @@
-# ROB-764 — реализация, LOG-030
+# ROB-764 — реализация, LOG-031
 
 27.10.2026 пользователь ответил «хорошо приступай» на предложение принять
 исправленный план за основу и начать ROB-764 с проверками конкретного кода.
@@ -194,4 +194,17 @@ apply/replay/readiness и итоговый zero-diff подтверждены, 2
 [Доказательства и границы](log030/README.md).
 Далее — ownership guards APP/background и полный Message+link+revision+event+audit
 apply, inbox/outbox/recovery. Полный ingress acceptance ещё не выполнен.
+HTTP/own ACL/UI/живые коннекторы не подключены; демо прежнее. Actions не используется.
+
+## LOG-031 — APP ownership gate
+
+LOG-031 / ROB-764 In Progress: обычный APP ingestion теперь отказывает для
+persisted omni-owned канала до identities/cache/aggregate. Все статусы binding
+учитываются, ошибки SQL закрывают путь; обычный APP сохраняет прежнее поведение.
+42 адресные проверки PASS (7 PG,10 service unit,25 guards); предыдущий полный
+прогон LOG-030 —440 Jest+25 guards. Новых type diagnostics нет,155 baseline
+расширенного APP graph сохраняется. Все5 миграций неизменны.
+[Доказательства и границы](log031/README.md).
+Далее — background rematch/target exclusions и полный domain receipt apply,
+inbox/outbox/recovery. TOCTOU binding lifecycle и полный T05 ещё не закрыты.
 HTTP/own ACL/UI/живые коннекторы не подключены; демо прежнее. Actions не используется.

@@ -807,3 +807,21 @@ ownership guards и domain apply; ROB-764 In Progress.
 проверен API. Описание ROB-764 и комментарий `ceff46f9-db0d-45b6-8a5a-f1285921bc2c`
 прочитаны обратно, 11 статусов прежние. [Метаданные](implementation/log030/publication.json).
 Продолжаем LOG-031.
+
+## LOG-031 — 27.10.2026: APP ownership guard
+
+ApplicationMessageIngestionService проверяет persisted binding любого статуса
+после app ownership, до identities/cache/aggregate. Tenant/channel query
+параметризован, ошибки/некорректный boolean fail closed. Прежний APP mapper/output
+сохранён; default core DataSource DI/call sites проверены. Helper независим отEE.
+
+7 PG +10 actual-service unit +20 guard +5 checksum =42 PASS. Полный suite здесь
+не повторялся, LOG-030 остаётся последним полным440+25. Typecheck110roots:0new/
+0changed,155 baseline расширенногоAPPgraph сохранено. Пять migration sources
+не менялись. [Доказательства и пределы](implementation/log031/README.md).
+
+Scopedreview PASS; Claude/fullarchitecture pass не запускался. Это point-in-time
+APP guard, не закрытие binding TOCTOU, background/cleanup или T05. Демо прежнее,
+boundedtestresources переиспользуются. Actions не используется. Skills:
+ai-dev-workflow, behavioral-guardrails, server-schrodinger — разделённое исследование/
+реализация/ревью и изолированные проверки. Продолжаем rematch/targets и domainapply.

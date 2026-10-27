@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
 
 import { MessageParticipantRole } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
-import { In } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 
 import { CacheLockService } from 'src/engine/core-modules/cache-lock/cache-lock.service';
 import { type MessageChannelEntity } from 'src/engine/metadata-modules/message-channel/entities/message-channel.entity';
@@ -20,6 +21,7 @@ import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
 import { MessagingSaveMessagesAndEnqueueContactCreationService } from 'src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service';
 import { type MessageWithParticipants } from 'src/modules/messaging/message-import-manager/types/message.type';
+import { isOmniOwnedMessageChannel } from 'src/modules/omnichannel/services/is-omni-owned-message-channel';
 
 // the lease must outlast a full batch save, or the next delivery gets in and duplicates
 // withLock does not renew, so waiters must outlast the lease left behind by a crashed holder
@@ -49,6 +51,8 @@ export class ApplicationMessageIngestionService {
     private readonly saveMessagesService: MessagingSaveMessagesAndEnqueueContactCreationService,
     private readonly workspaceOrmManager: WorkspaceOrmManager,
     private readonly cacheLockService: CacheLockService,
+    @InjectDataSource()
+    private readonly coreDataSource: DataSource,
   ) {}
 
   async ingest({
@@ -65,6 +69,22 @@ export class ApplicationMessageIngestionService {
         requestUserWorkspaceId,
         id: messageChannelId,
       });
+
+    if (
+      await isOmniOwnedMessageChannel(
+        {
+          executeRawQuery: (sql, parameters) =>
+            this.coreDataSource.query(sql, parameters),
+        },
+        workspaceId,
+        messageChannelId,
+      )
+    ) {
+      throw new MessageChannelException(
+        `Message channel ${messageChannelId} is not available for application ingestion`,
+        MessageChannelExceptionCode.INVALID_MESSAGE_CHANNEL_INPUT,
+      );
+    }
 
     if (!messageChannel.isSyncEnabled) {
       throw new MessageChannelException(
