@@ -1106,3 +1106,5 @@ Root review сохранил journalSequence=0 согласно существу
 accepted fixture это подтверждает. Аудит задержан реальным PG trigger до expiry,
 token tampering/COMMIT ACK loss проверены. Scoped review без блокеров; применены
 ai-dev-workflow, behavioral-guardrails, server-schrodinger. Продолжаем LOG-043.
+
+Публикация LOG-042: код 8e644d41396efa48e30d01a7e20cf4fda17881b5, remote проверен GitHub API. Описание ROB-764 и комментарий 9bae8625-4880-4e4a-bd83-65792248d5ca прочитаны обратно; все 11 статусов сохранены. Продолжаем LOG-043.
