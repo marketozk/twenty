@@ -78,6 +78,10 @@ const CATALOG: Record<
     values: ['messageThreadId', 'isDraft'],
     redacted: ['text', 'subject', 'headerMessageId', 'receivedAt', 'deletedAt'],
   },
+  omniMessageThread: {
+    values: [],
+    redacted: ['subject'],
+  },
   omniMessageParticipant: {
     values: ['messageId', 'personId', 'workspaceMemberId', 'role'],
     redacted: ['handle', 'displayName'],
@@ -112,8 +116,22 @@ const CATALOG: Record<
     redacted: ['sourceRevisionKey', 'sourceEventId'],
   },
   omniConversation: {
-    values: ['bindingId', 'conversationSequence', 'replyRevision'],
-    redacted: [],
+    values: [
+      'bindingId',
+      'messageThreadId',
+      'queueId',
+      'mode',
+      'status',
+      'assigneeMemberId',
+      'policyId',
+      'policyVersion',
+      'controlEpoch',
+      'automationEpoch',
+      'nextOutboundSequence',
+      'conversationSequence',
+      'replyRevision',
+    ],
+    redacted: ['providerChatId'],
   },
   omniDomainEvent: {
     values: [
@@ -206,6 +224,7 @@ const descriptor = (
   if (
     [
       'omniMessage',
+      'omniMessageThread',
       'omniMessageParticipant',
       'omniMessageAssociation',
       'omniMessageLink',

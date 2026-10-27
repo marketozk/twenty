@@ -20,6 +20,7 @@ import {
   parseOmniIncomingEnvelope,
 } from 'src/modules/omnichannel/contracts/omni-incoming-envelope';
 import { buildOmniNativeMessageReferences } from 'src/modules/omnichannel/services/build-omni-native-message-references';
+import { createOmniHistoryMissingConfigurationError } from 'src/modules/omnichannel/services/omni-history-missing-configuration.error';
 
 const uuid = z.uuid().transform((value) => value.toLowerCase());
 const positiveBigint = z
@@ -68,6 +69,9 @@ export type OmniHistoryApplyAuthorizer = (
   authorization: Readonly<
     OmniHistoryApplyPrincipal & {
       action: 'history.apply';
+      creatingConversation: boolean;
+      bindingDefaultQueueId: string | null;
+      bindingDefaultConversationMode: string;
       receiptId: string;
       conversationId: string;
       queueId: string;
@@ -100,6 +104,7 @@ export type OmniHistoryNativePort = {
     messageId: string;
     participantId: string;
     associationId: string;
+    createdThread: boolean;
   }>;
 };
 export type OmniHistoryApplyResult = Readonly<{
@@ -213,6 +218,24 @@ export const applyOmniHistoryReceipt = async (
     'omni:history.initial.revision:v1',
     proof.receiptId,
   );
+  const creatorConversationId = uuidV5(
+    'omni:history.conversation:v1',
+    proof.receiptId,
+  );
+  const creatorThreadId = uuidV5('omni:history.thread:v1', proof.receiptId);
+  const creationEventId = uuidV5(
+    'omni:history.conversation.created:v1',
+    proof.receiptId,
+  );
+  const creationRootId = uuidV5(`domain_event:${creationEventId}`, workspaceId);
+  const creationRootRowId = uuidV5(
+    'omni:history.conversation.root:v1',
+    proof.receiptId,
+  );
+  const creationDispatchId = uuidV5(
+    'omni:history.conversation.dispatch:v1',
+    proof.receiptId,
+  );
   const audit = new CrmAuditTransactionContext(executor, {
     workspaceId,
     operationId,
@@ -233,9 +256,11 @@ export const applyOmniHistoryReceipt = async (
       connectedAccountId: uuid,
       status: z.literal('active'),
       routeGeneration: positiveBigint,
+      defaultQueueId: uuid.nullable(),
+      defaultConversationMode: z.string(),
     }),
     await query(
-      'SELECT id,"messageChannelId","connectedAccountId",status,"routeGeneration" FROM core."omniAccountBinding" WHERE "workspaceId"=$1 AND id=$2 FOR SHARE',
+      'SELECT id,"messageChannelId","connectedAccountId",status,"routeGeneration","defaultQueueId","defaultConversationMode" FROM core."omniAccountBinding" WHERE "workspaceId"=$1 AND id=$2 FOR SHARE',
       [workspaceId, principal.bindingId],
     ),
   );
@@ -311,21 +336,101 @@ export const applyOmniHistoryReceipt = async (
       canonicalAuditJson(disabledSettings)
   )
     return fail('POLICY_NOT_DISABLED_V0');
-  const conversation = requireOne(
-    z.object({
-      id: uuid,
-      messageThreadId: uuid,
-      queueId: uuid,
-      policyId: uuid,
-      policyVersion: z.literal('0'),
-      conversationSequence: z.string().regex(/^(0|[1-9][0-9]*)$/),
-      replyRevision: positiveBigint,
-    }),
-    await query(
-      'SELECT id,"messageThreadId","queueId","policyId","policyVersion","conversationSequence","replyRevision" FROM core."omniConversation" WHERE "workspaceId"=$1 AND "bindingId"=$2 AND "providerChatId"=$3 FOR UPDATE',
-      [workspaceId, binding.id, envelope.providerChatId],
-    ),
-  );
+  const conversationSchema = z.object({
+    id: uuid,
+    messageThreadId: uuid,
+    queueId: uuid,
+    policyId: uuid,
+    policyVersion: z.literal('0'),
+    conversationSequence: z.string().regex(/^(0|[1-9][0-9]*)$/),
+    replyRevision: positiveBigint,
+    mode: z.enum(['human', 'assist', 'auto']),
+    status: z.enum(['open', 'closed']),
+    assigneeMemberId: uuid.nullable(),
+    controlEpoch: positiveBigint,
+    automationEpoch: positiveBigint,
+    nextOutboundSequence: positiveBigint,
+  });
+  const conversationSql =
+    'SELECT id,"messageThreadId","queueId","policyId","policyVersion","conversationSequence","replyRevision",mode,status,"assigneeMemberId","controlEpoch","automationEpoch","nextOutboundSequence" FROM core."omniConversation" WHERE "workspaceId"=$1 AND "bindingId"=$2 AND "providerChatId"=$3 FOR UPDATE';
+  let conversationRows = await query(conversationSql, [
+    workspaceId,
+    binding.id,
+    envelope.providerChatId,
+  ]);
+  let creatingConversation = false;
+
+  if (conversationRows.length === 0) {
+    if (
+      initialReceipt.state !== 'processing' ||
+      initialReceipt.resultId !== null
+    )
+      return fail('MISSING_CONVERSATION');
+    if (
+      initialReceipt.leaseOwner !== proof.leaseOwner ||
+      initialReceipt.leaseToken !== proof.leaseToken
+    )
+      return fail('LEASE_LOST');
+    if (
+      binding.defaultQueueId === null ||
+      binding.defaultConversationMode !== 'human'
+    )
+      throw createOmniHistoryMissingConfigurationError();
+    const defaultQueue = await query(
+      'SELECT id FROM core."omniQueue" WHERE "workspaceId"=$1 AND "bindingId"=$2 AND id=$3 AND active=true',
+      [workspaceId, binding.id, binding.defaultQueueId],
+    );
+    if (defaultQueue.length === 0)
+      throw createOmniHistoryMissingConfigurationError();
+    requireOne(z.object({ id: uuid }), defaultQueue);
+    const inserted = await query(
+      `INSERT INTO core."omniConversation" (id,"workspaceId","bindingId","providerChatId","messageThreadId","queueId",mode,status,"policyId","policyVersion")
+       VALUES ($1,$2,$3,$4,$5,$6,'human','open',$7,0)
+       ON CONFLICT ("workspaceId","bindingId","providerChatId") DO NOTHING RETURNING id`,
+      [
+        creatorConversationId,
+        workspaceId,
+        binding.id,
+        envelope.providerChatId,
+        creatorThreadId,
+        binding.defaultQueueId,
+        policy.id,
+      ],
+    );
+    if (
+      inserted.length !== 0 &&
+      requireOne(z.object({ id: uuid }), inserted).id !== creatorConversationId
+    )
+      return fail('CONVERSATION_RESERVATION');
+    creatingConversation = inserted.length === 1;
+    // A separate statement sees the concurrent winner after ON CONFLICT waited.
+    conversationRows = await query(conversationSql, [
+      workspaceId,
+      binding.id,
+      envelope.providerChatId,
+    ]);
+  }
+  const conversation = requireOne(conversationSchema, conversationRows);
+  const receiptCreatedConversation = conversation.id === creatorConversationId;
+  if (
+    receiptCreatedConversation !==
+    (conversation.messageThreadId === creatorThreadId)
+  )
+    return fail('CONVERSATION_CREATOR_INTEGRITY');
+  if (
+    creatingConversation &&
+    (!receiptCreatedConversation ||
+      conversation.queueId !== binding.defaultQueueId ||
+      conversation.mode !== 'human' ||
+      conversation.status !== 'open' ||
+      conversation.assigneeMemberId !== null ||
+      conversation.conversationSequence !== '0' ||
+      conversation.replyRevision !== '1' ||
+      conversation.controlEpoch !== '1' ||
+      conversation.automationEpoch !== '1' ||
+      conversation.nextOutboundSequence !== '1')
+  )
+    return fail('CONVERSATION_RESERVATION');
   // Another apply may have committed while this transaction waited for the conversation.
   const refreshedReceipt = requireOne(
     receiptSchema,
@@ -353,6 +458,12 @@ export const applyOmniHistoryReceipt = async (
   )
     return fail('RECEIPT_CHANGED');
   initialReceipt = refreshedReceipt;
+  if (
+    receiptCreatedConversation &&
+    !creatingConversation &&
+    initialReceipt.state !== 'applied'
+  )
+    return fail('CONVERSATION_CREATOR_INTEGRITY');
   if (conversation.policyId !== policy.id)
     return fail('CONVERSATION_POLICY_MISMATCH');
   requireOne(
@@ -382,13 +493,22 @@ export const applyOmniHistoryReceipt = async (
       [identity.personId],
     ),
   );
-  const thread = requireOne(
-    z.object({ id: uuid, subject: z.string().nullable() }),
-    await query(
-      `SELECT id,subject FROM "${schema}"."messageThread" WHERE id=$1 AND "deletedAt" IS NULL FOR UPDATE`,
-      [conversation.messageThreadId],
-    ),
+  const threadRows = await query(
+    `SELECT id,subject,"deletedAt" FROM "${schema}"."messageThread" WHERE id=$1 FOR UPDATE`,
+    [conversation.messageThreadId],
   );
+  if (creatingConversation && threadRows.length !== 0)
+    return fail('FOREIGN_THREAD_OWNER');
+  const thread = creatingConversation
+    ? { id: creatorThreadId, subject: null }
+    : requireOne(
+        z.object({
+          id: uuid,
+          subject: z.string().nullable(),
+          deletedAt: z.null(),
+        }),
+        threadRows,
+      );
   const otherOwners = await query(
     'SELECT id FROM core."omniConversation" WHERE "workspaceId"=$1 AND "messageThreadId"=$2 AND id<>$3',
     [workspaceId, thread.id, conversation.id],
@@ -399,6 +519,9 @@ export const applyOmniHistoryReceipt = async (
     frozen({
       ...principal,
       action: 'history.apply' as const,
+      creatingConversation,
+      bindingDefaultQueueId: binding.defaultQueueId,
+      bindingDefaultConversationMode: binding.defaultConversationMode,
       receiptId: proof.receiptId,
       conversationId: conversation.id,
       queueId: conversation.queueId,
@@ -457,6 +580,22 @@ export const applyOmniHistoryReceipt = async (
     conversationId: conversation.id,
     queueId: conversation.queueId,
   };
+  const createdConversationSnapshot = {
+    bindingId: binding.id,
+    providerChatId: envelope.providerChatId,
+    messageThreadId: thread.id,
+    queueId: conversation.queueId,
+    mode: 'human',
+    status: 'open',
+    assigneeMemberId: null,
+    policyId: policy.id,
+    policyVersion: '0',
+    controlEpoch: '1',
+    automationEpoch: '1',
+    nextOutboundSequence: '1',
+    conversationSequence: '2',
+    replyRevision: '2',
+  };
   const record = (
     resourceKind: CrmAuditResourceKind,
     resourceId: string,
@@ -472,6 +611,198 @@ export const applyOmniHistoryReceipt = async (
       after,
       securityDescriptor: { resourceKind, resourceId, ...scoped },
     });
+
+  const buildStorageEvent = (input: {
+    eventId: string;
+    rootId: string;
+    rootRowId: string;
+    dispatchId: string;
+    kind: 'message.received' | 'conversation.created';
+    sequence: string;
+    payload: Record<string, unknown>;
+  }) => {
+    const root = {
+      rootKind: 'domain_event',
+      rootId: input.rootId,
+      sourceKey: input.eventId,
+      initialEventIds: [input.eventId],
+      origin: 'history_import',
+      scope: { ...scoped, workspaceId },
+      coveredRoots: [],
+      policyId: policy.id,
+      policyVersion: '0',
+      maxCrmEffects: '0',
+      maxHops: '0',
+      usedCrmEffects: '0',
+      usedHops: '0',
+      state: 'suppressed',
+    };
+    const event = {
+      conversationId: conversation.id,
+      conversationSequence: input.sequence,
+      kind: input.kind,
+      origin: 'history_import',
+      rootExecutionId: input.rootRowId,
+      payloadVersion: 1,
+      payload: input.payload,
+    };
+    const dispatch = {
+      eventId: input.eventId,
+      rootKind: 'domain_event',
+      rootId: input.rootId,
+      policyId: policy.id,
+      policyVersion: '0',
+      activationVersion: null,
+      targets: [],
+      payloadHash: auditPayloadHash(event),
+      initialPlan: true,
+      state: 'suppressed',
+    };
+    return { ...input, root, event, dispatch };
+  };
+  type StorageEvent = ReturnType<typeof buildStorageEvent>;
+  const creationEvent = buildStorageEvent({
+    eventId: creationEventId,
+    rootId: creationRootId,
+    rootRowId: creationRootRowId,
+    dispatchId: creationDispatchId,
+    kind: 'conversation.created',
+    sequence: '1',
+    payload: {
+      messageThreadId: creatorThreadId,
+      receiptId: proof.receiptId,
+      dispatchSuppressed: true,
+    },
+  });
+  const persistStorageEvent = async (item: StorageEvent) => {
+    await query(
+      `INSERT INTO core."omniRootExecution" (id,"workspaceId","rootKind","rootId","sourceKey","initialEventIds",origin,scope,"coveredRoots","policyId","policyVersion","maxCrmEffects","maxHops",state)
+       VALUES ($1,$2,'domain_event',$3,$4,$5::uuid[],'history_import',$6::jsonb,'[]'::jsonb,$7,0,0,0,'suppressed')`,
+      [
+        item.rootRowId,
+        workspaceId,
+        item.rootId,
+        item.eventId,
+        [item.eventId],
+        canonicalAuditJson(item.root.scope),
+        policy.id,
+      ],
+    );
+    await query(
+      `INSERT INTO core."omniDomainEvent" (id,"workspaceId","conversationId","conversationSequence",kind,origin,"rootExecutionId","payloadVersion",payload)
+       VALUES ($1,$2,$3,$4,$5,'history_import',$6,1,$7::jsonb)`,
+      [
+        item.eventId,
+        workspaceId,
+        conversation.id,
+        item.sequence,
+        item.kind,
+        item.rootRowId,
+        canonicalAuditJson(item.payload),
+      ],
+    );
+    await query(
+      `INSERT INTO core."omniEventDispatchPlan" (id,"workspaceId","eventId","rootKind","rootId","policyId","policyVersion","activationVersion",targets,"payloadHash","initialPlan",state)
+       VALUES ($1,$2,$3,'domain_event',$4,$5,0,NULL,'[]'::jsonb,$6,true,'suppressed')`,
+      [
+        item.dispatchId,
+        workspaceId,
+        item.eventId,
+        item.rootId,
+        policy.id,
+        item.dispatch.payloadHash,
+      ],
+    );
+  };
+  const recordStorageEvent = (item: StorageEvent) => {
+    record('omniRootExecution', item.rootRowId, 'create', null, item.root);
+    record('omniDomainEvent', item.eventId, 'create', null, item.event);
+    record(
+      'omniEventDispatchPlan',
+      item.dispatchId,
+      'create',
+      null,
+      item.dispatch,
+    );
+  };
+  const verifyStorageEvent = async (
+    input: Omit<Parameters<typeof buildStorageEvent>[0], 'sequence'> & {
+      sequence?: string;
+    },
+  ) => {
+    const event = requireOne(
+      z.object({
+        conversationId: uuid,
+        conversationSequence: positiveBigint,
+        kind: z.enum(['message.received', 'conversation.created']),
+        origin: z.literal('history_import'),
+        rootExecutionId: uuid,
+        payloadVersion: z.literal(1),
+        payload: z.unknown(),
+      }),
+      await query(
+        'SELECT "conversationId","conversationSequence",kind,origin,"rootExecutionId","payloadVersion",payload FROM core."omniDomainEvent" WHERE "workspaceId"=$1 AND id=$2 AND "causationId" IS NULL',
+        [workspaceId, input.eventId],
+      ),
+    );
+    if (
+      BigInt(event.conversationSequence) >
+        BigInt(conversation.conversationSequence) ||
+      (input.sequence !== undefined &&
+        event.conversationSequence !== input.sequence)
+    )
+      return fail('REPLAY_EVENT_INTEGRITY');
+    const expected = buildStorageEvent({
+      ...input,
+      sequence: event.conversationSequence,
+    });
+    if (canonicalAuditJson(event) !== canonicalAuditJson(expected.event))
+      return fail('REPLAY_EVENT_INTEGRITY');
+    const root = requireOne(
+      z.object({
+        rootKind: z.literal('domain_event'),
+        rootId: uuid,
+        sourceKey: z.string(),
+        initialEventIds: z.array(uuid),
+        origin: z.literal('history_import'),
+        scope: z.unknown(),
+        coveredRoots: z.array(z.unknown()),
+        policyId: uuid,
+        policyVersion: z.literal('0'),
+        state: z.literal('suppressed'),
+        maxCrmEffects: z.literal('0'),
+        maxHops: z.literal('0'),
+        usedCrmEffects: z.literal('0'),
+        usedHops: z.literal('0'),
+      }),
+      await query(
+        'SELECT * FROM core."omniRootExecution" WHERE "workspaceId"=$1 AND id=$2 AND "causationId" IS NULL FOR SHARE',
+        [workspaceId, input.rootRowId],
+      ),
+    );
+    if (canonicalAuditJson(root) !== canonicalAuditJson(expected.root))
+      return fail('REPLAY_ROOT_INTEGRITY');
+    const dispatch = requireOne(
+      z.object({
+        eventId: uuid,
+        rootKind: z.literal('domain_event'),
+        rootId: uuid,
+        policyId: uuid,
+        policyVersion: z.literal('0'),
+        activationVersion: z.null(),
+        targets: z.array(z.unknown()),
+        payloadHash: z.string(),
+        initialPlan: z.literal(true),
+        state: z.literal('suppressed'),
+      }),
+      await query(
+        'SELECT * FROM core."omniEventDispatchPlan" WHERE "workspaceId"=$1 AND id=$2 FOR SHARE',
+        [workspaceId, input.dispatchId],
+      ),
+    );
+    if (canonicalAuditJson(dispatch) !== canonicalAuditJson(expected.dispatch))
+      return fail('REPLAY_DISPATCH_INTEGRITY');
+  };
 
   const verifyNative = async (ids: {
     messageId: string;
@@ -648,109 +979,67 @@ export const applyOmniHistoryReceipt = async (
       revision.contentHash !== contentHash
     )
       return fail('REPLAY_REVISION_INTEGRITY');
-    const expectedScope = { ...scoped, workspaceId };
-    const storedRoot = requireOne(
-      z.object({
-        rootKind: z.literal('domain_event'),
-        rootId: uuid,
-        sourceKey: z.string(),
-        initialEventIds: z.array(uuid),
-        origin: z.literal('history_import'),
-        scope: z.unknown(),
-        coveredRoots: z.array(z.unknown()),
-        policyId: uuid,
-        policyVersion: z.literal('0'),
-        state: z.literal('suppressed'),
-        maxCrmEffects: z.literal('0'),
-        maxHops: z.literal('0'),
-        usedCrmEffects: z.literal('0'),
-        usedHops: z.literal('0'),
-      }),
-      await query(
-        'SELECT * FROM core."omniRootExecution" WHERE "workspaceId"=$1 AND id=$2 AND "causationId" IS NULL FOR SHARE',
-        [workspaceId, rootRowId],
-      ),
-    );
-    if (
-      storedRoot.rootId !== rootId ||
-      storedRoot.sourceKey !== eventId ||
-      storedRoot.policyId !== policy.id ||
-      canonicalAuditJson(storedRoot.initialEventIds) !==
-        canonicalAuditJson([eventId]) ||
-      storedRoot.coveredRoots.length !== 0 ||
-      canonicalAuditJson(storedRoot.scope) !== canonicalAuditJson(expectedScope)
-    )
-      return fail('REPLAY_ROOT_INTEGRITY');
-    const event = requireOne(
-      z.object({
-        conversationId: uuid,
-        conversationSequence: positiveBigint,
-        kind: z.literal('message.received'),
-        origin: z.literal('history_import'),
-        rootExecutionId: uuid,
-        payloadVersion: z.literal(1),
-        payload: z.unknown(),
-      }),
-      await query(
-        'SELECT "conversationId","conversationSequence",kind,origin,"rootExecutionId","payloadVersion",payload FROM core."omniDomainEvent" WHERE "workspaceId"=$1 AND id=$2 AND "causationId" IS NULL',
-        [workspaceId, eventId],
-      ),
-    );
-    if (
-      event.conversationId !== conversation.id ||
-      event.rootExecutionId !== rootRowId ||
-      BigInt(event.conversationSequence) >
-        BigInt(conversation.conversationSequence) ||
-      canonicalAuditJson(event.payload) !==
-        canonicalAuditJson({
+    const replayEvents = [
+      {
+        eventId,
+        rootId,
+        rootRowId,
+        dispatchId,
+        kind: 'message.received' as const,
+        ...(receiptCreatedConversation ? { sequence: '2' } : {}),
+        payload: {
           messageLinkId: link.id,
           messageId: link.messageId,
           receiptId: proof.receiptId,
           dispatchSuppressed: true,
-        })
-    )
-      return fail('REPLAY_EVENT_INTEGRITY');
-    const dispatch = requireOne(
-      z.object({
-        eventId: uuid,
-        rootKind: z.literal('domain_event'),
-        rootId: uuid,
-        policyId: uuid,
-        policyVersion: z.literal('0'),
-        activationVersion: z.null(),
-        targets: z.array(z.unknown()),
-        payloadHash: z.string(),
-        initialPlan: z.literal(true),
-        state: z.literal('suppressed'),
-      }),
-      await query(
-        'SELECT * FROM core."omniEventDispatchPlan" WHERE "workspaceId"=$1 AND id=$2 FOR SHARE',
-        [workspaceId, dispatchId],
-      ),
-    );
-    if (
-      dispatch.eventId !== eventId ||
-      dispatch.rootId !== rootId ||
-      dispatch.policyId !== policy.id ||
-      dispatch.targets.length !== 0 ||
-      dispatch.payloadHash !== auditPayloadHash(event)
-    )
-      return fail('REPLAY_DISPATCH_INTEGRITY');
-    const successes = await query(
-      'SELECT "resourceKind","resourceId",action FROM crm_audit."crmAuditEntry" WHERE "workspaceId"=$1 AND "operationId"=$2 AND outcome=\'success\'',
-      [workspaceId, operationId],
-    );
+        },
+      },
+      ...(receiptCreatedConversation ? [creationEvent] : []),
+    ];
+    for (const item of replayEvents.sort((left, right) =>
+      left.rootId.localeCompare(right.rootId),
+    )) {
+      await verifyStorageEvent(item);
+    }
+    const successes = z
+      .array(
+        z.object({
+          resourceKind: z.string(),
+          resourceId: uuid,
+          action: z.enum(['create', 'update', 'delete']),
+          redactedDiff: z.unknown(),
+          securityDescriptor: z.unknown(),
+        }),
+      )
+      .parse(
+        await query(
+          'SELECT "resourceKind","resourceId",action,"redactedDiff","securityDescriptor" FROM crm_audit."crmAuditEntry" WHERE "workspaceId"=$1 AND "operationId"=$2 AND outcome=\'success\'',
+          [workspaceId, operationId],
+        ),
+      );
     const expectedAudit = [
       ['omniMessage', link.messageId, 'create'],
       ['omniMessageParticipant', participant.id, 'create'],
       ['omniMessageAssociation', association.id, 'create'],
       ['omniMessageLink', link.id, 'create'],
       ['omniMessageRevision', revisionId, 'create'],
-      ['omniConversation', conversation.id, 'update'],
+      [
+        'omniConversation',
+        conversation.id,
+        receiptCreatedConversation ? 'create' : 'update',
+      ],
       ['omniRootExecution', rootRowId, 'create'],
       ['omniDomainEvent', eventId, 'create'],
       ['omniEventDispatchPlan', dispatchId, 'create'],
       ['omniIncomingReceipt', proof.receiptId, 'update'],
+      ...(receiptCreatedConversation
+        ? [
+            ['omniMessageThread', thread.id, 'create'],
+            ['omniRootExecution', creationRootRowId, 'create'],
+            ['omniDomainEvent', creationEventId, 'create'],
+            ['omniEventDispatchPlan', creationDispatchId, 'create'],
+          ]
+        : []),
     ];
     if (
       successes.length !== expectedAudit.length ||
@@ -770,6 +1059,45 @@ export const applyOmniHistoryReceipt = async (
       )
     )
       return fail('REPLAY_AUDIT_INTEGRITY');
+    if (receiptCreatedConversation) {
+      const creationValues = Object.fromEntries(
+        Object.entries(createdConversationSnapshot)
+          .filter(([field]) => field !== 'providerChatId')
+          .map(([field, value]) => [field, { before: null, after: value }]),
+      );
+      const expectedCreationDiff = {
+        changedFields: Object.keys(createdConversationSnapshot).sort(),
+        values: creationValues,
+      };
+      for (const [resourceKind, resourceId, expectedDiff] of [
+        ['omniConversation', conversation.id, expectedCreationDiff],
+        [
+          'omniMessageThread',
+          thread.id,
+          { changedFields: ['subject'], values: {} },
+        ],
+      ] as const) {
+        const entry = requireOne(
+          z.object({
+            redactedDiff: z.unknown(),
+            securityDescriptor: z.unknown(),
+          }),
+          successes.filter(
+            (row) =>
+              row.resourceKind === resourceKind &&
+              row.resourceId === resourceId &&
+              row.action === 'create',
+          ),
+        );
+        if (
+          canonicalAuditJson(entry.redactedDiff) !==
+            canonicalAuditJson(expectedDiff) ||
+          canonicalAuditJson(entry.securityDescriptor) !==
+            canonicalAuditJson({ resourceKind, resourceId, ...scoped })
+        )
+          return fail('REPLAY_CREATION_AUDIT_INTEGRITY');
+      }
+    }
     const reread = requireOne(
       receiptSchema,
       await query(
@@ -808,8 +1136,15 @@ export const applyOmniHistoryReceipt = async (
   );
   if (conflicts.length !== 0) return fail('FOREIGN_NATIVE_IDENTITY');
   const nativeIds = z
-    .object({ messageId: uuid, participantId: uuid, associationId: uuid })
+    .object({
+      messageId: uuid,
+      participantId: uuid,
+      associationId: uuid,
+      createdThread: z.boolean(),
+    })
     .parse(await createInitialMessage.call(nativePort, nativeInput));
+  if (nativeIds.createdThread !== creatingConversation)
+    return fail('NATIVE_THREAD_CREATION_POSTCONDITION');
   const native = await verifyNative(nativeIds);
   const messageLinkId = randomUUID();
   const link = {
@@ -877,83 +1212,39 @@ export const applyOmniHistoryReceipt = async (
       replyRevision: positiveBigint,
     }),
     await query(
-      'UPDATE core."omniConversation" SET "conversationSequence"="conversationSequence"+1,"replyRevision"="replyRevision"+1,"updatedAt"=clock_timestamp() WHERE "workspaceId"=$1 AND id=$2 RETURNING "conversationSequence","replyRevision"',
-      [workspaceId, conversation.id],
+      'UPDATE core."omniConversation" SET "conversationSequence"="conversationSequence"+$3,"replyRevision"="replyRevision"+1,"updatedAt"=clock_timestamp() WHERE "workspaceId"=$1 AND id=$2 RETURNING "conversationSequence","replyRevision"',
+      [workspaceId, conversation.id, creatingConversation ? 2 : 1],
     ),
   );
   const sequence = advanced.conversationSequence;
-  const root = {
-    rootKind: 'domain_event',
+  if (
+    creatingConversation &&
+    (sequence !== '2' || advanced.replyRevision !== '2')
+  )
+    return fail('CONVERSATION_RESERVATION');
+  const messageEvent = buildStorageEvent({
+    eventId,
     rootId,
-    sourceKey: eventId,
-    initialEventIds: [eventId],
-    origin: 'history_import',
-    scope: { ...scoped, workspaceId },
-    coveredRoots: [],
-    policyId: policy.id,
-    policyVersion: '0',
-    maxCrmEffects: '0',
-    maxHops: '0',
-    usedCrmEffects: '0',
-    usedHops: '0',
-    state: 'suppressed',
-  };
-  await query(
-    `INSERT INTO core."omniRootExecution" (id,"workspaceId","rootKind","rootId","sourceKey","initialEventIds",origin,scope,"coveredRoots","policyId","policyVersion","maxCrmEffects","maxHops",state)
-    VALUES ($1,$2,'domain_event',$3,$4,$5::uuid[],'history_import',$6::jsonb,'[]'::jsonb,$7,0,0,0,'suppressed')`,
-    [
-      rootRowId,
-      workspaceId,
-      rootId,
-      eventId,
-      [eventId],
-      canonicalAuditJson(root.scope),
-      policy.id,
-    ],
-  );
-  const event = {
-    conversationId: conversation.id,
-    conversationSequence: sequence,
+    rootRowId,
+    dispatchId,
     kind: 'message.received',
-    origin: 'history_import',
-    rootExecutionId: rootRowId,
-    payloadVersion: 1,
+    sequence,
     payload: {
       messageLinkId,
       messageId: nativeIds.messageId,
       receiptId: proof.receiptId,
       dispatchSuppressed: true,
     },
-  };
-  await query(
-    `INSERT INTO core."omniDomainEvent" (id,"workspaceId","conversationId","conversationSequence",kind,origin,"rootExecutionId","payloadVersion",payload)
-    VALUES ($1,$2,$3,$4,'message.received','history_import',$5,1,$6::jsonb)`,
-    [
-      eventId,
-      workspaceId,
-      conversation.id,
-      sequence,
-      rootRowId,
-      canonicalAuditJson(event.payload),
-    ],
-  );
-  const dispatch = {
-    eventId,
-    rootKind: 'domain_event',
-    rootId,
-    policyId: policy.id,
-    policyVersion: '0',
-    activationVersion: null,
-    targets: [],
-    payloadHash: auditPayloadHash(event),
-    initialPlan: true,
-    state: 'suppressed',
-  };
-  await query(
-    `INSERT INTO core."omniEventDispatchPlan" (id,"workspaceId","eventId","rootKind","rootId","policyId","policyVersion","activationVersion",targets,"payloadHash","initialPlan",state)
-    VALUES ($1,$2,$3,'domain_event',$4,$5,0,NULL,'[]'::jsonb,$6,true,'suppressed')`,
-    [dispatchId, workspaceId, eventId, rootId, policy.id, dispatch.payloadHash],
-  );
+  });
+  const newEvents = [
+    messageEvent,
+    ...(creatingConversation ? [creationEvent] : []),
+  ];
+  for (const item of newEvents.sort((left, right) =>
+    left.rootId.localeCompare(right.rootId),
+  )) {
+    await persistStorageEvent(item);
+  }
 
   const lockedReceipt = requireOne(
     receiptSchema,
@@ -989,24 +1280,32 @@ export const applyOmniHistoryReceipt = async (
   });
   record('omniMessageLink', messageLinkId, 'create', null, link);
   record('omniMessageRevision', revisionId, 'create', null, revision);
-  record(
-    'omniConversation',
-    conversation.id,
-    'update',
-    {
-      bindingId: binding.id,
-      conversationSequence: conversation.conversationSequence,
-      replyRevision: conversation.replyRevision,
-    },
-    {
-      bindingId: binding.id,
-      conversationSequence: sequence,
-      replyRevision: advanced.replyRevision,
-    },
-  );
-  record('omniRootExecution', rootRowId, 'create', null, root);
-  record('omniDomainEvent', eventId, 'create', null, event);
-  record('omniEventDispatchPlan', dispatchId, 'create', null, dispatch);
+  if (creatingConversation) {
+    record('omniMessageThread', thread.id, 'create', null, { subject: null });
+    record(
+      'omniConversation',
+      conversation.id,
+      'create',
+      null,
+      createdConversationSnapshot,
+    );
+  } else
+    record(
+      'omniConversation',
+      conversation.id,
+      'update',
+      {
+        bindingId: binding.id,
+        conversationSequence: conversation.conversationSequence,
+        replyRevision: conversation.replyRevision,
+      },
+      {
+        bindingId: binding.id,
+        conversationSequence: sequence,
+        replyRevision: advanced.replyRevision,
+      },
+    );
+  for (const item of newEvents) recordStorageEvent(item);
   record(
     'omniIncomingReceipt',
     proof.receiptId,

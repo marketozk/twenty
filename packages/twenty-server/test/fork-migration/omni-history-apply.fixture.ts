@@ -18,8 +18,13 @@ import { type OmniHistoryApplyAuthorizer } from 'src/modules/omnichannel/service
 import { claimOmniIncomingReceipts } from 'src/modules/omnichannel/services/omni-incoming-receipt-lease';
 import { createOmniNativeMessageFixture } from 'test/fork-migration/omni-native-message.fixture';
 
-export const createOmniHistoryApplyFixture = () => {
-  const native = createOmniNativeMessageFixture({ coreSchema: 'fork' });
+export const createOmniHistoryApplyFixture = (
+  options: { includeTargets?: boolean } = {},
+) => {
+  const native = createOmniNativeMessageFixture({
+    coreSchema: 'fork',
+    additionalTables: options.includeTargets ? ['messageThreadTarget'] : [],
+  });
   const runtime = new DataSource({
     type: 'postgres',
     url: native.runtimeDatabaseUrl,
@@ -57,6 +62,7 @@ export const createOmniHistoryApplyFixture = () => {
       typeof MessagingSaveMessagesAndEnqueueContactCreationService
     >[3],
     manager,
+    runtime,
   );
   const coreInsert = async (
     table: string,
@@ -85,13 +91,14 @@ export const createOmniHistoryApplyFixture = () => {
       `GRANT INSERT ON core."omniMessageLink", core."omniMessageRevision", core."omniDomainEvent", core."omniRootExecution", core."omniEventDispatchPlan", core."omniReplyBudget" TO "${native.roleName}"`,
     );
     await native.owner.query(
-      `GRANT UPDATE ON core."omniConversation" TO "${native.roleName}"`,
+      `GRANT INSERT, UPDATE ON core."omniConversation" TO "${native.roleName}"`,
     );
     for (const table of [
       'omniWorkspacePolicyState',
       'omniAccountBinding',
       'omniAutomationPolicy',
       'omniExternalIdentity',
+      'omniQueue',
       'connectedAccount',
       'messageChannel',
       'omniRootExecution',
@@ -103,7 +110,7 @@ export const createOmniHistoryApplyFixture = () => {
     }
     await runtime.initialize();
   };
-  const reset = async () => {
+  const reset = async (options: { withoutConversation?: boolean } = {}) => {
     await native.reset();
     await native.owner.query(
       'TRUNCATE core.workspace, core."connectedAccount", core."messageChannel" CASCADE',
@@ -177,24 +184,27 @@ export const createOmniHistoryApplyFixture = () => {
             id: personId,
             name: { firstName: 'Bound', lastName: 'Person' },
           });
-        await scope
-          .getRepository('messageThread', {
-            shouldBypassPermissionChecks: true,
-          })
-          .insert({ id: threadId, subject: 'Existing conversation title' });
+        if (!options.withoutConversation)
+          await scope
+            .getRepository('messageThread', {
+              shouldBypassPermissionChecks: true,
+            })
+            .insert({ id: threadId, subject: 'Existing conversation title' });
       },
       { commitOutcome: 'strict' },
     );
-    const conversationId = await coreInsert('omniConversation', {
-      workspaceId: native.workspaceId,
-      bindingId,
-      providerChatId: 'history-chat',
-      messageThreadId: threadId,
-      queueId,
-      policyId,
-      policyVersion: '0',
-      mode: 'human',
-    });
+    const conversationId = options.withoutConversation
+      ? randomUUID()
+      : await coreInsert('omniConversation', {
+          workspaceId: native.workspaceId,
+          bindingId,
+          providerChatId: 'history-chat',
+          messageThreadId: threadId,
+          queueId,
+          policyId,
+          policyVersion: '0',
+          mode: 'human',
+        });
     const externalIdentityId = await coreInsert('omniExternalIdentity', {
       workspaceId: native.workspaceId,
       bindingId,
@@ -252,7 +262,7 @@ export const createOmniHistoryApplyFixture = () => {
       origin,
       qualification: { adapterId: 'fixture-history', adapterVersion: '1' },
       nativeMessageKeyVersion: 1,
-      nativeMessageKey: 'history:v1:history-message',
+      nativeMessageKey: `history:v1:${envelope.providerMessageId}`,
       sourceVariant: envelope.sourceVariant,
       sourcePosition: envelope.sourcePosition,
     };
@@ -288,13 +298,18 @@ export const createOmniHistoryApplyFixture = () => {
     };
   };
   const authorizeFor =
-    (context: Awaited<ReturnType<typeof reset>>): OmniHistoryApplyAuthorizer =>
+    (
+      context: Awaited<ReturnType<typeof reset>>,
+      options: { allowNewConversation?: boolean } = {},
+    ): OmniHistoryApplyAuthorizer =>
     async (_scope, request) => {
       // Synthetic explicit grant/qualification only; this does not implement ROB-766 policy.
       if (
         request.workspaceId !== native.workspaceId ||
         request.bindingId !== context.bindingId ||
-        request.conversationId !== context.conversationId ||
+        (!options.allowNewConversation &&
+          request.conversationId !== context.conversationId) ||
+        request.envelope.providerChatId !== 'history-chat' ||
         request.queueId !== context.queueId ||
         request.externalIdentityId !== context.externalIdentityId ||
         request.personId !== context.personId ||

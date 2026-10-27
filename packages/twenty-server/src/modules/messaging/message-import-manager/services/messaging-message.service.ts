@@ -57,6 +57,7 @@ export class MessagingMessageService {
     options?: CanonicalMessageThreadOptions,
   ): Promise<{
     createdMessages: Partial<MessageWorkspaceEntity>[];
+    createdMessageThreadIds: string[];
     messageExternalIdsAndIdsMap: Map<string, string>;
     messageExternalIdToMessageChannelMessageAssociationIdMap: Map<
       string,
@@ -381,6 +382,7 @@ export class MessagingMessageService {
 
         return {
           createdMessages: messagesToCreate,
+          createdMessageThreadIds: messageThreadsToCreate.map(({ id }) => id),
           messageExternalIdsAndIdsMap,
           messageExternalIdToMessageChannelMessageAssociationIdMap,
           messageExternalIdToMessageThreadIdMap,

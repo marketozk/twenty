@@ -1,4 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
+
+import { DataSource } from 'typeorm';
 
 import {
   FieldActorSource,
@@ -42,6 +45,20 @@ import {
 import { withOmniRepositoryOptions } from 'src/modules/omnichannel/services/with-omni-repository-options';
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { appendOmniHistoryApplyFailure } from 'src/modules/omnichannel/services/append-omni-history-apply-failure';
+import { isOmniHistoryMissingConfigurationError } from 'src/modules/omnichannel/services/omni-history-missing-configuration.error';
+import {
+  deferOmniIncomingReceipt,
+  type OmniIncomingReceiptLeaseAuthorizer,
+} from 'src/modules/omnichannel/services/omni-incoming-receipt-lease';
+
+export type OmniHistoryProcessResult =
+  | OmniHistoryApplyResult
+  | Readonly<{
+      receiptId: string;
+      state: 'blocked_config';
+      errorCode: 'configuration_missing';
+      nextAttemptAt: string;
+    }>;
 
 @Injectable()
 export class MessagingSaveMessagesAndEnqueueContactCreationService {
@@ -52,7 +69,82 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     private readonly messageParticipantService: MessagingMessageParticipantService,
     private readonly messageFolderAssociationService: MessagingMessageFolderAssociationService,
     private readonly workspaceOrmManager: WorkspaceOrmManager,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
   ) {}
+
+  async processOmniHistoryReceipt(
+    principal: OmniHistoryApplyPrincipal,
+    proof: OmniHistoryApplyProof,
+    authorizeHistory: OmniHistoryApplyAuthorizer,
+    authorizeLease: OmniIncomingReceiptLeaseAuthorizer,
+  ): Promise<OmniHistoryProcessResult> {
+    const request = snapshotOmniHistoryReceiptRequest(
+      principal,
+      proof,
+      authorizeHistory,
+    );
+    const leaseAuthorizer = authorizeLease;
+
+    if (typeof leaseAuthorizer !== 'function') {
+      throw new Error('OMNI_HISTORY_LEASE_AUTHORIZER_REQUIRED');
+    }
+
+    const leaseProof = Object.freeze({
+      receiptId: request.proof.receiptId,
+      leaseOwner: request.proof.leaseOwner,
+      leaseToken: request.proof.leaseToken,
+      routeGeneration: request.proof.routeGeneration,
+    });
+    let historyAuthorizationDenied = false;
+
+    try {
+      return await this.applyOmniHistoryReceipt(
+        request.principal,
+        request.proof,
+        async (scope, authorization) => {
+          try {
+            await request.authorize(scope, authorization);
+          } catch (error) {
+            historyAuthorizationDenied = true;
+            throw error;
+          }
+        },
+      );
+    } catch (error) {
+      // The strict apply boundary propagates this issued error only after confirmed
+      // rollback. Unknown transaction outcomes and failed audit cleanup stay errors.
+      if (
+        historyAuthorizationDenied ||
+        !isOmniHistoryMissingConfigurationError(error)
+      ) {
+        throw error;
+      }
+
+      const deferred = await deferOmniIncomingReceipt(
+        this.dataSource,
+        request.principal,
+        leaseProof,
+        { state: 'blocked_config', errorCode: 'configuration_missing' },
+        leaseAuthorizer,
+      );
+
+      if (
+        deferred.receiptId !== leaseProof.receiptId ||
+        deferred.state !== 'blocked_config' ||
+        deferred.errorCode !== 'configuration_missing'
+      ) {
+        throw new Error('OMNI_HISTORY_CONFIG_DEFER_POSTCONDITION');
+      }
+
+      return Object.freeze({
+        receiptId: deferred.receiptId,
+        state: 'blocked_config',
+        errorCode: 'configuration_missing',
+        nextAttemptAt: deferred.nextAttemptAt,
+      });
+    }
+  }
 
   async applyOmniHistoryReceipt(
     principal: OmniHistoryApplyPrincipal,
@@ -138,6 +230,15 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
                     ) {
                       throw new Error('OMNI_HISTORY_NATIVE_MAPPING_MISSING');
                     }
+                    if (
+                      !result.createdMessages.some(
+                        (message) => message.id === messageId,
+                      )
+                    ) {
+                      throw new Error(
+                        'OMNI_HISTORY_NATIVE_MESSAGE_CREATION_POSTCONDITION',
+                      );
+                    }
                     const saved =
                       await this.messageParticipantService.saveMessageParticipants(
                         [
@@ -167,6 +268,9 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
                       messageId,
                       associationId,
                       participantId: saved[0].id,
+                      createdThread: result.createdMessageThreadIds.includes(
+                        input.messageThreadId,
+                      ),
                     };
                   },
                 },

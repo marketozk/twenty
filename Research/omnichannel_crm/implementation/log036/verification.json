@@ -1,0 +1,23 @@
+{
+  "fullJestTests": 701,
+  "fullJestSuites": 29,
+  "newFirstConversationPostgresCases": 22,
+  "newProcessUnitCases": 10,
+  "guardTests": 20,
+  "checksumTests": 5,
+  "totalDistinctTests": 726,
+  "typecheckRootFiles": 136,
+  "baselineTypeDiagnostics": 146,
+  "currentTypeDiagnostics": 146,
+  "newTypeDiagnostics": 0,
+  "changedCodeTypeDiagnostics": 0,
+  "fullServerTypecheck": false,
+  "typecheckContainerMemoryGiB": 6,
+  "typecheckNodeHeapMiB": 4608,
+  "typecheckCPUs": 2,
+  "allFiveMigrationSourcesUnchanged": true,
+  "independentScopedReview": "PASS after actual native Thread creation evidence check",
+  "fullROB764Acceptance": false,
+  "liveDemoChanged": false,
+  "githubActionsUsed": false
+}

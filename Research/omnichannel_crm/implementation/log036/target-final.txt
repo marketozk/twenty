@@ -1,0 +1,30 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-first-conversation.postgres-spec.ts (14.431 s)
+  first qualified history receipt creates one native conversation graph
+    ✓ creates one Thread and Conversation with default queue, one existing Person and suppressed sequence1/2 events (405 ms)
+    ✓ serializes two first receipts for the same chat into one Conversation and two Messages (333 ms)
+    ✓ replays the same first receipt without additional Thread, Conversation or creation effects (335 ms)
+    ✓ rejects a foreign Thread inserted after the initial absence check instead of auditing it as newly created (262 ms)
+    ✓ reconciles an actual lost COMMIT acknowledgement without duplicate creation (309 ms)
+    ✓ rejects a foreign-thread Message inserted between domain precheck and real native helper lookup (330 ms)
+    ✓ does not repair an existing Conversation with a missing native Thread (271 ms)
+    ✓ does not repair an existing Conversation with a deleted native Thread (273 ms)
+    ✓ does not reconstruct a missing Conversation for a previously applied receipt (239 ms)
+    ✓ persists blocked_config for invalid queue defaults only after confirmed native rollback (157 ms)
+    ✓ persists blocked_config for invalid assist defaults only after confirmed native rollback (155 ms)
+    ✓ persists blocked_config for invalid auto defaults only after confirmed native rollback (169 ms)
+    ✓ does not turn current history authorization denial into a configuration defer (161 ms)
+    ✓ does not clear the lease when fresh defer authorization is denied (152 ms)
+    ✓ rolls back first-conversation creation if messageThread persistence fails (167 ms)
+    ✓ rolls back first-conversation creation if omniConversation persistence fails (140 ms)
+    ✓ rolls back first-conversation creation if omniRootExecution persistence fails (186 ms)
+    ✓ rolls back first-conversation creation if omniDomainEvent persistence fails (190 ms)
+    ✓ rolls back first-conversation creation if omniEventDispatchPlan persistence fails (172 ms)
+    ✓ rolls back first-conversation creation if crmAuditEntry persistence fails (180 ms)
+    ✓ rolls back Thread and Conversation if the lease expires while success audit is being written (2264 ms)
+    ✓ rereads defaults after waiting for the workspace policy writer (187 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       22 passed, 22 total
+Snapshots:   0 total
+Time:        14.536 s
+Ran all test suites within paths "/source/packages/twenty-server/test/fork-migration/omni-history-first-conversation.postgres-spec.ts".

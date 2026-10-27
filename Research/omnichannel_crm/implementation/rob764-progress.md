@@ -270,3 +270,19 @@ hooks/отзыва токенов/удаления подписок, DB update/d
 остальные inbox/outbox пути. Проверки lifecycle point-in-time; гонки владения,
 generic/raw CRUD и полный T05/ROB-764 ещё открыты. HTTP/own ACL/UI/живые коннекторы
 не подключены. Демо прежнее; GitHub Actions не используется.
+
+
+## LOG-036 — первое history-сообщение
+
+LOG-036 / ROB-764 In Progress: первое qualified history-сообщение атомарно
+создаёт Conversation/Thread по действующим default queue/human mode и существующим
+verified Identity/Person. Параллельные receipts сходятся в одном диалоге;
+conversation.created и message.received имеют отдельные suppressed roots/events.
+Подтверждается фактическое создание native Thread, rollback и replay проверены.
+Нет подходящей конфигурации — тот же receipt переводится в blocked_config после
+подтверждённого rollback; неизвестный COMMIT не превращается в retry/успех.
+701 Jest/29 suites +25 guards =726 PASS. Typecheck136roots:0 новых/0 changed-code,
+146 baseline/current; все5 миграций прежние. [Доказательства и границы](log036/README.md).
+Далее — bounded восстановление blocked_config, затем config producer/consumer,
+остальные inbox/outbox пути. HTTP/own ACL/UI/живые коннекторы не подключены;
+полные ROB-764/T05 и lifecycle races ещё открыты. Демо прежнее, Actions не используется.

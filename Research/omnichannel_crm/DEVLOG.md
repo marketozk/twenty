@@ -939,3 +939,26 @@ behavioral-guardrails (пределы), server-schrodinger (лимитирова
 
 
 Публикация LOG-035: `0eccf952d91f42eec78d272230be75b1e54b5f7a`; remote SHA проверен API. Описание ROB-764 и комментарий `f62440c4-0a1f-4666-9f6c-beb0f20fcbb1` прочитаны обратно, все11 статусов прежние. [Метаданные](implementation/log035/publication.json). Продолжаем LOG-036.
+
+
+## LOG-036 — 27.10.2026: first Conversation/Thread и blocked_config bridge
+
+LOG-036 / ROB-764 In Progress: первое qualified history-сообщение атомарно
+создаёт Conversation/Thread по действующим default queue/human mode и существующим
+verified Identity/Person. Параллельные receipts сходятся в одном диалоге;
+conversation.created и message.received имеют отдельные suppressed roots/events.
+Подтверждается фактическое создание native Thread, rollback и replay проверены.
+Нет подходящей конфигурации — тот же receipt переводится в blocked_config после
+подтверждённого rollback; неизвестный COMMIT не превращается в retry/успех.
+701 Jest/29 suites +25 guards =726 PASS. Typecheck136roots:0 новых/0 changed-code,
+146 baseline/current; все5 миграций прежние. [Доказательства и границы](implementation/log036/README.md).
+Далее — bounded восстановление blocked_config, затем config producer/consumer,
+остальные inbox/outbox пути. HTTP/own ACL/UI/живые коннекторы не подключены;
+полные ROB-764/T05 и lifecycle races ещё открыты. Демо прежнее, Actions не используется.
+
+Независимый scoped review закрыл race переиспользования Thread проверкой реального
+native insert. Первые2 failures относятся к test harness, исправлены; полный финальный
+прогон701 PASS. Same-thread foreign Message race не подтверждён: FK ждёт Thread lock.
+Подробные подтверждения и ограничения — в evidence README. Skills: ai-dev-workflow
+(implementation/review), behavioral-guardrails (границы), server-schrodinger (изолированные
+проверки). Полный Claude cross-review повторно не заявляется. Следующий шаг LOG-037.

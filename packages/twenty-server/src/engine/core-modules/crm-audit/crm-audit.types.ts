@@ -7,6 +7,7 @@ export type CrmAuditResourceKind =
   | 'omniAccountBinding'
   | 'omniIncomingReceipt'
   | 'omniMessage'
+  | 'omniMessageThread'
   | 'omniMessageParticipant'
   | 'omniMessageAssociation'
   | 'omniMessageLink'

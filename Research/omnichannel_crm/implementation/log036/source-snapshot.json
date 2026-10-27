@@ -1,0 +1,16 @@
+{
+  "baseCommit": "02ff60117bded5f1804ba082fef6352b52fa44d8",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "49b966c68bf1ec5deab5b586c3b9f73464e11630920b5fa6ea79df147547961e",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "efa39fcaae3039b1a5cf991347a9abfd71ee4af5aed485f040c2bb581fb17bde",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-message.service.ts": "c4a759b2164131c03b94a21d56032102320e221a37601c067abf2c7e9a3ca032",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts": "522a0983eea1db87441b89022fc4c1612b5bf6486dc9079f2ea41d05165ccd72",
+    "packages/twenty-server/src/modules/omnichannel/services/apply-omni-history-receipt.ts": "90973ce14716cde998f8db3608832525835524ecf6ff8ca4acb96e68321af809",
+    "packages/twenty-server/test/fork-migration/omni-history-apply.fixture.ts": "4a9c1a1adfd4f1753240992f2b44f9435285c847b6166941ad5f1ad951afed17",
+    "packages/twenty-server/src/modules/omnichannel/services/omni-history-missing-configuration.error.ts": "7dfb083bf32f2d6ed1b3d48a213e1c8c9e3edffd026177decf7ba37a8c2805a1",
+    "packages/twenty-server/test/fork-migration/omni-history-first-conversation.postgres-spec.ts": "dd6b7c6afc815142cb847e38fb6ed4b0103e327ff440d9fd8fe8b39f6ca41a76",
+    "packages/twenty-server/test/fork-migration/omni-history-process.spec.ts": "1a7fef993cf4324fb46d53315104fa8ff682f068df21b16686db6631be3a49ae"
+  }
+}
