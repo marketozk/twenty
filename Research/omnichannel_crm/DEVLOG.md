@@ -1594,3 +1594,5 @@ Full suite не повторялся: последний LOG056 1881/71. Лок�
 [Evidence](implementation/log057/README.md). [Remaining writers](implementation/rob764-metadata-writer-inventory.md).
 Демо/SaleBot не менялись; GitHub Actions не использовался. Применён ai-dev-workflow,
 behavioral-guardrails, server-schrodinger и read-only scoped review.
+
+LOG-057 publication: code 230f274d422b56c9df25a958ee331ccbc8cff38d pushed; GitHub ref verified through API. Linear comment eb7eaaa1-c597-40ac-b138-bdd3d0ebb413; description/comment and all11 project states independently read back. ROB-764 In Progress. See implementation/log057/publication.json.
