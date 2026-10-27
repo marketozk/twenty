@@ -1085,3 +1085,5 @@ Typecheck162roots:146 baseline/current,0 новых/0 changed-code. Все6 ми
 RETURNING заменён CTE SELECT согласно настоящему QueryRunner. Retained membership
 проверяется EXISTS, чтобы повторное вступление не ломало denied audit. Новый полный
 Claude cross-review и полный server build/typecheck не заявляются. Продолжаем LOG-042.
+
+Публикация LOG-041: код 8e764d01037d3f9ea32082d35dd685872441717a, remote проверен GitHub API. Описание ROB-764 и комментарий 838d3898-d413-4b7f-b15c-d0d7145e9313 прочитаны обратно; все 11 статусов сохранены. Продолжаем LOG-042.
