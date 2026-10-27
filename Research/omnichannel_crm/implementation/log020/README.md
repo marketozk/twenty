@@ -64,3 +64,8 @@ server/worker restart ещё не проверены. Wrapper подготовл
 ORM update:false у policy versions не заменяет domain immutability enforcement.
 Generated down проверен только на пустых новых таблицах, CLI down отсутствует.
 Демо, коннекторы и клиентские сообщения не менялись. ROB-764 не закрывается.
+
+Код опубликован и Linear обновлён; [publication.json](publication.json) содержит
+commit, comment и read-back статусов. Оба GitHub job блокированы до запуска
+из-за billing аккаунта; CI pass не заявлен. Собственные тесты приведены выше.
+Временные контейнеры/БД/network удалены; [cleanup.json](cleanup.json).

@@ -43,3 +43,8 @@ LOG-019 / ROB-764: пользователь принял исправленны�
 
 
 Публикация LOG-019: `28cdc295b69103074e95ce93d67117950815db83`; read-back11 задач подтвердил ROB-772 Done и ROB-764 In Progress, остальные статусы сохранены. [ROB-764 отчёт](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-8753ea7f) и [ROB-772 отчёт](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-a06f566a). GitHub CI не запустился из-за billing block аккаунта; выполненные16 PG/20 guard checks и focused typecheck проходят. [Evidence](implementation/publication-log019.json).
+
+Публикация LOG-020: `ab0402f3fddd890fb31fb504ad4502ad9b7caa2a`; [отчёт ROB-764](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-4b311d13).
+Описание/комментарий проверены чтением, ROB-764 In Progress; статусы11 задач
+сохранены. 9 entities и generated migration реализованы,35 PG/25 Python tests
+прошли. Оба GitHub job вновь блокированы billing до запуска. [Evidence](implementation/log020/publication.json).

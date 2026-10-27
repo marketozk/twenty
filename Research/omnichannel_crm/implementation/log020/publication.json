@@ -1,0 +1,36 @@
+{
+  "commit": "ab0402f3fddd890fb31fb504ad4502ad9b7caa2a",
+  "issue": "ROB-764",
+  "descriptionReadBack": true,
+  "stateUnchanged": true,
+  "state": "In Progress",
+  "comment": {
+    "id": "4b311d13-dc0e-4852-b1a7-1039b34d8afb",
+    "url": "https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-4b311d13"
+  },
+  "projectStatesReadBack": {
+    "ROB-772": "Done",
+    "ROB-771": "Backlog",
+    "ROB-770": "Backlog",
+    "ROB-769": "Backlog",
+    "ROB-768": "Backlog",
+    "ROB-767": "Backlog",
+    "ROB-766": "Backlog",
+    "ROB-765": "Backlog",
+    "ROB-764": "In Progress",
+    "ROB-763": "Done",
+    "ROB-762": "Done"
+  },
+  "ci": {
+    "status": "blocked_before_start",
+    "reason": "The job was not started because your account is locked due to a billing issue.",
+    "runs": {
+      "postgres-transactions": "https://github.com/marketozk/twenty/actions/runs/40456531281",
+      "dependency-guard": "https://github.com/marketozk/twenty/actions/runs/40456531260"
+    },
+    "checkRunIds": [
+      122031059635,
+      122031059762
+    ]
+  }
+}

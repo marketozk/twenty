@@ -336,3 +336,12 @@ PG/Redis containers, Redis anonymous volume и internal network. Обе врем
 Следующий шаг: упаковка/подключение мигратора и gate к фактическому startup,
 полный build/restart T33; затем остальные schema entities, audit/bootstrap и
 ingress/outbox. Commit/push и read-back ROB-764 фиксируются после публикации.
+
+LOG-020 опубликован: `ab0402f3fddd890fb31fb504ad4502ad9b7caa2a` в
+origin/codex/omnichannel-requirements. [Комментарий ROB-764](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-4b311d13),
+описание и In Progress проверены чтением; статусы всех11 задач проекта сохранены.
+[Метаданные публикации](implementation/log020/publication.json).
+Оба GitHub job отказали до запуска из-за billing block: [PostgreSQL](https://github.com/marketozk/twenty/actions/runs/40456531281)
+и [dependency guard](https://github.com/marketozk/twenty/actions/runs/40456531260).
+Аннотации подтверждены; это не CI pass и не падение выполненных35/25 проверок.
+Настройки оплаты не менялись. Результат отражён в том же комментарии Linear.
