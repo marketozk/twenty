@@ -1243,3 +1243,5 @@ NULL cases; добавлены, как и policy lock вокруг claim и tamp
 Краткие пункты5–6 этапа1 приведены к нормативным владельцам T14/T16, требования
 автоматизации не удалены. Применены ai-dev-workflow, behavioral-guardrails,
 server-schrodinger; независимый scoped reviewer работал read-only.
+
+Публикация LOG-047: код a70a565dd541b3e0b4f697d7ba777ef2e656e1e3, remote проверен GitHub API. Описание ROB-764 и комментарий 38ada854-d59e-4a35-9ca0-a68c490ede61 прочитаны обратно; все 11 статусов сохранены. Продолжаем локальный cancel и native mutation boundary.
