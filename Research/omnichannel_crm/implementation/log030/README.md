@@ -63,3 +63,7 @@ Conversation/Identity/MessageLink/revision/DomainEvent и полный receipt a
 с проверкой lease последним под доменными locks. Native Message persistence
 и capture отдельно доказаны; полный ingress acceptance ещё не закрыт.
 Scheduler, inbox/outbox/recovery, собственные права, UI и live подключение впереди.
+
+Код опубликован: `5f7dbd4eea45bbd744e1a17755a155b72549fb60`. Remote SHA проверен
+через GitHub API; ROB-764 description/comment прочитаны обратно, 11 статусов
+сохранены. [Метаданные](publication.json).

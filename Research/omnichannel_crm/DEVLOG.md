@@ -802,3 +802,8 @@ Full apply, реальные adapter qualification/import permissions и live к
 Skills ai-dev-workflow, behavioral-guardrails, server-schrodinger: разделение
 работ/ревью, проверяемый scope, изолированные генерация и PG tests. Продолжаем
 ownership guards и domain apply; ROB-764 In Progress.
+
+Публикация LOG-030: `5f7dbd4eea45bbd744e1a17755a155b72549fb60`, remote SHA
+проверен API. Описание ROB-764 и комментарий `ceff46f9-db0d-45b6-8a5a-f1285921bc2c`
+прочитаны обратно, 11 статусов прежние. [Метаданные](implementation/log030/publication.json).
+Продолжаем LOG-031.
