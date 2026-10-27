@@ -160,6 +160,8 @@ const CATALOG: Record<
       'journalSequence',
       'nextAttemptAt',
       'leaseUntil',
+      'cancelRequestedAt',
+      'cancelReason',
     ],
     redacted: [
       'actorId',

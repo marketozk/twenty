@@ -1245,3 +1245,31 @@ NULL cases; добавлены, как и policy lock вокруг claim и tamp
 server-schrodinger; независимый scoped reviewer работал read-only.
 
 Публикация LOG-047: код a70a565dd541b3e0b4f697d7ba777ef2e656e1e3, remote проверен GitHub API. Описание ROB-764 и комментарий 38ada854-d59e-4a35-9ca0-a68c490ede61 прочитаны обратно; все 11 статусов сохранены. Продолжаем локальный cancel и native mutation boundary.
+
+## LOG-048 — 27.10.2026: локальная отмена до enqueue
+
+LOG-048 / ROB-764 In Progress: локальная отмена human text/v0 атомарно сохраняет
+cancelled/revision2, DB timestamp, закрытое доказательство и один audit. Допускается
+только virgin pending с текущей creation incarnation. Текущие membership/read и
+отдельный delegated grant для неавтора обязательны также на replay. Автор Command
+сохраняется; отменивший сотрудник записывается отдельно. FIFO пропускает только
+нормализованный local proof; remote/unknown outcome локально не отменяется.
+370 Jest /14 suites +26 guards =396 PASS;
+44 новых случая (34 PostgreSQL,10 owner), typecheck 205 roots:
+146 baseline/current,0 новых/0 changed-code. Все7 миграций и прежние методы aggregate
+неизменны; полный1460 fork suite прошёл в LOG047.
+[Доказательства и границы](implementation/log048/README.md). Проверены claim/cancel race, lost COMMIT ACK,
+current/delegated revoke, отсутствие audit, malformed proof/FIFO, >100 отменённых
+предшественников, audit/AFTER UPDATE tamper и JS/SQL parity.
+Далее — общий native mutation guard по T05/T22. ROB-764 не закрыт; публичный API,
+UI, transport cancellation, собственный ACL и автоматизация ещё впереди.
+Демо прежнее, GitHub Actions не используется.
+
+Scoped independent review не нашёл blockers; его рекомендации о delegated revoke,
+проверке сохранённого audit и malformed proof/FIFO добавлены в реальный PG набор.
+Первый прогон обнаружил некорректный fixture lease без leaseUntil; fixture исправлен.
+Typecheck выявил вызов optional delegated callback без narrowing в owner test;
+исправлено и затронутые проверки повторены. Полный Claude pass не повторялся.
+Применены ai-dev-workflow, behavioral-guardrails, server-schrodinger. Транспорт,
+HTTP и UI не менялись. Следующий шаг: common native write boundary; фазовая
+принадлежность ROB-764 подтверждена spec §15.1, а не перенесена в будущий ACL.

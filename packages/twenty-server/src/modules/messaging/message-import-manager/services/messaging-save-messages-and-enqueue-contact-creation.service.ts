@@ -1,3 +1,15 @@
+import {
+  type OmniLocalCommandCancellationPrincipal,
+  type OmniLocalCommandCancellationInput,
+  type OmniLocalCommandCancellationResult,
+} from 'src/modules/omnichannel/contracts/omni-local-command-cancellation';
+import {
+  cancelOmniLocalHumanCommand,
+  snapshotOmniLocalCommandCancellationRequest,
+  isOmniLocalCommandCancellationAuthorizationError,
+  type OmniLocalCommandCancellationCallbacks,
+} from 'src/modules/omnichannel/services/cancel-omni-local-human-command';
+import { appendOmniLocalCommandCancellationFailure } from 'src/modules/omnichannel/services/append-omni-local-command-cancellation-failure';
 import { randomUUID } from 'node:crypto';
 
 import { Injectable } from '@nestjs/common';
@@ -623,6 +635,89 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
               throw new AggregateError(
                 [error, auditError],
                 'OMNI_CONNECTOR_ACCEPTANCE_FAILURE_AUDIT_UNCONFIRMED',
+              );
+            }
+          }
+          throw error;
+        }
+      },
+      buildSystemAuthContext(request.principal.workspaceId),
+      { lite: true },
+    );
+  }
+
+  async cancelOmniLocalHumanCommand(
+    principal: OmniLocalCommandCancellationPrincipal,
+    input: OmniLocalCommandCancellationInput,
+    callbacks: OmniLocalCommandCancellationCallbacks,
+  ): Promise<OmniLocalCommandCancellationResult> {
+    const request = snapshotOmniLocalCommandCancellationRequest(
+      principal,
+      input,
+      callbacks,
+    );
+    const attemptOperationId = randomUUID();
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        let callbackEntered = false;
+        let authorizationDenied = false;
+        try {
+          return await this.workspaceOrmManager.runInWorkspaceTransaction(
+            async (scope) => {
+              callbackEntered = true;
+              return cancelOmniLocalHumanCommand(
+                scope,
+                request.principal,
+                request.input,
+                {
+                  ...request.callbacks,
+                  authorizeRead: async (...args) => {
+                    try {
+                      return await request.callbacks.authorizeRead(...args);
+                    } catch (error) {
+                      authorizationDenied = true;
+                      throw error;
+                    }
+                  },
+                  authorizeDelegatedCancel: request.callbacks
+                    .authorizeDelegatedCancel
+                    ? async (...args) => {
+                        try {
+                          return await request.callbacks
+                            .authorizeDelegatedCancel!(...args);
+                        } catch (error) {
+                          authorizationDenied = true;
+                          throw error;
+                        }
+                      }
+                    : undefined,
+                },
+              );
+            },
+            { commitOutcome: 'strict' },
+          );
+        } catch (error) {
+          if (
+            callbackEntered &&
+            !(error instanceof NativeTransactionOutcomeUnknownError)
+          ) {
+            try {
+              await this.workspaceOrmManager.runInWorkspaceTransaction(
+                (scope) =>
+                  appendOmniLocalCommandCancellationFailure(
+                    scope,
+                    request.principal,
+                    request.input,
+                    attemptOperationId,
+                    authorizationDenied ||
+                      isOmniLocalCommandCancellationAuthorizationError(error),
+                  ),
+                { commitOutcome: 'strict' },
+              );
+            } catch (auditError) {
+              throw new AggregateError(
+                [error, auditError],
+                'OMNI_LOCAL_COMMAND_CANCEL_FAILURE_AUDIT_UNCONFIRMED',
               );
             }
           }

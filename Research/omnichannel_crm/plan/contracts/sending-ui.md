@@ -52,6 +52,24 @@ Restore coordinator обязан записать новую incarnation до д
 
 cancelOwnCommand допускается при текущем доступе к conversation и если caller — автор command либо имеет отдельное command.cancel по G01. System close/takeover/policy-revoke cancellation остаётся отдельным trusted writer, не подменяет caller. Проверка, durable cancel request и audit атомарны; разрешение на запрос отмены не превращает unknown/too_late в cancelled. Cross-workspace/чужой transport owner всегда deny. T28: автор, делегированный менеджер, другой менеджер без права и revoke перед отменой.
 
+Внутренний local-cancel writer human text/v0 проверяет текущие membership/read,
+а для неавтора — отдельный delegated cancel grant. Те же проверки действуют на
+replay. Только pending/revision1 без lease, acceptance/job/journal/cancel evidence
+и с текущей creation incarnation переходит в cancelled/revision2. Состояние,
+DB timestamp, reason и закрытое доказательство `command.local_cancel_before_enqueue`
+записываются вместе с одним audit; автор исходной команды и отменивший сотрудник
+различаются. Нет native Message/event или изменения conversation/reply counters.
+
+Retained proof связывает immutable Command/scope/hash/generation/incarnation,
+автора, отменившего сотрудника и время с итоговым состоянием. SQL FIFO исключает
+только этот нормализованный формат; произвольный cancelEvidence/флаг cancelled
+доверия не даёт. Формат и JS/SQL проверки принадлежат одному helper; proof —
+серверная запись доверенного writer, не подпись произвольных изменений БД.
+Exact replay требует сохранённый audit и не меняет proof после следующего restore.
+Dispatching/accepted/outcome_unknown и не virgin pending требуют reconciliation;
+локальная операция не выдаёт их за подтверждённо отменённые. Закрытый диалог или
+отключённый route сами по себе не мешают остановить доказанно не начатую отправку.
+
 При generation change binding выполняет durable sweep/outbox: ещё не enqueued pending Command старого поколения → failed с reason=stale_generation с audit/UI и без автоматической переподписи новым поколением. Для dispatching/accepted/outcome_unknown сначала status/cancel reconciliation с историческим commandId; timeout не превращается в not-sent. Новый enqueue под старым generation запрещён. После подтверждённого terminal outcome менеджер может создать новую авторизованную команду; неизвестный outcome остаётся видимым и governed FIFO/auto gates. T10/T28 проверяют reconnect между commit/claim/enqueue/ACK.
 
 

@@ -1,0 +1,16 @@
+{
+  "baseCommit": "00432ba2670fb61901d63394c11ca8a6e6d2e075",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "allPreviousAggregateMethodsUnchanged": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "463f7d02ffadea8f23e159df784bdbaeb0fb144e6989ab8512369c00bc257566",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts": "b1abee7192d985b2804f79bfc06d06e831a68199d4dbf4d15cb7c7b594db6083",
+    "packages/twenty-server/src/modules/omnichannel/services/claim-omni-human-command.ts": "126faf237c21e3610b9530784ca5ba6ab402b3c1acff49fd78f3520d25a54895",
+    "packages/twenty-server/src/modules/omnichannel/contracts/omni-local-command-cancellation.ts": "1ee3cacd09091258cb1aa8e367dfb8c91002e5fecae731499f1f04e21922d1b3",
+    "packages/twenty-server/src/modules/omnichannel/services/append-omni-local-command-cancellation-failure.ts": "4543a60132d931dec216b9ba15232626f93922931b0c38fadeca6a8ea8118d46",
+    "packages/twenty-server/src/modules/omnichannel/services/cancel-omni-local-human-command.ts": "69606747bbcb34d2031ad38c0e02b9b690e266a159fce2e0dbb816547066f3e7",
+    "packages/twenty-server/test/fork-migration/omni-local-command-cancellation-facade.spec.ts": "5a81e7ca4910023d6b9a1d44f67c55d2b117b3e365f04cfe00372ec7cf9df48d",
+    "packages/twenty-server/test/fork-migration/omni-local-command-cancellation.postgres-spec.ts": "94f31a53f03b8b115479e8c998dc55c7fc6253eba3cc39c6f6d4477f25af1f93"
+  }
+}

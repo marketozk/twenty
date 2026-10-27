@@ -10,6 +10,7 @@ import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/cr
 import { createCrmAuditWorkspaceExecutor } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-executor';
 import { type WorkspaceTransactionLifecycle } from 'src/engine/twenty-orm/types/workspace-transaction-lifecycle.type';
 import { omniConnectorAcceptanceSqlPredicate } from 'src/modules/omnichannel/contracts/omni-connector-acceptance';
+import { omniLocalCommandCancellationSqlPredicate } from 'src/modules/omnichannel/contracts/omni-local-command-cancellation';
 import {
   omniHumanCommandLeaseInputSchema,
   omniHumanCommandLeasePrincipalSchema,
@@ -426,6 +427,7 @@ export const claimOmniHumanCommandLease = async (
         `SELECT ${columns} FROM core."omniOutgoingCommand" command
       WHERE command."workspaceId"=$1 AND command."conversationId"=$2 AND command."outboundSequence"<$3
       AND NOT (${omniConnectorAcceptanceSqlPredicate()})
+      AND NOT (${omniLocalCommandCancellationSqlPredicate()})
       ORDER BY command."outboundSequence" DESC LIMIT 101`,
         [
           workspaceId,
