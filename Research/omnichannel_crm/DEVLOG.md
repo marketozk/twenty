@@ -1015,3 +1015,5 @@ Skills: ai-dev-workflow, behavioral-guardrails, server-schrodinger; unban-ssh-sc
 использован для диагностики intermittent SSH (MaxStartups), разбан/firewall changes
 не потребовались; одна batch SSH session восстановила проверку. Следующий LOG-039 —
 typed consumer/durable maintenance recovery, full stage пока не завершён.
+
+Публикация LOG-038: код 872f337fe81eb6428a1c7ae2236e28b4be6bcbc2, remote проверен GitHub API. Описание ROB-764 и комментарий e117d3c8-e60b-41e1-9a82-57125d85521e прочитаны обратно; все11 статусов сохранены. Продолжаем LOG-039.
