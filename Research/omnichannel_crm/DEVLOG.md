@@ -876,3 +876,6 @@ edit/delete/admission/полный T05 ещё впереди; ROB-764 In Progres
 Skills: ai-dev-workflow — раздельная реализация/проверка/review; behavioral-guardrails —
 ограниченная ветка без ложной готовности; server-schrodinger — изолированные PG tests.
 GitHub Actions не используется. Продолжаем native cleanup/lifecycle ownership guards.
+
+
+Публикация LOG-033: `ab0a69aa1de352a9b2d12132245d77ed355ea4db`; remote SHA проверен API. Описание ROB-764 и комментарий `024f4cee-eecc-4f2f-b857-0752b76ed7a3` прочитаны обратно, все11 статусов прежние. [Метаданные](implementation/log033/publication.json). Продолжаем LOG-034.
