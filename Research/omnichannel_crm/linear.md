@@ -88,3 +88,9 @@ ROB-765 уточнён по существующему audit writer и оста�
 [отчёт ROB-764](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-a5c2ec75).
 Описание/единственный комментарий проверены чтением, статусы11 задач сохранены.
 Оба CI job вновь заблокированы billing до запуска. [Метаданные](implementation/log024/publication.json).
+
+Публикация LOG-027: `306e2522fd11b316bfbf668fe365edd9fc104e91`;
+[отчёт ROB-764](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-82f2637b).
+Описание и единственный комментарий прочитаны обратно; статусы 11 задач сохранены.
+292 теста и focused strict typecheck прошли. GitHub API подтвердил публикацию;
+Actions не запускались и не ожидались. [Метаданные](implementation/log027/publication.json).

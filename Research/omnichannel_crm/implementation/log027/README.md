@@ -75,3 +75,11 @@ commit; затем атомарные Conversation/Message/participants/link/rev
 initial plans/receipts, config wake-up, inbox/outbox/recovery и email regression.
 ROB-764 остаётся In Progress. Проверки выполняем в собственной среде перед
 commit/push; GitHub Actions не запускаем и не ждём.
+
+## Публикация
+
+Код: `306e2522fd11b316bfbf668fe365edd9fc104e91`; remote HEAD подтверждён
+GitHub API. Описание ROB-764 и единственный
+[комментарий LOG-027](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-82f2637b)
+проверены повторным чтением. Статусы 11 задач сохранены.
+[Метаданные](publication.json). Actions не запускались и не ожидались.

@@ -704,4 +704,10 @@ Skills: ai-dev-workflow — исследование native/lease путей, р
 server-schrodinger — preflight, ограниченная тестовая среда и cleanup своих ресурсов.
 GitHub Actions не запускались и не ожидались. ROB-764 In Progress; далее audit
 executor adapter/unknown commit, native Message+audit+event, config wake-up и
-inbox/outbox/recovery. Публикация фиксируется после push.
+inbox/outbox/recovery.
+
+Публикация LOG-027: `306e2522fd11b316bfbf668fe365edd9fc104e91`, remote HEAD
+подтверждён GitHub API. Описание ROB-764 и единственный
+[отчёт LOG-027](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-82f2637b)
+прочитаны обратно; статусы 11 задач сохранены. Actions не запускались и не
+ожидались. [Метаданные](implementation/log027/publication.json).
