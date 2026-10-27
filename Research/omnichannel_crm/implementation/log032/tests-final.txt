@@ -1,0 +1,8 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-reconciliation.postgres-spec.ts (11.222 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-ownership-log032.spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       68 passed, 68 total
+Snapshots:   0 total
+Time:        11.543 s
+Ran all test suites within paths "/source/packages/twenty-server/test/fork-migration/omni-native-ownership-log032.spec.ts", "/source/packages/twenty-server/test/fork-migration/omni-native-reconciliation.postgres-spec.ts".

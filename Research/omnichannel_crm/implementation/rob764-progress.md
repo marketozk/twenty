@@ -1,4 +1,4 @@
-# ROB-764 — реализация, LOG-031
+# ROB-764 — реализация, LOG-032
 
 27.10.2026 пользователь ответил «хорошо приступай» на предложение принять
 исправленный план за основу и начать ROB-764 с проверками конкретного кода.
@@ -208,3 +208,18 @@ persisted omni-owned канала до identities/cache/aggregate. Все ста
 Далее — background rematch/target exclusions и полный domain receipt apply,
 inbox/outbox/recovery. TOCTOU binding lifecycle и полный T05 ещё не закрыты.
 HTTP/own ACL/UI/живые коннекторы не подключены; демо прежнее. Actions не используется.
+
+
+## LOG-032 — фоновые participant/target paths
+
+LOG-032 / ROB-764 In Progress: фоновое сопоставление участников и пересчёт
+связанных CRM-записей исключают omni-owned Message/Thread до чтения и изменения
+участников/targets. Проверяются binding, MessageLink и Conversation; обычные
+email/APP и календарь сохранены. Полный набор:525 Jest +25 guards =550 PASS;
+после двух исправлений только типов повторены68 затронутых тестов. Typecheck:
+115 roots,0 новых/0 в изменённых файлах,136 baseline остаются. Все5 миграций прежние.
+[Доказательства и границы](log032/README.md).
+Далее — атомарное применение receipt в native Message, затем inbox/outbox/recovery.
+Cleaner/delete/merge/generic CRUD и конкурентный lifecycle ещё не закрыты;
+полный T05/ROB-764 не завершён. HTTP/own ACL/UI/живые коннекторы не подключены.
+Демо прежнее; GitHub Actions не используется.

@@ -1,15 +1,16 @@
 # Технический план реализации CRM — v1
 
-LOG-031 / ROB-764 In Progress: обычный APP ingestion теперь отказывает для
-persisted omni-owned канала до identities/cache/aggregate. Все статусы binding
-учитываются, ошибки SQL закрывают путь; обычный APP сохраняет прежнее поведение.
-42 адресные проверки PASS (7 PG,10 service unit,25 guards); предыдущий полный
-прогон LOG-030 —440 Jest+25 guards. Новых type diagnostics нет,155 baseline
-расширенного APP graph сохраняется. Все5 миграций неизменны.
-[Доказательства и границы](../implementation/log031/README.md).
-Далее — background rematch/target exclusions и полный domain receipt apply,
-inbox/outbox/recovery. TOCTOU binding lifecycle и полный T05 ещё не закрыты.
-HTTP/own ACL/UI/живые коннекторы не подключены; демо прежнее. Actions не используется.
+LOG-032 / ROB-764 In Progress: фоновое сопоставление участников и пересчёт
+связанных CRM-записей исключают omni-owned Message/Thread до чтения и изменения
+участников/targets. Проверяются binding, MessageLink и Conversation; обычные
+email/APP и календарь сохранены. Полный набор:525 Jest +25 guards =550 PASS;
+после двух исправлений только типов повторены68 затронутых тестов. Typecheck:
+115 roots,0 новых/0 в изменённых файлах,136 baseline остаются. Все5 миграций прежние.
+[Доказательства и границы](../implementation/log032/README.md).
+Далее — атомарное применение receipt в native Message, затем inbox/outbox/recovery.
+Cleaner/delete/merge/generic CRUD и конкурентный lifecycle ещё не закрыты;
+полный T05/ROB-764 не завершён. HTTP/own ACL/UI/живые коннекторы не подключены.
+Демо прежнее; GitHub Actions не используется.
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 

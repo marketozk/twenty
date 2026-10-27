@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
 
 import chunk from 'lodash.chunk';
 import { QUERY_MAX_RECORDS } from 'twenty-shared/constants';
 import { isDefined } from 'twenty-shared/utils';
-import { In, MoreThan, type ObjectLiteral } from 'typeorm';
+import { DataSource, In, MoreThan, type ObjectLiteral } from 'typeorm';
 
 import { type WorkspaceRepository } from 'src/engine/twenty-orm/repository/workspace-repository';
 import { getWorkspaceContext } from 'src/engine/twenty-orm/storage/orm-workspace-context.storage';
@@ -21,6 +22,7 @@ import {
 } from 'src/modules/match-participant/utils/compute-target-reconciliation-operations.util';
 import { type OpportunityWorkspaceEntity } from 'src/modules/opportunity/standard-objects/opportunity.workspace-entity';
 import { type PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
+import { findOmniOwnedMessageThreadIds } from 'src/modules/omnichannel/services/find-omni-owned-native-record-ids';
 
 type TargetParentFieldName = 'calendarEventId' | 'messageThreadId';
 
@@ -32,7 +34,11 @@ type TargetWorkspaceEntity = Omit<ExistingTarget, 'parentId' | 'deletedAt'> & {
 
 @Injectable()
 export class ParticipantTargetReconciliationService {
-  constructor(private readonly workspaceOrmManager: WorkspaceOrmManager) {}
+  constructor(
+    private readonly workspaceOrmManager: WorkspaceOrmManager,
+    @InjectDataSource()
+    private readonly coreDataSource: DataSource,
+  ) {}
 
   public async reconcileTargetsForPeople({
     personIds,
@@ -202,6 +208,24 @@ export class ParticipantTargetReconciliationService {
     messageThreadIds: string[];
     transactionScope?: WorkspaceTransactionScope;
   }): Promise<void> {
+    if (messageThreadIds.length === 0) return;
+    const workspaceId = getWorkspaceContext().authContext.workspace.id;
+    if (transactionScope && transactionScope.workspaceId !== workspaceId) {
+      throw new Error('OMNI_NATIVE_OWNERSHIP_WORKSPACE_MISMATCH');
+    }
+    const ownedThreadIds = await findOmniOwnedMessageThreadIds(
+      transactionScope ?? {
+        executeRawQuery: (sql, parameters) =>
+          this.coreDataSource.query(sql, parameters),
+      },
+      workspaceId,
+      messageThreadIds,
+    );
+    messageThreadIds = messageThreadIds.filter(
+      (id) => !ownedThreadIds.has(id.toLowerCase()),
+    );
+    if (messageThreadIds.length === 0) return;
+
     const messageRepository = await this.getRepository<MessageWorkspaceEntity>(
       'message',
       transactionScope,

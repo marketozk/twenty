@@ -830,3 +830,23 @@ ai-dev-workflow, behavioral-guardrails, server-schrodinger — разделён�
 проверен API. Описание ROB-764 и комментарий `9d2e3dec-f7ab-46bc-aff7-551646ae9a56`
 прочитаны обратно, 11 статусов прежние. [Метаданные](implementation/log031/publication.json).
 Продолжаем LOG-032.
+
+
+## LOG-032 — 27.10.2026: background ownership exclusions
+
+Native participant rematch/target reconciliation исключают omni Message/Thread
+по persisted binding/link/conversation, включая mixed batches и no-scope path.
+Обычные email/APP/calendar сохраняют поведение. Tenant context обязателен;
+ошибки SQL не разрешают запись. Все5 миграций неизменны.
+
+525 Jest/22 suites +25 guards =550 distinct PASS; после двух type-only test fixes
+повторены68 тестов. Typecheck115roots:0new/0changed,136 baseline. Изолированные
+locked lodash devtypes устранили19 baseline diagnostics в обеих сторонах.
+Dependency guard обнаружил broad-import EE edges; исправлены imports/ownership
+контекст без ослабления guard. Scoped independent review PASS.
+[Доказательства/ограничения](implementation/log032/README.md).
+
+Полный T05/ROB-764 не закрыты; lifecycle/cleanup/generic mutations ещё впереди.
+Демо прежнее; Actions не используется. Skills: ai-dev-workflow (разделение
+исследования, реализации, ревью), behavioral-guardrails (bounded scope и факты),
+server-schrodinger (изолированные лимитированные проверки). Далее receipt apply.

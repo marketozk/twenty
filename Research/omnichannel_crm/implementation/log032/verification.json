@@ -1,0 +1,20 @@
+{
+  "jestTests": 525,
+  "jestSuites": 22,
+  "postgresTests": 319,
+  "unitTests": 206,
+  "guardTests": 20,
+  "checksumTests": 5,
+  "totalDistinctTests": 550,
+  "afterTypeOnlyFixRerun": 68,
+  "typecheckRootFiles": 115,
+  "baselineTypeDiagnostics": 136,
+  "newTypeDiagnostics": 0,
+  "changedFileTypeDiagnostics": 0,
+  "fullServerTypecheck": false,
+  "allFiveMigrationSourcesUnchanged": true,
+  "independentScopedReview": "PASS no blocker",
+  "fullT05Acceptance": false,
+  "liveDemoChanged": false,
+  "githubActionsUsed": false
+}

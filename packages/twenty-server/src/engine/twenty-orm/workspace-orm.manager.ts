@@ -40,6 +40,10 @@ export class WorkspaceOrmManager {
     private readonly twentyConfigService: TwentyConfigService,
   ) {}
 
+  getWorkspaceId(): string {
+    return getWorkspaceContext().authContext.workspace.id;
+  }
+
   getRepository<T extends ObjectLiteral = ObjectRecord>(
     workspaceEntity: Type<T>,
     permissionOptions?: RolePermissionConfig,

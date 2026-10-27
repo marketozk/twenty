@@ -1,0 +1,31 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-incoming-event.postgres-spec.ts (51.665 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-incoming-receipt-lease.postgres-spec.ts (54.806 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/conversation-schema.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-reconciliation.postgres-spec.ts (7.491 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/event-governance.postgres-spec.ts (25.607 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-binding-bootstrap.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-message.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/message-persistence.postgres-spec.ts (17.992 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/fork-migration-runner.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-transaction.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/src/engine/twenty-orm/datasource/utils/__tests__/run-in-rollback-safe-transaction.util.spec.ts
+[33m[Nest] 1  - [39m10/27/2026, 1:06:56 PM [33m   WARN[39m [38;5;3m[runInRollbackSafeTransaction] [39m[33mDestroying connection after failed transaction ROLLBACK: Query read timeout[39m
+[33m[Nest] 1  - [39m10/27/2026, 1:06:56 PM [33m   WARN[39m [38;5;3m[runInRollbackSafeTransaction] [39m[33mDestroying connection after failed transaction ROLLBACK: Query read timeout[39m
+[33m[Nest] 1  - [39m10/27/2026, 1:06:56 PM [33m   WARN[39m [38;5;3m[runInRollbackSafeTransaction] [39m[33mDestroying connection after failed transaction ROLLBACK: Connection terminated unexpectedly[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-incoming-capture-context.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-app-ingestion-guard.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-scope.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/trusted-capture.postgres-spec.ts (18.874 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-channel-ownership.postgres-spec.ts (8.571 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/audit-bootstrap-schema.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-ownership-log032.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-incoming-envelope.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/src/engine/twenty-orm/datasource/__tests__/workspace-data-source-transaction.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/fork-migrator-lock.postgres-spec.ts
+
+Test Suites: 22 passed, 22 total
+Tests:       525 passed, 525 total
+Snapshots:   0 total
+Time:        204.348 s
+Ran all test suites.

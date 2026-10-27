@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
 import chunk from 'lodash.chunk';
 import { MessageChannelType } from 'twenty-shared/types';
 import { isDefined, isNonEmptyArray } from 'twenty-shared/utils';
-import { Any, In, Repository } from 'typeorm';
+import { Any, DataSource, In, Repository } from 'typeorm';
 
 import { MessageChannelEntity } from 'src/engine/metadata-modules/message-channel/entities/message-channel.entity';
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
@@ -19,6 +19,7 @@ import { type MessageChannelMessageAssociationWorkspaceEntity } from 'src/module
 import { type MessageParticipantWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-participant.workspace-entity';
 import { type PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
 import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
+import { findOmniOwnedMessageIds } from 'src/modules/omnichannel/services/find-omni-owned-native-record-ids';
 
 type ObjectMetadataName = 'messageParticipant' | 'calendarEventParticipant';
 
@@ -76,6 +77,8 @@ export class MatchParticipantService<
     private readonly participantTargetReconciliationService: ParticipantTargetReconciliationService,
     @InjectRepository(MessageChannelEntity)
     private readonly messageChannelRepository: Repository<MessageChannelEntity>,
+    @InjectDataSource()
+    private readonly coreDataSource: DataSource,
   ) {}
 
   private getParticipantRepository({
@@ -99,6 +102,31 @@ export class MatchParticipantService<
     matchWith = 'workspaceMemberAndPerson',
     transactionScope,
   }: MatchParticipantsArgs<ParticipantWorkspaceEntity>) {
+    if (objectMetadataName === 'messageParticipant') {
+      const workspaceId = this.workspaceOrmManager.getWorkspaceId();
+      if (transactionScope && transactionScope.workspaceId !== workspaceId) {
+        throw new Error('OMNI_NATIVE_OWNERSHIP_WORKSPACE_MISMATCH');
+      }
+      const ownedMessageIds = await findOmniOwnedMessageIds(
+        transactionScope ?? {
+          executeRawQuery: (sql, parameters) =>
+            this.coreDataSource.query(sql, parameters),
+        },
+        workspaceId,
+        [...sourceRecordIds, ...this.getSourceRecordIds(participants)],
+      );
+      participants = participants.filter(
+        (participant) =>
+          !ownedMessageIds.has(
+            this.getSourceRecordId(participant).toLowerCase(),
+          ),
+      );
+      sourceRecordIds = sourceRecordIds.filter(
+        (id) => !ownedMessageIds.has(id.toLowerCase()),
+      );
+      if (participants.length === 0 && sourceRecordIds.length === 0) return;
+    }
+
     // Targets derive from personId only, so a workspaceMemberOnly rematch cannot change them
     const shouldReconcileTargets = matchWith !== 'workspaceMemberOnly';
 

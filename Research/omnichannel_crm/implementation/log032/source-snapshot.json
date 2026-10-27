@@ -1,0 +1,15 @@
+{
+  "baseCommit": "1054a228627cb3b0f782b3dd658768f47bd01cb4",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/twenty-orm/workspace-orm.manager.ts": "30a68f076ee2df2397fabdd26599e558c93f497cc9ceedf9fd63d1c299336103",
+    "packages/twenty-server/src/modules/match-participant/match-participant.service.ts": "474a5f76e5b5c4352b4655102148e830542b951631b2358576160ce32fd5b65e",
+    "packages/twenty-server/src/modules/match-participant/participant-target-reconciliation.service.ts": "a9b9d74f4a77a6b4c03d1572956342db0937e70e64fb1f83d3003b6471cedc87",
+    "packages/twenty-server/test/fork-migration/omni-native-message.fixture.ts": "5b31b4a1e13454a504957b987b6119b66b04bb2030c521a8c190cbbf1687d872",
+    "packages/twenty-server/src/modules/omnichannel/services/find-omni-owned-native-record-ids.ts": "7b76db2a359484d0ced84d3312cdd547a6ae5f2a45ae70afd99007b28bd9589e",
+    "packages/twenty-server/test/fork-migration/omni-native-ownership-log032.spec.ts": "85c727881d0c9c5eaa2297d22c72781d58a0ec8afaec2a4a427655fc64d058f7",
+    "packages/twenty-server/test/fork-migration/omni-native-reconciliation.fixture.ts": "c35e5706b3350ff506b37a866591545cbaa402ccf63c793042a0feb559ca101c",
+    "packages/twenty-server/test/fork-migration/omni-native-reconciliation.postgres-spec.ts": "fcad3124b1a7b8ae3719b7ee6d41bad734a0346217a6286ac05b5426150a7d35"
+  }
+}

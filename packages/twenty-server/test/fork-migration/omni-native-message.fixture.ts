@@ -6,10 +6,13 @@ import { isDefined } from 'twenty-shared/utils';
 import { DataSource } from 'typeorm';
 
 import { OmniAuditBootstrapFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/omni-audit-bootstrap.migration';
+import { ForkMigrationRunner } from 'src/database/commands/fork-upgrade/fork-migration-runner';
+import { FORK_MIGRATIONS } from 'src/database/commands/fork-upgrade/fork-migrations';
 import { createEmptyFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/constant/create-empty-flat-entity-maps.constant';
 import { computeCompositeColumnName } from 'src/engine/metadata-modules/field-metadata/utils/compute-column-name.util';
 import { WorkspaceDataSource } from 'src/engine/twenty-orm/datasource/workspace-data-source';
 import { type WorkspaceInternalContext } from 'src/engine/twenty-orm/interfaces/workspace-internal-context.interface';
+import { withWorkspaceContext } from 'src/engine/twenty-orm/storage/orm-workspace-context.storage';
 import { buildWorkspaceTableShape } from 'src/engine/twenty-orm/table-shape/utils/build-workspace-table-shape.util';
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
 import { WorkspaceSchemaEnumManagerService } from 'src/engine/twenty-orm/workspace-schema-manager/services/workspace-schema-enum-manager.service';
@@ -32,9 +35,28 @@ const TABLE_NAMES = [
   'messageParticipant',
   'person',
 ] as const;
-type TableName = (typeof TABLE_NAMES)[number];
+type TableName =
+  | (typeof TABLE_NAMES)[number]
+  | 'workspaceMember'
+  | 'company'
+  | 'opportunity'
+  | 'messageThreadTarget'
+  | 'calendarEvent'
+  | 'calendarEventParticipant'
+  | 'calendarEventTarget';
 
-export const createOmniNativeMessageFixture = () => {
+export const createOmniNativeMessageFixture = (
+  options: {
+    additionalTables?: readonly TableName[];
+    coreSchema?: 'audit' | 'fork';
+  } = {},
+) => {
+  const tableNames = [
+    ...new Set<TableName>([
+      ...TABLE_NAMES,
+      ...(options.additionalTables ?? []),
+    ]),
+  ];
   const databaseUrl = process.env.FORK_MIGRATION_TEST_URL;
 
   if (
@@ -117,7 +139,7 @@ export const createOmniNativeMessageFixture = () => {
     );
   }
   const selected = objects.filter((object) =>
-    TABLE_NAMES.some((name) => name === object.nameSingular),
+    tableNames.some((name) => name === object.nameSingular),
   );
   const eventEmitter = jest.fn();
   const recordStock = {
@@ -169,7 +191,17 @@ export const createOmniNativeMessageFixture = () => {
 
     await queryRunner.connect();
     try {
-      await new OmniAuditBootstrapFastInstanceCommand().up(queryRunner);
+      if (options.coreSchema === 'fork') {
+        await owner.query(
+          'CREATE TABLE core."connectedAccount" (id uuid PRIMARY KEY)',
+        );
+        await owner.query(
+          'CREATE TABLE core."messageChannel" (id uuid PRIMARY KEY, "workspaceId" uuid NOT NULL, type text NOT NULL)',
+        );
+        await new ForkMigrationRunner(owner, FORK_MIGRATIONS).apply();
+      } else {
+        await new OmniAuditBootstrapFastInstanceCommand().up(queryRunner);
+      }
       for (const object of selected) {
         const shape = buildWorkspaceTableShape({
           workspaceId,
@@ -293,10 +325,16 @@ export const createOmniNativeMessageFixture = () => {
     await owner.query(
       `GRANT SELECT, INSERT ON crm_audit."crmAuditEntry" TO "${roleName}"`,
     );
+    if (options.coreSchema === 'fork') {
+      await owner.query(`GRANT USAGE ON SCHEMA core TO "${roleName}"`);
+      await owner.query(
+        `GRANT SELECT ON ALL TABLES IN SCHEMA core TO "${roleName}"`,
+      );
+    }
   };
   const reset = async () => {
     await owner.query(
-      `TRUNCATE ${TABLE_NAMES.map((name) => `"${schemaName}"."${name}"`).join(', ')} CASCADE`,
+      `TRUNCATE ${tableNames.map((name) => `"${schemaName}"."${name}"`).join(', ')} CASCADE`,
     );
     await owner.query('TRUNCATE crm_audit."crmAuditEntry"');
     eventEmitter.mockClear();
@@ -326,5 +364,14 @@ export const createOmniNativeMessageFixture = () => {
     reset,
     dispose,
     flatFieldMetadataMaps,
+    withContext: <T>(work: () => Promise<T>) =>
+      withWorkspaceContext(
+        {
+          ...internalContext,
+          authContext: buildSystemAuthContext(workspaceId),
+          permissionsPerRoleId: {},
+        },
+        work,
+      ),
   };
 };
