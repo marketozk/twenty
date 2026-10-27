@@ -8,6 +8,10 @@ import {
 } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 import { EntityManager, Repository } from 'typeorm';
+import {
+  ordinaryConnectedAccountWriteWhere,
+  assertConnectedAccountWriteApplied,
+} from 'src/engine/metadata-modules/connected-account/utils/ordinary-connected-account-write.util';
 import { v4 } from 'uuid';
 
 import { CreateCalendarChannelService } from 'src/engine/core-modules/auth/services/create-calendar-channel.service';
@@ -124,7 +128,7 @@ export class ImapSmtpCalDavApiService {
             },
           );
 
-        await transactionManager.getRepository(ConnectedAccountEntity).save({
+        const accountData = {
           id: newOrExistingAccountId,
           handle,
           provider: ConnectedAccountProvider.IMAP_SMTP_CALDAV,
@@ -134,7 +138,25 @@ export class ImapSmtpCalDavApiService {
           authFailedAt: null,
           authFailedReason: null,
           archivedAt: null,
+        };
+        const repository = transactionManager.getRepository(
+          ConnectedAccountEntity,
+        );
+        const where = ordinaryConnectedAccountWriteWhere({
+          id: newOrExistingAccountId,
+          workspaceId,
+          provider: ConnectedAccountProvider.IMAP_SMTP_CALDAV,
+          userWorkspaceId,
+          applicationId: null,
+          connectionProviderId: null,
         });
+        if (existingAccount) {
+          assertConnectedAccountWriteApplied(
+            await repository.update(where, accountData),
+          );
+        } else {
+          await repository.insert(accountData);
+        }
 
         if (shouldCreateMessageChannel) {
           await this.createMessageChannelService.createMessageChannel({
@@ -207,7 +229,7 @@ export class ImapSmtpCalDavApiService {
           });
         } catch (error) {
           this.logger.warn(
-            `Initial folder sync failed for account ${newOrExistingAccountId}, will retry on next scheduled sync: ${error?.message}`,
+            `Initial folder sync failed for account ${newOrExistingAccountId}, will retry on next scheduled sync: ${error instanceof Error ? error.message : String(error)}`,
           );
         }
       }

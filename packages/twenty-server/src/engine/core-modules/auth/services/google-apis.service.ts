@@ -198,6 +198,7 @@ export class GoogleAPIsService {
             accessToken: input.accessToken,
             refreshToken: input.refreshToken,
             accountOwnerId: workspaceMemberId,
+            isReconnect: Boolean(existingAccountId),
             scopes,
             transactionManager,
           });
@@ -207,6 +208,8 @@ export class GoogleAPIsService {
               {
                 workspaceId,
                 connectedAccountId: newOrExistingConnectedAccountId,
+                provider: ConnectedAccountProvider.GOOGLE,
+                userWorkspaceId: userWorkspace.id,
                 accessToken: input.accessToken,
                 refreshToken: input.refreshToken,
                 scopes,

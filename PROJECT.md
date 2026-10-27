@@ -54,17 +54,17 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-052 / ROB-764 In Progress: чистые DB mutations ConnectedAccount.update,
-MessageChannel.create/update/delete и APP channel create/update/delete выполняют
-ownership check и запись в одной READ COMMITTED transaction под shared native fence.
-Account locks предшествуют channel lock; parent и APP permissions читаются заново.
-Create relation objects запрещены, delete event публикуется только после commit.
-Проверено 244 targeted Jest /9 suites +26 guards =270 PASS, 29 новых PostgreSQL
-случаев; typecheck219 roots:162 baseline/current,0 новых/changed-code. Все7 migrations
-неизменны. Полный1635-test прогон LOG051 относится к предыдущему снимку; здесь не повторялся.
-[Доказательства и границы](Research/omnichannel_crm/implementation/log052/README.md). Independent review выявил различимые APP ошибки:
-исправлено и проверено. Полный Claude pass не повторялся.
-Далее network lifecycle/reconnect, resolver side effects и итоговый T22 inventory.
+LOG-053 / ROB-764 In Progress: повторная авторизация и ответы обычных провайдеров
+сверяют identity и custodian в самом UPDATE. Новый аккаунт создаётся INSERT, без
+upsert существующего id. Generic metadata не меняет provider/application/provider IDs.
+Новый bootstrap принимает только provider=app с null applicationId/connectionProviderId;
+legacy retained bindings защищены NOT EXISTS независимо от их прежнего provider.
+Проверено 279 targeted Jest /9 suites +26 guards =305 PASS;
+39 новых PG owner cases и10 проверок identity/bootstrap. Typecheck230 roots:
+198 baseline/197 current,0 новых/changed-code. Все7 migrations неизменны.
+[Доказательства и границы](Research/omnichannel_crm/implementation/log053/README.md). Scoped independent review замечания исправлены;
+полный Claude pass и полный server typecheck не заявляются.
+Далее атомарный disconnect/transfer/deleteMany, resolver side effects и итоговый T22.
 ROB-764 остаётся In Progress; публичные API, ACL, UI и транспорт ещё впереди.
 Демо прежнее, GitHub Actions не используется.
 

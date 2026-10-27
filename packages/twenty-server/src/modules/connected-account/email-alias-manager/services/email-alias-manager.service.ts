@@ -5,6 +5,10 @@ import { ConnectedAccountProvider } from 'twenty-shared/types';
 import { assertUnreachable, isDefined } from 'twenty-shared/utils';
 import { Repository } from 'typeorm';
 
+import {
+  ordinaryConnectedAccountWriteWhere,
+  assertConnectedAccountWriteApplied,
+} from 'src/engine/metadata-modules/connected-account/utils/ordinary-connected-account-write.util';
 import { ConnectedAccountEntity } from 'src/engine/metadata-modules/connected-account/entities/connected-account.entity';
 import { MessageChannelEntity } from 'src/engine/metadata-modules/message-channel/entities/message-channel.entity';
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
@@ -28,6 +32,16 @@ export class EmailAliasManagerService {
     connectedAccount: ConnectedAccountEntity,
     workspaceId: string,
   ): Promise<string[]> {
+    if (
+      connectedAccount.provider !== ConnectedAccountProvider.GOOGLE &&
+      connectedAccount.provider !== ConnectedAccountProvider.MICROSOFT
+    ) {
+      return connectedAccount.handleAliases ?? [];
+    }
+    const where = ordinaryConnectedAccountWriteWhere({
+      ...connectedAccount,
+      workspaceId,
+    });
     const accountHasMailbox = await this.messageChannelRepository.exists({
       where: { connectedAccountId: connectedAccount.id, workspaceId },
     });
@@ -42,12 +56,10 @@ export class EmailAliasManagerService {
     const authContext = buildSystemAuthContext(workspaceId);
 
     await this.workspaceOrmManager.executeInWorkspaceContext(async () => {
-      await this.connectedAccountRepository.update(
-        { id: connectedAccount.id, workspaceId },
-        {
-          handleAliases,
-        },
-      );
+      const result = await this.connectedAccountRepository.update(where, {
+        handleAliases,
+      });
+      assertConnectedAccountWriteApplied(result);
     }, authContext);
 
     return handleAliases;

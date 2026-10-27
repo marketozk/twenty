@@ -666,3 +666,34 @@ unknown типизирован, rollback failure агрегирует причи
 Новый PG case подтверждает освобождение account lock запросом второго connection;
 lost ACK не вызывает success event. Extraction отдельно просмотрена, blockers не найдены.
 Финальный affected run244/9 +26 guards=270 PASS; typecheck219 roots162/162,0new/changed.
+
+
+## LOG-053 — provider identity, reconnect и старые привязки (28.10.2026)
+
+Пути записи провайдеров разделяют создание и повторную авторизацию: Google/
+Microsoft и IMAP используют INSERT для нового id, conditional UPDATE для прежнего.
+SSO/token refresh/aliases сравнивают полный identity/custodian. APP OAuth сохраняет
+shared reconnect и external account pinning; SQL одновременно проверяет текущую
+доступность caller и принадлежность приложению/provider. Incomplete identity,
+affected!=1 и unreadable binding storage дают ошибку без fallback/upsert.
+Native APP не попадает в ordinary refresh/alias drivers. Immutable generic identity
+и APP-only bootstrap дополняются retained-binding исключением для старых данных.
+
+279 Jest /9 suites +26 guards=305 PASS;39 новых PG owner cases,
+10 identity/bootstrap cases. Один прежний APP applicationId mutation-race case
+заменён проверками запрета такого изменения; scope/custodian race cases сохранены.
+Typecheck230 roots:198/197,0new/changed; migration hashes неизменны.
+Начальные проверки нашли неверный регистр provider и старую fixture без поля,
+review/typecheck — лишние account поля в channel UPDATE; исправлено. Review выявил
+legacy provider binding, добавлены NOT EXISTS и реальные PG cases. Новый импорт
+shared types barrel отвергнут dependency guard; структурный helper сохраняет тип
+provider вызывающего кода, не импортируя Enterprise-reaching barrel. Pre-existing
+IMAP catch error?.message заменён корректным narrowing; новая диагностическая
+ошибка не скрыта исключением из typecheck. Финальный scoped review без blockers.
+
+[Evidence](log053/README.md). Полный ROB-764 и full server typecheck не завершены.
+Далее disconnect/transfer/deleteMany под актуальной ownership проверкой, resolver
+pendingGroupEmailsAction и T22 inventory. ACL/UI/transport остаются в своих этапах.
+Демо, SaleBot, Telegram/MAX не менялись; GitHub Actions не использовался.
+Skills: ранее применённые ai-dev-workflow (bounded independent read-only review),
+behavioral-guardrails и server-schrodinger; новые skills не заявляются.

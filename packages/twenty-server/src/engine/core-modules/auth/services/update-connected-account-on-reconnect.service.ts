@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 
 import { EntityManager } from 'typeorm';
 
+import {
+  ordinaryConnectedAccountWriteWhere,
+  assertConnectedAccountWriteApplied,
+} from 'src/engine/metadata-modules/connected-account/utils/ordinary-connected-account-write.util';
 import { PlaintextString } from 'src/engine/core-modules/secret-encryption/branded-strings';
 import { ConnectedAccountEntity } from 'src/engine/metadata-modules/connected-account/entities/connected-account.entity';
 import { ConnectedAccountTokenEncryptionService } from 'src/engine/metadata-modules/connected-account/services/connected-account-token-encryption.service';
@@ -15,6 +19,8 @@ export type UpdateConnectedAccountOnReconnectInput = {
   refreshToken: PlaintextString;
   scopes: string[];
   transactionManager: EntityManager;
+  provider: ConnectedAccountEntity['provider'];
+  userWorkspaceId: string;
 };
 
 @Injectable()
@@ -48,13 +54,17 @@ export class UpdateConnectedAccountOnReconnectService {
     const authContext = buildSystemAuthContext(workspaceId);
 
     await this.workspaceOrmManager.executeInWorkspaceContext(async () => {
-      await input.transactionManager
+      const result = await input.transactionManager
         .getRepository(ConnectedAccountEntity)
         .update(
-          {
+          ordinaryConnectedAccountWriteWhere({
             id: connectedAccountId,
             workspaceId,
-          },
+            provider: input.provider,
+            userWorkspaceId: input.userWorkspaceId,
+            applicationId: null,
+            connectionProviderId: null,
+          }),
           {
             accessToken: encryptedAccessToken,
             refreshToken: encryptedRefreshToken,
@@ -64,6 +74,7 @@ export class UpdateConnectedAccountOnReconnectService {
             archivedAt: null,
           },
         );
+      assertConnectedAccountWriteApplied(result);
     }, authContext);
   }
 }

@@ -1,0 +1,24 @@
+{
+  "baseCommit": "11e8ab7984867744333bf892821edd07aff1e90f",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/application/connection-provider/connection-provider-oauth-flow.service.ts": "152956f1a1ac7c21a1a1cbc3336160743ee66e6dc7e886be55f909c093ca5f41",
+    "packages/twenty-server/src/engine/core-modules/auth/services/create-connected-account.service.ts": "4845a13f874594ac1bdf73a6bb58fd6e728aac401ca3c725c159f3c971c224cb",
+    "packages/twenty-server/src/engine/core-modules/auth/services/create-sso-connected-account.service.ts": "33acb3ad248dfdc746945379900b5252c4a872abbb21d7e996ed710e7ca87b62",
+    "packages/twenty-server/src/engine/core-modules/auth/services/google-apis.service.ts": "99247a4b82a957d892ff8f4424a80d703bc5afc02105da7e8ede5f2b48a1006b",
+    "packages/twenty-server/src/engine/core-modules/auth/services/microsoft-apis.service.ts": "53be9db7d3bc0127a00b29e7e916cd7a94e657949c121ab7abfeec518209e74a",
+    "packages/twenty-server/src/engine/core-modules/auth/services/update-connected-account-on-reconnect.service.ts": "c6e6d3946113d72bfb6fee5bd6d53e65aefaae6020c7723e4259b585dfa76ea3",
+    "packages/twenty-server/src/engine/metadata-modules/connected-account/connected-account-metadata.service.ts": "6f27c8c30e8953f280dac3b53d64c0e24c436a16ff36bbf63db91bef5defad9a",
+    "packages/twenty-server/src/modules/connected-account/email-alias-manager/services/email-alias-manager.service.ts": "c718d192a84da0ec6d28c2072eb99102c2edf7a1ea4b4656341642902aac6435",
+    "packages/twenty-server/src/modules/connected-account/refresh-tokens-manager/services/connected-account-refresh-tokens.service.ts": "0f04a95d06fa2ccbca6a00612a8dcdd50d2711f4525f30aea67536a94400d09c",
+    "packages/twenty-server/src/modules/connected-account/services/imap-smtp-caldav-apis.service.ts": "fe66cb6924c2c637fab68c0398a8d41eeaae4a5790cc669e6dfbce6d4e0cea81",
+    "packages/twenty-server/src/modules/omnichannel/services/omni-binding-bootstrap.ts": "7522baf97b2cbb23b72890e18582fe1013caa9c4095c364fc765befdac9bed44",
+    "packages/twenty-server/test/fork-migration/omni-binding-bootstrap.postgres-spec.ts": "e1e3cc433a50c8e9515f5481d9860a80d8922d0f565599869893a6862e437657",
+    "packages/twenty-server/test/fork-migration/omni-metadata-transaction.postgres-spec.ts": "3aad0a9b15be1c185a96bd64a8a55744767ed3f9e747274fd9a0c7d56ee69a5f",
+    "packages/twenty-server/test/fork-migration/omni-native-mutation-guard.postgres-spec.ts": "0f073a855feb43c2649214dbeb40d2b61fca588af3dc664d2a968c54dbfdff0b",
+    "packages/twenty-server/test/fork-migration/omni-workspace-deletion.postgres-spec.ts": "3fe2aa736d708edc9cd0af16573d47c7f04bda09b2d5349bd45e77e6566f7fd4",
+    "packages/twenty-server/src/engine/metadata-modules/connected-account/utils/ordinary-connected-account-write.util.ts": "53580de15566fbbd14606f814445375c61d1f53719024f17bcf648b806dbef7c",
+    "packages/twenty-server/test/fork-migration/omni-account-provider-writes.postgres-spec.ts": "b7856113eb6d87f8db183249b285908f33092e5edf4351243ccddcbb70af8e05"
+  }
+}

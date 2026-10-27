@@ -669,6 +669,9 @@ describe('generic native mutation boundary on real PostgreSQL', () => {
     async (order) => {
       // A workspace with existing native mail but no first omni policy/binding.
       await fixture.owner.query(
+        `ALTER TABLE core."connectedAccount" ADD COLUMN IF NOT EXISTS provider text NOT NULL DEFAULT 'app'`,
+      );
+      await fixture.owner.query(
         'TRUNCATE core.workspace, core."connectedAccount", core."messageChannel" CASCADE',
       );
       await fixture.owner.query('INSERT INTO core.workspace(id) VALUES ($1)', [

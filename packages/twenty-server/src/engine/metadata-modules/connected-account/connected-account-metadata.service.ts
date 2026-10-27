@@ -379,6 +379,8 @@ export class ConnectedAccountMetadataService {
 
     if (
       updateData.workspace !== undefined ||
+      updateData.application !== undefined ||
+      updateData.connectionProvider !== undefined ||
       (updateData.id !== undefined && updateData.id !== id) ||
       (updateData.workspaceId !== undefined &&
         updateData.workspaceId !== workspaceId)
@@ -393,6 +395,21 @@ export class ConnectedAccountMetadataService {
         await lockOmniMetadataAccounts(manager, workspaceId, [id], 'write');
         await this.assertOrdinaryAccounts(workspaceId, [id], manager);
         const repository = manager.getRepository(this.repository.target);
+        const current = await repository.findOneOrFail({
+          where: { id, workspaceId },
+        });
+        for (const key of [
+          'provider',
+          'applicationId',
+          'connectionProviderId',
+        ] as const) {
+          if (
+            updateData[key] !== undefined &&
+            updateData[key] !== current[key]
+          ) {
+            throw new Error('CONNECTED_ACCOUNT_IDENTITY_IMMUTABLE');
+          }
+        }
         await repository.update(
           { id, workspaceId },
           updateData as Record<string, unknown>,

@@ -164,6 +164,7 @@ export class MicrosoftAPIsService {
             accessToken: input.accessToken,
             refreshToken: input.refreshToken,
             accountOwnerId: workspaceMemberId,
+            isReconnect: Boolean(existingAccountId),
             scopes,
             transactionManager,
           });
@@ -173,6 +174,8 @@ export class MicrosoftAPIsService {
               {
                 workspaceId,
                 connectedAccountId: newOrExistingConnectedAccountId,
+                provider: ConnectedAccountProvider.MICROSOFT,
+                userWorkspaceId: userWorkspace.id,
                 accessToken: input.accessToken,
                 refreshToken: input.refreshToken,
                 scopes,

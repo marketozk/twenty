@@ -4,6 +4,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { type ConnectedAccountProvider } from 'twenty-shared/types';
 import { Repository } from 'typeorm';
 
+import {
+  ordinaryConnectedAccountWriteWhere,
+  assertConnectedAccountWriteApplied,
+} from 'src/engine/metadata-modules/connected-account/utils/ordinary-connected-account-write.util';
 import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
 import { ConnectedAccountEntity } from 'src/engine/metadata-modules/connected-account/entities/connected-account.entity';
 
@@ -58,15 +62,19 @@ export class CreateSsoConnectedAccountService {
         new Set([...(existing.scopes ?? []), ...scopes]),
       );
 
-      await this.connectedAccountRepository.update(existing.id, {
-        lastSignedInAt: new Date(),
-        provider,
-        scopes: mergedScopes,
-        ...(oidcTokenClaims !== undefined
-          ? { oidcTokenClaims: oidcTokenClaims as object }
-          : {}),
-      });
+      const result = await this.connectedAccountRepository.update(
+        ordinaryConnectedAccountWriteWhere(existing),
+        {
+          lastSignedInAt: new Date(),
+          provider,
+          scopes: mergedScopes,
+          ...(oidcTokenClaims !== undefined
+            ? { oidcTokenClaims: oidcTokenClaims as object }
+            : {}),
+        },
+      );
 
+      assertConnectedAccountWriteApplied(result);
       return;
     }
 

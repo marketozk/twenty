@@ -35,6 +35,7 @@ import {
 } from 'src/engine/metadata-modules/connected-account/entities/connected-account.entity';
 import { ConnectedAccountTokenEncryptionService } from 'src/engine/metadata-modules/connected-account/services/connected-account-token-encryption.service';
 import { buildConnectedAccountUsableByCallerWhere } from 'src/engine/metadata-modules/connected-account/utils/build-connected-account-usable-by-caller-where.util';
+import { unboundConnectedAccountId } from 'src/engine/metadata-modules/connected-account/utils/ordinary-connected-account-write.util';
 
 const STATE_JWT_EXPIRES_IN = '10m';
 
@@ -406,28 +407,49 @@ export class ConnectionProviderOAuthFlowService {
 
     if (isDefined(reconnectingConnectedAccountId)) {
       const reconnectTarget = {
-        id: reconnectingConnectedAccountId,
+        id: unboundConnectedAccountId(
+          reconnectingConnectedAccountId,
+          workspaceId,
+        ),
         workspaceId,
+        provider: ConnectedAccountProvider.APP,
+        applicationId: provider.applicationId,
+        connectionProviderId: provider.id,
       };
+      const usableTargets = buildConnectedAccountUsableByCallerWhere({
+        baseWhere: reconnectTarget,
+        userWorkspaceId,
+      });
 
       // Compared and written in one statement so overlapping reconnects cannot pin different accounts.
       const updateResult = await this.connectedAccountRepository.update(
         isDefined(identifiedAccount)
-          ? [
-              { ...reconnectTarget, externalAccountId: IsNull() },
+          ? usableTargets.flatMap((target) => [
+              { ...target, externalAccountId: IsNull() },
               {
-                ...reconnectTarget,
+                ...target,
                 externalAccountId: identifiedAccount.externalAccountId,
               },
-            ]
-          : reconnectTarget,
+            ])
+          : usableTargets,
         { ...sharedFields, userWorkspaceId },
       );
 
-      const connectedAccount =
-        await this.connectedAccountRepository.findOneByOrFail(reconnectTarget);
+      const connectedAccount = await this.connectedAccountRepository.findOne({
+        where: usableTargets,
+      });
 
-      if (updateResult.affected === 0 && isDefined(identifiedAccount)) {
+      if (
+        !isDefined(connectedAccount) ||
+        (updateResult.affected !== 1 && !isDefined(identifiedAccount))
+      ) {
+        throw new ConnectionProviderException(
+          'Connection changed while authorizing. Start authorization again.',
+          ConnectionProviderExceptionCode.FORBIDDEN,
+        );
+      }
+
+      if (updateResult.affected !== 1 && isDefined(identifiedAccount)) {
         const authorizedAccountHandle =
           identifiedAccount.handle ?? identifiedAccount.externalAccountId;
 

@@ -4,6 +4,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { type ConnectedAccountProvider } from 'twenty-shared/types';
 import { EntityManager, Repository } from 'typeorm';
 
+import {
+  ordinaryConnectedAccountWriteWhere,
+  assertConnectedAccountWriteApplied,
+} from 'src/engine/metadata-modules/connected-account/utils/ordinary-connected-account-write.util';
 import { PlaintextString } from 'src/engine/core-modules/secret-encryption/branded-strings';
 import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
 import { ConnectedAccountEntity } from 'src/engine/metadata-modules/connected-account/entities/connected-account.entity';
@@ -24,6 +28,7 @@ export type CreateConnectedAccountInput = {
   accountOwnerId: string;
   scopes: string[];
   transactionManager: EntityManager;
+  isReconnect: boolean;
 };
 
 @Injectable()
@@ -99,18 +104,33 @@ export class CreateConnectedAccountService {
           workspaceId,
         });
 
-      await input.transactionManager
-        .getRepository(ConnectedAccountEntity)
-        .save({
-          id: connectedAccountId,
-          handle,
-          provider,
-          accessToken: encryptedAccessToken,
-          refreshToken: encryptedRefreshToken,
-          userWorkspaceId,
-          scopes,
-          workspaceId,
-        } as ConnectedAccountEntity);
+      const repository = input.transactionManager.getRepository(
+        ConnectedAccountEntity,
+      );
+      const identity = {
+        id: connectedAccountId,
+        workspaceId,
+        provider,
+        userWorkspaceId,
+        applicationId: null,
+        connectionProviderId: null,
+      };
+      const where = ordinaryConnectedAccountWriteWhere(identity);
+      const data = {
+        ...identity,
+        handle,
+        accessToken: encryptedAccessToken,
+        refreshToken: encryptedRefreshToken,
+        scopes,
+      };
+      if (input.isReconnect) {
+        assertConnectedAccountWriteApplied(
+          await repository.update(where, data),
+        );
+      } else {
+        // INSERT refuses an unexpected existing id instead of converting it.
+        await repository.insert(data);
+      }
     }, authContext);
   }
 }

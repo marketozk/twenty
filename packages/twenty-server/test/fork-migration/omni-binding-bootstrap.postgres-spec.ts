@@ -72,7 +72,7 @@ beforeEach(async () => {
     'CREATE TABLE core.workspace (id uuid PRIMARY KEY, "deletedAt" timestamptz)',
   );
   await owner.query(
-    'CREATE TABLE core."connectedAccount" (id uuid PRIMARY KEY, "workspaceId" uuid NOT NULL, "archivedAt" timestamptz, "applicationId" uuid, "connectionProviderId" uuid)',
+    'CREATE TABLE core."connectedAccount" (id uuid PRIMARY KEY, "workspaceId" uuid NOT NULL, "archivedAt" timestamptz, "applicationId" uuid, "connectionProviderId" uuid, provider text NOT NULL DEFAULT \'app\')',
   );
   await owner.query(
     'CREATE TABLE core."messageChannel" (id uuid PRIMARY KEY, "workspaceId" uuid NOT NULL, "connectedAccountId" uuid NOT NULL, type text NOT NULL)',

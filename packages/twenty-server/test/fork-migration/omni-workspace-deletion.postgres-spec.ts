@@ -60,7 +60,7 @@ const blocked = async () => {
 beforeAll(async () => {
   await fixture.initialize();
   await fixture.owner.query(
-    'ALTER TABLE core."connectedAccount" ADD "workspaceId" uuid, ADD "archivedAt" timestamptz, ADD "applicationId" uuid, ADD "connectionProviderId" uuid',
+    'ALTER TABLE core."connectedAccount" ADD "workspaceId" uuid, ADD "archivedAt" timestamptz, ADD "applicationId" uuid, ADD "connectionProviderId" uuid, ADD provider text NOT NULL DEFAULT \'app\'',
   );
   await fixture.owner.query(
     'ALTER TABLE core."messageChannel" ADD "connectedAccountId" uuid',

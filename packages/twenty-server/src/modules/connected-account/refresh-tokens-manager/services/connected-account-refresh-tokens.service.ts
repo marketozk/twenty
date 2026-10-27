@@ -5,6 +5,10 @@ import { ConnectedAccountProvider } from 'twenty-shared/types';
 import { assertUnreachable, isDefined } from 'twenty-shared/utils';
 import { Repository } from 'typeorm';
 
+import {
+  ordinaryConnectedAccountWriteWhere,
+  assertConnectedAccountWriteApplied,
+} from 'src/engine/metadata-modules/connected-account/utils/ordinary-connected-account-write.util';
 import { AppOAuthRefreshAccessTokenService } from 'src/engine/core-modules/application/connection-provider/refresh/services/app-oauth-refresh-tokens.service';
 import { type EncryptedString } from 'src/engine/core-modules/secret-encryption/branded-strings/encrypted-string.type';
 import { type PlaintextString } from 'src/engine/core-modules/secret-encryption/branded-strings/plaintext-string.type';
@@ -51,6 +55,7 @@ export class ConnectedAccountRefreshTokensService {
     connectedAccount: ConnectedAccountEntity,
     workspaceId: string,
   ): Promise<ConnectedAccountTokens> {
+    ordinaryConnectedAccountWriteWhere({ ...connectedAccount, workspaceId });
     const isAccessTokenValid =
       await this.isAccessTokenStillValid(connectedAccount);
 
@@ -125,8 +130,8 @@ export class ConnectedAccountRefreshTokensService {
       workspaceId,
     });
 
-    await this.connectedAccountRepository.update(
-      { id: connectedAccount.id, workspaceId },
+    const result = await this.connectedAccountRepository.update(
+      ordinaryConnectedAccountWriteWhere({ ...connectedAccount, workspaceId }),
       {
         accessToken: encryptedAccessToken,
         refreshToken: reEncryptedRefreshToken,
@@ -134,6 +139,7 @@ export class ConnectedAccountRefreshTokensService {
       },
     );
 
+    assertConnectedAccountWriteApplied(result);
     return {
       accessToken: encryptedAccessToken,
       refreshToken: reEncryptedRefreshToken,

@@ -618,7 +618,7 @@ describe('atomic metadata writers over actual core repositories', () => {
     });
     expect((await readChannel()).displayName).toBe('Before');
   });
-  it.each(['applicationId', 'scope', 'userWorkspaceId'])(
+  it.each(['scope', 'userWorkspaceId'])(
     'APP authorization reads fresh locked %s',
     async (field) => {
       await runtime.getRepository(ConnectedAccountEntity).update(accountId, {
@@ -626,11 +626,9 @@ describe('atomic metadata writers over actual core repositories', () => {
         scope: field === 'userWorkspaceId' ? 'USER' : 'WORKSPACE',
       });
       const data =
-        field === 'applicationId'
-          ? { applicationId: randomUUID() }
-          : field === 'scope'
-            ? { scope: 'USER' as const, userWorkspaceId: randomUUID() }
-            : { userWorkspaceId: randomUUID() };
+        field === 'scope'
+          ? { scope: 'USER' as const, userWorkspaceId: randomUUID() }
+          : { userWorkspaceId: randomUUID() };
       const pause = pauseNextRunner((sql) =>
         sql.startsWith('SELECT candidate.id FROM unnest'),
       );
@@ -765,4 +763,82 @@ describe('atomic metadata writers over actual core repositories', () => {
     await app.delete({ ...scope(), id: created.id });
     expect(events.emitCustomBatchEvent).toHaveBeenCalledTimes(1);
   });
+});
+
+describe('account identity cannot be repurposed by generic metadata', () => {
+  it.each([
+    { provider: ConnectedAccountProvider.GOOGLE },
+    { applicationId: randomUUID() },
+    { connectionProviderId: randomUUID() },
+  ])(
+    'rejects identity conversion %j before and after bootstrap',
+    async (data) => {
+      await expect(
+        accounts.update({
+          id: accountId,
+          workspaceId: fixture.workspaceId,
+          data,
+        }),
+      ).rejects.toThrow('CONNECTED_ACCOUNT_IDENTITY_IMMUTABLE');
+      await bootstrap();
+      await expect(
+        accounts.update({
+          id: accountId,
+          workspaceId: fixture.workspaceId,
+          data,
+        }),
+      ).rejects.toThrow('OMNI_OWNED_ACCOUNT');
+    },
+  );
+  it.each(['application', 'connectionProvider'])(
+    'rejects relation-shaped identity %s',
+    async (field) => {
+      await expect(
+        accounts.update({
+          id: accountId,
+          workspaceId: fixture.workspaceId,
+          data: { [field]: null },
+        }),
+      ).rejects.toThrow('OMNI_METADATA_SCOPE_CHANGE');
+      expect(
+        (
+          await runtime
+            .getRepository(ConnectedAccountEntity)
+            .findOneByOrFail({ id: accountId })
+        ).provider,
+      ).toBe(ConnectedAccountProvider.APP);
+    },
+  );
+  it('allows an unchanged explicit identity', async () => {
+    await expect(
+      accounts.update({
+        id: accountId,
+        workspaceId: fixture.workspaceId,
+        data: {
+          provider: ConnectedAccountProvider.APP,
+          applicationId: null,
+          connectionProviderId: null,
+        },
+      }),
+    ).resolves.toMatchObject({ id: accountId });
+  });
+  it.each([
+    ConnectedAccountProvider.GOOGLE,
+    ConnectedAccountProvider.MICROSOFT,
+    ConnectedAccountProvider.IMAP_SMTP_CALDAV,
+    ConnectedAccountProvider.EMAIL_GROUP,
+  ])(
+    'does not bootstrap ordinary %s accounts even with an APP channel',
+    async (provider) => {
+      await runtime
+        .getRepository(ConnectedAccountEntity)
+        .update(accountId, { provider });
+      await expect(bootstrap()).rejects.toThrow(
+        'Bootstrap native account/channel mismatch',
+      );
+      expect(
+        await runtime.query('SELECT id FROM core."omniAccountBinding"'),
+      ).toEqual([]);
+    },
+  );
 });

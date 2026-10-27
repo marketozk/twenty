@@ -303,6 +303,7 @@ export const bootstrapOmniAccountBinding = async (
     const accounts: { id: string }[] = await queryRunner.query(
       `SELECT id FROM core."connectedAccount"
        WHERE id = $1 AND "workspaceId" = $2 AND "archivedAt" IS NULL
+         AND provider = 'app'
          AND "applicationId" IS NULL AND "connectionProviderId" IS NULL FOR SHARE`,
       [normalized.connectedAccountId, normalized.workspaceId],
     );
