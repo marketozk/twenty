@@ -711,3 +711,39 @@ inbox/outbox/recovery.
 [отчёт LOG-027](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-82f2637b)
 прочитаны обратно; статусы 11 задач сохранены. Actions не запускались и не
 ожидались. [Метаданные](implementation/log027/publication.json).
+
+## LOG-028 — 27.10.2026: общий native executor и строгий исход транзакции
+
+Пользователь разрешил непрерывную реализацию согласованного плана до проверенных
+критериев, без остановки после каждой порции; правило добавлено в CLAUDE.md.
+Сделан audit adapter к исходному native pg executor с active lifecycle и
+workspace check. QueryRunner callers совместимы, append-only gate/redaction
+сохранены. Strict commitOutcome включается явно; legacy default сохранён.
+Unknown COMMIT/rollback/release не превращается в успех/подтверждённый откат;
+COMMIT с command ROLLBACK также отклоняется. Retained scope/executor закрываются.
+
+Добавлены suppression wrapper для шести native messaging repositories и
+reserved header refs из квалифицированного canonical key. Никакого угадывания
+identity по raw provider ID. Первый dependency guard обнаружил Enterprise
+transitive edge через широкий scope type; исправлено leaf lifecycle/структурным
+контрактом, guard не ослаблялся. Независимые адресные ревью без blocker/major.
+
+Проверки: 239 PG + 93 unit + 20 dependency guard + 5 checksum = 357 PASS;
+после type-only annotation повторены 31 helper tests. Все четыре миграции прежние.
+Сравнительный TypeScript проход по 75 roots: 0 новых/0 в изменённых файлах,
+122 baseline diagnostics сохранены. Три wording differences неизменённых
+source/line/code сохранены отдельно. Полный server typecheck не зелёный,
+production image/новое архитектурное Claude review не выполнялись.
+[Evidence](implementation/log028/README.md).
+
+Нативные PG tests проверяют настоящий runner + минимальный scope/probe fixture,
+а не metadata Message acceptance. Реальная Message/Person integration — следующий
+шаг. Найден gap: helper сам назначает Thread UUID, но Conversation требует
+canonical Thread заранее; нужен узкий expected-thread contract с collision
+checks. Capture provenance/qualification, ownership, core writers и background
+exclusions ещё впереди. applied/доступность чатов не заявляются.
+
+Тестовая сеть/БД изолированы, ограничены ресурсами и переиспользуются в следующей
+порции; рабочее демо/живые каналы не менялись. GitHub Actions не запускались.
+Skills: ai-dev-workflow, behavioral-guardrails, server-schrodinger; независимые
+субагенты исследовали/реализовали/ревьюили разделённые части. ROB-764 In Progress.

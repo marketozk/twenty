@@ -1,4 +1,4 @@
-import { type QueryRunner } from 'typeorm';
+import { type CrmAuditTransactionExecutor } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-executor';
 
 import {
   appendCrmAuditEntry,
@@ -201,7 +201,7 @@ export class CrmAuditTransactionContext {
   private flushed = false;
 
   constructor(
-    private readonly queryRunner: QueryRunner,
+    private readonly queryRunner: CrmAuditTransactionExecutor,
     operation: CrmAuditOperation,
   ) {
     this.operation = {
@@ -218,6 +218,12 @@ export class CrmAuditTransactionContext {
         ? { causationId: requireIdentifier(operation.causationId) }
         : {}),
     };
+    if (
+      queryRunner.workspaceId !== undefined &&
+      requireUuid(queryRunner.workspaceId) !== this.operation.workspaceId
+    ) {
+      throw new Error('Audit workspace does not match its transaction');
+    }
     this.assertOpen();
   }
 
@@ -298,7 +304,7 @@ export class CrmAuditTransactionContext {
 }
 
 export const appendCrmAuditAttempt = async (
-  queryRunner: QueryRunner,
+  queryRunner: CrmAuditTransactionExecutor,
   operation: CrmAuditOperation,
   attempt: Pick<
     CrmAuditMutation,
@@ -319,6 +325,12 @@ export const appendCrmAuditAttempt = async (
     throw new Error('Audit attempt metadata is invalid');
   }
   const workspaceId = requireUuid(operation.workspaceId);
+  if (
+    queryRunner.workspaceId !== undefined &&
+    requireUuid(queryRunner.workspaceId) !== workspaceId
+  ) {
+    throw new Error('Audit workspace does not match its transaction');
+  }
   const operationId = requireUuid(operation.operationId);
   const attemptId = requireUuid(attempt.attemptId);
   const securityDescriptor = descriptor(attempt);

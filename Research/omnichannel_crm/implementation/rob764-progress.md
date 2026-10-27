@@ -1,4 +1,4 @@
-# ROB-764 — реализация, LOG-027
+# ROB-764 — реализация, LOG-028
 
 27.10.2026 пользователь ответил «хорошо приступай» на предложение принять
 исправленный план за основу и начать ROB-764 с проверками конкретного кода.
@@ -132,10 +132,21 @@ unknown COMMIT/release не объявляется успехом. 225 PG + 42 u
 Нет пути applied через произвольный callback; blocked_config не выбирается
 без отдельного проверенного wake-up. Scheduler пока не подключён.
 
+## Девятая порция: native transaction и audit executor
+
+LOG-028: структурный audit executor работает на исходном pg scope с проверкой
+workspace и active lifecycle. Strict mode сохраняет upstream legacy default,
+не подтверждает unknown COMMIT/ROLLBACK/release и закрывает retained scope.
+Добавлены suppression wrapper и canonical key references по spec §15.10.
+357 тестов прошли; typecheck comparison — 0 новых/0 в изменённых файлах,
+122 baseline diagnostics сохранены. Dependency guard PASS после выделения leaf
+types; исключения не добавлялись. [Проверки и ограничения](log028/README.md).
+Настоящие metadata Message repositories этим шагом ещё не проверены.
+
 ## Следующая порция и незавершённая работа
 
-1. Узкий audit executor/lifecycle adapter к WorkspaceTransactionScope и различимый
-   unknown commit: native Message и core/audit должны использовать одну транзакцию.
+1. Проверить actual metadata/repository integration и ownership/header collision
+   guards; qualifier canonical key и immutable capture provenance для истории.
 2. Атомарные Message/participants/link/revision/Conversation/identity/target/event,
    initial plans/receipts, event suppression и ownership guards; затем applied.
 3. Config wake-up/recovery, inbox/outbox, email regression. Полномочия, lifecycle,

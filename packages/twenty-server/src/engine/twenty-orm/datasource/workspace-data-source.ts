@@ -14,6 +14,10 @@ import { findFlatEntityByIdInFlatEntityMapsOrThrow } from 'src/engine/metadata-m
 import { type FlatObjectMetadata } from 'src/engine/metadata-modules/flat-object-metadata/types/flat-object-metadata.type';
 import { type WorkspaceInternalContext } from 'src/engine/twenty-orm/interfaces/workspace-internal-context.interface';
 import { type RolePermissionConfig } from 'src/engine/twenty-orm/types/role-permission-config.type';
+import {
+  type WorkspaceTransactionLifecycle,
+  type WorkspaceTransactionOptions,
+} from 'src/engine/twenty-orm/types/workspace-transaction-lifecycle.type';
 import { type WorkspaceTransactionScope } from 'src/engine/twenty-orm/types/workspace-transaction-scope.type';
 import { ClientQueryExecutor } from 'src/engine/twenty-orm/executor/client-query-executor';
 import { PoolQueryExecutor } from 'src/engine/twenty-orm/executor/pool-query-executor';
@@ -73,10 +77,25 @@ export class WorkspaceDataSource {
 
   async transaction<T>(
     work: (transactionScope: WorkspaceTransactionScope) => Promise<T>,
+    options: WorkspaceTransactionOptions = {},
   ): Promise<T> {
     const afterCommitCallbacks: Array<() => void | Promise<void>> = [];
-    const afterCommit: WorkspaceTransactionScope['afterCommit'] = (callback) =>
+    let transactionLifecycle: WorkspaceTransactionLifecycle | undefined;
+    const assertActive = () => {
+      if (
+        transactionLifecycle?.commitOutcome === 'strict' &&
+        (!transactionLifecycle.isTransactionActive ||
+          transactionLifecycle.isReleased)
+      ) {
+        throw new Error('Workspace transaction is no longer active');
+      }
+    };
+    const afterCommit: WorkspaceTransactionScope['afterCommit'] = (
+      callback,
+    ) => {
+      assertActive();
       afterCommitCallbacks.push(callback);
+    };
     const transactionalInternalContext: WorkspaceInternalContext = {
       ...this.internalContext,
       eventEmitterService: {
@@ -102,15 +121,20 @@ export class WorkspaceDataSource {
         },
       },
     };
-    const result = await this.runInClientTransaction((executor) =>
-      work({
+    const result = await this.runInClientTransaction((executor, lifecycle) => {
+      transactionLifecycle = lifecycle;
+
+      return work({
         workspaceId: this.internalContext.workspaceId,
+        transactionLifecycle: lifecycle,
         getRepository: <T extends ObjectLiteral = ObjectRecord>(
           nameSingular: string,
           rolePermissionConfig?: RolePermissionConfig,
           repositoryOptions?: { shouldSkipEventEmission?: boolean },
-        ) =>
-          this.buildRepository<T>({
+        ) => {
+          assertActive();
+
+          return this.buildRepository<T>({
             nameSingular,
             rolePermissionConfig,
             executor,
@@ -118,12 +142,13 @@ export class WorkspaceDataSource {
             shouldSkipEventEmission:
               repositoryOptions?.shouldSkipEventEmission ?? false,
             internalContext: transactionalInternalContext,
-          }),
+          });
+        },
         executeRawQuery: (sql, parameters = []) =>
           executor.execute({ text: sql, values: parameters }),
         afterCommit,
-      }),
-    );
+      });
+    }, options);
 
     for (const callback of afterCommitCallbacks) {
       try {
@@ -140,11 +165,34 @@ export class WorkspaceDataSource {
   }
 
   private async runInClientTransaction<T>(
-    work: (executor: QueryExecutor) => Promise<T>,
+    work: (
+      executor: QueryExecutor,
+      lifecycle: WorkspaceTransactionLifecycle,
+    ) => Promise<T>,
+    options: WorkspaceTransactionOptions,
   ): Promise<T> {
     return runInRollbackSafeTransaction({
       pool: this.pool,
-      work: (client) => work(new ClientQueryExecutor({ client })),
+      ...options,
+      work: (client, lifecycle) => {
+        const executor = new ClientQueryExecutor({ client });
+
+        return work(
+          {
+            execute: async (statement) => {
+              if (
+                lifecycle.commitOutcome === 'strict' &&
+                (!lifecycle.isTransactionActive || lifecycle.isReleased)
+              ) {
+                throw new Error('Workspace transaction is no longer active');
+              }
+
+              return executor.execute(statement);
+            },
+          },
+          lifecycle,
+        );
+      },
     });
   }
 

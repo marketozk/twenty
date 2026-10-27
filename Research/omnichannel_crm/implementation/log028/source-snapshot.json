@@ -1,0 +1,23 @@
+{
+  "baseCommit": "039616a90787d6a1f16fe687369b9a3baf7b1e8e",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/jest-fork-migration.config.mjs": "10e433baf9556fa625c66d29411a3c2281110faaa22faf278894d14fb00f7347",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/append-crm-audit-entry.ts": "c8e9009d3ec860dae573ae7698ba8336f147e4a596a0dfa2b44bec4fd1d9dcff",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "714eb59ca51972f698ef16021352878803c31f970a01f39467d2b64ce9ebf276",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/verify-crm-audit-privileges.ts": "708b3d95e9368bdec02ab7de6b3315680303ead96d281e4832743418aa4e2d99",
+    "packages/twenty-server/src/engine/twenty-orm/datasource/utils/__tests__/run-in-rollback-safe-transaction.util.spec.ts": "13a9edf218c4324002bb3591a81f0306874adbf57db88c2f785884a154d07ed2",
+    "packages/twenty-server/src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts": "2f0861a8da65d295c914c9c9c4ec9f4dd140e71f957ea5b3a0dadf3e6015ca83",
+    "packages/twenty-server/src/engine/twenty-orm/datasource/workspace-data-source.ts": "8b252bedf6b79b2e3140801472d320382023909ebb00580bad2ad91e44544bd5",
+    "packages/twenty-server/src/engine/twenty-orm/types/workspace-transaction-scope.type.ts": "f15934e6267441676cda9f54b1708876d0aa1b16b7c9569df8336029bdfd5866",
+    "packages/twenty-server/src/engine/twenty-orm/workspace-orm.manager.ts": "d77159ce6b741b9a9e8bc508ddf5a4094d1b98571293e259313f206b403c02d8",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-executor.ts": "e95638bfa74096342b1f474b8cf8adac50733dd108a8015ff8dfbec6a02fc7c3",
+    "packages/twenty-server/src/engine/twenty-orm/datasource/__tests__/workspace-data-source-transaction.spec.ts": "0913ab06fb4f383af296d83853d2bbed991df36fe6600e926450f5ca22ee048e",
+    "packages/twenty-server/src/engine/twenty-orm/types/workspace-transaction-lifecycle.type.ts": "2f1f4a7aa80d124257d853c927b363266b182a11283d8d96ede7b9c36704e3de",
+    "packages/twenty-server/src/modules/omnichannel/services/build-omni-native-message-references.ts": "4729a7c275c7fc2bc626c72d86257ce342ad4e082e80ed3ee9c801ccaeda1018",
+    "packages/twenty-server/src/modules/omnichannel/services/with-omni-repository-options.ts": "ea2433428a13e89a755eb7c871585ecc0c4af9f9d57085063bc6a35e635ec599",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-transaction.postgres-spec.ts": "07753ff283fc46b2c4f8ecc06d1fb85e127be699914213c1c03b6fae6ea2f173",
+    "packages/twenty-server/test/fork-migration/omni-native-scope.spec.ts": "3292735bac3b673a8981ae87cfa47ca1e70d24af2448ea59e4cad6795bea5c8b"
+  }
+}

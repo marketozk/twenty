@@ -26,12 +26,12 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 
 ## Сверка текущего состояния — 27.10.2026
 
-LOG-027 / ROB-764 In Progress: реализованы внутренние claim/reclaim/renew/defer
-с fencing/current auth/generation/DB clock и атомарным аудитом. 292 теста,
-focused typecheck 66 файлов PASS; четыре миграции прежние.
-[Проверки](implementation/log027/README.md). applied/native Message, scheduler,
-config wake-up ещё впереди. Далее — audit adapter к native workspace executor,
-затем Message+audit+event и inbox/outbox/recovery. Демо/живые каналы прежние.
+LOG-028 / ROB-764 In Progress: общий native audit executor, strict lifecycle/
+unknown COMMIT, suppression wrapper и canonical key references. 357 тестов PASS;
+новых type diagnostics нет, 122 baseline сохранены; четыре миграции прежние.
+[Проверки](implementation/log028/README.md). Далее — actual native Message
+integration, ownership guards и атомарные Message+audit+event, inbox/outbox.
+applied/native Message acceptance ещё не выполнены. Демо/живые каналы прежние.
 Actions не используется как gate; собственные проверки и commit/push сохраняются.
 
 ### Предыдущая порция

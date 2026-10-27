@@ -35,6 +35,7 @@ Docstrings carry the what and the design; they are not exempt from terseness, bu
 - Append results, verification, limitations and the next step to DEVLOG after each work step or interruption; commit the entry with the work. After push, add a concise evidence-linked report to the corresponding Linear issue. If Linear is unavailable, record pending synchronization locally and avoid duplicate reports when recovering.
 - Use `Research/omnichannel_crm/linear.md` for existing issue IDs. Mark Done only after the issue's acceptance checks; distinguish implementation, tests, deployment and customer acceptance. Keep credentials and customer content out of all reports.
 - GitHub Actions is not a development gate for this fork (owner decision, LOG-026). Run relevant tests, typechecks, migration-source and dependency guards in our own environment before commit/push. The two omnichannel workflows are manual-only; do not start or wait for Actions on routine publication.
+- Continue through the approved plan after each verified commit/push; do not stop to ask whether to continue. Keep documents and Linear current, report progress, and stop only for an unresolved external blocker, a required user decision, or an action outside existing authorization. Completion requires verified acceptance criteria, not merely a finished implementation slice.
 
 ## Commands
 

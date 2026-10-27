@@ -1,14 +1,18 @@
 import { type Pool, type PoolClient } from 'pg';
 
 import { POSTGRESQL_ERROR_CODES } from 'src/engine/api/graphql/workspace-query-runner/constants/postgres-error-codes.constants';
-import { runInRollbackSafeTransaction } from 'src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util';
+import {
+  NativeTransactionOutcomeUnknownError,
+  runInRollbackSafeTransaction,
+} from 'src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util';
+import { type WorkspaceTransactionLifecycle } from 'src/engine/twenty-orm/types/workspace-transaction-lifecycle.type';
 import {
   TwentyOrmException,
   TwentyOrmExceptionCode,
 } from 'src/engine/twenty-orm/exceptions/twenty-orm.exception';
 
 const buildClient = () => ({
-  query: jest.fn().mockResolvedValue({ rows: [] }),
+  query: jest.fn().mockResolvedValue({ rows: [], command: 'COMMIT' }),
   release: jest.fn(),
 });
 
@@ -18,6 +22,140 @@ const buildPool = (client: ReturnType<typeof buildClient>): Pool =>
   }) as unknown as Pool;
 
 describe('runInRollbackSafeTransaction', () => {
+  it('exposes immutable lifecycle getters that close before COMMIT and release', async () => {
+    const client = buildClient();
+    let captured: WorkspaceTransactionLifecycle | undefined;
+
+    client.query.mockImplementation(async (statement: string) => {
+      if (statement === 'COMMIT') {
+        expect(captured?.isTransactionActive).toBe(false);
+        expect(captured?.isReleased).toBe(false);
+      }
+
+      return { rows: [], command: statement };
+    });
+
+    await runInRollbackSafeTransaction({
+      pool: buildPool(client),
+      commitOutcome: 'strict',
+      work: async (_client, lifecycle) => {
+        captured = lifecycle;
+        expect(Object.isFrozen(lifecycle)).toBe(true);
+        expect(lifecycle.isTransactionActive).toBe(true);
+        expect(lifecycle.isReleased).toBe(false);
+        expect(lifecycle.commitOutcome).toBe('strict');
+      },
+    });
+
+    expect(captured?.isTransactionActive).toBe(false);
+    expect(captured?.isReleased).toBe(true);
+  });
+
+  it('strict COMMIT failure is unknown and destroys the connection without ROLLBACK', async () => {
+    const client = buildClient();
+    const commitError = Object.assign(new Error('connection lost'), {
+      code: POSTGRESQL_ERROR_CODES.CONNECTION_FAILURE,
+    });
+
+    client.query.mockImplementation(async (statement: string) => {
+      if (statement === 'COMMIT') throw commitError;
+
+      return { rows: [] };
+    });
+
+    const error = await runInRollbackSafeTransaction({
+      pool: buildPool(client),
+      commitOutcome: 'strict',
+      work: async () => 'must not return',
+    }).catch((caught: Error) => caught);
+
+    expect(error).toBeInstanceOf(NativeTransactionOutcomeUnknownError);
+    expect(error).toMatchObject({ phase: 'commit', cause: commitError });
+    expect(client.query).not.toHaveBeenCalledWith('ROLLBACK');
+    expect(client.release).toHaveBeenCalledWith(true);
+  });
+
+  it('strict COMMIT returning ROLLBACK cannot acknowledge a swallowed SQL failure', async () => {
+    const client = buildClient();
+
+    client.query.mockResolvedValue({ rows: [], command: 'ROLLBACK' });
+
+    await expect(
+      runInRollbackSafeTransaction({
+        pool: buildPool(client),
+        commitOutcome: 'strict',
+        work: async () => 'not saved',
+      }),
+    ).rejects.toMatchObject({ phase: 'commit' });
+    expect(client.release).toHaveBeenCalledWith(true);
+  });
+
+  it('strict pre-COMMIT work failure rolls back and preserves the ordinary error', async () => {
+    const client = buildClient();
+    const workError = new Error('audit flush rejected');
+
+    await expect(
+      runInRollbackSafeTransaction({
+        pool: buildPool(client),
+        commitOutcome: 'strict',
+        work: async () => {
+          throw workError;
+        },
+      }),
+    ).rejects.toBe(workError);
+
+    expect(client.query).toHaveBeenLastCalledWith('ROLLBACK');
+    expect(client.query).not.toHaveBeenCalledWith('COMMIT');
+    expect(client.release).toHaveBeenCalledWith(false);
+  });
+
+  it('strict ROLLBACK failure cannot be mistaken for a confirmed rollback', async () => {
+    const client = buildClient();
+    const workError = new Error('work failed');
+
+    client.query.mockImplementation(async (statement: string) => {
+      if (statement === 'ROLLBACK') throw new Error('connection lost');
+
+      return { rows: [] };
+    });
+
+    await expect(
+      runInRollbackSafeTransaction({
+        pool: buildPool(client),
+        commitOutcome: 'strict',
+        work: async () => {
+          throw workError;
+        },
+      }),
+    ).rejects.toMatchObject({ phase: 'rollback', cause: workError });
+
+    expect(client.release).toHaveBeenCalledWith(true);
+  });
+
+  it('strict release failure after COMMIT is unknown and closes the lifecycle', async () => {
+    const client = buildClient();
+    const releaseError = new Error('release failed');
+    let captured: WorkspaceTransactionLifecycle | undefined;
+
+    client.release.mockImplementation(() => {
+      throw releaseError;
+    });
+
+    await expect(
+      runInRollbackSafeTransaction({
+        pool: buildPool(client),
+        commitOutcome: 'strict',
+        work: async (_client, lifecycle) => {
+          captured = lifecycle;
+        },
+      }),
+    ).rejects.toMatchObject({ phase: 'release', cause: releaseError });
+
+    expect(client.query).toHaveBeenLastCalledWith('COMMIT');
+    expect(captured?.isTransactionActive).toBe(false);
+    expect(captured?.isReleased).toBe(true);
+  });
+
   it('should map a transient failure raised while acquiring the connection', async () => {
     const connectionError = Object.assign(
       new Error('too many clients already'),

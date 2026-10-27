@@ -6,13 +6,13 @@
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
-Зависимость: этап0. Статус: In Progress (LOG-027). После durable ingress добавлен
-receipt-only claim/reclaim/renew/defer: текущая авторизация/generation, fencing,
-DB clock после ожидания lock, атомарный audit, unknown COMMIT без ложного успеха.
-225 PG + 42 envelope unit + 25 Python tests = 292 PASS; focused typecheck 66 файлов.
+Зависимость: этап0. Статус: In Progress (LOG-028). После ingress/receipt lease
+реализованы общий native audit executor, strict lifecycle/unknown COMMIT,
+event suppression wrapper и canonical key references. 357 тестов PASS;
+typecheck comparison — без новых диагностик (122 baseline остаются).
 Новых миграций нет. applied/native Message, scheduler и config wake-up ещё не
-реализованы. Далее — audit executor/lifecycle adapter к native workspace scope,
-затем Message+audit+event и inbox/outbox/recovery. [LOG-027](../implementation/log027/README.md).
+реализованы. Далее — actual native Message integration, ownership guards,
+Message+audit+event и inbox/outbox/recovery. [LOG-028](../implementation/log028/README.md).
 HTTP/коннекторы/UI не подключены, демо прежнее. Actions не используется как gate.
 
 Предыдущая порция LOG-022: реализованы fork migrations,

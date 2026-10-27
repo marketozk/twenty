@@ -1,11 +1,11 @@
 # Текущее состояние Twenty CRM
 
-LOG-027 / ROB-764 In Progress: реализованы внутренние claim/reclaim/renew/defer
-для receipts. Fencing/current auth/generation/DB time защищают владение;
-transition и audit атомарны, unknown COMMIT не объявляется успехом.
-292 теста и focused typecheck 66 файлов прошли; миграции прежние.
-[Доказательства и границы](implementation/log027/README.md).
-Далее — общий audit executor для native workspace transaction, затем
+LOG-028 / ROB-764 In Progress: общий executor native transaction/audit,
+strict lifecycle/unknown COMMIT, adapters событий и canonical message keys.
+357 тестов прошли; новых type diagnostics нет, 122 baseline diagnostics
+сохраняются. Миграции прежние, dependency guard проходит без исключений.
+[Доказательства и границы](implementation/log028/README.md).
+Далее — actual native Message integration, ownership guards и атомарные
 Message+participants+link+audit+event, config wake-up и inbox/outbox/recovery.
 Scheduler/HTTP/коннекторы/UI ещё не подключены, демо и живые каналы прежние.
 Actions не является gate; проверки выполняем в своей среде.

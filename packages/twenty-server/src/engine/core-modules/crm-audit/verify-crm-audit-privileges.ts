@@ -1,13 +1,13 @@
-import { type QueryRunner } from 'typeorm';
+import { type CrmAuditTransactionExecutor } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-executor';
 
 export const verifyCrmAuditPrivileges = async (
-  queryRunner: QueryRunner,
+  queryRunner: CrmAuditTransactionExecutor,
 ): Promise<void> => {
   if (!queryRunner.isTransactionActive || queryRunner.isReleased) {
     throw new Error('Audit requires an active transaction');
   }
 
-  const rows: { permitted: boolean }[] = await queryRunner.query(`
+  const rows = await queryRunner.query(`
     SELECT NOT role.rolsuper AND NOT role.rolcreatedb AND NOT role.rolcreaterole
       AND NOT pg_has_role(current_user, database.datdba, 'MEMBER')
       AND NOT pg_has_role(current_user, namespace.nspowner, 'MEMBER')
@@ -37,7 +37,13 @@ export const verifyCrmAuditPrivileges = async (
     WHERE role.rolname = current_user
   `);
 
-  if (rows.length !== 1 || rows[0].permitted !== true) {
+  if (
+    rows.length !== 1 ||
+    typeof rows[0] !== 'object' ||
+    rows[0] === null ||
+    !('permitted' in rows[0]) ||
+    rows[0].permitted !== true
+  ) {
     throw new Error(
       'Audit runtime role does not satisfy append-only privileges',
     );

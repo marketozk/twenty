@@ -1,4 +1,4 @@
-import { type QueryRunner } from 'typeorm';
+import { type CrmAuditTransactionExecutor } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-executor';
 
 import {
   auditPayloadHash,
@@ -33,7 +33,7 @@ export type CrmAuditEntryPayload = Omit<
 
 // Callers verify runtime privileges before appending through the same transaction.
 export const appendCrmAuditEntry = async (
-  queryRunner: QueryRunner,
+  queryRunner: CrmAuditTransactionExecutor,
   payload: CrmAuditEntryPayload,
 ): Promise<void> => {
   const hash = auditPayloadHash(payload);
@@ -66,13 +66,19 @@ export const appendCrmAuditEntry = async (
       payload.schemaVersion,
     ],
   );
-  const rows: { payloadHash: string }[] = await queryRunner.query(
+  const rows = await queryRunner.query(
     `SELECT "payloadHash" FROM crm_audit."crmAuditEntry"
      WHERE "workspaceId" = $1 AND "eventKey" = $2`,
     [payload.workspaceId, payload.eventKey],
   );
 
-  if (rows.length !== 1 || rows[0].payloadHash !== hash) {
+  if (
+    rows.length !== 1 ||
+    typeof rows[0] !== 'object' ||
+    rows[0] === null ||
+    !('payloadHash' in rows[0]) ||
+    rows[0].payloadHash !== hash
+  ) {
     throw new Error('Audit event key conflicts with its immutable payload');
   }
 };

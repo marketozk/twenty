@@ -18,6 +18,7 @@ import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twent
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
 import { buildObjectIdByNameMaps } from 'src/engine/metadata-modules/flat-object-metadata/utils/build-object-id-by-name-maps.util';
 import { ExecuteInWorkspaceContextOptions } from 'src/engine/twenty-orm/types/execute-in-workspace-context-options.type';
+import { type WorkspaceTransactionOptions } from 'src/engine/twenty-orm/types/workspace-transaction-lifecycle.type';
 import { type WorkspaceTransactionScope } from 'src/engine/twenty-orm/types/workspace-transaction-scope.type';
 import {
   type ORMWorkspaceContext,
@@ -114,10 +115,11 @@ export class WorkspaceOrmManager {
 
   async runInWorkspaceTransaction<T>(
     work: (transactionScope: WorkspaceTransactionScope) => Promise<T>,
+    options?: WorkspaceTransactionOptions,
   ): Promise<T> {
     return this.workspaceDataSourceService
       .getDataSource({ useReplica: false })
-      .transaction(work);
+      .transaction(work, options);
   }
 
   async executeInWorkspaceContext<T>(

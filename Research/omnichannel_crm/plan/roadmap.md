@@ -1,12 +1,13 @@
 # Дорожная карта проекта
 
-Состояние после LOG-027: ROB-772 Done как планирование, ROB-764 In Progress.
+Состояние после LOG-028: ROB-772 Done как планирование, ROB-764 In Progress.
 Миграции, первая группа таблиц, порядок запуска, минимальный аудит и создание
 неактивного подключения и таблицы сообщений/команд/событий реализованы. Добавлены
 roots/charges/consumer receipts/dispatch/budgets/slots/activation/admission.
 LOG-026 реализовал внутренний ingress receipt writer и строгий envelope v1.
-LOG-027 добавил receipt-only claim/reclaim/renew/defer. Далее — audit adapter
-к native workspace executor, затем Message+audit+event и inbox/outbox.
+LOG-027 добавил receipt-only claim/reclaim/renew/defer. LOG-028 — общий native
+audit executor, strict lifecycle, adapters событий/ключей. Далее — actual native
+Message+audit+event и inbox/outbox.
 [Текущее состояние](../STATUS.md)
 и [ход реализации](../implementation/rob764-progress.md) содержат проверки и
 ограничения. Чаты ещё не реализованы; изменения ROB-764 в демо не выкачены.

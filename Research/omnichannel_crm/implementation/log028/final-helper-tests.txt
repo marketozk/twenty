@@ -1,0 +1,40 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-scope.spec.ts
+  omnichannel native transaction adapter
+    ✓ retains the native generic repository contract and additional scope fields (3 ms)
+    ✓ suppresses generic events for message without changing permissions (2 ms)
+    ✓ suppresses generic events for messageThread without changing permissions (1 ms)
+    ✓ suppresses generic events for messageParticipant without changing permissions
+    ✓ suppresses generic events for messageChannelMessageAssociation without changing permissions
+    ✓ suppresses generic events for messageChannelMessageAssociationMessageFolder without changing permissions (1 ms)
+    ✓ suppresses generic events for messageThreadTarget without changing permissions
+    ✓ preserves unrelated CRM repository options undefined (1 ms)
+    ✓ preserves unrelated CRM repository options {"shouldSkipEventEmission":false}
+    ✓ preserves unrelated CRM repository options {"shouldSkipEventEmission":true} (1 ms)
+    ✓ delegates SQL and afterCommit to the same scope (1 ms)
+    ✓ rejects missing lifecycle (10 ms)
+    ✓ rejects legacy lifecycle (1 ms)
+    ✓ rejects an initially inactive scope
+    ✓ rejects an initially released scope
+    ✓ does not reuse a retained inactive scope (2 ms)
+    ✓ does not reuse a retained released scope (2 ms)
+  qualified native message references
+    ✓ has a stable UTF-8 length-delimited vector and preserves opaque IDs (2 ms)
+    ✓ normalizes only UUID case (1 ms)
+    ✓ separates scoped identity {"bindingId":"aa6b5d74-fad7-4c18-94de-70a77bcf8a25"}
+    ✓ separates scoped identity {"providerChatId":"другой-чат"} (1 ms)
+    ✓ separates scoped identity {"nativeMessageKey":"v1:outgoing:9007199254740993"}
+    ✓ separates scoped identity {"nativeMessageKey":"v1:incoming:9007199254740992"}
+    ✓ does not collide at embedded delimiter boundaries (1 ms)
+    ✓ rejects invalid references {"nativeMessageKey":""} (2 ms)
+    ✓ rejects invalid references {"providerChatId":""}
+    ✓ rejects invalid references {"nativeMessageKey":"\u0000"}
+    ✓ rejects invalid references {"nativeMessageKey":"\ud800"} (1 ms)
+    ✓ rejects invalid references {"providerChatId":"\udfff"} (1 ms)
+    ✓ rejects invalid references {"bindingId":"not-a-uuid"}
+    ✓ rejects invalid references {"nativeMessageKey":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"} (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       31 passed, 31 total
+Snapshots:   0 total
+Time:        3.082 s
+Ran all test suites within paths "/source/packages/twenty-server/test/fork-migration/omni-native-scope.spec.ts".
