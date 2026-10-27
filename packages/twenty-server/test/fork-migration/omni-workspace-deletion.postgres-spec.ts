@@ -328,7 +328,7 @@ describe('workspace deletion admission and schema safety', () => {
     jest.spyOn(runtime, 'createQueryRunner').mockReturnValueOnce(runner);
     await expect(
       admitOmniWorkspaceDeletion(runtime, fixture.workspaceId),
-    ).rejects.toThrow('OMNI_WORKSPACE_ROLLBACK_UNCONFIRMED');
+    ).rejects.toThrow('OMNI_CORE_ROLLBACK_UNCONFIRMED');
     expect(runner.isReleased).toBe(true);
     await fixture.owner.query(
       'UPDATE core.workspace SET "deletedAt"=NULL WHERE id=$1',

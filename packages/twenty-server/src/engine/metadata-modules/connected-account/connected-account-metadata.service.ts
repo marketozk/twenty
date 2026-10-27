@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { In, IsNull, Repository } from 'typeorm';
+import { type EntityManager, In, IsNull, Repository } from 'typeorm';
 
 import {
   ConnectedAccountProvider,
@@ -39,6 +39,11 @@ import { WorkspaceEventEmitter } from 'src/engine/workspace-event-emitter/worksp
 import { CalendarWebhookSubscriptionService } from 'src/modules/connected-account/webhook-subscription-manager/services/calendar-webhook-subscription.service';
 import { MessagingWebhookSubscriptionService } from 'src/modules/connected-account/webhook-subscription-manager/services/messaging-webhook-subscription.service';
 import { findOmniOwnedConnectedAccountIds } from 'src/modules/omnichannel/services/find-omni-owned-metadata-ids';
+
+import {
+  withOmniMetadataMutation,
+  lockOmniMetadataAccounts,
+} from 'src/modules/omnichannel/services/omni-metadata-transaction';
 
 @Injectable()
 export class ConnectedAccountMetadataService {
@@ -381,13 +386,20 @@ export class ConnectedAccountMetadataService {
       throw new Error('OMNI_METADATA_SCOPE_CHANGE_REQUIRES_DOMAIN_LIFECYCLE');
     }
 
-    await this.assertOrdinaryAccounts(workspaceId, [id]);
-    await this.repository.update(
-      { id, workspaceId },
-      updateData as Record<string, unknown>,
+    return withOmniMetadataMutation(
+      this.repository.manager,
+      workspaceId,
+      async (manager) => {
+        await lockOmniMetadataAccounts(manager, workspaceId, [id], 'write');
+        await this.assertOrdinaryAccounts(workspaceId, [id], manager);
+        const repository = manager.getRepository(this.repository.target);
+        await repository.update(
+          { id, workspaceId },
+          updateData as Record<string, unknown>,
+        );
+        return repository.findOneOrFail({ where: { id, workspaceId } });
+      },
     );
-
-    return this.repository.findOneOrFail({ where: { id, workspaceId } });
   }
 
   async transferOwnership({
@@ -717,11 +729,11 @@ export class ConnectedAccountMetadataService {
   private async assertOrdinaryAccounts(
     workspaceId: string,
     connectedAccountIds: string[],
+    manager: EntityManager = this.repository.manager,
   ): Promise<void> {
     const ownedIds = await findOmniOwnedConnectedAccountIds(
       {
-        executeRawQuery: (sql, parameters) =>
-          this.repository.manager.query(sql, parameters),
+        executeRawQuery: (sql, parameters) => manager.query(sql, parameters),
       },
       workspaceId,
       connectedAccountIds,

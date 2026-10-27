@@ -1,0 +1,53 @@
+[32m[Nest] 1  - [39m10/27/2026, 9:12:59 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: c1a1111e-fcb8-44f1-9745-8d2339c8bd87 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-metadata-mutation-guard.spec.ts
+  metadata mutation entry points respect persisted omni ownership
+    ✓ account update rejects owned records before every external/database effect (27 ms)
+    ✓ account disconnect rejects owned records before every external/database effect (2 ms)
+    ✓ account deleteMany rejects owned records before every external/database effect (1 ms)
+    ✓ account transferOwnership rejects owned records before every external/database effect (1 ms)
+    ✓ account update fails closed on ownership SQL error (1 ms)
+    ✓ account disconnect fails closed on ownership SQL error
+    ✓ account deleteMany fails closed on ownership SQL error
+    ✓ account transferOwnership fails closed on ownership SQL error (1 ms)
+    ✓ ordinary account update keeps existing behavior after ownership preflight (1 ms)
+    ✓ ordinary account disconnect keeps existing behavior after ownership preflight (1 ms)
+    ✓ ordinary account deleteMany keeps existing behavior after ownership preflight (2 ms)
+    ✓ ordinary account transferOwnership keeps existing behavior after ownership preflight (1 ms)
+    ✓ mixed account deletion refuses the whole batch before an ordinary account hook or deletion (1 ms)
+    ✓ missing account disconnect preserves not-found before ownership lookup (1 ms)
+    ✓ missing account delete preserves not-found before ownership lookup
+    ✓ empty account selection retains its no-op behavior without ownership SQL (1 ms)
+    ✓ channel genericUpdate refuses owned records without mutation/emission (4 ms)
+    ✓ channel genericDelete refuses owned records without mutation/emission (1 ms)
+    ✓ channel appUpdate refuses owned records without mutation/emission (3 ms)
+    ✓ channel appDelete refuses owned records without mutation/emission (1 ms)
+    ✓ channel genericUpdate fails closed on ownership lookup failure (1 ms)
+    ✓ channel genericDelete fails closed on ownership lookup failure (1 ms)
+    ✓ channel appUpdate fails closed on ownership lookup failure
+    ✓ channel appDelete fails closed on ownership lookup failure (1 ms)
+    ✓ ordinary channel genericUpdate retains mutation and deletion event behavior (1 ms)
+    ✓ ordinary channel genericDelete retains mutation and deletion event behavior (1 ms)
+    ✓ ordinary channel appUpdate retains mutation and deletion event behavior
+    ✓ ordinary channel appDelete retains mutation and deletion event behavior (1 ms)
+    ✓ APP appUpdate retains unreachable-account rejection before ownership lookup (1 ms)
+    ✓ APP appDelete retains unreachable-account rejection before ownership lookup
+    ✓ APP update without changed fields preserves read-only no-op (1 ms)
+    ✓ account update snapshots scalar fields before asynchronous ownership lookup (1 ms)
+    ✓ channel update snapshots destination fields before asynchronous ownership lookup
+    ✓ account and channel updates reject changing addressed id (1 ms)
+    ✓ account and channel updates reject changing addressed workspaceId (1 ms)
+    ✓ channel update cannot attach an ordinary channel to an omni-owned destination account (1 ms)
+    ✓ channel update rejects destination accounts unavailable in its workspace (1 ms)
+    ✓ channel update still permits an ordinary destination in the same workspace (1 ms)
+    ✓ account create refuses a supplied id before TypeORM save can update an existing row
+    ✓ channel create refuses a supplied id before TypeORM save can update an existing row (13 ms)
+    ✓ ordinary account and channel creation still delegates new id generation to persistence (2 ms)
+    ✓ account update rejects relation-shaped workspace changes
+    ✓ channel update rejects relation-shaped workspace bypasses
+    ✓ channel update rejects relation-shaped connectedAccount bypasses (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       44 passed, 44 total
+Snapshots:   0 total
+Time:        4.078 s
+Ran all test suites matching /omni-metadata-mutation-guard/i.

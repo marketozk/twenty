@@ -1,0 +1,6 @@
+{
+  "package": "typeorm",
+  "version": "0.3.31",
+  "sourceSha256": "307e4385561caf6a1deca4cd362cf34f20965b0b846e22706eaa0de83349e7ab",
+  "transactionExcerpt": "await queryRunner.startTransaction(isolation);\n            const result = await runInTransaction(queryRunner.manager);\n            await queryRunner.commitTransaction();\n            return result;\n        }\n        catch (err) {\n            try {\n                // we throw original error even if rollback thrown an error\n                await queryRunner.rollbackTransaction();\n            }\n            catch (rollbackError) { }\n            throw err;\n        }\n        finally {\n            if (!this.queryRunner)\n                // if we used a new query runner provider then release it\n                await queryRunner.release();\n        }\n    }\n    /**\n     * Executes raw"
+}

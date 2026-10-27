@@ -1,0 +1,16 @@
+{
+  "baseCommit": "2d477e29db24c29385a04d7476c10e0685dca9e3",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/metadata-modules/connected-account/connected-account-metadata.service.ts": "511f1bbdd48cbef2f6dd7fa20789c74eec503485140b8925e688afc37377bc14",
+    "packages/twenty-server/src/engine/metadata-modules/message-channel/message-channel-metadata.service.ts": "bd320bbc161b6154f94d1e701fc75591e29acac02372123cfa56e7d879083908",
+    "packages/twenty-server/src/engine/metadata-modules/message-channel/services/application-message-channels.service.ts": "3d0fc600652863a2c6604620b3ef946ade98e85540b0e912937be07d37bf752e",
+    "packages/twenty-server/src/modules/omnichannel/services/omni-workspace-deletion.ts": "09cfd42b83ece2a3adfb55269959e57917633d697443c7da66e09815d659d305",
+    "packages/twenty-server/test/fork-migration/omni-metadata-mutation-guard.spec.ts": "0fe905cf26f3e956c2fb646660392dbff29227d477275e2afb82c66f20c1aee2",
+    "packages/twenty-server/test/fork-migration/omni-workspace-deletion.postgres-spec.ts": "1b0d897f073b2d065176a2de4b0eae9048bd0b193519ad24c0a3fb9ddb2ee6ef",
+    "packages/twenty-server/src/modules/omnichannel/services/omni-core-transaction.ts": "3ae0a21eb4071747cfa513294a2089d91130cec92f80f60c052f6c4b9889791c",
+    "packages/twenty-server/src/modules/omnichannel/services/omni-metadata-transaction.ts": "b070d9ef501760176ba1a6f4504e37855f5fa38cbd9ec6062fc0db4eaa64b6cc",
+    "packages/twenty-server/test/fork-migration/omni-metadata-transaction.postgres-spec.ts": "b1bbd3985bd384783d77c40dd4fffd306fbb841cd94ee223709c410ff9816e78"
+  }
+}

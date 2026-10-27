@@ -67,6 +67,40 @@ jest.mock(
   () => ({ CreateEmailGroupChannelOutput: class {} }),
 );
 
+const attachTransactionRunner = (
+  manager: object,
+  transactionManager: {
+    query: (sql: string, parameters?: unknown[]) => Promise<unknown>;
+  },
+) => {
+  Object.assign(manager, {
+    connection: {
+      createQueryRunner: () => ({
+        isTransactionActive: false,
+        isReleased: false,
+        manager: transactionManager,
+        query: transactionManager.query,
+        async connect() {},
+        async startTransaction() {
+          this.isTransactionActive = true;
+        },
+        async commitTransaction() {
+          this.isTransactionActive = false;
+        },
+        async rollbackTransaction() {
+          this.isTransactionActive = false;
+        },
+        async release() {
+          this.isReleased = true;
+        },
+        async releasePostgresConnection() {
+          this.isReleased = true;
+        },
+      }),
+    },
+  });
+};
+
 const accountFixture = () => {
   const workspaceId = randomUUID();
   const account = {
@@ -77,11 +111,27 @@ const accountFixture = () => {
   };
   const query = jest.fn().mockResolvedValue([]);
   const update = jest.fn().mockResolvedValue({ affected: 1 });
+  const makeTransactionManager = () => ({
+    update,
+    queryRunner: { isTransactionActive: true },
+    getRepository: (): unknown => repository,
+    query: async (sql: string, parameters?: unknown[]) => {
+      if (sql.includes('pg_advisory_xact_lock')) return [];
+      if (sql.startsWith('SELECT id FROM core."connectedAccount"'))
+        return (parameters?.[1] as string[]).map((id) => ({ id }));
+      return query(sql, parameters);
+    },
+  });
   const transaction = jest.fn(
-    async (work: (manager: { update: typeof update }) => Promise<void>) =>
-      work({ update }),
+    async (isolationOrWork: unknown, maybeWork?: unknown) => {
+      const work = (maybeWork ?? isolationOrWork) as (
+        manager: unknown,
+      ) => Promise<unknown>;
+      return work(makeTransactionManager());
+    },
   );
   const repository = {
+    target: 'channel',
     create: jest.fn((data: unknown) => data),
     save: jest.fn().mockResolvedValue(account),
     find: jest.fn().mockResolvedValue([account]),
@@ -90,6 +140,7 @@ const accountFixture = () => {
     delete: jest.fn().mockResolvedValue({ affected: 1 }),
     manager: { query, transaction },
   };
+  attachTransactionRunner(repository.manager, makeTransactionManager());
   const channels = {
     find: jest.fn().mockResolvedValue([{ id: randomUUID() }]),
   };
@@ -122,7 +173,6 @@ const accountFixture = () => {
   const effects = [
     repository.update,
     repository.delete,
-    transaction,
     update,
     revoke.revokeIfApp,
     hooks.runOnDisconnect,
@@ -189,16 +239,51 @@ const channelFixture = () => {
   };
   const query = jest.fn().mockResolvedValue([]);
   const repository = {
+    target: 'channel',
     create: jest.fn((data: unknown) => data),
     save: jest.fn().mockResolvedValue(channel),
     findOne: jest.fn().mockResolvedValue(channel),
     findOneOrFail: jest.fn().mockResolvedValue(channel),
     update: jest.fn().mockResolvedValue({ affected: 1 }),
     delete: jest.fn().mockResolvedValue({ affected: 1 }),
-    manager: { query },
+    manager: {
+      query,
+      transaction: jest.fn(
+        async (
+          _isolation: string,
+          work: (manager: unknown) => Promise<unknown>,
+        ) => work(transactionManager),
+      ),
+    },
   };
-  const accounts = { findOne: jest.fn().mockResolvedValue(account) };
+  const accounts = {
+    target: 'account',
+    findOne: jest.fn().mockResolvedValue(account),
+  };
   const accountMetadata = { findById: jest.fn().mockResolvedValue(account) };
+  const transactionManager = {
+    queryRunner: { isTransactionActive: true },
+    getRepository: (target: string) =>
+      target === 'account' ? accounts : repository,
+    query: async (sql: string, parameters?: unknown[]) => {
+      if (sql.includes('pg_advisory_xact_lock')) return [];
+      if (sql.startsWith('SELECT "connectedAccountId" FROM'))
+        return [{ connectedAccountId: channel.connectedAccountId }];
+      if (sql.startsWith('SELECT id FROM core."connectedAccount"')) {
+        const rows: { id: string }[] = [];
+        for (const id of parameters?.[1] as string[]) {
+          if (
+            id === account.id ||
+            (await accountMetadata.findById({ id, workspaceId }))
+          )
+            rows.push({ id });
+        }
+        return rows;
+      }
+      return query(sql, parameters);
+    },
+  };
+  attachTransactionRunner(repository.manager, transactionManager);
   const emitter = { emitCustomBatchEvent: jest.fn() };
   type GenericDependencies = ConstructorParameters<
     typeof MessageChannelMetadataService
@@ -437,10 +522,15 @@ describe('metadata mutation entry points respect persisted omni ownership', () =
   it('account update snapshots scalar fields before asynchronous ownership lookup', async () => {
     const fixture = accountFixture();
     let release!: (rows: { id: string }[]) => void;
+    let entered!: () => void;
+    const reached = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
     fixture.query.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
           release = resolve;
+          entered();
         }),
     );
     const data = {
@@ -454,6 +544,7 @@ describe('metadata mutation entry points respect persisted omni ownership', () =
     });
     data.handle = 'mutated@example.test';
     data.workspaceId = randomUUID();
+    await reached;
     release([]);
     await pending;
     expect(fixture.repository.update).toHaveBeenCalledWith(
@@ -465,10 +556,15 @@ describe('metadata mutation entry points respect persisted omni ownership', () =
   it('channel update snapshots destination fields before asynchronous ownership lookup', async () => {
     const fixture = channelFixture();
     let release!: (rows: { id: string }[]) => void;
+    let entered!: () => void;
+    const reached = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
     fixture.query.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
           release = resolve;
+          entered();
         }),
     );
     const data: Parameters<typeof fixture.generic.update>[0]['data'] = {
@@ -482,6 +578,7 @@ describe('metadata mutation entry points respect persisted omni ownership', () =
     data.displayName = 'Mutated';
     data.workspaceId = randomUUID();
     data.connectedAccountId = randomUUID();
+    await reached;
     release([]);
     await pending;
     expect(fixture.repository.update).toHaveBeenCalledWith(

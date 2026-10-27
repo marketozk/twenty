@@ -1,7 +1,10 @@
 import { isUUID } from 'class-validator';
 import { type DataSource, type QueryRunner } from 'typeorm';
 
-import { lockOmniNativeOwnership } from 'src/modules/omnichannel/services/lock-omni-native-ownership';
+import {
+  withOmniNativeOwnershipTransaction,
+  OmniCoreTransactionOutcomeUnknownError,
+} from 'src/modules/omnichannel/services/omni-core-transaction';
 
 export class OmniWorkspaceLifecycleOutcomeUnknownError extends Error {
   constructor(cause: unknown) {
@@ -38,77 +41,25 @@ const assertWorkspaceUnowned = async (
   }
 };
 
-const withLifecycleTransaction = async <T>(
+const withLifecycleTransaction = async <TResult>(
   dataSource: DataSource,
   workspaceId: string,
-  work: (runner: QueryRunner) => Promise<T>,
-): Promise<T> => {
+  work: (runner: QueryRunner) => Promise<TResult>,
+): Promise<TResult> => {
   if (!isUUID(workspaceId))
     throw new Error('OMNI_INVALID_WORKSPACE_LIFECYCLE_SCOPE');
-  const runner = dataSource.createQueryRunner('master');
-  const discard = (
-    runner as QueryRunner & {
-      releasePostgresConnection?: (error: Error) => Promise<void>;
-    }
-  ).releasePostgresConnection;
-  if (typeof discard !== 'function')
-    throw new Error('OMNI_POSTGRES_LIFECYCLE_RUNNER_REQUIRED');
-  let result!: T;
-  let failure: unknown;
-  let failed = false;
-  let commitAttempted = false;
-  let destroyConnection = false;
   try {
-    await runner.connect();
-    await runner.startTransaction();
-    await lockOmniNativeOwnership(
-      { executeRawQuery: (sql, parameters) => runner.query(sql, parameters) },
+    return await withOmniNativeOwnershipTransaction(
+      dataSource,
       workspaceId,
       'exclusive',
+      work,
     );
-    result = await work(runner);
-    commitAttempted = true;
-    await runner.commitTransaction();
   } catch (error) {
-    failed = true;
-    failure = error;
-    destroyConnection = commitAttempted;
-  } finally {
-    if (runner.isTransactionActive && !destroyConnection) {
-      try {
-        await runner.rollbackTransaction();
-      } catch (error) {
-        failure = failed
-          ? new AggregateError(
-              [failure, error],
-              'OMNI_WORKSPACE_ROLLBACK_UNCONFIRMED',
-            )
-          : error;
-        failed = true;
-        destroyConnection = true;
-      }
-    }
-    // The Postgres runner removes itself from TypeORM's active list and passes
-    // the error to pg.release; uncertain connections must never re-enter the pool.
-    try {
-      if (destroyConnection)
-        await discard.call(
-          runner,
-          new Error('OMNI_WORKSPACE_TRANSACTION_UNCONFIRMED'),
-        );
-      else await runner.release();
-    } catch (error) {
-      failure = failed
-        ? new AggregateError([failure, error], 'OMNI_WORKSPACE_RELEASE_FAILED')
-        : error;
-      failed = true;
-    }
+    if (error instanceof OmniCoreTransactionOutcomeUnknownError)
+      throw new OmniWorkspaceLifecycleOutcomeUnknownError(error.cause);
+    throw error;
   }
-  if (failed)
-    throw commitAttempted
-      ? new OmniWorkspaceLifecycleOutcomeUnknownError(failure)
-      : failure;
-  return result;
 };
 
 // The durable tombstone survives later billing/uninstall failures. Do not clear it

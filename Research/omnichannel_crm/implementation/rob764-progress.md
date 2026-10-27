@@ -622,3 +622,47 @@ Scoped review предложил сохранить исходный unknown out
 Оставшийся риск metadata check/write подтверждён по коду. archivedAt не подходит как
 самостоятельная необратимая резервация: штатный reconnect его снимает. Следующая
 порция закроет чистые DB mutations, затем network lifecycle без длинной transaction.
+
+## LOG-052 — 28.10.2026: атомарные изменения metadata
+
+LOG-052 / ROB-764 In Progress: чистые DB mutations ConnectedAccount.update,
+MessageChannel.create/update/delete и APP channel create/update/delete выполняют
+ownership check и запись в одной READ COMMITTED transaction под shared native fence.
+Account locks предшествуют channel lock; parent и APP permissions читаются заново.
+Create relation objects запрещены, delete event публикуется только после commit.
+Проверено 244 targeted Jest /9 suites +26 guards =270 PASS, 29 новых PostgreSQL
+случаев; typecheck219 roots:162 baseline/current,0 новых/changed-code. Все7 migrations
+неизменны. Полный1635-test прогон LOG051 относится к предыдущему снимку; здесь не повторялся.
+[Доказательства и границы](log052/README.md). Independent review выявил различимые APP ошибки:
+исправлено и проверено. Полный Claude pass не повторялся.
+Далее network lifecycle/reconnect, resolver side effects и итоговый T22 inventory.
+ROB-764 остаётся In Progress; публичные API, ACL, UI и транспорт ещё впереди.
+Демо прежнее, GitHub Actions не используется.
+
+Первый новый PG run:66 PASS/2 FAIL из-за отсутствующего UUID DEFAULT в test core table.
+Fixture приведён к native id generation. Первичная typecheck нашла только union
+Promise в test capture; helper теперь принимает Promise<unknown>. Review обнаружил
+разные APP create ошибки для missing и чужого account: typed missing-parent error
+нормализуется в прежний ownershipViolation; paired PG test проверяет missing,
+foreign-workspace и foreign-app одинаково. Postcommit observation, lost ACK и SQL
+permission failure проверены. 44 старых owner tests адаптированы к transaction
+manager; ownership assertions сохранены. Baseline dependencies не ослаблены.
+Оставшиеся подтверждённые границы: network hooks/revoke нельзя завернуть в длинную
+transaction; archivedAt снимается reconnect и не является irreversible reservation.
+Generic resolver до update отдельно меняет pendingGroupEmailsAction. APP-only
+bootstrap + immutable provider identity рассматривается для следующего contract
+уточнения вместе со stale reconnect guards; пока не реализовано/не объявлено готовым.
+Применены ai-dev-workflow, behavioral-guardrails, server-schrodinger. Affected tests
+выбраны по metadata/bootstrap/native guard зависимостям; полный предыдущий suite
+не выдаётся за полный прогон текущего снимка. Демо/коннекторы не менялись.
+
+
+Дополнительная проверка до публикации: фактический TypeORM0.3.31 EntityManager.transaction
+глотает rollback error и возвращает connection через release. Для новых locks это
+могло оставить открытый transaction в pool. Проверенный LOG051 owner вынесен в общий
+omni-core-transaction; metadata использует свежий QueryRunner и runner.manager,
+workspace wrapper сохраняет прежний UnknownError. READ COMMITTED явный, commit/release
+unknown типизирован, rollback failure агрегирует причины и уничтожает connection.
+Новый PG case подтверждает освобождение account lock запросом второго connection;
+lost ACK не вызывает success event. Extraction отдельно просмотрена, blockers не найдены.
+Финальный affected run244/9 +26 guards=270 PASS; typecheck219 roots162/162,0new/changed.

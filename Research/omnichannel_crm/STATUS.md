@@ -1,17 +1,18 @@
 # Текущее состояние Twenty CRM
 
-LOG-051 / ROB-764 In Progress: WorkspaceService отказывает при retained omni данных
-до membership/uninstall/schema/file effects. Короткая транзакция сохраняет deletedAt
-под ownership fence; bootstrap проверяет эту отметку до первого INSERT. Direct DROP
-SCHEMA требует ту же проверку и ранее сохранённую отметку удаления. Повтор сохраняет
-дату, ошибки очистки не возвращают область в активное состояние.
-Полный набор: 1635 Jest /67 suites +26 guards =
-1661 PASS; 18 новых PostgreSQL и 13 owner-level случаев. Typecheck
-216 roots: 162 baseline/current, 0 новых/0 changed-code. Все7 migrations неизменны.
-[Доказательства и границы](implementation/log051/README.md). Scoped independent review: blockers не найдены;
-полный Claude pass не повторялся. Далее — metadata check/write против first bootstrap
-и итоговый T22 inventory. ROB-764 не закрыт; controlled purge, публичный API, ACL и UI
-ещё впереди. Демо прежнее, GitHub Actions не используется.
+LOG-052 / ROB-764 In Progress: чистые DB mutations ConnectedAccount.update,
+MessageChannel.create/update/delete и APP channel create/update/delete выполняют
+ownership check и запись в одной READ COMMITTED transaction под shared native fence.
+Account locks предшествуют channel lock; parent и APP permissions читаются заново.
+Create relation objects запрещены, delete event публикуется только после commit.
+Проверено 244 targeted Jest /9 suites +26 guards =270 PASS, 29 новых PostgreSQL
+случаев; typecheck219 roots:162 baseline/current,0 новых/changed-code. Все7 migrations
+неизменны. Полный1635-test прогон LOG051 относится к предыдущему снимку; здесь не повторялся.
+[Доказательства и границы](implementation/log052/README.md). Independent review выявил различимые APP ошибки:
+исправлено и проверено. Полный Claude pass не повторялся.
+Далее network lifecycle/reconnect, resolver side effects и итоговый T22 inventory.
+ROB-764 остаётся In Progress; публичные API, ACL, UI и транспорт ещё впереди.
+Демо прежнее, GitHub Actions не используется.
 
 ## Предыдущая порция — LOG-022
 
