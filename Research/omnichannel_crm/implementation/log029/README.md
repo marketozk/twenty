@@ -55,3 +55,7 @@ Conversation/Identity/MessageLink/revision/DomainEvent writers, foreign ownershi
 Нативный fixture ещё не закрывает полный синтетический ingress acceptance.
 Scheduler, HTTP, own ACL, UI и подключения каналов пока не реализованы.
 Изолированные bounded test resources переиспользуются; демо/живые каналы прежние.
+
+Код опубликован: `971fa17fa6b0c83d332b19689df0c51d34f1a6cf`. GitHub API
+подтвердил remote HEAD; описание и единственный комментарий ROB-764 прочитаны
+обратно, статусы всех11 задач сохранены. [Метаданные](publication.json).

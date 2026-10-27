@@ -774,3 +774,8 @@ GitHub Actions не используется; Claude Code/full architecture revi
 Skills ai-dev-workflow, behavioral-guardrails и server-schrodinger: разделённая
 реализация/ревью, проверяемые границы, изолированные ограниченные проверки.
 Далее trusted capture context, domain writers и полный apply. ROB-764 In Progress.
+
+Публикация LOG-029: `971fa17fa6b0c83d332b19689df0c51d34f1a6cf`, remote SHA
+подтверждён GitHub API. Описание ROB-764 и комментарий `e9ecaf38-03b8-4ca5-956f-649de9b995fa`
+прочитаны обратно, 11 статусов прежние. [Метаданные](implementation/log029/publication.json).
+Продолжаем LOG-030 без остановки.
