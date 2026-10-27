@@ -1,0 +1,12 @@
+{
+  "baseCommit": "ee050e1ce659ed94d1779ba4fd7e67bd849c5783",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts": "cef4497e5a98b5b6647cd2eca5c506d76b7ab06ff3a2701da725c41ef7d59647",
+    "packages/twenty-server/src/modules/omnichannel/services/append-omni-history-resume-failure.ts": "00020f8480b63475cb68b2b82ea2613b8e0732d397dcd73a12c1f1dba7d092f5",
+    "packages/twenty-server/src/modules/omnichannel/services/resume-omni-blocked-history-receipts.ts": "6e31002883aa742e7adbfc2c7879a6f5654a78bc0709403cf90d1a9f150b6036",
+    "packages/twenty-server/test/fork-migration/omni-history-resume-facade.spec.ts": "f98a00244a460585c34a514d989233d5fcde880c3d0f65fea98c1a81f076a4f7",
+    "packages/twenty-server/test/fork-migration/omni-history-resume.postgres-spec.ts": "9fc8b7f40c054651cbd1d03a5d0d60bc2dd10b6cfbba6fc983599cdc2daafc21"
+  }
+}

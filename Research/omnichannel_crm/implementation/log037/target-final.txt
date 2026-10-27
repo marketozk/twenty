@@ -1,0 +1,8 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-resume.postgres-spec.ts (13.335 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-resume-facade.spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       44 passed, 44 total
+Snapshots:   0 total
+Time:        13.758 s
+Ran all test suites within paths "/source/packages/twenty-server/test/fork-migration/omni-history-resume.postgres-spec.ts", "/source/packages/twenty-server/test/fork-migration/omni-history-resume-facade.spec.ts".

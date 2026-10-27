@@ -1,0 +1,10 @@
+{
+  "status": "pass",
+  "counts": {
+    "code_files": 34490,
+    "runtime_files": 21316,
+    "edges": 135098
+  },
+  "violations": {},
+  "runtime_license_proof": false
+}

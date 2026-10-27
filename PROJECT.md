@@ -54,18 +54,19 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-036 / ROB-764 In Progress: первое qualified history-сообщение атомарно
-создаёт Conversation/Thread по действующим default queue/human mode и существующим
-verified Identity/Person. Параллельные receipts сходятся в одном диалоге;
-conversation.created и message.received имеют отдельные suppressed roots/events.
-Подтверждается фактическое создание native Thread, rollback и replay проверены.
-Нет подходящей конфигурации — тот же receipt переводится в blocked_config после
-подтверждённого rollback; неизвестный COMMIT не превращается в retry/успех.
-701 Jest/29 suites +25 guards =726 PASS. Typecheck136roots:0 новых/0 changed-code,
-146 baseline/current; все5 миграций прежние. [Доказательства и границы](Research/omnichannel_crm/implementation/log036/README.md).
-Далее — bounded восстановление blocked_config, затем config producer/consumer,
-остальные inbox/outbox пути. HTTP/own ACL/UI/живые коннекторы не подключены;
-полные ROB-764/T05 и lifecycle races ещё открыты. Демо прежнее, Actions не используется.
+LOG-037 / ROB-764 In Progress: typed bounded resume возвращает qualified history
+blocked_config/configuration_missing в retryable_error с прежним receipt и capture.
+Текущие права/config/generation проверяются; existing Conversation сохраняет собственную
+очередь независимо от defaults. Точный DB cursor, full-page progress и SKIP LOCKED
+проверены; новый проход без cursor подбирает пропуски. Аудит атомарен, unknown COMMIT
+не объявляется успехом. Реальная цепочка repair→resume→claim→apply проверена.
+745 distinct Jest (полный прогон744/745 + исправленный focused44) +25 guards =770 PASS.
+Typecheck140roots:0 новых/0 changed-code,
+146 baseline/current; все5 миграций прежние. [Доказательства и границы](Research/omnichannel_crm/implementation/log037/README.md).
+Далее — настоящий config writer и durable binding.config_changed, затем typed
+consumer/housekeeping и остальные inbox/outbox пути. Полный recovery pipeline,
+ROB-764/T05, own ACL/UI/HTTP и живые коннекторы ещё не готовы. Демо прежнее,
+GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы минимальный аудит и атомарное создание
 inactive binding/disabled policy v0 с receipt, текущей проверкой прав через

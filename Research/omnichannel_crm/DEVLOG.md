@@ -965,3 +965,28 @@ native insert. Первые2 failures относятся к test harness, исп
 
 
 Публикация LOG-036: код 533fc589ca8774ca28e3266636409d7c14850caa, remote проверен GitHub API. Описание ROB-764 и комментарий fc300f88-88b2-4060-8ae0-c5b56b27c37e прочитаны обратно; все11 статусов сохранены. Продолжаем LOG-037.
+
+
+## LOG-037 — 27.10.2026: bounded blocked history resume
+
+LOG-037 / ROB-764 In Progress: typed bounded resume возвращает qualified history
+blocked_config/configuration_missing в retryable_error с прежним receipt и capture.
+Текущие права/config/generation проверяются; existing Conversation сохраняет собственную
+очередь независимо от defaults. Точный DB cursor, full-page progress и SKIP LOCKED
+проверены; новый проход без cursor подбирает пропуски. Аудит атомарен, unknown COMMIT
+не объявляется успехом. Реальная цепочка repair→resume→claim→apply проверена.
+745 distinct Jest (полный прогон744/745 + исправленный focused44) +25 guards =770 PASS.
+Typecheck140roots:0 новых/0 changed-code,
+146 baseline/current; все5 миграций прежние. [Доказательства и границы](implementation/log037/README.md).
+Далее — настоящий config writer и durable binding.config_changed, затем typed
+consumer/housekeeping и остальные inbox/outbox пути. Полный recovery pipeline,
+ROB-764/T05, own ACL/UI/HTTP и живые коннекторы ещё не готовы. Демо прежнее,
+GitHub Actions не используется.
+
+37 new PG +7 facade unit cases. Первый focused43PASS/1FAIL, полный744PASS/1FAIL:
+тест ожидал raw P0001/один cause, ORM оборачивает дважды. Исправлена проверка cause chain;
+финальный focused44PASS, все745 distinct кейсов прошли. Runtime между прогонами прежний.
+Независимое scoped review leaf и facade без блокеров. Skills: ai-dev-workflow,
+behavioral-guardrails, server-schrodinger. Следующий LOG-038 — config mutation writer;
+schema уже поддерживает nullable-conversation event, но audit descriptor needs narrow
+binding-event support. Full worker recovery ещё не объявляется готовым.

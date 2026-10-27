@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 
@@ -46,6 +48,15 @@ import { withOmniRepositoryOptions } from 'src/modules/omnichannel/services/with
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { appendOmniHistoryApplyFailure } from 'src/modules/omnichannel/services/append-omni-history-apply-failure';
 import { isOmniHistoryMissingConfigurationError } from 'src/modules/omnichannel/services/omni-history-missing-configuration.error';
+import { appendOmniHistoryResumeFailure } from 'src/modules/omnichannel/services/append-omni-history-resume-failure';
+import {
+  resumeOmniBlockedHistoryReceipts,
+  snapshotOmniBlockedHistoryResumeRequest,
+  type OmniBlockedHistoryResumePrincipal,
+  type OmniBlockedHistoryResumeInput,
+  type OmniBlockedHistoryResumeAuthorizer,
+  type OmniBlockedHistoryResumeResult,
+} from 'src/modules/omnichannel/services/resume-omni-blocked-history-receipts';
 import {
   deferOmniIncomingReceipt,
   type OmniIncomingReceiptLeaseAuthorizer,
@@ -72,6 +83,75 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     @InjectDataSource()
     private readonly dataSource: DataSource,
   ) {}
+
+  async resumeOmniBlockedHistoryReceipts(
+    principal: OmniBlockedHistoryResumePrincipal,
+    input: OmniBlockedHistoryResumeInput,
+    authorize: OmniBlockedHistoryResumeAuthorizer,
+  ): Promise<OmniBlockedHistoryResumeResult> {
+    const request = snapshotOmniBlockedHistoryResumeRequest(
+      principal,
+      input,
+      authorize,
+    );
+    const failureOperationId = randomUUID();
+
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        let callbackEntered = false;
+        let authorizationDenied = false;
+
+        try {
+          return await this.workspaceOrmManager.runInWorkspaceTransaction(
+            async (scope) => {
+              callbackEntered = true;
+
+              return resumeOmniBlockedHistoryReceipts(
+                scope,
+                request.principal,
+                request.input,
+                async (authorizationScope, authorization) => {
+                  try {
+                    await request.authorize(authorizationScope, authorization);
+                  } catch (error) {
+                    authorizationDenied = true;
+                    throw error;
+                  }
+                },
+              );
+            },
+            { commitOutcome: 'strict' },
+          );
+        } catch (error) {
+          if (
+            callbackEntered &&
+            !(error instanceof NativeTransactionOutcomeUnknownError)
+          ) {
+            try {
+              await this.workspaceOrmManager.runInWorkspaceTransaction(
+                (scope) =>
+                  appendOmniHistoryResumeFailure(
+                    scope,
+                    request.principal,
+                    failureOperationId,
+                    authorizationDenied,
+                  ),
+                { commitOutcome: 'strict' },
+              );
+            } catch (auditError) {
+              throw new AggregateError(
+                [error, auditError],
+                'OMNI_HISTORY_RESUME_FAILURE_AUDIT_UNCONFIRMED',
+              );
+            }
+          }
+          throw error;
+        }
+      },
+      buildSystemAuthContext(request.principal.workspaceId),
+      { lite: true },
+    );
+  }
 
   async processOmniHistoryReceipt(
     principal: OmniHistoryApplyPrincipal,
