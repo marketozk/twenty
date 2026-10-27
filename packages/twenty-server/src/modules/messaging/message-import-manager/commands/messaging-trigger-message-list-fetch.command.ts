@@ -1,3 +1,4 @@
+import { scheduleOrdinaryMessageChannels } from 'src/modules/omnichannel/services/schedule-ordinary-message-channels';
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -76,30 +77,29 @@ export class MessagingTriggerMessageListFetchCommand extends CommandRunner {
           `Found ${messageChannels.length} message channel(s) to process`,
         );
 
-        for (const messageChannel of messageChannels) {
-          await this.messageChannelRepository.update(
-            { id: messageChannel.id, workspaceId },
-            {
-              syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,
-              syncStageStartedAt: new Date().toISOString(),
-            },
-          );
-
+        const acceptedIds = await scheduleOrdinaryMessageChannels(
+          this.messageChannelRepository.manager,
+          workspaceId,
+          messageChannels.map(({ id }) => id),
+          {
+            pending: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
+            scheduled: MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,
+          },
+        );
+        for (const acceptedId of acceptedIds) {
           await this.messageQueueService.add<MessagingMessageListFetchJobData>(
             MessagingMessageListFetchJob.name,
             {
-              messageChannelId: messageChannel.id,
+              messageChannelId: acceptedId,
               workspaceId,
             },
           );
 
-          this.logger.log(
-            `Triggered fetch for message channel ${messageChannel.id}`,
-          );
+          this.logger.log(`Triggered fetch for message channel ${acceptedId}`);
         }
 
         this.logger.log(
-          `Successfully triggered ${messageChannels.length} message list fetch job(s)`,
+          `Successfully triggered ${acceptedIds.length} message list fetch job(s)`,
         );
       },
       authContext,

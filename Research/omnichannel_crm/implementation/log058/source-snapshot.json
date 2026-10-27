@@ -1,0 +1,18 @@
+{
+  "baseCommit": "7658e00e6fab8cf22eb4dc83cad14885a42e62b4",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/jobs/calendar-relaunch-failed-calendar-channel.job.ts": "980a70308b6e0622ec8006b485058951fd21b1a4b8bb0c9f3a2a86556a6d5a89",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-event-import-exception-handler.service.ts": "06918228c28597cf4a228ecbf6cebfaba6ff8131fccf2a2b90ed8f0e667fd5de",
+    "packages/twenty-server/src/modules/calendar/common/services/calendar-channel-sync-status.service.ts": "d03809c8983eccbea47c9c45c63180ef71b495a8eddf7fec37b4603436aae942",
+    "packages/twenty-server/src/modules/messaging/common/services/message-channel-sync-status.service.ts": "235197ea4ea7a94f1981fe6625f5a394b36ec2afa3038a7fc34e28843abf2acc",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/commands/messaging-trigger-message-list-fetch.command.ts": "f6be98af0cbdeb0735a891be291d72524141004581c78df7bf62f635ac9d9a4c",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/jobs/messaging-relaunch-failed-message-channel.job.ts": "b72c39f19261d5ad6cf42404c279883d38f2e390fbd223e25040470af20a95f0",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-import-exception-handler.service.ts": "6bec785c2654a3787c10850e9b19312792c126ae1e1c75216d2540a5f411d568",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-message-list-fetch.service.ts": "2daf1797d27cf585f3ffe745d001c5a04ff4e5ad95ae9a54d3f78ab3bfde1d58",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-messages-import.service.ts": "24763006056b6bc6d0fea52d825bce49881a07fc78e3eb50f69d047fc16ade20",
+    "packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts": "8970bc9a1dbd0251808a860be9b6eb015b56647b7c0cd036bba9070f1ded144d",
+    "packages/twenty-server/src/modules/omnichannel/services/schedule-ordinary-message-channels.ts": "ee1e8bbf53d35e1836f070f3cacd09ea66920670645ce99c68108e671c6e19a3"
+  }
+}

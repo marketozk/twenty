@@ -258,6 +258,7 @@ export class MessagingMessageListFetchService {
             await this.messageChannelSyncStatusService.markAsMessageSyncCompleted(
               [freshMessageChannel.id],
               workspaceId,
+              freshMessageChannel.connectedAccountId,
             );
 
             return;

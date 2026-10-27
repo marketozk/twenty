@@ -9,8 +9,6 @@ import { ExceptionHandlerService } from 'src/engine/core-modules/exception-handl
 import { MessageChannelEntity } from 'src/engine/metadata-modules/message-channel/entities/message-channel.entity';
 import { ConnectedAccountRefreshAccessTokenExceptionCode } from 'src/engine/metadata-modules/connected-account/exceptions/connected-account-refresh-tokens.exception';
 import { TwentyOrmExceptionCode } from 'src/engine/twenty-orm/exceptions/twenty-orm.exception';
-import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
-import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
 import { MessageChannelSyncStatusService } from 'src/modules/messaging/common/services/message-channel-sync-status.service';
 import { MESSAGING_THROTTLE_MAX_ATTEMPTS } from 'src/modules/messaging/message-import-manager/constants/messaging-throttle-max-attempts';
 import {
@@ -29,8 +27,6 @@ export enum MessageImportSyncStep {
 @Injectable()
 export class MessageImportExceptionHandlerService {
   constructor(
-    @InjectWorkspaceScopedRepository(MessageChannelEntity)
-    private readonly messageChannelRepository: WorkspaceScopedRepository<MessageChannelEntity>,
     private readonly messageChannelSyncStatusService: MessageChannelSyncStatusService,
     private readonly exceptionHandlerService: ExceptionHandlerService,
     private readonly messagingMonitoringService: MessagingMonitoringService,
@@ -159,19 +155,28 @@ export class MessageImportExceptionHandlerService {
 
   private async handleTemporaryException(
     syncStep: MessageImportSyncStep,
-    messageChannel: Pick<MessageChannelEntity, 'id' | 'throttleFailureCount'>,
+    messageChannel: Pick<
+      MessageChannelEntity,
+      'id' | 'throttleFailureCount' | 'connectedAccountId'
+    >,
     workspaceId: string,
     exception: { message: string },
   ): Promise<void> {
-    if (
-      messageChannel.throttleFailureCount >= MESSAGING_THROTTLE_MAX_ATTEMPTS
-    ) {
-      await this.messageChannelSyncStatusService.markAsFailed({
-        messageChannelIds: [messageChannel.id],
+    const retryAfter =
+      exception instanceof MessageImportDriverException
+        ? exception.throttleRetryAfter
+        : undefined;
+    const result =
+      await this.messageChannelSyncStatusService.recordTemporaryFailure(
+        messageChannel.id,
+        messageChannel.connectedAccountId,
         workspaceId,
-        syncStatus: MessageChannelSyncStatus.FAILED_UNKNOWN,
-      });
-
+        syncStep === MessageImportSyncStep.MESSAGE_LIST_FETCH,
+        MESSAGING_THROTTLE_MAX_ATTEMPTS,
+        isDefined(retryAfter) ? retryAfter.toISOString() : null,
+      );
+    if (!result) return;
+    if (result.exhausted) {
       this.exceptionHandlerService.captureExceptions(
         [
           new Error(
@@ -182,57 +187,13 @@ export class MessageImportExceptionHandlerService {
           additionalData: {
             messageChannelId: messageChannel.id,
             syncStep,
-            throttleFailureCount: messageChannel.throttleFailureCount,
+            throttleFailureCount: result.failureCount,
           },
           workspace: { id: workspaceId },
         },
       );
 
       return;
-    }
-
-    await this.messageChannelRepository.increment(
-      workspaceId,
-      { id: messageChannel.id },
-      'throttleFailureCount',
-      1,
-    );
-
-    const throttleRetryAfter =
-      exception instanceof MessageImportDriverException
-        ? exception.throttleRetryAfter
-        : undefined;
-
-    await this.messageChannelRepository.update(
-      workspaceId,
-      { id: messageChannel.id },
-      {
-        throttleRetryAfter: isDefined(throttleRetryAfter)
-          ? throttleRetryAfter.toISOString()
-          : null,
-      },
-    );
-
-    switch (syncStep) {
-      case MessageImportSyncStep.MESSAGE_LIST_FETCH:
-        await this.messageChannelSyncStatusService.markAsMessagesListFetchPending(
-          [messageChannel.id],
-          workspaceId,
-          true,
-        );
-        break;
-
-      case MessageImportSyncStep.MESSAGES_IMPORT_PENDING:
-      case MessageImportSyncStep.MESSAGES_IMPORT_ONGOING:
-        await this.messageChannelSyncStatusService.markAsMessagesImportPending(
-          [messageChannel.id],
-          workspaceId,
-          true,
-        );
-        break;
-
-      default:
-        break;
     }
   }
 

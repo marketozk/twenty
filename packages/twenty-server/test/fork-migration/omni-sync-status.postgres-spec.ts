@@ -1,3 +1,15 @@
+import { MessagingMessageListFetchService } from 'src/modules/messaging/message-import-manager/services/messaging-message-list-fetch.service';
+import { MessagingRelaunchFailedMessageChannelJob } from 'src/modules/messaging/message-import-manager/jobs/messaging-relaunch-failed-message-channel.job';
+import { CalendarRelaunchFailedCalendarChannelJob } from 'src/modules/calendar/calendar-event-import-manager/jobs/calendar-relaunch-failed-calendar-channel.job';
+import { MessagingTriggerMessageListFetchCommand } from 'src/modules/messaging/message-import-manager/commands/messaging-trigger-message-list-fetch.command';
+import {
+  MessageImportDriverException,
+  MessageImportDriverExceptionCode,
+} from 'src/modules/messaging/message-import-manager/drivers/exceptions/message-import-driver.exception';
+import {
+  CalendarEventImportDriverException,
+  CalendarEventImportDriverExceptionCode,
+} from 'src/modules/calendar/calendar-event-import-manager/drivers/exceptions/calendar-event-import-driver.exception';
 import {
   ConnectedAccountRefreshAccessTokenException,
   ConnectedAccountRefreshAccessTokenExceptionCode,
@@ -232,23 +244,19 @@ const seed = async (native = false) => {
     throttleFailureCount: 2,
     isSyncEnabled: true,
   };
-  await runtime
-    .getRepository(MessageChannelEntity)
-    .insert({
-      ...commonData,
-      id: ids.message,
-      type: 'APP' as never,
-      syncStatus: MessageChannelSyncStatus.ACTIVE,
-      syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
-    });
-  await runtime
-    .getRepository(CalendarChannelEntity)
-    .insert({
-      ...commonData,
-      id: ids.calendar,
-      syncStatus: CalendarChannelSyncStatus.ACTIVE,
-      syncStage: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING,
-    });
+  await runtime.getRepository(MessageChannelEntity).insert({
+    ...commonData,
+    id: ids.message,
+    type: 'APP' as never,
+    syncStatus: MessageChannelSyncStatus.ACTIVE,
+    syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
+  });
+  await runtime.getRepository(CalendarChannelEntity).insert({
+    ...commonData,
+    id: ids.calendar,
+    syncStatus: CalendarChannelSyncStatus.ACTIVE,
+    syncStage: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING,
+  });
   await runtime.getRepository(MessageFolderEntity).insert({
     id: ids.folder,
     workspaceId: fixture.workspaceId,
@@ -265,7 +273,7 @@ beforeAll(async () => {
     'ALTER TABLE core."connectedAccount" ADD "workspaceId" uuid,ADD provider text,ADD "applicationId" uuid,ADD "connectionProviderId" uuid,ADD "userWorkspaceId" uuid,ADD "authFailedAt" timestamptz,ADD "authFailedReason" text,ADD "archivedAt" timestamptz',
   );
   await fixture.owner.query(
-    'ALTER TABLE core."messageChannel" ADD "connectedAccountId" uuid REFERENCES core."connectedAccount"(id),ADD "throttleRetryAfter" timestamptz,ADD "pendingGroupEmailsAction" text',
+    'ALTER TABLE core."messageChannel" ADD "connectedAccountId" uuid REFERENCES core."connectedAccount"(id),ADD "throttleRetryAfter" timestamptz,ADD "pendingGroupEmailsAction" text,ADD "updatedAt" timestamptz DEFAULT now()',
   );
   await fixture.owner.query(
     'CREATE TABLE core."calendarChannel" (id uuid PRIMARY KEY,"workspaceId" uuid,"connectedAccountId" uuid REFERENCES core."connectedAccount"(id))',
@@ -1015,3 +1023,370 @@ for (const kind of ['message', 'calendar'] as const) {
     },
   );
 }
+
+jest.mock(
+  'src/modules/messaging/message-import-manager/jobs/messaging-message-list-fetch.job',
+  () => ({
+    MessagingMessageListFetchJob: class MessagingMessageListFetchJob {},
+  }),
+);
+jest.mock(
+  'src/engine/core-modules/message-queue/services/message-queue.service',
+  () => ({ MessageQueueService: class {} }),
+);
+
+for (const kind of ['message', 'calendar'] as const) {
+  const temporary = async (
+    snapshot: Pick<
+      MessageChannelEntity,
+      'id' | 'connectedAccountId' | 'throttleFailureCount'
+    >,
+  ) => {
+    if (kind === 'message')
+      return new MessageImportExceptionHandlerService(
+        messaging,
+        { captureExceptions: jest.fn() } as never,
+        { track: jest.fn() } as never,
+      ).handleDriverException(
+        new MessageImportDriverException(
+          'temporary',
+          MessageImportDriverExceptionCode.TEMPORARY_ERROR,
+        ),
+        MessageImportSyncStep.MESSAGES_IMPORT_ONGOING,
+        snapshot,
+        fixture.workspaceId,
+      );
+    return new CalendarEventImportErrorHandlerService(calendar, {
+      captureExceptions: jest.fn(),
+    } as never).handleDriverException(
+      new CalendarEventImportDriverException(
+        'temporary',
+        CalendarEventImportDriverExceptionCode.TEMPORARY_ERROR,
+      ),
+      CalendarEventImportSyncStep.CALENDAR_EVENTS_IMPORT,
+      snapshot,
+      fixture.workspaceId,
+    );
+  };
+  const read = () => repo(kind).findOneByOrFail({ id: ordinary[kind] });
+  const relaunch = async (id: string) => {
+    const context = {
+      executeInWorkspaceContext: async (work: () => Promise<unknown>) => work(),
+    };
+    if (kind === 'message')
+      return new MessagingRelaunchFailedMessageChannelJob(
+        context as never,
+        runtime.getRepository(MessageChannelEntity),
+      ).handle({ workspaceId: fixture.workspaceId, messageChannelId: id });
+    return new CalendarRelaunchFailedCalendarChannelJob(
+      context as never,
+      runtime.getRepository(CalendarChannelEntity),
+    ).handle({ workspaceId: fixture.workspaceId, calendarChannelId: id });
+  };
+  describe(kind + ' atomic temporary errors and relaunch', () => {
+    it('updates count and retry stage together while preserving the stage start time', async () => {
+      const before = await read();
+      await temporary(before);
+      expect(await read()).toMatchObject({
+        throttleFailureCount: 3,
+        syncStage:
+          kind === 'message'
+            ? 'MESSAGES_IMPORT_PENDING'
+            : 'CALENDAR_EVENTS_IMPORT_PENDING',
+        syncStageStartedAt: before.syncStageStartedAt,
+      });
+    });
+    it('uses current count at the limit despite a stale low snapshot', async () => {
+      const stale = await read();
+      await repo(kind).update(ordinary[kind], { throttleFailureCount: 5 });
+      const result = temporary(stale);
+      if (kind === 'calendar')
+        await expect(result).rejects.toThrow('Temporary error');
+      else await result;
+      expect(await read()).toMatchObject({
+        throttleFailureCount: 5,
+        syncStage: 'FAILED',
+        syncStatus: 'FAILED_UNKNOWN',
+      });
+    });
+    it('concurrent failures serialize threshold decisions', async () => {
+      await repo(kind).update(ordinary[kind], { throttleFailureCount: 4 });
+      const before = await read();
+      const results = await Promise.allSettled([
+        temporary(before),
+        temporary(before),
+      ]);
+      expect(results.filter((x) => x.status === 'rejected')).toHaveLength(
+        kind === 'calendar' ? 1 : 0,
+      );
+      expect(await read()).toMatchObject({
+        throttleFailureCount: 5,
+        syncStage: 'FAILED',
+        syncStatus: 'FAILED_UNKNOWN',
+      });
+    });
+    it.each(['bound', 'unbound'])(
+      'ignores %s native temporary failure',
+      async (mode) => {
+        const id = mode === 'bound' ? protectedIds[kind] : ordinary[kind];
+        if (mode === 'unbound')
+          await runtime
+            .getRepository(ConnectedAccountEntity)
+            .update(ordinary.account, {
+              provider: ConnectedAccountProvider.APP,
+            });
+        const before = await repo(kind).findOneByOrFail({ id });
+        await temporary(before);
+        expect(await repo(kind).findOneByOrFail({ id })).toEqual(before);
+        expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
+        expect(broadcast.broadcast).not.toHaveBeenCalled();
+        expect(cache.del).not.toHaveBeenCalled();
+        expect(cache.mdel).not.toHaveBeenCalled();
+      },
+    );
+    it('declines a temporary callback for the previous ordinary parent', async () => {
+      const before = await read(),
+        other = await seed();
+      await repo(kind).update(ordinary[kind], {
+        connectedAccountId: other.account,
+      });
+      await temporary(before);
+      expect(await read()).toMatchObject({
+        throttleFailureCount: 2,
+        syncStage: before.syncStage,
+      });
+    });
+    it('rolls back count and stage when SQL fails after the update', async () => {
+      const before = await read(),
+        original = runtime.createQueryRunner.bind(runtime);
+      jest.spyOn(runtime, 'createQueryRunner').mockImplementationOnce(() => {
+        const runner = original(),
+          query = runner.query.bind(runner);
+        runner.query = async (...args: Parameters<QueryRunner['query']>) => {
+          const result = await query(...args);
+          if (args[0].startsWith('UPDATE "core"."' + kind + 'Channel"'))
+            await query('SELECT 1/0');
+          return result;
+        };
+        return runner;
+      });
+      await expect(temporary(before)).rejects.toThrow();
+      expect(await read()).toEqual(before);
+      expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
+    });
+    it('propagates unknown commit without postcommit failure effects', async () => {
+      await repo(kind).update(ordinary[kind], { throttleFailureCount: 5 });
+      const before = await read(),
+        original = runtime.createQueryRunner.bind(runtime);
+      jest.spyOn(runtime, 'createQueryRunner').mockImplementationOnce(() => {
+        const runner = original(),
+          commit = runner.commitTransaction.bind(runner);
+        runner.commitTransaction = async () => {
+          await commit();
+          throw new Error('throttle ACK lost');
+        };
+        return runner;
+      });
+      await expect(temporary(before)).rejects.toThrow(
+        'OMNI_CORE_TRANSACTION_OUTCOME_UNKNOWN',
+      );
+      expect(await read()).toMatchObject({ syncStatus: 'FAILED_UNKNOWN' });
+      expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
+      expect(broadcast.broadcast).not.toHaveBeenCalled();
+      expect(cache.del).not.toHaveBeenCalled();
+      expect(cache.mdel).not.toHaveBeenCalled();
+    });
+    it('relaunches ordinary failed-unknown but leaves protected and nonfailed rows alone', async () => {
+      await repo(kind)
+        .createQueryBuilder()
+        .update()
+        .set({
+          syncStage: 'FAILED' as never,
+          syncStatus: 'FAILED_UNKNOWN' as never,
+        })
+        .where('id IN (:...ids)', { ids: [ordinary[kind], protectedIds[kind]] })
+        .execute();
+      const protectedBefore = await repo(kind).findOneByOrFail({
+        id: protectedIds[kind],
+      });
+      await relaunch(ordinary[kind]);
+      await relaunch(protectedIds[kind]);
+      expect(await read()).toMatchObject({
+        syncStatus: 'ACTIVE',
+        throttleFailureCount: 0,
+      });
+      expect(
+        await repo(kind).findOneByOrFail({ id: protectedIds[kind] }),
+      ).toEqual(protectedBefore);
+      const before = await read();
+      await relaunch(ordinary[kind]);
+      expect(await read()).toEqual(before);
+    });
+  });
+}
+it('nonfinal imported batch resets throttle and stage atomically', async () => {
+  expect(
+    await messaging.markAsMessageBatchImported(
+      ordinary.message,
+      ordinary.account,
+      fixture.workspaceId,
+    ),
+  ).toBe(true);
+  expect(
+    await repo('message').findOneByOrFail({ id: ordinary.message }),
+  ).toMatchObject({
+    syncStage: 'MESSAGES_IMPORT_PENDING',
+    throttleFailureCount: 0,
+    throttleRetryAfter: null,
+    syncStageStartedAt: null,
+  });
+});
+it.each([false, true])(
+  'import completion declines stale parent (last=%s)',
+  async (last) => {
+    const other = await seed();
+    await repo('message').update(ordinary.message, {
+      connectedAccountId: other.account,
+    });
+    const before = await repo('message').findOneByOrFail({
+      id: ordinary.message,
+    });
+    const result = last
+      ? await messaging.markAsMessageSyncCompleted(
+          [ordinary.message],
+          fixture.workspaceId,
+          ordinary.account,
+        )
+      : await messaging.markAsMessageBatchImported(
+          ordinary.message,
+          ordinary.account,
+          fixture.workspaceId,
+        );
+    expect(result).toBe(false);
+    expect(
+      await repo('message').findOneByOrFail({ id: ordinary.message }),
+    ).toEqual(before);
+    expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
+    expect(broadcast.broadcast).not.toHaveBeenCalled();
+  },
+);
+it('manual CLI queues only ordinary channels admitted by the conditional update', async () => {
+  const disabled = await seed();
+  await runtime
+    .getRepository(MessageChannelEntity)
+    .update(disabled.message, { isSyncEnabled: false });
+  const queue = { add: jest.fn().mockResolvedValue(undefined) };
+  const command = new MessagingTriggerMessageListFetchCommand(
+    {
+      executeInWorkspaceContext: async (work: () => Promise<unknown>) => work(),
+    } as never,
+    runtime.getRepository(MessageChannelEntity),
+    queue as never,
+  );
+  await command.run([], { workspaceId: fixture.workspaceId });
+  expect(queue.add.mock.calls.map((x) => x[1].messageChannelId)).toEqual([
+    ordinary.message,
+  ]);
+  expect(
+    (await repo('message').findOneByOrFail({ id: protectedIds.message }))
+      .syncStage,
+  ).toBe(MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING);
+});
+it('manual CLI does not enqueue after an unknown schedule commit', async () => {
+  const queue = { add: jest.fn().mockResolvedValue(undefined) },
+    original = runtime.createQueryRunner.bind(runtime);
+  jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+    const runner = original(),
+      commit = runner.commitTransaction.bind(runner);
+    runner.commitTransaction = async () => {
+      await commit();
+      throw new Error('CLI schedule ACK lost');
+    };
+    return runner;
+  });
+  const command = new MessagingTriggerMessageListFetchCommand(
+    {
+      executeInWorkspaceContext: async (work: () => Promise<unknown>) => work(),
+    } as never,
+    runtime.getRepository(MessageChannelEntity),
+    queue as never,
+  );
+  await expect(
+    command.run([], { workspaceId: fixture.workspaceId }),
+  ).rejects.toThrow('OMNI_CORE_TRANSACTION_OUTCOME_UNKNOWN');
+  expect(queue.add).not.toHaveBeenCalled();
+});
+
+jest.mock(
+  'src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service',
+  () => ({ MessagingMessageCleanerService: class {} }),
+);
+
+jest.mock(
+  'src/modules/messaging/message-folder-manager/services/sync-message-folders.service',
+  () => ({ SyncMessageFoldersService: class {} }),
+);
+
+jest.mock(
+  'src/modules/messaging/message-import-manager/services/messaging-get-message-list.service',
+  () => ({ MessagingGetMessageListService: class {} }),
+);
+
+jest.mock(
+  'src/modules/messaging/message-import-manager/services/messaging-process-group-email-actions.service',
+  () => ({ MessagingProcessGroupEmailActionsService: class {} }),
+);
+
+jest.mock(
+  'src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service',
+  () => ({ MessagingProcessFolderActionsService: class {} }),
+);
+
+jest.mock(
+  'src/modules/messaging/message-import-manager/services/messaging-cursor.service',
+  () => ({ MessagingCursorService: class {} }),
+);
+
+it('actual zero-message list fetch cannot complete the replacement ordinary parent', async () => {
+  const snapshot = await runtime
+    .getRepository(MessageChannelEntity)
+    .findOneByOrFail({ id: ordinary.message });
+  snapshot.messageFolders = [];
+  const other = await seed();
+  const service = makeService(MessagingMessageListFetchService.prototype, {
+    cacheStorage: cache,
+    messageChannelSyncStatusService: messaging,
+    workspaceOrmManager: {
+      executeInWorkspaceContext: async (work: () => Promise<unknown>) => work(),
+      getRepository: () => ({}),
+    },
+    syncMessageFoldersService: { syncMessageFolders: async () => [] },
+    messagingGetMessageListService: {
+      getMessageLists: async () => {
+        await runtime
+          .getRepository(MessageChannelEntity)
+          .update(ordinary.message, { connectedAccountId: other.account });
+        return [];
+      },
+    },
+    messageImportErrorHandlerService: {
+      handleDriverException: async (error: unknown) => {
+        throw error;
+      },
+    },
+    logger: { log: jest.fn(), debug: jest.fn(), error: jest.fn() },
+  });
+  await service.processMessageListFetch(snapshot, fixture.workspaceId);
+  expect(
+    await runtime
+      .getRepository(MessageChannelEntity)
+      .findOneByOrFail({ id: ordinary.message }),
+  ).toMatchObject({
+    connectedAccountId: other.account,
+    syncStage: 'MESSAGE_LIST_FETCH_ONGOING',
+    syncStatus: 'ONGOING',
+  });
+  expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
+  // The pre-existing list-fetch cache clear is separate from the declined final completion.
+  expect(cache.mdel).toHaveBeenCalledTimes(1);
+});

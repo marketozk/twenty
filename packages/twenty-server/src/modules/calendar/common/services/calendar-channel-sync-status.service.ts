@@ -41,6 +41,63 @@ export class CalendarChannelSyncStatusService {
     private readonly metricsService: MetricsService,
   ) {}
 
+  public async recordTemporaryFailure(
+    channelId: string,
+    expectedConnectedAccountId: string,
+    workspaceId: string,
+    isListFetch: boolean,
+    maximumAttempts: number,
+  ): Promise<{ exhausted: boolean; failureCount: number } | null> {
+    const retryStage = isListFetch
+      ? CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING
+      : CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_PENDING;
+    const result = await withOrdinaryMetadataChannels(
+      this.calendarChannelRepository.manager,
+      workspaceId,
+      [channelId],
+      'calendar',
+      async (manager, channels) => {
+        if (!channels.length) return null;
+        const repository = manager.getRepository(CalendarChannelEntity);
+        const current = await repository.findOneByOrFail({
+          id: channelId,
+          workspaceId,
+        });
+        const exhausted = current.throttleFailureCount >= maximumAttempts;
+        await repository.update(
+          { id: channelId, workspaceId },
+          exhausted
+            ? {
+                syncStatus: CalendarChannelSyncStatus.FAILED_UNKNOWN,
+                syncStage: CalendarChannelSyncStage.FAILED,
+              }
+            : {
+                throttleFailureCount: current.throttleFailureCount + 1,
+                syncStage: retryStage,
+              },
+        );
+        return {
+          exhausted,
+          failureCount: exhausted
+            ? current.throttleFailureCount
+            : current.throttleFailureCount + 1,
+          channels,
+        };
+      },
+      'read',
+      expectedConnectedAccountId,
+    );
+    if (!result) return null;
+    if (result.exhausted) {
+      await this.flushImportCache(result.channels, workspaceId);
+      await this.metricsService.incrementCounterForEvents({
+        key: MetricsKeys.CalendarEventSyncJobFailedUnknown,
+        eventIds: [channelId],
+      });
+    }
+    return { exhausted: result.exhausted, failureCount: result.failureCount };
+  }
+
   public async markAsCalendarEventListFetchPending(
     calendarChannelIds: string[],
     workspaceId: string,

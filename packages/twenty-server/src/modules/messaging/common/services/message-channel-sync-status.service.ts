@@ -1,3 +1,4 @@
+import { scheduleOrdinaryMessageChannels } from 'src/modules/omnichannel/services/schedule-ordinary-message-channels';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -58,6 +59,91 @@ export class MessageChannelSyncStatusService {
     private readonly metricsService: MetricsService,
     private readonly workspaceEventBroadcaster: WorkspaceEventBroadcaster,
   ) {}
+
+  public async recordTemporaryFailure(
+    channelId: string,
+    expectedConnectedAccountId: string,
+    workspaceId: string,
+    isListFetch: boolean,
+    maximumAttempts: number,
+    retryAfter: string | null,
+  ): Promise<{ exhausted: boolean; failureCount: number } | null> {
+    const retryStage = isListFetch
+      ? MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING
+      : MessageChannelSyncStage.MESSAGES_IMPORT_PENDING;
+    const result = await withOrdinaryMetadataChannels(
+      this.messageChannelRepository.manager,
+      workspaceId,
+      [channelId],
+      'message',
+      async (manager, channels) => {
+        if (!channels.length) return null;
+        const repository = manager.getRepository(MessageChannelEntity);
+        const current = await repository.findOneByOrFail({
+          id: channelId,
+          workspaceId,
+        });
+        const exhausted = current.throttleFailureCount >= maximumAttempts;
+        const values = exhausted
+          ? {
+              syncStage: MessageChannelSyncStage.FAILED,
+              syncStatus: MessageChannelSyncStatus.FAILED_UNKNOWN,
+              throttleRetryAfter: null,
+            }
+          : {
+              throttleFailureCount: current.throttleFailureCount + 1,
+              throttleRetryAfter: retryAfter,
+              syncStage: retryStage,
+            };
+        await repository.update({ id: channelId, workspaceId }, values);
+        return {
+          exhausted,
+          failureCount: exhausted
+            ? current.throttleFailureCount
+            : current.throttleFailureCount + 1,
+          channel: {
+            ...channels[0],
+            syncStatus: exhausted
+              ? MessageChannelSyncStatus.FAILED_UNKNOWN
+              : current.syncStatus,
+            syncStage: exhausted ? MessageChannelSyncStage.FAILED : retryStage,
+          },
+        };
+      },
+      'read',
+      expectedConnectedAccountId,
+    );
+    if (!result) return null;
+    if (result.exhausted)
+      await this.clearImportProgress([channelId], workspaceId);
+    await this.broadcastMessageChannelsUpdated([result.channel], workspaceId);
+    if (result.exhausted)
+      await this.metricsService.incrementCounterForEvents({
+        key: MetricsKeys.MessageChannelSyncJobFailedUnknown,
+        eventIds: [channelId],
+      });
+    return { exhausted: result.exhausted, failureCount: result.failureCount };
+  }
+
+  public async markAsMessageBatchImported(
+    channelId: string,
+    expectedConnectedAccountId: string,
+    workspaceId: string,
+  ): Promise<boolean> {
+    const updated = await this.mutateMessageChannels(
+      [channelId],
+      workspaceId,
+      {
+        syncStage: MessageChannelSyncStage.MESSAGES_IMPORT_PENDING,
+        throttleFailureCount: 0,
+        throttleRetryAfter: null,
+        syncStageStartedAt: null,
+      },
+      { expectedConnectedAccountId },
+    );
+    await this.broadcastMessageChannelsUpdated(updated, workspaceId);
+    return updated.length > 0;
+  }
 
   public async markAsMessagesListFetchPending(
     messageChannelIds: string[],
@@ -156,30 +242,13 @@ export class MessageChannelSyncStatusService {
       return [];
     }
 
-    return withOrdinaryMetadataChannels(
+    return scheduleOrdinaryMessageChannels(
       this.messageChannelRepository.manager,
       workspaceId,
       messageChannelIds,
-      'message',
-      async (manager, channels) => {
-        if (!channels.length) return [];
-        const result = await manager
-          .getRepository(MessageChannelEntity)
-          .createQueryBuilder()
-          .update()
-          .set({
-            syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,
-            syncStageStartedAt: new Date(),
-          })
-          .where({
-            id: In(channels.map(({ id }) => id)),
-            workspaceId,
-            isSyncEnabled: true,
-            syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
-          })
-          .returning('id')
-          .execute();
-        return result.raw.map((row: { id: string }) => row.id);
+      {
+        pending: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
+        scheduled: MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,
       },
     );
   }
@@ -202,9 +271,10 @@ export class MessageChannelSyncStatusService {
   public async markAsMessageSyncCompleted(
     messageChannelIds: string[],
     workspaceId: string,
+    expectedConnectedAccountId?: string,
   ) {
     if (!messageChannelIds.length) {
-      return;
+      return false;
     }
 
     const updated = await this.mutateMessageChannels(
@@ -218,16 +288,18 @@ export class MessageChannelSyncStatusService {
         syncStageStartedAt: null,
         syncedAt: new Date().toISOString(),
       },
+      { expectedConnectedAccountId },
     );
 
     const acceptedIds = updated.map(({ id }) => id);
-    if (!acceptedIds.length) return;
+    if (!acceptedIds.length) return false;
     await this.clearImportProgress(acceptedIds, workspaceId);
     await this.broadcastMessageChannelsUpdated(updated, workspaceId);
     await this.metricsService.incrementCounterForEvents({
       key: MetricsKeys.MessageChannelSyncJobActive,
       eventIds: acceptedIds,
     });
+    return true;
   }
 
   public async markAsMessagesImportScheduled(

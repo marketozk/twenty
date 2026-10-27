@@ -24,6 +24,10 @@ Canonical lifecycle requirements remain in the implementation specification.
   comparison; resolver settings + derived pending action in one UPDATE, locked
   account administration recheck. The group worker cleanup remains below.
 
+- LOG058: atomic temporary count/retry/stage, fresh threshold, message import
+  completion parent pin and pending/reset, fresh relaunch CAS, committed accepted
+  CLI scheduling IDs. Intermediate legacy list-fetch cache lifecycle is not SQL-atomic.
+
 ## Remaining owners, in implementation order
 
 Paths below are relative to `packages/twenty-server/src`.
@@ -31,10 +35,8 @@ Paths below are relative to `packages/twenty-server/src`.
 | Owner | Observed gap / required check |
 |---|---|
 | `modules/messaging/message-import-manager/services/messaging-process-group-email-actions.service.ts` | Cleanup/final reset writes still need current parent/action guards and atomic channel/folder finalizer. Resolver marker/settings now atomic (LOG057); do not hold a new core transaction across existing nested cleanup transactions. |
-| Messaging/calendar import exception handlers, messages-import/relaunch-failed job | Direct throttle/reset writes need the same final boundary. |
-| Calendar import exception handler throttle writer | Direct throttle count/reset still needs final ownership protection. |
-| `modules/messaging/message-import-manager/commands/messaging-trigger-message-list-fetch.command.ts` | Unfiltered channel selection → status update → enqueue. Protect owned APP channels and queue only admitted ordinary IDs. |
 | `engine/metadata-modules/message-folder/message-folder-metadata.service.ts` and folder-action writers | update/setSyncStatus/delete/final cursor need current account/channel/folder ownership, not a point-in-time precheck. |
+| Legacy list-fetch downstream cache/cleanup callbacks | Final completion is parent-pinned (LOG058); intermediate cache mutations and cleanup are separate. Review with group/folder scope before claiming complete callback lifecycle protection. |
 | Ordinary provider write predicate vs derived metadata ownership | LOG053 excludes direct retained bindings. Compare with `findOmniOwnedConnectedAccountIds` derived ownership through channel/message associations during final inventory; do not infer full derived-owner coverage from the direct-binding tests. |
 
 ## Required evidence

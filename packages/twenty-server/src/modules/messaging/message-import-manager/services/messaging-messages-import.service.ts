@@ -107,10 +107,13 @@ export class MessagingMessagesImportService {
           );
 
           if (!messageIdsToFetch?.length) {
-            await this.messageChannelSyncStatusService.markAsMessageSyncCompleted(
-              [messageChannel.id],
-              workspaceId,
-            );
+            const accepted =
+              await this.messageChannelSyncStatusService.markAsMessageSyncCompleted(
+                [messageChannel.id],
+                workspaceId,
+                messageChannel.connectedAccountId,
+              );
+            if (!accepted) return;
 
             return await this.trackMessageImportCompleted(
               messageChannel,
@@ -213,26 +216,18 @@ export class MessagingMessagesImportService {
 
           const isLastBatch = messageIdsToFetch.length < messagesGetBatchSize;
 
-          if (isLastBatch) {
-            await this.messageChannelSyncStatusService.markAsMessageSyncCompleted(
-              [messageChannel.id],
-              workspaceId,
-            );
-          } else {
-            await this.messageChannelSyncStatusService.markAsMessagesImportPending(
-              [messageChannel.id],
-              workspaceId,
-            );
-          }
-
-          await this.messageChannelRepository.update(
-            { id: messageChannel.id, workspaceId },
-            {
-              throttleFailureCount: 0,
-              throttleRetryAfter: null,
-              syncStageStartedAt: null,
-            },
-          );
+          const accepted = isLastBatch
+            ? await this.messageChannelSyncStatusService.markAsMessageSyncCompleted(
+                [messageChannel.id],
+                workspaceId,
+                messageChannel.connectedAccountId,
+              )
+            : await this.messageChannelSyncStatusService.markAsMessageBatchImported(
+                messageChannel.id,
+                messageChannel.connectedAccountId,
+                workspaceId,
+              );
+          if (!accepted) return;
 
           if (!isLastBatch) {
             await this.cacheStorage.incrBy(

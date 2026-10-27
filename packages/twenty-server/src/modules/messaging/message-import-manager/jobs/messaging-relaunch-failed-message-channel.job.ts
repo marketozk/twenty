@@ -1,3 +1,4 @@
+import { withOrdinaryMetadataChannel } from 'src/modules/omnichannel/services/with-ordinary-metadata-channel';
 import { Scope } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -37,33 +38,29 @@ export class MessagingRelaunchFailedMessageChannelJob {
     const authContext = buildSystemAuthContext(workspaceId);
 
     await this.workspaceOrmManager.executeInWorkspaceContext(
-      async () => {
-        const messageChannel = await this.messageChannelRepository.findOne({
-          where: {
-            id: messageChannelId,
-            workspaceId,
-          },
-        });
-
-        if (
-          !messageChannel ||
-          messageChannel.syncStage !== MessageChannelSyncStage.FAILED ||
-          messageChannel.syncStatus !== MessageChannelSyncStatus.FAILED_UNKNOWN
-        ) {
-          return;
-        }
-
-        await this.messageChannelRepository.update(
-          { id: messageChannelId, workspaceId },
-          {
-            syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
-            syncStatus: MessageChannelSyncStatus.ACTIVE,
-            throttleFailureCount: 0,
-            throttleRetryAfter: null,
-            syncStageStartedAt: null,
-          },
-        );
-      },
+      () =>
+        withOrdinaryMetadataChannel(
+          this.messageChannelRepository.manager,
+          workspaceId,
+          messageChannelId,
+          'message',
+          async (manager) =>
+            manager.getRepository(MessageChannelEntity).update(
+              {
+                id: messageChannelId,
+                workspaceId,
+                syncStage: MessageChannelSyncStage.FAILED,
+                syncStatus: MessageChannelSyncStatus.FAILED_UNKNOWN,
+              },
+              {
+                syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
+                syncStatus: MessageChannelSyncStatus.ACTIVE,
+                throttleFailureCount: 0,
+                throttleRetryAfter: null,
+                syncStageStartedAt: null,
+              },
+            ),
+        ),
       authContext,
       { lite: true },
     );

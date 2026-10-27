@@ -1596,3 +1596,44 @@ Full suite не повторялся: последний LOG056 1881/71. Лок�
 behavioral-guardrails, server-schrodinger и read-only scoped review.
 
 LOG-057 publication: code 230f274d422b56c9df25a958ee331ccbc8cff38d pushed; GitHub ref verified through API. Linear comment eb7eaaa1-c597-40ac-b138-bdd3d0ebb413; description/comment and all11 project states independently read back. ROB-764 In Progress. See implementation/log057/publication.json.
+
+
+## LOG-058 — atomic temporary failure, import completion, relaunch and CLI (28.10.2026)
+
+Message/calendar temporary failures передают captured account в ordinary owner.
+Fresh throttle count, threshold, retryAfter и retry/failed stage вычисляются под
+account/channel locks и записываются одним UPDATE. Поведение порога5 сохранено:
+count4→5 retry, следующая ошибка→FAILED. Stage start сохраняется. Cache, broadcasts
+и metrics следуют только за известным commit; stale/native callback ничего не пишет.
+Handlers больше не выполняют собственные раздельные increment/status transactions.
+
+Промежуточный message import объединяет pending и throttle/stage reset. Last/empty
+completion возвращает admission result и закрепляет parent; отклонённый completion
+не объявляется успешным. Ревью нашло zero-message list-fetch callsite без parent:
+исправлен и проверен через actual service с reparent во время getMessageLists.
+Предшествующий legacy list-fetch cache clear этим не стал транзакционным: тест
+явно сохраняет1 intermediate clear и запрещает чужой final completion/metrics.
+
+Message/calendar relaunch выполняет актуальный FAILED/FAILED_UNKNOWN CAS под
+ordinary owner. CLI и status service используют одну выделенную scheduling
+операцию; очередь получает только committed returned IDs. Native/protected и
+отключённые каналы исключаются. Unknown commit не вызывает enqueue.
+
+Проверки: 279 targeted Jest/6 suites +26 guards = 305 PASS;
+24 новых PG cases: parallel threshold, stale snapshot/parent, bound/unbound native,
+SQL rollback, lost ACK, actual handlers/relaunch/CLI/list-fetch completion.
+Первый прогон276/278 выявил реальный неверный разбор raw UPDATE результата TypeORM:
+[rows,count] вместо rows. Исправлено CTE с SELECT id, затем финальный прогон PASS.
+Dependency guard отклонил2 лишних импорта; удалены без ослабления guard/baseline.
+CLI переиспользует scheduling helper без новой зависимости от полного status service;
+calendar handler передаёт isListFetch, enum выбирается в существующем status owner.
+Typecheck 252 roots:191/191,0 new/changed-code;7 migrations неизменны.
+Full fork последний в LOG056 (1881/71), здесь не повторялся. LF hashes совпали.
+Scoped re-review без новых блокеров. Полный server typecheck/Claude pass/ROB764
+acceptance не заявляются.
+
+[Evidence](implementation/log058/README.md). [Remaining writers](implementation/rob764-metadata-writer-inventory.md).
+Следующий coherent slice: group/folder metadata и destructive batches. Нельзя
+держать новый core owner вокруг cleaner, открывающего собственную native transaction.
+Демо/SaleBot не менялись; GitHub Actions не использовался. Применены ai-dev-workflow,
+behavioral-guardrails, server-schrodinger и read-only scoped review.
