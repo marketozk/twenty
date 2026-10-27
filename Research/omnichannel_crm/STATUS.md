@@ -16,3 +16,9 @@ MessageLink/IncomingReceipt/OutgoingCommand/DomainEvent и оставшаяся 
 внешние коннекторы требуют квалификации. ROB-765–771 Backlog, ROB-762/763 исторические Done.
 
 [Реализация ROB-764 и оставшиеся шаги](implementation/rob764-progress.md).
+
+Код LOG-022 опубликован (`128a3526`); журнал и подтверждение публикации —
+`45c52c45`. [Сохранённый результат Linear/CI](implementation/log022/publication.json):
+113 выполненных тестов прошли, оба GitHub job не стартовали из-за billing block.
+Полный server typecheck не выполнялся. Это не препятствует учёту выполненной
+порции, но облачный CI pass и готовность ROB-764 целиком не заявляются.
