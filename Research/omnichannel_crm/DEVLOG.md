@@ -1158,3 +1158,30 @@ sent receipts. Scoped review без блокеров; ai-dev-workflow, behaviora
 server-schrodinger. Продолжаем LOG045, не закрывая ROB-764 по наличию receipt.
 
 Публикация LOG-044: код 79db08ce9146db3eea7b56095a6ef9362a3af118, remote проверен GitHub API. Описание ROB-764 и комментарий f9a74d06-42ef-4976-a57a-aba57f82da49 прочитаны обратно; все 11 статусов сохранены. Продолжаем LOG-045.
+
+## LOG-045 — 27.10.2026: исходящее сообщение по подтверждённой отправке
+
+LOG-045 / ROB-764 In Progress: подтверждённая отправка атомарно становится штатным
+исходящим Message. Сохраняются Participant, channel association, MessageLink/revision,
+один suppressed message.sent event/root/dispatch, Command sent, receipt applied и audit.
+Повторы проверяют весь граф; несколько receipts одной отправки не создают дубль.
+Удаление автора сохраняет историю; имя/email не выдумываются. Current worker grant
+и qualified historical verifier обязательны. Собственный send не увеличивает
+replyRevision повторно и не запускает AI/workflow/customer admission.
+Полный fork suite: 1368 Jest /57 suites +26 guards =1394 PASS.
+Typecheck191roots:146 baseline/current,0 новых/0 changed-code;
+все6 миграций и старые методы aggregate неизменны.
+[Доказательства и границы](implementation/log045/README.md). Проверены55 новых PG-сценариев, в том числе
+fault injection, expiry после audit, concurrent replay и lost COMMIT ACK.
+Далее — сохранение неопределённого исхода, backoff и поиск due Commands в PostgreSQL.
+HTTP/UI, transport, scheduler/own ACL и полный ROB-764 ещё не готовы.
+Демо прежнее, GitHub Actions не используется.
+
+Ревью исправило лишнее поле при проверке channel association и запрещает скрытое
+создание графа у Command, уже отмеченной sent. Проверки после audit/final CAS
+находят подмену native/core данных. Typecheck выявил unknown SQL rows; добавлена
+runtime-проверка структуры без any/casts. Финальные проверки повторены после правки.
+Общий participant helper допускает NULL только на persistence boundary; email input
+контракт сохранён и проверен. Применены ai-dev-workflow, behavioral-guardrails,
+server-schrodinger; scoped independent review без блокеров, полный Claude pass
+не повторялся. Продолжаем LOG046, ROB-764 остаётся In Progress.

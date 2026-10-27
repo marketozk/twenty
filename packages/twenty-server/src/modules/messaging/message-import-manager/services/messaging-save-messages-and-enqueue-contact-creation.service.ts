@@ -54,6 +54,15 @@ import { appendOmniHumanTextCommandFailure } from 'src/modules/omnichannel/servi
 import { appendOmniHumanCommandLeaseFailure } from 'src/modules/omnichannel/services/append-omni-human-command-lease-failure';
 import { appendOmniConnectorAcceptanceFailure } from 'src/modules/omnichannel/services/append-omni-connector-acceptance-failure';
 import { appendOmniSentReceiptFailure } from 'src/modules/omnichannel/services/append-omni-sent-receipt-failure';
+import { appendOmniSentApplyFailure } from 'src/modules/omnichannel/services/append-omni-sent-apply-failure';
+import {
+  applyOmniSentReceipt,
+  snapshotOmniSentApplyRequest,
+  type OmniSentApplyPrincipal,
+  type OmniSentApplyProof,
+  type OmniSentApplyCallbacks,
+  type OmniSentApplyResult,
+} from 'src/modules/omnichannel/services/apply-omni-sent-receipt';
 import {
   acceptOmniSentReceipt,
   claimOmniSentReceipt,
@@ -146,6 +155,162 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     @InjectDataSource()
     private readonly dataSource: DataSource,
   ) {}
+
+  async applyOmniSentReceipt(
+    principal: OmniSentApplyPrincipal,
+    proof: OmniSentApplyProof,
+    callbacks: OmniSentApplyCallbacks,
+  ): Promise<OmniSentApplyResult> {
+    const request = snapshotOmniSentApplyRequest(principal, proof, callbacks);
+    const attemptOperationId = randomUUID();
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        let callbackEntered = false;
+        let authorizationDenied = false;
+        try {
+          return await this.workspaceOrmManager.runInWorkspaceTransaction(
+            async (scope) => {
+              callbackEntered = true;
+              const nativeScope = withOmniRepositoryOptions(scope);
+              return applyOmniSentReceipt(
+                nativeScope,
+                request.principal,
+                request.proof,
+                {
+                  ...request.callbacks,
+                  authorize: async (...args) => {
+                    try {
+                      return await request.callbacks.authorize(...args);
+                    } catch (error) {
+                      authorizationDenied = true;
+                      throw error;
+                    }
+                  },
+                },
+                {
+                  createInitialMessage: async (input) => {
+                    if (input.workspaceId !== nativeScope.workspaceId)
+                      throw new Error(
+                        'OMNI_SENT_APPLY_NATIVE_WORKSPACE_MISMATCH',
+                      );
+                    const result =
+                      await this.messageService.saveMessagesWithinTransaction(
+                        [
+                          {
+                            externalId: input.messageExternalId,
+                            messageThreadExternalId:
+                              input.messageThreadExternalId,
+                            headerMessageId: input.headerMessageId,
+                            subject: input.subject,
+                            text: input.text,
+                            receivedAt: new Date(input.receivedAt),
+                            isDraft: false,
+                            direction: MessageDirection.OUTGOING,
+                            attachments: [],
+                            participants: [],
+                          },
+                        ],
+                        input.messageChannelId,
+                        nativeScope,
+                        input.workspaceId,
+                        {
+                          canonicalThreadIdByThreadExternalId: new Map([
+                            [
+                              input.messageThreadExternalId,
+                              input.messageThreadId,
+                            ],
+                          ]),
+                        },
+                      );
+                    const messageId = result.messageExternalIdsAndIdsMap.get(
+                      input.messageExternalId,
+                    );
+                    const associationId =
+                      result.messageExternalIdToMessageChannelMessageAssociationIdMap.get(
+                        input.messageExternalId,
+                      );
+                    if (
+                      !messageId ||
+                      !associationId ||
+                      result.messageExternalIdToMessageThreadIdMap.get(
+                        input.messageExternalId,
+                      ) !== input.messageThreadId
+                    )
+                      throw new Error('OMNI_SENT_APPLY_NATIVE_MAPPING_MISSING');
+                    if (
+                      !result.createdMessages.some(
+                        (message) => message.id === messageId,
+                      )
+                    )
+                      throw new Error(
+                        'OMNI_SENT_APPLY_NATIVE_MESSAGE_CREATION_POSTCONDITION',
+                      );
+                    if (result.createdMessageThreadIds.length !== 0)
+                      throw new Error(
+                        'OMNI_SENT_APPLY_NATIVE_THREAD_CREATION_POSTCONDITION',
+                      );
+                    const saved =
+                      await this.messageParticipantService.saveMessageParticipants(
+                        [
+                          {
+                            messageId,
+                            personId: null,
+                            workspaceMemberId: input.workspaceMemberId,
+                            handle: null,
+                            displayName: null,
+                            role: MessageParticipantRole.FROM,
+                          },
+                        ],
+                        input.workspaceId,
+                        nativeScope,
+                      );
+                    if (saved.length !== 1 || saved[0].messageId !== messageId)
+                      throw new Error(
+                        'OMNI_SENT_APPLY_NATIVE_PARTICIPANT_MISSING',
+                      );
+                    return {
+                      messageId,
+                      associationId,
+                      participantId: saved[0].id,
+                      createdThread: false,
+                    };
+                  },
+                },
+              );
+            },
+            { commitOutcome: 'strict' },
+          );
+        } catch (error) {
+          if (
+            callbackEntered &&
+            !(error instanceof NativeTransactionOutcomeUnknownError)
+          ) {
+            try {
+              await this.workspaceOrmManager.runInWorkspaceTransaction(
+                (scope) =>
+                  appendOmniSentApplyFailure(
+                    scope,
+                    request.principal,
+                    request.proof,
+                    attemptOperationId,
+                    authorizationDenied,
+                  ),
+                { commitOutcome: 'strict' },
+              );
+            } catch (auditError) {
+              throw new AggregateError(
+                [error, auditError],
+                'OMNI_SENT_APPLY_FAILURE_AUDIT_UNCONFIRMED',
+              );
+            }
+          }
+          throw error;
+        }
+      },
+      buildSystemAuthContext(request.principal.workspaceId),
+      { lite: true },
+    );
+  }
 
   async acceptOmniSentReceipt(
     principal: OmniSentReceiptPrincipal,

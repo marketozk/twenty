@@ -1,17 +1,18 @@
 # Дорожная карта проекта
 
-LOG-044 / ROB-764 In Progress: durable command.sent receipt accept/claim реализованы.
-Закрытые envelope/capture сохраняются в существующем IncomingReceipt; current
-worker grant и qualified historical verifier обязательны при capture/replay/claim.
-Command/native graph пока не меняются. DB lease/token/expiry и audit атомарны,
-postcondition после audit защищает от подмены; lost COMMIT ACK без false failure.
-Обычный incoming claim/renew/defer исключает command.sent, сохраняя три message kinds.
-487 Jest /18 затронутых suites +26 guards =513 PASS. Typecheck184roots:
-146 baseline/current,0 новых/0 changed-code; все6 миграций и старые методы aggregate
-неизменны. Полный1025 suite прошёл в LOG041.
-[Доказательства и границы](../implementation/log044/README.md). Исторический ACK не даёт нового send;
-partial прежний acceptance не исправляется при capture. Далее — LOG045:
-атомарный confirmed sent → штатные Message/Participant/Link/revision/event.
+LOG-045 / ROB-764 In Progress: подтверждённая отправка атомарно становится штатным
+исходящим Message. Сохраняются Participant, channel association, MessageLink/revision,
+один suppressed message.sent event/root/dispatch, Command sent, receipt applied и audit.
+Повторы проверяют весь граф; несколько receipts одной отправки не создают дубль.
+Удаление автора сохраняет историю; имя/email не выдумываются. Current worker grant
+и qualified historical verifier обязательны. Собственный send не увеличивает
+replyRevision повторно и не запускает AI/workflow/customer admission.
+Полный fork suite: 1368 Jest /57 suites +26 guards =1394 PASS.
+Typecheck191roots:146 baseline/current,0 новых/0 changed-code;
+все6 миграций и старые методы aggregate неизменны.
+[Доказательства и границы](../implementation/log045/README.md). Проверены55 новых PG-сценариев, в том числе
+fault injection, expiry после audit, concurrent replay и lost COMMIT ACK.
+Далее — сохранение неопределённого исхода, backoff и поиск due Commands в PostgreSQL.
 HTTP/UI, transport, scheduler/own ACL и полный ROB-764 ещё не готовы.
 Демо прежнее, GitHub Actions не используется.
 
@@ -31,7 +32,7 @@ HTTP/UI, transport, scheduler/own ACL и полный ROB-764 ещё не гот
 
 Состояние на 26.10.2026: исследование исходников выполнено, результат — [research.md](../research.md) и профильные отчёты. Затем записана архитектура v1. Runtime коннекторов, полнота истории и состав используемых функций SaleBot остаются проверками этапов реализации и приёмки. Историческое исследование API робота исключено из текущего объёма.
 
-Пункты 1–5 завершены: единственный экземпляр обновлён собственным образом закреплённой [базы 2.52](../reuse-2.52.md). Сборка, миграции, данные и UI проверены; доказательства — в implementation/version-and-deploy.md. APP messaging storage выбран для канонической переписки; служебные core-таблицы и явная передача transaction executor определены в implementation/integration-map.md. Новые функции ещё не реализованы и их тесты не запускались.
+Пункты 1–5 завершены: единственный экземпляр обновлён собственным образом закреплённой [базы 2.52](../reuse-2.52.md). Сборка, миграции, данные и UI проверены; доказательства — в implementation/version-and-deploy.md. APP messaging storage выбран для канонической переписки; служебные core-таблицы и явная передача transaction executor определены в implementation/integration-map.md. На момент этого обновления новых функций ещё не было; последующая реализация и выполненные тесты отражены в сводке в начале документа и [журнале](../implementation/rob764-progress.md).
 
 - Сверить установленную версию Twenty, ревизию форка и подходящую базу разработки. Не считать `main` готовой заменой текущего экземпляра.
 - Проследить модели сообщений/диалогов, inbox, права, файлы, очереди, обновления интерфейса, SDK/apps, агенты, инструменты ИИ и workflow.
@@ -45,7 +46,7 @@ HTTP/UI, transport, scheduler/own ACL и полный ROB-764 ещё не гот
 
 ## 2. Проектирование
 
-Состояние: [архитектура v1 записана](../design/01-architecture.md), включая потоки, ADR, модель данных, API и testing strategy. Выбрана собственная реализация record-level прав без подписки. Проверки persistence/delivery/access ещё не выполнены; документация не означает успешный прототип. Пункты ниже отражены в design и уточняются после проверок.
+Состояние: [архитектура v1 записана](../design/01-architecture.md), включая потоки, ADR, модель данных, API и testing strategy. Выбрана собственная реализация record-level прав без подписки. Часть persistence уже проверена кодом и PostgreSQL-тестами; полные delivery/access ещё не приняты. Точное покрытие — в журнале реализации. Пункты ниже отражены в design и уточняются по результатам проверок.
 
 - Сравнить SDK-приложение, минимальные изменения ядра и комбинацию; выбрать по фактам, объёму изменений и обновляемости.
 - Сравнить внешнее исполнение юзерботов и встроенную интеграцию. Отдельно решить, где пользователь управляет подключением.

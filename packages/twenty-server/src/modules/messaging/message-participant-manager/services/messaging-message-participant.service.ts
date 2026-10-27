@@ -16,6 +16,13 @@ import {
 import { type MessageParticipantWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-participant.workspace-entity';
 import { type ParticipantWithMessageId } from 'src/modules/messaging/message-import-manager/drivers/gmail/types/gmail-message.type';
 
+// Native fields are nullable; historical command authors need no invented email/name.
+// Keep email provider input contracts unchanged and widen only persistence input.
+type PersistedMessageParticipantInput = Omit<
+  ParticipantWithMessageId,
+  'handle' | 'displayName'
+> & { handle: string | null; displayName: string | null };
+
 @Injectable()
 export class MessagingMessageParticipantService {
   constructor(
@@ -24,7 +31,7 @@ export class MessagingMessageParticipantService {
   ) {}
 
   public async saveMessageParticipants(
-    participants: ParticipantWithMessageId[],
+    participants: PersistedMessageParticipantInput[],
     workspaceId: string,
     transactionScope: WorkspaceTransactionScope,
   ): Promise<MessageParticipantWorkspaceEntity[]> {
@@ -47,12 +54,14 @@ export class MessagingMessageParticipantService {
             },
           });
 
-        const suppliesIdentity = (participant: ParticipantWithMessageId) =>
+        const suppliesIdentity = (
+          participant: PersistedMessageParticipantInput,
+        ) =>
           isDefined(participant.personId) ||
           isDefined(participant.workspaceMemberId);
 
         // Caller-identified rows match on message, handle and role only: displayName can drift between deliveries
-        const findExisting = (participant: ParticipantWithMessageId) =>
+        const findExisting = (participant: PersistedMessageParticipantInput) =>
           existingParticipantsBasedOnMessageIds.find(
             (existingParticipant) =>
               existingParticipant.messageId === participant.messageId &&

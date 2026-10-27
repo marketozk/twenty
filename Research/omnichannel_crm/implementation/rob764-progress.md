@@ -1,4 +1,8 @@
-# ROB-764 — реализация, LOG-033
+# ROB-764 — журнал реализации
+
+Актуальная сводка — [STATUS](../STATUS.md); ниже порции перечислены по времени.
+Фразы «следующая порция» внутри исторических записей относятся к их дате, а не
+отменяют результаты более поздних LOG. Текущее продолжение указано в конце журнала.
 
 27.10.2026 пользователь ответил «хорошо приступай» на предложение принять
 исправленный план за основу и начать ROB-764 с проверками конкретного кода.
@@ -143,7 +147,7 @@ workspace и active lifecycle. Strict mode сохраняет upstream legacy de
 types; исключения не добавлялись. [Проверки и ограничения](log028/README.md).
 Настоящие metadata Message repositories этим шагом ещё не проверены.
 
-## Следующая порция и незавершённая работа
+## План продолжения после LOG-028 — историческая запись
 
 1. Проверить actual metadata/repository integration и ownership/header collision
    guards; qualifier canonical key и immutable capture provenance для истории.
@@ -413,3 +417,30 @@ partial прежний acceptance не исправляется при capture. 
 атомарный confirmed sent → штатные Message/Participant/Link/revision/event.
 HTTP/UI, transport, scheduler/own ACL и полный ROB-764 ещё не готовы.
 Демо прежнее, GitHub Actions не используется.
+
+## LOG-045 — 27.10.2026: исходящее сообщение по подтверждённой отправке
+
+LOG-045 / ROB-764 In Progress: подтверждённая отправка атомарно становится штатным
+исходящим Message. Сохраняются Participant, channel association, MessageLink/revision,
+один suppressed message.sent event/root/dispatch, Command sent, receipt applied и audit.
+Повторы проверяют весь граф; несколько receipts одной отправки не создают дубль.
+Удаление автора сохраняет историю; имя/email не выдумываются. Current worker grant
+и qualified historical verifier обязательны. Собственный send не увеличивает
+replyRevision повторно и не запускает AI/workflow/customer admission.
+Полный fork suite: 1368 Jest /57 suites +26 guards =1394 PASS.
+Typecheck191roots:146 baseline/current,0 новых/0 changed-code;
+все6 миграций и старые методы aggregate неизменны.
+[Доказательства и границы](log045/README.md). Проверены55 новых PG-сценариев, в том числе
+fault injection, expiry после audit, concurrent replay и lost COMMIT ACK.
+Далее — сохранение неопределённого исхода, backoff и поиск due Commands в PostgreSQL.
+HTTP/UI, transport, scheduler/own ACL и полный ROB-764 ещё не готовы.
+Демо прежнее, GitHub Actions не используется.
+
+Ревью исправило лишнее поле при проверке channel association и запрещает скрытое
+создание графа у Command, уже отмеченной sent. Проверки после audit/final CAS
+находят подмену native/core данных. Typecheck выявил unknown SQL rows; добавлена
+runtime-проверка структуры без any/casts. Финальные проверки повторены после правки.
+Общий participant helper допускает NULL только на persistence boundary; email input
+контракт сохранён и проверен. Применены ai-dev-workflow, behavioral-guardrails,
+server-schrodinger; scoped independent review без блокеров, полный Claude pass
+не повторялся. Продолжаем LOG046, ROB-764 остаётся In Progress.

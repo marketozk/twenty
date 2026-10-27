@@ -129,6 +129,8 @@ verified sent evidence с реальными jobId/journalSequence позвол�
 транзакции записать нормализованный acceptance proof; номера журнала не выдумываются.
 Точное повторение проверяет сохранённый graph и не меняет его; другой evidence event
 для той же доказанной command/native identity указывает на тот же resultId.
+Command уже sent при отсутствующем graph даёт явный reconciliation conflict:
+обычный replay не выполняет скрытое восстановление утраченной истории.
 
 Служебный message.sent имеет origin=connector_outcome, стабильную identity от Command
 и один [suppressed root/dispatch](workflow-execution.md#confirmed-sent-event) при v0.

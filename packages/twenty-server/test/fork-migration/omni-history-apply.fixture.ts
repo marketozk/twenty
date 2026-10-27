@@ -19,10 +19,15 @@ import { claimOmniIncomingReceipts } from 'src/modules/omnichannel/services/omni
 import { createOmniNativeMessageFixture } from 'test/fork-migration/omni-native-message.fixture';
 
 export const createOmniHistoryApplyFixture = (
-  options: { includeTargets?: boolean; includeWorkspaceMember?: boolean } = {},
+  options: {
+    includeTargets?: boolean;
+    includeWorkspaceMember?: boolean;
+    useStandardForeignKeyActions?: boolean;
+  } = {},
 ) => {
   const native = createOmniNativeMessageFixture({
     coreSchema: 'fork',
+    useStandardForeignKeyActions: options.useStandardForeignKeyActions,
     additionalTables: [
       ...(options.includeTargets ? ['messageThreadTarget' as const] : []),
       ...(options.includeWorkspaceMember ? ['workspaceMember' as const] : []),

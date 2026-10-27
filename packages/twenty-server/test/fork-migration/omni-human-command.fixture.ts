@@ -2,9 +2,16 @@ import { randomUUID } from 'node:crypto';
 
 import { createOmniHistoryApplyFixture } from 'test/fork-migration/omni-history-apply.fixture';
 
-export const createOmniHumanCommandFixture = () => {
+export const createOmniHumanCommandFixture = (
+  options: {
+    useStandardForeignKeyActions?: boolean;
+    includeTargets?: boolean;
+  } = {},
+) => {
   const history = createOmniHistoryApplyFixture({
     includeWorkspaceMember: true,
+    useStandardForeignKeyActions: options.useStandardForeignKeyActions,
+    includeTargets: options.includeTargets,
   });
   const initialize = async () => {
     await history.initialize();
