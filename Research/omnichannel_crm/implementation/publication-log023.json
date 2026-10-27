@@ -1,0 +1,77 @@
+{
+  "documentationCommit": "05af4f4e9ec87c09814871c692d9d5fa52c7e943",
+  "codeCommit": "128a3526daa143bdd7b69d5bdff4fbc3f5c27c97",
+  "scope": "Documentation and Linear reconciliation; no runtime changes or new test execution",
+  "issues": [
+    {
+      "id": "ROB-764",
+      "state": "In Progress",
+      "descriptionReadBack": true,
+      "updated": false
+    },
+    {
+      "id": "ROB-772",
+      "state": "Done",
+      "descriptionReadBack": true,
+      "updated": true
+    },
+    {
+      "id": "ROB-771",
+      "state": "Backlog",
+      "descriptionReadBack": true,
+      "updated": true
+    },
+    {
+      "id": "ROB-770",
+      "state": "Backlog",
+      "descriptionReadBack": true,
+      "updated": true
+    },
+    {
+      "id": "ROB-769",
+      "state": "Backlog",
+      "descriptionReadBack": true,
+      "updated": true
+    },
+    {
+      "id": "ROB-768",
+      "state": "Backlog",
+      "descriptionReadBack": true,
+      "updated": true
+    },
+    {
+      "id": "ROB-767",
+      "state": "Backlog",
+      "descriptionReadBack": true,
+      "updated": true
+    },
+    {
+      "id": "ROB-766",
+      "state": "Backlog",
+      "descriptionReadBack": true,
+      "updated": true
+    },
+    {
+      "id": "ROB-765",
+      "state": "Backlog",
+      "descriptionReadBack": true,
+      "updated": true
+    },
+    {
+      "id": "ROB-763",
+      "state": "Done",
+      "descriptionReadBack": true,
+      "updated": true
+    },
+    {
+      "id": "ROB-762",
+      "state": "Done",
+      "descriptionReadBack": true,
+      "updated": true
+    }
+  ],
+  "commentId": "a3d32f51-58b1-4750-9aa1-a6a75429583b",
+  "commentReadBack": true,
+  "connector": "Linear",
+  "sharedNotes": "get_agent_context unavailable: tool not found"
+}
