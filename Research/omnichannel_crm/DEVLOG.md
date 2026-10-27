@@ -1712,3 +1712,5 @@ Last full fork LOG0561881/71; no new full server typecheck/Claude pass or ROB764
 Next: folder destructive batch and finalizer sharing actual native scope; then sync
 folder discovery and provider predicate. Demo/SaleBot unchanged, GitHub Actions unused.
 Applied ai-dev-workflow, behavioral-guardrails, server-schrodinger and scoped review.
+
+LOG-060 publication: code 693b3d96e3d6997b16d49e28b4fca4bf34992505 pushed; GitHub ref verified through API. Linear comment 45b18812-6a05-4f75-b28b-e4ee37624f35; description/comment and all11 project states independently read back. ROB-764 In Progress. See implementation/log060/publication.json.
