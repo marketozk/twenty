@@ -1,0 +1,15 @@
+{
+  "baseCommit": "64152276a34b203aef37165498a9eb6373763a5b",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/trash-cleanup/services/trash-cleanup.service.ts": "91df18db5fac991a82bac605d383da88991608317fe528004d38a6bb84e4750c",
+    "packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts": "738d2df8d2f43b631d03c564a1b9fc16428c40d27bfac2624bc1aec5d7380457",
+    "packages/twenty-server/src/modules/omnichannel/services/assert-omni-native-write-unowned.ts": "b388e8c2f36a077f37a951879c088d1e0e0d24fee96d41e64c210cef0fe4633c",
+    "packages/twenty-server/test/fork-migration/omni-native-cleanup.fixture.ts": "3f6e41ce677d65b4cf5d1507a9ea5d90701c96c0c7895e4010cba9a539df4319",
+    "packages/twenty-server/test/fork-migration/omni-native-message.fixture.ts": "314cbaea11839d5bd7148acb698987bee28bc76eeaba44804fa6e3a6b99f6642",
+    "packages/twenty-server/test/fork-migration/omni-native-mutation-guard.postgres-spec.ts": "22a527d5fd4d13cc343786e9111b63e5c211d49b527e9e4be156a97b04f299f8",
+    "packages/twenty-server/src/modules/omnichannel/services/find-omni-protected-parent-ids.ts": "ac927696ee35ebf815dfd21b2b40e08a0137517f5b13cbd87dc95148b4ffb763",
+    "packages/twenty-server/test/fork-migration/omni-parent-lifecycle.postgres-spec.ts": "d7ed1d5051d86e335cb680c0e80032142ee3f3df268cd17870ede3242b453e7c"
+  }
+}

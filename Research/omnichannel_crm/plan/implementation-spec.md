@@ -332,6 +332,17 @@ header. Bypass permissions и skip events не обходят guard. Под
 SET NULL/CASCADE, raw SQL и metadata lifecycle не становятся защищёнными только
 из-за проверки дочерних kernels; для них остаётся отдельный T22 inventory.
 
+Ранний hard-delete guard родителя проверяет retained ExternalIdentity.personId и
+ConversationTarget по точной тройке workspace/objectMetadataId/recordId, включая
+inactive target без projection. Для Person/Company/Opportunity дополнительно
+проверяются native participant/target references; для MessageCampaign — ссылки
+Message/Participant. Вне доменного lifecycle запрещено каскадно менять owned
+историю; native capability сама по себе не разрешает destroy родителя. Штатное
+WorkspaceMember SET NULL сохраняется, если нет отдельного retained core target.
+Soft-delete/restore CRM-родителя не заменяет hard destroy и не запускает FK cascade.
+Будущие writers retained identity/target references обязаны держать exclusive
+ownership fence перед изменением связи, поскольку core UUID не имеет FK на parent.
+
 `BlocklistItemDeleteMessagesJob`, `MessagingMessageCleanerService`, jobs/listeners удаления channel/connectedAccount, reset-channel/remove-orphans и delete-folder/group-email services не удаляют omni canonical records. Политика владения читается из core binding/tombstone, а не только существующей строки удаляемого канала. Обычное отключение/удаление аккаунта с omni history отклоняется или преобразуется в domain disable до разрушительного lifecycle; cleanup jobs повторно проверяют persisted marker. Controlled purge — отдельная операция с permission, manifest Message/links/files/revisions, IncomingReceipt.validatedEnvelope, DomainEvent/dispatch payload snapshots, OutgoingCommand payload/reply/files, protected AI/workflow artifacts и connector/userbot captured_events/command bodies, audit и retention; по умолчанию запрещена. Re-enable на том же provider account сохраняет bindingId/history, меняет session/generation; другой реальный account не подменяет старую binding.
 
 Tests T21: менеджер с Person/connectedAccount, но без conversation grant, вызывает timeline/search/fallback/legacy endpoints — нет body/subject/participants/count. T22: blocklist/channel/account removal/reset/orphan cleanup/generic delete — история/links/files сохраняются либо явный отказ; обычный email fixture сохраняет старую cleanup семантику. ROB-764/766 не готовы без этих тестов.
@@ -619,6 +630,14 @@ T19 contention gate начинается уже в ROB-766 до массовог
 G12/§15.4: restore стартует в maintenance, с внешним fence UI/API/SSE/worker доступа, не зависящим от восстановленной БД. До открытия — инвалидировать все восстановленные пользовательские/refresh sessions и API keys, заменить именно signing material авторизации (не ключи шифрования транспортных credentials), сохранить только отдельно проверенный admin recovery ingress. Сверить membership/roles/grants и последние revoke по защищённому внешнему access-change журналу/актуальному административному реестру вне restore set. При отсутствии свидетельства default deny и явное повторное назначение доступа; не считать восстановленные grants доказательством. Подключения/транспорт остаются fenced по §15.4. T18/T29: уволенный после snapshot principal и старый API key не читают данные ни до reconciliation, ни после снятия fence без нового grant. Это runbook будущего restore, не текущая ротация секретов.
 
 TrashCleanup.deleteSoftDeletedRecords включён в lifecycle/writer/audit inventory: нельзя generic bypass hard-delete omni Message/Thread/Participant/owned associations. Destroy Person/Company с omni references проходит domain lifecycle adapter: до SQL delete unbind ExternalIdentity и безопасно очистить links без удаления истории/author snapshots, audit destroy и mutation в одном executor. DB SET NULL не заменяет этот adapter. Ordinary cleanup сохраняет свой путь; T22 включает mixed email/omni, dangling identity, destroy rollback и 0 raw omni events.
+
+До готовности такого adapter hard destroy связанных родителей отклоняется.
+TrashCleanup пропускает protected native/parent records теми же ownership helpers,
+двигает keyset по (deletedAt,id) включая полностью protected страницы и считает
+фактически удалённые строки. Timestamp cursor сохраняет точность PostgreSQL;
+удаление повторно проверяет retention predicate после row lock, чтобы не удалить
+параллельно восстановленную запись. Каждая страница — отдельная короткая транзакция
+под shared ownership fence; пропуск не считается успешным destroy или audit.
 
 ### 15.22 Закрытие диалога и автоответы
 

@@ -34,6 +34,7 @@ const TABLE_NAMES = [
   'messageChannelMessageAssociation',
   'messageParticipant',
   'person',
+  'messageThreadTarget',
 ] as const;
 type TableName =
   | (typeof TABLE_NAMES)[number]
@@ -45,6 +46,7 @@ type TableName =
   | 'calendarEventParticipant'
   | 'calendarEventTarget'
   | 'blocklist'
+  | 'messageCampaign'
   | 'messageChannelMessageAssociationMessageFolder';
 
 export const createOmniNativeMessageFixture = (

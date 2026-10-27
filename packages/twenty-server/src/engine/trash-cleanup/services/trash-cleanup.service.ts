@@ -1,13 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { isDefined } from 'twenty-shared/utils';
-import { In, LessThan } from 'typeorm';
+import { In } from 'typeorm';
 
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { TRASH_CLEANUP_BATCH_SIZE } from 'src/engine/trash-cleanup/constants/trash-cleanup-batch-size.constant';
 import { TRASH_CLEANUP_MAX_RECORDS_PER_WORKSPACE } from 'src/engine/trash-cleanup/constants/trash-cleanup-max-records-per-workspace.constant';
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
+import { findOmniProtectedParentIds } from 'src/modules/omnichannel/services/find-omni-protected-parent-ids';
+import { findOmniNativeWriteOwnedRecords } from 'src/modules/omnichannel/services/assert-omni-native-write-unowned';
 
 export type TrashCleanupInput = {
   workspaceId: string;
@@ -37,13 +39,11 @@ export class TrashCleanupService {
         },
       );
 
-    const objectNames = Object.values(
+    const objects = Object.values(
       flatObjectMetadataMaps.byUniversalIdentifier ?? {},
-    )
-      .map((metadata) => metadata?.nameSingular)
-      .filter(isDefined);
+    ).filter(isDefined);
 
-    if (objectNames.length === 0) {
+    if (objects.length === 0) {
       this.logger.log(`No objects found in workspace ${workspaceId}`);
 
       return 0;
@@ -52,7 +52,8 @@ export class TrashCleanupService {
     const cutoffDate = this.calculateCutoffDate(trashRetentionDays);
     let deletedCount = 0;
 
-    for (const objectName of objectNames) {
+    for (const object of objects) {
+      const objectName = object.nameSingular;
       if (deletedCount >= this.maxRecordsPerWorkspace) {
         this.logger.log(
           `Reached deletion limit (${this.maxRecordsPerWorkspace}) for workspace ${workspaceId}`,
@@ -64,6 +65,7 @@ export class TrashCleanupService {
       const deletedForObject = await this.deleteSoftDeletedRecords({
         workspaceId,
         objectName,
+        objectMetadataId: object.id,
         cutoffDate,
         remainingQuota,
       });
@@ -87,11 +89,13 @@ export class TrashCleanupService {
   private async deleteSoftDeletedRecords({
     workspaceId,
     objectName,
+    objectMetadataId,
     cutoffDate,
     remainingQuota,
   }: {
     workspaceId: string;
     objectName: string;
+    objectMetadataId: string;
     cutoffDate: Date;
     remainingQuota: number;
   }): Promise<number> {
@@ -102,34 +106,87 @@ export class TrashCleanupService {
     const authContext = buildSystemAuthContext(workspaceId);
 
     return this.workspaceOrmManager.executeInWorkspaceContext(async () => {
-      const repository = this.workspaceOrmManager.getRepository(objectName, {
-        shouldBypassPermissionChecks: true,
-      });
-
       let deleted = 0;
+      let cursor: { deletedAt: string; id: string } | undefined;
+      if (!objectMetadataId)
+        throw new Error('OMNI_MISSING_TRASH_OBJECT_METADATA');
 
       while (deleted < remainingQuota) {
         const take = Math.min(this.batchSize, remainingQuota - deleted);
-
-        const recordsToDelete = await repository.find({
-          withDeleted: true,
-          select: ['id'],
-          where: {
-            deletedAt: LessThan(cutoffDate),
+        const page = await this.workspaceOrmManager.runInWorkspaceTransaction(
+          async (scope) => {
+            if (scope.workspaceId !== workspaceId)
+              throw new Error('OMNI_INVALID_TRASH_WORKSPACE');
+            const repository = scope.getRepository(objectName, {
+              shouldBypassPermissionChecks: true,
+            });
+            const builder = repository
+              .createQueryBuilder('trash')
+              .withDeleted()
+              .addSelect('"trash"."deletedAt"::text', 'omniDeletionCursor')
+              .where('"trash"."deletedAt" < :cutoffDate', { cutoffDate })
+              .orderBy('"trash"."deletedAt"', 'ASC')
+              .addOrderBy('"trash"."id"', 'ASC')
+              .take(take);
+            if (cursor)
+              builder.andWhere(
+                '("trash"."deletedAt", "trash"."id") > (:cursorDate::timestamptz, :cursorId::uuid)',
+                { cursorDate: cursor.deletedAt, cursorId: cursor.id },
+              );
+            // Keep PostgreSQL microseconds; a JS Date cursor can repeat a retained page.
+            const { entities: records, raw } = await builder.getRawAndEntities<
+              { id: string } & Record<string, unknown>
+            >();
+            const last = records.at(-1);
+            const exactTimestamp = raw.at(-1)?.omniDeletionCursor;
+            if (last && typeof exactTimestamp !== 'string')
+              throw new Error('OMNI_INVALID_TRASH_CURSOR');
+            const protectedIds = await findOmniProtectedParentIds(
+              scope,
+              workspaceId,
+              objectMetadataId,
+              objectName,
+              records.map((record) => record.id),
+            );
+            for (const record of await findOmniNativeWriteOwnedRecords(
+              scope,
+              workspaceId,
+              objectName,
+              records,
+            ))
+              protectedIds.add(String(record.id));
+            const ids = records
+              .filter((record) => !protectedIds.has(record.id))
+              .map((record) => record.id);
+            // Recheck retention in the delete predicate: a concurrent restore must survive.
+            const result = ids.length
+              ? await repository.runMutation({
+                  selectQueryBuilder: repository
+                    .createQueryBuilder('trash')
+                    .withDeleted()
+                    .where({ id: In(ids) })
+                    .andWhere('"trash"."deletedAt" < :cutoffDate', {
+                      cutoffDate,
+                    }),
+                  rowLevelPermissionsApplied: false,
+                  kind: 'delete',
+                  columnsToReturn: ['id'],
+                })
+              : [];
+            return {
+              last: last
+                ? { id: last.id, deletedAt: String(exactTimestamp) }
+                : undefined,
+              count: records.length,
+              deleted: result.length,
+            };
           },
-          order: { deletedAt: 'ASC' },
-          take,
-        });
-
-        if (recordsToDelete.length === 0) {
-          break;
-        }
-
-        await repository.delete({
-          id: In(recordsToDelete.map((record) => record.id)),
-        });
-
-        deleted += recordsToDelete.length;
+          { commitOutcome: 'strict' },
+        );
+        if (!page.last) break;
+        cursor = { deletedAt: page.last.deletedAt, id: page.last.id };
+        deleted += page.deleted;
+        if (page.count < take) break;
       }
 
       return deleted;

@@ -1307,4 +1307,38 @@ object identity. Отдельная baseline ошибка TypeScript в преж
 behavioral-guardrails, server-schrodinger. Следующий шаг — parent hard-delete
 guard, core retained references и trash cleanup без starvation; own ACL/audit
 расширение не объявляется завершённым по этому guard.
-`nПубликация LOG-049: код 0aa5e4312253336aa3668d4b5372c3400e289858, remote проверен GitHub API. Описание ROB-764 и комментарий ddec6696-e23c-49fb-b215-f3eee872a910 прочитаны обратно; все 11 статусов сохранены. Далее parent lifecycle guard.
+
+Публикация LOG-049: код 0aa5e4312253336aa3668d4b5372c3400e289858, remote проверен GitHub API. Описание ROB-764 и комментарий ddec6696-e23c-49fb-b215-f3eee872a910 прочитаны обратно; все 11 статусов сохранены. Далее parent lifecycle guard.
+
+## LOG-050 — 27.10.2026: защита родителей и очистка корзины
+
+LOG-050 / ROB-764 In Progress: generic hard-delete защищает retained core targets,
+ExternalIdentity и native references Person/Company/Opportunity/MessageCampaign.
+Проверка выполняется под ownership fence и parent row locks, независимо от bypass,
+skipEvents и native capability. Обычные email FK и WorkspaceMember SET NULL сохранены.
+Корзина пропускает protected records, двигает точный PostgreSQL (deletedAt,id) cursor
+и повторно проверяет retention после lock; concurrent restore не удаляется.
+Полный набор: 1604 Jest /65 suites +26 guards =
+1630 PASS; 26 новых PostgreSQL случаев. Typecheck 211 roots:
+146 baseline/current,0 новых/0 changed-code. Все7 migrations неизменны.
+[Доказательства и границы](implementation/log050/README.md). Scoped independent review: замечание о
+микросекундах исправлено и проверено. Полный Claude pass не повторялся.
+Далее — запрет workspace deletion до первого side effect и гонки metadata/first bootstrap.
+ROB-764 не закрыт; разрешённый domain destroy, публичный API, ACL и UI ещё впереди.
+Демо прежнее, GitHub Actions не используется.
+
+Первый targeted прогон дал 211 PASS и одну ошибку подготовки WorkspaceMember:
+не задан обязательный userId. Typecheck выявил sync callback fixture.withContext.
+Оба test fixture исправлены. Independent review нашёл потерю микросекунд pg Date
+в trash cursor; теперь берём deletedAt::text из той же выборки. Полная страница1000
+protected records с ...000123Z, следующий ordinary record, одинаковые даты и
+concurrent restore проверены. Native ownership finder общий для assert и partition;
+нет отдельной ослабленной копии правил для очистки.
+Dependency guard отклонил новый import getWorkspaceContext в TrashCleanup;
+metadataId теперь берётся из уже загруженного flat metadata, baseline не меняли.
+Финальный full suite и focused typecheck на неизменном source успешны.
+Применены ai-dev-workflow, behavioral-guardrails, server-schrodinger. Review
+следующего T22 inventory подтвердил workspace DROP SCHEMA перед поздним core FK
+RESTRICT и гонку metadata check/write с первым bootstrap; эти пути ещё не закрыты.
+Нельзя считать ни ROB-764, ни полный аудит/ACL готовыми. Исправлена неточность
+матрицы приёмки: identity/Person relation уже есть, explicit target projector ещё нет.

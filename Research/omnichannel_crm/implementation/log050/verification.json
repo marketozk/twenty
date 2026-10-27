@@ -1,0 +1,23 @@
+{
+  "fullForkJestTests": 1604,
+  "fullForkJestSuites": 65,
+  "allFullForkTestsPassed": true,
+  "newPostgresCases": 26,
+  "guardTests": 20,
+  "checksumTests": 6,
+  "totalTests": 1630,
+  "typecheckRootFiles": 211,
+  "baselineTypeDiagnostics": 146,
+  "currentTypeDiagnostics": 146,
+  "newTypeDiagnostics": 0,
+  "changedCodeTypeDiagnostics": 0,
+  "fullServerTypecheck": false,
+  "allSevenMigrationSourcesUnchanged": true,
+  "independentScopedReview": "Initial PostgreSQL microsecond cursor defect fixed; follow-up found no blockers within this slice; full Claude review not rerun",
+  "fullROB764Acceptance": false,
+  "parentHardDeleteEarlyDenialImplemented": true,
+  "domainDestroyAdapterImplemented": false,
+  "workspacePurgeGuardImplemented": false,
+  "liveDemoChanged": false,
+  "githubActionsUsed": false
+}

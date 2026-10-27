@@ -89,6 +89,7 @@ import {
   assertOmniNativeWriteUnowned,
   OMNI_NATIVE_REPOSITORIES,
 } from 'src/modules/omnichannel/services/assert-omni-native-write-unowned';
+import { findOmniProtectedParentIds } from 'src/modules/omnichannel/services/find-omni-protected-parent-ids';
 import {
   buildInsertStatement,
   type InsertRowValue,
@@ -1707,7 +1708,7 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     if (this.isOmniNativeRepository)
       args = { ...args, data: args.data ? { ...args.data } : undefined };
     if (args.kind !== 'update') {
-      return this.isOmniNativeRepository
+      return this.isOmniNativeRepository || args.kind === 'delete'
         ? this.runAtomically((repository) =>
             repository.performMutation({
               ...args,
@@ -1762,7 +1763,7 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       this.applyRowLevelPermissionPredicates(selectQueryBuilder, kind);
     }
 
-    if (this.requiresOmniOwnershipCheck) {
+    if (this.requiresOmniOwnershipCheck || kind === 'delete') {
       const candidates = await this.buildEventSnapshotQueryBuilder(
         selectQueryBuilder,
       ).getMany<ObjectRecord>({ noFormatting: true });
@@ -1770,10 +1771,27 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
         candidates.map((record) => String(record.id)),
       );
       const { id: _id, ...columns } = data ? this.formatWriteData(data) : {};
-      await this.assertNativeWriteUnowned([
-        ...locked,
-        ...locked.map((record) => ({ ...record, ...columns })),
-      ]);
+      if (this.requiresOmniOwnershipCheck)
+        await this.assertNativeWriteUnowned([
+          ...locked,
+          ...locked.map((record) => ({ ...record, ...columns })),
+        ]);
+      if (
+        kind === 'delete' &&
+        (
+          await findOmniProtectedParentIds(
+            {
+              executeRawQuery: (text, values = []) =>
+                this.options.executor.execute({ text, values }),
+            },
+            this.options.internalContext.workspaceId,
+            this.options.flatObjectMetadata.id,
+            this.options.tableShape.nameSingular,
+            locked.map((record) => record.id),
+          )
+        ).size
+      )
+        throw new Error('OMNI_PARENT_DELETE_REQUIRES_DOMAIN_COMMAND');
       // Preserve the original predicate AND the captured set. Row-access clauses
       // group the entire user OR expression; a plain andWhere would not do so.
       const parameter = `omniNativeIds_${randomUUID().replaceAll('-', '')}`;

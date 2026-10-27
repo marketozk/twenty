@@ -574,6 +574,63 @@ describe('generic native mutation boundary on real PostgreSQL', () => {
     await expect(apply).resolves.toMatchObject({ state: 'applied' });
   });
 
+  it.each(['history-first', 'delete-first'] as const)(
+    'serializes actual history apply and parent deletion: %s',
+    async (order) => {
+      const item = await fixture.capture(context);
+      const entered = barrier();
+      const release = barrier();
+      const apply = () =>
+        fixture.service.applyOmniHistoryReceipt(
+          context.principal,
+          item.proof,
+          async (scope, request) => {
+            await fixture.authorizeFor(context)(scope, request);
+            if (order === 'history-first') {
+              entered.release();
+              await release.promise;
+            }
+          },
+        );
+      const remove = () =>
+        fixture.dataSource.transaction(async (scope) => {
+          if (order === 'delete-first') {
+            entered.release();
+            await release.promise;
+          }
+          return scope
+            .getRepository('person', permissions)
+            .delete(context.personId);
+        });
+      const first = (order === 'history-first' ? apply() : remove()).then(
+        (result) => ({ result }),
+        (error: Error) => ({ error }),
+      );
+      await entered.promise;
+      const second = (order === 'history-first' ? remove() : apply()).then(
+        (result) => ({ result }),
+        (error: Error) => ({ error }),
+      );
+      try {
+        await waitForBlockedAdvisory();
+      } finally {
+        release.release();
+      }
+      const results = await Promise.all([first, second]);
+      const applied = results[order === 'history-first' ? 0 : 1];
+      const deleted = results[order === 'history-first' ? 1 : 0];
+      expect(applied).toMatchObject({ result: { state: 'applied' } });
+      expect(deleted).toMatchObject({
+        error: { message: 'OMNI_PARENT_DELETE_REQUIRES_DOMAIN_COMMAND' },
+      });
+      expect(
+        (await fixture.read('person')).some(
+          (row: { id: string }) => row.id === context.personId,
+        ),
+      ).toBe(true);
+    },
+  );
+
   it('uses the checked parent assignment when a caller mutates its input during ownership IO', async () => {
     const data = { messageThreadId: normal.messageThread, text: 'checked' };
     const client = await fixture.pool.connect();

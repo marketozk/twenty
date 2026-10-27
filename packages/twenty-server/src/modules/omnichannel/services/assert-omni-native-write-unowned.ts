@@ -19,13 +19,13 @@ export const OMNI_NATIVE_REPOSITORIES = new Set([
 // Call only while holding the ownership fence and row locks in this transaction.
 // Both before images and assigned after images must be checked. Soft deletion and
 // inactive bindings retain ownership; provider/header text is never authority.
-export const assertOmniNativeWriteUnowned = async (
+export const findOmniNativeWriteOwnedRecords = async (
   query: OmniNativeOwnershipQuery,
   workspaceId: string,
   name: string,
   records: Record<string, unknown>[],
-): Promise<void> => {
-  if (!OMNI_NATIVE_REPOSITORIES.has(name) || records.length === 0) return;
+): Promise<Record<string, unknown>[]> => {
+  if (!OMNI_NATIVE_REPOSITORIES.has(name) || records.length === 0) return [];
   if (!isUUID(workspaceId))
     throw new Error('OMNI_INVALID_NATIVE_OWNERSHIP_SCOPE');
   const schema = `workspace_${BigInt(`0x${workspaceId.replaceAll('-', '')}`).toString(36)}`;
@@ -43,6 +43,8 @@ export const assertOmniNativeWriteUnowned = async (
   let messageIds: string[] = [];
   let threadIds: string[] = [];
   let channelIds: string[] = [];
+  let ownedFolderIds = new Set<string>();
+  let ownedAssociationIds = new Set<string>();
   if (name === 'message') {
     messageIds = ids('id');
     threadIds = ids('messageThreadId');
@@ -53,43 +55,96 @@ export const assertOmniNativeWriteUnowned = async (
     messageIds = ids('messageId');
     channelIds = ids('messageChannelId');
   } else {
-    if (
-      (
-        await findOmniOwnedMessageFolderIds(
-          query,
-          workspaceId,
-          ids('messageFolderId'),
-        )
-      ).size
-    )
-      throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+    ownedFolderIds = await findOmniOwnedMessageFolderIds(
+      query,
+      workspaceId,
+      ids('messageFolderId'),
+    );
     const associationIds = ids('messageChannelMessageAssociationId');
     if (associationIds.length) {
       const associations = await query.executeRawQuery(
-        `SELECT "messageId", "messageChannelId" FROM "${schema}"."messageChannelMessageAssociation" WHERE id=ANY($1::uuid[])`,
+        `SELECT id, "messageId", "messageChannelId" FROM "${schema}"."messageChannelMessageAssociation" WHERE id=ANY($1::uuid[])`,
         [associationIds],
       );
-      await assertOmniNativeWriteUnowned(
+      if (
+        associations.some(
+          (row) =>
+            typeof row.id !== 'string' || !associationIds.includes(row.id),
+        )
+      )
+        throw new Error('OMNI_INVALID_NATIVE_OWNERSHIP_RESULT');
+      const ownedAssociations = await findOmniNativeWriteOwnedRecords(
         query,
         workspaceId,
         'messageChannelMessageAssociation',
         associations,
       );
+      ownedAssociationIds = new Set(
+        ownedAssociations.map((row) => String(row.id)),
+      );
     }
   }
+  const ownedMessages = await findOmniOwnedMessageIds(
+    query,
+    workspaceId,
+    messageIds,
+  );
+  const ownedThreads = await findOmniOwnedMessageThreadIds(
+    query,
+    workspaceId,
+    threadIds,
+  );
+  const ownedChannels = new Set(
+    channelIds.length
+      ? (
+          await query.executeRawQuery(
+            'SELECT "messageChannelId" FROM core."omniAccountBinding" WHERE "workspaceId"=$1 AND "messageChannelId"=ANY($2::uuid[])',
+            [workspaceId, channelIds],
+          )
+        ).map((row) => {
+          if (
+            typeof row.messageChannelId !== 'string' ||
+            !channelIds.includes(row.messageChannelId)
+          )
+            throw new Error('OMNI_INVALID_NATIVE_OWNERSHIP_RESULT');
+          return row.messageChannelId;
+        })
+      : [],
+  );
+  const value = (row: Record<string, unknown>, key: string) =>
+    String(row[key] ?? '').toLowerCase();
+  return records.filter((row) => {
+    if (name === 'message')
+      return (
+        ownedMessages.has(value(row, 'id')) ||
+        ownedThreads.has(value(row, 'messageThreadId'))
+      );
+    if (name === 'messageThread') return ownedThreads.has(value(row, 'id'));
+    if (name === 'messageThreadTarget')
+      return ownedThreads.has(value(row, 'messageThreadId'));
+    if (name === 'messageParticipant')
+      return ownedMessages.has(value(row, 'messageId'));
+    if (name === 'messageChannelMessageAssociation')
+      return (
+        ownedMessages.has(value(row, 'messageId')) ||
+        ownedChannels.has(value(row, 'messageChannelId'))
+      );
+    return (
+      ownedFolderIds.has(value(row, 'messageFolderId')) ||
+      ownedAssociationIds.has(value(row, 'messageChannelMessageAssociationId'))
+    );
+  });
+};
+
+export const assertOmniNativeWriteUnowned = async (
+  query: OmniNativeOwnershipQuery,
+  workspaceId: string,
+  name: string,
+  records: Record<string, unknown>[],
+): Promise<void> => {
   if (
-    (messageIds.length &&
-      (await findOmniOwnedMessageIds(query, workspaceId, messageIds)).size) ||
-    (threadIds.length &&
-      (await findOmniOwnedMessageThreadIds(query, workspaceId, threadIds))
-        .size) ||
-    (channelIds.length &&
-      (
-        await query.executeRawQuery(
-          'SELECT id FROM core."omniAccountBinding" WHERE "workspaceId"=$1 AND "messageChannelId"=ANY($2::uuid[]) LIMIT 1',
-          [workspaceId, channelIds],
-        )
-      ).length)
+    (await findOmniNativeWriteOwnedRecords(query, workspaceId, name, records))
+      .length
   )
     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
 };

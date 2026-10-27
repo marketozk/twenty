@@ -54,20 +54,19 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-049 / ROB-764 In Progress: общий native ORM запрещает CRUD/merge/batch
-для omni-owned Message, Thread, Participant, Association, FolderAssociation и Target.
-Проверяются сохранённые и новые родители; bypass/skipEvents не дают разрешения.
-Доменный writer получает capability только на выданный активный strict scope,
-тот же executor/workspace/repository и exclusive ownership fence. Все workspace
-transactions берут shared fence до row locks; bootstrap/history/sent — exclusive.
-Полный прогон: 1578 Jest /64 suites, 1567 PASS и 11 ошибок старого reconciliation
-fixture. После исправления только подготовки данных весь затронутый suite:
-18/18 PASS. Production source между прогонами неизменен, хеши сверены.
-74 новых PostgreSQL случая; 20 dependency +6 checksum tests PASS.
-Typecheck 208 roots: 146 baseline/current,0 новых/0 changed-code diagnostics.
-[Доказательства и границы](Research/omnichannel_crm/implementation/log049/README.md). Миграции не менялись.
-Далее — защита удаления CRM-родителей и проверка каскадных действий БД (T05/T22).
-ROB-764 не закрыт; публичный API, UI, собственный ACL и автоматизация ещё впереди.
+LOG-050 / ROB-764 In Progress: generic hard-delete защищает retained core targets,
+ExternalIdentity и native references Person/Company/Opportunity/MessageCampaign.
+Проверка выполняется под ownership fence и parent row locks, независимо от bypass,
+skipEvents и native capability. Обычные email FK и WorkspaceMember SET NULL сохранены.
+Корзина пропускает protected records, двигает точный PostgreSQL (deletedAt,id) cursor
+и повторно проверяет retention после lock; concurrent restore не удаляется.
+Полный набор: 1604 Jest /65 suites +26 guards =
+1630 PASS; 26 новых PostgreSQL случаев. Typecheck 211 roots:
+146 baseline/current,0 новых/0 changed-code. Все7 migrations неизменны.
+[Доказательства и границы](Research/omnichannel_crm/implementation/log050/README.md). Scoped independent review: замечание о
+микросекундах исправлено и проверено. Полный Claude pass не повторялся.
+Далее — запрет workspace deletion до первого side effect и гонки metadata/first bootstrap.
+ROB-764 не закрыт; разрешённый domain destroy, публичный API, ACL и UI ещё впереди.
 Демо прежнее, GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы минимальный аудит и атомарное создание

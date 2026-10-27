@@ -65,6 +65,7 @@ export const createOmniNativeCleanupFixture = () => {
       'company',
       'opportunity',
       'messageThreadTarget',
+      'messageCampaign',
       'blocklist',
       'messageChannelMessageAssociationMessageFolder',
     ],
