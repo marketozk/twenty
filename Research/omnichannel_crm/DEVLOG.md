@@ -1671,3 +1671,5 @@ fork остаётся LOG056 (1881/71). ROB764 acceptance ещё не выпол
 с captured parent/action и условным атомарным finalizer. Внешняя nested core transaction
 вокруг cleaner не используется. Демо/SaleBot не менялись; GitHub Actions не использован.
 Применены ai-dev-workflow, behavioral-guardrails, server-schrodinger и scoped review.
+
+LOG-059 publication: code 174ce7ca8528353185dc277d3875cc5da4018acd pushed; GitHub ref verified through API. Linear comment 52fbd366-cc19-4bd2-9692-4b70a75d60bd; description/comment and all11 project states independently read back. ROB-764 In Progress. See implementation/log059/publication.json.
