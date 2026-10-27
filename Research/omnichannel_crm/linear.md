@@ -26,11 +26,13 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 
 ## Сверка текущего состояния — 27.10.2026
 
-LOG-021 / ROB-764 In Progress: после принятия плана реализованы9 core entities,
-fork migrations и подключение migrator/gate к startup. Полный image build,
-fresh/populated upgrade/replay и настоящий restart проверены. Чаты и приём/отправка
-ещё не реализованы, live deployment этой порции не выполнялся. ROB-772 Done
-как планирование; R16 остаётся историческим, нового полного pass не заявлено.
+LOG-022 / ROB-764 In Progress: добавлены минимальный audit writer, две таблицы
+и атомарный bootstrap неактивного подключения с авторизацией и безопасным replay.
+113 выполненных тестов, focused typecheck и официальный image build прошли;
+проверены runtime privilege gate и полный native+fork migrator replay.
+Чаты и приём/отправка ещё не реализованы, live deployment не выполнялся.
+ROB-772 Done как планирование; R16 остаётся историческим, нового полного pass
+не заявлено. [Проверки LOG-022](implementation/log022/README.md).
 
 [Итог R16](plan/cross-review/review-result.md). ROB-762/763 Done; ROB-772 Done по решению владельца начать реализацию; ROB-764 In Progress; ROB-765–771 Backlog. Зависимость ROB-772 → ROB-764 сохраняется как выполненная предпосылка. [Ход реализации](implementation/rob764-progress.md) · [Проверки LOG-021](implementation/log021/README.md).
 

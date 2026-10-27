@@ -2,6 +2,7 @@ import { DataSource } from 'typeorm';
 
 import { ForkMigrationRunner } from 'src/database/commands/fork-upgrade/fork-migration-runner';
 import { FORK_MIGRATIONS } from 'src/database/commands/fork-upgrade/fork-migrations';
+import { verifyCrmAuditPrivileges } from 'src/engine/core-modules/crm-audit/verify-crm-audit-privileges';
 import { FORK_SCHEMA_CHECKS } from 'src/engine/core-modules/omnichannel-storage/migrations/fork-schema-checks';
 import { ForkSchemaVerifier } from 'src/engine/core-modules/omnichannel-storage/migrations/fork-schema-verifier';
 
@@ -35,6 +36,15 @@ export const runForkUpgrade = async (operation: string): Promise<void> => {
     }
 
     await new ForkSchemaVerifier(dataSource, FORK_SCHEMA_CHECKS).verifyReady();
+
+    if (operation === 'verify') {
+      await dataSource.transaction(async (manager) => {
+        const queryRunner = manager.queryRunner!;
+
+        await queryRunner.query('SET TRANSACTION READ ONLY');
+        await verifyCrmAuditPrivileges(queryRunner);
+      });
+    }
   } finally {
     if (dataSource.isInitialized) {
       await dataSource.destroy();

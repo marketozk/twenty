@@ -1,0 +1,25 @@
+{
+  "builtAssets": true,
+  "nativeHistory": {
+    "before": [
+      {
+        "count": 256,
+        "hash": "75b54e00a7cda579c9e96c54379c87f0"
+      }
+    ],
+    "after": [
+      {
+        "count": 256,
+        "hash": "75b54e00a7cda579c9e96c54379c87f0"
+      }
+    ]
+  },
+  "oldForkPrefixUpgraded": [
+    "omni-1793091163781-audit-bootstrap"
+  ],
+  "replay": [],
+  "runtimeOwnerRefused": true,
+  "runtimeNonOwnerAccepted": true,
+  "columnWriteGrantRefusedBeforeRuntime": true,
+  "fullServerTypecheck": false
+}

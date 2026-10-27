@@ -1,0 +1,341 @@
+import { type QueryRunner } from 'typeorm';
+
+import {
+  appendCrmAuditEntry,
+  type CrmAuditEntryPayload,
+} from 'src/engine/core-modules/crm-audit/append-crm-audit-entry';
+
+import {
+  auditPayloadHash,
+  canonicalAuditJson,
+} from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
+import {
+  type CrmAuditMutation,
+  type CrmAuditOperation,
+  type CrmAuditPrincipal,
+  type CrmAuditResourceKind,
+  type CrmAuditSecurityDescriptor,
+} from 'src/engine/core-modules/crm-audit/crm-audit.types';
+import { verifyCrmAuditPrivileges } from 'src/engine/core-modules/crm-audit/verify-crm-audit-privileges';
+
+const CATALOG: Record<
+  CrmAuditResourceKind,
+  { values: string[]; redacted: string[] }
+> = {
+  omniAccountBinding: {
+    values: [
+      'platform',
+      'status',
+      'routeGeneration',
+      'revision',
+      'defaultConversationMode',
+      'autoCreatePersonEnabled',
+      'defaultQueueId',
+      'capabilitiesVersion',
+      'connectedAccountId',
+      'messageChannelId',
+    ],
+    redacted: ['capabilities', 'accountId', 'connectorInstanceId'],
+  },
+  omniAutomationPolicy: {
+    values: ['bindingId', 'currentVersion', 'revision'],
+    redacted: [],
+  },
+  omniAutomationPolicyVersion: {
+    values: ['policyId', 'version', 'settingsHash'],
+    redacted: ['settings', 'publishedBy', 'publishedAt'],
+  },
+  omniWorkspacePolicyState: {
+    values: ['epoch'],
+    redacted: ['restoreIncarnation'],
+  },
+  omniQueue: {
+    values: ['bindingId', 'active', 'revision'],
+    redacted: ['name'],
+  },
+};
+
+type CapturedValue = { hash: string; value?: unknown };
+type Snapshot = Record<string, CapturedValue>;
+type CapturedMutation = Omit<CrmAuditMutation, 'before' | 'after'> & {
+  before: Snapshot;
+  after: Snapshot;
+};
+
+const requireIdentifier = (value: string): string => {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 256) {
+    throw new Error('Audit identifier is invalid');
+  }
+
+  return value;
+};
+
+const requireUuid = (value: string): string => {
+  if (
+    typeof value !== 'string' ||
+    !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value)
+  ) {
+    throw new Error('Audit UUID is invalid');
+  }
+
+  return value.toLowerCase();
+};
+
+const principal = (value: CrmAuditPrincipal): CrmAuditPrincipal => {
+  if (
+    !['workspaceMember', 'system', 'agent', 'workflow', 'application'].includes(
+      value.kind,
+    )
+  ) {
+    throw new Error('Audit principal kind is invalid');
+  }
+
+  return { kind: value.kind, id: requireIdentifier(value.id) };
+};
+
+const descriptor = (
+  mutation: Pick<
+    CrmAuditMutation,
+    'resourceKind' | 'resourceId' | 'securityDescriptor'
+  >,
+): CrmAuditSecurityDescriptor => {
+  const source = mutation.securityDescriptor;
+
+  if (
+    source.resourceKind !== mutation.resourceKind ||
+    requireUuid(source.resourceId) !== requireUuid(mutation.resourceId)
+  ) {
+    throw new Error('Audit security descriptor does not match its resource');
+  }
+
+  return {
+    resourceKind: mutation.resourceKind,
+    resourceId: requireUuid(mutation.resourceId),
+    ...(source.bindingId === undefined
+      ? {}
+      : { bindingId: requireUuid(source.bindingId) }),
+    ...(source.conversationId === undefined
+      ? {}
+      : { conversationId: requireUuid(source.conversationId) }),
+    ...(source.queueId === undefined
+      ? {}
+      : { queueId: requireUuid(source.queueId) }),
+  };
+};
+
+const capture = (
+  resourceKind: CrmAuditResourceKind,
+  input: Record<string, unknown> | null,
+): Snapshot => {
+  const catalog = CATALOG[resourceKind];
+
+  if (!Object.hasOwn(CATALOG, resourceKind)) {
+    throw new Error('Audit resource is not in the catalog');
+  }
+
+  const output: Snapshot = {};
+
+  for (const field of [...catalog.values, ...catalog.redacted]) {
+    if (input === null || !Object.hasOwn(input, field)) continue;
+    const value = input[field];
+
+    if (catalog.values.includes(field)) {
+      if (
+        value !== null &&
+        !['string', 'boolean', 'number'].includes(typeof value)
+      ) {
+        throw new Error('Audit catalog value must be a JSON scalar');
+      }
+      output[field] = { hash: auditPayloadHash(value), value };
+    } else {
+      output[field] = { hash: auditPayloadHash(value) };
+    }
+  }
+
+  return output;
+};
+
+const redactedDiff = (mutation: CapturedMutation) => {
+  const changedFields = [
+    ...new Set([
+      ...Object.keys(mutation.before),
+      ...Object.keys(mutation.after),
+    ]),
+  ]
+    .filter(
+      (field) => mutation.before[field]?.hash !== mutation.after[field]?.hash,
+    )
+    .sort();
+  const values: Record<string, { before: unknown; after: unknown }> = {};
+
+  for (const field of changedFields) {
+    if (CATALOG[mutation.resourceKind].values.includes(field)) {
+      values[field] = {
+        before: mutation.before[field]?.value ?? null,
+        after: mutation.after[field]?.value ?? null,
+      };
+    }
+  }
+
+  return { changedFields, values };
+};
+
+export class CrmAuditTransactionContext {
+  private readonly mutations = new Map<string, CapturedMutation>();
+  private readonly operation: CrmAuditOperation;
+  private flushed = false;
+
+  constructor(
+    private readonly queryRunner: QueryRunner,
+    operation: CrmAuditOperation,
+  ) {
+    this.operation = {
+      workspaceId: requireUuid(operation.workspaceId),
+      operationId: requireUuid(operation.operationId),
+      actor: principal(operation.actor),
+      ...(operation.initiator
+        ? { initiator: principal(operation.initiator) }
+        : {}),
+      ...(operation.correlationId
+        ? { correlationId: requireIdentifier(operation.correlationId) }
+        : {}),
+      ...(operation.causationId
+        ? { causationId: requireIdentifier(operation.causationId) }
+        : {}),
+    };
+    this.assertOpen();
+  }
+
+  private assertOpen(): void {
+    if (
+      this.flushed ||
+      !this.queryRunner.isTransactionActive ||
+      this.queryRunner.isReleased
+    ) {
+      throw new Error('Audit context must be open inside its transaction');
+    }
+  }
+
+  record(mutation: CrmAuditMutation): void {
+    this.assertOpen();
+    if (!['create', 'update', 'delete'].includes(mutation.action)) {
+      throw new Error('Audit action must be normalized create/update/delete');
+    }
+    const securityDescriptor = descriptor(mutation);
+    const before = capture(mutation.resourceKind, mutation.before);
+    const after = capture(mutation.resourceKind, mutation.after);
+    const key = canonicalAuditJson([
+      mutation.resourceKind,
+      securityDescriptor.resourceId,
+      mutation.action,
+    ]);
+    const previous = this.mutations.get(key);
+
+    if (
+      previous &&
+      canonicalAuditJson(previous.securityDescriptor) !==
+        canonicalAuditJson(securityDescriptor)
+    ) {
+      throw new Error('Audit resource scope changed inside one operation');
+    }
+
+    this.mutations.set(key, {
+      ...mutation,
+      resourceId: securityDescriptor.resourceId,
+      before: previous?.before ?? before,
+      after,
+      securityDescriptor,
+    });
+  }
+
+  async flush(): Promise<void> {
+    this.assertOpen();
+    this.flushed = true;
+    await verifyCrmAuditPrivileges(this.queryRunner);
+
+    for (const mutation of this.mutations.values()) {
+      const eventKey = auditPayloadHash([
+        this.operation.workspaceId,
+        this.operation.operationId,
+        mutation.resourceKind,
+        mutation.resourceId,
+        mutation.action,
+      ]);
+      const payload: CrmAuditEntryPayload = {
+        schemaVersion: 1,
+        ...this.operation,
+        initiator: this.operation.initiator ?? null,
+        correlationId: this.operation.correlationId ?? null,
+        causationId: this.operation.causationId ?? null,
+        eventKey,
+        attemptId: null,
+        action: mutation.action,
+        resourceKind: mutation.resourceKind,
+        resourceId: mutation.resourceId,
+        outcome: 'success',
+        reasonCode: null,
+        redactedDiff: redactedDiff(mutation),
+        securityDescriptor: mutation.securityDescriptor,
+      };
+      await appendCrmAuditEntry(this.queryRunner, payload);
+    }
+  }
+}
+
+export const appendCrmAuditAttempt = async (
+  queryRunner: QueryRunner,
+  operation: CrmAuditOperation,
+  attempt: Pick<
+    CrmAuditMutation,
+    'resourceKind' | 'resourceId' | 'action' | 'securityDescriptor'
+  > & {
+    attemptId: string;
+    outcome: 'denied' | 'failed';
+    reasonCode: string;
+  },
+): Promise<void> => {
+  await verifyCrmAuditPrivileges(queryRunner);
+  capture(attempt.resourceKind, null);
+  if (
+    !['create', 'update', 'delete'].includes(attempt.action) ||
+    !['denied', 'failed'].includes(attempt.outcome) ||
+    !/^[a-z0-9_.:-]{1,128}$/.test(attempt.reasonCode)
+  ) {
+    throw new Error('Audit attempt metadata is invalid');
+  }
+  const workspaceId = requireUuid(operation.workspaceId);
+  const operationId = requireUuid(operation.operationId);
+  const attemptId = requireUuid(attempt.attemptId);
+  const securityDescriptor = descriptor(attempt);
+
+  await appendCrmAuditEntry(queryRunner, {
+    schemaVersion: 1,
+    workspaceId,
+    operationId,
+    actor: principal(operation.actor),
+    initiator: operation.initiator ? principal(operation.initiator) : null,
+    correlationId: operation.correlationId
+      ? requireIdentifier(operation.correlationId)
+      : null,
+    causationId: operation.causationId
+      ? requireIdentifier(operation.causationId)
+      : null,
+    eventKey: auditPayloadHash([
+      workspaceId,
+      operationId,
+      attempt.resourceKind,
+      securityDescriptor.resourceId,
+      attempt.action,
+      attemptId,
+      attempt.outcome,
+    ]),
+    attemptId,
+    action: attempt.action,
+    resourceKind: attempt.resourceKind,
+    resourceId: securityDescriptor.resourceId,
+    outcome: attempt.outcome,
+    reasonCode: attempt.reasonCode,
+    redactedDiff: { changedFields: [], values: {} },
+    securityDescriptor,
+  });
+};

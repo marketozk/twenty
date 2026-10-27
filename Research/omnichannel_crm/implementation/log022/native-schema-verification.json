@@ -1,0 +1,17 @@
+{
+  "before": [
+    {
+      "count": 256,
+      "hash": "75b54e00a7cda579c9e96c54379c87f0"
+    }
+  ],
+  "after": [
+    {
+      "count": 256,
+      "hash": "75b54e00a7cda579c9e96c54379c87f0"
+    }
+  ],
+  "oldNineTablesUnchanged": true,
+  "emptyDownUp": true,
+  "tables": 2
+}

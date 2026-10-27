@@ -408,3 +408,61 @@ origin/codex/omnichannel-requirements. [Отчёт ROB-764](https://linear.app/r
 и [dependency guard](https://github.com/marketozk/twenty/actions/runs/40474962526).
 Аннотации подтверждены; облачный CI pass не заявлен, выполненные85 тестов прошли.
 Настройки оплаты не менялись.
+
+## LOG-022 — 27.10.2026: минимальный audit writer и bootstrap ROB-764
+
+Пользователь: «хорошо делай». Реализована зависимость дальнейшего ingress:
+CrmAuditEntry в отдельной crm_audit schema, PolicyMutationReceipt, transaction
+audit context и внутренний writer inactive AccountBinding/disabled policy v0.
+Остальные MessageLink/IncomingReceipt/OutgoingCommand/DomainEvent и inbox/outbox
+остаются следующей порцией; публичного API и реальных сообщений пока нет.
+
+Один primary QueryRunner/policy UPDATE fence; текущий authorizer до исполнения
+и replay, native tenant/account/channel ownership, запрет Application/Provider
+parent. Binding/policy/head/epoch/success audit/receipt фиксируются вместе.
+Replay возвращает прежний result/operationId; hash conflict и expired result
+отказывают. Unknown COMMIT не записывает ложный failed; подтверждённый rollback
+порождает отдельный attempt, ошибка отрицательного аудита явно сообщается.
+Неподтверждённый rollback и ошибки освобождения соединения не маскируются.
+
+Аудит агрегирует first-before/last-after, сохраняет только разрешённые поля;
+UUID canonicalization и immutable key/hash конфликт обязательны. Runtime verify
+до Nest и writer проверяют append-only DB privileges, включая column grants,
+owner membership и SET ROLE. Мигратор использует owner и не меняет grants.
+Каталог пока пять служебных сущностей; покрытие всей CRM остаётся ROB-765.
+
+Штатный generator дал6 SQL-вызовов up/down, перенесённых без изменения в fork
+registry; добавлен explicit CREATE SCHEMA crm_audit. Старый migration checksum
+не изменён. @Generated('uuid') уточнил существующую restoreIncarnation metadata
+по реальной БД и устранил ложный baseline diff без изменения прежней DDL.
+На actual native core empty down/up, прежние9 tables и все256 history rows
+сохранены. [Evidence](implementation/log022/README.md).
+
+Проверено:81 PostgreSQL,20 dependency,5 source checksum,7 Linux shell tests PASS;
+focused strict TypeScript40 файлов с imports PASS. Официальный Docker target
+twenty собран; actual image проверил assets, новый fork prefix/replay, runtime
+owner refusal, append-only role acceptance и column-write refusal. Полного server
+typecheck нет (native SWC build без него). Полная auth/provision/background
+permission certification, runtime activation и новый UI не заявляются.
+
+Находки исправлены: TypeORM UPDATE RETURNING shape → CTE SELECT, account parent
+ownership, UUID-case audit duplication, sparse-array canonical hash collision,
+потерянный commit ACK/negative audit path. No-new-Enterprise guard обнаружил
+barrel dependency через twenty-shared/utils; заменено на существующий
+class-validator, baseline не ослаблен. Финальное адресное crossreview PASS,
+Claude Code и полный архитектурный круг в LOG-022 не запускались.
+
+Skills: ai-dev-workflow — принятое Design/Plan → Implement/Verify и независимое
+адресное ревью двух исполнителей; behavioral-guardrails — узкие изменения и
+проверка файлов; server-schrodinger — read-only preflight и ограниченная
+изолированная PostgreSQL/Redis среда без портов; linear-api — сохранённый API
+fallback для синхронизации при недоступном подключённом инструменте.
+
+В собранном image дополнительно прошёл полный native+fork migrator replay;
+все256 строк native history сохранились. Удалены собственные PostgreSQL/Redis
+containers, exclusive volume и внутренняя сеть, временные БД уничтожены вместе
+с tmpfs. Idle builder возвращён в stopped; source/tool caches и candidate image
+оставлены неактивными. Live demo health и прежние start timestamps подтверждены.
+[Cleanup](implementation/log022/cleanup.json). Live demo и коннекторы не менялись.
+ROB-764 In Progress, ROB-772 Done как планирование; реальные bindings остаются
+выключенными до ROB-766. Публикация и Linear/CI read-back фиксируются отдельно.

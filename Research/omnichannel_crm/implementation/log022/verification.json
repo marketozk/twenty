@@ -1,0 +1,20 @@
+{
+  "postgresTests": 81,
+  "dependencyGuardTests": 20,
+  "sourceChecksumTests": 5,
+  "shellTests": 7,
+  "focusedStrictTypecheck": "PASS: 40 files plus imports; native entity initialization convention",
+  "fullServerTypecheck": false,
+  "officialDockerBuild": "target twenty; rebuilt server, cached unchanged frontend",
+  "generatedSqlCallsPreserved": 6,
+  "explicitSchemaCreationCalls": 1,
+  "previousMigrationChecksumUnchanged": true,
+  "nativeHistoryPreserved": 256,
+  "realRuntimeRoleLoginTests": true,
+  "negativeAuditAndUnknownCommitTests": true,
+  "enterpriseGuard": "0 new violations; old debt remains",
+  "liveDemoChanged": false,
+  "publicEndpointImplemented": false,
+  "realChannelsActivated": false,
+  "actualImageFullMigratorReplay": "PASS; native history unchanged"
+}

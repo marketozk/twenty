@@ -1,0 +1,34 @@
+{
+  "localBaseCommit": "92a0aecc7a7dcdcb613b8d97848cb506a667a2ac",
+  "buildSource": "/opt/twenty-tests/twenty-rob764-4287692be9554897/source",
+  "sourcePreparation": "Copy of verified LOG-021 build source plus full changed files; no production deploy",
+  "image": "sha256:efb509a910ba3137f191570190dd95b1404523e670c9b4b5bfd4590ae85111e2",
+  "tag": "marketozk/twenty:log022-candidate",
+  "entrypoint": [
+    "/app/omnichannel/entrypoint.sh"
+  ],
+  "lfSha256": {
+    "ops/omnichannel/README.md": "e12cc90323254b396c273c4eedacf4e2b0d6614bbc04c0fff25cf8a0f18354e7",
+    "packages/twenty-server/src/database/commands/fork-upgrade/fork-migrations.ts": "715238bf5523bbec16ba501bf78b5bbd8a8f8b2e38bb2bf723b0ab7ba9de1c21",
+    "packages/twenty-server/src/database/commands/fork-upgrade/fork-upgrade.cli.ts": "f1d183eea7967f0c09568a9d35513644603190b90abeba098bce1a7b11594484",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-workspace-policy-state.entity.ts": "fe077165e93b0979aaf5711ca4370c194b3e01c1260fe106eeba867f6c73b94a",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/conversation-foundation.check.ts": "1e1d39ec285d9f8ea71144d720747d6a6f10c58845fb61b7774296195362ee41",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/fork-schema-checks.ts": "d45005c9fde08fff5cec0cfda325f3d6c9080fb469ade8d0d0e3a852c121c65a",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/fork-schema-manifest.json": "8142af2454cf35839b4d45f729d75a60ee15c2d6fc2d0051112040618dc30ea5",
+    "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-audit-bootstrap.migration.ts": "a6347336b5c4dfd0a5eda047b0945acdca0c3a46a83f3bc4bcc609ba36582ed2",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/append-crm-audit-entry.ts": "1b804f1638dd68291cf9e15ba570cefc7e323b28de2c4d919540280b46b3ec63",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-canonical-json.ts": "77e5666d6ef70796f273033be9c176d3678bb4701074a1e56b400f648cc38fa0",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "6b7f227469c8ccc339b7471ce59e7923a7f92b534fe9b0a293c0d709206ac05d",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "1fb8c1e49ab3fe9dd70f11429a3ec9df09c60471c181e0d962f44a4afa504454",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/entities/crm-audit-entry.entity.ts": "d4526b07e31e5f2f3cea6a9244fd7020a83fad69f8ed300773f5021418437a24",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/verify-crm-audit-privileges.ts": "eb5ecc2bbc9111b3665dd51784a30e893a40d9321e014ffefa4f35cd4a2732eb",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-policy-mutation-receipt.entity.ts": "390d642e70856220873e744ff43ff45d4e2a9be17483e28889faf0528c2c5feb",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/audit-bootstrap.check.ts": "4f17c9c6b0ae82b0ffe9eed225da1cef5441a508a1c9bdb347f61ba4a85b6243",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/audit-bootstrap.schema.json": "653dfaab9893230664a6b8b603e53f98c87873db03aaca318a40cbf6d5f022d6",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/verify-fork-table-snapshot.ts": "42a271373d83655492c4a8e887554428dfb12e4e9edf66a039fccd91a645fd69",
+    "packages/twenty-server/src/modules/omnichannel/services/omni-binding-bootstrap.ts": "7d89cf3df1adbd9b6ce084d53479fed8638bcbd10345f142e82f57a6c434ff42",
+    "packages/twenty-server/test/fork-migration/audit-bootstrap-schema.postgres-spec.ts": "31b9bc12ce665dea429500ab26a6806e675f737943b12e5d9d758351db951c07",
+    "packages/twenty-server/test/fork-migration/crm-audit.postgres-spec.ts": "92322f8df2c95a5686a72cc152a8f6d77c357eb5e1bb1fcd4afa8edfa60badda",
+    "packages/twenty-server/test/fork-migration/omni-binding-bootstrap.postgres-spec.ts": "748645f16271491a8c27d7a5a7e922763931ab19be236a666b33f09857e09744"
+  }
+}

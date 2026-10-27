@@ -1,0 +1,29 @@
+import { type QueryRunner } from 'typeorm';
+
+import { type ForkMigrationCommand } from 'src/database/commands/fork-upgrade/fork-migration.type';
+
+export class OmniAuditBootstrapFastInstanceCommand
+  implements ForkMigrationCommand
+{
+  static readonly kind = 'fork' as const;
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query('CREATE SCHEMA IF NOT EXISTS "crm_audit"');
+    await queryRunner.query(
+      'CREATE TABLE "core"."omniPolicyMutationReceipt" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "workspaceId" uuid NOT NULL, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "actorKind" text NOT NULL, "actorId" text NOT NULL, "idempotencyKey" text NOT NULL, "operationId" uuid NOT NULL, "action" text NOT NULL, "resourceDescriptor" jsonb NOT NULL, "payloadHash" text NOT NULL, "resultPublic" jsonb, "committedAt" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "UQ_omniPolicyMutationReceipt_actor_key" UNIQUE ("workspaceId", "actorKind", "actorId", "idempotencyKey"), CONSTRAINT "CHK_omniPolicyMutationReceipt_hash" CHECK ("payloadHash" ~ \'^[a-f0-9]{64}$\'), CONSTRAINT "PK_9794893004007edbe4355fccd65" PRIMARY KEY ("id"))',
+    );
+    await queryRunner.query(
+      'CREATE TABLE "crm_audit"."crmAuditEntry" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "workspaceId" uuid NOT NULL, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "eventKey" text NOT NULL, "operationId" uuid NOT NULL, "attemptId" uuid, "actor" jsonb NOT NULL, "initiator" jsonb NOT NULL, "action" text NOT NULL, "resourceKind" text NOT NULL, "resourceId" text NOT NULL, "outcome" text NOT NULL, "reasonCode" text, "redactedDiff" jsonb NOT NULL, "payloadHash" text NOT NULL, "securityDescriptor" jsonb NOT NULL, "correlationId" text, "causationId" text, "schemaVersion" integer NOT NULL DEFAULT \'1\', CONSTRAINT "UQ_crmAuditEntry_workspace_event" UNIQUE ("workspaceId", "eventKey"), CONSTRAINT "CHK_crmAuditEntry_outcome" CHECK (("outcome" = \'success\' AND "attemptId" IS NULL) OR ("outcome" IN (\'denied\', \'failed\') AND "attemptId" IS NOT NULL)), CONSTRAINT "CHK_crmAuditEntry_version" CHECK ("schemaVersion" > 0), CONSTRAINT "CHK_crmAuditEntry_hash" CHECK ("payloadHash" ~ \'^[a-f0-9]{64}$\'), CONSTRAINT "PK_550d8c62ecb27dacfd1043dfb8a" PRIMARY KEY ("id"))',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniPolicyMutationReceipt" ADD CONSTRAINT "FK_d023b081c001bec40791c842f11" FOREIGN KEY ("workspaceId") REFERENCES "core"."workspace"("id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+  }
+
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniPolicyMutationReceipt" DROP CONSTRAINT "FK_d023b081c001bec40791c842f11"',
+    );
+    await queryRunner.query('DROP TABLE "crm_audit"."crmAuditEntry"');
+    await queryRunner.query('DROP TABLE "core"."omniPolicyMutationReceipt"');
+  }
+}

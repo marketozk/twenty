@@ -53,7 +53,11 @@ flush → `cron:register:all --strict`. These commands preserve their old behavi
 without `--strict`; the migrator always requests strict behavior.
 
 Server/worker entrypoints perform read-only fork schema/ledger verification
-before starting Nest. They cannot silently initialize or migrate a database.
+before starting Nest. With the LOG-022 audit schema, `verify` also checks the
+runtime role's append-only audit permissions, including column grants and roles
+reachable through SET ROLE. `apply` runs as the migration owner and does not
+apply that runtime-only role check. Neither path silently changes grants.
+Server/worker cannot silently initialize or migrate a database.
 Native migration commands still bootstrap AppModule before fork DDL; do not put
 an omnichannel table query/readiness hook into AppModule initialization.
 
@@ -68,8 +72,13 @@ history, fork ledger and schema before any manual retry. Do not start a competin
 replacement migrator while the previous process tree may still be alive.
 
 The migration role provisions schema. The runtime role must not own or write
-the fork ledger. LOG-021 tested startup with a separate non-owner/non-superuser
-runtime role and SELECT-only ledger access. Complete provision/auth/background
+the fork ledger. It needs USAGE on `crm_audit` and SELECT/INSERT on
+`crm_audit."crmAuditEntry"`, with no schema CREATE, UPDATE/DELETE/TRUNCATE or
+column-write grants and no reachable privileged owner/writer role. Database,
+schema and audit-table ownership must remain separate from runtime. LOG-022
+checks that contract before startup and audit writes; LOG-021 tested startup
+with a separate non-owner/non-superuser runtime role and SELECT-only ledger access.
+Complete provision/auth/background
 permission coverage and audit-schema ownership separation remain later work;
 these startup tests do not certify all application permissions.
 

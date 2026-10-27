@@ -1,4 +1,4 @@
-# ROB-764 — реализация, LOG-021
+# ROB-764 — реализация, LOG-022
 
 27.10.2026 пользователь ответил «хорошо приступай» на предложение принять
 исправленный план за основу и начать ROB-764 с проверками конкретного кода.
@@ -70,10 +70,33 @@ cache/health/cron команды прекращают запуск при оши
 отказ dependency chain, успешный запуск,26 подписок worker на очереди и exit0
 за5,45 секунды. [Evidence и границы этих проверок](log021/README.md).
 
+## Четвёртая порция: минимальный аудит и bootstrap
+
+LOG-022: добавлены CrmAuditEntry в отдельной crm_audit schema и
+PolicyMutationReceipt в core. Штатно сгенерированная миграция изолирована в fork
+registry; прежние девять таблиц не менялись. Transaction audit context собирает
+first-before/last-after, пишет один success на resource/action до COMMIT и
+отклоняет конфликт ключа/hash. Безопасные поля ограничены каталогом.
+
+Внутренний bootstrap writer атомарно создаёт inactive binding, disabled policy v0,
+policy state/epoch, audit и receipt. Обязательный authorizer вызывается под policy
+UPDATE fence до исполнения и replay. Проверяется native account/channel ownership;
+привязки Application/ConnectionProvider и EMAIL channel отвергаются. Повтор
+возвращает прежний результат. Нет runtime activation, API или готового own ACL.
+
+После подтверждённого rollback отказ/ошибка записываются отдельной audit transaction;
+её сбой видим вызывающему коду. Неопределённый COMMIT возвращает typed unknown
+для replay с тем же ключом, без ложного failed audit. Runtime gate и writer
+проверяют append-only privileges, включая column grants и SET ROLE обходы.
+
+Прошли81 PostgreSQL test,25 Python guards и7 shell tests, focused strict
+typecheck40 файлов с импортами. [Доказательства и ограничения](log022/README.md).
+Каталог аудита пока охватывает пять служебных сущностей; аудит всей CRM — ROB-765.
+
 ## Следующая порция и незавершённая работа
 
-1. Дополнить схему MessageLink, Receipt, Command, DomainEvent и остальными
-   сущностями этапа 1; минимальный audit writer и защищённый bootstrap.
+1. Дополнить схему MessageLink, IncomingReceipt, OutgoingCommand, DomainEvent и
+   остальными сущностями этапа1; применять уже реализованный audit context.
 2. Реализовать ingress persistence, атомарное сохранение канонических Message,
    inbox/outbox и recovery согласно [этапу 1](../plan/phase_1_data.md).
 
@@ -83,7 +106,7 @@ type checking. Работающая клиентская БД не обновл�
 Полная проверка runtime permissions/provisioning и audit ownership ещё впереди.
 Session lock не является DB-side fencing после потери соединения; старый runtime
 должен быть остановлен, при неизвестном исходе нужен разбор до ручного повтора.
-Новая схема и wrapper в демо не выкачены. Приём/отправка и весь T01–T33 не завершены.
+Новая схема и writer в демо не выкачены. Приём/отправка и весь T01–T33 не завершены.
 Bindings не активируются до собственных прав ROB-766. Никакие G01–G20 не выбраны
 за пользователя этой командой начала разработки.
 

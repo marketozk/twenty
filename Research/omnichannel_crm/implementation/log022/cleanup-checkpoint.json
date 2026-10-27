@@ -1,0 +1,14 @@
+{
+  "verifiedContainers": [
+    "twenty-rob764-4287692be9554897-db",
+    "twenty-rob764-4287692be9554897-redis"
+  ],
+  "verifiedExclusiveVolumes": [
+    "c50e9b0873036740f7f6269d5a5cd22757bd98787c93a6f2abf4830aaf6384f1"
+  ],
+  "internalNetwork": "twenty-rob764-4287692be9554897-net",
+  "nativeHistoryAfterFullMigrator": {
+    "count": 256,
+    "hash": "75b54e00a7cda579c9e96c54379c87f0"
+  }
+}

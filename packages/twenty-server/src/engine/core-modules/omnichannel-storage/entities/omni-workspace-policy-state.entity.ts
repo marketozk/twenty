@@ -1,4 +1,4 @@
-import { Check, Column, Entity, Unique } from 'typeorm';
+import { Check, Column, Entity, Generated, Unique } from 'typeorm';
 
 import { OmniWorkspaceRow } from 'src/engine/core-modules/omnichannel-storage/entities/omni-workspace-row';
 
@@ -10,6 +10,7 @@ export class OmniWorkspacePolicyStateEntity extends OmniWorkspaceRow {
   @Column({ type: 'bigint', nullable: false, default: '1' })
   epoch: string;
 
+  @Generated('uuid')
   @Column({
     type: 'uuid',
     nullable: false,

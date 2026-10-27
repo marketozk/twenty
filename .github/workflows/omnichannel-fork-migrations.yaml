@@ -5,6 +5,8 @@ on:
     paths:
       - 'packages/twenty-server/src/database/commands/fork-upgrade/**'
       - 'packages/twenty-server/src/engine/core-modules/omnichannel-storage/**'
+      - 'packages/twenty-server/src/engine/core-modules/crm-audit/**'
+      - 'packages/twenty-server/src/modules/omnichannel/**'
       - 'packages/twenty-server/test/fork-migration/**'
       - 'packages/twenty-server/jest-fork-migration.config.mjs'
       - '.github/workflows/omnichannel-fork-migrations.yaml'
@@ -22,6 +24,8 @@ on:
     paths:
       - 'packages/twenty-server/src/database/commands/fork-upgrade/**'
       - 'packages/twenty-server/src/engine/core-modules/omnichannel-storage/**'
+      - 'packages/twenty-server/src/engine/core-modules/crm-audit/**'
+      - 'packages/twenty-server/src/modules/omnichannel/**'
       - 'packages/twenty-server/test/fork-migration/**'
       - 'packages/twenty-server/jest-fork-migration.config.mjs'
       - '.github/workflows/omnichannel-fork-migrations.yaml'

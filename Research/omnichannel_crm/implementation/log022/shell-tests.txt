@@ -1,0 +1,12 @@
+test_existing_database_does_not_force_initialize (test_startup_scripts.StartupScriptsTests.test_existing_database_does_not_force_initialize) ... ok
+test_failure_at_every_stage_prevents_later_commands (test_startup_scripts.StartupScriptsTests.test_failure_at_every_stage_prevents_later_commands) ... ok
+test_fresh_initializes_before_upgrade_and_fork (test_startup_scripts.StartupScriptsTests.test_fresh_initializes_before_upgrade_and_fork) ... ok
+test_migrator_cannot_silently_skip_migrations (test_startup_scripts.StartupScriptsTests.test_migrator_cannot_silently_skip_migrations) ... ok
+test_partial_database_is_rejected (test_startup_scripts.StartupScriptsTests.test_partial_database_is_rejected) ... ok
+test_runtime_rejects_wrong_config_and_failed_readiness (test_startup_scripts.StartupScriptsTests.test_runtime_rejects_wrong_config_and_failed_readiness) ... ok
+test_runtime_starts_only_after_successful_verification (test_startup_scripts.StartupScriptsTests.test_runtime_starts_only_after_successful_verification) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.168s
+
+OK

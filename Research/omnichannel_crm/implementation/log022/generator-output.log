@@ -1,0 +1,5 @@
+[Nest] 28  - 10/27/2026, 8:52:43 AM     LOG [GenerateInstanceCommandCommand] Generating fast instance command for version 2.52.0...
+[Nest] 28  - 10/27/2026, 8:52:44 AM     LOG [GenerateInstanceCommandCommand] fast instance command generated successfully: /app/packages/twenty-server/src/database/commands/upgrade-version-command/2-52/2-52-instance-command-fast-1793091163781-omni-audit-bootstrap.ts
+[Nest] 28  - 10/27/2026, 8:52:44 AM     LOG [GenerateInstanceCommandCommand]   Class: OmniAuditBootstrapFastInstanceCommand
+[Nest] 28  - 10/27/2026, 8:52:44 AM     LOG [GenerateInstanceCommandCommand]   Version: 2.52.0
+[Nest] 28  - 10/27/2026, 8:52:44 AM     LOG [GenerateInstanceCommandCommand] Added OmniAuditBootstrapFastInstanceCommand to instance-commands.constant.ts
