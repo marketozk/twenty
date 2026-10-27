@@ -82,3 +82,12 @@ audit writer, bootstrap, ingress/outbox и клиентского общения
 тестовые БД уничтожены с tmpfs, internal network удалён, builder возвращён
 в исходное stopped состояние. Inactive source/tool caches и test images сохранены.
 Демо server/worker/db/redis работает: [cleanup read-back](cleanup.json).
+
+## Публикация
+
+Commit `bf044eb6fddb535cec0b958d689e5e714ce9443d` отправлен в
+origin/codex/omnichannel-requirements. ROB-764 description/comment и статусы11 задач
+проверены чтением. [Метаданные](publication.json).
+GitHub не запустил оба job из-за billing block аккаунта; failure annotations
+проверены. Это не падение выполненных85 тестов и не облачный CI pass.
+Настройки оплаты не менялись.

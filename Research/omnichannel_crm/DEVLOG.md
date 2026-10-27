@@ -400,4 +400,11 @@ behavioral-guardrails — узкие изменения и проверка diff
 Следующий шаг: остальные entities этапа1, минимальный audit writer и защищённый
 bootstrap, затем ingress persistence/transactional Message/inbox/outbox/recovery.
 ROB-764 остаётся In Progress; bindings не активируются до ROB-766.
-Публикация и read-back Linear/CI фиксируются после commit/push.
+LOG-021 опубликован: `bf044eb6fddb535cec0b958d689e5e714ce9443d` в
+origin/codex/omnichannel-requirements. [Отчёт ROB-764](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-6822fa04).
+Описание и единственный комментарий LOG-021 проверены чтением; статусы всех11
+задач сохранены. [Метаданные](implementation/log021/publication.json).
+Оба GitHub job отказали до запуска из-за billing block: [PostgreSQL](https://github.com/marketozk/twenty/actions/runs/40474962521)
+и [dependency guard](https://github.com/marketozk/twenty/actions/runs/40474962526).
+Аннотации подтверждены; облачный CI pass не заявлен, выполненные85 тестов прошли.
+Настройки оплаты не менялись.

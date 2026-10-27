@@ -52,3 +52,9 @@ fresh/populated upgrade/replay и настоящий restart проверены.
 Описание/комментарий проверены чтением, ROB-764 In Progress; статусы11 задач
 сохранены. 9 entities и generated migration реализованы,35 PG/25 Python tests
 прошли. Оба GitHub job вновь блокированы billing до запуска. [Evidence](implementation/log020/publication.json).
+
+Публикация LOG-021: `bf044eb6fddb535cec0b958d689e5e714ce9443d`;
+[отчёт ROB-764](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-6822fa04).
+Описание/единственный комментарий прочитаны обратно, In Progress и статусы11 задач
+сохранены. 85 выполненных тестов прошли; оба GitHub job заблокированы billing
+до запуска. [Публикация и аннотации](implementation/log021/publication.json).

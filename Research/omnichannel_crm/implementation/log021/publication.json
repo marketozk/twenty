@@ -1,0 +1,45 @@
+{
+  "commit": "bf044eb6fddb535cec0b958d689e5e714ce9443d",
+  "issue": "ROB-764",
+  "descriptionReadBack": true,
+  "commentReadBack": true,
+  "stateUnchanged": true,
+  "state": "In Progress",
+  "comment": {
+    "id": "6822fa04-ff05-422f-ab0a-0271c5a9bbeb",
+    "url": "https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-6822fa04"
+  },
+  "projectStatesReadBack": {
+    "ROB-772": "Done",
+    "ROB-771": "Backlog",
+    "ROB-770": "Backlog",
+    "ROB-769": "Backlog",
+    "ROB-768": "Backlog",
+    "ROB-767": "Backlog",
+    "ROB-766": "Backlog",
+    "ROB-765": "Backlog",
+    "ROB-764": "In Progress",
+    "ROB-763": "Done",
+    "ROB-762": "Done"
+  },
+  "githubChecks": [
+    {
+      "id": 122090818102,
+      "name": "postgres-transactions",
+      "url": "https://github.com/marketozk/twenty/actions/runs/40474962521/job/122090818102",
+      "conclusion": "failure",
+      "failureAnnotations": [
+        "The job was not started because your account is locked due to a billing issue."
+      ]
+    },
+    {
+      "id": 122090818012,
+      "name": "dependency-guard",
+      "url": "https://github.com/marketozk/twenty/actions/runs/40474962526/job/122090818012",
+      "conclusion": "failure",
+      "failureAnnotations": [
+        "The job was not started because your account is locked due to a billing issue."
+      ]
+    }
+  ]
+}
