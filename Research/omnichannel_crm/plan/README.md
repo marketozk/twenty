@@ -1,18 +1,16 @@
 # Технический план реализации CRM — v1
 
-LOG-037 / ROB-764 In Progress: typed bounded resume возвращает qualified history
-blocked_config/configuration_missing в retryable_error с прежним receipt и capture.
-Текущие права/config/generation проверяются; existing Conversation сохраняет собственную
-очередь независимо от defaults. Точный DB cursor, full-page progress и SKIP LOCKED
-проверены; новый проход без cursor подбирает пропуски. Аудит атомарен, unknown COMMIT
-не объявляется успехом. Реальная цепочка repair→resume→claim→apply проверена.
-745 distinct Jest (полный прогон744/745 + исправленный focused44) +25 guards =770 PASS.
-Typecheck140roots:0 новых/0 changed-code,
-146 baseline/current; все5 миграций прежние. [Доказательства и границы](../implementation/log037/README.md).
-Далее — настоящий config writer и durable binding.config_changed, затем typed
-consumer/housekeeping и остальные inbox/outbox пути. Полный recovery pipeline,
-ROB-764/T05, own ACL/UI/HTTP и живые коннекторы ещё не готовы. Демо прежнее,
-GitHub Actions не используется.
+LOG-038 / ROB-764 In Progress: config writer создаёт/изменяет очереди и human
+defaults binding с current authorization, CAS и общим idempotency receipt.
+Policy UPDATE с начала; resource revision/epoch, durable binding.config_changed,
+audit и receipt атомарны. No-op не выпускает event; replay повторно проверяет права.
+Default/retained queue нельзя отключить, existing Conversations не переносятся.
+Actual writer→resume→claim→apply проверен; binding activation остаётся test-only.
+826 Jest полного прогона + финальные84 focused (3 новых) +25 guards =854 distinct PASS.
+Typecheck145roots:0 новых/0 changed-code,146 baseline/current;5 миграций прежние.
+[Доказательства и границы](../implementation/log038/README.md). Далее — typed event consumer и durable recovery/
+housekeeping, затем остальные inbox/outbox пути. ROB-764/T05, own ACL/UI/HTTP и живые
+коннекторы ещё не готовы. Демо прежнее, GitHub Actions не используется.
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 

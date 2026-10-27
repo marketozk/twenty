@@ -17,6 +17,10 @@ import {
   type CrmAuditSecurityDescriptor,
 } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { verifyCrmAuditPrivileges } from 'src/engine/core-modules/crm-audit/verify-crm-audit-privileges';
+import {
+  omniBindingConfigChangedEventSchema,
+  type OmniBindingConfigChangedEvent,
+} from 'src/engine/core-modules/omnichannel-storage/contracts/omni-binding-config-changed';
 
 const CATALOG: Record<
   CrmAuditResourceKind,
@@ -218,10 +222,25 @@ const descriptor = (
     CrmAuditMutation,
     'resourceKind' | 'resourceId' | 'securityDescriptor'
   >,
+  bindingConfigEvent?: OmniBindingConfigChangedEvent,
 ): CrmAuditSecurityDescriptor => {
   const source = mutation.securityDescriptor;
 
   if (
+    bindingConfigEvent &&
+    (mutation.resourceKind !== 'omniDomainEvent' ||
+      source.bindingId === undefined ||
+      requireUuid(source.bindingId) !== bindingConfigEvent.payload.bindingId ||
+      source.conversationId !== undefined ||
+      source.queueId !== undefined)
+  ) {
+    throw new Error(
+      'Binding configuration audit requires its exact binding scope',
+    );
+  }
+
+  if (
+    !bindingConfigEvent &&
     [
       'omniMessage',
       'omniMessageThread',
@@ -365,9 +384,27 @@ export class CrmAuditTransactionContext {
     if (!['create', 'update', 'delete'].includes(mutation.action)) {
       throw new Error('Audit action must be normalized create/update/delete');
     }
-    const securityDescriptor = descriptor(mutation);
+    let bindingConfigEvent: OmniBindingConfigChangedEvent | undefined;
+    if (
+      mutation.resourceKind === 'omniDomainEvent' &&
+      (mutation.after?.kind === 'binding.config_changed' ||
+        mutation.before?.kind === 'binding.config_changed')
+    ) {
+      if (mutation.action !== 'create' || mutation.before !== null) {
+        throw new Error(
+          'Binding configuration events require an immutable create audit',
+        );
+      }
+      bindingConfigEvent = omniBindingConfigChangedEventSchema.parse(
+        mutation.after,
+      );
+    }
+    const securityDescriptor = descriptor(mutation, bindingConfigEvent);
     const before = capture(mutation.resourceKind, mutation.before);
-    const after = capture(mutation.resourceKind, mutation.after);
+    const after = capture(
+      mutation.resourceKind,
+      bindingConfigEvent ?? mutation.after,
+    );
     const key = canonicalAuditJson([
       mutation.resourceKind,
       securityDescriptor.resourceId,

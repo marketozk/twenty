@@ -992,3 +992,26 @@ schema уже поддерживает nullable-conversation event, но audit d
 binding-event support. Full worker recovery ещё не объявляется готовым.
 
 Публикация LOG-037: код 377da6291ad8d93bf9c96e63bfb04d5c4d022fde, remote проверен GitHub API. Описание ROB-764 и комментарий eda007d4-a5a7-40b4-a616-cc33deaf852d прочитаны обратно; все11 статусов сохранены. Продолжаем LOG-038.
+
+
+## LOG-038 — 27.10.2026: config mutation writer
+
+LOG-038 / ROB-764 In Progress: config writer создаёт/изменяет очереди и human
+defaults binding с current authorization, CAS и общим idempotency receipt.
+Policy UPDATE с начала; resource revision/epoch, durable binding.config_changed,
+audit и receipt атомарны. No-op не выпускает event; replay повторно проверяет права.
+Default/retained queue нельзя отключить, existing Conversations не переносятся.
+Actual writer→resume→claim→apply проверен; binding activation остаётся test-only.
+826 Jest полного прогона + финальные84 focused (3 новых) +25 guards =854 distinct PASS.
+Typecheck145roots:0 новых/0 changed-code,146 baseline/current;5 миграций прежние.
+[Доказательства и границы](implementation/log038/README.md). Далее — typed event consumer и durable recovery/
+housekeeping, затем остальные inbox/outbox пути. ROB-764/T05, own ACL/UI/HTTP и живые
+коннекторы ещё не готовы. Демо прежнее, GitHub Actions не используется.
+
+Root проверил TypeORM raw UPDATE shape и исправление CTE SELECT. Scoped independent
+review без блокеров; сохранена причина двойного rollback failure, добавлены3 реальные
+rollback/release cases. 826 full +84 focused:829 distinct Jest,25 guards;854PASS.
+Skills: ai-dev-workflow, behavioral-guardrails, server-schrodinger; unban-ssh-schrodinger
+использован для диагностики intermittent SSH (MaxStartups), разбан/firewall changes
+не потребовались; одна batch SSH session восстановила проверку. Следующий LOG-039 —
+typed consumer/durable maintenance recovery, full stage пока не завершён.

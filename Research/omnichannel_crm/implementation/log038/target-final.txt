@@ -1,0 +1,8 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-binding-configuration.postgres-spec.ts (12.693 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-binding-config-event.spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       84 passed, 84 total
+Snapshots:   0 total
+Time:        12.938 s
+Ran all test suites within paths "/source/packages/twenty-server/test/fork-migration/omni-binding-configuration.postgres-spec.ts", "/source/packages/twenty-server/test/fork-migration/crm-audit-binding-config-event.spec.ts".

@@ -303,3 +303,18 @@ Typecheck140roots:0 новых/0 changed-code,
 consumer/housekeeping и остальные inbox/outbox пути. Полный recovery pipeline,
 ROB-764/T05, own ACL/UI/HTTP и живые коннекторы ещё не готовы. Демо прежнее,
 GitHub Actions не используется.
+
+
+## LOG-038 — config writer и binding event
+
+LOG-038 / ROB-764 In Progress: config writer создаёт/изменяет очереди и human
+defaults binding с current authorization, CAS и общим idempotency receipt.
+Policy UPDATE с начала; resource revision/epoch, durable binding.config_changed,
+audit и receipt атомарны. No-op не выпускает event; replay повторно проверяет права.
+Default/retained queue нельзя отключить, existing Conversations не переносятся.
+Actual writer→resume→claim→apply проверен; binding activation остаётся test-only.
+826 Jest полного прогона + финальные84 focused (3 новых) +25 guards =854 distinct PASS.
+Typecheck145roots:0 новых/0 changed-code,146 baseline/current;5 миграций прежние.
+[Доказательства и границы](log038/README.md). Далее — typed event consumer и durable recovery/
+housekeeping, затем остальные inbox/outbox пути. ROB-764/T05, own ACL/UI/HTTP и живые
+коннекторы ещё не готовы. Демо прежнее, GitHub Actions не используется.
