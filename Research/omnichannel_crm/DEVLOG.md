@@ -465,4 +465,11 @@ containers, exclusive volume и внутренняя сеть, временны�
 оставлены неактивными. Live demo health и прежние start timestamps подтверждены.
 [Cleanup](implementation/log022/cleanup.json). Live demo и коннекторы не менялись.
 ROB-764 In Progress, ROB-772 Done как планирование; реальные bindings остаются
-выключенными до ROB-766. Публикация и Linear/CI read-back фиксируются отдельно.
+выключенными до ROB-766.
+
+LOG-022 опубликован: `128a3526daa143bdd7b69d5bdff4fbc3f5c27c97` в
+origin/codex/omnichannel-requirements. [Отчёт ROB-764](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-d5d606e7).
+Описание и единственный комментарий прочитаны обратно; статусы всех11 задач
+сохранены. Оба GitHub job не стартовали из-за billing block аккаунта, причина
+подтверждена аннотациями; выполненные113 тестов прошли, облачный CI pass не заявлен.
+[Публикация и аннотации](implementation/log022/publication.json).

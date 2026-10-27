@@ -109,3 +109,11 @@ Image-check harness первоначально не нашёл module из `/out
 и внутренняя сеть удалены, БД уничтожены вместе с tmpfs. Builder возвращён в
 исходное stopped состояние. Candidate image и неактивные исходники/кэши сохранены.
 Демо осталось на прежнем image с прежними start timestamps; health подтверждён.
+
+## Публикация
+
+Код: `128a3526daa143bdd7b69d5bdff4fbc3f5c27c97`, отправлен в
+origin/codex/omnichannel-requirements. [Отчёт ROB-764](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-d5d606e7).
+Описание/единственный комментарий и сохранение статусов11 задач проверены чтением.
+GitHub Actions не запустил оба job из-за billing block аккаунта; это не результат
+выполненных113 тестов. [Аннотации и метаданные](publication.json).

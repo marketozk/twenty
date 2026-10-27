@@ -60,3 +60,9 @@ ROB-772 Done как планирование; R16 остаётся истори�
 Описание/единственный комментарий прочитаны обратно, In Progress и статусы11 задач
 сохранены. 85 выполненных тестов прошли; оба GitHub job заблокированы billing
 до запуска. [Публикация и аннотации](implementation/log021/publication.json).
+
+Публикация LOG-022: `128a3526daa143bdd7b69d5bdff4fbc3f5c27c97`;
+[отчёт ROB-764](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-d5d606e7).
+Описание и единственный комментарий проверены чтением; In Progress и статусы11
+задач сохранены. 113 выполненных тестов прошли; оба GitHub job вновь заблокированы
+billing до запуска. [Публикация и аннотации](implementation/log022/publication.json).

@@ -114,6 +114,6 @@ Bindings не активируются до собственных прав ROB-
 
 GitHub Actions не запустил оба job из-за billing block аккаунта (0 steps).
 Собственные PostgreSQL/guard/typecheck проверки прошли; облачный CI pass не заявлен.
-[Метаданные текущих runs и Linear read-back LOG-021](log021/publication.json).
+[Метаданные текущих runs и Linear read-back LOG-022](log022/publication.json).
 Описание/комментарий ROB-764 актуализированы; статусы11 задач сохранены.
 Настройки оплаты не менялись.
