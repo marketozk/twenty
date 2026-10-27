@@ -31,6 +31,8 @@ import { WorkspaceRepository } from 'src/engine/twenty-orm/repository/workspace-
 import { type WorkspaceTableShape } from 'src/engine/twenty-orm/table-shape/types/workspace-table-shape.type';
 import { buildWorkspaceTableShape } from 'src/engine/twenty-orm/table-shape/utils/build-workspace-table-shape.util';
 import { resolveObjectRecordsPermissions } from 'src/engine/twenty-orm/utils/resolve-object-records-permissions.util';
+import { registerOmniWorkspaceTransaction } from 'src/engine/twenty-orm/repository/omni-native-write-capability';
+import { lockOmniNativeOwnership } from 'src/modules/omnichannel/services/lock-omni-native-ownership';
 
 const tableShapeCacheByFlatObjectMetadataMaps = new WeakMap<
   object,
@@ -121,34 +123,55 @@ export class WorkspaceDataSource {
         },
       },
     };
-    const result = await this.runInClientTransaction((executor, lifecycle) => {
-      transactionLifecycle = lifecycle;
+    const result = await this.runInClientTransaction(
+      async (executor, lifecycle) => {
+        transactionLifecycle = lifecycle;
+        const nativeOwnershipLock = options.nativeOwnershipLock ?? 'shared';
+        // First lock, including multi-object merge transactions. Acquiring this in
+        // a later native kernel would invert Person -> fence / fence -> Person.
+        await lockOmniNativeOwnership(
+          {
+            executeRawQuery: (sql, parameters = []) =>
+              executor.execute({ text: sql, values: parameters }),
+          },
+          this.internalContext.workspaceId,
+          nativeOwnershipLock,
+        );
 
-      return work({
-        workspaceId: this.internalContext.workspaceId,
-        transactionLifecycle: lifecycle,
-        getRepository: <T extends ObjectLiteral = ObjectRecord>(
-          nameSingular: string,
-          rolePermissionConfig?: RolePermissionConfig,
-          repositoryOptions?: { shouldSkipEventEmission?: boolean },
-        ) => {
-          assertActive();
+        const scope: WorkspaceTransactionScope = {
+          workspaceId: this.internalContext.workspaceId,
+          transactionLifecycle: lifecycle,
+          getRepository: <T extends ObjectLiteral = ObjectRecord>(
+            nameSingular: string,
+            rolePermissionConfig?: RolePermissionConfig,
+            repositoryOptions?: { shouldSkipEventEmission?: boolean },
+          ) => {
+            assertActive();
 
-          return this.buildRepository<T>({
-            nameSingular,
-            rolePermissionConfig,
-            executor,
-            isTransactional: true,
-            shouldSkipEventEmission:
-              repositoryOptions?.shouldSkipEventEmission ?? false,
-            internalContext: transactionalInternalContext,
-          });
-        },
-        executeRawQuery: (sql, parameters = []) =>
-          executor.execute({ text: sql, values: parameters }),
-        afterCommit,
-      });
-    }, options);
+            return this.buildRepository<T>({
+              nameSingular,
+              rolePermissionConfig,
+              executor,
+              isTransactional: true,
+              shouldSkipEventEmission:
+                repositoryOptions?.shouldSkipEventEmission ?? false,
+              internalContext: transactionalInternalContext,
+            });
+          },
+          executeRawQuery: (sql, parameters = []) =>
+            executor.execute({ text: sql, values: parameters }),
+          afterCommit,
+        };
+        registerOmniWorkspaceTransaction(scope, {
+          workspaceId: this.internalContext.workspaceId,
+          executor,
+          lifecycle,
+          nativeOwnershipLock,
+        });
+        return work(scope);
+      },
+      options,
+    );
 
     for (const callback of afterCommitCallbacks) {
       try {

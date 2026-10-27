@@ -20,7 +20,7 @@ const fixture = () => {
   const dataSource = new WorkspaceDataSource({
     pool: pool as unknown as Pool,
     internalContext: {
-      workspaceId: 'workspace',
+      workspaceId: '61c65668-1496-45b8-9375-a39902342677',
       eventEmitterService: { emitDatabaseBatchEvent: jest.fn() },
       recordStock: {},
     } as unknown as WorkspaceInternalContext,

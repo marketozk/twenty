@@ -2,6 +2,10 @@ import { type WorkspaceRepository } from 'src/engine/twenty-orm/repository/works
 import { type WorkspaceTransactionScope } from 'src/engine/twenty-orm/types/workspace-transaction-scope.type';
 import { buildOmniNativeMessageReferences } from 'src/modules/omnichannel/services/build-omni-native-message-references';
 import { withOmniRepositoryOptions } from 'src/modules/omnichannel/services/with-omni-repository-options';
+import {
+  registerOmniWorkspaceTransaction,
+  registerOmniWorkspaceRepository,
+} from 'src/engine/twenty-orm/repository/omni-native-write-capability';
 
 const workspaceId = '61c65668-1496-45b8-9375-a39902342677';
 const bindingId = '0c21d077-6d03-4a47-8f3a-f1588536bf15';
@@ -28,6 +32,15 @@ const fixture = () => {
     afterCommit,
   };
 
+  const executor = { execute: executeRawQuery };
+  registerOmniWorkspaceTransaction(scope, {
+    workspaceId,
+    executor,
+    lifecycle: scope.transactionLifecycle!,
+    nativeOwnershipLock: 'exclusive',
+  });
+  registerOmniWorkspaceRepository(repository, executor, workspaceId);
+
   return {
     scope,
     state,
@@ -41,10 +54,11 @@ const fixture = () => {
 describe('omnichannel native transaction adapter', () => {
   it('retains the native generic repository contract and additional scope fields', () => {
     const source = fixture();
-    const wrapped = withOmniRepositoryOptions({
-      ...source.scope,
-      marker: 'retained',
-    });
+    const wrapped = withOmniRepositoryOptions(
+      Object.assign(source.scope, {
+        marker: 'retained',
+      }),
+    );
     const nativeScope: WorkspaceTransactionScope = wrapped;
     const repository: WorkspaceRepository<{ id: string; text: string }> =
       nativeScope.getRepository<{ id: string; text: string }>('message');

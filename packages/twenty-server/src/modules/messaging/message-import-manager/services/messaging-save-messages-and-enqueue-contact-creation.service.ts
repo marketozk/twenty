@@ -403,7 +403,7 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
                 },
               );
             },
-            { commitOutcome: 'strict' },
+            { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
           );
         } catch (error) {
           if (
@@ -1273,7 +1273,7 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
                 },
               );
             },
-            { commitOutcome: 'strict' },
+            { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
           );
         } catch (error) {
           if (

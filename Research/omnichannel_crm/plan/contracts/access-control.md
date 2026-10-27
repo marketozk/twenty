@@ -52,6 +52,19 @@ Webhook create/rotate хранит в receipt только binding/keyId/public 
 
 ## Порядок и режимы блокировок
 
+Перед row locks workspace ORM берёт transaction-scoped native ownership fence
+для workspace. Обычная `WorkspaceDataSource.transaction` берёт shared режим до
+callback, включая multi-object merge; typed history/sent apply и binding bootstrap
+берут exclusive режим с начала. Это защищает также первое подключение, когда
+WorkspacePolicyState ещё отсутствует. Shared→exclusive upgrade и запуск вложенного
+exclusive owner из удерживаемой shared transaction не поддерживаются. Режим
+блокировки не даёт разрешения менять omni: его выдаёт
+[repository adapter](workflow-execution.md#repository-adapter).
+Native ownership-changing writers обязаны использовать этот
+пролог до описанного ниже порядка. Core ingress/lease без изменения native ownership
+сохраняют свой row-lock prefix. Generic raw SQL/core QueryRunner и FK lifecycle
+требуют собственных domain entry points; наличие fence не объявляет их защищёнными.
+
 Один lock protocol для всех доменных операций: WorkspacePolicyState → PolicyMutationReceipt (admin writer only) → AccountBinding/RouteActivation (sorted IDs) → AutomationPolicy head (sorted policyId; current read под fence, UPDATE у publish writer) → Conversation (sorted IDs) → ExternalIdentity → изменяемые CRM records (stable object/id order) → OmniRootExecution budget/DispatchPlan/ReplyBudget (sorted rootKind/rootId) → AutomationTurn/WorkflowRunIntent (sorted IDs) → EffectLedger (sorted execution/key) → Command (sorted IDs) → CommandResolutionRequest (sorted IDs) → Receipt (sorted IDs). Dispatch читает producer refs без удержания Command lock, затем берёт parent turn/intent и Command в указанном порядке и перечитывает row. Terminal scanner берёт turn/intent до отменяемых Commands; операция с budget среди своих rows берёт budget rows после изменяемых CRM records и до turn/intent/Command, как указано выше. Новые parent refs во время повторного чтения требуют rollback/bounded restart, не обратного lock acquisition. Claims receipt/job делаются короткой отдельной транзакцией; apply transaction не держит lock claim из предыдущего порядка, повторно проверяет token. Merge предварительно собирает references, берёт locks по порядку и перечитывает graph; при изменении начинает заново. Ingress без CRM операции использует совместимый prefix. Outbound provider calls вне locks. Retry 40P01/40001 ограничен configured budget и повторяет ту же idempotent domain command; exhausted error visible, external send не входит в retry transaction. T02/T10/T23/T28 добавляют merge+ingest+takeover+disable interleaving и control test обратного lock order.
 
 Lock order §15.9 общий; режим объявляется до входа: обычное authorized чтение/эффект берёт WorkspacePolicyState FOR SHARE на короткую DB transaction; grant/role/assignment/target/merge/stage/identity-link mutation из policy attribute catalog §15.23, а также mode/takeover/close/reopen/status, берёт FOR UPDATE сразу и увеличивает policyEpoch с mutation. Mode/status fence не заменяет отдельные controlEpoch/automationEpoch правила. SHARE→UPDATE upgrade запрещён. Если поздно обнаружена потребность изменить policy, rollback и новый bounded attempt с UPDATE в начале, с тем же idempotency identity. Policy row предварительно существует (bootstrap), её создание не lazy внутри share-locked операции. Остальные row locks по стабильному порядку; network/LLM/длительный stream вне locks.

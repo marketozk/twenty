@@ -194,13 +194,19 @@ export const createOmniNativeMessageFixture = (
 
     await queryRunner.connect();
     try {
-      if (options.coreSchema === 'fork') {
+      if (options.coreSchema !== 'audit') {
         await owner.query(
           'CREATE TABLE core."connectedAccount" (id uuid PRIMARY KEY)',
         );
         await owner.query(
           'CREATE TABLE core."messageChannel" (id uuid PRIMARY KEY, "workspaceId" uuid NOT NULL, type text NOT NULL)',
         );
+        if (
+          tableNames.includes('messageChannelMessageAssociationMessageFolder')
+        )
+          await owner.query(
+            'CREATE TABLE core."messageFolder" (id uuid PRIMARY KEY, "workspaceId" uuid NOT NULL, "messageChannelId" uuid NOT NULL REFERENCES core."messageChannel"(id) ON DELETE CASCADE)',
+          );
         await new ForkMigrationRunner(owner, FORK_MIGRATIONS).apply();
       } else {
         await new OmniAuditBootstrapFastInstanceCommand().up(queryRunner);
@@ -347,7 +353,7 @@ export const createOmniNativeMessageFixture = (
     await owner.query(
       `GRANT SELECT, INSERT ON crm_audit."crmAuditEntry" TO "${roleName}"`,
     );
-    if (options.coreSchema === 'fork') {
+    if (options.coreSchema !== 'audit') {
       await owner.query(`GRANT USAGE ON SCHEMA core TO "${roleName}"`);
       await owner.query(
         `GRANT SELECT ON ALL TABLES IN SCHEMA core TO "${roleName}"`,

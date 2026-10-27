@@ -1,5 +1,10 @@
 import { type RolePermissionConfig } from 'src/engine/twenty-orm/types/role-permission-config.type';
 import { type WorkspaceTransactionLifecycle } from 'src/engine/twenty-orm/types/workspace-transaction-lifecycle.type';
+import {
+  assertIssuedOmniNativeScope,
+  grantOmniNativeRepositoryWrite,
+} from 'src/engine/twenty-orm/repository/omni-native-write-capability';
+import { OMNI_NATIVE_REPOSITORIES } from 'src/modules/omnichannel/services/assert-omni-native-write-unowned';
 
 type OmniRepositoryScope = {
   workspaceId: string;
@@ -15,15 +20,6 @@ type OmniRepositoryScope = {
   ) => Promise<Record<string, unknown>[]>;
   afterCommit: (callback: () => void | Promise<void>) => void;
 };
-
-const OMNI_REPOSITORIES = new Set([
-  'message',
-  'messageThread',
-  'messageParticipant',
-  'messageChannelMessageAssociation',
-  'messageChannelMessageAssociationMessageFolder',
-  'messageThreadTarget',
-]);
 
 export const withOmniRepositoryOptions = <TScope extends OmniRepositoryScope>(
   scope: TScope,
@@ -41,6 +37,7 @@ export const withOmniRepositoryOptions = <TScope extends OmniRepositoryScope>(
   };
 
   assertActive();
+  assertIssuedOmniNativeScope(scope);
 
   return Object.freeze({
     ...scope,
@@ -52,13 +49,16 @@ export const withOmniRepositoryOptions = <TScope extends OmniRepositoryScope>(
     ) => {
       assertActive();
 
-      return scope.getRepository(
+      const repository = scope.getRepository(
         name,
         permissions,
-        OMNI_REPOSITORIES.has(name)
+        OMNI_NATIVE_REPOSITORIES.has(name)
           ? { ...options, shouldSkipEventEmission: true }
           : options,
       );
+      if (OMNI_NATIVE_REPOSITORIES.has(name))
+        grantOmniNativeRepositoryWrite(scope, repository);
+      return repository;
     },
     executeRawQuery: (sql: string, parameters?: unknown[]) => {
       assertActive();

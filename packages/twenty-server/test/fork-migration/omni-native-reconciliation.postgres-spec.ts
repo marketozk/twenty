@@ -6,6 +6,7 @@ import { type CalendarEventParticipantWorkspaceEntity } from 'src/modules/calend
 import { type WorkspaceTransactionScope } from 'src/engine/twenty-orm/types/workspace-transaction-scope.type';
 import { type MessageParticipantWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-participant.workspace-entity';
 import { createOmniNativeReconciliationFixture } from 'test/fork-migration/omni-native-reconciliation.fixture';
+import { withOmniRepositoryOptions } from 'src/modules/omnichannel/services/with-omni-repository-options';
 
 jest.mock('src/engine/twenty-orm/workspace-orm.manager', () => ({
   WorkspaceOrmManager: class {},
@@ -24,6 +25,17 @@ const permissions = { shouldBypassPermissionChecks: true } as const;
 const run = async <T>(work: (scope: WorkspaceTransactionScope) => Promise<T>) =>
   fixture.withContext(() =>
     fixture.dataSource.transaction(work, { commitOutcome: 'strict' }),
+  );
+// Only construct the protected fixture with domain authority. Reconciliation
+// still runs through the ordinary scope above and must filter owned records.
+const seedRun = async <T>(
+  work: (scope: WorkspaceTransactionScope) => Promise<T>,
+) =>
+  fixture.withContext(() =>
+    fixture.dataSource.transaction(
+      (scope) => work(withOmniRepositoryOptions(scope)),
+      { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
+    ),
   );
 const insertNative = async (
   scope: WorkspaceTransactionScope,
@@ -50,7 +62,7 @@ let seed: Seed;
 
 const createSeed = async (marker: Marker = 'binding', identity = 'old') => {
   const binding = await fixture.createBinding();
-  const result = await run(async (scope) => {
+  const result = await seedRun(async (scope) => {
     const oldCompanyId = await insertNative(scope, 'company', {
       name: 'Prior company',
     });
@@ -487,7 +499,7 @@ describe('native mixed email and omnichannel participant/target reconciliation',
 
   it('uses persisted thread ownership even when the thread has no current native messages', async () => {
     seed = await createSeed('conversation', 'current');
-    await run(async (scope) => {
+    await seedRun(async (scope) => {
       await scope
         .getRepository('messageParticipant', permissions)
         .delete({ id: seed.omni.participantId });

@@ -155,7 +155,7 @@ const transaction = <T>(
 ) =>
   fixture.dataSource.transaction(
     (scope) => work(withOmniRepositoryOptions(scope)),
-    { commitOutcome: 'strict' },
+    { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
   );
 const auditRows = () =>
   fixture.owner.query('SELECT * FROM crm_audit."crmAuditEntry"');

@@ -219,7 +219,8 @@ describe('native cleanup preserves independently owned omni records', () => {
       seed.omni.messageId,
       ...Array.from({ length: count - 1 }, () => randomUUID()),
     ];
-    await fixture.run(async (scope) => {
+    await fixture.seedNative(async (scope) => {
+      // Construction only; cleanup below retains the ordinary transaction scope.
       // One live association per channel/message is a real standard unique index.
       await scope
         .getRepository('message', { shouldBypassPermissionChecks: true })

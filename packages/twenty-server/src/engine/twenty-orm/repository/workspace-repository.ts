@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { msg } from '@lingui/core/macro';
 import { isNonEmptyString } from '@sniptt/guards';
 import { QUERY_MAX_RECORDS } from 'twenty-shared/constants';
@@ -79,6 +81,14 @@ import {
   TwentyOrmExceptionCode,
 } from 'src/engine/twenty-orm/exceptions/twenty-orm.exception';
 import { type QueryExecutor } from 'src/engine/twenty-orm/executor/types/query-executor.type';
+import {
+  hasOmniNativeRepositoryWrite,
+  registerOmniWorkspaceRepository,
+} from 'src/engine/twenty-orm/repository/omni-native-write-capability';
+import {
+  assertOmniNativeWriteUnowned,
+  OMNI_NATIVE_REPOSITORIES,
+} from 'src/modules/omnichannel/services/assert-omni-native-write-unowned';
 import {
   buildInsertStatement,
   type InsertRowValue,
@@ -175,6 +185,11 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
   constructor(options: WorkspaceRepositoryOptions<TEntity>) {
     this.options = options;
     this.objectRecordsPermissions = options.objectRecordsPermissions;
+    registerOmniWorkspaceRepository(
+      this,
+      options.executor,
+      options.internalContext.workspaceId,
+    );
   }
 
   private get filesFieldSync(): FilesFieldSync {
@@ -774,6 +789,45 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       : this.options.runInNewTransaction(work);
   }
 
+  private get isOmniNativeRepository(): boolean {
+    return OMNI_NATIVE_REPOSITORIES.has(this.options.tableShape.nameSingular);
+  }
+
+  private get requiresOmniOwnershipCheck(): boolean {
+    return this.isOmniNativeRepository && !hasOmniNativeRepositoryWrite(this);
+  }
+
+  private async lockNativeWriteRows(ids: string[]): Promise<ObjectRecord[]> {
+    if (!this.options.isTransactional)
+      throw new Error('OMNI_NATIVE_WRITE_REQUIRES_TRANSACTION');
+    if (!ids.length) return [];
+    const { schemaName, tableName } = this.options.tableShape;
+    const quote = (value: string) => `"${value.replaceAll('"', '""')}"`;
+    const rows = await this.options.executor.execute({
+      text: `SELECT * FROM ${quote(schemaName)}.${quote(tableName)} WHERE id=ANY($1::uuid[]) ORDER BY id FOR UPDATE`,
+      values: [[...new Set(ids)].sort()],
+    });
+    return rows.map((row) => {
+      if (typeof row.id !== 'string')
+        throw new Error('OMNI_INVALID_NATIVE_OWNERSHIP_RESULT');
+      return { ...row, id: row.id };
+    });
+  }
+
+  private assertNativeWriteUnowned(
+    records: Record<string, unknown>[],
+  ): Promise<void> {
+    return assertOmniNativeWriteUnowned(
+      {
+        executeRawQuery: (text, values = []) =>
+          this.options.executor.execute({ text, values }),
+      },
+      this.options.internalContext.workspaceId,
+      this.options.tableShape.nameSingular,
+      records,
+    );
+  }
+
   private runWithValidationRules<TResult>({
     write,
     inputRecordIds,
@@ -791,7 +845,9 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     });
 
     if (validationRules.length === 0) {
-      return write(this);
+      return this.isOmniNativeRepository
+        ? this.runAtomically(write)
+        : write(this);
     }
 
     return this.runAtomically((repository) =>
@@ -1011,6 +1067,11 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     generatedMaps: ObjectRecord[];
     raw: ObjectRecord[];
   }> {
+    if (this.isOmniNativeRepository)
+      args = {
+        ...args,
+        records: args.records.map((record) => ({ ...record })),
+      };
     return this.runWithValidationRules({
       inputRecordIds: args.records.map((record) => record.id),
       write: (repository, validateWrittenRecords) =>
@@ -1035,6 +1096,12 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
   }> {
     if (records.length === 0) {
       return { identifiers: [], generatedMaps: [], raw: [] };
+    }
+
+    if (this.requiresOmniOwnershipCheck) {
+      await this.assertNativeWriteUnowned(
+        records.map((record) => this.formatWriteData(record)),
+      );
     }
 
     const filesFieldDiff =
@@ -1121,6 +1188,14 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     generatedMaps: ObjectRecord[];
     raw: ObjectRecord[];
   }> {
+    if (this.isOmniNativeRepository)
+      args = {
+        ...args,
+        inputs: args.inputs.map((input) => ({
+          id: input.id,
+          data: { ...input.data },
+        })),
+      };
     return this.runWithValidationRules({
       inputRecordIds: args.inputs.map((input) => input.id),
       write: (repository, validateWrittenRecords) =>
@@ -1152,6 +1227,18 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     const writableInputs = inputs.filter((input) =>
       writableRecordIds.has(input.id),
     );
+
+    if (this.requiresOmniOwnershipCheck) {
+      const locked = await this.lockNativeWriteRows(
+        writableInputs.map((input) => input.id),
+      );
+      const after = writableInputs.flatMap((input) => {
+        const before = locked.find((record) => record.id === input.id);
+        const { id: _id, ...columns } = this.formatWriteData(input.data);
+        return before ? [{ ...before, ...columns }] : [];
+      });
+      await this.assertNativeWriteUnowned([...locked, ...after]);
+    }
 
     const recordsBefore: ObjectRecord[] = [];
     const recordsAfter: ObjectRecord[] = [];
@@ -1617,8 +1704,20 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     columnsToReturn: string[];
     data?: Partial<ObjectRecord>;
   }): Promise<ObjectRecord[]> {
+    if (this.isOmniNativeRepository)
+      args = { ...args, data: args.data ? { ...args.data } : undefined };
     if (args.kind !== 'update') {
-      return this.performMutation(args);
+      return this.isOmniNativeRepository
+        ? this.runAtomically((repository) =>
+            repository.performMutation({
+              ...args,
+              selectQueryBuilder:
+                repository === this
+                  ? args.selectQueryBuilder
+                  : args.selectQueryBuilder.clone(repository.options.executor),
+            }),
+          )
+        : this.performMutation(args);
     }
 
     return this.runWithValidationRules({
@@ -1661,6 +1760,28 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
 
     if (!rowLevelPermissionsApplied) {
       this.applyRowLevelPermissionPredicates(selectQueryBuilder, kind);
+    }
+
+    if (this.requiresOmniOwnershipCheck) {
+      const candidates = await this.buildEventSnapshotQueryBuilder(
+        selectQueryBuilder,
+      ).getMany<ObjectRecord>({ noFormatting: true });
+      const locked = await this.lockNativeWriteRows(
+        candidates.map((record) => String(record.id)),
+      );
+      const { id: _id, ...columns } = data ? this.formatWriteData(data) : {};
+      await this.assertNativeWriteUnowned([
+        ...locked,
+        ...locked.map((record) => ({ ...record, ...columns })),
+      ]);
+      // Preserve the original predicate AND the captured set. Row-access clauses
+      // group the entire user OR expression; a plain andWhere would not do so.
+      const parameter = `omniNativeIds_${randomUUID().replaceAll('-', '')}`;
+      selectQueryBuilder = selectQueryBuilder.clone();
+      selectQueryBuilder.addRowAccessCondition(
+        `"${selectQueryBuilder.alias.replaceAll('"', '""')}"."id" = ANY(:${parameter}::uuid[])`,
+        { [parameter]: locked.map((record) => record.id) },
+      );
     }
 
     // The before-image only feeds events, scoped-write checks and files field diffs

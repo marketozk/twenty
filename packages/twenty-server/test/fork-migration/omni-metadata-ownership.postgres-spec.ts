@@ -54,10 +54,7 @@ const ordinary = async (workspaceId = fixture.workspaceId) => {
 
 beforeAll(async () => {
   await fixture.initialize();
-  // Only the actual core columns read by these helpers are represented; native schemas are generated.
-  await fixture.owner.query(
-    'CREATE TABLE core."messageFolder" (id uuid PRIMARY KEY, "workspaceId" uuid NOT NULL, "messageChannelId" uuid NOT NULL REFERENCES core."messageChannel"(id) ON DELETE CASCADE)',
-  );
+  // The shared fixture supplies the core folder columns; native schemas are generated.
   await fixture.owner.query(
     `GRANT SELECT ON core."messageFolder" TO "${fixture.roleName}"`,
   );

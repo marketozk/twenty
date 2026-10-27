@@ -13,6 +13,7 @@ import { BlocklistItemDeleteMessagesJob } from 'src/modules/messaging/blocklist-
 import { MessagingMessageCleanerService } from 'src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service';
 import { MessagingDeleteFolderMessagesService } from 'src/modules/messaging/message-import-manager/services/messaging-delete-folder-messages.service';
 import { createOmniNativeMessageFixture } from 'test/fork-migration/omni-native-message.fixture';
+import { withOmniRepositoryOptions } from 'src/modules/omnichannel/services/with-omni-repository-options';
 
 type CleanupAccount = { id: string; handleAliases: string[] };
 type CleanupChannel = {
@@ -120,6 +121,17 @@ export const createOmniNativeCleanupFixture = () => {
     native.withContext(() =>
       native.dataSource.transaction(work, { commitOutcome: 'strict' }),
     );
+  // Fixture construction only. Cleanup algorithms still use the unprivileged
+  // manager/run above, so these tests exercise their filtering and the ORM guard.
+  const seedNative = <T>(
+    work: (scope: WorkspaceTransactionScope) => Promise<T>,
+  ) =>
+    native.withContext(() =>
+      native.dataSource.transaction(
+        (scope) => work(withOmniRepositoryOptions(scope)),
+        { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
+      ),
+    );
   const coreInsert = async (
     table: string,
     fields: Record<string, unknown>,
@@ -188,7 +200,7 @@ export const createOmniNativeCleanupFixture = () => {
       publishedAt: new Date(),
     });
     const folderId = randomUUID();
-    const result = await run(async (scope) => {
+    const result = await seedNative(async (scope) => {
       const insert = async (name: string, fields: Record<string, unknown>) => {
         const id = randomUUID();
         await scope.getRepository(name, permissions).insert({ id, ...fields });
@@ -316,6 +328,7 @@ export const createOmniNativeCleanupFixture = () => {
     folders,
     blocklist,
     run,
+    seedNative,
     coreInsert,
     seed,
     initialize,

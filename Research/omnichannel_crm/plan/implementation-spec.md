@@ -124,7 +124,7 @@ Binding credential: keyId + HMAC SHA-256(method,path,timestamp,raw-body hash), c
 
 Ingress: validate/auth → transaction lock WorkspacePolicyState FOR SHARE → binding/generation (общий порядок §15.9) → INSERT receipt или сравнить hash при conflict → audit accepted → COMMIT → 202 receiptId/state. Одинаковый повтор возвращает тот же receiptId/current state (200); changed semantic payload=409, original receipt сохраняется. ACK означает ответственность CRM за replay, а не готовый Message. Отказ/неизвестный commit не даёт ложный ACK; клиент повторяет eventId.
 
-Worker: короткий claim через FOR UPDATE SKIP LOCKED увеличивает leaseToken. Общая workspace transaction сначала берёт WorkspacePolicyState в заранее выбранном SHARE/UPDATE режиме (§15.9/15.15), затем binding/conversation/identity и проверяет leaseToken/generation; затем scope-aware Message/participants + domain projection из ConversationTarget + link (matchParticipants/reconcile не вызываются; [repository-adapter](contracts/workflow-execution.md#repository-adapter)) + receipt applied + conversationSequence + admission/event + audit. Все writes через scope executor; injected independent repository запрещён. Второй worker после lease expiry может reclaim; старый token не может commit. Postcommit callback только ускоряет enqueue; durable job/event хранится в PostgreSQL.
+Worker: короткий claim через FOR UPDATE SKIP LOCKED увеличивает leaseToken. После native ownership fence (§15.9) общая workspace transaction берёт WorkspacePolicyState в заранее выбранном SHARE/UPDATE режиме (§15.9/15.15), затем binding/conversation/identity и проверяет leaseToken/generation; затем scope-aware Message/participants + domain projection из ConversationTarget + link (matchParticipants/reconcile не вызываются; [repository-adapter](contracts/workflow-execution.md#repository-adapter)) + receipt applied + conversationSequence + admission/event + audit. Все writes через scope executor; injected independent repository запрещён. Второй worker после lease expiry может reclaim; старый token не может commit. Postcommit callback только ускоряет enqueue; durable job/event хранится в PostgreSQL.
 
 Уточнение receipt lease lifecycle (LOG-027):
 
@@ -319,6 +319,18 @@ DEVLOG: контракт, changed files, команды/фактические �
 ROB-766 включает `engine/core-modules/messaging/services/{timeline-messaging,get-messages}.service.ts`, `timeline-messaging.resolver.ts`, `utils/{format-threads,get-effective-message-channel-visibility}.util.ts`. В текущем TimelineMessagingService есть bypass repositories и выдача lastMessageBody; видимость аккаунта не равна собственному доступу к диалогу. Для omni thread все list/search/fallback/legacy person/company/opportunity timeline routes, participants и counters получают conversation ACL до query; владение connectedAccount не bypass. Нельзя просто скрыть body после выдачи subject/count.
 
 ROB-764 защищает lifecycle уже при добавлении omni binding: generic update/delete/merge Message/Thread/Participant/associations для принадлежащих ему строк запрещены вне типизированной доменной команды. ROB-766 добавляет чтение через все эти пути. Раннее запрещение mutations не ждёт готового UI.
+
+Общий repository guard охватывает insert/update/batch/delete/soft-delete/restore
+Message, MessageThread, MessageParticipant, channel association, folder junction и
+ThreadTarget. Проверяются сохранённые before и назначаемые after parent IDs,
+включая оба родителя folder junction. Ownership определяется MessageLink,
+Conversation и binding любого статуса с учётом удалённых associations, не prefix
+header. Bypass permissions и skip events не обходят guard. Под
+[native ownership fence](contracts/access-control.md#lock-protocol) строки блокируются,
+перечитываются, а SQL ограничивается исходным условием AND захваченными IDs с
+внешней группировкой OR. Ошибка ownership query означает отказ. Parent FK
+SET NULL/CASCADE, raw SQL и metadata lifecycle не становятся защищёнными только
+из-за проверки дочерних kernels; для них остаётся отдельный T22 inventory.
 
 `BlocklistItemDeleteMessagesJob`, `MessagingMessageCleanerService`, jobs/listeners удаления channel/connectedAccount, reset-channel/remove-orphans и delete-folder/group-email services не удаляют omni canonical records. Политика владения читается из core binding/tombstone, а не только существующей строки удаляемого канала. Обычное отключение/удаление аккаунта с omni history отклоняется или преобразуется в domain disable до разрушительного lifecycle; cleanup jobs повторно проверяют persisted marker. Controlled purge — отдельная операция с permission, manifest Message/links/files/revisions, IncomingReceipt.validatedEnvelope, DomainEvent/dispatch payload snapshots, OutgoingCommand payload/reply/files, protected AI/workflow artifacts и connector/userbot captured_events/command bodies, audit и retention; по умолчанию запрещена. Re-enable на том же provider account сохраняет bindingId/history, меняет session/generation; другой реальный account не подменяет старую binding.
 

@@ -1,0 +1,26 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-reconciliation.postgres-spec.ts (11.853 s)
+  native mixed email and omnichannel participant/target reconciliation
+    ✓ preserves omni participants and targets for persisted binding ownership during direct rematch (293 ms)
+    ✓ preserves omni participants and targets for persisted link ownership during direct rematch (250 ms)
+    ✓ preserves omni participants and targets for persisted conversation ownership during direct rematch (225 ms)
+    ✓ keeps ordinary APP participant matching behavior when no omni binding owns the channel (246 ms)
+    ✓ protects mixed participant and direct thread reconciliation without a transaction scope (242 ms)
+    ✓ preserves calendar participant matching and person/company/opportunity targets (195 ms)
+    ✓ preserves member links for omni rows through the member rematch entry point (178 ms)
+    ✓ preserves link-owned rows without an APP association through the person rematch entry point (219 ms)
+    ✓ filters source IDs before targetsOnly target reconciliation (198 ms)
+    ✓ filters source IDs before emptyParticipants target reconciliation (195 ms)
+    ✓ filters persisted binding thread ownership before direct target reconciliation (190 ms)
+    ✓ filters persisted link thread ownership before direct target reconciliation (199 ms)
+    ✓ filters persisted conversation thread ownership before direct target reconciliation (182 ms)
+    ✓ keeps omni targets when company and opportunity relations change through the people reconciliation entry point (234 ms)
+    ✓ uses persisted thread ownership even when the thread has no current native messages (178 ms)
+    ✓ does not change or emit events for an all-omni batch (173 ms)
+    ✓ rolls back earlier native changes and emits no events if ownership lookup fails (179 ms)
+    ✓ rejects a transaction scope from another workspace before native mutations (151 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       18 passed, 18 total
+Snapshots:   0 total
+Time:        11.958 s
+Ran all test suites matching /omni-native-reconciliation/i.

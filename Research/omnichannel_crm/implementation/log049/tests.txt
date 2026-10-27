@@ -1,0 +1,641 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-incoming-event.postgres-spec.ts (73.981 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-binding-configuration.postgres-spec.ts (10.326 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-sent-receipt.postgres-spec.ts (14.633 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-human-text-command.postgres-spec.ts (8.656 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-sent-apply.postgres-spec.ts (23.852 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-resume.postgres-spec.ts (8.335 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-incoming-receipt-lease.postgres-spec.ts (76.761 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-binding-config-wakeup.postgres-spec.ts (10.527 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-connector-acceptance.postgres-spec.ts (16.651 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-mutation-guard.postgres-spec.ts (13.634 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-binding-config-recovery.postgres-spec.ts (6.433 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-first-conversation.postgres-spec.ts (9.276 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-metadata-mutation-guard.spec.ts
+[32m[Nest] 1  - [39m10/27/2026, 8:08:40 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 9db037b7-ad40-4fe8-97e6-5df04cca6a1f Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-human-command-lease.postgres-spec.ts (10.542 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-human-command-recovery.postgres-spec.ts (13.026 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/conversation-schema.postgres-spec.ts
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-reconciliation.postgres-spec.ts (6.382 s)
+  ● native mixed email and omnichannel participant/target reconciliation › preserves omni participants and targets for persisted binding ownership during direct rematch
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:200:14
+
+  ● native mixed email and omnichannel participant/target reconciliation › keeps ordinary APP participant matching behavior when no omni binding owns the channel
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at Object.<anonymous> (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:226:12)
+
+  ● native mixed email and omnichannel participant/target reconciliation › preserves calendar participant matching and person/company/opportunity targets
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at Object.<anonymous> (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:298:12)
+
+  ● native mixed email and omnichannel participant/target reconciliation › preserves member links for omni rows through the member rematch entry point
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at Object.<anonymous> (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:379:12)
+
+  ● native mixed email and omnichannel participant/target reconciliation › filters source IDs before targetsOnly target reconciliation
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:422:14
+
+  ● native mixed email and omnichannel participant/target reconciliation › filters source IDs before emptyParticipants target reconciliation
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:422:14
+
+  ● native mixed email and omnichannel participant/target reconciliation › filters persisted binding thread ownership before direct target reconciliation
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:443:14
+
+  ● native mixed email and omnichannel participant/target reconciliation › keeps omni targets when company and opportunity relations change through the people reconciliation entry point
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at Object.<anonymous> (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:458:12)
+
+  ● native mixed email and omnichannel participant/target reconciliation › uses persisted thread ownership even when the thread has no current native messages
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performMutation (src/engine/twenty-orm/repository/workspace-repository.ts:1773:7)
+      at WorkspaceRepository.delete (src/engine/twenty-orm/repository/workspace-repository.ts:728:21)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:491:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at Object.<anonymous> (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:490:5)
+
+  ● native mixed email and omnichannel participant/target reconciliation › rolls back earlier native changes and emits no events if ownership lookup fails
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at Object.<anonymous> (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:530:12)
+
+  ● native mixed email and omnichannel participant/target reconciliation › rejects a transaction scope from another workspace before native mutations
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at Object.<anonymous> (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:560:12)
+
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-local-command-cancellation.postgres-spec.ts (13.287 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-apply.postgres-spec.ts (10.691 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/event-governance.postgres-spec.ts (25.475 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-binding-bootstrap.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-message.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-binding-config-recovery-facade.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/message-persistence.postgres-spec.ts (18.178 s)
+[Nest] 1  - 10/27/2026, 8:10:31 PM   ERROR [MessagingProcessFolderActionsService] WorkspaceId: 78bf50f8-700f-487f-a0eb-98daf2836a62, MessageChannelId: e0f5d675-5e31-40d1-9507-21e4da5c2ac8, FolderId: b210b8ec-cf50-4320-b478-66cbeaea59ea - Error processing folder action: ordinary cleanup failed
+Error: ordinary cleanup failed
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-native-metadata-effects-log035.spec.ts:436:7)
+    at Promise.then.completed (/tools/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (/tools/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (/tools/node_modules/jest-circus/build/run.js:316:40)
+    at _runTest (/tools/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/tools/node_modules/jest-circus/build/run.js:126:9)
+    at _runTestsForDescribeBlock (/tools/node_modules/jest-circus/build/run.js:121:9)
+    at run (/tools/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/tools/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/tools/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/tools/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/tools/node_modules/jest-runner/build/runTest.js:444:34)
+[Nest] 1  - 10/27/2026, 8:10:31 PM   ERROR [MessagingProcessFolderActionsService] WorkspaceId: 0b6b4ff9-5899-435d-8b49-ad01533cab09, MessageChannelId: 5dcd8f2a-8e56-482b-af6d-7a7fc210ff82, FolderId: 607e873d-8df0-4833-b75e-e445a2738a3b - Error processing folder action: Unexpected folder processing failure
+Error: Unexpected folder processing failure
+    at MessagingProcessFolderActionsService.processFolderActions (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:152:15)
+    at /source/packages/twenty-server/test/fork-migration/omni-native-metadata-effects-log035.spec.ts:449:7
+[Nest] 1  - 10/27/2026, 8:10:31 PM   ERROR [MessagingProcessFolderActionsService] WorkspaceId: d1051d3c-e533-4a6d-8f69-25421f794c1b, MessageChannelId: 9a0df083-a201-4542-b905-52c5906315f7, FolderId: 0ad1d18a-36ee-4014-ac03-17154c1aeadf - Error processing folder action: Unexpected folder processing failure
+Error: Unexpected folder processing failure
+    at MessagingProcessFolderActionsService.processFolderActions (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:152:15)
+    at /source/packages/twenty-server/test/fork-migration/omni-native-metadata-effects-log035.spec.ts:449:7
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-metadata-effects-log035.spec.ts
+[32m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: 092c0eb2-8d95-4138-b097-beacec653d37, MessageChannelId: 3726749f-ed02-4041-889b-7ba1bb59fa4a - Processing 1 folders with pending actions[39m
+[95m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 092c0eb2-8d95-4138-b097-beacec653d37, MessageChannelId: 3726749f-ed02-4041-889b-7ba1bb59fa4a, FolderId: 5c278e94-79b6-4bab-9a20-5a99eedfbaad - Processing folder action: FOLDER_DELETION[39m
+[95m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 092c0eb2-8d95-4138-b097-beacec653d37, MessageChannelId: 3726749f-ed02-4041-889b-7ba1bb59fa4a, FolderId: 5c278e94-79b6-4bab-9a20-5a99eedfbaad - Completed FOLDER_DELETION action[39m
+[95m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 092c0eb2-8d95-4138-b097-beacec653d37, MessageChannelId: 3726749f-ed02-4041-889b-7ba1bb59fa4a - Reset pendingSyncAction to NONE for 1 folders[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: 092c0eb2-8d95-4138-b097-beacec653d37, MessageChannelId: 3726749f-ed02-4041-889b-7ba1bb59fa4a - Deleted 1 folders[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: 4ad4b74a-96f1-4708-94f7-73d21f034d77, MessageChannelId: 990f7179-3eae-441d-a063-6c0cd0e65ac2 - Processing 1 folders with pending actions[39m
+[95m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 4ad4b74a-96f1-4708-94f7-73d21f034d77, MessageChannelId: 990f7179-3eae-441d-a063-6c0cd0e65ac2, FolderId: dfb214a9-b5a4-4a9a-b803-8b12de811cb0 - Processing folder action: FOLDER_IMPORT[39m
+[95m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 4ad4b74a-96f1-4708-94f7-73d21f034d77, MessageChannelId: 990f7179-3eae-441d-a063-6c0cd0e65ac2, FolderId: dfb214a9-b5a4-4a9a-b803-8b12de811cb0 - Completed FOLDER_IMPORT action[39m
+[95m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 4ad4b74a-96f1-4708-94f7-73d21f034d77, MessageChannelId: 990f7179-3eae-441d-a063-6c0cd0e65ac2 - Reset pendingSyncAction to NONE for 1 folders[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: b218cb09-5cb3-4982-9df4-80b1c74346d0, MessageChannelId: 716753d7-4487-4122-b7b9-6b3f68bd13a8 - Processing 1 folders with pending actions[39m
+[95m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: b218cb09-5cb3-4982-9df4-80b1c74346d0, MessageChannelId: 716753d7-4487-4122-b7b9-6b3f68bd13a8, FolderId: f49ea033-5e4c-4550-957f-d84b3d46a66c - Processing folder action: FOLDER_DELETION[39m
+[95m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: b218cb09-5cb3-4982-9df4-80b1c74346d0, MessageChannelId: 716753d7-4487-4122-b7b9-6b3f68bd13a8, FolderId: f49ea033-5e4c-4550-957f-d84b3d46a66c - Completed FOLDER_DELETION action[39m
+[95m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: b218cb09-5cb3-4982-9df4-80b1c74346d0, MessageChannelId: 716753d7-4487-4122-b7b9-6b3f68bd13a8 - Reset pendingSyncAction to NONE for 1 folders[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: b218cb09-5cb3-4982-9df4-80b1c74346d0, MessageChannelId: 716753d7-4487-4122-b7b9-6b3f68bd13a8 - Deleted 1 folders[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: 78bf50f8-700f-487f-a0eb-98daf2836a62, MessageChannelId: e0f5d675-5e31-40d1-9507-21e4da5c2ac8 - Processing 1 folders with pending actions[39m
+[95m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 78bf50f8-700f-487f-a0eb-98daf2836a62, MessageChannelId: e0f5d675-5e31-40d1-9507-21e4da5c2ac8, FolderId: b210b8ec-cf50-4320-b478-66cbeaea59ea - Processing folder action: FOLDER_DELETION[39m
+[33m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [33m   WARN[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[33mWorkspaceId: 78bf50f8-700f-487f-a0eb-98daf2836a62, MessageChannelId: e0f5d675-5e31-40d1-9507-21e4da5c2ac8 - Failed to process 1 folders. They will be retried on next sync.[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: 0b6b4ff9-5899-435d-8b49-ad01533cab09, MessageChannelId: 5dcd8f2a-8e56-482b-af6d-7a7fc210ff82 - Processing 1 folders with pending actions[39m
+[95m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 0b6b4ff9-5899-435d-8b49-ad01533cab09, MessageChannelId: 5dcd8f2a-8e56-482b-af6d-7a7fc210ff82, FolderId: 607e873d-8df0-4833-b75e-e445a2738a3b - Processing folder action: FOLDER_DELETION[39m
+[33m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [33m   WARN[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[33mWorkspaceId: 0b6b4ff9-5899-435d-8b49-ad01533cab09, MessageChannelId: 5dcd8f2a-8e56-482b-af6d-7a7fc210ff82 - Failed to process 1 folders. They will be retried on next sync.[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: d1051d3c-e533-4a6d-8f69-25421f794c1b, MessageChannelId: 9a0df083-a201-4542-b905-52c5906315f7 - Processing 1 folders with pending actions[39m
+[95m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: d1051d3c-e533-4a6d-8f69-25421f794c1b, MessageChannelId: 9a0df083-a201-4542-b905-52c5906315f7, FolderId: 0ad1d18a-36ee-4014-ac03-17154c1aeadf - Processing folder action: FOLDER_DELETION[39m
+[33m[Nest] 1  - [39m10/27/2026, 8:10:31 PM [33m   WARN[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[33mWorkspaceId: d1051d3c-e533-4a6d-8f69-25421f794c1b, MessageChannelId: 9a0df083-a201-4542-b905-52c5906315f7 - Failed to process 1 folders. They will be retried on next sync.[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:33 PM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:34 PM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:34 PM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:34 PM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee Deleting 1 message channel message associations for channel 0ce14805-94f1-4dbf-97ac-b6bb30eb1c7d[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:34 PM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee Deleting 1 message channel message associations for channel 676a6060-4976-4d27-997d-7cafe2c5458c[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:34 PM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee Deleting 1 message channel message associations for channel 31d957a8-06db-4980-8041-3507a6166ebd[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 351420a9-05aa-431f-bf88-b0c9fe09280c, FolderId: ae6ec8f5-dc37-4101-89ae-06869ade7857 - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 351420a9-05aa-431f-bf88-b0c9fe09280c, FolderId: ae6ec8f5-dc37-4101-89ae-06869ade7857 - Deleting 1 messages[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 351420a9-05aa-431f-bf88-b0c9fe09280c, FolderId: ae6ec8f5-dc37-4101-89ae-06869ade7857 - Completed deleting 1 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 351420a9-05aa-431f-bf88-b0c9fe09280c, FolderId: ae6ec8f5-dc37-4101-89ae-06869ade7857 - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 351420a9-05aa-431f-bf88-b0c9fe09280c, FolderId: ae6ec8f5-dc37-4101-89ae-06869ade7857 - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 351420a9-05aa-431f-bf88-b0c9fe09280c, FolderId: ae6ec8f5-dc37-4101-89ae-06869ade7857 - Completed deleting 0 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 967955aa-907f-41e7-b5d9-2db7b956d0c9, FolderId: 801002b8-25bd-4c93-85ab-9441aa0efc37 - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 967955aa-907f-41e7-b5d9-2db7b956d0c9, FolderId: 801002b8-25bd-4c93-85ab-9441aa0efc37 - Deleting 1 messages[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 967955aa-907f-41e7-b5d9-2db7b956d0c9, FolderId: 801002b8-25bd-4c93-85ab-9441aa0efc37 - Completed deleting 1 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 967955aa-907f-41e7-b5d9-2db7b956d0c9, FolderId: 801002b8-25bd-4c93-85ab-9441aa0efc37 - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 967955aa-907f-41e7-b5d9-2db7b956d0c9, FolderId: 801002b8-25bd-4c93-85ab-9441aa0efc37 - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 967955aa-907f-41e7-b5d9-2db7b956d0c9, FolderId: 801002b8-25bd-4c93-85ab-9441aa0efc37 - Completed deleting 0 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 45dcc564-5084-426e-a576-af59dc6f1e83, FolderId: 68729d0a-8aaf-4517-a20b-5b190c6b6b48 - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 45dcc564-5084-426e-a576-af59dc6f1e83, FolderId: 68729d0a-8aaf-4517-a20b-5b190c6b6b48 - Deleting 1 messages[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 45dcc564-5084-426e-a576-af59dc6f1e83, FolderId: 68729d0a-8aaf-4517-a20b-5b190c6b6b48 - Completed deleting 1 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 45dcc564-5084-426e-a576-af59dc6f1e83, FolderId: 68729d0a-8aaf-4517-a20b-5b190c6b6b48 - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 45dcc564-5084-426e-a576-af59dc6f1e83, FolderId: 68729d0a-8aaf-4517-a20b-5b190c6b6b48 - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:35 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 45dcc564-5084-426e-a576-af59dc6f1e83, FolderId: 68729d0a-8aaf-4517-a20b-5b190c6b6b48 - Completed deleting 0 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:37 PM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee Deleting 1 message channel message associations for channel e7ed6ac0-b4a1-44fa-92c1-ea7690cd589f[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:37 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 2d01e96c-326f-437c-9467-c830ba8a1e8a, FolderId: 79993178-eea9-4c59-8cfd-b4f9ffc4150d - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:37 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 2d01e96c-326f-437c-9467-c830ba8a1e8a, FolderId: 79993178-eea9-4c59-8cfd-b4f9ffc4150d - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:37 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 2d01e96c-326f-437c-9467-c830ba8a1e8a, FolderId: 79993178-eea9-4c59-8cfd-b4f9ffc4150d - Deleting 1 messages[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:37 PM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:37 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 2d01e96c-326f-437c-9467-c830ba8a1e8a, FolderId: 79993178-eea9-4c59-8cfd-b4f9ffc4150d - Completed deleting 1 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:37 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 2d01e96c-326f-437c-9467-c830ba8a1e8a, FolderId: 79993178-eea9-4c59-8cfd-b4f9ffc4150d - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:37 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 2d01e96c-326f-437c-9467-c830ba8a1e8a, FolderId: 79993178-eea9-4c59-8cfd-b4f9ffc4150d - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:37 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 2d01e96c-326f-437c-9467-c830ba8a1e8a, FolderId: 79993178-eea9-4c59-8cfd-b4f9ffc4150d - Completed deleting 0 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:37 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: d2fd670b-1d55-4ed9-b4ed-b2154c277b18, FolderId: 7029ad02-8ec1-41d9-bdcf-0c017fe3297a - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:37 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: d2fd670b-1d55-4ed9-b4ed-b2154c277b18, FolderId: 7029ad02-8ec1-41d9-bdcf-0c017fe3297a - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:37 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: d2fd670b-1d55-4ed9-b4ed-b2154c277b18, FolderId: 7029ad02-8ec1-41d9-bdcf-0c017fe3297a - Completed deleting 0 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:37 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 4497d8d3-3aea-46e6-a6b6-d6bd4e9d6b42, FolderId: 94a08eb2-b9e6-4667-92f0-b1481da127b1 - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:37 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 4497d8d3-3aea-46e6-a6b6-d6bd4e9d6b42, FolderId: 94a08eb2-b9e6-4667-92f0-b1481da127b1 - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:37 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee, MessageChannelId: 4497d8d3-3aea-46e6-a6b6-d6bd4e9d6b42, FolderId: 94a08eb2-b9e6-4667-92f0-b1481da127b1 - Completed deleting 0 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:38 PM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 2c657ba4-6dc7-48e9-916f-ffe311cf57ee Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/27/2026, 8:10:38 PM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: c9f1c9d3-0723-4a3f-bf14-93f72ee45838, MessageChannelId: 9f118f71-3cf9-499f-ace3-e5ea7fdc9773, FolderId: 45db50a5-aad4-48f3-ae12-4b0156b49dac - Deleting messages from folder: Fixture folder[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-cleanup.postgres-spec.ts (7.877 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-sent-apply-facade.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-command-restore-context.postgres-spec.ts (10.005 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/fork-migration-runner.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-human-command-lease-facade.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-sent-receipt-facade.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-binding-config-event.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-transaction.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-metadata-ownership.postgres-spec.ts (6.237 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-connector-acceptance-facade.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/src/engine/twenty-orm/datasource/utils/__tests__/run-in-rollback-safe-transaction.util.spec.ts
+[33m[Nest] 1  - [39m10/27/2026, 8:10:58 PM [33m   WARN[39m [38;5;3m[runInRollbackSafeTransaction] [39m[33mDestroying connection after failed transaction ROLLBACK: Query read timeout[39m
+[33m[Nest] 1  - [39m10/27/2026, 8:10:58 PM [33m   WARN[39m [38;5;3m[runInRollbackSafeTransaction] [39m[33mDestroying connection after failed transaction ROLLBACK: Query read timeout[39m
+[33m[Nest] 1  - [39m10/27/2026, 8:10:58 PM [33m   WARN[39m [38;5;3m[runInRollbackSafeTransaction] [39m[33mDestroying connection after failed transaction ROLLBACK: Connection terminated unexpectedly[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/binding-config-wakeup-schema.postgres-spec.ts (53.188 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-human-text-command-facade.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-incoming-capture-context.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-human-command-recovery-facade.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-scope.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-resume-facade.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-process.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-local-command-cancellation-facade.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-app-ingestion-guard.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/trusted-capture.postgres-spec.ts (20.23 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-channel-ownership.postgres-spec.ts (11.807 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-human-text-command.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-sent-receipt.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/audit-bootstrap-schema.postgres-spec.ts (5.401 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-sent-receipt-contract.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-human-text-command-contract.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-connector-acceptance-contract.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-ownership-log032.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-incoming-envelope.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-human-command-recovery-contract.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/src/engine/twenty-orm/datasource/__tests__/workspace-data-source-transaction.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-nullable-participant.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/fork-migrator-lock.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-human-command-lease.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-connector-acceptance.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-sent-apply-failure.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-human-command-lease-contract.spec.ts
+
+Summary of all failing tests
+FAIL test/fork-migration/omni-native-reconciliation.postgres-spec.ts (6.382 s)
+  ● native mixed email and omnichannel participant/target reconciliation › preserves omni participants and targets for persisted binding ownership during direct rematch
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:200:14
+
+  ● native mixed email and omnichannel participant/target reconciliation › keeps ordinary APP participant matching behavior when no omni binding owns the channel
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at Object.<anonymous> (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:226:12)
+
+  ● native mixed email and omnichannel participant/target reconciliation › preserves calendar participant matching and person/company/opportunity targets
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at Object.<anonymous> (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:298:12)
+
+  ● native mixed email and omnichannel participant/target reconciliation › preserves member links for omni rows through the member rematch entry point
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at Object.<anonymous> (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:379:12)
+
+  ● native mixed email and omnichannel participant/target reconciliation › filters source IDs before targetsOnly target reconciliation
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:422:14
+
+  ● native mixed email and omnichannel participant/target reconciliation › filters source IDs before emptyParticipants target reconciliation
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:422:14
+
+  ● native mixed email and omnichannel participant/target reconciliation › filters persisted binding thread ownership before direct target reconciliation
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:443:14
+
+  ● native mixed email and omnichannel participant/target reconciliation › keeps omni targets when company and opportunity relations change through the people reconciliation entry point
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at Object.<anonymous> (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:458:12)
+
+  ● native mixed email and omnichannel participant/target reconciliation › uses persisted thread ownership even when the thread has no current native messages
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performMutation (src/engine/twenty-orm/repository/workspace-repository.ts:1773:7)
+      at WorkspaceRepository.delete (src/engine/twenty-orm/repository/workspace-repository.ts:728:21)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:491:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at Object.<anonymous> (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:490:5)
+
+  ● native mixed email and omnichannel participant/target reconciliation › rolls back earlier native changes and emits no events if ownership lookup fails
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at Object.<anonymous> (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:530:12)
+
+  ● native mixed email and omnichannel participant/target reconciliation › rejects a transaction scope from another workspace before native mutations
+
+    OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND
+
+      92 |       ).length)
+      93 |   )
+    > 94 |     throw new Error('OMNI_NATIVE_MUTATION_REQUIRES_DOMAIN_COMMAND');
+         |           ^
+      95 | };
+      96 |
+
+      at assertOmniNativeWriteUnowned (src/modules/omnichannel/services/assert-omni-native-write-unowned.ts:94:11)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1102:7)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:658:49)
+      at insertNative (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:34:3)
+      at test/fork-migration/omni-native-reconciliation.postgres-spec.ts:118:7
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:126:20)
+      at createSeed (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:53:18)
+      at Object.<anonymous> (test/fork-migration/omni-native-reconciliation.postgres-spec.ts:560:12)
+
+
+Test Suites: 1 failed, 63 passed, 64 total
+Tests:       11 failed, 1567 passed, 1578 total
+Snapshots:   0 total
+Time:        507.266 s
+Ran all test suites.
+Traceback (most recent call last):
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log049-run.py", line 31, in <module>
+    s=state();node(['/tools/node_modules/jest/bin/jest.js','--config','/source/packages/twenty-server/jest-fork-migration.config.mjs','--runInBand'],{'FORK_MIGRATION_TEST_URL':'postgres://test_owner:isolated-test-only@postgres/'+s['database']})
+              ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log049-run.py", line 16, in node
+    return ssh(cmd+['--entrypoint','node','marketozk/twenty:log022-candidate',*args])
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log049-run.py", line 4, in ssh
+    def ssh(args,**kw):return call(['ssh',HOST,shlex.join(args)],**kw)
+                              ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log049-run.py", line 3, in call
+    def call(args,**kw):return subprocess.run(args,check=True,**kw)
+                               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['ssh', 'root@176.114.84.194', 'docker run --rm --user 0:0 --network twenty-rob764-3e371e20ab394c2b-net --memory 3g --cpus 2 -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source:/source:ro -v /opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools:/tools:ro -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/out:/out:rw -e NODE_PATH=/out/tools/node_modules:/tools/node_modules:/app/node_modules -e FORK_MIGRATION_TEST_URL=postgres://test_owner:isolated-test-only@postgres/twenty_rob764_test_3e371e20ab394c2b --entrypoint node marketozk/twenty:log022-candidate /tools/node_modules/jest/bin/jest.js --config /source/packages/twenty-server/jest-fork-migration.config.mjs --runInBand']' returned non-zero exit status 1.

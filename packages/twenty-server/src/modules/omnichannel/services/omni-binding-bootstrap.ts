@@ -4,6 +4,7 @@ import { isUUID } from 'class-validator';
 import { type DataSource, type QueryRunner } from 'typeorm';
 
 import { auditPayloadHash } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
+import { lockOmniNativeOwnership } from 'src/modules/omnichannel/services/lock-omni-native-ownership';
 import {
   appendCrmAuditAttempt,
   CrmAuditTransactionContext,
@@ -220,6 +221,14 @@ export const bootstrapOmniAccountBinding = async (
   try {
     await queryRunner.connect();
     await queryRunner.startTransaction();
+    await lockOmniNativeOwnership(
+      {
+        executeRawQuery: (sql, parameters) =>
+          queryRunner.query(sql, parameters),
+      },
+      normalized.workspaceId,
+      'exclusive',
+    );
     const createdState: { id: string }[] = await queryRunner.query(
       `INSERT INTO core."omniWorkspacePolicyState" ("workspaceId")
        VALUES ($1) ON CONFLICT ("workspaceId") DO NOTHING RETURNING id`,

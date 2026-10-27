@@ -2,6 +2,10 @@ import { randomUUID } from 'node:crypto';
 
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { type WorkspaceTransactionScope } from 'src/engine/twenty-orm/types/workspace-transaction-scope.type';
+import {
+  registerOmniWorkspaceTransaction,
+  registerOmniWorkspaceRepository,
+} from 'src/engine/twenty-orm/repository/omni-native-write-capability';
 import { MessagingSaveMessagesAndEnqueueContactCreationService } from 'src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service';
 import { appendOmniSentApplyFailure } from 'src/modules/omnichannel/services/append-omni-sent-apply-failure';
 import {
@@ -74,6 +78,30 @@ const fixture = () => {
     afterCommit: jest.fn(),
   };
   const events: string[] = [];
+  const executor = {
+    execute: scope.executeRawQuery as unknown as (
+      statement: unknown,
+    ) => Promise<Record<string, unknown>[]>,
+  };
+  registerOmniWorkspaceTransaction(scope, {
+    workspaceId: principal.workspaceId,
+    executor,
+    lifecycle: scope.transactionLifecycle!,
+    nativeOwnershipLock: 'exclusive',
+  });
+  const nativeRepository = {};
+  registerOmniWorkspaceRepository(
+    nativeRepository,
+    executor,
+    principal.workspaceId,
+  );
+  jest
+    .mocked(scope.getRepository)
+    .mockReturnValue(
+      nativeRepository as ReturnType<
+        WorkspaceTransactionScope['getRepository']
+      >,
+    );
   const transaction = jest.fn(
     async (work: (value: WorkspaceTransactionScope) => Promise<unknown>) => {
       events.push('begin');
@@ -267,6 +295,7 @@ describe('sent receipt apply strict native owner', () => {
       );
       expect(test.transaction).toHaveBeenCalledWith(expect.any(Function), {
         commitOutcome: 'strict',
+        nativeOwnershipLock: 'exclusive',
       });
       expect(failureAudit).not.toHaveBeenCalled();
     },

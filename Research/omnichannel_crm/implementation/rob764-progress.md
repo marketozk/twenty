@@ -526,3 +526,35 @@ Typecheck выявил вызов optional delegated callback без narrowing �
 Применены ai-dev-workflow, behavioral-guardrails, server-schrodinger. Транспорт,
 HTTP и UI не менялись. Следующий шаг: common native write boundary; фазовая
 принадлежность ROB-764 подтверждена spec §15.1, а не перенесена в будущий ACL.
+
+## LOG-049 — 27.10.2026: общий native mutation boundary
+
+LOG-049 / ROB-764 In Progress: общий native ORM запрещает CRUD/merge/batch
+для omni-owned Message, Thread, Participant, Association, FolderAssociation и Target.
+Проверяются сохранённые и новые родители; bypass/skipEvents не дают разрешения.
+Доменный writer получает capability только на выданный активный strict scope,
+тот же executor/workspace/repository и exclusive ownership fence. Все workspace
+transactions берут shared fence до row locks; bootstrap/history/sent — exclusive.
+Полный прогон: 1578 Jest /64 suites, 1567 PASS и 11 ошибок старого reconciliation
+fixture. После исправления только подготовки данных весь затронутый suite:
+18/18 PASS. Production source между прогонами неизменен, хеши сверены.
+74 новых PostgreSQL случая; 20 dependency +6 checksum tests PASS.
+Typecheck 208 roots: 146 baseline/current,0 новых/0 changed-code diagnostics.
+[Доказательства и границы](log049/README.md). Миграции не менялись.
+Далее — защита удаления CRM-родителей и проверка каскадных действий БД (T05/T22).
+ROB-764 не закрыт; публичный API, UI, собственный ACL и автоматизация ещё впереди.
+Демо прежнее, GitHub Actions не используется.
+
+Два независимых scoped read-only review выявили необходимость раннего shared
+fence, группировки OR с captured IDs и проверки обоих родителей folder junction.
+Исправления включены, конкурентные и пять folder regression cases проходят.
+Начальные fixture ошибки (enum/target field/owner DB role) исправлены; старые
+cleanup/reconciliation fixtures создают protected graph через выданный typed
+scope, сами проверяемые cleaner/rematch продолжают работать без capability.
+Новый QueryExecutor type import нарушал dependency boundary; заменён opaque
+object identity. Отдельная baseline ошибка TypeScript в прежнем aggregate method
+не изменилась; в aggregate изменены только две опции ownership lock.
+Полный Claude review не повторялся. Применены ai-dev-workflow,
+behavioral-guardrails, server-schrodinger. Следующий шаг — parent hard-delete
+guard, core retained references и trash cleanup без starvation; own ACL/audit
+расширение не объявляется завершённым по этому guard.

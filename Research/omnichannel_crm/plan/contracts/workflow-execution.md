@@ -332,6 +332,14 @@ Payload projection: eventId/kind, conversationId/bindingId, messageLinkId при
 
 ## Адаптер штатной транзакции
 
+Adapter принимает только выданный WorkspaceDataSource active strict scope с
+exclusive [native ownership fence](access-control.md#lock-protocol). Отдельная
+capability связывает исходный scope, workspace, executor и конкретный repository;
+поддельный/скопированный/изменённый scope, чужой repository и закрытая transaction
+отвергаются. `nativeOwnershipLock:'exclusive'`, bypass permissions и suppression
+событий сами по себе capability не дают. Эта внутренняя возможность используется
+только domain writers; она не является публичным параметром CRUD.
+
 `withOmniRepositoryOptions(scope)` — trusted server adapter над тем же WorkspaceTransactionScope, без открытия новой транзакции: workspaceId/executeRawQuery/afterCommit делегируются, getRepository для allowlist message/messageThread/messageParticipant/messageChannelMessageAssociation и используемых target associations принудительно добавляет `{shouldSkipEventEmission:true}` третьим параметром. Helpers `saveMessagesWithinTransaction`, `saveMessageParticipants` и domain projection writer получают только этот wrapped scope для omni операции. Для omni запрещены `matchParticipants`/`reconcileParticipantTargets`, включая targetsOnly: они автоматически расширяют Person до Company/Opportunity. Native MessageThreadTarget пишет только domain link/unlink из canonical ConversationTarget, с isManuallyAssigned=true/isAutomaticallyAssigned=false по spec §7; транзакционные repository helpers переиспользуются без штатного вычисления desired targets. Динамический metadata name нормализуется сервером; caller не управляет allowlist. Для остальных CRM records сохраняются переданные options. Raw writes должны создавать требуемый DomainEvent/audit сами и не emit generic событие. Запрещено вызывать aggregate, который открывает собственную транзакцию или запускает postcommit matcher для omni. Email caller передаёт исходный scope и сохраняет свой emission/matching behavior. T05/T14/T16 проверяют фактические emitted events всех helper writes, rollback и отрицательный контроль удаления wrapper, не только unit mock опции.
 
 <a id="send-action"></a>

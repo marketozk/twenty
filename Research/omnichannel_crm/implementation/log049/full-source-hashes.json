@@ -1,0 +1,22 @@
+{
+  "packages/twenty-server/src/engine/twenty-orm/datasource/__tests__/workspace-data-source-transaction.spec.ts": "aef230f077dfc637f718522e9a58504a9c0fe1755c593e9147a123f41f575555",
+  "packages/twenty-server/src/engine/twenty-orm/datasource/workspace-data-source.ts": "44956ced8dac7f11ed911308272029bcef86f9290392637bc2de8e7cc6c17cc3",
+  "packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts": "0b2775e5b1691db9b76f241ac5cfa2b2617a790f625841b05b83c6e2f3a4e0e7",
+  "packages/twenty-server/src/engine/twenty-orm/types/workspace-transaction-lifecycle.type.ts": "92d48209bb40b37d21c6f21d80d8d4589abced4188bed849d7fb3c7aea173393",
+  "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts": "006c01f1a03015aa46ccbf32637aa4af21cf51ef2597bc702eef0b704b1b3ba5",
+  "packages/twenty-server/src/modules/omnichannel/services/omni-binding-bootstrap.ts": "bdf6c44b75d7d32edd7e68776468c89e794a95c6d4e8d5dda50dfefa6e9284bb",
+  "packages/twenty-server/src/modules/omnichannel/services/with-omni-repository-options.ts": "bae8c364d95c3087fbc8adcd24d86f92b92a9dd0b4eacc0d115419c852fbf2e0",
+  "packages/twenty-server/test/fork-migration/omni-history-apply.fixture.ts": "8982b6bfb49546d5526fa71c90cac9cb70042f4f1a1ec23687b85e120851c961",
+  "packages/twenty-server/test/fork-migration/omni-metadata-ownership.postgres-spec.ts": "c172e06797fd4c9741e36066d54aceafab5288a90b677467f921ad8709418a23",
+  "packages/twenty-server/test/fork-migration/omni-native-cleanup.fixture.ts": "21c941fc421564ce05f90d03a67e016bb9d5b8290acdf9db358d4fa47c19e195",
+  "packages/twenty-server/test/fork-migration/omni-native-cleanup.postgres-spec.ts": "57d3d317b2756e7f71892921fde56a22de681e65bbd21027c987c5920de4dfd1",
+  "packages/twenty-server/test/fork-migration/omni-native-message.fixture.ts": "78b815e5dd9bc836787f990f9ec113d451a898ea08fb00c42ac56444b47c0791",
+  "packages/twenty-server/test/fork-migration/omni-native-message.postgres-spec.ts": "88de211f04ca40a2cc151feda4fb4fbfdd4288da46b75b0252964df9e4d36fc3",
+  "packages/twenty-server/test/fork-migration/omni-native-reconciliation.postgres-spec.ts": "fcad3124b1a7b8ae3719b7ee6d41bad734a0346217a6286ac05b5426150a7d35",
+  "packages/twenty-server/test/fork-migration/omni-native-scope.spec.ts": "3f3baf4e5c0fd2ca851df1c7967e5f2bed203983f1150488f033be0ab7666b71",
+  "packages/twenty-server/test/fork-migration/omni-sent-apply-facade.spec.ts": "81cb763d2e6d7b32fe793f37e5577b27f7ee29b9e032fcae1d966178cb18b3ab",
+  "packages/twenty-server/src/engine/twenty-orm/repository/omni-native-write-capability.ts": "904ca48e7a1488390db611178767d6d3e50708fac46b707ac252c2d2335d9621",
+  "packages/twenty-server/src/modules/omnichannel/services/assert-omni-native-write-unowned.ts": "0fb1c8573f1444c9bb3ff540c0a31f66fad3f6e95db3309ab282e4a9dab4fb2b",
+  "packages/twenty-server/src/modules/omnichannel/services/lock-omni-native-ownership.ts": "d886d20be2ab10dea349223c7b840da4596cedfbc83f5fd5945cc9c20f13683c",
+  "packages/twenty-server/test/fork-migration/omni-native-mutation-guard.postgres-spec.ts": "5164dd77ce613258070c2d5ff7448c874c9315ecb7514423ba25e764c127258a"
+}

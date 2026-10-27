@@ -21,6 +21,7 @@ import { createOmniNativeMessageFixture } from 'test/fork-migration/omni-native-
 export const createOmniHistoryApplyFixture = (
   options: {
     includeTargets?: boolean;
+    includeFolderAssociations?: boolean;
     includeWorkspaceMember?: boolean;
     useStandardForeignKeyActions?: boolean;
   } = {},
@@ -30,6 +31,9 @@ export const createOmniHistoryApplyFixture = (
     useStandardForeignKeyActions: options.useStandardForeignKeyActions,
     additionalTables: [
       ...(options.includeTargets ? ['messageThreadTarget' as const] : []),
+      ...(options.includeFolderAssociations
+        ? ['messageChannelMessageAssociationMessageFolder' as const]
+        : []),
       ...(options.includeWorkspaceMember ? ['workspaceMember' as const] : []),
     ],
   });
