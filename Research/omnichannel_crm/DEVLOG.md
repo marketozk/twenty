@@ -1038,3 +1038,5 @@ Root review исправил точность nextAttemptAt в producer/audit и
 исправлено async. Финальный полный890 PASS, typecheck0 new/changed. Независимое
 scoped review без блокеров; полный Claude cross-review не заявляется.
 Skills: ai-dev-workflow, behavioral-guardrails, server-schrodinger. Продолжаем LOG-040.
+
+Публикация LOG-039: код be0039477d482fad53d7c868c73269e14bb4973a, remote проверен GitHub API. Описание ROB-764 и комментарий 03b3a849-07b1-4d39-b0f1-0675d015e646 прочитаны обратно; все11 статусов сохранены. Продолжаем LOG-040.
