@@ -434,6 +434,7 @@ export const claimOmniIncomingReceipts = async (
       const rows: ReceiptRow[] = await transaction.queryRunner.query(
         `SELECT ${RECEIPT_COLUMNS} FROM core."omniIncomingReceipt"
        WHERE "workspaceId"=$1 AND "bindingId"=$2 AND "routeGeneration"=$3
+         AND kind IN ('message.received','message.edited','message.deleted')
          AND ((state IN ('accepted','retryable_error') AND "nextAttemptAt" <= clock_timestamp())
            OR (state='processing' AND "leaseUntil" <= clock_timestamp()))
        ORDER BY "nextAttemptAt", id LIMIT $4 FOR UPDATE SKIP LOCKED`,
@@ -479,7 +480,8 @@ const lockReceipt = async (
 ): Promise<ReceiptRow> => {
   const [receipt]: ReceiptRow[] = await transaction.queryRunner.query(
     `SELECT ${RECEIPT_COLUMNS} FROM core."omniIncomingReceipt"
-     WHERE "workspaceId"=$1 AND "bindingId"=$2 AND id=$3 FOR UPDATE`,
+     WHERE "workspaceId"=$1 AND "bindingId"=$2 AND id=$3
+       AND kind IN ('message.received','message.edited','message.deleted') FOR UPDATE`,
     [principal.workspaceId, principal.bindingId, proof.receiptId],
   );
   if (

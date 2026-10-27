@@ -88,6 +88,58 @@ FIFO может исключать в SQL только сохранённое н
 получают доверия при backfill; требуется явная проверка reducer. JS/SQL определения
 формата принадлежат одному contract helper и проверяются parity cases на PostgreSQL.
 
+<a id="confirmed-sent"></a>
+
+### Подтверждённая исходящая отправка
+
+Доказательство `command.sent` сохраняется в существующем IncomingReceipt:
+immutable validatedEnvelope и trustedCaptureContext/hash, stable eventId в пределах
+binding, штатные state/lease/resultId. Отдельного sent ledger или поля-дубликата
+в Command нет. Закрытый internal envelope содержит commandId, immutable payloadHash,
+binding/generation/chat, проверенные connectorJobId/journalSequence, providerMessageId,
+outgoing/complete, key version, source time/position. Qualified capture связывает
+envelope hash с canonical native key и adapter/version; origin=connector_outcome
+назначается сервером. Body берётся из immutable Command, а trusted verifier
+подтверждает соответствие отправленному содержимому. Простой JSON не доказывает send.
+
+Для этого kind действуют отдельные internal accept/claim/apply с current worker
+reconciliation grant и проверкой исторического источника на каждой операции,
+включая replay. Общие message ingress/lease не ослабляют active/current-generation
+проверки и не захватывают command.sent. Orphan/чужой Command, конфликт identity/hash,
+pending/failed/cancelled требуют явного отказа/reconciliation; Command не выдумывается.
+Принятие receipt не меняет состояние Command и не создаёт Message. Claim выдаёт
+DB lease на сохранённый receipt, не разрешение вызвать provider.
+
+Apply для ручного текста связывает Command с одним canonical Message/MessageLink,
+initial revision, OUTGOING channel association и immutable авторством. Автор snapshot
+берётся из сохранённых IDs Command: senderProvenance=human_direct,
+correlationState=command_confirmed, authorVerification=command_identity. Текущие
+имя/email не выдаются за исторический snapshot; удалённый WorkspaceMember допускает
+null native relation при сохранённом immutable author ID. При отсутствии исторических имени/адреса
+native participant handle/displayName остаются NULL: внутренний member ID не
+выдаётся за email получателя. Replay допускает исходный member FK либо NULL после
+удаления, не перепривязывает участника к другому сотруднику. Кардинальность links по
+commandId проверяется под Conversation lock; чужой native key/header/thread не
+присваивается. Некоррелированное echo этим writer не разрешается.
+
+Command dispatching/accepted/outcome_unknown переходит в sent без новой отправки;
+новый подтверждённый факт снимает lease и повышает statusRevision. Cancellation и
+generation сохраняются. Sent не понижается. Если acceptance ACK ещё не был сохранён,
+verified sent evidence с реальными jobId/journalSequence позволяет в той же
+транзакции записать нормализованный acceptance proof; номера журнала не выдумываются.
+Точное повторение проверяет сохранённый graph и не меняет его; другой evidence event
+для той же доказанной command/native identity указывает на тот же resultId.
+
+Служебный message.sent имеет origin=connector_outcome, стабильную identity от Command
+и один [suppressed root/dispatch](workflow-execution.md#confirmed-sent-event) при v0.
+conversationSequence увеличивается один раз, replyRevision не меняется второй раз
+после command admission. Нет customer admission, автоматического ответа, создания
+Person или target rematch. Native/core записи, receipt applied/resultId и audit
+фиксируются одной strict transaction, финальный receipt lease CAS — по DB clock
+после audit. Потерянный COMMIT ACK восстанавливается по тем же IDs без второго bubble.
+Реальное покрытие accept/claim/apply отражается в журнале реализации, а не выводится
+из наличия этого контракта.
+
 Редакционные контракты: canonical wire enum для неопределённой отправки в CRM, connector и userbot — outcome_unknown; прежнее unknown в prose/state sketches означает этот же terminal uncertainty, отдельного состояния нет. JSON Schema генерация ROB-764 устраняет оба написания из wire. Канонический trusted origin импорта — history_import; import является только описанием операции, не вторым enum. Внешний envelope не задаёт origin. History import никогда автоматически не создаёт Person и не вызывает business listeners: сохраняет external identity и разрешённые explicit links. Создание Person/обогащение после импорта — отдельная явно инициированная операция с обычными правами/audit и видимыми событиями; live auto-createPerson настройка не переносится на import. T16 проверяет отсутствие Person-created effects во время импорта.
 
 <a id="reply"></a>

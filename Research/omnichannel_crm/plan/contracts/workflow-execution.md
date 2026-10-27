@@ -157,6 +157,20 @@ AutomationAdmission, ReplyBudget и consumer/run intents не создаются
 менеджера не расходует autonomous reply budget. Повтор не создаёт второй event,
 а последующая публикация политики не оживляет этот suppressed plan.
 
+<a id="confirmed-sent-event"></a>
+
+Подтверждение ручной текстовой Command при v0 создаёт один служебный message.sent
+с origin=connector_outcome, стабильным eventId от Command, scope=binding/conversation
+и payload {commandId,messageLinkId,senderClass,dispatchSuppressed:true}. Текст,
+transport IDs и proof в DomainEvent не копируются. Root следует обычному правилу
+domain_event/eventId, state=suppressed, coveredRoots=[], initialEventIds=[eventId],
+бюджеты/расходы=0. DispatchPlan targets=[], state=suppressed, activationVersion=NULL,
+policyId/version — сохранённые v0 из Command; новый current policy не переподписывает
+старый исходящий. Customer AutomationAdmission, ReplyBudget и consumer/run intents
+не создаются. Receipt replay/другой event той же доказанной отправки не создаёт
+второе событие, root или conversationSequence. Это не message.received trigger.
+Порядок записи и доказательства — [confirmed sent](sending-ui.md#confirmed-sent).
+
 <a id="design-28"></a>
 
 Изменения CRM из governed run сохраняют causation и полный inherited root set в trusted transaction context и durable event. Subsequent triggers и дети наследуют его и оставшиеся effect/reply budgets, не объявляют изменение новой независимой причиной. Для (root,workflowId) повторный target не создаётся (UNIQUE в intent target index); при covered set из нескольких roots все target claims резервируются атомарно, runId определяется [единым правилом](#run-identity). Частичный/пересекающийся уже занятый набор отклоняется с видимым handoff, не создаёт ещё один run для части roots; если нужен тот же workflow повторно, это отдельный explicit replay после разбора. Missing/lost causation на внутреннем событии → отказ/quarantine, а не свежий root. Общий конечный max CRM effects/hops и per-route admission/rate budget задаются в G07 до activation; исчерпание → один durable handoff без следующей мутации/рассылки. Это останавливает цикл update→trigger→update. Новые независимые внешние события получают свои roots только после аутентификации и rate admission; клиентский payload не задаёт ancestry. Burst хранит набор (rootKind,rootId); descendants наследуют весь набор без расширения или обнуления.

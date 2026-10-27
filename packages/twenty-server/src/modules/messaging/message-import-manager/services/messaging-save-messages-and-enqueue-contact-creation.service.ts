@@ -53,6 +53,21 @@ import { appendOmniBindingConfigWakeupFailure } from 'src/modules/omnichannel/se
 import { appendOmniHumanTextCommandFailure } from 'src/modules/omnichannel/services/append-omni-human-text-command-failure';
 import { appendOmniHumanCommandLeaseFailure } from 'src/modules/omnichannel/services/append-omni-human-command-lease-failure';
 import { appendOmniConnectorAcceptanceFailure } from 'src/modules/omnichannel/services/append-omni-connector-acceptance-failure';
+import { appendOmniSentReceiptFailure } from 'src/modules/omnichannel/services/append-omni-sent-receipt-failure';
+import {
+  acceptOmniSentReceipt,
+  claimOmniSentReceipt,
+  snapshotOmniSentReceiptRequest,
+  snapshotOmniSentReceiptClaimRequest,
+  type OmniSentReceiptCallbacks,
+} from 'src/modules/omnichannel/services/omni-sent-receipt';
+import {
+  type OmniSentReceiptPrincipal,
+  type OmniSentReceiptInput,
+  type OmniSentReceiptClaimInput,
+  type OmniSentReceiptAcceptance,
+  type OmniSentReceiptClaimResult,
+} from 'src/modules/omnichannel/contracts/omni-sent-receipt';
 import {
   applyOmniConnectorAcceptance,
   snapshotOmniConnectorAcceptanceRequest,
@@ -131,6 +146,145 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     @InjectDataSource()
     private readonly dataSource: DataSource,
   ) {}
+
+  async acceptOmniSentReceipt(
+    principal: OmniSentReceiptPrincipal,
+    input: OmniSentReceiptInput,
+    callbacks: OmniSentReceiptCallbacks,
+  ): Promise<OmniSentReceiptAcceptance> {
+    const request = snapshotOmniSentReceiptRequest(principal, input, callbacks);
+    const attemptOperationId = randomUUID();
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        let callbackEntered = false;
+        let authorizationDenied = false;
+        try {
+          return await this.workspaceOrmManager.runInWorkspaceTransaction(
+            async (scope) => {
+              callbackEntered = true;
+              return acceptOmniSentReceipt(
+                scope,
+                request.principal,
+                request.input,
+                {
+                  ...request.callbacks,
+                  authorize: async (...args) => {
+                    try {
+                      return await request.callbacks.authorize(...args);
+                    } catch (error) {
+                      authorizationDenied = true;
+                      throw error;
+                    }
+                  },
+                },
+              );
+            },
+            { commitOutcome: 'strict' },
+          );
+        } catch (error) {
+          if (
+            callbackEntered &&
+            !(error instanceof NativeTransactionOutcomeUnknownError)
+          ) {
+            try {
+              await this.workspaceOrmManager.runInWorkspaceTransaction(
+                (scope) =>
+                  appendOmniSentReceiptFailure(
+                    scope,
+                    request.principal,
+                    {
+                      operation: 'accept',
+                      resourceId: request.input.envelope.commandId,
+                    },
+                    attemptOperationId,
+                    authorizationDenied,
+                  ),
+                { commitOutcome: 'strict' },
+              );
+            } catch (auditError) {
+              throw new AggregateError(
+                [error, auditError],
+                'OMNI_SENT_RECEIPT_FAILURE_AUDIT_UNCONFIRMED',
+              );
+            }
+          }
+          throw error;
+        }
+      },
+      buildSystemAuthContext(request.principal.workspaceId),
+      { lite: true },
+    );
+  }
+
+  async claimOmniSentReceipt(
+    principal: OmniSentReceiptPrincipal,
+    input: OmniSentReceiptClaimInput,
+    callbacks: OmniSentReceiptCallbacks,
+  ): Promise<OmniSentReceiptClaimResult> {
+    const request = snapshotOmniSentReceiptClaimRequest(
+      principal,
+      input,
+      callbacks,
+    );
+    const attemptOperationId = randomUUID();
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        let callbackEntered = false;
+        let authorizationDenied = false;
+        try {
+          return await this.workspaceOrmManager.runInWorkspaceTransaction(
+            async (scope) => {
+              callbackEntered = true;
+              return claimOmniSentReceipt(
+                scope,
+                request.principal,
+                request.input,
+                {
+                  ...request.callbacks,
+                  authorize: async (...args) => {
+                    try {
+                      return await request.callbacks.authorize(...args);
+                    } catch (error) {
+                      authorizationDenied = true;
+                      throw error;
+                    }
+                  },
+                },
+              );
+            },
+            { commitOutcome: 'strict' },
+          );
+        } catch (error) {
+          if (
+            callbackEntered &&
+            !(error instanceof NativeTransactionOutcomeUnknownError)
+          ) {
+            try {
+              await this.workspaceOrmManager.runInWorkspaceTransaction(
+                (scope) =>
+                  appendOmniSentReceiptFailure(
+                    scope,
+                    request.principal,
+                    { operation: 'claim', resourceId: request.input.receiptId },
+                    attemptOperationId,
+                    authorizationDenied,
+                  ),
+                { commitOutcome: 'strict' },
+              );
+            } catch (auditError) {
+              throw new AggregateError(
+                [error, auditError],
+                'OMNI_SENT_RECEIPT_FAILURE_AUDIT_UNCONFIRMED',
+              );
+            }
+          }
+          throw error;
+        }
+      },
+      buildSystemAuthContext(request.principal.workspaceId),
+      { lite: true },
+    );
+  }
 
   async applyOmniConnectorAcceptance(
     principal: OmniConnectorAcceptancePrincipal,

@@ -1133,3 +1133,26 @@ proof проверяется общей JS/SQL семантикой на реа�
 ai-dev-workflow, behavioral-guardrails, server-schrodinger. Продолжаем LOG-044.
 
 Публикация LOG-043: код d0afc39501f52361afb231f2e6f1e7e4cf9d8279, remote проверен GitHub API. Описание ROB-764 и комментарий 7e2b2535-d6ba-48c3-9125-09fcf5d75bcb прочитаны обратно; все 11 статусов сохранены. Продолжаем LOG-044.
+
+
+## LOG-044 — 27.10.2026: durable sent receipt
+
+LOG-044 / ROB-764 In Progress: durable command.sent receipt accept/claim реализованы.
+Закрытые envelope/capture сохраняются в существующем IncomingReceipt; current
+worker grant и qualified historical verifier обязательны при capture/replay/claim.
+Command/native graph пока не меняются. DB lease/token/expiry и audit атомарны,
+postcondition после audit защищает от подмены; lost COMMIT ACK без false failure.
+Обычный incoming claim/renew/defer исключает command.sent, сохраняя три message kinds.
+487 Jest /18 затронутых suites +26 guards =513 PASS. Typecheck184roots:
+146 baseline/current,0 новых/0 changed-code; все6 миграций и старые методы aggregate
+неизменны. Полный1025 suite прошёл в LOG041.
+[Доказательства и границы](implementation/log044/README.md). Исторический ACK не даёт нового send;
+partial прежний acceptance не исправляется при capture. Далее — LOG045:
+атомарный confirmed sent → штатные Message/Participant/Link/revision/event.
+HTTP/UI, transport, scheduler/own ACL и полный ROB-764 ещё не готовы.
+Демо прежнее, GitHub Actions не используется.
+
+Pristine/readback postconditions проверены реальным audit trigger. Обычные incoming
+kind guards проверены на всех трёх message kinds и accepted/retryable/processing
+sent receipts. Scoped review без блокеров; ai-dev-workflow, behavioral-guardrails,
+server-schrodinger. Продолжаем LOG045, не закрывая ROB-764 по наличию receipt.

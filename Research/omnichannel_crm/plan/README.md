@@ -1,18 +1,18 @@
 # Технический план реализации CRM — v1
 
-LOG-043 / ROB-764 In Progress: внутренний verified connector acceptance реализован.
-Current worker grant и qualified evidence обязательны также при replay. Новый
-факт атомарно сохраняет proof/job/journal, меняет state/revision, снимает lease
-и пишет audit; duplicate сохраняет новый reconcile lease. Historical ACK разрешён
-без нового send; outcome_unknown не превращается в доставленное сообщение.
-FIFO пропускает только строго сопоставленные proofs; неизвестные остаются bounded100.
-285 Jest /14 затронутых suites +26 guards =311 PASS;91 новый case, включая53 PG.
-Typecheck177roots:146 baseline/current,0 новых/0 changed-code; все6 миграций и
-старые методы aggregate неизменны. Полный1025 suite прошёл в LOG041.
-[Доказательства и границы](../implementation/log043/README.md). Проверены151 подтверждённый predecessor,
-23 malformed JS/SQL parity cases, rollback/lost ACK. Это внутренний server-owned
-proof, не готовый протокол userbot. Далее — confirmed sent и штатный Message.
-HTTP/UI, live transport, scheduler/own ACL и полный ROB-764 ещё не готовы.
+LOG-044 / ROB-764 In Progress: durable command.sent receipt accept/claim реализованы.
+Закрытые envelope/capture сохраняются в существующем IncomingReceipt; current
+worker grant и qualified historical verifier обязательны при capture/replay/claim.
+Command/native graph пока не меняются. DB lease/token/expiry и audit атомарны,
+postcondition после audit защищает от подмены; lost COMMIT ACK без false failure.
+Обычный incoming claim/renew/defer исключает command.sent, сохраняя три message kinds.
+487 Jest /18 затронутых suites +26 guards =513 PASS. Typecheck184roots:
+146 baseline/current,0 новых/0 changed-code; все6 миграций и старые методы aggregate
+неизменны. Полный1025 suite прошёл в LOG041.
+[Доказательства и границы](../implementation/log044/README.md). Исторический ACK не даёт нового send;
+partial прежний acceptance не исправляется при capture. Далее — LOG045:
+атомарный confirmed sent → штатные Message/Participant/Link/revision/event.
+HTTP/UI, transport, scheduler/own ACL и полный ROB-764 ещё не готовы.
 Демо прежнее, GitHub Actions не используется.
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.

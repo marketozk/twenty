@@ -1,0 +1,17 @@
+{
+  "baseCommit": "f1bffea45d7c7e5ad35f36a6aeca7afe0c64f07b",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "allPreviousAggregateMethodsUnchanged": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts": "4018421ed97b10f62d9755b34e7bab979784d490b84632b799122672bdd3afbc",
+    "packages/twenty-server/src/modules/omnichannel/services/omni-incoming-receipt-lease.ts": "57cabda3f776bdb40afacb75f3ed53657a2d792e73950ef7b8242b69fe4f860f",
+    "packages/twenty-server/src/modules/omnichannel/contracts/omni-sent-receipt.ts": "0b36c7e4d3860867ddc1e2418291f1d3ad544474b4d433e5a8cc62363fe44b32",
+    "packages/twenty-server/src/modules/omnichannel/services/append-omni-sent-receipt-failure.ts": "9578e6d4844ecda8d75347ef59611f7a31e40be94043e457919e759d96305dd7",
+    "packages/twenty-server/src/modules/omnichannel/services/omni-sent-receipt.ts": "323028e8a466f426324ecfbbcf5eff60c61c83ee361ff722c9167f9c048762db",
+    "packages/twenty-server/test/fork-migration/crm-audit-sent-receipt.spec.ts": "c91ed8500b718a3789565908d0fad2eedbaed507be153624b08d65b82d0b8d66",
+    "packages/twenty-server/test/fork-migration/omni-sent-receipt-contract.spec.ts": "d341532ca9731ac28a292b5db1f52a0cc7796eafb0ca3cc3bb50ddb140ba25be",
+    "packages/twenty-server/test/fork-migration/omni-sent-receipt-facade.spec.ts": "169f38daadd8bb758a7cbcb026e9f83f5ce0a95982fb1435679217f31dd18fb5",
+    "packages/twenty-server/test/fork-migration/omni-sent-receipt.postgres-spec.ts": "15928f020b61f6ee987bc50ac6f538768d3acae5aaf5c301800636655f5bebc4"
+  }
+}
