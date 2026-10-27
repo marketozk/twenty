@@ -1273,3 +1273,5 @@ Typecheck выявил вызов optional delegated callback без narrowing �
 Применены ai-dev-workflow, behavioral-guardrails, server-schrodinger. Транспорт,
 HTTP и UI не менялись. Следующий шаг: common native write boundary; фазовая
 принадлежность ROB-764 подтверждена spec §15.1, а не перенесена в будущий ACL.
+
+Публикация LOG-048: код b4d5f8aab122a8f429ab8c205a768ef079ce9db7, remote проверен GitHub API. Описание ROB-764 и комментарий 6a5f674c-28d5-47b2-9ed6-b7c7c83487f3 прочитаны обратно; все 11 статусов сохранены. Продолжаем native mutation guard T05/T22.
