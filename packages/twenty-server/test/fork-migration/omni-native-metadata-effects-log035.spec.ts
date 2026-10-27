@@ -3,7 +3,6 @@ import { randomUUID } from 'node:crypto';
 import { MessageFolderPendingSyncAction } from 'twenty-shared/types';
 import { In } from 'typeorm';
 
-import { MessageChannelSyncStatusService } from 'src/modules/messaging/common/services/message-channel-sync-status.service';
 import { MessagingProcessFolderActionsService } from 'src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service';
 
 jest.mock('src/engine/twenty-orm/workspace-orm.manager', () => ({
@@ -48,76 +47,6 @@ jest.mock(
   'src/modules/messaging/message-import-manager/services/messaging-import-folder-messages.service',
   () => ({ MessagingImportFolderMessagesService: class {} }),
 );
-
-const resetFixture = () => {
-  const workspaceId = randomUUID();
-  const ordinaryId = randomUUID();
-  const ownedId = randomUUID();
-  const effects: string[] = [];
-  const query = jest.fn(
-    async (
-      _sql: string,
-      _parameters?: unknown[],
-    ): Promise<Record<string, unknown>[]> => {
-      effects.push('ownership');
-      return [{ id: ownedId }];
-    },
-  );
-  const manager = {
-    getWorkspaceId: jest.fn(() => workspaceId),
-    executeInWorkspaceContext: jest.fn(
-      async <TData>(work: () => Promise<TData>) => work(),
-    ),
-  };
-  const cache = {
-    mdel: jest.fn(async () => {
-      effects.push('cache');
-    }),
-  };
-  const channels = {
-    manager: { query },
-    update: jest.fn(async () => {
-      effects.push('channel');
-    }),
-  };
-  const folders = {
-    update: jest.fn(async () => {
-      effects.push('folders');
-    }),
-  };
-  type Dependencies = ConstructorParameters<
-    typeof MessageChannelSyncStatusService
-  >;
-  const service = new MessageChannelSyncStatusService(
-    cache as unknown as Dependencies[0],
-    manager as unknown as Dependencies[1],
-    channels as unknown as Dependencies[2],
-    folders as unknown as Dependencies[3],
-    {} as Dependencies[4],
-    {} as Dependencies[5],
-    {} as Dependencies[6],
-    {} as Dependencies[7],
-    {} as Dependencies[8],
-  );
-  const mark = jest
-    .spyOn(service, 'markAsMessagesListFetchPending')
-    .mockImplementation(async () => {
-      effects.push('pending');
-    });
-  return {
-    workspaceId,
-    ordinaryId,
-    ownedId,
-    effects,
-    query,
-    manager,
-    cache,
-    channels,
-    folders,
-    service,
-    mark,
-  };
-};
 
 const folderFixture = () => {
   const workspaceId = randomUUID();
@@ -209,108 +138,7 @@ const folderFixture = () => {
   };
 };
 
-describe('reset ownership fence before cache and metadata effects', () => {
-  it('filters mixed channel IDs before the first cache effect and preserves ordinary ordering', async () => {
-    const fixture = resetFixture();
-    await fixture.service.resetAndMarkAsMessagesListFetchPending(
-      [fixture.ownedId, fixture.ordinaryId],
-      fixture.workspaceId,
-    );
-    expect(fixture.effects).toEqual([
-      'ownership',
-      'cache',
-      'channel',
-      'folders',
-      'pending',
-    ]);
-    expect(fixture.cache.mdel).toHaveBeenCalledWith([
-      `messages-to-import:${fixture.workspaceId}:${fixture.ordinaryId}`,
-      `messages-to-import-total:${fixture.workspaceId}:${fixture.ordinaryId}`,
-      `messages-imported:${fixture.workspaceId}:${fixture.ordinaryId}`,
-    ]);
-    expect(fixture.channels.update).toHaveBeenCalledWith(
-      { id: In([fixture.ordinaryId]), workspaceId: fixture.workspaceId },
-      expect.any(Object),
-    );
-    expect(fixture.folders.update).toHaveBeenCalledWith(
-      fixture.workspaceId,
-      { messageChannelId: In([fixture.ordinaryId]) },
-      expect.any(Object),
-    );
-    expect(fixture.mark).toHaveBeenCalledWith(
-      [fixture.ordinaryId],
-      fixture.workspaceId,
-    );
-  });
-
-  it('leaves every effect untouched for a wholly protected batch', async () => {
-    const fixture = resetFixture();
-    await fixture.service.resetAndMarkAsMessagesListFetchPending(
-      [fixture.ownedId],
-      fixture.workspaceId,
-    );
-    expect(fixture.effects).toEqual(['ownership']);
-  });
-
-  it('leaves an empty batch untouched without querying', async () => {
-    const fixture = resetFixture();
-    await fixture.service.resetAndMarkAsMessagesListFetchPending(
-      [],
-      fixture.workspaceId,
-    );
-    expect(fixture.effects).toEqual([]);
-  });
-
-  it('rejects a different active workspace before querying or clearing cache', async () => {
-    const fixture = resetFixture();
-    fixture.manager.getWorkspaceId.mockReturnValue(randomUUID());
-    await expect(
-      fixture.service.resetAndMarkAsMessagesListFetchPending(
-        [fixture.ordinaryId],
-        fixture.workspaceId,
-      ),
-    ).rejects.toThrow('WORKSPACE_MISMATCH');
-    expect(fixture.effects).toEqual([]);
-  });
-
-  it.each(['failure', 'malformed'] as const)(
-    'performs no effects on ownership %s',
-    async (variant) => {
-      const fixture = resetFixture();
-      if (variant === 'failure')
-        fixture.query.mockRejectedValue(new Error('ownership unavailable'));
-      else fixture.query.mockResolvedValue([{ id: randomUUID() }]);
-      await expect(
-        fixture.service.resetAndMarkAsMessagesListFetchPending(
-          [fixture.ordinaryId],
-          fixture.workspaceId,
-        ),
-      ).rejects.toThrow();
-      expect(fixture.cache.mdel).not.toHaveBeenCalled();
-      expect(fixture.channels.update).not.toHaveBeenCalled();
-      expect(fixture.folders.update).not.toHaveBeenCalled();
-      expect(fixture.mark).not.toHaveBeenCalled();
-    },
-  );
-
-  it('uses the input snapshot when the caller mutates IDs during ownership lookup', async () => {
-    const fixture = resetFixture();
-    const ids = [fixture.ordinaryId, fixture.ownedId];
-    fixture.query.mockImplementation(async () => {
-      await Promise.resolve();
-      ids.splice(0, ids.length, randomUUID());
-      return [{ id: fixture.ownedId }];
-    });
-    await fixture.service.resetAndMarkAsMessagesListFetchPending(
-      ids,
-      fixture.workspaceId,
-    );
-    expect(fixture.mark).toHaveBeenCalledWith(
-      [fixture.ordinaryId],
-      fixture.workspaceId,
-    );
-  });
-});
+// Reset ownership/atomicity regressions moved to omni-sync-status.postgres-spec.ts (LOG056).
 
 describe('folder action ownership fence before import, cleanup and metadata deletion', () => {
   it('keeps protected folders out of cleanup, pending-action reset and metadata deletion', async () => {

@@ -182,22 +182,6 @@ export class MicrosoftAPIsService {
                 transactionManager,
               },
             );
-
-            await this.accountsToReconnectService.removeAccountToReconnect(
-              userId,
-              workspaceId,
-              newOrExistingConnectedAccountId,
-            );
-
-            await this.messagingChannelSyncStatusService.resetAndMarkAsMessagesListFetchPending(
-              [newOrExistingConnectedAccountId],
-              workspaceId,
-            );
-
-            await this.calendarChannelSyncStatusService.resetAndMarkAsCalendarEventListFetchPending(
-              [newOrExistingConnectedAccountId],
-              workspaceId,
-            );
           }
 
           if (
@@ -255,6 +239,24 @@ export class MicrosoftAPIsService {
           }
         },
       );
+
+      if (existingAccountId) {
+        await this.accountsToReconnectService.removeAccountToReconnect(
+          userId,
+          workspaceId,
+          newOrExistingConnectedAccountId,
+        );
+
+        await this.messagingChannelSyncStatusService.resetAndMarkAsMessagesListFetchPending(
+          existingMessageChannels.map(({ id }) => id),
+          workspaceId,
+        );
+
+        await this.calendarChannelSyncStatusService.resetAndMarkAsCalendarEventListFetchPending(
+          existingCalendarChannels.map(({ id }) => id),
+          workspaceId,
+        );
+      }
 
       if (
         this.twentyConfigService.get('MESSAGING_PROVIDER_MICROSOFT_ENABLED')

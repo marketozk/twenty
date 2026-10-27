@@ -1522,3 +1522,41 @@ GitHub Actions не использовался. Прежние skills ai-dev-wor
 behavioral-guardrails/server-schrodinger; independent scoped review read-only.
 
 LOG055 publication: code `73ade32887884f514f33bfc42b969858c3bfc96e`, remote head verified via GitHub API. Linear description/comment `a698dc36-11c8-4ca6-9c38-0cab7b93a108` read back;11 project states verified. [Publication](implementation/log055/publication.json).
+
+
+## LOG-056 — atomic ordinary sync-status batches (28.10.2026)
+
+Новый batch owner фиксирует input IDs до await, берёт shared ownership fence,
+все account locks по sorted IDs, затем все channel locks; повторно читает parents
+и полную ownership. Native APP/null IDs, retained/derived owned accounts и
+reparented rows исключаются. AuthFailed сразу берёт account FOR UPDATE, без
+SHARE→UPDATE upgrade. Реально изменённые rows определяют postcommit effects.
+
+Message reset объединяет channel stage/cursor/throttle и ordinary folder reset
+через withManager; folders дополнительно блокируются и проверяются по ownership.
+Message/calendar authentication failure обновляет account и channel атомарно.
+Cache, metrics, broadcast и reconnect используют только committed accepted IDs;
+recipient/account берутся из locked snapshot, не из позднего чтения нового parent.
+Microsoft reconnect reset вынесен за persistence transaction и получает channel IDs.
+
+Ревью обнаружило local unknown COMMIT → import recovery и stale account authFailure.
+Оба исправлены: ранний rethrow в handlers и messaging catch до setAdd; captured
+account ID в credential/certificate failure. Новые66 PG cases включают actual import
+owners lost ACK, actual handlers stale parent, mixed/native/legacy/derived owners,
+parallel reversed batches, SQL rollback, folder reset, conditional scheduling,
+input snapshot, tenant mismatch и unreadable ownership.7 старых mock reset cases
+заменены PostgreSQL проверками. Microsoft existing caller regression проверяет
+committed account/channel state во время reset и настоящий channel ID.
+
+Affected 332 tests/7 suites; full fork 1881/71 +26 guards=1907 PASS.
+Typecheck242 roots:197/191,0 new/changed-code;7 migration sources unchanged.
+Initial fixture failures: unrelated AI import, missing folder table/archivedAt;
+исправлены fixture boundary/schema. Type pass потребовал нормализовать unknown
+exception и убрать union-repository enum ambiguity в тесте. Полный server typecheck
+и полный Claude review не заявляются. Scoped re-review без новых блокеров.
+
+[Evidence](implementation/log056/README.md). [Inventory](implementation/rob764-metadata-writer-inventory.md) сохраняет
+оставшиеся group/resolver/cursor/throttle/folder writers. Это не атомарность всех
+старых внешних side effects, не закрытие ROB764 и не транспорт. Демо/SaleBot прежние.
+GitHub Actions не использовался; skills ai-dev-workflow, behavioral-guardrails,
+server-schrodinger, независимое scoped review read-only.

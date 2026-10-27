@@ -1,3 +1,4 @@
+import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -245,8 +246,16 @@ export class MessagingMessagesImportService {
             workspaceId,
           );
         } catch (error) {
+          if (error instanceof OmniCoreTransactionOutcomeUnknownError)
+            throw error;
+          const message =
+            error instanceof Error ? error.message : String(error);
+          const code =
+            typeof error === 'object' && error !== null && 'code' in error
+              ? error.code
+              : 'UNKNOWN';
           this.logger.error(
-            `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannel.id} - Error (${error.code}) importing messages: ${error.message}`,
+            `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannel.id} - Error (${code}) importing messages: ${message}`,
           );
           await this.cacheStorage.setAdd(
             `messages-to-import:${workspaceId}:${messageChannel.id}`,

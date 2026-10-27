@@ -1,22 +1,14 @@
+import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { ExceptionHandlerService } from 'src/engine/core-modules/exception-handler/exception-handler.service';
 import { CalendarChannelEntity } from 'src/engine/metadata-modules/calendar-channel/entities/calendar-channel.entity';
-import {
-  ConnectedAccountRefreshAccessTokenException,
-  ConnectedAccountRefreshAccessTokenExceptionCode,
-} from 'src/engine/metadata-modules/connected-account/exceptions/connected-account-refresh-tokens.exception';
-import {
-  type TwentyOrmException,
-  TwentyOrmExceptionCode,
-} from 'src/engine/twenty-orm/exceptions/twenty-orm.exception';
+import { ConnectedAccountRefreshAccessTokenExceptionCode } from 'src/engine/metadata-modules/connected-account/exceptions/connected-account-refresh-tokens.exception';
+import { TwentyOrmExceptionCode } from 'src/engine/twenty-orm/exceptions/twenty-orm.exception';
 import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
 import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
 import { CALENDAR_THROTTLE_MAX_ATTEMPTS } from 'src/modules/calendar/calendar-event-import-manager/constants/calendar-throttle-max-attempts';
-import {
-  type CalendarEventImportDriverException,
-  CalendarEventImportDriverExceptionCode,
-} from 'src/modules/calendar/calendar-event-import-manager/drivers/exceptions/calendar-event-import-driver.exception';
+import { CalendarEventImportDriverExceptionCode } from 'src/modules/calendar/calendar-event-import-manager/drivers/exceptions/calendar-event-import-driver.exception';
 import {
   CalendarEventImportException,
   CalendarEventImportExceptionCode,
@@ -40,15 +32,20 @@ export class CalendarEventImportErrorHandlerService {
   ) {}
 
   public async handleDriverException(
-    exception:
-      | CalendarEventImportDriverException
-      | TwentyOrmException
-      | ConnectedAccountRefreshAccessTokenException,
+    exception: unknown,
     syncStep: CalendarEventImportSyncStep,
-    calendarChannel: Pick<CalendarChannelEntity, 'id' | 'throttleFailureCount'>,
+    calendarChannel: Pick<
+      CalendarChannelEntity,
+      'id' | 'throttleFailureCount' | 'connectedAccountId'
+    >,
     workspaceId: string,
   ): Promise<void> {
-    switch (exception.code) {
+    if (exception instanceof OmniCoreTransactionOutcomeUnknownError)
+      throw exception;
+    const error =
+      exception instanceof Error ? exception : new Error(String(exception));
+
+    switch ('code' in error ? error.code : undefined) {
       case CalendarEventImportDriverExceptionCode.NOT_FOUND:
         await this.handleNotFoundException(
           syncStep,
@@ -83,11 +80,7 @@ export class CalendarEventImportErrorHandlerService {
       case ConnectedAccountRefreshAccessTokenExceptionCode.ACCESS_TOKEN_NOT_FOUND:
       case ConnectedAccountRefreshAccessTokenExceptionCode.PROVIDER_NOT_SUPPORTED:
       default:
-        await this.handleUnknownException(
-          exception,
-          calendarChannel,
-          workspaceId,
-        );
+        await this.handleUnknownException(error, calendarChannel, workspaceId);
         break;
     }
   }
@@ -171,12 +164,13 @@ export class CalendarEventImportErrorHandlerService {
   }
 
   private async handleInsufficientPermissionsException(
-    calendarChannel: Pick<CalendarChannelEntity, 'id'>,
+    calendarChannel: Pick<CalendarChannelEntity, 'id' | 'connectedAccountId'>,
     workspaceId: string,
   ): Promise<void> {
     await this.calendarChannelSyncStatusService.markAsFailedInsufficientPermissionsAndFlushCalendarEventsToImport(
       [calendarChannel.id],
       workspaceId,
+      calendarChannel.connectedAccountId,
     );
   }
 

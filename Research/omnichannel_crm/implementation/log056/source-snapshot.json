@@ -1,0 +1,17 @@
+{
+  "baseCommit": "512d5e4b805f902bda671068328141ce7076ee3c",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/auth/services/microsoft-apis.service.ts": "42ca002522f5be7b7c441cb2ca3cfabcb058b8c270db181daca5f2f60a0aeee0",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-event-import-exception-handler.service.ts": "26f53483a563817d40c1e1d7e86869d6f70442bfdf7a332723f282d03ba619bb",
+    "packages/twenty-server/src/modules/calendar/common/services/calendar-channel-sync-status.service.ts": "1eca86c155114c14254471c3b1d591caea7d50e784c84e0c7c62ab1c1d4564ac",
+    "packages/twenty-server/src/modules/messaging/common/services/message-channel-sync-status.service.ts": "21701275a151f83e7d439a9f76eab681dddcb9d2d9ca95c70792d75e1d5799ff",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-import-exception-handler.service.ts": "5c52229cc3908c1a983bef09b4446c6613616c6c59d1e0876144c88282df5c17",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-messages-import.service.ts": "0ea01a49dc032f68dafd09d04ea62bc6aeb320163a3755e33e9b7c8d197f3a28",
+    "packages/twenty-server/test/fork-migration/omni-account-provider-writes.postgres-spec.ts": "79ea86afc56e9dddd26c8d1311ca8d3cae3ce47f4655b24bed2bfae156a348e6",
+    "packages/twenty-server/test/fork-migration/omni-native-metadata-effects-log035.spec.ts": "93e4a3a021b15ed1898e8be456e8a2ba8eebefc0992bd7970942ac5799e305b9",
+    "packages/twenty-server/src/modules/omnichannel/services/with-ordinary-metadata-channels.ts": "27633a5147f07692224d1fa69fdd85b6557dc38d82a35bf8bd941252b3bcfa85",
+    "packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts": "af22ce473913b73b2092644a4dbd8eab0fd2a1ed7b74933ac60215967b6fa742"
+  }
+}

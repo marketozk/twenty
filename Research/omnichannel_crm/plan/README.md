@@ -1,15 +1,16 @@
 # Технический план реализации CRM — v1
 
-LOG-055 / ROB-764 In Progress: webhook claim/settle/clear/status для message/calendar
-выполняются под shared native fence, account/channel locks и fresh full ownership.
-Native APP и retained/derived owned accounts исключены; workspace обязателен.
-Snapshot callbacks сверяют исходный account ID. Локальный unknown commit не
-попадает в provider recovery и не вызывает ложный FAILED или success metric.
-Проверено 278 targeted Jest /6 suites +26 guards =304 PASS;
-85 новых PostgreSQL cases. Typecheck236 roots:197 baseline/
-197 current,0 new/changed-code. Все7 migrations неизменны.
-[Доказательства](../implementation/log055/README.md). Оба замечания scoped review исправлены и проверены.
-Далее sync-status/cursor/folder writers, resolver pending action и итоговый T22.
+LOG-056 / ROB-764 In Progress: пакетные message/calendar sync-status записи
+используют одну fresh transaction: shared fence → все account locks → channel locks
+→ fresh full ownership → фактические updates. Folder reset и authFailed атомарны.
+Cache/broadcast/metrics/reconnect после commit только для обновлённых IDs и captured
+recipients. Credential failure сверяет исходный parent; unknown commit пробрасывается
+без повторного FAILED/cache replay. Microsoft reset после commit получает channel IDs.
+Проверено 1881 full fork Jest /71 suites +26 guards =1907 PASS;
+66 новых PG cases заменяют в том числе7 прежних mock reset checks.
+Typecheck242 roots:197/191,0 new/changed-code.7 migrations неизменны.
+[Доказательства](../implementation/log056/README.md). Scoped review замечания исправлены.
+Далее group-action/resolver, cursor/throttle/folder writers и итоговый T22.
 ROB-764 остаётся In Progress; публичные API, ACL, UI и транспорт ещё впереди.
 Демо прежнее, GitHub Actions не используется.
 

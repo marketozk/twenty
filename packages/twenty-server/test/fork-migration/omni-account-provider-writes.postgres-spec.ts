@@ -738,11 +738,9 @@ describe('full Google/Microsoft reconnect callers', () => {
         provider,
         archivedAt: new Date(),
       });
-      await runtime
-        .getRepository(MessageChannelEntity)
-        .update(channelId, {
-          syncStage: MessageChannelSyncStage.PENDING_CONFIGURATION,
-        });
+      await runtime.getRepository(MessageChannelEntity).update(channelId, {
+        syncStage: MessageChannelSyncStage.PENDING_CONFIGURATION,
+      });
       const calendarId = randomUUID();
       await runtime.getRepository(CalendarChannelEntity).insert({
         id: calendarId,
@@ -759,6 +757,26 @@ describe('full Google/Microsoft reconnect callers', () => {
         return found;
       });
       const sideEffect = jest.fn().mockResolvedValue(undefined);
+      const resetMessages = jest.fn(async () => {
+        expect((await read()).archivedAt).toBeNull();
+        expect(
+          (
+            await runtime
+              .getRepository(MessageChannelEntity)
+              .findOneByOrFail({ id: channelId })
+          ).isSyncEnabled,
+        ).toBe(true);
+      });
+      const resetCalendar = jest.fn(async () => {
+        expect((await read()).archivedAt).toBeNull();
+        expect(
+          (
+            await runtime
+              .getRepository(CalendarChannelEntity)
+              .findOneByOrFail({ id: calendarId })
+          ).isSyncEnabled,
+        ).toBe(true);
+      });
       const dependencies = {
         workspaceOrmManager: workspaceOrm,
         userWorkspaceRepository,
@@ -780,10 +798,10 @@ describe('full Google/Microsoft reconnect callers', () => {
         },
         accountsToReconnectService: { removeAccountToReconnect: sideEffect },
         messagingChannelSyncStatusService: {
-          resetAndMarkAsMessagesListFetchPending: sideEffect,
+          resetAndMarkAsMessagesListFetchPending: resetMessages,
         },
         calendarChannelSyncStatusService: {
-          resetAndMarkAsCalendarEventListFetchPending: sideEffect,
+          resetAndMarkAsCalendarEventListFetchPending: resetCalendar,
         },
         emailAliasManagerService: { refreshHandleAliases: sideEffect },
         messageQueueService: { add: sideEffect },
@@ -815,8 +833,20 @@ describe('full Google/Microsoft reconnect callers', () => {
       if (stale) {
         await expect(work).rejects.toThrow('CONNECTED_ACCOUNT_CHANGED');
         expect(sideEffect).not.toHaveBeenCalled();
+        expect(resetMessages).not.toHaveBeenCalled();
+        expect(resetCalendar).not.toHaveBeenCalled();
       } else {
         await expect(work).resolves.toBe(accountId);
+        if (provider === ConnectedAccountProvider.MICROSOFT) {
+          expect(resetMessages).toHaveBeenCalledWith(
+            [channelId],
+            fixture.workspaceId,
+          );
+          expect(resetCalendar).toHaveBeenCalledWith(
+            [calendarId],
+            fixture.workspaceId,
+          );
+        }
         expect((await read()).archivedAt).toBeNull();
       }
       expect(

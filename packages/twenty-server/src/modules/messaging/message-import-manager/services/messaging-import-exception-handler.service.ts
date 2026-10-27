@@ -1,3 +1,4 @@
+import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
 import { Injectable } from '@nestjs/common';
 
 import { isDefined } from 'twenty-shared/utils';
@@ -6,14 +7,8 @@ import { MAIL_SERVER_CERTIFICATE_INVALID_AUTH_FAILED_REASON } from 'twenty-share
 import { MessageChannelSyncStatus } from 'twenty-shared/types';
 import { ExceptionHandlerService } from 'src/engine/core-modules/exception-handler/exception-handler.service';
 import { MessageChannelEntity } from 'src/engine/metadata-modules/message-channel/entities/message-channel.entity';
-import {
-  ConnectedAccountRefreshAccessTokenException,
-  ConnectedAccountRefreshAccessTokenExceptionCode,
-} from 'src/engine/metadata-modules/connected-account/exceptions/connected-account-refresh-tokens.exception';
-import {
-  type TwentyOrmException,
-  TwentyOrmExceptionCode,
-} from 'src/engine/twenty-orm/exceptions/twenty-orm.exception';
+import { ConnectedAccountRefreshAccessTokenExceptionCode } from 'src/engine/metadata-modules/connected-account/exceptions/connected-account-refresh-tokens.exception';
+import { TwentyOrmExceptionCode } from 'src/engine/twenty-orm/exceptions/twenty-orm.exception';
 import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
 import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
 import { MessageChannelSyncStatusService } from 'src/modules/messaging/common/services/message-channel-sync-status.service';
@@ -42,11 +37,7 @@ export class MessageImportExceptionHandlerService {
   ) {}
 
   public async handleDriverException(
-    exception:
-      | MessageImportDriverException
-      | Error
-      | TwentyOrmException
-      | ConnectedAccountRefreshAccessTokenException,
+    exception: unknown,
     syncStep: MessageImportSyncStep,
     messageChannel: Pick<
       MessageChannelEntity,
@@ -54,17 +45,22 @@ export class MessageImportExceptionHandlerService {
     >,
     workspaceId: string,
   ): Promise<void> {
-    if (exception instanceof MessageImportDriverException) {
-      exception.context = {
-        ...exception.context,
+    if (exception instanceof OmniCoreTransactionOutcomeUnknownError)
+      throw exception;
+    const error =
+      exception instanceof Error ? exception : new Error(String(exception));
+
+    if (error instanceof MessageImportDriverException) {
+      error.context = {
+        ...error.context,
         messageChannelId: messageChannel.id,
         workspaceId,
         syncStep,
       };
     }
 
-    if ('code' in exception) {
-      switch (exception.code) {
+    if ('code' in error) {
+      switch (error.code) {
         case MessageImportDriverExceptionCode.NOT_FOUND:
           await this.handleNotFoundException(
             syncStep,
@@ -85,7 +81,7 @@ export class MessageImportExceptionHandlerService {
             syncStep,
             messageChannel,
             workspaceId,
-            exception,
+            error,
           );
           break;
         case ConnectedAccountRefreshAccessTokenExceptionCode.REFRESH_TOKEN_NOT_FOUND:
@@ -95,7 +91,7 @@ export class MessageImportExceptionHandlerService {
             workspaceId,
             connectedAccountId: messageChannel.connectedAccountId,
             messageChannelId: messageChannel.id,
-            message: `${exception.code}: ${exception.message ?? ''}`,
+            message: `${error.code}: ${error.message ?? ''}`,
           });
           await this.handleInsufficientPermissionsException(
             messageChannel,
@@ -114,6 +110,7 @@ export class MessageImportExceptionHandlerService {
             workspaceId,
             syncStatus:
               MessageChannelSyncStatus.FAILED_INSUFFICIENT_PERMISSIONS,
+            expectedConnectedAccountId: messageChannel.connectedAccountId,
             authFailedReason:
               MAIL_SERVER_CERTIFICATE_INVALID_AUTH_FAILED_REASON,
           });
@@ -133,7 +130,7 @@ export class MessageImportExceptionHandlerService {
         case MessageImportDriverExceptionCode.UNKNOWN_NETWORK_ERROR:
         default:
           await this.handleUnknownException(
-            exception,
+            error,
             messageChannel,
             workspaceId,
             syncStep,
@@ -142,7 +139,7 @@ export class MessageImportExceptionHandlerService {
       }
     } else {
       await this.handleUnknownException(
-        exception,
+        error,
         messageChannel,
         workspaceId,
         syncStep,
@@ -240,12 +237,13 @@ export class MessageImportExceptionHandlerService {
   }
 
   private async handleInsufficientPermissionsException(
-    messageChannel: Pick<MessageChannelEntity, 'id'>,
+    messageChannel: Pick<MessageChannelEntity, 'id' | 'connectedAccountId'>,
     workspaceId: string,
   ): Promise<void> {
     await this.messageChannelSyncStatusService.markAsFailed({
       messageChannelIds: [messageChannel.id],
       workspaceId,
+      expectedConnectedAccountId: messageChannel.connectedAccountId,
       syncStatus: MessageChannelSyncStatus.FAILED_INSUFFICIENT_PERMISSIONS,
     });
   }

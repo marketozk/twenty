@@ -1,0 +1,69 @@
+[32m[Nest] 1  - [39m10/27/2026, 10:46:44 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: bb41f03f-2167-47ba-8ffe-16e4c433ee71 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/27/2026, 10:46:45 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: bb41f03f-2167-47ba-8ffe-16e4c433ee71 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/27/2026, 10:46:45 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: bb41f03f-2167-47ba-8ffe-16e4c433ee71 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/27/2026, 10:46:45 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: bb41f03f-2167-47ba-8ffe-16e4c433ee71 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/27/2026, 10:46:47 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: bb41f03f-2167-47ba-8ffe-16e4c433ee71 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/27/2026, 10:46:47 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: bb41f03f-2167-47ba-8ffe-16e4c433ee71 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/27/2026, 10:46:47 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: bb41f03f-2167-47ba-8ffe-16e4c433ee71 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/27/2026, 10:46:47 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: bb41f03f-2167-47ba-8ffe-16e4c433ee71 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-metadata-transaction.postgres-spec.ts (16.291 s)
+[32m[Nest] 1  - [39m10/27/2026, 10:46:47 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: bb41f03f-2167-47ba-8ffe-16e4c433ee71 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts (11.79 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-account-provider-writes.postgres-spec.ts (7.084 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-webhook-status.postgres-spec.ts (12.137 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-metadata-mutation-guard.spec.ts
+[32m[Nest] 1  - [39m10/27/2026, 10:47:19 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 8661fd23-6d31-4928-92c8-eed954817767 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-metadata-ownership.postgres-spec.ts (5.803 s)
+[Nest] 1  - 10/27/2026, 10:47:25 PM   ERROR [MessagingProcessFolderActionsService] WorkspaceId: a53c01bb-7f2b-4da0-b5ed-6c9fc45236ae, MessageChannelId: 1ef72a7b-1b22-442c-8336-8a76b4f83204, FolderId: 79108a38-40e5-45f8-8bbb-cc763b00bd93 - Error processing folder action: ordinary cleanup failed
+Error: ordinary cleanup failed
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-native-metadata-effects-log035.spec.ts:264:7)
+    at Promise.then.completed (/tools/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (/tools/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (/tools/node_modules/jest-circus/build/run.js:316:40)
+    at _runTest (/tools/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/tools/node_modules/jest-circus/build/run.js:126:9)
+    at _runTestsForDescribeBlock (/tools/node_modules/jest-circus/build/run.js:121:9)
+    at run (/tools/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/tools/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/tools/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/tools/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/tools/node_modules/jest-runner/build/runTest.js:444:34)
+[Nest] 1  - 10/27/2026, 10:47:25 PM   ERROR [MessagingProcessFolderActionsService] WorkspaceId: 6ae58114-c075-4e5f-9f6d-ec73f5a24070, MessageChannelId: 0dd32c9f-8b77-44c8-9882-3a4d4af2420d, FolderId: 52cc89be-923d-4950-b3ae-e628e21065f4 - Error processing folder action: Unexpected folder processing failure
+Error: Unexpected folder processing failure
+    at MessagingProcessFolderActionsService.processFolderActions (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:152:15)
+    at /source/packages/twenty-server/test/fork-migration/omni-native-metadata-effects-log035.spec.ts:277:7
+[Nest] 1  - 10/27/2026, 10:47:25 PM   ERROR [MessagingProcessFolderActionsService] WorkspaceId: 12d89255-6e24-44cd-88d2-9b4da51be024, MessageChannelId: 01dde359-9a3d-4e9e-bc6c-66b831d19a5f, FolderId: ac297beb-9835-4696-a437-fae8472d717b - Error processing folder action: Unexpected folder processing failure
+Error: Unexpected folder processing failure
+    at MessagingProcessFolderActionsService.processFolderActions (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:152:15)
+    at /source/packages/twenty-server/test/fork-migration/omni-native-metadata-effects-log035.spec.ts:277:7
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-metadata-effects-log035.spec.ts
+
+Test Suites: 7 passed, 7 total
+Tests:       332 passed, 332 total
+Snapshots:   0 total
+Time:        54.122 s
+Ran all test suites matching /omni-sync-status|omni-account-provider-writes|omni-native-metadata-effects-log035|omni-webhook-status|omni-metadata/i.
+[32m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: 308643d7-8436-4db3-aaf9-8effc19a5b73, MessageChannelId: ff1894cd-00fb-42a2-a3de-320564b4702d - Processing 1 folders with pending actions[39m
+[95m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 308643d7-8436-4db3-aaf9-8effc19a5b73, MessageChannelId: ff1894cd-00fb-42a2-a3de-320564b4702d, FolderId: f12d751a-551b-467e-95ff-5aff8d452056 - Processing folder action: FOLDER_DELETION[39m
+[95m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 308643d7-8436-4db3-aaf9-8effc19a5b73, MessageChannelId: ff1894cd-00fb-42a2-a3de-320564b4702d, FolderId: f12d751a-551b-467e-95ff-5aff8d452056 - Completed FOLDER_DELETION action[39m
+[95m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 308643d7-8436-4db3-aaf9-8effc19a5b73, MessageChannelId: ff1894cd-00fb-42a2-a3de-320564b4702d - Reset pendingSyncAction to NONE for 1 folders[39m
+[32m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: 308643d7-8436-4db3-aaf9-8effc19a5b73, MessageChannelId: ff1894cd-00fb-42a2-a3de-320564b4702d - Deleted 1 folders[39m
+[32m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: 311f0629-56bc-4dc5-8480-c4bb6c042db8, MessageChannelId: 3ed33f5a-c558-4225-ad41-5f4fb98adf10 - Processing 1 folders with pending actions[39m
+[95m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 311f0629-56bc-4dc5-8480-c4bb6c042db8, MessageChannelId: 3ed33f5a-c558-4225-ad41-5f4fb98adf10, FolderId: ce0bad1f-78b6-492b-a9c4-75b80a984893 - Processing folder action: FOLDER_IMPORT[39m
+[95m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 311f0629-56bc-4dc5-8480-c4bb6c042db8, MessageChannelId: 3ed33f5a-c558-4225-ad41-5f4fb98adf10, FolderId: ce0bad1f-78b6-492b-a9c4-75b80a984893 - Completed FOLDER_IMPORT action[39m
+[95m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 311f0629-56bc-4dc5-8480-c4bb6c042db8, MessageChannelId: 3ed33f5a-c558-4225-ad41-5f4fb98adf10 - Reset pendingSyncAction to NONE for 1 folders[39m
+[32m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: a58bcffa-1178-4085-b6ad-2b145c89e906, MessageChannelId: 297e7eea-9b8c-4b4c-b8d2-3adbaa1b08e5 - Processing 1 folders with pending actions[39m
+[95m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: a58bcffa-1178-4085-b6ad-2b145c89e906, MessageChannelId: 297e7eea-9b8c-4b4c-b8d2-3adbaa1b08e5, FolderId: 1a94e7fa-0934-43d8-8a70-7ab3f39e6411 - Processing folder action: FOLDER_DELETION[39m
+[95m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: a58bcffa-1178-4085-b6ad-2b145c89e906, MessageChannelId: 297e7eea-9b8c-4b4c-b8d2-3adbaa1b08e5, FolderId: 1a94e7fa-0934-43d8-8a70-7ab3f39e6411 - Completed FOLDER_DELETION action[39m
+[95m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: a58bcffa-1178-4085-b6ad-2b145c89e906, MessageChannelId: 297e7eea-9b8c-4b4c-b8d2-3adbaa1b08e5 - Reset pendingSyncAction to NONE for 1 folders[39m
+[32m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: a58bcffa-1178-4085-b6ad-2b145c89e906, MessageChannelId: 297e7eea-9b8c-4b4c-b8d2-3adbaa1b08e5 - Deleted 1 folders[39m
+[32m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: a53c01bb-7f2b-4da0-b5ed-6c9fc45236ae, MessageChannelId: 1ef72a7b-1b22-442c-8336-8a76b4f83204 - Processing 1 folders with pending actions[39m
+[95m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: a53c01bb-7f2b-4da0-b5ed-6c9fc45236ae, MessageChannelId: 1ef72a7b-1b22-442c-8336-8a76b4f83204, FolderId: 79108a38-40e5-45f8-8bbb-cc763b00bd93 - Processing folder action: FOLDER_DELETION[39m
+[33m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [33m   WARN[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[33mWorkspaceId: a53c01bb-7f2b-4da0-b5ed-6c9fc45236ae, MessageChannelId: 1ef72a7b-1b22-442c-8336-8a76b4f83204 - Failed to process 1 folders. They will be retried on next sync.[39m
+[32m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: 6ae58114-c075-4e5f-9f6d-ec73f5a24070, MessageChannelId: 0dd32c9f-8b77-44c8-9882-3a4d4af2420d - Processing 1 folders with pending actions[39m
+[95m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 6ae58114-c075-4e5f-9f6d-ec73f5a24070, MessageChannelId: 0dd32c9f-8b77-44c8-9882-3a4d4af2420d, FolderId: 52cc89be-923d-4950-b3ae-e628e21065f4 - Processing folder action: FOLDER_DELETION[39m
+[33m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [33m   WARN[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[33mWorkspaceId: 6ae58114-c075-4e5f-9f6d-ec73f5a24070, MessageChannelId: 0dd32c9f-8b77-44c8-9882-3a4d4af2420d - Failed to process 1 folders. They will be retried on next sync.[39m
+[32m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: 12d89255-6e24-44cd-88d2-9b4da51be024, MessageChannelId: 01dde359-9a3d-4e9e-bc6c-66b831d19a5f - Processing 1 folders with pending actions[39m
+[95m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 12d89255-6e24-44cd-88d2-9b4da51be024, MessageChannelId: 01dde359-9a3d-4e9e-bc6c-66b831d19a5f, FolderId: ac297beb-9835-4696-a437-fae8472d717b - Processing folder action: FOLDER_DELETION[39m
+[33m[Nest] 1  - [39m10/27/2026, 10:47:25 PM [33m   WARN[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[33mWorkspaceId: 12d89255-6e24-44cd-88d2-9b4da51be024, MessageChannelId: 01dde359-9a3d-4e9e-bc6c-66b831d19a5f - Failed to process 1 folders. They will be retried on next sync.[39m
