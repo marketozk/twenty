@@ -34,6 +34,10 @@ LOG-026 / ROB-764 In Progress: реализован внутренний durable
 Actions не используется как gate по решению пользователя; проверки в своей
 среде, commit/push и отчётность сохраняются.
 
+Код `2025ce939ac1c672cf1843d0005bfdb9b2ffdb04` опубликован; описание и единственный
+[отчёт LOG-026](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-b00c93a8)
+прочитаны обратно, статусы 11 задач сохранены. [Метаданные](implementation/log026/publication.json).
+
 ### Предыдущая порция
 
 LOG-022 / ROB-764 In Progress: добавлены минимальный audit writer, две таблицы

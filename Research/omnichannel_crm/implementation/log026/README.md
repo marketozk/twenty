@@ -89,3 +89,11 @@ Jest: `node .yarn/releases/yarn-4.18.1.cjs jest --config packages/twenty-server/
 audit+event через общий executor, затем inbox/outbox/recovery и email regression.
 ROB-764 остаётся In Progress; подтверждение durable receipt ещё не означает,
 что сообщение появилось в интерфейсе или запустило ИИ.
+
+## Публикация
+
+Код `2025ce939ac1c672cf1843d0005bfdb9b2ffdb04` отправлен в текущую ветку;
+удалённый SHA подтверждён API GitHub. Описание и единственный
+[отчёт ROB-764](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-b00c93a8)
+прочитаны обратно; статусы 11 задач сохранены. Actions не запускались и не
+использовались для приёмки. [Метаданные](publication.json).

@@ -647,4 +647,10 @@ Skills: ai-dev-workflow — реализация по принятому пла�
 ревью; behavioral-guardrails — scoped changes и проверка фактов; server-schrodinger —
 read-only preflight, ограниченные тестовые ресурсы и cleanup своих ресурсов.
 ROB-764 In Progress; далее worker claim/lease, атомарное Message+audit+event,
-inbox/outbox/recovery и email regression. Публикация фиксируется после push.
+inbox/outbox/recovery и email regression.
+
+Код `2025ce939ac1c672cf1843d0005bfdb9b2ffdb04` отправлен в текущую ветку,
+удалённый SHA подтверждён API GitHub. Описание ROB-764 и единственный
+[отчёт LOG-026](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-b00c93a8)
+прочитаны обратно; статусы 11 задач сохранены. Actions не запускались и не
+ожидались. [Метаданные](implementation/log026/publication.json).

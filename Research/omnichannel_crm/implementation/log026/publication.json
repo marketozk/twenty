@@ -1,0 +1,65 @@
+{
+  "codeCommit": "2025ce939ac1c672cf1843d0005bfdb9b2ffdb04",
+  "branch": "codex/omnichannel-requirements",
+  "githubRemoteVerifiedByApi": true,
+  "githubActionsGate": false,
+  "githubActionsTriggeredByAgent": false,
+  "workflowPolicy": "Two omnichannel workflows are manual-only; automatic push/PR triggers removed",
+  "linear": {
+    "issueId": "ROB-764",
+    "commentId": "b00c93a8-d9e9-40a7-bb4e-f05a2285cdf4",
+    "descriptionMatched": true,
+    "commentMatched": true,
+    "exactlyOneLog026": true,
+    "statesPreserved": true,
+    "issueStatus": "In Progress",
+    "states": [
+      {
+        "id": "ROB-764",
+        "status": "In Progress"
+      },
+      {
+        "id": "ROB-772",
+        "status": "Done"
+      },
+      {
+        "id": "ROB-762",
+        "status": "Done"
+      },
+      {
+        "id": "ROB-763",
+        "status": "Done"
+      },
+      {
+        "id": "ROB-765",
+        "status": "Backlog"
+      },
+      {
+        "id": "ROB-766",
+        "status": "Backlog"
+      },
+      {
+        "id": "ROB-767",
+        "status": "Backlog"
+      },
+      {
+        "id": "ROB-768",
+        "status": "Backlog"
+      },
+      {
+        "id": "ROB-769",
+        "status": "Backlog"
+      },
+      {
+        "id": "ROB-770",
+        "status": "Backlog"
+      },
+      {
+        "id": "ROB-771",
+        "status": "Backlog"
+      }
+    ]
+  },
+  "tests": 236,
+  "billingChanged": false
+}
