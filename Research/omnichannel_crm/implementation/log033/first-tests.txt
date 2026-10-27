@@ -1,0 +1,34 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-apply.postgres-spec.ts (14.046 s)
+  qualified history receipt through actual native messaging composition
+    ✓ atomically applies the claimed receipt to a bound Person and suppressed durable history event (383 ms)
+    ✓ reauthorizes an applied replay and leaves native/core/audit state unchanged (192 ms)
+    ✓ uses captured receipt time when source occurrence time is absent (233 ms)
+    ✓ serializes simultaneous same-receipt apply into one creation and one authorized replay (238 ms)
+    ✓ snapshots caller data before waiting for workspace context (203 ms)
+    ✓ does not merge another receipt with conflicting content into an existing canonical message (272 ms)
+    ✓ rejects stale leaseToken without any canonical writes (151 ms)
+    ✓ rejects stale leaseOwner without any canonical writes (143 ms)
+    ✓ rejects stale routeGeneration without any canonical writes (124 ms)
+    ✓ rejects current binding generation drift after claim (124 ms)
+    ✓ rejects modified trustedCaptureContextHash (144 ms)
+    ✓ rejects modified canonicalPayloadHash (134 ms)
+    ✓ rejects an attached application account instead of treating it as the canonical own account (123 ms)
+    ✓ rejects a deleted bound Person before native message creation (137 ms)
+    ✓ requires current authorization for source to identity mapping (136 ms)
+    ✓ records denial separately after rollback without changing the receipt state (128 ms)
+    ✓ rejects an applied replay after authorization revocation (171 ms)
+    ✓ rejects unsupported live provenance without guessing (131 ms)
+    ✓ rejects unsupported placeholder provenance without guessing (132 ms)
+    ✓ rejects unsupported legacy provenance without guessing (131 ms)
+    ✓ keeps native writes invisible to another connection and rolls them back after participant failure (143 ms)
+    ✓ rejects false native IDs after actual writes and rolls back the entire scope (143 ms)
+    ✓ checks lease expiry after native persistence before committing applied state (171 ms)
+    ✓ surfaces audit failure and rolls back canonical writes when append permission is absent (186 ms)
+    ✓ checks lease validity after a slow real audit insert and rolls back all success rows (2198 ms)
+    ✓ returns unknown after a real COMMIT ACK loss and reconciles the persisted applied result (270 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       26 passed, 26 total
+Snapshots:   0 total
+Time:        14.139 s
+Ran all test suites within paths "/source/packages/twenty-server/test/fork-migration/omni-history-apply.postgres-spec.ts".

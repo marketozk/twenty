@@ -1,0 +1,17 @@
+{
+  "baseCommit": "e5c12364174aaf6a373d9552f4bb61d690f3fbfe",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "be639e47ace8195470f672b456c1e2e6fa4564d314960e2aa8cb1290665d416f",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "d192f0bb8c4b9eb68f7fed81801f80a747bf757e72a0984c87b10cdbb3e727c4",
+    "packages/twenty-server/src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts": "a534383e5018ad6a547806d3947723f45440f8fb4ece0920ea81a7a082650f7d",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts": "fbca500d2d05e00fe82d538b02808e473c3778c78fa3fd41dc242e4d44d2776c",
+    "packages/twenty-server/test/fork-migration/omni-native-message.fixture.ts": "11f4a7298ad585aa2287ad300c614c93f59fc7576c7e19e9b5a8a90dcc49340b",
+    "packages/twenty-server/src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error.ts": "29240bd2f66db508e88eaf9a8c6a2db91415fbf164b0a7f96762fc0cd807125e",
+    "packages/twenty-server/src/modules/omnichannel/services/append-omni-history-apply-failure.ts": "f1d9fd7b4a5119850928e05bb805af74a97123608053cdc57c8f8be9dac4e24e",
+    "packages/twenty-server/src/modules/omnichannel/services/apply-omni-history-receipt.ts": "8d2166348d7d2266736b12d160213c09b84dbc986c931f7d95aa1d8a2b9787de",
+    "packages/twenty-server/test/fork-migration/omni-history-apply.fixture.ts": "211965a0ff84cefc1f84195b02e483ba3c4d1e5bf28edc6c5eeef07d021f33e7",
+    "packages/twenty-server/test/fork-migration/omni-history-apply.postgres-spec.ts": "6100f3f19bebce89f285ab2a1d19b6613307bd75034a51df3ac0b03f188adfa4"
+  }
+}

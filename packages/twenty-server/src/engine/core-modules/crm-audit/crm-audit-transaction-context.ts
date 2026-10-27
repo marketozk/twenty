@@ -65,6 +65,7 @@ const CATALOG: Record<
       'leaseUntil',
       'nextAttemptAt',
       'errorCode',
+      'resultId',
     ],
     redacted: [
       'eventId',
@@ -76,6 +77,83 @@ const CATALOG: Record<
   omniMessage: {
     values: ['messageThreadId', 'isDraft'],
     redacted: ['text', 'subject', 'headerMessageId', 'receivedAt', 'deletedAt'],
+  },
+  omniMessageParticipant: {
+    values: ['messageId', 'personId', 'workspaceMemberId', 'role'],
+    redacted: ['handle', 'displayName'],
+  },
+  omniMessageAssociation: {
+    values: ['messageId', 'messageChannelId', 'direction'],
+    redacted: ['messageExternalId', 'messageThreadExternalId'],
+  },
+  omniMessageLink: {
+    values: [
+      'bindingId',
+      'conversationId',
+      'messageId',
+      'nativeMessageKeyVersion',
+      'displayTimeSource',
+      'senderProvenance',
+      'correlationState',
+    ],
+    redacted: [
+      'rawNativeMessageId',
+      'nativeMessageKey',
+      'sourcePosition',
+      'displayOccurredAt',
+      'immutableAuthorSnapshot',
+      'sourceAuthorId',
+      'sourceDisplayName',
+      'authorVerification',
+    ],
+  },
+  omniMessageRevision: {
+    values: ['messageLinkId', 'tombstone', 'origin', 'contentHash'],
+    redacted: ['sourceRevisionKey', 'sourceEventId'],
+  },
+  omniConversation: {
+    values: ['bindingId', 'conversationSequence', 'replyRevision'],
+    redacted: [],
+  },
+  omniDomainEvent: {
+    values: [
+      'conversationId',
+      'conversationSequence',
+      'kind',
+      'origin',
+      'rootExecutionId',
+      'payloadVersion',
+    ],
+    redacted: ['payload'],
+  },
+  omniRootExecution: {
+    values: [
+      'rootKind',
+      'rootId',
+      'policyId',
+      'policyVersion',
+      'origin',
+      'state',
+      'maxCrmEffects',
+      'maxHops',
+      'usedCrmEffects',
+      'usedHops',
+    ],
+    redacted: ['sourceKey', 'initialEventIds', 'scope', 'coveredRoots'],
+  },
+  omniEventDispatchPlan: {
+    values: [
+      'eventId',
+      'rootKind',
+      'rootId',
+      'policyId',
+      'policyVersion',
+      'activationVersion',
+      'initialPlan',
+      'state',
+      'payloadHash',
+    ],
+    redacted: ['targets'],
   },
 };
 
@@ -126,7 +204,17 @@ const descriptor = (
   const source = mutation.securityDescriptor;
 
   if (
-    mutation.resourceKind === 'omniMessage' &&
+    [
+      'omniMessage',
+      'omniMessageParticipant',
+      'omniMessageAssociation',
+      'omniMessageLink',
+      'omniMessageRevision',
+      'omniConversation',
+      'omniDomainEvent',
+      'omniRootExecution',
+      'omniEventDispatchPlan',
+    ].includes(mutation.resourceKind) &&
     (source.bindingId === undefined || source.conversationId === undefined)
   ) {
     throw new Error('Message audit requires binding and conversation scope');

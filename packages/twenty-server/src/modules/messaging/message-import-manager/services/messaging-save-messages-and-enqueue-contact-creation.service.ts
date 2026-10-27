@@ -30,6 +30,18 @@ import { type MessageWithParticipants } from 'src/modules/messaging/message-impo
 import { isGroupEmail } from 'src/modules/messaging/message-import-manager/utils/is-group-email';
 import { MessagingMessageParticipantService } from 'src/modules/messaging/message-participant-manager/services/messaging-message-participant.service';
 import { isWorkEmail } from 'src/utils/is-work-email';
+import { MessageDirection } from 'src/modules/messaging/common/enums/message-direction.enum';
+import {
+  applyOmniHistoryReceipt,
+  snapshotOmniHistoryReceiptRequest,
+  type OmniHistoryApplyAuthorizer,
+  type OmniHistoryApplyPrincipal,
+  type OmniHistoryApplyProof,
+  type OmniHistoryApplyResult,
+} from 'src/modules/omnichannel/services/apply-omni-history-receipt';
+import { withOmniRepositoryOptions } from 'src/modules/omnichannel/services/with-omni-repository-options';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
+import { appendOmniHistoryApplyFailure } from 'src/modules/omnichannel/services/append-omni-history-apply-failure';
 
 @Injectable()
 export class MessagingSaveMessagesAndEnqueueContactCreationService {
@@ -41,6 +53,157 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     private readonly messageFolderAssociationService: MessagingMessageFolderAssociationService,
     private readonly workspaceOrmManager: WorkspaceOrmManager,
   ) {}
+
+  async applyOmniHistoryReceipt(
+    principal: OmniHistoryApplyPrincipal,
+    proof: OmniHistoryApplyProof,
+    authorize: OmniHistoryApplyAuthorizer,
+  ): Promise<OmniHistoryApplyResult> {
+    const request = snapshotOmniHistoryReceiptRequest(
+      principal,
+      proof,
+      authorize,
+    );
+
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        let callbackEntered = false;
+        let authorizationDenied = false;
+        try {
+          return await this.workspaceOrmManager.runInWorkspaceTransaction(
+            async (transactionScope) => {
+              callbackEntered = true;
+              const nativeScope = withOmniRepositoryOptions(transactionScope);
+
+              return applyOmniHistoryReceipt(
+                nativeScope,
+                request.principal,
+                request.proof,
+                async (scope, authorization) => {
+                  try {
+                    await request.authorize(scope, authorization);
+                  } catch (error) {
+                    authorizationDenied = true;
+                    throw error;
+                  }
+                },
+                {
+                  createInitialMessage: async (input) => {
+                    if (input.workspaceId !== nativeScope.workspaceId) {
+                      throw new Error('OMNI_HISTORY_NATIVE_WORKSPACE_MISMATCH');
+                    }
+                    const result =
+                      await this.messageService.saveMessagesWithinTransaction(
+                        [
+                          {
+                            externalId: input.messageExternalId,
+                            messageThreadExternalId:
+                              input.messageThreadExternalId,
+                            headerMessageId: input.headerMessageId,
+                            subject: input.subject,
+                            text: input.text,
+                            receivedAt: new Date(input.receivedAt),
+                            isDraft: false,
+                            direction: MessageDirection.INCOMING,
+                            attachments: [],
+                            participants: [],
+                          },
+                        ],
+                        input.messageChannelId,
+                        nativeScope,
+                        input.workspaceId,
+                        {
+                          canonicalThreadIdByThreadExternalId: new Map([
+                            [
+                              input.messageThreadExternalId,
+                              input.messageThreadId,
+                            ],
+                          ]),
+                        },
+                      );
+                    const messageId = result.messageExternalIdsAndIdsMap.get(
+                      input.messageExternalId,
+                    );
+                    const associationId =
+                      result.messageExternalIdToMessageChannelMessageAssociationIdMap.get(
+                        input.messageExternalId,
+                      );
+
+                    if (
+                      !messageId ||
+                      !associationId ||
+                      result.messageExternalIdToMessageThreadIdMap.get(
+                        input.messageExternalId,
+                      ) !== input.messageThreadId
+                    ) {
+                      throw new Error('OMNI_HISTORY_NATIVE_MAPPING_MISSING');
+                    }
+                    const saved =
+                      await this.messageParticipantService.saveMessageParticipants(
+                        [
+                          {
+                            messageId,
+                            personId: input.personId,
+                            workspaceMemberId: null,
+                            handle: input.participantHandle,
+                            displayName: input.participantDisplayName,
+                            role: MessageParticipantRole.FROM,
+                          },
+                        ],
+                        input.workspaceId,
+                        nativeScope,
+                      );
+
+                    if (
+                      saved.length !== 1 ||
+                      saved[0].messageId !== messageId
+                    ) {
+                      throw new Error(
+                        'OMNI_HISTORY_NATIVE_PARTICIPANT_MISSING',
+                      );
+                    }
+
+                    return {
+                      messageId,
+                      associationId,
+                      participantId: saved[0].id,
+                    };
+                  },
+                },
+              );
+            },
+            { commitOutcome: 'strict' },
+          );
+        } catch (error) {
+          if (
+            callbackEntered &&
+            !(error instanceof NativeTransactionOutcomeUnknownError)
+          ) {
+            try {
+              await this.workspaceOrmManager.runInWorkspaceTransaction(
+                (scope) =>
+                  appendOmniHistoryApplyFailure(
+                    scope,
+                    request.principal,
+                    request.proof,
+                    authorizationDenied,
+                  ),
+                { commitOutcome: 'strict' },
+              );
+            } catch (auditError) {
+              throw new AggregateError(
+                [error, auditError],
+                'OMNI_HISTORY_FAILURE_AUDIT_UNCONFIRMED',
+              );
+            }
+          }
+          throw error;
+        }
+      },
+      buildSystemAuthContext(request.principal.workspaceId),
+      { lite: true },
+    );
+  }
 
   async saveMessagesAndEnqueueContactCreation(
     messagesToSave: MessageWithParticipants[],

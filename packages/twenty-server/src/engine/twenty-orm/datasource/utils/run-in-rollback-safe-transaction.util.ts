@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import { type Pool, type PoolClient } from 'pg';
 
 import { computeTwentyOrmException } from 'src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import {
   type WorkspaceTransactionLifecycle,
   type WorkspaceTransactionOptions,
@@ -10,15 +11,7 @@ import {
 
 const logger = new Logger('runInRollbackSafeTransaction');
 
-export class NativeTransactionOutcomeUnknownError extends Error {
-  constructor(
-    readonly phase: 'commit' | 'rollback' | 'release',
-    cause: unknown,
-  ) {
-    super(`Native transaction outcome is unknown after ${phase}`, { cause });
-    this.name = 'NativeTransactionOutcomeUnknownError';
-  }
-}
+export { NativeTransactionOutcomeUnknownError };
 
 export const runInRollbackSafeTransaction = async <T>({
   pool,

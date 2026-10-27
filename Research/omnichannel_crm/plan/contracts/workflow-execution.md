@@ -122,7 +122,7 @@ RunIntent хранит runCreatedAt/created evidence, runId, pinned version, ter
 
 | Вход | Trusted source key / durable admission до enqueue |
 |---|---|
-| Message | существующий AutomationAdmission ID; все consumers делят один root |
+| Message с business admission | существующий AutomationAdmission ID; все consumers делят один root |
 | conversation.created | При live eligible сообщении наследует root/covered set того же message admission; не отдельная квота. Import/restore/incomplete origin — empty/suppressed, не business send |
 | assignment.changed / status.changed | Governed mutation наследует весь causation/covered set; независимая authorized mutation: rootKind=domain_event, sourceKey=DomainEvent.eventId, один stable root и общая квота |
 | DATABASE_EVENT | durable event ID от mutation transaction; версия записи/объекта входит в provenance. Для подписки omni-governed запись DomainEvent+target intent создаётся с CRM mutation, native listener исключает этот target из отдельного enqueue |
@@ -133,6 +133,18 @@ RunIntent хранит runCreatedAt/created evidence, runId, pinned version, ter
 <a id="design-27"></a>
 
 Для независимого non-message входа rootId = UUIDv5(workspaceId,rootKind,sourceKey); receipt UNIQUE(workspaceId,rootKind,sourceKey), target run identity — по [единому правилу](#run-identity). В одной DB transaction сохраняются root, scope/policy, immutable target snapshot, receipts/intents и общая квота. Replay/publish не создаёт новый root. Native trigger adapters для governed targets идут через этот ingress; обычные targets сохраняют свой путь. Для пропущенного durable evidence — видимый gap/stop, не реконструкция по текущему состоянию. Retention/restore/import suppression из §15.4 распространяются и на эти roots.
+
+При сохранении `history_import` без business admission событие хранения получает
+служебный `rootKind=domain_event`, `sourceKey=DomainEvent.eventId` и стабильный
+rootId по правилу выше. Его origin сохраняется, state=`suppressed`, бюджеты и
+расходы равны0, coveredRoots пуст; scope ограничен binding/conversation.
+Единственный initial event — это событие хранения. В той же транзакции создаётся
+EventDispatchPlan с `targets=[]`, state=`suppressed`, activationVersion=NULL и
+captured policy version. AutomationAdmission, reply budget, consumer/run intents
+не создаются; native business listeners подавлены, аудит сохраняется. Такой root
+не используется как message admission и не занимает ключ будущего допустимого
+live admission. Replay возвращает прежний storage result; публикация подписки
+не превращает suppressed plan в исполнимый.
 
 <a id="design-28"></a>
 

@@ -1,0 +1,22 @@
+{
+  "jestTests": 558,
+  "jestSuites": 23,
+  "postgresTests": 352,
+  "unitTests": 206,
+  "newHistoryPostgresTests": 33,
+  "guardTests": 20,
+  "checksumTests": 5,
+  "totalDistinctTests": 583,
+  "typecheckRootFiles": 119,
+  "baselineTypeDiagnostics": 136,
+  "newTypeDiagnostics": 0,
+  "changedCodeTypeDiagnostics": 0,
+  "baselineDiagnosticsInUnchangedMethodOfEditedFile": 1,
+  "fullServerTypecheck": false,
+  "allFiveMigrationSourcesUnchanged": true,
+  "independentScopedReview": "PASS no blocker; legacy method exact text unchanged",
+  "fullROB764Acceptance": false,
+  "productionAuthorizationImplemented": false,
+  "liveDemoChanged": false,
+  "githubActionsUsed": false
+}

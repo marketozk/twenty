@@ -1,4 +1,4 @@
-# ROB-764 — реализация, LOG-032
+# ROB-764 — реализация, LOG-033
 
 27.10.2026 пользователь ответил «хорошо приступай» на предложение принять
 исправленный план за основу и начать ROB-764 с проверками конкретного кода.
@@ -222,4 +222,21 @@ email/APP и календарь сохранены. Полный набор:525 
 Далее — атомарное применение receipt в native Message, затем inbox/outbox/recovery.
 Cleaner/delete/merge/generic CRUD и конкурентный lifecycle ещё не закрыты;
 полный T05/ROB-764 не завершён. HTTP/own ACL/UI/живые коннекторы не подключены.
+Демо прежнее; GitHub Actions не используется.
+
+
+## LOG-033 — atomic history receipt apply
+
+LOG-033 / ROB-764 In Progress: реальный atomic history receipt apply сохраняет
+Message + participant с существующей Person, Link/Revision, DomainEvent,
+suppressed root/dispatch, audit и applied receipt одной строгой транзакцией.
+Поддержан qualified incoming complete text history_import, существующие
+Conversation/Identity/Person, current generation и disabled policy v0; current
+authorizer обязателен. Повторы/ошибки/unknown COMMIT проверены, автоэффектов нет.
+558 Jest +25 guards =583 PASS; новые33 PG cases. Typecheck119roots:0 новых/
+0 в изменённом коде;136 baseline, включая1 в неизменённом старом методе.
+[Доказательства и границы](log033/README.md).
+Следом — cleanup/lifecycle ownership guards, затем остальные domain apply,
+inbox/outbox/recovery. Live/new-conversation/Person/edit/delete/admission и
+полный T05/ROB-764 не закрыты. HTTP/own ACL/UI/живые коннекторы не подключены.
 Демо прежнее; GitHub Actions не используется.

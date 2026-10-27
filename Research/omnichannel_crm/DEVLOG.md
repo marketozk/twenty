@@ -853,3 +853,26 @@ server-schrodinger (изолированные лимитированные пр
 
 
 Публикация LOG-032: `e80d9dece4b42e34f462e444cb91898a2350c24d`; remote SHA проверен API. Описание ROB-764 и комментарий `fa995c17-80a1-4e93-b037-358dd51ef8cc` прочитаны обратно, все11 статусов прежние. [Метаданные](implementation/log032/publication.json). Продолжаем LOG-033.
+
+
+## LOG-033 — 27.10.2026: atomic history receipt apply
+
+Новый native facade+domain writer сохраняют qualified history text к существующему
+диалогу/Person с Link/Revision/Event/suppressed Root/Dispatch/audit/applied receipt
+одним strict scope. Owner contract уточняет storage-only suppressed root и resultId.
+Повторное чтение после Conversation lock устраняет concurrent duplicate race;
+lease CAS после audit.flush устраняет expiry во время аудита. Неизвестный commit
+не получает ложный failed audit. Действия с ошибкой аудируются отдельно после rollback.
+
+558 Jest/23suites +25guards =583 PASS; новые33 PG, включая7 SQL write failures.
+Typecheck119roots:0new/0changed-code,136baseline. Одна старая TS2345 в неизменённом
+методе подтверждена AST/полным текстовым сравнением, не исправлялась попутно.
+UnknownError вынесен leaf, старый export/class identity сохранены; dependency
+контроль PASS без исключений, все5 migration checksums неизменны.
+[Доказательства и пределы](implementation/log033/README.md).
+
+Scoped independent review PASS. Production authorizer/live/новые Conversation/Person/
+edit/delete/admission/полный T05 ещё впереди; ROB-764 In Progress. Демо не менялось.
+Skills: ai-dev-workflow — раздельная реализация/проверка/review; behavioral-guardrails —
+ограниченная ветка без ложной готовности; server-schrodinger — изолированные PG tests.
+GitHub Actions не используется. Продолжаем native cleanup/lifecycle ownership guards.

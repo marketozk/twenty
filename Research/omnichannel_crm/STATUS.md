@@ -1,15 +1,17 @@
 # Текущее состояние Twenty CRM
 
-LOG-032 / ROB-764 In Progress: фоновое сопоставление участников и пересчёт
-связанных CRM-записей исключают omni-owned Message/Thread до чтения и изменения
-участников/targets. Проверяются binding, MessageLink и Conversation; обычные
-email/APP и календарь сохранены. Полный набор:525 Jest +25 guards =550 PASS;
-после двух исправлений только типов повторены68 затронутых тестов. Typecheck:
-115 roots,0 новых/0 в изменённых файлах,136 baseline остаются. Все5 миграций прежние.
-[Доказательства и границы](implementation/log032/README.md).
-Далее — атомарное применение receipt в native Message, затем inbox/outbox/recovery.
-Cleaner/delete/merge/generic CRUD и конкурентный lifecycle ещё не закрыты;
-полный T05/ROB-764 не завершён. HTTP/own ACL/UI/живые коннекторы не подключены.
+LOG-033 / ROB-764 In Progress: реальный atomic history receipt apply сохраняет
+Message + participant с существующей Person, Link/Revision, DomainEvent,
+suppressed root/dispatch, audit и applied receipt одной строгой транзакцией.
+Поддержан qualified incoming complete text history_import, существующие
+Conversation/Identity/Person, current generation и disabled policy v0; current
+authorizer обязателен. Повторы/ошибки/unknown COMMIT проверены, автоэффектов нет.
+558 Jest +25 guards =583 PASS; новые33 PG cases. Typecheck119roots:0 новых/
+0 в изменённом коде;136 baseline, включая1 в неизменённом старом методе.
+[Доказательства и границы](implementation/log033/README.md).
+Следом — cleanup/lifecycle ownership guards, затем остальные domain apply,
+inbox/outbox/recovery. Live/new-conversation/Person/edit/delete/admission и
+полный T05/ROB-764 не закрыты. HTTP/own ACL/UI/живые коннекторы не подключены.
 Демо прежнее; GitHub Actions не используется.
 
 ## Предыдущая порция — LOG-022

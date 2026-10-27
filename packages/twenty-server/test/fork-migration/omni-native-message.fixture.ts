@@ -357,6 +357,8 @@ export const createOmniNativeMessageFixture = (
     dataSource,
     owner,
     pool,
+    runtimeDatabaseUrl: runtimeUrl.toString(),
+    roleName,
     eventEmitter,
     recordStock,
     read,
