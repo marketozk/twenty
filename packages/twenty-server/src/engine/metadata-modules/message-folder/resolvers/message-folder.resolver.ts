@@ -80,6 +80,7 @@ export class MessageFolderResolver {
       id: input.id,
       workspaceId: workspace.id,
       data: input.update,
+      userWorkspaceId,
     });
   }
 
@@ -104,6 +105,7 @@ export class MessageFolderResolver {
       ids: input.ids,
       workspaceId: workspace.id,
       data: input.update,
+      userWorkspaceId,
     });
   }
 }

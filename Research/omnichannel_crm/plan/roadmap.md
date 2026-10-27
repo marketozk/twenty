@@ -1,16 +1,15 @@
 # Дорожная карта проекта
 
-LOG-058 / ROB-764 In Progress: temporary failure считает текущий throttle count
-под ordinary owner; count/retryAfter/stage или terminal failure пишутся атомарно.
-Message import pending/reset объединены; completion callbacks закрепляют parent,
-включая пустой message list. Relaunch имеет fresh FAILED/FAILED_UNKNOWN CAS.
-Общая scheduling операция возвращает фактически обновлённые IDs; CLI ставит
-в очередь только их после известного commit.
-Проверено 279 targeted Jest /6 suites +26 guards =305 PASS,
-24 новых PG cases. Typecheck 252 roots: 191/191, 0 new/changed-code.
+LOG-059 / ROB-764 In Progress: создание, изменение, синхронизация и удаление
+папок выполняются с актуальной проверкой владельца внутри одной транзакции.
+Порядок блокировок: подключения → каналы → папки. Родитель перепроверяется после
+блокировки; resolver повторно проверяет текущего сотрудника-владельца. Смешанный
+пакет с защищённой папкой отклоняется целиком. Google backfill semantics сохранены.
+Проверено 226 targeted Jest /5 suites +26 guards =252 PASS,
+30 новых PG cases. Typecheck 256 roots: 191/191, 0 new/changed-code.
 Все7 migrations неизменны. Последний full fork: LOG056, 1881 tests/71 suites.
-[Доказательства](../implementation/log058/README.md). Scoped review finding исправлен и перепроверен.
-Далее group/folder cleanup и metadata writers, provider predicate, итоговый T22.
+[Доказательства](../implementation/log059/README.md). Scoped review без подтверждённых блокеров.
+Далее group/folder background cleanup, provider predicate, итоговый T22.
 ROB-764 остаётся In Progress; собственные ACL, UI и транспорт ещё впереди.
 Демо прежнее, GitHub Actions не используется.
 

@@ -1,0 +1,11 @@
+test_changed_source_rejected (test_fork_migration_sources.MigrationSourceTests.test_changed_source_rejected) ... ok
+test_duplicate_source_rejected (test_fork_migration_sources.MigrationSourceTests.test_duplicate_source_rejected) ... ok
+test_escaping_path_rejected (test_fork_migration_sources.MigrationSourceTests.test_escaping_path_rejected) ... ok
+test_sixth_wakeup_append_preserves_the_first_five_sources (test_fork_migration_sources.MigrationSourceTests.test_sixth_wakeup_append_preserves_the_first_five_sources) ... ok
+test_unlisted_source_rejected (test_fork_migration_sources.MigrationSourceTests.test_unlisted_source_rejected) ... ok
+test_valid_and_crlf_equivalent (test_fork_migration_sources.MigrationSourceTests.test_valid_and_crlf_equivalent) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.071s
+
+OK

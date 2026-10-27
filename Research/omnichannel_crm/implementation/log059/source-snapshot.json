@@ -1,0 +1,11 @@
+{
+  "baseCommit": "6524cee3b04f7d34f0514e74d516878f94af5cca",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/metadata-modules/message-folder/message-folder-metadata.service.ts": "81cb8a4d0d2a05f33a744b4f59ce6d9a311a788634c92dd93a4c496700136979",
+    "packages/twenty-server/src/engine/metadata-modules/message-folder/resolvers/message-folder.resolver.ts": "6679577d0c452c70b0b7359460e5d5e7db62dd46564fb244ab80b9aa144de6c0",
+    "packages/twenty-server/src/modules/omnichannel/services/with-ordinary-metadata-folders.ts": "db9efbe2ec3df8ea15d3e039dc39466884da611d2274c41256782dc056640e31",
+    "packages/twenty-server/test/fork-migration/omni-folder-metadata.postgres-spec.ts": "f1f7faadb76a146e412fc3dafccaa053bc46ddd980d84ca945a367980001eaa8"
+  }
+}

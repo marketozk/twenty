@@ -870,3 +870,35 @@ acceptance не заявляются.
 держать новый core owner вокруг cleaner, открывающего собственную native transaction.
 Демо/SaleBot не менялись; GitHub Actions не использовался. Применены ai-dev-workflow,
 behavioral-guardrails, server-schrodinger и read-only scoped review.
+
+
+## LOG-059 — folder metadata transaction owner (28.10.2026)
+
+MessageFolderMetadataService create/update/setSyncStatus/delete теперь используют
+fresh ordinary account/channel ownership и folder lock в одном manager. Первичное
+discovery родителей выполняется до owner, затем точная цепочка проверяется после
+блокировок. Все родители захватываются в стабильном порядке до папок. Destination
+при reparent входит в тот же lock set; native/retained/derived ownership запрещает
+обычную мутацию. Mixed batch отклоняется полностью. Create проверяет также явный
+folder ID после INSERT в той же транзакции; это не upsert.
+
+Resolver сохраняет предварительную проверку и передаёт userWorkspaceId для повторной
+проверки текущего владельца подключения после блокировки. Google-only backfill,
+поведение pending IMPORT при disable и сохранение pending DELETION не изменены.
+Relation/scope replacement запрещён. Unknown commit возвращается ошибкой, без
+ложного подтверждения успеха. Возвращаемая запись прочитана тем же manager до commit.
+
+Проверки: 226 targeted Jest/5 suites +26 guards = 252 PASS.
+30 новых PG tests: CRUD, bound/unbound native, retained junction, mixed batch,
+parent/custodian changes, bootstrap after discovery, reversed concurrent batches,
+SQL rollback, unknown commit, unreadable ownership, scope mutation, Google/Microsoft.
+Typecheck 256 roots:191/191,0 new/changed-code.
+7 migrations неизменны, LF hashes совпали. Read-only scoped review без blockers.
+Полный server typecheck и новый full fork/Claude pass не заявляются. Последний full
+fork остаётся LOG056 (1881/71). ROB764 acceptance ещё не выполнен.
+
+[Evidence](log059/README.md). [Remaining writers](rob764-metadata-writer-inventory.md).
+Следующий шаг: group/folder destructive batches внутри существующей native transaction,
+с captured parent/action и условным атомарным finalizer. Внешняя nested core transaction
+вокруг cleaner не используется. Демо/SaleBot не менялись; GitHub Actions не использован.
+Применены ai-dev-workflow, behavioral-guardrails, server-schrodinger и scoped review.
