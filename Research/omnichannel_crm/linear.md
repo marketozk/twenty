@@ -40,3 +40,6 @@ LOG-019 / ROB-764: пользователь принял исправленны�
 
 
 Публикация R16: `f5d806119250cdf589de20cd755da1552e079b14`, [отчёт LOG-018](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-5cfabfd8). Проверены все 11 описаний, неизменные статусы и зависимость ROB-772 blocks ROB-764. [Метаданные публикации](plan/cross-review/publication-r16.json).
+
+
+Публикация LOG-019: `28cdc295b69103074e95ce93d67117950815db83`; read-back11 задач подтвердил ROB-772 Done и ROB-764 In Progress, остальные статусы сохранены. [ROB-764 отчёт](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-8753ea7f) и [ROB-772 отчёт](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-a06f566a). GitHub CI не запустился из-за billing block аккаунта; выполненные16 PG/20 guard checks и focused typecheck проходят. [Evidence](implementation/publication-log019.json).

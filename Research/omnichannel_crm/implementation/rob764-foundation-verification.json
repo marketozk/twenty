@@ -35,5 +35,12 @@
     "packages/twenty-server/jest-fork-migration.config.mjs": "de9032186f03250f9001f6b911b759e01340716cef66f356c3c6fe14a8757cdf",
     "scripts/omnichannel/check_enterprise_dependencies.py": "2b3195498eb96e243f59067ce9a69e1fecdeca0a4b2a1ce03e6652a9f1cfe07d",
     "scripts/omnichannel/test_enterprise_dependencies.py": "6dfbbab0bd02243ba3f69477e6d0da1010e6c0250c2b4f526f4aa345b88888cf"
+  },
+  "github_ci": {
+    "status": "not_started_billing_block",
+    "message": "The job was not started because your account is locked due to a billing issue.",
+    "postgres_run": "https://github.com/marketozk/twenty/actions/runs/40426837916",
+    "dependency_run": "https://github.com/marketozk/twenty/actions/runs/40426837919",
+    "steps_executed": 0
   }
 }

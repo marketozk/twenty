@@ -1,0 +1,36 @@
+{
+  "commit": "28cdc295b69103074e95ce93d67117950815db83",
+  "issues_verified": 11,
+  "states": {
+    "ROB-772": "Done",
+    "ROB-771": "Backlog",
+    "ROB-770": "Backlog",
+    "ROB-769": "Backlog",
+    "ROB-768": "Backlog",
+    "ROB-767": "Backlog",
+    "ROB-766": "Backlog",
+    "ROB-765": "Backlog",
+    "ROB-764": "In Progress",
+    "ROB-763": "Done",
+    "ROB-762": "Done"
+  },
+  "planning_dependency_preserved": true,
+  "comments": {
+    "ROB-764": {
+      "id": "8753ea7f-d4bb-4761-8e8e-d89c997bcf33",
+      "url": "https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-8753ea7f"
+    },
+    "ROB-772": {
+      "id": "a06f566a-646e-4295-aab4-12791b99c246",
+      "url": "https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-a06f566a"
+    }
+  },
+  "github_ci": {
+    "status": "not_started_billing_block",
+    "message": "The job was not started because your account is locked due to a billing issue.",
+    "postgres_run": "https://github.com/marketozk/twenty/actions/runs/40426837916",
+    "dependency_run": "https://github.com/marketozk/twenty/actions/runs/40426837919",
+    "steps_executed": 0,
+    "linear_readback_confirmed": true
+  }
+}
