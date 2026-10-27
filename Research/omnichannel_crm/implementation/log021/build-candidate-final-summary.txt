@@ -1,0 +1,86 @@
+#1 transferring dockerfile: 16.24kB done
+#1 DONE 0.0s
+#2 DONE 0.0s
+#3 transferring context: 104B done
+#3 DONE 0.0s
+#4 resolve docker.io/library/node:24.22.1-alpine3.23@sha256:0468540aa58203ff9e40c2aab3907c52644ab818af6176b1c70a026137dc92a2 done
+#4 DONE 0.0s
+#5 transferring context: 4.44MB 1.9s done
+#5 DONE 2.0s
+#6 CACHED
+#7 CACHED
+#8 CACHED
+#9 CACHED
+#10 CACHED
+#11 CACHED
+#12 CACHED
+#13 CACHED
+#14 CACHED
+#15 CACHED
+#16 CACHED
+#17 CACHED
+#18 CACHED
+#19 CACHED
+#20 CACHED
+#21 CACHED
+#22 CACHED
+#23 DONE 0.0s
+#24 DONE 0.1s
+#26 DONE 0.0s
+#25 DONE 2.3s
+#27 65.05 [32m✔[39m Done in 21s
+#27 65.66  NX   Successfully ran target lingui:extract for project twenty-server and 4 tasks it depends on
+#27 73.06 Done in 3s
+#27 73.28  NX   Successfully ran target lingui:compile for project twenty-server and 4 tasks it depends on
+#27 76.28 [32m✔[39m Done in 1s
+#27 76.39  NX   Successfully ran target lingui:extract for project twenty-emails and 2 tasks it depends on
+#27 78.93 Done in 1s
+#27 79.03  NX   Successfully ran target lingui:compile for project twenty-emails and 2 tasks it depends on
+#27 DONE 79.5s
+#28 44.04 Successfully compiled: 10897 files with swc (67.72ms)
+#28 47.48  NX   Successfully ran target build for project twenty-server and 4 tasks it depends on
+#28 DONE 48.4s
+#29 DONE 0.9s
+#30 33.60 ➤ YN0000: · Done with warnings in 32s 387ms
+#30 DONE 34.4s
+#31 DONE 0.0s
+#32 DONE 0.0s
+#33 CACHED
+#34 CACHED
+#35 CACHED
+#36 CACHED
+#37 CACHED
+#38 CACHED
+#39 CACHED
+#40 CACHED
+#41 CACHED
+#42 CACHED
+#43 CACHED
+#44 CACHED
+#45 CACHED
+#46 CACHED
+#47 [twenty-front-build 8/8] RUN if [ -d /app/packages/twenty-front/build ]; then       echo "Using pre-built frontend from host";     else       NODE_OPTIONS="--max-old-space-size=8192" npx nx build twenty-front;     fi
+#47 CACHED
+#48 DONE 0.0s
+#49 DONE 13.8s
+#50 DONE 0.7s
+#51 DONE 3.7s
+#52 DONE 0.3s
+#53 DONE 0.0s
+#54 DONE 0.1s
+#55 DONE 0.0s
+#56 DONE 0.4s
+#57 DONE 0.0s
+#58 DONE 0.1s
+#59 DONE 0.0s
+#60 DONE 0.0s
+#61 DONE 1.7s
+#62 DONE 0.1s
+#63 DONE 0.4s
+#64 exporting layers 20.2s done
+#64 exporting manifest sha256:3f5252742f8e589e0eca4f707c9e02d2b2a7d2318204681135ad12b4f8b543d6
+#64 exporting manifest sha256:3f5252742f8e589e0eca4f707c9e02d2b2a7d2318204681135ad12b4f8b543d6 done
+#64 exporting config sha256:3a49d2627c4185e6daa4942e2cfaae3035077bfb55fdacd66c375022f58ffe12 done
+#65 DONE 0.0s
+#64 sending tarball 33.5s done
+#64 DONE 53.7s

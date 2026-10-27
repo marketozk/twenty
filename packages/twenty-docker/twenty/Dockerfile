@@ -108,6 +108,8 @@ RUN apk add --no-cache \
 
 COPY ./packages/twenty-docker/twenty/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
+COPY ./ops/omnichannel/entrypoint.sh ./ops/omnichannel/migrate.sh ./ops/omnichannel/start-runtime.sh /app/omnichannel/
+RUN chmod +x /app/omnichannel/*.sh
 WORKDIR /app/packages/twenty-server
 
 ARG APP_VERSION
@@ -166,7 +168,7 @@ RUN mkdir -p /app/.local-storage /app/packages/twenty-server/.local-storage && \
 USER 1000
 
 CMD ["node", "dist/main"]
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/app/omnichannel/entrypoint.sh"]
 
 
 # ===========================================================================

@@ -160,19 +160,25 @@
       {
         "name": "UQ_omniAccountBinding_account",
         "columns": [
-          "workspaceId",
-          "platform",
+          "accountId",
           "connectorInstanceId",
-          "accountId"
+          "platform",
+          "workspaceId"
         ]
       },
       {
         "name": "UQ_omniAccountBinding_channel",
-        "columns": ["workspaceId", "messageChannelId"]
+        "columns": [
+          "messageChannelId",
+          "workspaceId"
+        ]
       },
       {
         "name": "UQ_omniAccountBinding_workspace_id",
-        "columns": ["id", "workspaceId"]
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
       }
     ],
     "checks": [
@@ -196,33 +202,53 @@
     "foreignKeys": [
       {
         "name": "FK_850a1c75cb7b8c12b9906fe47e4",
-        "columns": ["workspaceId", "id", "defaultQueueId"],
+        "columns": [
+          "workspaceId",
+          "id",
+          "defaultQueueId"
+        ],
         "target": "core.omniQueue",
-        "targetColumns": ["workspaceId", "bindingId", "id"],
+        "targetColumns": [
+          "workspaceId",
+          "bindingId",
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       },
       {
         "name": "FK_a548b215b8704484e54d3ef5628",
-        "columns": ["messageChannelId"],
+        "columns": [
+          "messageChannelId"
+        ],
         "target": "core.messageChannel",
-        "targetColumns": ["id"],
+        "targetColumns": [
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       },
       {
         "name": "FK_e2b1c50cb2b6b79d693a8cecb91",
-        "columns": ["connectedAccountId"],
+        "columns": [
+          "connectedAccountId"
+        ],
         "target": "core.connectedAccount",
-        "targetColumns": ["id"],
+        "targetColumns": [
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       },
       {
         "name": "FK_e433d621b812b6a3d985665ccea",
-        "columns": ["workspaceId"],
+        "columns": [
+          "workspaceId"
+        ],
         "target": "core.workspace",
-        "targetColumns": ["id"],
+        "targetColumns": [
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       }
@@ -299,15 +325,25 @@
     "uniques": [
       {
         "name": "UQ_omniAutomationPolicy_binding",
-        "columns": ["workspaceId", "bindingId"]
+        "columns": [
+          "bindingId",
+          "workspaceId"
+        ]
       },
       {
         "name": "UQ_omniAutomationPolicy_binding_id",
-        "columns": ["id", "workspaceId", "bindingId"]
+        "columns": [
+          "bindingId",
+          "id",
+          "workspaceId"
+        ]
       },
       {
         "name": "UQ_omniAutomationPolicy_workspace_id",
-        "columns": ["id", "workspaceId"]
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
       }
     ],
     "checks": [
@@ -323,25 +359,43 @@
     "foreignKeys": [
       {
         "name": "FK_a0a5359b3775eb907ac2741cbf2",
-        "columns": ["workspaceId", "id", "currentVersion"],
+        "columns": [
+          "workspaceId",
+          "id",
+          "currentVersion"
+        ],
         "target": "core.omniAutomationPolicyVersion",
-        "targetColumns": ["workspaceId", "policyId", "version"],
+        "targetColumns": [
+          "workspaceId",
+          "policyId",
+          "version"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       },
       {
         "name": "FK_dddee7e820c3a705f62f732a5e3",
-        "columns": ["workspaceId", "bindingId"],
+        "columns": [
+          "workspaceId",
+          "bindingId"
+        ],
         "target": "core.omniAccountBinding",
-        "targetColumns": ["workspaceId", "id"],
+        "targetColumns": [
+          "workspaceId",
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       },
       {
         "name": "FK_e6de679d58688b13a355c1ae60a",
-        "columns": ["workspaceId"],
+        "columns": [
+          "workspaceId"
+        ],
         "target": "core.workspace",
-        "targetColumns": ["id"],
+        "targetColumns": [
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       }
@@ -445,11 +499,18 @@
     "uniques": [
       {
         "name": "UQ_omniAutomationPolicyVersion_policy_version",
-        "columns": ["workspaceId", "policyId", "version"]
+        "columns": [
+          "policyId",
+          "version",
+          "workspaceId"
+        ]
       },
       {
         "name": "UQ_omniAutomationPolicyVersion_workspace_id",
-        "columns": ["id", "workspaceId"]
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
       }
     ],
     "checks": [
@@ -465,17 +526,27 @@
     "foreignKeys": [
       {
         "name": "FK_096d6caea23e6d92328b21dce04",
-        "columns": ["workspaceId", "policyId"],
+        "columns": [
+          "workspaceId",
+          "policyId"
+        ],
         "target": "core.omniAutomationPolicy",
-        "targetColumns": ["workspaceId", "id"],
+        "targetColumns": [
+          "workspaceId",
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       },
       {
         "name": "FK_b8fb107f164da135345d0736f9b",
-        "columns": ["workspaceId"],
+        "columns": [
+          "workspaceId"
+        ],
         "target": "core.workspace",
-        "targetColumns": ["id"],
+        "targetColumns": [
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       }
@@ -651,11 +722,18 @@
     "uniques": [
       {
         "name": "UQ_omniConversation_binding_chat",
-        "columns": ["workspaceId", "bindingId", "providerChatId"]
+        "columns": [
+          "bindingId",
+          "providerChatId",
+          "workspaceId"
+        ]
       },
       {
         "name": "UQ_omniConversation_workspace_id",
-        "columns": ["id", "workspaceId"]
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
       }
     ],
     "checks": [
@@ -675,41 +753,75 @@
     "foreignKeys": [
       {
         "name": "FK_1da063b4d2fe387f39ad9f9a92f",
-        "columns": ["workspaceId", "policyId", "policyVersion"],
+        "columns": [
+          "workspaceId",
+          "policyId",
+          "policyVersion"
+        ],
         "target": "core.omniAutomationPolicyVersion",
-        "targetColumns": ["workspaceId", "policyId", "version"],
+        "targetColumns": [
+          "workspaceId",
+          "policyId",
+          "version"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       },
       {
         "name": "FK_4d4c1c22457b47d6e8edb6ff31a",
-        "columns": ["workspaceId"],
+        "columns": [
+          "workspaceId"
+        ],
         "target": "core.workspace",
-        "targetColumns": ["id"],
+        "targetColumns": [
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       },
       {
         "name": "FK_883bbedc3d83f703bb5f462ea0d",
-        "columns": ["workspaceId", "bindingId"],
+        "columns": [
+          "workspaceId",
+          "bindingId"
+        ],
         "target": "core.omniAccountBinding",
-        "targetColumns": ["workspaceId", "id"],
+        "targetColumns": [
+          "workspaceId",
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       },
       {
         "name": "FK_b15836f21a2aad40c553630db82",
-        "columns": ["workspaceId", "bindingId", "queueId"],
+        "columns": [
+          "workspaceId",
+          "bindingId",
+          "queueId"
+        ],
         "target": "core.omniQueue",
-        "targetColumns": ["workspaceId", "bindingId", "id"],
+        "targetColumns": [
+          "workspaceId",
+          "bindingId",
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       },
       {
         "name": "FK_e7c1ce857c6f6b40ca7490a66ae",
-        "columns": ["workspaceId", "bindingId", "policyId"],
+        "columns": [
+          "workspaceId",
+          "bindingId",
+          "policyId"
+        ],
         "target": "core.omniAutomationPolicy",
-        "targetColumns": ["workspaceId", "bindingId", "id"],
+        "targetColumns": [
+          "workspaceId",
+          "bindingId",
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       }
@@ -786,28 +898,45 @@
     "uniques": [
       {
         "name": "UQ_omniConversationMember_conversation_member",
-        "columns": ["workspaceId", "conversationId", "workspaceMemberId"]
+        "columns": [
+          "conversationId",
+          "workspaceId",
+          "workspaceMemberId"
+        ]
       },
       {
         "name": "UQ_omniConversationMember_workspace_id",
-        "columns": ["id", "workspaceId"]
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
       }
     ],
     "checks": [],
     "foreignKeys": [
       {
         "name": "FK_e3c7bca1a8a3dde15c3de86a0c6",
-        "columns": ["workspaceId"],
+        "columns": [
+          "workspaceId"
+        ],
         "target": "core.workspace",
-        "targetColumns": ["id"],
+        "targetColumns": [
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       },
       {
         "name": "FK_ec88935c2ebc93d7ee7e06aa033",
-        "columns": ["workspaceId", "conversationId"],
+        "columns": [
+          "workspaceId",
+          "conversationId"
+        ],
         "target": "core.omniConversation",
-        "targetColumns": ["workspaceId", "id"],
+        "targetColumns": [
+          "workspaceId",
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       }
@@ -884,11 +1013,18 @@
     "uniques": [
       {
         "name": "UQ_omniConversationReadCursor_conversation_member",
-        "columns": ["workspaceId", "conversationId", "workspaceMemberId"]
+        "columns": [
+          "conversationId",
+          "workspaceId",
+          "workspaceMemberId"
+        ]
       },
       {
         "name": "UQ_omniConversationReadCursor_workspace_id",
-        "columns": ["id", "workspaceId"]
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
       }
     ],
     "checks": [
@@ -900,17 +1036,27 @@
     "foreignKeys": [
       {
         "name": "FK_8e6a49256a8ffc797d121d82a9d",
-        "columns": ["workspaceId", "conversationId"],
+        "columns": [
+          "workspaceId",
+          "conversationId"
+        ],
         "target": "core.omniConversation",
-        "targetColumns": ["workspaceId", "id"],
+        "targetColumns": [
+          "workspaceId",
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       },
       {
         "name": "FK_b00a0ec4dfc5af1d44db66b0767",
-        "columns": ["workspaceId"],
+        "columns": [
+          "workspaceId"
+        ],
         "target": "core.workspace",
-        "targetColumns": ["id"],
+        "targetColumns": [
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       }
@@ -1005,11 +1151,18 @@
     "uniques": [
       {
         "name": "UQ_omniExternalIdentity_binding_peer",
-        "columns": ["workspaceId", "bindingId", "providerPeerId"]
+        "columns": [
+          "bindingId",
+          "providerPeerId",
+          "workspaceId"
+        ]
       },
       {
         "name": "UQ_omniExternalIdentity_workspace_id",
-        "columns": ["id", "workspaceId"]
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
       }
     ],
     "checks": [
@@ -1021,17 +1174,27 @@
     "foreignKeys": [
       {
         "name": "FK_0c34b54bd098654aa5a43bfc240",
-        "columns": ["workspaceId", "bindingId"],
+        "columns": [
+          "workspaceId",
+          "bindingId"
+        ],
         "target": "core.omniAccountBinding",
-        "targetColumns": ["workspaceId", "id"],
+        "targetColumns": [
+          "workspaceId",
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       },
       {
         "name": "FK_257fa8459e361174cf7749396de",
-        "columns": ["workspaceId"],
+        "columns": [
+          "workspaceId"
+        ],
         "target": "core.workspace",
-        "targetColumns": ["id"],
+        "targetColumns": [
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       }
@@ -1117,15 +1280,26 @@
     "uniques": [
       {
         "name": "UQ_omniQueue_binding_id",
-        "columns": ["id", "workspaceId", "bindingId"]
+        "columns": [
+          "bindingId",
+          "id",
+          "workspaceId"
+        ]
       },
       {
         "name": "UQ_omniQueue_binding_name",
-        "columns": ["workspaceId", "bindingId", "name"]
+        "columns": [
+          "bindingId",
+          "name",
+          "workspaceId"
+        ]
       },
       {
         "name": "UQ_omniQueue_workspace_id",
-        "columns": ["id", "workspaceId"]
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
       }
     ],
     "checks": [
@@ -1137,17 +1311,27 @@
     "foreignKeys": [
       {
         "name": "FK_b40e6682e40928280195c10a750",
-        "columns": ["workspaceId", "bindingId"],
+        "columns": [
+          "workspaceId",
+          "bindingId"
+        ],
         "target": "core.omniAccountBinding",
-        "targetColumns": ["workspaceId", "id"],
+        "targetColumns": [
+          "workspaceId",
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       },
       {
         "name": "FK_c2d3e5c8f28a36224687e747cfe",
-        "columns": ["workspaceId"],
+        "columns": [
+          "workspaceId"
+        ],
         "target": "core.workspace",
-        "targetColumns": ["id"],
+        "targetColumns": [
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       }
@@ -1215,11 +1399,16 @@
     "uniques": [
       {
         "name": "UQ_omniWorkspacePolicyState_workspace",
-        "columns": ["workspaceId"]
+        "columns": [
+          "workspaceId"
+        ]
       },
       {
         "name": "UQ_omniWorkspacePolicyState_workspace_id",
-        "columns": ["id", "workspaceId"]
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
       }
     ],
     "checks": [
@@ -1231,9 +1420,13 @@
     "foreignKeys": [
       {
         "name": "FK_6fe1984a8227289f6cd3b64044e",
-        "columns": ["workspaceId"],
+        "columns": [
+          "workspaceId"
+        ],
         "target": "core.workspace",
-        "targetColumns": ["id"],
+        "targetColumns": [
+          "id"
+        ],
         "onDelete": "RESTRICT",
         "onUpdate": "NO ACTION"
       }

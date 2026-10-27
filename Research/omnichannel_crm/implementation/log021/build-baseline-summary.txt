@@ -1,0 +1,68 @@
+#1 starting container buildx_buildkit_twenty-fork-build0 1.8s done
+#1 DONE 1.8s
+#2 transferring dockerfile: 16.08kB done
+#2 DONE 0.0s
+#3 DONE 0.8s
+#4 transferring context: 104B done
+#4 DONE 0.0s
+#5 resolve docker.io/library/node:24.22.1-alpine3.23@sha256:0468540aa58203ff9e40c2aab3907c52644ab818af6176b1c70a026137dc92a2 done
+#5 DONE 0.0s
+#6 transferring context: 101.46MB 2.5s done
+#6 DONE 2.6s
+#7 CACHED
+#8 CACHED
+#9 CACHED
+#10 CACHED
+#11 CACHED
+#12 CACHED
+#13 CACHED
+#14 CACHED
+#15 CACHED
+#16 CACHED
+#17 CACHED
+#18 CACHED
+#19 CACHED
+#20 CACHED
+#21 DONE 3.3s
+#22 66.32 [32m✔[39m Done in 22s
+#22 66.93  NX   Successfully ran target lingui:extract for project twenty-server and 4 tasks it depends on
+#22 74.28 Done in 3s
+#22 74.49  NX   Successfully ran target lingui:compile for project twenty-server and 4 tasks it depends on
+#22 77.62 [32m✔[39m Done in 1s
+#22 77.72  NX   Successfully ran target lingui:extract for project twenty-emails and 2 tasks it depends on
+#22 80.29 Done in 1s
+#22 80.37  NX   Successfully ran target lingui:compile for project twenty-emails and 2 tasks it depends on
+#22 DONE 80.8s
+#23 44.65 Successfully compiled: 10893 files with swc (876.6ms)
+#23 48.03  NX   Successfully ran target build for project twenty-server and 4 tasks it depends on
+#23 DONE 49.6s
+#24 DONE 1.0s
+#25 26.47 ➤ YN0000: · Done with warnings in 25s 209ms
+#25 DONE 27.1s
+#26 CACHED
+#27 CACHED
+#28 CACHED
+#29 CACHED
+#30 CACHED
+#31 CACHED
+#32 DONE 0.0s
+#33 DONE 13.8s
+#34 DONE 0.7s
+#35 DONE 3.6s
+#36 DONE 0.2s
+#37 DONE 0.0s
+#38 DONE 0.1s
+#39 DONE 0.0s
+#40 DONE 0.4s
+#41 DONE 0.0s
+#42 DONE 0.1s
+#43 DONE 0.0s
+#44 DONE 0.0s
+#45 DONE 1.7s
+#46 DONE 0.1s
+#47 exporting layers 20.2s done
+#47 exporting manifest sha256:94f06fda2c35a6bcebea0a9b964102d279b6bf06fac794903ba3118ac96bca78 done
+#47 exporting config sha256:2f9fa08edfb1435abf80c424b028ea0af0843fa250784d8d8b132339695f30d9 done
+#48 DONE 0.0s
+#47 sending tarball 32.6s done
+#47 DONE 52.8s

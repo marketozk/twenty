@@ -1,4 +1,4 @@
-# ROB-764 — реализация, LOG-020
+# ROB-764 — реализация, LOG-021
 
 27.10.2026 пользователь ответил «хорошо приступай» на предложение принять
 исправленный план за основу и начать ROB-764 с проверками конкретного кода.
@@ -18,7 +18,7 @@
   транзакции. Повтор после сбоя сверяется с журналом. Неизвестные, изменённые,
   пропущенные или несовместимые записи отклоняются.
 - Отдельный `ForkSchemaVerifier` не импортирует исполняемые миграции и работает
-  в read-only transaction. Его подключение к реальному startup ещё предстоит.
+  в read-only transaction. В LOG-021 он подключён к image startup до Nest.
 - Узкая PostgreSQL-серия без загрузки `.env`, AppModule и общего database reset;
   CI использует отдельный временный PostgreSQL и уникальную БД.
 - Baseline зависимостей от Enterprise-marked исходников и проверка отсутствия
@@ -51,20 +51,39 @@ runtime wrapper. Проверяются также invalid/deferred constraints 
 неправильной настройке миграций; разрешил test command после проверки готовности.
 [Доказательства и ограничения](log020/README.md).
 
+## Третья порция: упаковка и порядок запуска
+
+LOG-021: официальный Docker target `twenty` собран. Новый image entrypoint
+вызывает отдельный migrator или read-only gate перед runtime. Координатор держит
+session advisory lock на всю последовательность native/fork upgrades. Строгие
+cache/health/cron команды прекращают запуск при ошибках; обычные вызовы без
+`--strict` сохраняют прежнее поведение. Compose разделяет credentials и не
+запускает server/worker при отказе migrator. Для штатного завершения worker
+предусмотрено6 минут, native AI drain по умолчанию5 минут.
+
+Проверены38 PostgreSQL tests,15 strict-command tests,7 Linux shell tests,
+25 Python guard/checksum tests и focused strict typecheck координатора/lock tests.
+В настоящем собранном image присутствуют Nest JSON assets и frontend. На пустой
+и заполненной upstream БД прошли миграции, replay, startup и restart; полный
+снимок599 компаний,150 сделок и1200 контактов сохранился. Отдельная runtime роль
+не владеет таблицами, ledger доступен только для SELECT. В Compose проверены
+отказ dependency chain, успешный запуск,26 подписок worker на очереди и exit0
+за5,45 секунды. [Evidence и границы этих проверок](log021/README.md).
+
 ## Следующая порция и незавершённая работа
 
-1. Довести packaging/migrator orchestration и подключение gate к фактическим
-   entrypoints server/worker; выполнить полный build, fresh/upgraded workspace
-   fixtures и настоящий restart. Это остаток T33, текущий wrapper ещё не подключён.
-2. Дополнить схему MessageLink, Receipt, Command, DomainEvent и остальными
+1. Дополнить схему MessageLink, Receipt, Command, DomainEvent и остальными
    сущностями этапа 1; минимальный audit writer и защищённый bootstrap.
-3. Реализовать ingress persistence, атомарное сохранение канонических Message,
+2. Реализовать ingress persistence, атомарное сохранение канонических Message,
    inbox/outbox и recovery согласно [этапу 1](../plan/phase_1_data.md).
 
-В LOG-020 проверена настоящая core initialization, но не populated native workspace
-и не обновление существующей клиентской БД. Строгий typecheck охватывает новые
-исходники/тесты; полный server build/typecheck и restart не выполнялись. Новая
-схема и wrapper в демо не выкачены. Приём/отправка и весь T01–T33 не завершены.
+T33 выполнен для текущей группы схемы; будущие миграции требуют своих повторов.
+Полный server typecheck не выполнялся: официальный build использует SWC без
+type checking. Работающая клиентская БД не обновлялась; проверен populated fixture.
+Полная проверка runtime permissions/provisioning и audit ownership ещё впереди.
+Session lock не является DB-side fencing после потери соединения; старый runtime
+должен быть остановлен, при неизвестном исходе нужен разбор до ручного повтора.
+Новая схема и wrapper в демо не выкачены. Приём/отправка и весь T01–T33 не завершены.
 Bindings не активируются до собственных прав ROB-766. Никакие G01–G20 не выбраны
 за пользователя этой командой начала разработки.
 
@@ -72,4 +91,5 @@ Bindings не активируются до собственных прав ROB-
 
 GitHub Actions не запустил оба job из-за billing block аккаунта (0 steps).
 Собственные PostgreSQL/guard/typecheck проверки прошли; облачный CI pass не заявлен.
-[Метаданные и ссылки на runs](publication-log019.json). Настройки оплаты не менялись.
+[Метаданные предыдущих runs](log020/publication.json). Результаты публикации LOG-021
+фиксируются отдельно; настройки оплаты не менялись.

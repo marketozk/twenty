@@ -10,6 +10,13 @@ on:
       - '.github/workflows/omnichannel-fork-migrations.yaml'
       - 'yarn.lock'
       - 'scripts/omnichannel/*fork_migration_sources.py'
+      - 'scripts/omnichannel/test_startup_scripts.py'
+      - 'ops/omnichannel/**'
+      - 'packages/twenty-docker/twenty/Dockerfile'
+      - 'packages/twenty-server/src/database/commands/cron-register-all.command.ts'
+      - 'packages/twenty-server/src/database/commands/__tests__/cron-register-all.command.spec.ts'
+      - 'packages/twenty-server/src/engine/core-modules/cache-storage/commands/**'
+      - 'packages/twenty-server/src/engine/core-modules/upgrade/commands/**'
   push:
     branches: ['codex/**']
     paths:
@@ -20,6 +27,13 @@ on:
       - '.github/workflows/omnichannel-fork-migrations.yaml'
       - 'yarn.lock'
       - 'scripts/omnichannel/*fork_migration_sources.py'
+      - 'scripts/omnichannel/test_startup_scripts.py'
+      - 'ops/omnichannel/**'
+      - 'packages/twenty-docker/twenty/Dockerfile'
+      - 'packages/twenty-server/src/database/commands/cron-register-all.command.ts'
+      - 'packages/twenty-server/src/database/commands/__tests__/cron-register-all.command.spec.ts'
+      - 'packages/twenty-server/src/engine/core-modules/cache-storage/commands/**'
+      - 'packages/twenty-server/src/engine/core-modules/upgrade/commands/**'
 
 permissions:
   contents: read
@@ -47,7 +61,14 @@ jobs:
         run: |
           python3 -m unittest discover -s scripts/omnichannel -p 'test_fork_migration_sources.py' -v
           python3 scripts/omnichannel/check_fork_migration_sources.py
+          python3 -m unittest discover -s scripts/omnichannel -p 'test_startup_scripts.py' -v
       - uses: ./.github/actions/yarn-install
+      - name: Verify strict migration command behavior
+        run: >-
+          node .yarn/releases/yarn-4.18.1.cjs jest --config packages/twenty-server/jest.config.mjs --runInBand --runTestsByPath
+          packages/twenty-server/src/database/commands/__tests__/cron-register-all.command.spec.ts
+          packages/twenty-server/src/engine/core-modules/cache-storage/commands/__tests__/flush-cache.command.spec.ts
+          packages/twenty-server/src/engine/core-modules/upgrade/commands/__tests__/upgrade-status.command.spec.ts
       - name: Create a dedicated disposable test database
         env:
           POSTGRES_CONTAINER: ${{ job.services.postgres.id }}

@@ -26,9 +26,13 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 
 ## Сверка текущего состояния — 27.10.2026
 
-LOG-019 / ROB-764: пользователь принял исправленный план за основу и разрешил начать реализацию. ROB-772 завершается как планирование, ROB-764 — In Progress. Начата первая порция: механизм миграций форка с PostgreSQL-проверками и контроль новых Enterprise-зависимостей. Результат R16 остаётся историческим; нового полного pass не заявлено. Чаты и приём/отправка ещё не реализованы, deployment не выполнялся.
+LOG-021 / ROB-764 In Progress: после принятия плана реализованы9 core entities,
+fork migrations и подключение migrator/gate к startup. Полный image build,
+fresh/populated upgrade/replay и настоящий restart проверены. Чаты и приём/отправка
+ещё не реализованы, live deployment этой порции не выполнялся. ROB-772 Done
+как планирование; R16 остаётся историческим, нового полного pass не заявлено.
 
-[Итог R16](plan/cross-review/review-result.md). ROB-762/763 Done; ROB-772 Done по решению владельца начать реализацию; ROB-764 In Progress; ROB-765–771 Backlog. Зависимость ROB-772 → ROB-764 сохраняется как выполненная предпосылка. История R16 — LOG-018; новый переход — [LOG-019](implementation/rob764-progress.md). Публикация и read-back LOG-019 фиксируются после push.
+[Итог R16](plan/cross-review/review-result.md). ROB-762/763 Done; ROB-772 Done по решению владельца начать реализацию; ROB-764 In Progress; ROB-765–771 Backlog. Зависимость ROB-772 → ROB-764 сохраняется как выполненная предпосылка. [Ход реализации](implementation/rob764-progress.md) · [Проверки LOG-021](implementation/log021/README.md).
 
 Предыдущая публикация R13: `183039a3c16b0e4b4a3495805ba42bf9e0d51e76`, [комментарий LOG-015](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-1df99847); read-back всех11 описаний и прежних статусов подтверждён.
 

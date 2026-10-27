@@ -1,0 +1,29 @@
+{
+  "baseCommit": "8e1facac8f04d2b7ccfeb12f028d93bd65a5e2d2",
+  "kind": "Git archive plus full changed files; built before publication commit",
+  "sourceDirectory": "/opt/twenty-builds/log021-8e1facac",
+  "image": "marketozk/twenty:log021-candidate",
+  "imageId": "sha256:3f5252742f8e589e0eca4f707c9e02d2b2a7d2318204681135ad12b4f8b543d6",
+  "entrypoint": [
+    "/app/omnichannel/entrypoint.sh"
+  ],
+  "lfSha256": {
+    "ops/omnichannel/README.md": "760eb02b403446dc5929e7359f30e6b4ef091970e0755e94dfac9518541ee3f1",
+    "ops/omnichannel/compose.fork.yaml": "28001e30d6b8b8de4fb3954489282082514bbe2bfccfd1a75445710f95c7fbbb",
+    "ops/omnichannel/entrypoint.sh": "e65a546673cbf2c22b013fb22a0c1a9ca647ee8b39a0fbfdf5cb49e0c6e0ef0a",
+    "ops/omnichannel/migrate.sh": "e11c635d087fa45e6de7acee4d5a352055280c39c2c64b102275d50bd5bd71db",
+    "packages/twenty-docker/twenty/Dockerfile": "1b8ee98f5a06b31883a888c492d094dcbdf0f5b33f11e1b8efb6a18ec93549f2",
+    "packages/twenty-server/jest-fork-migration.config.mjs": "45868296c43f7fc732bfb2d1a53e42ef47e757957b9cc6695570301c4fe7ee45",
+    "packages/twenty-server/src/database/commands/__tests__/cron-register-all.command.spec.ts": "5d756ba8d5a8e2d6d426531de6ba696afb6168c5c9d283ca95dfbd3a03f00f95",
+    "packages/twenty-server/src/database/commands/cron-register-all.command.ts": "79292bf022544eb4085996bf93fc33648d736d0c3e9824fef0de6cfc10baf986",
+    "packages/twenty-server/src/database/commands/fork-upgrade/fork-migrator.cli.ts": "8112cb962fc3191562edf077a6c9d676100b17c8dfce1eebac2a0573fec23a4d",
+    "packages/twenty-server/src/engine/core-modules/cache-storage/commands/__tests__/flush-cache.command.spec.ts": "baa2616952329f6801a1b6b6e3ee685e63ee73b4bc719131549d6f822eafba4e",
+    "packages/twenty-server/src/engine/core-modules/cache-storage/commands/flush-cache.command.ts": "1d5b72a8bf601a6097804ffbcc04aae8d563892d32ce503b3bbc06f0dc98728f",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/conversation-foundation.schema.json": "c479da6c3631c15808b10b41b8f5572b7c6f973592341eb26e582b611b380d30",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/snapshot-fork-tables.ts": "9590d36d4fbbe2935dd893c0c3c97abdabf91b6ca6fafca7c6ecca18e5e43661",
+    "packages/twenty-server/src/engine/core-modules/upgrade/commands/__tests__/upgrade-status.command.spec.ts": "29b1aac0800452c06f5e87f11a5a7d11774dacfbb1a7caa269698188e2c37b78",
+    "packages/twenty-server/src/engine/core-modules/upgrade/commands/upgrade-status.command.ts": "68abbbe2761052fa76c6f7f7e89799fb31d23357feeba01719e3f1ceffebffad",
+    "packages/twenty-server/test/fork-migration/fork-migrator-lock.postgres-spec.ts": "5331f191fa440cca0a5107a50445372b88319ea5ec6b6fc58237fb255e121d31",
+    "scripts/omnichannel/test_startup_scripts.py": "923a936fa980a69a30b18a9a226b52e43f4731035f535950c0e9cacfed20321f"
+  }
+}

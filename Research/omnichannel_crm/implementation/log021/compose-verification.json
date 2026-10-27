@@ -1,0 +1,11 @@
+{
+  "credentialSeparation": "pass",
+  "migrationFailureBlocksRuntime": "pass",
+  "successfulDependencySequence": "pass",
+  "noPublishedPorts": true,
+  "runtimeServicesStoppedAfterTest": true,
+  "workerQueueSubscriptions": 26,
+  "workerGracefulExitCode": 0,
+  "workerStopTimeoutSeconds": 360,
+  "observedStopSeconds": 5.45
+}

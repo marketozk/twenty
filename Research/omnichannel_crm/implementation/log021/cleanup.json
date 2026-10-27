@@ -1,0 +1,54 @@
+{
+  "removedContainers": [
+    "twenty-rob764-3f5fc8d7b68e4cda-db",
+    "twenty-rob764-3f5fc8d7b68e4cda-redis",
+    "twenty-rob764-3f5fc8d7b68e4cda-fresh-server",
+    "twenty-rob764-3f5fc8d7b68e4cda-fresh-worker",
+    "twenty-rob764-3f5fc8d7b68e4cda-upgraded-server",
+    "twenty-rob764-3f5fc8d7b68e4cda-upgraded-worker",
+    "twenty-rob764-3f5fc8d7b68e4cda-compose-migrator-1",
+    "twenty-rob764-3f5fc8d7b68e4cda-compose-server-1",
+    "twenty-rob764-3f5fc8d7b68e4cda-compose-worker-1"
+  ],
+  "exclusiveVolumesCheckedBeforeRemoval": true,
+  "redisAnonymousAndComposeVolumesRemoved": true,
+  "removedInternalNetwork": "twenty-rob764-3f5fc8d7b68e4cda-net",
+  "temporaryDatabasesDestroyedWithTmpfs": true,
+  "builderRestoredToStopped": true,
+  "liveDemo": {
+    "twenty-demo-server-1": {
+      "image": "marketozk/twenty:2.52-44e1449c",
+      "startedAt": "2026-10-26T10:07:41.150461802Z",
+      "running": true,
+      "health": "healthy"
+    },
+    "twenty-demo-worker-1": {
+      "image": "marketozk/twenty:2.52-44e1449c",
+      "startedAt": "2026-10-26T10:09:19.769846141Z",
+      "running": true,
+      "health": null
+    },
+    "twenty-demo-db-1": {
+      "image": "postgres:16",
+      "startedAt": "2026-10-25T09:11:31.14696452Z",
+      "running": true,
+      "health": "healthy"
+    },
+    "twenty-demo-redis-1": {
+      "image": "redis:7.4-alpine",
+      "startedAt": "2026-10-25T09:11:31.14847034Z",
+      "running": true,
+      "health": "healthy"
+    }
+  },
+  "retainedInactiveCaches": [
+    "/opt/twenty-tests/twenty-rob764-3f5fc8d7b68e4cda",
+    "/opt/twenty-builds/log021-8e1facac",
+    "/opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools"
+  ],
+  "retainedImages": [
+    "marketozk/twenty:log021-candidate",
+    "marketozk/twenty:log021-baseline-server"
+  ],
+  "cleanupNote": "Initial cleanup removed containers, exclusive volumes and network successfully; docker top required pid,comm rather than comm on this host. Read-back then restored idle builder to stopped."
+}

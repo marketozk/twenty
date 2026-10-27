@@ -1,0 +1,63 @@
+name: twenty-omnichannel
+
+x-environment: &environment
+  SERVER_URL: ${SERVER_URL:?SERVER_URL is required}
+  APP_SECRET: ${APP_SECRET:?APP_SECRET is required}
+  REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+  STORAGE_TYPE: local
+  IS_BILLING_ENABLED: 'false'
+
+services:
+  migrator:
+    image: ${OMNI_IMAGE:?A verified fork image is required}
+    command: ['migrate']
+    environment:
+      <<: *environment
+      PG_DATABASE_URL: ${PG_MIGRATION_DATABASE_URL:?Migration credentials are required}
+      DISABLE_DB_MIGRATIONS: 'false'
+    volumes:
+      - server-local-data:/app/packages/twenty-server/.local-storage
+    restart: 'no'
+
+  server:
+    image: ${OMNI_IMAGE:?A verified fork image is required}
+    environment:
+      <<: *environment
+      PG_DATABASE_URL: ${PG_RUNTIME_DATABASE_URL:?Runtime credentials are required}
+      NODE_PORT: '3000'
+      DISABLE_DB_MIGRATIONS: 'true'
+      DISABLE_CRON_JOBS_REGISTRATION: 'true'
+    volumes:
+      - server-local-data:/app/packages/twenty-server/.local-storage
+    ports:
+      - '127.0.0.1:${OMNI_HTTP_PORT:-2020}:3000'
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'curl', '--fail', 'http://localhost:3000/healthz']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  worker:
+    image: ${OMNI_IMAGE:?A verified fork image is required}
+    command: ['node', 'dist/queue-worker/queue-worker.js']
+    stop_grace_period: 6m
+    environment:
+      <<: *environment
+      PG_DATABASE_URL: ${PG_RUNTIME_DATABASE_URL:?Runtime credentials are required}
+      DISABLE_DB_MIGRATIONS: 'true'
+      DISABLE_CRON_JOBS_REGISTRATION: 'true'
+    volumes:
+      - server-local-data:/app/packages/twenty-server/.local-storage
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      server:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  server-local-data:

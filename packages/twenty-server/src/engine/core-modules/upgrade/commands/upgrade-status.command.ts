@@ -17,6 +17,7 @@ type UpgradeStatusOptions = {
   workspaceId?: Set<string>;
   failedOnly?: boolean;
   showFullIdentifiers?: boolean;
+  strict?: boolean;
 };
 
 type GroupedWorkspaceUpgradeStatuses = {
@@ -37,6 +38,15 @@ const HEALTH_LABELS: Record<UpgradeHealthEnum, string> = {
     'Display upgrade status for instance and workspace commands, inferring versions from migration history',
 })
 export class UpgradeStatusCommand extends CommandRunner {
+  @Option({
+    flags: '--strict',
+    description:
+      'Fail unless the instance and selected workspaces are up to date',
+  })
+  parseStrict(): boolean {
+    return true;
+  }
+
   @Option({
     flags: '-w, --workspace-id [workspace_id]',
     description:
@@ -118,10 +128,24 @@ export class UpgradeStatusCommand extends CommandRunner {
 
       // oxlint-disable-next-line no-console
       console.log(lines.join('\n'));
+
+      if (
+        options.strict &&
+        (instanceStatus.health !== UpgradeHealthEnum.UP_TO_DATE ||
+          workspaceStatuses.some(
+            (status) => status.health !== UpgradeHealthEnum.UP_TO_DATE,
+          ))
+      ) {
+        throw new Error('Instance or workspace upgrades are not up to date');
+      }
     } catch (error) {
       this.logger.error(
         chalk.red(`Failed to retrieve upgrade status: ${error.message}`),
       );
+
+      if (options.strict) {
+        throw error;
+      }
     }
   }
 

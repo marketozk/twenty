@@ -345,3 +345,59 @@ origin/codex/omnichannel-requirements. [Комментарий ROB-764](https://
 и [dependency guard](https://github.com/marketozk/twenty/actions/runs/40456531260).
 Аннотации подтверждены; это не CI pass и не падение выполненных35/25 проверок.
 Настройки оплаты не менялись. Результат отражён в том же комментарии Linear.
+
+## LOG-021 — 27.10.2026: packaging/migrator/startup ROB-764
+
+Пользователь: «хорошо делай». Выполнен следующий шаг LOG-020: полный официальный
+Docker build и фактический запуск через отдельный migrator и runtime gate.
+Live demo, рабочие БД и маршруты Telegram/MAX не изменялись.
+
+Новый координатор удерживает session lock над native/fork upgrade, определяет
+fresh/existing/partial DB через pg_namespace и прекращает child process group
+при наблюдаемой потере lock connection. Автоповтора нет. Native cache flush,
+upgrade status и cron registration получили opt-in strict errors; legacy callers
+сохраняют прежнее поведение. Compose разделяет роли и блокирует runtime при
+отказе migrator. Worker grace6 минут учитывает native AI stream drain5 минут.
+
+Проверки:38 PostgreSQL,15 strict command,7 Linux shell,20 dependency и5 source
+checksum tests PASS; focused strict TypeScript координатора/lock tests PASS.
+Официальная сборка пересобрала server, unchanged frontend использовал cache;
+оба Nest JSON assets и реальные main/worker/coordinator присутствуют в image.
+Fresh migration, populated upstream upgrade и replay прошли. Проверены полный
+row fingerprint599 компаний,150 сделок,1200 контактов, startup/restart двух пар
+server/worker и отдельная non-owner runtime роль с SELECT-only fork ledger.
+Compose подтвердил отказ dependency chain и успешный запуск после исправления.
+После ожидания26 собственных queue subscriptions worker завершился exit0
+за5,45s. [Evidence](implementation/log021/README.md).
+
+Находки и исправления: swallowed native errors, отсутствие общего upgrade lock,
+privilege-filtered schema discovery; UNIQUE introspection order нормализован
+как набор, обычные index order и FK mappings сохранены. Первичный короткий stop
+до подтверждённой готовности worker дал137 без OOM; readiness/stop проверка
+уточнена и пройдена. Последнее адресное subagent review — без новых замечаний.
+Полный архитектурный круг и Claude Code в LOG-021 не запускались.
+
+Ограничения: session lock не обеспечивает DB-side fencing всех child sessions
+после disconnect; maintenance owner должен удерживать окно до разбора исхода.
+Старый runtime останавливается до cache flush, который затрагивает EngineLock.
+Не добавлять fork-table queries в AppModule bootstrap до fork DDL. Полный server
+typecheck не выполнялся (SWC build без type checking); runtime permissions,
+provisioning и audit ownership не сертифицированы этими smoke tests. Это T33
+для текущих9 таблиц, не готовность всех T01–T33. Existing Enterprise debt ROB-766
+не изменён; no-new-dependency guard не является доказательством лицензии.
+
+Среда и cleanup: внутренний network, PG17/tmpfs1GiB, Redis256MiB, runtime до3GiB/
+2CPU без published ports. После identity/mount/volume ownership checks удалены
+собственные9 containers, их exclusive volumes и network; тестовые БД уничтожены.
+Неактивные source/tool caches и два test image оставлены. Idle builder возвращён
+в исходное stopped состояние. Демо health/read-back подтверждены. [Cleanup](implementation/log021/cleanup.json).
+
+Skills: ai-dev-workflow — Implement/Verify и адресное независимое ревью;
+behavioral-guardrails — узкие изменения и проверка diff; server-schrodinger —
+изоляция/лимиты и cleanup только своих ресурсов; linear-api — синхронизация
+через сохранённый API fallback после недоступности подключённого инструмента.
+
+Следующий шаг: остальные entities этапа1, минимальный audit writer и защищённый
+bootstrap, затем ingress persistence/transactional Message/inbox/outbox/recovery.
+ROB-764 остаётся In Progress; bindings не активируются до ROB-766.
+Публикация и read-back Linear/CI фиксируются после commit/push.

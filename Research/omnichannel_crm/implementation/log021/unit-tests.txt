@@ -1,0 +1,9 @@
+PASS ../../../source/packages/twenty-server/src/database/commands/__tests__/cron-register-all.command.spec.ts
+PASS ../../../source/packages/twenty-server/src/engine/core-modules/upgrade/commands/__tests__/upgrade-status.command.spec.ts
+PASS ../../../source/packages/twenty-server/src/engine/core-modules/cache-storage/commands/__tests__/flush-cache.command.spec.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       15 passed, 15 total
+Snapshots:   0 total
+Time:        1.692 s
+Ran all test suites.

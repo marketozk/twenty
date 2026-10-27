@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 
-import { Command, CommandRunner } from 'nest-commander';
+import { Command, CommandRunner, Option } from 'nest-commander';
 import { isDefined } from 'twenty-shared/utils';
 
 import { MarketplaceCatalogSyncCronCommand } from 'src/engine/core-modules/application/application-marketplace/crons/commands/marketplace-catalog-sync.cron.command';
@@ -93,7 +93,18 @@ export class CronRegisterAllCommand extends CommandRunner {
     super();
   }
 
-  async run(): Promise<void> {
+  @Option({
+    flags: '--strict',
+    description: 'Fail the command if any enabled cron registration fails',
+  })
+  parseStrict(): boolean {
+    return true;
+  }
+
+  async run(
+    _passedParams: string[] = [],
+    options?: { strict?: boolean },
+  ): Promise<void> {
     this.logger.log('Registering all background sync cron jobs...');
 
     const isSigningKeyAutoRotationEnabled = isDefined(
@@ -293,6 +304,10 @@ export class CronRegisterAllCommand extends CommandRunner {
 
     if (skipped.length > 0) {
       this.logger.log(`Skipped commands: ${skipped.join(', ')}`);
+    }
+
+    if (options?.strict && failures.length > 0) {
+      throw new Error(`Failed to register cron jobs: ${failures.join(', ')}`);
     }
   }
 }

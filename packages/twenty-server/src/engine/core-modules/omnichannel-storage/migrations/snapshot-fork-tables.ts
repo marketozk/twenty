@@ -40,7 +40,10 @@ export const snapshotForkTables = async (
         }))
         .sort((left, right) => left.name.localeCompare(right.name)),
       uniques: table.uniques
-        .map((unique) => ({ name: unique.name, columns: unique.columnNames }))
+        .map((unique) => ({
+          name: unique.name,
+          columns: [...unique.columnNames].sort(),
+        }))
         .sort((left, right) =>
           (left.name ?? '').localeCompare(right.name ?? ''),
         ),

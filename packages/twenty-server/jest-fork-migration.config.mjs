@@ -6,7 +6,10 @@ export default {
   testTimeout: 20000,
   maxWorkers: 1,
   transform: {
-    '^.+\\.ts$': ['@swc/jest', { jsc: { parser: { syntax: 'typescript' } } }],
+    '^.+\\.ts$': [
+      '@swc/jest',
+      { swcrc: false, jsc: { parser: { syntax: 'typescript' } } },
+    ],
   },
   moduleNameMapper: { '^src/(.*)': '<rootDir>/src/$1' },
 };

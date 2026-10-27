@@ -1,0 +1,13 @@
+{
+  "before": {
+    "workspace_1wgvd1injqtife6y4rvfbu3h5.company": "599:d9829372e21a6df65fd4578631633287",
+    "workspace_1wgvd1injqtife6y4rvfbu3h5.opportunity": "150:86f0627cafbed88bbe59dbb081b51210",
+    "workspace_1wgvd1injqtife6y4rvfbu3h5.person": "1200:f3219d03c322fc21d2648a5dcb4235b1"
+  },
+  "afterMigrationReplayAndRestart": {
+    "workspace_1wgvd1injqtife6y4rvfbu3h5.company": "599:d9829372e21a6df65fd4578631633287",
+    "workspace_1wgvd1injqtife6y4rvfbu3h5.opportunity": "150:86f0627cafbed88bbe59dbb081b51210",
+    "workspace_1wgvd1injqtife6y4rvfbu3h5.person": "1200:f3219d03c322fc21d2648a5dcb4235b1"
+  },
+  "equal": true
+}

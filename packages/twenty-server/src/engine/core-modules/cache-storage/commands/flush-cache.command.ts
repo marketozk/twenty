@@ -30,7 +30,7 @@ export class FlushCacheCommand extends CommandRunner {
 
   async run(
     _passedParams: string[],
-    options?: Record<string, string>,
+    options?: { namespace?: string; pattern?: string; strict?: boolean },
   ): Promise<void> {
     try {
       const namespaceArg = options?.namespace;
@@ -57,7 +57,19 @@ export class FlushCacheCommand extends CommandRunner {
       this.logger.log('Cache flushed');
     } catch (error) {
       this.logger.error(error.message);
+
+      if (options?.strict) {
+        throw error;
+      }
     }
+  }
+
+  @Option({
+    flags: '--strict',
+    description: 'Fail the command if cache flushing fails',
+  })
+  parseStrict(): boolean {
+    return true;
   }
 
   private computeNamespacesToFlushOrThrow(

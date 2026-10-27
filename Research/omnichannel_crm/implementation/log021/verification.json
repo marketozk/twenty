@@ -1,0 +1,27 @@
+{
+  "postgresTests": 38,
+  "strictCommandTests": 15,
+  "linuxShellTests": 7,
+  "dependencyGuardTests": 20,
+  "migrationChecksumTests": 5,
+  "focusedStrictTypecheck": "pass: coordinator and lock tests; TypeScript 5.9.3",
+  "fullServerTypecheck": false,
+  "officialDockerBuild": "pass: target twenty; server rebuilt, unchanged frontend may use cache",
+  "nestAssetsInActualImage": true,
+  "freshMigration": true,
+  "populatedWorkspaceUpgradeAndReplay": true,
+  "serverAndWorkerRestart": [
+    "fresh",
+    "upgraded"
+  ],
+  "runtimeRole": "non-owner/non-superuser; ledger SELECT only; not full authorization certification",
+  "negativeChecks": [
+    "before migration refuses runtime",
+    "partial database refuses initialization",
+    "schema drift refuses runtime",
+    "Compose migration failure blocks runtime"
+  ],
+  "fullEnterpriseDependencyGuard": "0 new violations; existing debt unchanged",
+  "liveDemoChanged": false,
+  "realMessagesSent": false
+}
