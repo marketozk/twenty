@@ -8,5 +8,10 @@
     "migrationId": "omni-1793091163781-audit-bootstrap",
     "checksum": "a6347336b5c4dfd0a5eda047b0945acdca0c3a46a83f3bc4bcc609ba36582ed2",
     "sourcePath": "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-audit-bootstrap.migration.ts"
+  },
+  {
+    "migrationId": "omni-1793094313685-message-persistence",
+    "checksum": "2fbd5c91d07f4934aff21d646dc69adf14e79aa5f77c807634d92eef05645ce7",
+    "sourcePath": "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-message-persistence.migration.ts"
   }
 ]

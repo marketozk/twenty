@@ -1,0 +1,15 @@
+{
+  "applied": [
+    "omni-1793094313685-message-persistence"
+  ],
+  "replayNoop": true,
+  "readiness": true,
+  "nativeHistory": [
+    {
+      "count": 256,
+      "hash": "bbaff80b0ef42bbeb4b67a727f6609b9"
+    }
+  ],
+  "finalMetadataDiff": "empty",
+  "compilation": "focused SWC in existing image; not a full image build"
+}

@@ -93,11 +93,17 @@ describe('audit/bootstrap migration and manifest', () => {
       dataSource,
       FORK_MIGRATIONS.slice(0, 1),
     ).apply();
-    const runner = new ForkMigrationRunner(dataSource, FORK_MIGRATIONS);
+    const runner = new ForkMigrationRunner(
+      dataSource,
+      FORK_MIGRATIONS.slice(0, 2),
+    );
 
     expect(await runner.apply()).toEqual([FORK_MIGRATIONS[1].migrationId]);
     expect(await runner.apply()).toEqual([]);
-    await new ForkSchemaVerifier(dataSource, FORK_SCHEMA_CHECKS).verifyReady();
+    await new ForkSchemaVerifier(
+      dataSource,
+      FORK_SCHEMA_CHECKS.slice(0, 2),
+    ).verifyReady();
     expect(
       await dataSource.query(
         'SELECT count(*)::int AS count FROM core."forkMigrationLedger"',
@@ -106,7 +112,10 @@ describe('audit/bootstrap migration and manifest', () => {
   });
 
   it('reverses empty new tables without removing the earlier foundation or audit schema', async () => {
-    await new ForkMigrationRunner(dataSource, FORK_MIGRATIONS).apply();
+    await new ForkMigrationRunner(
+      dataSource,
+      FORK_MIGRATIONS.slice(0, 2),
+    ).apply();
     await dataSource.transaction(async (manager) => {
       const queryRunner = manager.queryRunner!;
       const migration = new OmniAuditBootstrapFastInstanceCommand();

@@ -1,6 +1,7 @@
 import { type ForkMigration } from 'src/database/commands/fork-upgrade/fork-migration.type';
 import { OmniAuditBootstrapFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/omni-audit-bootstrap.migration';
 import { OmniConversationFoundationFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/omni-conversation-foundation.migration';
+import { OmniMessagePersistenceFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/omni-message-persistence.migration';
 import { FORK_SCHEMA_CHECKS } from 'src/engine/core-modules/omnichannel-storage/migrations/fork-schema-checks';
 
 export const FORK_MIGRATIONS: readonly ForkMigration[] = [
@@ -13,6 +14,11 @@ export const FORK_MIGRATIONS: readonly ForkMigration[] = [
     ...FORK_SCHEMA_CHECKS[1],
     kind: OmniAuditBootstrapFastInstanceCommand.kind,
     command: new OmniAuditBootstrapFastInstanceCommand(),
+  },
+  {
+    ...FORK_SCHEMA_CHECKS[2],
+    kind: OmniMessagePersistenceFastInstanceCommand.kind,
+    command: new OmniMessagePersistenceFastInstanceCommand(),
   },
 ];
 

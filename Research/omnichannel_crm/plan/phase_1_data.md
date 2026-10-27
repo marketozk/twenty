@@ -6,13 +6,20 @@
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
-Зависимость: этап0. Статус: In Progress (LOG-022). Реализованы fork migrations,
+Зависимость: этап0. Статус: In Progress (LOG-024). К LOG-022 добавлены
+MessageLink/MessageRevision/ConversationTarget/IncomingReceipt/OutgoingCommand/
+DomainEvent, generated up/down и version-aware проверка схемы. Прошли113 PG и25
+Python tests, focused typecheck49 файлов; native upgrade/replay и финальный пустой
+generator diff. Полного нового image build/typecheck и runtime writers нет.
+Остаток схемы: roots/consumer receipts/dispatch/budgets/activation/admission, затем
+domain writers и ingress/outbox. [LOG-024](../implementation/log024/README.md).
+
+Предыдущая порция LOG-022: реализованы fork migrations,
 первые9 core entities, audit entry/PolicyMutationReceipt, минимальный audit writer
 и внутренний inactive binding bootstrap. Migrator/gate подключены к image startup;
 runtime также проверяет audit privileges.81 PG,25 guard/checksum и7 shell tests
 проходят; focused strict typecheck пройден. T06 проверен для текущего writer,
-T33 — для текущей схемы, не будущих миграций. Остаток: MessageLink/IncomingReceipt/
-OutgoingCommand/DomainEvent и остальные entities, domain writers, ingress/outbox.
+T33 — для текущей схемы, не будущих миграций.
 Публичного bootstrap endpoint, own ACL и activation нет; демо не обновлялось.
 [Ход реализации](../implementation/rob764-progress.md).
 

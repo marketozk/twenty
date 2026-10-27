@@ -1,0 +1,7 @@
+[Nest] 28  - 10/27/2026, 9:45:13 AM     LOG [InstanceLoader] WorkspaceMigrationBuilderValidatorsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 9:45:13 AM     LOG [InstanceLoader] WorkspaceMigrationBuilderModule dependencies initialized
+[Nest] 28  - 10/27/2026, 9:45:13 AM     LOG [InstanceLoader] WorkspaceMigrationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 9:45:13 AM     LOG [InstanceLoader] AgentHistoryMigrationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 9:45:13 AM     LOG [InstanceLoader] WorkspaceMigrationRunnerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 9:45:13 AM     LOG [InstanceLoader] WorkspaceSchemaMigrationRunnerActionHandlersModule dependencies initialized
+[Nest] 28  - 10/27/2026, 9:45:14 AM     LOG [GenerateInstanceCommandCommand] fast instance command generated successfully: /app/packages/twenty-server/src/database/commands/upgrade-version-command/2-52/2-52-instance-command-fast-1793094313685-omni-message-persistence.ts

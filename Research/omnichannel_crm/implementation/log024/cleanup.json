@@ -1,0 +1,38 @@
+{
+  "removedContainers": [
+    "twenty-rob764-3648b99ee85049fd-db",
+    "twenty-rob764-3648b99ee85049fd-redis"
+  ],
+  "removedExclusiveVolumes": [
+    "3e898953485af6d3a50f30e5092e001cea18859b0443005d777662abfbdc1f0f"
+  ],
+  "removedInternalNetwork": "twenty-rob764-3648b99ee85049fd-net",
+  "temporaryDatabasesDestroyedWithTmpfs": true,
+  "builderNotUsed": true,
+  "liveDemo": {
+    "twenty-demo-server-1": {
+      "image": "marketozk/twenty:2.52-44e1449c",
+      "startedAt": "2026-10-26T10:07:41.150461802Z",
+      "health": "healthy"
+    },
+    "twenty-demo-worker-1": {
+      "image": "marketozk/twenty:2.52-44e1449c",
+      "startedAt": "2026-10-26T10:09:19.769846141Z",
+      "health": null
+    },
+    "twenty-demo-db-1": {
+      "image": "postgres:16",
+      "startedAt": "2026-10-25T09:11:31.14696452Z",
+      "health": "healthy"
+    },
+    "twenty-demo-redis-1": {
+      "image": "redis:7.4-alpine",
+      "startedAt": "2026-10-25T09:11:31.14847034Z",
+      "health": "healthy"
+    }
+  },
+  "retainedInactiveCaches": [
+    "/opt/twenty-tests/twenty-rob764-3648b99ee85049fd",
+    "/opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools"
+  ]
+}

@@ -499,3 +499,46 @@ site, QueryRunner. Подключение native workspace scope, полный �
 [Отчёт LOG-023](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-a3d32f51)
 создан один раз и прочитан обратно. [Метаданные сверки](implementation/publication-log023.json).
 Проверены локальные ссылки, diff и сохранность22 хешей исходников LOG-022.
+
+## LOG-024 — 27.10.2026: схема сообщений и надёжного хранения
+
+Пользователь разрешил следующую порцию ROB-764. Добавлены шесть core entities:
+MessageLink, MessageRevision, ConversationTarget, IncomingReceipt, OutgoingCommand,
+DomainEvent. Штатный generator создал56 SQL up/down, перенесённых без изменения
+в fork registry; старые migration checksums сохранены. Provider IDs — text,
+bigint — string; tenant/binding/conversation FK защищают связь, reply и replacement.
+Это schema-only: domain writers, отправка и UI не заявляются реализованными.
+
+Для composite Link FK у Conversation добавлен UNIQUE(workspaceId,bindingId,id).
+Обнаружена необходимость version-aware snapshot: прежний exact snapshot иначе
+отвергал бы корректный upgrade. Ledger prefix целиком валидируется до callbacks;
+схема проверяется строго для соответствующего prefix, post-up до commit.
+Старые snapshot/migration исходники сохранены, generic drift checks не ослаблены.
+
+Проверки:113 PostgreSQL,20 dependency guard и5 checksum tests —138 PASS.
+Focused strict typecheck49 файлов с imports PASS. Первичный typecheck отказал
+на выведенном UUID template type test helper, исправлен явной string-аннотацией.
+Native schema up/down/up сохранила старые11 таблиц после down и остальные10 после
+up; все256 native upgrade history rows сохранены. Зарегистрированные upgrade,
+replay/readiness прошли, финальный штатный generator diff пустой. Полного нового
+image build и полного server typecheck не было. [Evidence](implementation/log024/README.md).
+
+Адресное независимое ревью entities, FK, ledger/snapshot и тестов — PASS без
+подтверждённых blocker/major. Claude Code и новый полный архитектурный круг не
+запускались. ORM update:false не является SQL immutability; acceptance evidence
+test не является доказательством готовой send state machine. Future reference/
+root/turn FK и dynamic workspace validation указаны как незавершённая работа.
+
+Собственные временные PostgreSQL/Redis containers, exclusive volumes и сеть
+удалены после проверки принадлежности; БД уничтожены вместе с tmpfs. Неактивный
+source/tool cache сохранён, builder не запускался. Demo image/start timestamps/
+health совпали с прежними; живые каналы не менялись. [Cleanup](implementation/log024/cleanup.json).
+
+Skills: ai-dev-workflow — продолжение принятого плана, независимое исследование
+и адресное ревью; behavioral-guardrails — узкий diff и проверка по диску;
+server-schrodinger — read-only preflight, ограниченная тестовая среда и cleanup
+собственных ресурсов. Linear обновляется подключённым инструментом.
+
+Следующий шаг: ранние roots/consumer receipts/dispatch plans/reply budgets и
+activation/admission, затем ingress/inbox/outbox/recovery. ROB-764 In Progress,
+ROB-765–771 Backlog. Публикация и Linear/CI read-back фиксируются после push.

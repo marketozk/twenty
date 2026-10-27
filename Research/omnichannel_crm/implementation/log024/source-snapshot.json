@@ -1,0 +1,28 @@
+{
+  "baseCommit": "9cbe70a482e35dbddec073ea2f4e24ab6ae27b24",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3648b99ee85049fd/source",
+  "runtimeBaseImage": "marketozk/twenty:log022-candidate",
+  "compilation": "focused SWC inside disposable runner; no new complete Docker image",
+  "lfSha256": {
+    "packages/twenty-server/src/database/commands/fork-upgrade/fork-migration-runner.ts": "f3f8d582fbaf89d4d552f4ebee1d72c7e379f0aa30a298975f9dc6bab4eaa5d0",
+    "packages/twenty-server/src/database/commands/fork-upgrade/fork-migrations.ts": "0bddf36b3814ddfa977facbdb40ed11f69df8e697b1f9cf81376ed0a133aba05",
+    "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-message-persistence.migration.ts": "2fbd5c91d07f4934aff21d646dc69adf14e79aa5f77c807634d92eef05645ce7",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-conversation-target.entity.ts": "927003a86c0855ff6a114f734b5a56ca707304f7243736bf7f6071426d17e950",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-conversation.entity.ts": "0b985718bf6aafade73062a4b7870d9bb7605b4725040e29adcddde95dfb05f2",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-domain-event.entity.ts": "3ab19e60f687e7a776ad5203c634b772748d900ba2cbf248dd9a4d6a70cadc04",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-incoming-receipt.entity.ts": "42bee42d777476c90dde80bc61f76878f1c21846fcb9a7b3c8674b88face83a0",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-message-link.entity.ts": "df499a592e33ef80160e54d9192368dd903363c27cfe82c09dec85386919eb67",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-message-revision.entity.ts": "66f8a060321c1701de5ffbe64bb7b4e6e5c171848cdf11e74f110d8e460e3673",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-outgoing-command.entity.ts": "0d4ddd991bfcaac8d2a916441478326b9a2fad1e007e2225ca7fbbb23f77b1ef",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/conversation-foundation.check.ts": "2a2e962e64ffdb7d1e814c370d387d907120f4e51518624ca0c82907bf6d6ceb",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/fork-migration-check.type.ts": "b9b7d326a84d64fcb7e4271f9191ecc351fac23ab85fef4d35544adacca81ece",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/fork-schema-checks.ts": "67570a25cee95334030404ff7d8e060406432dfc9c71f9feb2d15bea647ec2f8",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/fork-schema-manifest.json": "8241797f49a09a5c492798202a938c10181577716f1fd7aecd5f423bfb740f56",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/message-persistence.check.ts": "3624093010086878f6e3048685a4b406e582e7910ec4606e15f61aceb9302709",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/message-persistence.schema.json": "27ee2ac48915ad9f508ae640659ad9e6e5f9196b20b19d46107f657cf430032f",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/verify-fork-migration-prefix.ts": "5bd438dbd792bf97f26c827e3fc1d046e147f903e76691c769d619bc6bab5237",
+    "packages/twenty-server/test/fork-migration/audit-bootstrap-schema.postgres-spec.ts": "81a18652e6337a9a703e208ce443f59eec6903294914cded1a70b00f3355e850",
+    "packages/twenty-server/test/fork-migration/fork-migration-runner.postgres-spec.ts": "9400294e5e16b66d453372567edd4148b32fb5542c868e1a824953b099b0630e",
+    "packages/twenty-server/test/fork-migration/message-persistence.postgres-spec.ts": "a74cc3adf0db07b0359dd7397f4955fad80f73f00c65e1ba15ac2fb026268e59"
+  }
+}

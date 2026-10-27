@@ -129,6 +129,111 @@ describe('fork migration transactions on PostgreSQL', () => {
     expect(await runner().apply()).toEqual(['omni-test-one']);
   });
 
+  it('supplies the exact validated schema prefix before and after an additive upgrade', async () => {
+    const observations: { migrationId: string; prefix: readonly string[] }[] =
+      [];
+    const first = createMigration();
+    const second = createMigration('two');
+    const firstWithVersionedCheck: ForkMigration = {
+      ...first,
+      verify: async (queryRunner, appliedMigrationIds = []) => {
+        observations.push({
+          migrationId: first.migrationId,
+          prefix: appliedMigrationIds,
+        });
+        expect(Object.isFrozen(appliedMigrationIds)).toBe(true);
+        const [{ exists }]: { exists: boolean }[] = await queryRunner.query(
+          `SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'core' AND table_name = 'fixtureOne'
+              AND column_name = 'newColumn'
+          ) AS exists`,
+        );
+
+        expect(exists).toBe(appliedMigrationIds.includes(second.migrationId));
+      },
+    };
+    const secondWithVersionedCheck: ForkMigration = {
+      ...second,
+      command: {
+        ...second.command,
+        up: async (queryRunner) => {
+          await second.command.up(queryRunner);
+          await queryRunner.query(
+            'ALTER TABLE core."fixtureOne" ADD COLUMN "newColumn" text',
+          );
+        },
+      },
+      verify: async (queryRunner, appliedMigrationIds = []) => {
+        observations.push({
+          migrationId: second.migrationId,
+          prefix: appliedMigrationIds,
+        });
+        expect(Object.isFrozen(appliedMigrationIds)).toBe(true);
+        await queryRunner.query('SELECT "newColumn" FROM core."fixtureOne"');
+      },
+    };
+
+    await runner([firstWithVersionedCheck]).apply();
+    observations.length = 0;
+    await runner([firstWithVersionedCheck, secondWithVersionedCheck]).apply();
+    expect(observations).toEqual([
+      { migrationId: first.migrationId, prefix: [first.migrationId] },
+      {
+        migrationId: second.migrationId,
+        prefix: [first.migrationId, second.migrationId],
+      },
+      {
+        migrationId: first.migrationId,
+        prefix: [first.migrationId, second.migrationId],
+      },
+      {
+        migrationId: second.migrationId,
+        prefix: [first.migrationId, second.migrationId],
+      },
+    ]);
+    observations.length = 0;
+    await verifier([
+      firstWithVersionedCheck,
+      secondWithVersionedCheck,
+    ]).verifyReady();
+    expect(observations).toEqual([
+      {
+        migrationId: first.migrationId,
+        prefix: [first.migrationId, second.migrationId],
+      },
+      {
+        migrationId: second.migrationId,
+        prefix: [first.migrationId, second.migrationId],
+      },
+    ]);
+  });
+
+  it('rejects a later ledger checksum before invoking any schema verifier', async () => {
+    const migrations = [createMigration(), createMigration('two')];
+
+    await runner(migrations).apply();
+    await dataSource.query(
+      'UPDATE core."forkMigrationLedger" SET checksum = $1 WHERE "migrationId" = $2',
+      [checksum('tampered'), migrations[1].migrationId],
+    );
+    const observed: string[] = [];
+    const observedMigrations = migrations.map((migration) => ({
+      ...migration,
+      verify: async () => {
+        observed.push(migration.migrationId);
+      },
+    }));
+
+    await expect(runner(observedMigrations).apply()).rejects.toThrow(
+      'Fork migration drift: omni-test-two',
+    );
+    await expect(verifier(observedMigrations).verifyReady()).rejects.toThrow(
+      'Fork migration drift: omni-test-two',
+    );
+    expect(observed).toEqual([]);
+  });
+
   it('retains a committed prefix and retries only a failed next step', async () => {
     const second = createMigration('two');
 

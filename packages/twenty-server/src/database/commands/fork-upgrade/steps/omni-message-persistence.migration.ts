@@ -1,0 +1,167 @@
+import { type QueryRunner } from 'typeorm';
+
+import { type ForkMigrationCommand } from 'src/database/commands/fork-upgrade/fork-migration.type';
+
+export class OmniMessagePersistenceFastInstanceCommand
+  implements ForkMigrationCommand
+{
+  static readonly kind = 'fork' as const;
+
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      'CREATE TABLE "core"."omniOutgoingCommand" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "workspaceId" uuid NOT NULL, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "conversationId" uuid NOT NULL, "actorKind" text NOT NULL, "actorId" text NOT NULL, "initiatingActorId" text NOT NULL, "idempotencyKey" text NOT NULL, "payloadHash" text NOT NULL, "payload" jsonb NOT NULL, "expectedAutomationEpoch" bigint, "policyId" uuid NOT NULL, "policyVersion" bigint NOT NULL, "generation" bigint NOT NULL, "workflowCancellationRefs" jsonb NOT NULL DEFAULT \'[]\', "senderClass" text NOT NULL, "contentProvenance" text NOT NULL, "producerTurnId" uuid, "capturedTurnFence" bigint, "referenceId" uuid, "cancelRequestedAt" TIMESTAMP WITH TIME ZONE, "cancelReason" text, "cancelEvidence" jsonb, "replacesCommandId" uuid, "outboundSequence" bigint NOT NULL, "replyToMessageLinkId" uuid, "resolvedReplyNativeRef" jsonb, "state" text NOT NULL DEFAULT \'pending\', "connectorJobId" text, "connectorAcceptedEvidence" jsonb, "journalSequence" bigint, "leaseToken" uuid, "leaseUntil" TIMESTAMP WITH TIME ZONE, "nextAttemptAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "statusRevision" bigint NOT NULL DEFAULT \'1\', CONSTRAINT "UQ_omniOutgoingCommand_sequence" UNIQUE ("workspaceId", "conversationId", "outboundSequence"), CONSTRAINT "UQ_omniOutgoingCommand_actor_key" UNIQUE ("workspaceId", "actorKind", "actorId", "idempotencyKey"), CONSTRAINT "UQ_omniOutgoingCommand_conversation_id" UNIQUE ("workspaceId", "conversationId", "id"), CONSTRAINT "UQ_omniOutgoingCommand_workspace_id" UNIQUE ("workspaceId", "id"), CONSTRAINT "CHK_omniOutgoingCommand_reply_snapshot" CHECK (("replyToMessageLinkId" IS NULL AND "resolvedReplyNativeRef" IS NULL) OR ("replyToMessageLinkId" IS NOT NULL AND "resolvedReplyNativeRef" IS NOT NULL AND jsonb_typeof("resolvedReplyNativeRef") = \'object\')), CONSTRAINT "CHK_omniOutgoingCommand_replacement" CHECK ("replacesCommandId" IS NULL OR ("replacesCommandId" != "id" AND "senderClass" = \'human\')), CONSTRAINT "CHK_omniOutgoingCommand_lease" CHECK (("leaseToken" IS NULL AND "leaseUntil" IS NULL) OR ("leaseToken" IS NOT NULL AND "leaseUntil" IS NOT NULL)), CONSTRAINT "CHK_omniOutgoingCommand_ai_producer" CHECK ("senderClass" != \'ai_turn\' OR "producerTurnId" IS NOT NULL), CONSTRAINT "CHK_omniOutgoingCommand_producer_fence" CHECK (("producerTurnId" IS NULL AND "capturedTurnFence" IS NULL) OR ("producerTurnId" IS NOT NULL AND "capturedTurnFence" IS NOT NULL AND "capturedTurnFence" > 0)), CONSTRAINT "CHK_omniOutgoingCommand_nonHuman_context" CHECK ("senderClass" = \'human\' OR ("referenceId" IS NOT NULL AND "expectedAutomationEpoch" IS NOT NULL)), CONSTRAINT "CHK_omniOutgoingCommand_counters" CHECK ("generation" > 0 AND "policyVersion" >= 0 AND "outboundSequence" > 0 AND "statusRevision" > 0 AND ("expectedAutomationEpoch" IS NULL OR "expectedAutomationEpoch" > 0) AND ("journalSequence" IS NULL OR "journalSequence" >= 0)), CONSTRAINT "CHK_omniOutgoingCommand_payload" CHECK (jsonb_typeof("payload") = \'object\' AND jsonb_typeof("workflowCancellationRefs") = \'array\'), CONSTRAINT "CHK_omniOutgoingCommand_payloadHash" CHECK ("payloadHash" ~ \'^[a-f0-9]{64}$\'), CONSTRAINT "CHK_omniOutgoingCommand_identity" CHECK (length("actorKind") > 0 AND length("actorId") > 0 AND length("initiatingActorId") > 0 AND length("idempotencyKey") > 0 AND length("senderClass") > 0 AND length("contentProvenance") > 0), CONSTRAINT "CHK_omniOutgoingCommand_state" CHECK ("state" IN (\'pending\', \'dispatching\', \'accepted\', \'outcome_unknown\', \'sent\', \'failed\', \'cancelled\')), CONSTRAINT "PK_8f710425081f885de68a1174f1b" PRIMARY KEY ("id"))',
+    );
+    await queryRunner.query(
+      'CREATE INDEX "IDX_omniOutgoingCommand_policy_cleanup" ON "core"."omniOutgoingCommand" ("workspaceId", "policyId", "policyVersion", "state", "id") WHERE "senderClass" != \'human\'',
+    );
+    await queryRunner.query(
+      'CREATE INDEX "IDX_omniOutgoingCommand_recovery" ON "core"."omniOutgoingCommand" ("workspaceId", "state", "nextAttemptAt", "leaseUntil") ',
+    );
+    await queryRunner.query(
+      'CREATE TABLE "core"."omniMessageRevision" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "workspaceId" uuid NOT NULL, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "messageLinkId" uuid NOT NULL, "sourceRevisionKey" text NOT NULL, "sourceEventId" text NOT NULL, "contentHash" text NOT NULL, "tombstone" boolean NOT NULL, "origin" text NOT NULL, "protectedPayloadRef" text, CONSTRAINT "UQ_omniMessageRevision_source_revision" UNIQUE ("workspaceId", "messageLinkId", "sourceRevisionKey"), CONSTRAINT "UQ_omniMessageRevision_workspace_id" UNIQUE ("workspaceId", "id"), CONSTRAINT "CHK_omniMessageRevision_source" CHECK (length("sourceRevisionKey") > 0 AND length("sourceEventId") > 0 AND length("origin") > 0), CONSTRAINT "CHK_omniMessageRevision_hash" CHECK ("contentHash" ~ \'^[a-f0-9]{64}$\'), CONSTRAINT "PK_ad83212bc3a88a4f527e6a8fe8c" PRIMARY KEY ("id"))',
+    );
+    await queryRunner.query(
+      'CREATE TABLE "core"."omniMessageLink" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "workspaceId" uuid NOT NULL, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "conversationId" uuid NOT NULL, "bindingId" uuid NOT NULL, "rawNativeMessageId" text NOT NULL, "nativeMessageKey" text NOT NULL, "nativeMessageKeyVersion" integer NOT NULL, "messageId" uuid NOT NULL, "providerRevision" text, "sourcePosition" jsonb, "displayOccurredAt" TIMESTAMP WITH TIME ZONE NOT NULL, "displayTimeSource" text NOT NULL, "outgoingCommandId" uuid, "immutableAuthorSnapshot" jsonb NOT NULL, "sourceAuthorId" text, "sourceDisplayName" text, "authorVerification" text, "senderProvenance" text NOT NULL, "correlationState" text NOT NULL, CONSTRAINT "UQ_omniMessageLink_message" UNIQUE ("workspaceId", "messageId"), CONSTRAINT "UQ_omniMessageLink_native_key" UNIQUE ("workspaceId", "bindingId", "conversationId", "nativeMessageKey"), CONSTRAINT "UQ_omniMessageLink_binding_conversation_id" UNIQUE ("workspaceId", "bindingId", "conversationId", "id"), CONSTRAINT "UQ_omniMessageLink_conversation_id" UNIQUE ("workspaceId", "conversationId", "id"), CONSTRAINT "UQ_omniMessageLink_workspace_id" UNIQUE ("workspaceId", "id"), CONSTRAINT "CHK_omniMessageLink_identity" CHECK (length("rawNativeMessageId") > 0 AND length("nativeMessageKey") > 0 AND length("senderProvenance") > 0 AND length("correlationState") > 0), CONSTRAINT "CHK_omniMessageLink_time_source" CHECK ("displayTimeSource" IN (\'source\', \'capture\')), CONSTRAINT "CHK_omniMessageLink_key_version" CHECK ("nativeMessageKeyVersion" > 0), CONSTRAINT "PK_88052428ce807932234aabaed0a" PRIMARY KEY ("id"))',
+    );
+    await queryRunner.query(
+      'CREATE INDEX "IDX_omniMessageLink_timeline" ON "core"."omniMessageLink" ("workspaceId", "conversationId", "displayOccurredAt", "id") ',
+    );
+    await queryRunner.query(
+      'CREATE TABLE "core"."omniIncomingReceipt" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "workspaceId" uuid NOT NULL, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "bindingId" uuid NOT NULL, "eventId" text NOT NULL, "kind" text NOT NULL, "schemaVersion" integer NOT NULL, "routeGeneration" bigint NOT NULL, "canonicalPayloadHash" text NOT NULL, "validatedEnvelope" jsonb NOT NULL, "state" text NOT NULL DEFAULT \'accepted\', "attempts" integer NOT NULL DEFAULT \'0\', "nextAttemptAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "leaseOwner" text, "leaseToken" bigint NOT NULL DEFAULT \'0\', "leaseUntil" TIMESTAMP WITH TIME ZONE, "resultId" uuid, "errorCode" text, CONSTRAINT "UQ_omniIncomingReceipt_binding_event" UNIQUE ("workspaceId", "bindingId", "eventId"), CONSTRAINT "UQ_omniIncomingReceipt_workspace_id" UNIQUE ("workspaceId", "id"), CONSTRAINT "CHK_omniIncomingReceipt_identity" CHECK (length("eventId") > 0 AND length("kind") > 0), CONSTRAINT "CHK_omniIncomingReceipt_lease" CHECK (("leaseOwner" IS NULL) = ("leaseUntil" IS NULL) AND ("state" <> \'processing\' OR ("leaseOwner" IS NOT NULL AND "leaseToken" > 0))), CONSTRAINT "CHK_omniIncomingReceipt_hash" CHECK ("canonicalPayloadHash" ~ \'^[a-f0-9]{64}$\'), CONSTRAINT "CHK_omniIncomingReceipt_counters" CHECK ("schemaVersion" > 0 AND "routeGeneration" > 0 AND "attempts" >= 0 AND "leaseToken" >= 0), CONSTRAINT "CHK_omniIncomingReceipt_state" CHECK ("state" IN (\'accepted\', \'processing\', \'applied\', \'retryable_error\', \'blocked_config\', \'quarantined\')), CONSTRAINT "PK_70c4c5f8a188a31435fa7552c18" PRIMARY KEY ("id"))',
+    );
+    await queryRunner.query(
+      'CREATE INDEX "IDX_omniIncomingReceipt_binding_due" ON "core"."omniIncomingReceipt" ("workspaceId", "bindingId", "state", "nextAttemptAt") ',
+    );
+    await queryRunner.query(
+      'CREATE INDEX "IDX_omniIncomingReceipt_due" ON "core"."omniIncomingReceipt" ("workspaceId", "state", "nextAttemptAt", "leaseUntil") ',
+    );
+    await queryRunner.query(
+      'CREATE TABLE "core"."omniDomainEvent" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "workspaceId" uuid NOT NULL, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "conversationId" uuid, "kind" text NOT NULL, "origin" text NOT NULL, "causationId" uuid, "rootExecutionId" uuid, "conversationSequence" bigint, "payloadVersion" integer NOT NULL, "payload" jsonb NOT NULL, CONSTRAINT "UQ_omniDomainEvent_conversation_sequence" UNIQUE ("workspaceId", "conversationId", "conversationSequence"), CONSTRAINT "UQ_omniDomainEvent_workspace_id" UNIQUE ("workspaceId", "id"), CONSTRAINT "CHK_omniDomainEvent_payload" CHECK ("payloadVersion" > 0 AND jsonb_typeof("payload") = \'object\'), CONSTRAINT "CHK_omniDomainEvent_identity" CHECK (length("kind") > 0 AND length("origin") > 0 AND "origin" != \'import\'), CONSTRAINT "CHK_omniDomainEvent_sequence" CHECK (("conversationId" IS NULL AND "conversationSequence" IS NULL) OR ("conversationId" IS NOT NULL AND "conversationSequence" IS NOT NULL AND "conversationSequence" > 0)), CONSTRAINT "PK_02be968519bcc944c610b18d94f" PRIMARY KEY ("id"))',
+    );
+    await queryRunner.query(
+      'CREATE TABLE "core"."omniConversationTarget" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "workspaceId" uuid NOT NULL, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "conversationId" uuid NOT NULL, "objectMetadataId" uuid NOT NULL, "recordId" uuid NOT NULL, "active" boolean NOT NULL DEFAULT true, "revision" bigint NOT NULL DEFAULT \'1\', "projectionId" uuid, CONSTRAINT "UQ_omniConversationTarget_record" UNIQUE ("workspaceId", "conversationId", "objectMetadataId", "recordId"), CONSTRAINT "UQ_omniConversationTarget_workspace_id" UNIQUE ("workspaceId", "id"), CONSTRAINT "CHK_omniConversationTarget_revision" CHECK ("revision" > 0), CONSTRAINT "PK_d6237cfc0930fe6dbb3de4562d7" PRIMARY KEY ("id"))',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniConversation" ADD CONSTRAINT "UQ_omniConversation_binding_id" UNIQUE ("workspaceId", "bindingId", "id")',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniOutgoingCommand" ADD CONSTRAINT "FK_9ef7c69562033d824e51fdc9b58" FOREIGN KEY ("workspaceId") REFERENCES "core"."workspace"("id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniOutgoingCommand" ADD CONSTRAINT "FK_51c34c7bfddc94a4784e3278f3e" FOREIGN KEY ("workspaceId", "conversationId") REFERENCES "core"."omniConversation"("workspaceId","id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniOutgoingCommand" ADD CONSTRAINT "FK_90b21275f597eac5c8288f9b48e" FOREIGN KEY ("workspaceId", "policyId", "policyVersion") REFERENCES "core"."omniAutomationPolicyVersion"("workspaceId","policyId","version") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniOutgoingCommand" ADD CONSTRAINT "FK_4c51809b3735871f01378f8397c" FOREIGN KEY ("workspaceId", "conversationId", "replacesCommandId") REFERENCES "core"."omniOutgoingCommand"("workspaceId","conversationId","id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniOutgoingCommand" ADD CONSTRAINT "FK_e2fccd197f2a86a7f73fbd46857" FOREIGN KEY ("workspaceId", "conversationId", "replyToMessageLinkId") REFERENCES "core"."omniMessageLink"("workspaceId","conversationId","id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniMessageRevision" ADD CONSTRAINT "FK_a4ab4b365dee480d0fd89dddbf6" FOREIGN KEY ("workspaceId") REFERENCES "core"."workspace"("id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniMessageRevision" ADD CONSTRAINT "FK_e8c4a7d6ddeea20cce43f32f584" FOREIGN KEY ("workspaceId", "messageLinkId") REFERENCES "core"."omniMessageLink"("workspaceId","id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniMessageLink" ADD CONSTRAINT "FK_72d7b8ba1546d2ce1f97a153e6d" FOREIGN KEY ("workspaceId") REFERENCES "core"."workspace"("id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniMessageLink" ADD CONSTRAINT "FK_b6391cae8fb1af8094a63f5d969" FOREIGN KEY ("workspaceId", "bindingId", "conversationId") REFERENCES "core"."omniConversation"("workspaceId","bindingId","id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniMessageLink" ADD CONSTRAINT "FK_138455732577a6f101169a09c3c" FOREIGN KEY ("workspaceId", "conversationId", "outgoingCommandId") REFERENCES "core"."omniOutgoingCommand"("workspaceId","conversationId","id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniIncomingReceipt" ADD CONSTRAINT "FK_ebb7c9f5ee2031ff76a3753c3e8" FOREIGN KEY ("workspaceId") REFERENCES "core"."workspace"("id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniIncomingReceipt" ADD CONSTRAINT "FK_e81b7dc3a4057fde7c295b35fc0" FOREIGN KEY ("workspaceId", "bindingId") REFERENCES "core"."omniAccountBinding"("workspaceId","id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniDomainEvent" ADD CONSTRAINT "FK_a48dae9646760693513a2668e0e" FOREIGN KEY ("workspaceId") REFERENCES "core"."workspace"("id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniDomainEvent" ADD CONSTRAINT "FK_c818d5db1dafabc2aa910ad48a6" FOREIGN KEY ("workspaceId", "conversationId") REFERENCES "core"."omniConversation"("workspaceId","id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniConversationTarget" ADD CONSTRAINT "FK_cd36adeac66e72ee184061f5a1a" FOREIGN KEY ("workspaceId") REFERENCES "core"."workspace"("id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniConversationTarget" ADD CONSTRAINT "FK_5a87f64e91d01c9a2490eb2fdde" FOREIGN KEY ("workspaceId", "conversationId") REFERENCES "core"."omniConversation"("workspaceId","id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+  }
+
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniConversationTarget" DROP CONSTRAINT "FK_5a87f64e91d01c9a2490eb2fdde"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniConversationTarget" DROP CONSTRAINT "FK_cd36adeac66e72ee184061f5a1a"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniDomainEvent" DROP CONSTRAINT "FK_c818d5db1dafabc2aa910ad48a6"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniDomainEvent" DROP CONSTRAINT "FK_a48dae9646760693513a2668e0e"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniIncomingReceipt" DROP CONSTRAINT "FK_e81b7dc3a4057fde7c295b35fc0"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniIncomingReceipt" DROP CONSTRAINT "FK_ebb7c9f5ee2031ff76a3753c3e8"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniMessageLink" DROP CONSTRAINT "FK_138455732577a6f101169a09c3c"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniMessageLink" DROP CONSTRAINT "FK_b6391cae8fb1af8094a63f5d969"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniMessageLink" DROP CONSTRAINT "FK_72d7b8ba1546d2ce1f97a153e6d"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniMessageRevision" DROP CONSTRAINT "FK_e8c4a7d6ddeea20cce43f32f584"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniMessageRevision" DROP CONSTRAINT "FK_a4ab4b365dee480d0fd89dddbf6"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniOutgoingCommand" DROP CONSTRAINT "FK_e2fccd197f2a86a7f73fbd46857"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniOutgoingCommand" DROP CONSTRAINT "FK_4c51809b3735871f01378f8397c"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniOutgoingCommand" DROP CONSTRAINT "FK_90b21275f597eac5c8288f9b48e"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniOutgoingCommand" DROP CONSTRAINT "FK_51c34c7bfddc94a4784e3278f3e"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniOutgoingCommand" DROP CONSTRAINT "FK_9ef7c69562033d824e51fdc9b58"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniConversation" DROP CONSTRAINT "UQ_omniConversation_binding_id"',
+    );
+    await queryRunner.query('DROP TABLE "core"."omniConversationTarget"');
+    await queryRunner.query('DROP TABLE "core"."omniDomainEvent"');
+    await queryRunner.query('DROP INDEX "core"."IDX_omniIncomingReceipt_due"');
+    await queryRunner.query(
+      'DROP INDEX "core"."IDX_omniIncomingReceipt_binding_due"',
+    );
+    await queryRunner.query('DROP TABLE "core"."omniIncomingReceipt"');
+    await queryRunner.query('DROP INDEX "core"."IDX_omniMessageLink_timeline"');
+    await queryRunner.query('DROP TABLE "core"."omniMessageLink"');
+    await queryRunner.query('DROP TABLE "core"."omniMessageRevision"');
+    await queryRunner.query(
+      'DROP INDEX "core"."IDX_omniOutgoingCommand_recovery"',
+    );
+    await queryRunner.query(
+      'DROP INDEX "core"."IDX_omniOutgoingCommand_policy_cleanup"',
+    );
+    await queryRunner.query('DROP TABLE "core"."omniOutgoingCommand"');
+  }
+}

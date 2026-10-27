@@ -95,8 +95,14 @@ typecheck40 файлов с импортами. [Доказательства и
 
 ## Следующая порция и незавершённая работа
 
-1. Дополнить схему MessageLink, IncomingReceipt, OutgoingCommand, DomainEvent и
-   остальными сущностями этапа1; применять уже реализованный audit context.
+LOG-024 завершил MessageLink, MessageRevision, ConversationTarget, IncomingReceipt,
+OutgoingCommand и DomainEvent. Новый composite UNIQUE Conversation проверяется
+строго по версии prefix; старые migration checksums сохранены. Прошли113 PG и25
+Python tests, focused typecheck49 файлов, native upgrade/replay и generator zero
+diff. [Доказательства и ограничения](log024/README.md). Это schema-only порция.
+
+1. Дополнить ранние roots, consumer receipts, dispatch plans, reply budgets,
+   activation/admission из этапа1; применять уже реализованный audit context.
 2. Реализовать ingress persistence, атомарное сохранение канонических Message,
    inbox/outbox и recovery согласно [этапу 1](../plan/phase_1_data.md).
 

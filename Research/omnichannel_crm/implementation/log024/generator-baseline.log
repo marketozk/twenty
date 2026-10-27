@@ -1,0 +1,7 @@
+[Nest] 13  - 10/27/2026, 9:44:59 AM     LOG [InstanceLoader] WorkspaceMigrationBuilderValidatorsModule dependencies initialized
+[Nest] 13  - 10/27/2026, 9:44:59 AM     LOG [InstanceLoader] WorkspaceMigrationBuilderModule dependencies initialized
+[Nest] 13  - 10/27/2026, 9:44:59 AM     LOG [InstanceLoader] WorkspaceMigrationModule dependencies initialized
+[Nest] 13  - 10/27/2026, 9:44:59 AM     LOG [InstanceLoader] AgentHistoryMigrationModule dependencies initialized
+[Nest] 13  - 10/27/2026, 9:44:59 AM     LOG [InstanceLoader] WorkspaceMigrationRunnerModule dependencies initialized
+[Nest] 13  - 10/27/2026, 9:44:59 AM     LOG [InstanceLoader] WorkspaceSchemaMigrationRunnerActionHandlersModule dependencies initialized
+[Nest] 13  - 10/27/2026, 9:45:00 AM    WARN [GenerateInstanceCommandCommand] No changes in database schema were found - cannot generate a migration.

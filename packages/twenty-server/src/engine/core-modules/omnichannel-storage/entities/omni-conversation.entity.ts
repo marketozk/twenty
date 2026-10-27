@@ -22,6 +22,7 @@ export type OmniConversationStatus = 'open' | 'closed';
 
 @Entity({ name: 'omniConversation', schema: 'core' })
 @Unique('UQ_omniConversation_workspace_id', ['workspaceId', 'id'])
+@Unique('UQ_omniConversation_binding_id', ['workspaceId', 'bindingId', 'id'])
 @Unique('UQ_omniConversation_binding_chat', [
   'workspaceId',
   'bindingId',

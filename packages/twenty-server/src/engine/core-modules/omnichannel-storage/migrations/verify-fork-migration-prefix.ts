@@ -80,8 +80,16 @@ export const verifyForkMigrationPrefix = async (
       throw new Error(`Fork migration drift: ${migration.migrationId}`);
     }
 
-    await migration.verify(queryRunner);
     completedCount++;
+  }
+
+  const completedMigrations = migrations.slice(0, completedCount);
+  const appliedMigrationIds = Object.freeze(
+    completedMigrations.map((migration) => migration.migrationId),
+  );
+
+  for (const migration of completedMigrations) {
+    await migration.verify(queryRunner, appliedMigrationIds);
   }
 
   return completedCount;

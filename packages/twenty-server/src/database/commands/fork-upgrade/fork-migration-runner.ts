@@ -55,7 +55,14 @@ export class ForkMigrationRunner {
           }
 
           await migration.command.up(queryRunner);
-          await migration.verify(queryRunner);
+          await migration.verify(
+            queryRunner,
+            Object.freeze(
+              this.migrations
+                .slice(0, completedCount + 1)
+                .map((completedMigration) => completedMigration.migrationId),
+            ),
+          );
           await queryRunner.query(
             `INSERT INTO core."forkMigrationLedger"
               ("migrationId", "checksum", "status") VALUES ($1, $2, 'completed')`,

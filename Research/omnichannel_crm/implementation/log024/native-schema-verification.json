@@ -1,0 +1,18 @@
+{
+  "before": [
+    {
+      "count": 256,
+      "hash": "bbaff80b0ef42bbeb4b67a727f6609b9"
+    }
+  ],
+  "after": [
+    {
+      "count": 256,
+      "hash": "bbaff80b0ef42bbeb4b67a727f6609b9"
+    }
+  ],
+  "oldTenTablesUnchanged": true,
+  "emptyDownRestoresAllEleven": true,
+  "newTables": 6,
+  "upDownUp": true
+}

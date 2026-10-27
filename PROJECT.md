@@ -54,7 +54,14 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-022 / ROB-764 In Progress: реализованы минимальный аудит и атомарное создание
+LOG-024 / ROB-764 In Progress: добавлены шесть таблиц хранения сообщений, ревизий,
+связей CRM, receipts, commands и events. Version-aware schema verification
+сохраняет строгую проверку старой и новой версии. Прошли138 тестов, focused
+typecheck49 файлов и native upgrade/replay с пустым итоговым generator diff.
+[Проверки и оставшаяся схема этапа1](Research/omnichannel_crm/implementation/log024/README.md).
+Демо не обновлялось, runtime приём/отправка ещё предстоят.
+
+Предыдущая порция LOG-022: реализованы минимальный аудит и атомарное создание
 inactive binding/disabled policy v0 с receipt, текущей проверкой прав через
 обязательный authorizer и защитой от повторов. К первым9 core entities добавлены
 audit entry и PolicyMutationReceipt. Runtime gate проверяет append-only privileges.
