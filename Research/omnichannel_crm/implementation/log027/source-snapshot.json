@@ -1,0 +1,11 @@
+{
+  "baseCommit": "65bb94822982386265613c1a1c41d22012ea5a71",
+  "testSource": "/opt/twenty-tests/twenty-rob764-7e7bfe25e5a440c8/source",
+  "runtimeBaseImage": "marketozk/twenty:log022-candidate",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "891efffffe52db7ffc3e3c083c9bf4bccf7bbc89c82e6cfe285c396ae3a4c83b",
+    "packages/twenty-server/src/modules/omnichannel/services/omni-incoming-receipt-lease.ts": "22b608155a3df13c3da6885833a113375f04e192b9c5fb7828a86111724c5f91",
+    "packages/twenty-server/test/fork-migration/omni-incoming-receipt-lease.postgres-spec.ts": "019a8b2908f31e6ed5f9d4b2010361de2c5b4c2ab31c15aa7e5c0c2b45c3d805"
+  }
+}

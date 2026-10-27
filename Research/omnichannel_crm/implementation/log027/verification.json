@@ -1,0 +1,18 @@
+{
+  "postgresTests": 225,
+  "envelopeUnitTests": 42,
+  "jestTotal": 267,
+  "guardTests": 20,
+  "sourceChecksumTests": 5,
+  "totalExecutedTests": 292,
+  "focusedStrictTypecheckFiles": 66,
+  "newLeasePostgresCases": 56,
+  "allFourMigrationChecksumsUnchanged": true,
+  "newSchemaMigration": false,
+  "fullServerTypecheck": false,
+  "newFullImageBuild": false,
+  "liveDemoChanged": false,
+  "schedulerOrMessageApplyImplemented": false,
+  "githubActionsGate": false,
+  "independentScopedReview": "PASS; no confirmed blocker/major"
+}

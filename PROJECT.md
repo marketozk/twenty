@@ -54,15 +54,15 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-026 / ROB-764 In Progress: реализован внутренний приём текстовых событий
-в durable receipt вместе с аудитом. Строгий envelope v1, текущая авторизация/
-generation, защита от повторов и payload conflict; unknown COMMIT не даёт ACK.
-Прошли 236 тестов и focused typecheck 64 файлов. Новых миграций нет.
-[Проверки и ограничения](Research/omnichannel_crm/implementation/log026/README.md).
-Следующий шаг — worker claim/lease и атомарное Message+audit+event,
-затем inbox/outbox/recovery. HTTP/коннекторы/чаты ещё не подключены, демо прежнее.
-GitHub Actions по решению пользователя не используется как gate; два наших
-workflow manual-only, проверки выполняем в своей среде перед commit/push.
+LOG-027 / ROB-764 In Progress: добавлен внутренний claim/reclaim/renew/defer
+для сохранённых receipts. Время БД и fencing token защищают от устаревшего
+обработчика; переходы и audit атомарны. 292 теста и focused typecheck 66 файлов
+прошли. Новых миграций нет. [Проверки](Research/omnichannel_crm/implementation/log027/README.md).
+Следующий шаг — общий executor/lifecycle audit для native workspace transaction,
+затем атомарное Message+audit+event и inbox/outbox/recovery. Scheduler, HTTP,
+коннекторы и чаты ещё не подключены; applied не выставляется без Message.
+Демо прежнее. GitHub Actions не используем как gate; проверки в своей среде
+перед commit/push, два наших workflows manual-only.
 
 Предыдущая порция LOG-022: реализованы минимальный аудит и атомарное создание
 inactive binding/disabled policy v0 с receipt, текущей проверкой прав через

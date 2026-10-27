@@ -26,17 +26,13 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 
 ## Сверка текущего состояния — 27.10.2026
 
-LOG-026 / ROB-764 In Progress: реализован внутренний durable receipt writer,
-строгий envelope, current auth/generation, dedup/conflict и атомарный audit.
-236 тестов и focused typecheck 64 файлов прошли; миграции прежние. HTTP/коннекторы/
-чаты ещё не подключены, демо не менялось. [Проверки](implementation/log026/README.md).
-Далее — worker claim/lease, Message+audit+event, inbox/outbox/recovery.
-Actions не используется как gate по решению пользователя; проверки в своей
-среде, commit/push и отчётность сохраняются.
-
-Код `2025ce939ac1c672cf1843d0005bfdb9b2ffdb04` опубликован; описание и единственный
-[отчёт LOG-026](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-b00c93a8)
-прочитаны обратно, статусы 11 задач сохранены. [Метаданные](implementation/log026/publication.json).
+LOG-027 / ROB-764 In Progress: реализованы внутренние claim/reclaim/renew/defer
+с fencing/current auth/generation/DB clock и атомарным аудитом. 292 теста,
+focused typecheck 66 файлов PASS; четыре миграции прежние.
+[Проверки](implementation/log027/README.md). applied/native Message, scheduler,
+config wake-up ещё впереди. Далее — audit adapter к native workspace executor,
+затем Message+audit+event и inbox/outbox/recovery. Демо/живые каналы прежние.
+Actions не используется как gate; собственные проверки и commit/push сохраняются.
 
 ### Предыдущая порция
 

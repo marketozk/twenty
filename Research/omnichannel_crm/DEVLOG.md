@@ -654,3 +654,54 @@ inbox/outbox/recovery и email regression.
 [отчёт LOG-026](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-b00c93a8)
 прочитаны обратно; статусы 11 задач сохранены. Actions не запускались и не
 ожидались. [Метаданные](implementation/log026/publication.json).
+
+## LOG-027 — 27.10.2026: владение обработкой входящих событий
+
+Пользователь разрешил продолжение ROB-764. Реализованы внутренние claim/reclaim,
+renew и defer для IncomingReceipt; новые таблицы/миграции не понадобились.
+В spec §4 закреплены eligibility, bounded limits и receipt-only transitions;
+общий порядок locks и отдельный будущий config wake-up не дублируются.
+
+Claim берёт policy/binding SHARE и current authorization, выбирает due
+accepted/retryable_error либо expired processing текущего поколения через
+SKIP LOCKED. Token/attempts увеличиваются атомарно. Renew/defer после receipt lock
+повторно проверяют processing, owner/token/generation и clock_timestamp().
+Старый worker не меняет новое владение или состояние. Renew не сокращает lease;
+defer очищает её и сохраняет bounded retry либо blocked_config/quarantined.
+Closed reason-code catalog исключает произвольные ошибки в открытом audit diff.
+
+Каждая transition и audit имеют один QueryRunner/COMMIT, отдельный operationId;
+envelope/hash/generation не меняются. Неопределённый COMMIT/release возвращает
+typed unknown без ложного успеха/failed audit. После unknown claim обработчик
+не начинает apply по неподтверждённому владению. Восстановление после expiry
+опирается на PostgreSQL; Redis не участвует в этих функциях.
+
+Исследование native пути подтвердило: WorkspaceTransactionScope использует pg
+executor, audit пока ожидает TypeORM QueryRunner/lifecycle. Нужен adapter к тому
+же executor и unknown-commit contract, без отдельной core connection. Общий
+native importer создаёт свою транзакцию и postcommit matching, поэтому не подходит
+для вложенного omni apply. Прямой callback под receipt lock инвертировал бы
+Conversation/Identity locks. В LOG-027 нет applied/native Message callback или
+scheduler; это зафиксировано явно, без объявления фиктивного успешного Message.
+
+Проверки: 225 PostgreSQL, включая 56 новых lease cases, 42 envelope unit,
+20 dependency guard и 5 checksum — 292 PASS. Focused strict typecheck 66 файлов
+PASS. Перепроверены concurrency/SKIP LOCKED/reclaim, DB clock после lock wait,
+auth/generation, audit rollback, unknown COMMIT/release, точность bigint и
+сохранность immutable receipt. Local/uploaded LF-SHA256 совпали; четыре migration
+checksums прежние. [Evidence](implementation/log027/README.md).
+
+Независимое адресное ревью writer/audit/контрактов — без подтверждённых blocker/
+major. Claude Code и новый полный архитектурный круг не запускались. Нового
+полного image/server typecheck и native Message acceptance не было.
+Собственные test containers/exclusive volumes/network удалены после проверки
+идентичности; БД уничтожены с tmpfs. Неактивные caches оставлены, builder не
+запускался; demo image/start timestamps/health прежние.
+[Cleanup](implementation/log027/cleanup.json). Живые каналы не менялись.
+
+Skills: ai-dev-workflow — исследование native/lease путей, реализация по плану,
+независимое ревью; behavioral-guardrails — минимальный scope и проверяемые границы;
+server-schrodinger — preflight, ограниченная тестовая среда и cleanup своих ресурсов.
+GitHub Actions не запускались и не ожидались. ROB-764 In Progress; далее audit
+executor adapter/unknown commit, native Message+audit+event, config wake-up и
+inbox/outbox/recovery. Публикация фиксируется после push.

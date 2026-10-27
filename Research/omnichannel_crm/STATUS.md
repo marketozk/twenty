@@ -1,13 +1,14 @@
 # Текущее состояние Twenty CRM
 
-LOG-026 / ROB-764 In Progress: внутренний receipt writer готов: строгий envelope,
-current auth/generation, дедупликация/conflict, атомарный audit и unknown COMMIT.
-Прошли 236 тестов и focused typecheck 64 файлов. Четыре миграции не менялись.
-[Доказательства и границы](implementation/log026/README.md).
-Далее — worker claim/lease и Message+participants+link+audit+event, затем
-inbox/outbox/recovery. HTTP, реальные коннекторы и UI ещё не подключены.
-Демо и реальные каналы прежние. Actions не является gate; проверки выполняем
-в своей среде. Наши два workflows оставлены только для ручного запуска.
+LOG-027 / ROB-764 In Progress: реализованы внутренние claim/reclaim/renew/defer
+для receipts. Fencing/current auth/generation/DB time защищают владение;
+transition и audit атомарны, unknown COMMIT не объявляется успехом.
+292 теста и focused typecheck 66 файлов прошли; миграции прежние.
+[Доказательства и границы](implementation/log027/README.md).
+Далее — общий audit executor для native workspace transaction, затем
+Message+participants+link+audit+event, config wake-up и inbox/outbox/recovery.
+Scheduler/HTTP/коннекторы/UI ещё не подключены, демо и живые каналы прежние.
+Actions не является gate; проверки выполняем в своей среде.
 
 ## Предыдущая порция — LOG-022
 

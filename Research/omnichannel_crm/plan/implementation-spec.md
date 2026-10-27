@@ -125,6 +125,21 @@ Ingress: validate/auth → transaction lock WorkspacePolicyState FOR SHARE → b
 
 Worker: короткий claim через FOR UPDATE SKIP LOCKED увеличивает leaseToken. Общая workspace transaction сначала берёт WorkspacePolicyState в заранее выбранном SHARE/UPDATE режиме (§15.9/15.15), затем binding/conversation/identity и проверяет leaseToken/generation; затем scope-aware Message/participants + domain projection из ConversationTarget + link (matchParticipants/reconcile не вызываются; [repository-adapter](contracts/workflow-execution.md#repository-adapter)) + receipt applied + conversationSequence + admission/event + audit. Все writes через scope executor; injected independent repository запрещён. Второй worker после lease expiry может reclaim; старый token не может commit. Postcommit callback только ускоряет enqueue; durable job/event хранится в PostgreSQL.
 
+Уточнение receipt lease lifecycle (LOG-027):
+
+| Текущее состояние | Обычный claim |
+|---|---|
+| accepted / retryable_error | Только когда nextAttemptAt наступил |
+| processing | Только после expiry, с увеличением leaseToken и attempts |
+| blocked_config | Не выбирается; нужен отдельный проверенный config wake-up по §15.27 |
+| applied / quarantined | Не выбирается |
+
+Claim работает короткой отдельной транзакцией в scope workspace/binding текущего поколения; policy SHARE → binding SHARE → receipt SKIP LOCKED. Он не возвращает envelope и не означает применения сообщения. Batch ограничен 1–100, lease duration — 1–300 секунд, задаётся внутренним caller. Повторные claim/reclaim не меняют immutable envelope/hash/generation. Непринятые из-за старого поколения receipts сохраняются для отдельного reconciliation, без скрытого изменения capture generation.
+
+Renew/defer — отдельные receipt-only транзакции с текущей авторизацией и проверкой active/current generation. После ожидания receipt row lock проверяются processing, точные owner/token/generation и expiry по clock_timestamp(), не времени клиента или началу транзакции. Stale owner не вправе ни продлить lease, ни очистить её/записать retry/error. Defer допускает retryable_error с bounded задержкой 1 секунда–24 часа, blocked_config либо quarantined с закрытым техническим reason-code catalog; lease очищается, receipt ID/hash/envelope сохраняются. Каждая committed transition имеет отдельный operationId и атомарный audit. Неопределённый COMMIT не объявляет transition успешным; после unknown claim worker не начинает apply по неподтверждённому владению, восстановление возможно по expiry/reclaim.
+
+Эти операции не переводят receipt в applied и не вызывают произвольный projection callback под receipt lock. Будущий Message apply берёт родительские locks до receipt по общему протоколу и завершает реальный Message/link/event/audit одной транзакцией; receipt claim lock туда не переносится. Порядок wake-up, очереди и config recovery остаётся в §15.27.
+
 Conversation upsert по binding/chat с последующим row lock. Unknown identity сохраняется unbound, без угадывания Person по имени; link/create Person — отдельная разрешённая команда. Fixture acceptance использует подтверждённую identity. Автосоздание контакта — отдельная настройка. Omni получает выделенный APP channel: прямой публичный ingestMessages в него запрещён, иначе upstream cache-lock path обойдёт links/receipts. Существующие обычные APP/email channels сохраняют контракт.
 
 Определение: [sending-ui — command-admission](contracts/sending-ui.md#command-admission).

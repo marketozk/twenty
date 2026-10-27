@@ -1,0 +1,10 @@
+{
+  "verifiedContainers": [
+    "twenty-rob764-7e7bfe25e5a440c8-db",
+    "twenty-rob764-7e7bfe25e5a440c8-redis"
+  ],
+  "verifiedExclusiveVolumes": [
+    "b8566d3a9c8a9c5cb2735dc75d261af9b1916928268b6331608735d641db16a3"
+  ],
+  "internalNetwork": "twenty-rob764-7e7bfe25e5a440c8-net"
+}

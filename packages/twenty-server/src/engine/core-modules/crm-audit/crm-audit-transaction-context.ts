@@ -54,8 +54,19 @@ const CATALOG: Record<
     redacted: ['name'],
   },
   omniIncomingReceipt: {
-    values: ['bindingId', 'kind', 'schemaVersion', 'routeGeneration', 'state'],
-    redacted: ['eventId', 'validatedEnvelope'],
+    values: [
+      'bindingId',
+      'kind',
+      'schemaVersion',
+      'routeGeneration',
+      'state',
+      'attempts',
+      'leaseToken',
+      'leaseUntil',
+      'nextAttemptAt',
+      'errorCode',
+    ],
+    redacted: ['eventId', 'validatedEnvelope', 'leaseOwner'],
   },
 };
 

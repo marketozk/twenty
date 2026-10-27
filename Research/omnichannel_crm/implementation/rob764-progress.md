@@ -1,4 +1,4 @@
-# ROB-764 — реализация, LOG-026
+# ROB-764 — реализация, LOG-027
 
 27.10.2026 пользователь ответил «хорошо приступай» на предложение принять
 исправленный план за основу и начать ROB-764 с проверками конкретного кода.
@@ -122,14 +122,25 @@ active и generation. Receipt и redacted success audit атомарны. Оди
 169 PG + 42 envelope unit + 25 Python tests = 236 PASS; focused typecheck 64 файлов.
 Новой миграции нет. [Проверки и границы](log026/README.md).
 
+## Восьмая порция: владение обработкой receipts
+
+LOG-027 добавил receipt-only claim/reclaim/renew/defer: policy/binding SHARE,
+обязательная текущая авторизация, SKIP LOCKED, токен владения и время БД после
+ожидания locks. Устаревший worker не меняет запись. Transition+audit атомарны,
+unknown COMMIT/release не объявляется успехом. 225 PG + 42 unit + 25 Python tests
+= 292 PASS; focused typecheck 66 файлов. [Проверки и границы](log027/README.md).
+Нет пути applied через произвольный callback; blocked_config не выбирается
+без отдельного проверенного wake-up. Scheduler пока не подключён.
+
 ## Следующая порция и незавершённая работа
 
-1. Worker claim/lease с fencing token и recovery; затем атомарные канонические
-   Message+participants+link+revision+audit+event, initial plans/receipts.
-2. Inbox/outbox и recovery согласно [этапу 1](../plan/phase_1_data.md), email regression.
-3. Writers проверяют квоты/covered roots, initial-event membership, immutable
-   targets, charge accounting и доверенные activation boundaries. Полномочия,
-   lifecycle, HTTP/HMAC и qualification реальных коннекторов ещё впереди.
+1. Узкий audit executor/lifecycle adapter к WorkspaceTransactionScope и различимый
+   unknown commit: native Message и core/audit должны использовать одну транзакцию.
+2. Атомарные Message/participants/link/revision/Conversation/identity/target/event,
+   initial plans/receipts, event suppression и ownership guards; затем applied.
+3. Config wake-up/recovery, inbox/outbox, email regression. Полномочия, lifecycle,
+   HTTP/HMAC и qualification реальных коннекторов ещё впереди. Подробности в
+   [этапе 1](../plan/phase_1_data.md) и [карте интеграции](integration-map.md).
 
 T33 выполнен для текущей группы схемы; будущие миграции требуют своих повторов.
 Полный server typecheck не выполнялся: официальный build использует SWC без
