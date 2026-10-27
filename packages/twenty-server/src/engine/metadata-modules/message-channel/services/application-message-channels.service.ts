@@ -25,6 +25,7 @@ import {
 } from 'src/engine/metadata-modules/message-channel/message-channel.exception';
 import { type MessageChannelDeletedEvent } from 'src/engine/metadata-modules/message-channel/types/message-channel-deleted.type';
 import { WorkspaceEventEmitter } from 'src/engine/workspace-event-emitter/workspace-event-emitter';
+import { findOmniOwnedMessageChannelIds } from 'src/modules/omnichannel/services/find-omni-owned-metadata-ids';
 
 type ApplicationScope = {
   applicationId: string;
@@ -193,6 +194,8 @@ export class ApplicationMessageChannelsService {
       return messageChannel;
     }
 
+    await this.assertOrdinaryChannel(workspaceId, messageChannel.id);
+
     await this.messageChannelRepository.update({ id, workspaceId }, data);
 
     return this.messageChannelRepository.findOneOrFail({
@@ -213,6 +216,8 @@ export class ApplicationMessageChannelsService {
       id,
     });
 
+    await this.assertOrdinaryChannel(workspaceId, messageChannel.id);
+
     await this.messageChannelRepository.delete({ id, workspaceId });
 
     this.workspaceEventEmitter.emitCustomBatchEvent<MessageChannelDeletedEvent>(
@@ -222,6 +227,24 @@ export class ApplicationMessageChannelsService {
     );
 
     return messageChannel;
+  }
+
+  private async assertOrdinaryChannel(
+    workspaceId: string,
+    messageChannelId: string,
+  ): Promise<void> {
+    const ownedIds = await findOmniOwnedMessageChannelIds(
+      {
+        executeRawQuery: (sql, parameters) =>
+          this.messageChannelRepository.manager.query(sql, parameters),
+      },
+      workspaceId,
+      [messageChannelId],
+    );
+
+    if (ownedIds.size > 0) {
+      throw new Error('OMNI_OWNED_CHANNEL_REQUIRES_DOMAIN_LIFECYCLE');
+    }
   }
 
   // only the connected account carries applicationId, so resolving through it is what isolates apps

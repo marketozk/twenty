@@ -31,6 +31,10 @@ import {
   MessageChannelExceptionCode,
 } from 'src/engine/metadata-modules/message-channel/message-channel.exception';
 import { type MessageChannelDeletedEvent } from 'src/engine/metadata-modules/message-channel/types/message-channel-deleted.type';
+import {
+  findOmniOwnedConnectedAccountIds,
+  findOmniOwnedMessageChannelIds,
+} from 'src/modules/omnichannel/services/find-omni-owned-metadata-ids';
 import { WorkspaceEventEmitter } from 'src/engine/workspace-event-emitter/workspace-event-emitter';
 import { INBOUND_EMAIL_LOCAL_PART_PREFIX } from 'src/modules/messaging/message-import-manager/drivers/inbound-email/constants/inbound-email-local-part-prefix.constant';
 import { INBOUND_EMAIL_LOCAL_PART_RANDOM_BYTES } from 'src/modules/messaging/message-import-manager/drivers/inbound-email/constants/inbound-email-local-part-random-bytes.constant';
@@ -246,7 +250,13 @@ export class MessageChannelMetadataService {
       syncStage: MessageChannelSyncStage;
     },
   ): Promise<MessageChannelDTO> {
-    const entity = this.repository.create(data);
+    const createData = { ...data };
+
+    if (createData.id !== undefined) {
+      throw new Error('OMNI_METADATA_CREATE_ID_FORBIDDEN');
+    }
+
+    const entity = this.repository.create(createData);
 
     return this.repository.save(entity);
   }
@@ -260,9 +270,48 @@ export class MessageChannelMetadataService {
     workspaceId: string;
     data: Partial<MessageChannelEntity>;
   }): Promise<MessageChannelDTO> {
+    const updateData = { ...data };
+
+    if (
+      updateData.workspace !== undefined ||
+      updateData.connectedAccount !== undefined ||
+      (updateData.id !== undefined && updateData.id !== id) ||
+      (updateData.workspaceId !== undefined &&
+        updateData.workspaceId !== workspaceId)
+    ) {
+      throw new Error('OMNI_METADATA_SCOPE_CHANGE_REQUIRES_DOMAIN_LIFECYCLE');
+    }
+
+    await this.assertOrdinaryChannel(workspaceId, id);
+
+    if (isDefined(updateData.connectedAccountId)) {
+      const destinationAccount =
+        await this.connectedAccountMetadataService.findById({
+          id: updateData.connectedAccountId,
+          workspaceId,
+        });
+
+      if (!isDefined(destinationAccount)) {
+        throw new Error('OMNI_METADATA_DESTINATION_ACCOUNT_NOT_FOUND');
+      }
+
+      const ownedAccountIds = await findOmniOwnedConnectedAccountIds(
+        {
+          executeRawQuery: (sql, parameters) =>
+            this.repository.manager.query(sql, parameters),
+        },
+        workspaceId,
+        [updateData.connectedAccountId],
+      );
+
+      if (ownedAccountIds.size > 0) {
+        throw new Error('OMNI_OWNED_ACCOUNT_REQUIRES_DOMAIN_LIFECYCLE');
+      }
+    }
+
     await this.repository.update(
       { id, workspaceId },
-      data as Record<string, unknown>,
+      updateData as Record<string, unknown>,
     );
 
     return this.repository.findOneOrFail({ where: { id, workspaceId } });
@@ -400,6 +449,8 @@ export class MessageChannelMetadataService {
       where: { id, workspaceId },
     });
 
+    await this.assertOrdinaryChannel(workspaceId, messageChannel.id);
+
     await this.repository.delete({ id, workspaceId });
 
     this.workspaceEventEmitter.emitCustomBatchEvent<MessageChannelDeletedEvent>(
@@ -504,6 +555,24 @@ export class MessageChannelMetadataService {
     }
 
     return messageChannel;
+  }
+
+  private async assertOrdinaryChannel(
+    workspaceId: string,
+    messageChannelId: string,
+  ): Promise<void> {
+    const ownedIds = await findOmniOwnedMessageChannelIds(
+      {
+        executeRawQuery: (sql, parameters) =>
+          this.repository.manager.query(sql, parameters),
+      },
+      workspaceId,
+      [messageChannelId],
+    );
+
+    if (ownedIds.size > 0) {
+      throw new Error('OMNI_OWNED_CHANNEL_REQUIRES_DOMAIN_LIFECYCLE');
+    }
   }
 
   private async hasEmailGroupChannelForDomain(

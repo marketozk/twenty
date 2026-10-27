@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
 
 import { isDefined } from 'twenty-shared/utils';
-import { In } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 
 import { type MessageChannelEntity } from 'src/engine/metadata-modules/message-channel/entities/message-channel.entity';
 import { MessageFolderEntity } from 'src/engine/metadata-modules/message-folder/entities/message-folder.entity';
@@ -12,6 +13,7 @@ import { MessagingDeleteFolderMessagesService } from 'src/modules/messaging/mess
 import { MessagingImportFolderMessagesService } from 'src/modules/messaging/message-import-manager/services/messaging-import-folder-messages.service';
 import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
 import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
+import { findOmniOwnedMessageFolderIds } from 'src/modules/omnichannel/services/find-omni-owned-metadata-ids';
 
 export type ProcessFolderActionsResult = {
   messageExternalIdsToImport: string[];
@@ -29,6 +31,8 @@ export class MessagingProcessFolderActionsService {
     private readonly messageFolderRepository: WorkspaceScopedRepository<MessageFolderEntity>,
     private readonly messagingDeleteFolderMessagesService: MessagingDeleteFolderMessagesService,
     private readonly messagingImportFolderMessagesService: MessagingImportFolderMessagesService,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
   ) {}
 
   async processFolderActions(
@@ -36,12 +40,58 @@ export class MessagingProcessFolderActionsService {
     messageFolders: MessageFolderEntity[],
     workspaceId: string,
   ): Promise<ProcessFolderActionsResult> {
-    const foldersWithPendingActions = messageFolders.filter(
-      (folder) =>
-        isDefined(folder.pendingSyncAction) &&
-        folder.pendingSyncAction !== MessageFolderPendingSyncAction.NONE,
-    );
+    const pendingFolders = messageFolders
+      .filter(
+        (folder) =>
+          isDefined(folder.pendingSyncAction) &&
+          folder.pendingSyncAction !== MessageFolderPendingSyncAction.NONE,
+      )
+      .map((folder) => ({ ...folder }));
 
+    if (pendingFolders.length === 0) {
+      return { messageExternalIdsToImport: [] };
+    }
+
+    messageChannel = {
+      ...messageChannel,
+      connectedAccount: messageChannel.connectedAccount
+        ? { ...messageChannel.connectedAccount }
+        : messageChannel.connectedAccount,
+      messageFolders: messageChannel.messageFolders?.map((folder) => ({
+        ...folder,
+      })),
+    };
+    if (
+      messageChannel.workspaceId !== workspaceId ||
+      pendingFolders.some(
+        (folder) =>
+          folder.workspaceId !== workspaceId ||
+          folder.messageChannelId !== messageChannel.id,
+      )
+    ) {
+      throw new Error('OMNI_NATIVE_OWNERSHIP_WORKSPACE_MISMATCH');
+    }
+    const foldersWithPendingActions =
+      await this.workspaceOrmManager.executeInWorkspaceContext(
+        async () => {
+          if (this.workspaceOrmManager.getWorkspaceId() !== workspaceId) {
+            throw new Error('OMNI_NATIVE_OWNERSHIP_WORKSPACE_MISMATCH');
+          }
+          const ownedFolderIds = await findOmniOwnedMessageFolderIds(
+            {
+              executeRawQuery: (sql, parameters) =>
+                this.dataSource.query(sql, parameters),
+            },
+            workspaceId,
+            pendingFolders.map((folder) => folder.id),
+          );
+          return pendingFolders.filter(
+            (folder) => !ownedFolderIds.has(folder.id.toLowerCase()),
+          );
+        },
+        buildSystemAuthContext(workspaceId),
+        { lite: true },
+      );
     if (foldersWithPendingActions.length === 0) {
       return { messageExternalIdsToImport: [] };
     }
@@ -96,11 +146,18 @@ export class MessagingProcessFolderActionsService {
 
         processedFolderIds.push(folder.id);
       } catch (error) {
+        const normalizedError =
+          error instanceof Error
+            ? error
+            : new Error('Unexpected folder processing failure', {
+                cause: error,
+              });
+
         this.logger.error(
-          `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannel.id}, FolderId: ${folder.id} - Error processing folder action: ${error.message}`,
-          error.stack,
+          `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannel.id}, FolderId: ${folder.id} - Error processing folder action: ${normalizedError.message}`,
+          normalizedError.stack,
         );
-        failedFolderIds.push({ folderId: folder.id, error });
+        failedFolderIds.push({ folderId: folder.id, error: normalizedError });
       }
     }
 

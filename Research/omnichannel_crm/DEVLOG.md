@@ -906,3 +906,33 @@ GitHub Actions не использовался. Продолжаем LOG-035 lif
 
 
 Публикация LOG-034: `863a3a0ae72e1fae7fa70bd686025c8543f1739d`; remote SHA проверен API. Описание ROB-764 и комментарий `4752855f-4672-46a1-b0c6-1eda69278025` прочитаны обратно, все11 статусов прежние. [Метаданные](implementation/log034/publication.json). Продолжаем LOG-035.
+
+
+## LOG-035 — 27.10.2026: metadata lifecycle preflight
+
+Account disconnect/deleteMany/transfer/update и channel update/delete (generic/APP)
+останавливаются до первых внешних/DB эффектов при persisted ownership. Reset
+фильтрует весь снимок IDs до cache; folder actions сохраняет protected metadata,
+но обычная соседняя папка обрабатывается. Whole-batch account отказ исключает
+частичное отключение ordinary accounts. Ошибка SQL не открывает доступ.
+
+Ревью обнаружило обход через relation-shaped update и save(existing supplied id).
+Проверены TypeORM UpdateQueryBuilder referencedColumn и текущие callsites create
+без заданных IDs: relations требуют scalar validated route, supplied create ID
+отвергается. Добавлены negative/ordinary controls. Typecheck обнаружил2 enum
+ошибки тестов (исправлены) и3 baseline unknown-catch в изменяемом методе:
+ошибка нормализуется, pending action остаётся для retry; string/null tests добавлены.
+
+667 Jest/27 suites PASS; затем86 focused PASS, включая2 новых cases:669 distinct
+Jest +25 guards =694 PASS. Typecheck133roots:149baseline→146current,0new/0changed.
+Первоначальный Node heap1.5/2.3GB не вместил расширенный metadata graph. После
+проверки available RAM~103GiB одноразовый runner ограничен6GiB/2CPU, heap4608MiB;
+production/BuildKit не менялись. Все5 миграций и dependency baseline прежние.
+[Доказательства](implementation/log035/README.md).
+
+Scoped independent review без блокеров после исправлений; новый полный Claude
+review не заявляется. Это point-in-time guards, не TOCTOU fence или полныйT05.
+Другие scheduler/direct-repository paths и полноценный domain lifecycle впереди.
+Skills: ai-dev-workflow (раздельные исследования/реализация/review),
+behavioral-guardrails (пределы), server-schrodinger (лимитированные проверки).
+Демо прежнее, Actions не запускались. Продолжаем first Conversation/Thread apply.

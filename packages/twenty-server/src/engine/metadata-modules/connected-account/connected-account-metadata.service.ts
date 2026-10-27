@@ -38,6 +38,7 @@ import { PermissionsService } from 'src/engine/metadata-modules/permissions/perm
 import { WorkspaceEventEmitter } from 'src/engine/workspace-event-emitter/workspace-event-emitter';
 import { CalendarWebhookSubscriptionService } from 'src/modules/connected-account/webhook-subscription-manager/services/calendar-webhook-subscription.service';
 import { MessagingWebhookSubscriptionService } from 'src/modules/connected-account/webhook-subscription-manager/services/messaging-webhook-subscription.service';
+import { findOmniOwnedConnectedAccountIds } from 'src/modules/omnichannel/services/find-omni-owned-metadata-ids';
 
 @Injectable()
 export class ConnectedAccountMetadataService {
@@ -349,7 +350,13 @@ export class ConnectedAccountMetadataService {
       userWorkspaceId: string;
     },
   ): Promise<ConnectedAccountEntity> {
-    const entity = this.repository.create(data);
+    const createData = { ...data };
+
+    if (createData.id !== undefined) {
+      throw new Error('OMNI_METADATA_CREATE_ID_FORBIDDEN');
+    }
+
+    const entity = this.repository.create(createData);
 
     return this.repository.save(entity);
   }
@@ -363,9 +370,21 @@ export class ConnectedAccountMetadataService {
     workspaceId: string;
     data: Partial<ConnectedAccountEntity>;
   }): Promise<ConnectedAccountEntity> {
+    const updateData = { ...data };
+
+    if (
+      updateData.workspace !== undefined ||
+      (updateData.id !== undefined && updateData.id !== id) ||
+      (updateData.workspaceId !== undefined &&
+        updateData.workspaceId !== workspaceId)
+    ) {
+      throw new Error('OMNI_METADATA_SCOPE_CHANGE_REQUIRES_DOMAIN_LIFECYCLE');
+    }
+
+    await this.assertOrdinaryAccounts(workspaceId, [id]);
     await this.repository.update(
       { id, workspaceId },
-      data as Record<string, unknown>,
+      updateData as Record<string, unknown>,
     );
 
     return this.repository.findOneOrFail({ where: { id, workspaceId } });
@@ -389,6 +408,8 @@ export class ConnectedAccountMetadataService {
     }
 
     const connectedAccountIds = connectedAccounts.map((account) => account.id);
+
+    await this.assertOrdinaryAccounts(workspaceId, connectedAccountIds);
 
     const [messageChannels, calendarChannels] = await Promise.all([
       this.messageChannelRepository.find({
@@ -478,6 +499,8 @@ export class ConnectedAccountMetadataService {
     const connectedAccount = await this.repository.findOneOrFail({
       where: { id, workspaceId },
     });
+
+    await this.assertOrdinaryAccounts(workspaceId, [connectedAccount.id]);
 
     if (isDefined(connectedAccount.connectionProviderId)) {
       await this.connectionProviderLifecycleHookService.runOnDisconnect({
@@ -621,6 +644,8 @@ export class ConnectedAccountMetadataService {
 
     const connectedAccountIds = connectedAccounts.map(({ id }) => id);
 
+    await this.assertOrdinaryAccounts(workspaceId, connectedAccountIds);
+
     const [messageChannels, calendarChannels] = await Promise.all([
       this.messageChannelRepository.find({
         where: { connectedAccountId: In(connectedAccountIds), workspaceId },
@@ -687,6 +712,24 @@ export class ConnectedAccountMetadataService {
       })),
       workspaceId,
     );
+  }
+
+  private async assertOrdinaryAccounts(
+    workspaceId: string,
+    connectedAccountIds: string[],
+  ): Promise<void> {
+    const ownedIds = await findOmniOwnedConnectedAccountIds(
+      {
+        executeRawQuery: (sql, parameters) =>
+          this.repository.manager.query(sql, parameters),
+      },
+      workspaceId,
+      connectedAccountIds,
+    );
+
+    if (ownedIds.size > 0) {
+      throw new Error('OMNI_OWNED_ACCOUNT_REQUIRES_DOMAIN_LIFECYCLE');
+    }
   }
 
   private async stopWebhookSubscriptions({

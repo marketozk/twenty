@@ -29,6 +29,7 @@ import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scope
 import { type WorkspaceBroadcastEvent } from 'src/engine/subscriptions/workspace-event-broadcaster/types/workspace-broadcast-event.type';
 import { WorkspaceEventBroadcaster } from 'src/engine/subscriptions/workspace-event-broadcaster/workspace-event-broadcaster.service';
 import { computeMessageImportProgress } from 'src/engine/metadata-modules/message-channel/utils/compute-message-import-progress.util';
+import { findOmniOwnedMessageChannelIds } from 'src/modules/omnichannel/services/find-omni-owned-metadata-ids';
 
 type UpdatedMessageChannel = Pick<
   MessageChannelEntity,
@@ -94,20 +95,38 @@ export class MessageChannelSyncStatusService {
       return;
     }
 
-    for (const messageChannelId of messageChannelIds) {
-      await this.cacheStorage.mdel([
-        `messages-to-import:${workspaceId}:${messageChannelId}`,
-        `messages-to-import-total:${workspaceId}:${messageChannelId}`,
-        `messages-imported:${workspaceId}:${messageChannelId}`,
-      ]);
-    }
-
+    const requestedChannelIds = [...new Set(messageChannelIds)];
     const authContext = buildSystemAuthContext(workspaceId);
 
     await this.workspaceOrmManager.executeInWorkspaceContext(
       async () => {
+        if (this.workspaceOrmManager.getWorkspaceId() !== workspaceId) {
+          throw new Error('OMNI_NATIVE_OWNERSHIP_WORKSPACE_MISMATCH');
+        }
+        const ownedChannelIds = await findOmniOwnedMessageChannelIds(
+          {
+            executeRawQuery: (sql, parameters) =>
+              this.messageChannelRepository.manager.query(sql, parameters),
+          },
+          workspaceId,
+          requestedChannelIds,
+        );
+        const ordinaryChannelIds = requestedChannelIds.filter(
+          (id) => !ownedChannelIds.has(id.toLowerCase()),
+        );
+
+        if (ordinaryChannelIds.length === 0) return;
+
+        for (const messageChannelId of ordinaryChannelIds) {
+          await this.cacheStorage.mdel([
+            `messages-to-import:${workspaceId}:${messageChannelId}`,
+            `messages-to-import-total:${workspaceId}:${messageChannelId}`,
+            `messages-imported:${workspaceId}:${messageChannelId}`,
+          ]);
+        }
+
         await this.messageChannelRepository.update(
-          { id: In(messageChannelIds), workspaceId },
+          { id: In(ordinaryChannelIds), workspaceId },
           {
             syncCursor: '',
             syncStageStartedAt: null,
@@ -120,18 +139,21 @@ export class MessageChannelSyncStatusService {
 
         await this.messageFolderRepository.update(
           workspaceId,
-          { messageChannelId: In(messageChannelIds) },
+          { messageChannelId: In(ordinaryChannelIds) },
           {
             syncCursor: '',
             pendingSyncAction: MessageFolderPendingSyncAction.NONE,
           },
         );
+
+        await this.markAsMessagesListFetchPending(
+          ordinaryChannelIds,
+          workspaceId,
+        );
       },
       authContext,
       { lite: true },
     );
-
-    await this.markAsMessagesListFetchPending(messageChannelIds, workspaceId);
   }
 
   public async resetSyncStageStartedAt(

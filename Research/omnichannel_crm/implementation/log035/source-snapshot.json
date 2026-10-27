@@ -1,0 +1,16 @@
+{
+  "baseCommit": "c827041ea0f0e0aca78513ae9bd00274d8ba55c7",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/metadata-modules/connected-account/connected-account-metadata.service.ts": "086587806be26370502a76b04834f485d66172aba54706e9646e3328784b09fb",
+    "packages/twenty-server/src/engine/metadata-modules/message-channel/message-channel-metadata.service.ts": "cc4b328732b09e9c9e1b58f6fa2e014f08cdc6e1d1c5cfc9317be5bf13862d37",
+    "packages/twenty-server/src/engine/metadata-modules/message-channel/services/application-message-channels.service.ts": "56c550650f0a58bb1cbba357813e69358b55344b00325ea62bc40d7ea6f80a06",
+    "packages/twenty-server/src/modules/messaging/common/services/message-channel-sync-status.service.ts": "96e66e2266f95660e08bdc8a5e5f0c4e8a863dcd0189e5620d4877e22aac2ab9",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts": "1ab9fa6dc9b443ebeedb8d78f3570c4fd977947f7fc39baba31bc57f0889de5b",
+    "packages/twenty-server/src/modules/omnichannel/services/find-omni-owned-metadata-ids.ts": "e9690c0df9e707521104802c4e16749bb12a3a96736754c389051a8401d27ba4",
+    "packages/twenty-server/test/fork-migration/omni-metadata-mutation-guard.spec.ts": "d3eef1759936f7190729e22cf764586f575d5b2b4e84d03c2d4bb307031fcea9",
+    "packages/twenty-server/test/fork-migration/omni-metadata-ownership.postgres-spec.ts": "f48e086974ceabd040de9d40d6dcb110a462d9e980b744046525c75b7efd38bd",
+    "packages/twenty-server/test/fork-migration/omni-native-metadata-effects-log035.spec.ts": "2d49c5ecb8d57986d90ec398ffdde09320911ebefebadfc7964b028e1f2f0955"
+  }
+}

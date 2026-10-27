@@ -26,17 +26,17 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 
 ## Сверка текущего состояния — 27.10.2026
 
-LOG-034 / ROB-764 In Progress: штатные cleanup, blocklist и удаление сообщений
-папки сохраняют omni-owned Message/Thread/связи. Проверяются binding/link/
-conversation, включая пустые диалоги и soft-deleted связи; обычная почта удаляется
-со штатными FK-каскадами. Пагинация проходит защищённую страницу без зацикливания.
-583 Jest +25 guards =608 PASS; новые25 PG, повторены25 после уточнения fixture.
-Typecheck124roots:0 новых/0 changed-code,136 baseline; все5 миграций прежние.
-[Доказательства и границы](implementation/log034/README.md).
-Далее — защита metadata lifecycle аккаунтов/каналов/папок до внешних эффектов,
-затем остальные domain apply, inbox/outbox/recovery. Lifecycle races и полный
-T05/ROB-764 ещё не закрыты. HTTP/own ACL/UI/живые коннекторы не подключены.
-Демо прежнее; GitHub Actions не используется.
+LOG-035 / ROB-764 In Progress: native metadata lifecycle проверяет владение до
+hooks/отзыва токенов/удаления подписок, DB update/delete и событий. Защищены
+аккаунты, каналы, reset до cache и folder actions до import/cleanup/удаления папки.
+Прямая binding и косвенные связи учитываются; обычные соседние папки сохранены.
+667 Jest полного прогона + финальные86 focused (2 новых) +25 guards:
+694 distinct PASS. Typecheck133roots:0 новых/0 changed-code,149→146 baseline.
+Все5 миграций прежние. [Доказательства и границы](implementation/log035/README.md).
+Далее — первый Conversation/Thread при receipt apply, затем config recovery и
+остальные inbox/outbox пути. Проверки lifecycle point-in-time; гонки владения,
+generic/raw CRUD и полный T05/ROB-764 ещё открыты. HTTP/own ACL/UI/живые коннекторы
+не подключены. Демо прежнее; GitHub Actions не используется.
 
 ### Предыдущая порция
 

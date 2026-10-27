@@ -1,0 +1,56 @@
+[32m[Nest] 1  - [39m10/27/2026, 2:28:28 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: aa3368bf-87ca-4d38-8a45-2717ab2459d1 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-metadata-mutation-guard.spec.ts
+[Nest] 1  - 10/27/2026, 2:28:29 PM   ERROR [MessagingProcessFolderActionsService] WorkspaceId: 290ff2be-bf28-4733-9c41-5bfd1b959f65, MessageChannelId: 592c7810-1797-4fbb-b172-45a2e37b92bc, FolderId: 3b677bd3-361f-49b4-b37f-dcfcaca03269 - Error processing folder action: ordinary cleanup failed
+Error: ordinary cleanup failed
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-native-metadata-effects-log035.spec.ts:436:7)
+    at Promise.then.completed (/tools/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (/tools/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (/tools/node_modules/jest-circus/build/run.js:316:40)
+    at _runTest (/tools/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/tools/node_modules/jest-circus/build/run.js:126:9)
+    at _runTestsForDescribeBlock (/tools/node_modules/jest-circus/build/run.js:121:9)
+    at run (/tools/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/tools/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/tools/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/tools/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/tools/node_modules/jest-runner/build/runTest.js:444:34)
+[Nest] 1  - 10/27/2026, 2:28:29 PM   ERROR [MessagingProcessFolderActionsService] WorkspaceId: cb61f996-bd47-4d21-9ade-c861167cba51, MessageChannelId: 24695286-90ae-4c05-84fb-f6e59144725c, FolderId: a13e98cb-f26e-4972-84f6-0993eac8b65f - Error processing folder action: Unexpected folder processing failure
+Error: Unexpected folder processing failure
+    at MessagingProcessFolderActionsService.processFolderActions (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:152:15)
+    at /source/packages/twenty-server/test/fork-migration/omni-native-metadata-effects-log035.spec.ts:449:7
+[Nest] 1  - 10/27/2026, 2:28:29 PM   ERROR [MessagingProcessFolderActionsService] WorkspaceId: 8c7d6786-72ab-4286-9c55-459565b4ab2d, MessageChannelId: aa7debcf-ee20-46d6-beb9-64f91610b919, FolderId: e4ece1ac-a7d1-4515-a8aa-dc92c81b0662 - Error processing folder action: Unexpected folder processing failure
+Error: Unexpected folder processing failure
+    at MessagingProcessFolderActionsService.processFolderActions (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:152:15)
+    at /source/packages/twenty-server/test/fork-migration/omni-native-metadata-effects-log035.spec.ts:449:7
+[32m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: 6e676d2b-8ced-45d9-9020-8bccda878ec7, MessageChannelId: 3e6513d9-3f81-44b4-b830-85ab2dd15da7 - Processing 1 folders with pending actions[39m
+[95m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 6e676d2b-8ced-45d9-9020-8bccda878ec7, MessageChannelId: 3e6513d9-3f81-44b4-b830-85ab2dd15da7, FolderId: b2b8682e-638c-4128-a15e-60eb1368acce - Processing folder action: FOLDER_DELETION[39m
+[95m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 6e676d2b-8ced-45d9-9020-8bccda878ec7, MessageChannelId: 3e6513d9-3f81-44b4-b830-85ab2dd15da7, FolderId: b2b8682e-638c-4128-a15e-60eb1368acce - Completed FOLDER_DELETION action[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-metadata-effects-log035.spec.ts
+[95m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 6e676d2b-8ced-45d9-9020-8bccda878ec7, MessageChannelId: 3e6513d9-3f81-44b4-b830-85ab2dd15da7 - Reset pendingSyncAction to NONE for 1 folders[39m
+[32m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: 6e676d2b-8ced-45d9-9020-8bccda878ec7, MessageChannelId: 3e6513d9-3f81-44b4-b830-85ab2dd15da7 - Deleted 1 folders[39m
+[32m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: 3ccd8778-2744-4241-9cb8-0890edd111c1, MessageChannelId: 25b951cb-047a-4efc-b8f5-7a6d43fc0fad - Processing 1 folders with pending actions[39m
+[95m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 3ccd8778-2744-4241-9cb8-0890edd111c1, MessageChannelId: 25b951cb-047a-4efc-b8f5-7a6d43fc0fad, FolderId: b59aad07-10a0-4e66-8405-9cb7464f8427 - Processing folder action: FOLDER_IMPORT[39m
+[95m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 3ccd8778-2744-4241-9cb8-0890edd111c1, MessageChannelId: 25b951cb-047a-4efc-b8f5-7a6d43fc0fad, FolderId: b59aad07-10a0-4e66-8405-9cb7464f8427 - Completed FOLDER_IMPORT action[39m
+[95m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 3ccd8778-2744-4241-9cb8-0890edd111c1, MessageChannelId: 25b951cb-047a-4efc-b8f5-7a6d43fc0fad - Reset pendingSyncAction to NONE for 1 folders[39m
+[32m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: eda9a1f3-f62b-45c5-8790-f3a6d3dc4d95, MessageChannelId: d9118df3-b15d-4bd8-9e5e-4d8249152c2c - Processing 1 folders with pending actions[39m
+[95m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: eda9a1f3-f62b-45c5-8790-f3a6d3dc4d95, MessageChannelId: d9118df3-b15d-4bd8-9e5e-4d8249152c2c, FolderId: 3ff279e9-4a84-4751-9097-3b80d4a48612 - Processing folder action: FOLDER_DELETION[39m
+[95m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: eda9a1f3-f62b-45c5-8790-f3a6d3dc4d95, MessageChannelId: d9118df3-b15d-4bd8-9e5e-4d8249152c2c, FolderId: 3ff279e9-4a84-4751-9097-3b80d4a48612 - Completed FOLDER_DELETION action[39m
+[95m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: eda9a1f3-f62b-45c5-8790-f3a6d3dc4d95, MessageChannelId: d9118df3-b15d-4bd8-9e5e-4d8249152c2c - Reset pendingSyncAction to NONE for 1 folders[39m
+[32m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: eda9a1f3-f62b-45c5-8790-f3a6d3dc4d95, MessageChannelId: d9118df3-b15d-4bd8-9e5e-4d8249152c2c - Deleted 1 folders[39m
+[32m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: 290ff2be-bf28-4733-9c41-5bfd1b959f65, MessageChannelId: 592c7810-1797-4fbb-b172-45a2e37b92bc - Processing 1 folders with pending actions[39m
+[95m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 290ff2be-bf28-4733-9c41-5bfd1b959f65, MessageChannelId: 592c7810-1797-4fbb-b172-45a2e37b92bc, FolderId: 3b677bd3-361f-49b4-b37f-dcfcaca03269 - Processing folder action: FOLDER_DELETION[39m
+[33m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [33m   WARN[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[33mWorkspaceId: 290ff2be-bf28-4733-9c41-5bfd1b959f65, MessageChannelId: 592c7810-1797-4fbb-b172-45a2e37b92bc - Failed to process 1 folders. They will be retried on next sync.[39m
+[32m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: cb61f996-bd47-4d21-9ade-c861167cba51, MessageChannelId: 24695286-90ae-4c05-84fb-f6e59144725c - Processing 1 folders with pending actions[39m
+[95m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: cb61f996-bd47-4d21-9ade-c861167cba51, MessageChannelId: 24695286-90ae-4c05-84fb-f6e59144725c, FolderId: a13e98cb-f26e-4972-84f6-0993eac8b65f - Processing folder action: FOLDER_DELETION[39m
+[33m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [33m   WARN[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[33mWorkspaceId: cb61f996-bd47-4d21-9ade-c861167cba51, MessageChannelId: 24695286-90ae-4c05-84fb-f6e59144725c - Failed to process 1 folders. They will be retried on next sync.[39m
+[32m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [32m    LOG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[32mWorkspaceId: 8c7d6786-72ab-4286-9c55-459565b4ab2d, MessageChannelId: aa7debcf-ee20-46d6-beb9-64f91610b919 - Processing 1 folders with pending actions[39m
+[95m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [95m  DEBUG[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[95mWorkspaceId: 8c7d6786-72ab-4286-9c55-459565b4ab2d, MessageChannelId: aa7debcf-ee20-46d6-beb9-64f91610b919, FolderId: e4ece1ac-a7d1-4515-a8aa-dc92c81b0662 - Processing folder action: FOLDER_DELETION[39m
+[33m[Nest] 1  - [39m10/27/2026, 2:28:29 PM [33m   WARN[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[33mWorkspaceId: 8c7d6786-72ab-4286-9c55-459565b4ab2d, MessageChannelId: aa7debcf-ee20-46d6-beb9-64f91610b919 - Failed to process 1 folders. They will be retried on next sync.[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-metadata-ownership.postgres-spec.ts (7.206 s)
+
+Test Suites: 3 passed, 3 total
+Tests:       86 passed, 86 total
+Snapshots:   0 total
+Time:        11.631 s
+Ran all test suites within paths "/source/packages/twenty-server/test/fork-migration/omni-metadata-mutation-guard.spec.ts", "/source/packages/twenty-server/test/fork-migration/omni-native-metadata-effects-log035.spec.ts", "/source/packages/twenty-server/test/fork-migration/omni-metadata-ownership.postgres-spec.ts".
