@@ -1673,3 +1673,42 @@ fork остаётся LOG056 (1881/71). ROB764 acceptance ещё не выпол
 Применены ai-dev-workflow, behavioral-guardrails, server-schrodinger и scoped review.
 
 LOG-059 publication: code 174ce7ca8528353185dc277d3875cc5da4018acd pushed; GitHub ref verified through API. Linear comment 52fbd366-cc19-4bd2-9692-4b70a75d60bd; description/comment and all11 project states independently read back. ROB-764 In Progress. See implementation/log059/publication.json.
+
+
+## LOG-060 — guarded group-email cleanup and finalization (28.10.2026)
+
+Group worker принимает текущий snapshot в коротком ordinary-channel owner:
+parent, pending action, exclude setting и PostgreSQL updatedAt с6 микросекундными
+знаками. Date из загруженной entity не используется. Snapshot является консервативной
+проверкой принятой работы, а не отдельным монотонным revision counter.
+
+Каждая порция cleaner в собственной native strict transaction после shared ownership
+fence блокирует expected account → channel, проверяет snapshot и полный ownership.
+Stale возвращает явный отказ; последующие порции и list-fetch прекращаются. Не открывается
+внешняя core transaction вокруг native cleanup. Finalizer повторно проверяет snapshot,
+блокирует папки и одним manager сбрасывает разрешённые folder cursors, channel cursor
+и pending NONE. Protected junction folder исключается из reset. IMPORT не удаляет данные.
+
+Атомарны отдельная destructive порция и отдельно finalizer. Уже committed порции
+не откатываются при stale/error в следующей; pending/new action не стирается. Native
+unknown outcome пробрасывается через import handler без ложного failure-state/cache.
+Остальные cleaner call sites сохраняют прежний контракт без snapshot; этим не закрыта
+вся folder/list-fetch cleanup lifecycle.
+
+Проверено 189 targeted Jest/5 suites +26 guards=215 PASS.
+22 новых PG cases: actual worker/cleaner, IMPORT, stale parent/action/settings/time,
+ABA1µs, native/retained ownership, protected folder, read failure, SQL rollback,
+native lost COMMIT ACK, exclusive enrollment fence,201-message chunks interrupted
+by settings change, and actual list-fetch/exception-handler propagation.
+Первый lost-ACK test incorrectly intercepted an earlier pool read and timed out;
+injection moved immediately before cleaner transaction. Multi-chunk fixture initially
+violated native unique(message,channel); corrected to distinct native messages.
+Typecheck caught4 implicit-any callbacks in tests, corrected with explicit types.
+Typecheck 259 roots:191/190,0 new/changed-code.
+7 migrations unchanged; LF source hashes verified. Scoped read-only review clear.
+Last full fork LOG0561881/71; no new full server typecheck/Claude pass or ROB764 acceptance.
+
+[Evidence](implementation/log060/README.md). [Remaining writers](implementation/rob764-metadata-writer-inventory.md).
+Next: folder destructive batch and finalizer sharing actual native scope; then sync
+folder discovery and provider predicate. Demo/SaleBot unchanged, GitHub Actions unused.
+Applied ai-dev-workflow, behavioral-guardrails, server-schrodinger and scoped review.

@@ -1,15 +1,15 @@
 # Дорожная карта проекта
 
-LOG-059 / ROB-764 In Progress: создание, изменение, синхронизация и удаление
-папок выполняются с актуальной проверкой владельца внутри одной транзакции.
-Порядок блокировок: подключения → каналы → папки. Родитель перепроверяется после
-блокировки; resolver повторно проверяет текущего сотрудника-владельца. Смешанный
-пакет с защищённой папкой отклоняется целиком. Google backfill semantics сохранены.
-Проверено 226 targeted Jest /5 suites +26 guards =252 PASS,
-30 новых PG cases. Typecheck 256 roots: 191/191, 0 new/changed-code.
+LOG-060 / ROB-764 In Progress: group-email cleanup проверяет captured parent,
+settings/action и точный updatedAt перед каждой порцией в её native transaction.
+Устаревшая работа останавливает следующие порции и list-fetch. Finalizer атомарно
+сбрасывает допустимые folder cursors, channel cursor и pending action. Native
+unknown commit распространяется наружу до обработки обычных ошибок импорта.
+Проверено 189 targeted Jest /5 suites +26 guards =215 PASS,
+22 новых PG cases. Typecheck 259 roots: 191/190, 0 new/changed-code.
 Все7 migrations неизменны. Последний full fork: LOG056, 1881 tests/71 suites.
-[Доказательства](../implementation/log059/README.md). Scoped review без подтверждённых блокеров.
-Далее group/folder background cleanup, provider predicate, итоговый T22.
+[Доказательства](../implementation/log060/README.md). Scoped review без подтверждённых блокеров.
+Далее folder background cleanup, provider predicate, итоговый T22.
 ROB-764 остаётся In Progress; собственные ACL, UI и транспорт ещё впереди.
 Демо прежнее, GitHub Actions не используется.
 

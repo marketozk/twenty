@@ -1,3 +1,7 @@
+import {
+  lockCurrentGroupEmailAction,
+  type OrdinaryGroupEmailAction,
+} from 'src/modules/omnichannel/services/ordinary-group-email-action';
 import { Injectable, Logger } from '@nestjs/common';
 
 import chunk from 'lodash.chunk';
@@ -30,18 +34,44 @@ export class MessagingMessageCleanerService {
     workspaceId,
     messageExternalIds,
     messageChannelId,
+    groupEmailAction,
   }: {
     workspaceId: string;
     messageExternalIds: string[];
     messageChannelId: string;
-  }) {
+    groupEmailAction?: OrdinaryGroupEmailAction;
+  }): Promise<boolean> {
+    const expected = groupEmailAction ? { ...groupEmailAction } : undefined;
+    const externalIds = [...messageExternalIds];
+    if (
+      expected &&
+      (expected.workspaceId !== workspaceId ||
+        expected.messageChannelId !== messageChannelId ||
+        expected.action !== 'GROUP_EMAILS_DELETION')
+    )
+      throw new Error('OMNI_INVALID_GROUP_ACTION_SCOPE');
     const authContext = buildSystemAuthContext(workspaceId);
 
-    await this.workspaceOrmManager.executeInWorkspaceContext(
+    return this.workspaceOrmManager.executeInWorkspaceContext(
       async () => {
-        await this.workspaceOrmManager.runInWorkspaceTransaction(
+        return this.workspaceOrmManager.runInWorkspaceTransaction(
           async (transactionScope) => {
             this.assertWorkspaceScope(workspaceId, transactionScope);
+            if (expected) {
+              const lifecycle = transactionScope.transactionLifecycle;
+              if (
+                !lifecycle?.isTransactionActive ||
+                lifecycle.isReleased ||
+                lifecycle.commitOutcome !== 'strict'
+              )
+                throw new Error(
+                  'OMNI_GROUP_ACTION_REQUIRES_STRICT_TRANSACTION',
+                );
+              if (
+                !(await lockCurrentGroupEmailAction(transactionScope, expected))
+              )
+                return false;
+            }
             const messageRepository =
               transactionScope.getRepository<MessageWorkspaceEntity>(
                 'message',
@@ -58,10 +88,7 @@ export class MessagingMessageCleanerService {
                 { shouldBypassPermissionChecks: true },
               );
 
-            for (const messageExternalIdsChunk of chunk(
-              messageExternalIds,
-              500,
-            )) {
+            for (const messageExternalIdsChunk of chunk(externalIds, 500)) {
               const associations =
                 await messageChannelMessageAssociationRepository.find({
                   where: {
@@ -159,7 +186,9 @@ export class MessagingMessageCleanerService {
                 },
               );
             }
+            return true;
           },
+          expected ? { commitOutcome: 'strict' } : undefined,
         );
       },
       authContext,

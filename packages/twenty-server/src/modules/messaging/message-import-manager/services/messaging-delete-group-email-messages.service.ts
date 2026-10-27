@@ -1,3 +1,4 @@
+import { type OrdinaryGroupEmailAction } from 'src/modules/omnichannel/services/ordinary-group-email-action';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { isNonEmptyString } from '@sniptt/guards';
@@ -30,7 +31,9 @@ export class MessagingDeleteGroupEmailMessagesService {
   async deleteGroupEmailMessages(
     workspaceId: string,
     messageChannelId: string,
-  ): Promise<number> {
+    action: OrdinaryGroupEmailAction,
+  ): Promise<number | null> {
+    const expected = { ...action };
     this.logger.log(
       `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannelId} - Deleting messages from group email addresses`,
     );
@@ -105,13 +108,17 @@ export class MessagingDeleteGroupEmailMessagesService {
             messageExternalIdsToDelete,
             MESSAGE_EXTERNAL_ID_DELETION_CHUNK_SIZE,
           )) {
-            await this.messagingMessageCleanerService.deleteMessagesChannelMessageAssociationsAndRelatedOrphans(
-              {
-                workspaceId,
-                messageExternalIds: messageExternalIdsChunk,
-                messageChannelId,
-              },
-            );
+            const applied =
+              await this.messagingMessageCleanerService.deleteMessagesChannelMessageAssociationsAndRelatedOrphans(
+                {
+                  workspaceId,
+                  messageExternalIds: messageExternalIdsChunk,
+                  groupEmailAction: expected,
+                  messageChannelId,
+                },
+              );
+
+            if (!applied) return null;
 
             totalDeletedCount += messageExternalIdsChunk.length;
           }

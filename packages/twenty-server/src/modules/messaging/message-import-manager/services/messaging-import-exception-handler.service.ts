@@ -1,3 +1,4 @@
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
 import { Injectable } from '@nestjs/common';
 
@@ -41,7 +42,10 @@ export class MessageImportExceptionHandlerService {
     >,
     workspaceId: string,
   ): Promise<void> {
-    if (exception instanceof OmniCoreTransactionOutcomeUnknownError)
+    if (
+      exception instanceof OmniCoreTransactionOutcomeUnknownError ||
+      exception instanceof NativeTransactionOutcomeUnknownError
+    )
       throw exception;
     const error =
       exception instanceof Error ? exception : new Error(String(exception));

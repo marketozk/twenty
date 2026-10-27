@@ -72,6 +72,8 @@ export class MessagingMessageListFetchService {
               workspaceId,
             );
 
+          if (pendingGroupEmailActionsProcessed === null) return;
+
           const processedfolderActionsResult =
             await this.processPendingFolderActions(messageChannel, workspaceId);
 
@@ -311,7 +313,7 @@ export class MessagingMessageListFetchService {
   private async processPendingGroupEmailActions(
     messageChannel: MessageChannelEntity,
     workspaceId: string,
-  ): Promise<boolean> {
+  ): Promise<boolean | null> {
     const hasPendingGroupEmailAction =
       messageChannel.pendingGroupEmailsAction ===
         MessageChannelPendingGroupEmailsAction.GROUP_EMAILS_DELETION ||
@@ -326,12 +328,13 @@ export class MessagingMessageListFetchService {
       `messageChannelId: ${messageChannel.id} Processing pending group emails action before message list fetch: ${messageChannel.pendingGroupEmailsAction}`,
     );
 
-    await this.messagingProcessGroupEmailActionsService.processGroupEmailActions(
-      messageChannel,
-      workspaceId,
-    );
+    const applied =
+      await this.messagingProcessGroupEmailActionsService.processGroupEmailActions(
+        messageChannel,
+        workspaceId,
+      );
 
-    return true;
+    return applied ? true : null;
   }
 
   private async processPendingFolderActions(

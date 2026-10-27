@@ -1,3 +1,4 @@
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { MessagingMessageListFetchService } from 'src/modules/messaging/message-import-manager/services/messaging-message-list-fetch.service';
 import { MessagingRelaunchFailedMessageChannelJob } from 'src/modules/messaging/message-import-manager/jobs/messaging-relaunch-failed-message-channel.job';
 import { CalendarRelaunchFailedCalendarChannelJob } from 'src/modules/calendar/calendar-event-import-manager/jobs/calendar-relaunch-failed-calendar-channel.job';
@@ -1389,4 +1390,72 @@ it('actual zero-message list fetch cannot complete the replacement ordinary pare
   expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
   // The pre-existing list-fetch cache clear is separate from the declined final completion.
   expect(cache.mdel).toHaveBeenCalledTimes(1);
+});
+
+it('native cleanup unknown outcome bypasses import failure classification', async () => {
+  const capture = { captureExceptions: jest.fn() },
+    monitor = { track: jest.fn() },
+    error = new NativeTransactionOutcomeUnknownError(
+      'commit',
+      new Error('fixture lost ACK'),
+    );
+  const handler = new MessageImportExceptionHandlerService(
+    messaging,
+    capture as never,
+    monitor as never,
+  );
+  const before = await repo('message').findOneByOrFail({
+    id: ordinary.message,
+  });
+  await expect(
+    handler.handleDriverException(
+      error,
+      MessageImportSyncStep.MESSAGE_LIST_FETCH,
+      before,
+      fixture.workspaceId,
+    ),
+  ).rejects.toBe(error);
+  expect(
+    await repo('message').findOneByOrFail({ id: ordinary.message }),
+  ).toEqual(before);
+  expect(capture.captureExceptions).not.toHaveBeenCalled();
+  expect(monitor.track).not.toHaveBeenCalled();
+  expect(cache.mdel).not.toHaveBeenCalled();
+  expect(broadcast.broadcast).not.toHaveBeenCalled();
+});
+it('stale group work aborts list fetch before folder/status/cache side effects', async () => {
+  const folders = { processFolderActions: jest.fn() },
+    groups = { processGroupEmailActions: jest.fn().mockResolvedValue(false) };
+  const service = makeService(MessagingMessageListFetchService.prototype, {
+    workspaceOrmManager: {
+      executeInWorkspaceContext: async (work: () => Promise<unknown>) => work(),
+    },
+    messagingProcessGroupEmailActionsService: groups,
+    messagingProcessFolderActionsService: folders,
+    messageChannelSyncStatusService: messaging,
+    cacheStorage: cache,
+    messageImportErrorHandlerService: {
+      handleDriverException: async (error: unknown) => {
+        throw error;
+      },
+    },
+    logger: { log: jest.fn(), debug: jest.fn(), error: jest.fn() },
+  });
+  const before = await repo('message').findOneByOrFail({
+    id: ordinary.message,
+  });
+  await service.processMessageListFetch(
+    {
+      ...before,
+      pendingGroupEmailsAction: 'GROUP_EMAILS_DELETION',
+      messageFolders: [],
+    } as never,
+    fixture.workspaceId,
+  );
+  expect(groups.processGroupEmailActions).toHaveBeenCalledTimes(1);
+  expect(folders.processFolderActions).not.toHaveBeenCalled();
+  expect(cache.mdel).not.toHaveBeenCalled();
+  expect(
+    await repo('message').findOneByOrFail({ id: ordinary.message }),
+  ).toEqual(before);
 });

@@ -30,13 +30,14 @@ Canonical lifecycle requirements remain in the implementation specification.
 
 - LOG059: generic folder create/update/setSyncStatus/delete use the fresh account/channel/folder owner, current custodian, stable locks and same-manager readback. Background orchestration remains below.
 
+- LOG060: group worker captured parent/action/settings/microsecond timestamp, guarded strict native chunks, stale stop, atomic finalizer and native unknown propagation. Prior committed chunks are not rolled back.
+
 ## Remaining owners, in implementation order
 
 Paths below are relative to `packages/twenty-server/src`.
 
 | Owner | Observed gap / required check |
 |---|---|
-| `modules/messaging/message-import-manager/services/messaging-process-group-email-actions.service.ts` | Cleanup/final reset writes still need current parent/action guards and atomic channel/folder finalizer. Resolver marker/settings now atomic (LOG057); do not hold a new core transaction across existing nested cleanup transactions. |
 | Folder-action and sync-folder background writers | Generic metadata create/update/setSyncStatus/delete protected in LOG059. Multi-step background cleanup, folder discovery and final pending/cursor reset still need captured parent/action checks across their own transaction boundaries. |
 | Legacy list-fetch downstream cache/cleanup callbacks | Final completion is parent-pinned (LOG058); intermediate cache mutations and cleanup are separate. Review with group/folder scope before claiming complete callback lifecycle protection. |
 | Ordinary provider write predicate vs derived metadata ownership | LOG053 excludes direct retained bindings. Compare with `findOmniOwnedConnectedAccountIds` derived ownership through channel/message associations during final inventory; do not infer full derived-owner coverage from the direct-binding tests. |
