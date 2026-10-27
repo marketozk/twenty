@@ -1131,3 +1131,5 @@ HTTP/UI, live transport, scheduler/own ACL и полный ROB-764 ещё не �
 строк; исправлено до тестов, добавлены25 contract cases. Защищённый нормализованный
 proof проверяется общей JS/SQL семантикой на реальном PostgreSQL. Применены
 ai-dev-workflow, behavioral-guardrails, server-schrodinger. Продолжаем LOG-044.
+
+Публикация LOG-043: код d0afc39501f52361afb231f2e6f1e7e4cf9d8279, remote проверен GitHub API. Описание ROB-764 и комментарий 7e2b2535-d6ba-48c3-9125-09fcf5d75bcb прочитаны обратно; все 11 статусов сохранены. Продолжаем LOG-044.
