@@ -1,0 +1,97 @@
+{
+  "codeCommit": "4cc66d8900d673994dae701e0fbfbc6c5f39615d",
+  "branch": "codex/omnichannel-requirements",
+  "linear": {
+    "issueId": "ROB-764",
+    "commentId": "f111f44a-94e1-47bd-b7c7-75f2b184c97e",
+    "descriptionMatched": true,
+    "commentMatched": true,
+    "exactlyOneLog025": true,
+    "statesPreserved": true,
+    "issueStatus": "In Progress",
+    "states": [
+      {
+        "id": "ROB-764",
+        "status": "In Progress"
+      },
+      {
+        "id": "ROB-772",
+        "status": "Done"
+      },
+      {
+        "id": "ROB-762",
+        "status": "Done"
+      },
+      {
+        "id": "ROB-763",
+        "status": "Done"
+      },
+      {
+        "id": "ROB-765",
+        "status": "Backlog"
+      },
+      {
+        "id": "ROB-766",
+        "status": "Backlog"
+      },
+      {
+        "id": "ROB-767",
+        "status": "Backlog"
+      },
+      {
+        "id": "ROB-768",
+        "status": "Backlog"
+      },
+      {
+        "id": "ROB-769",
+        "status": "Backlog"
+      },
+      {
+        "id": "ROB-770",
+        "status": "Backlog"
+      },
+      {
+        "id": "ROB-771",
+        "status": "Backlog"
+      }
+    ]
+  },
+  "githubChecks": [
+    {
+      "conclusion": "failure",
+      "html_url": "https://github.com/marketozk/twenty/actions/runs/40487985346/job/122134490524",
+      "id": 122134490524,
+      "name": "dependency-guard",
+      "status": "completed",
+      "annotations": [
+        {
+          "annotation_level": "failure",
+          "message": "The job was not started because your account is locked due to a billing issue."
+        },
+        {
+          "annotation_level": "notice",
+          "message": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\""
+        }
+      ]
+    },
+    {
+      "conclusion": "failure",
+      "html_url": "https://github.com/marketozk/twenty/actions/runs/40487985358/job/122134490361",
+      "id": 122134490361,
+      "name": "postgres-transactions",
+      "status": "completed",
+      "annotations": [
+        {
+          "annotation_level": "failure",
+          "message": "The job was not started because your account is locked due to a billing issue."
+        },
+        {
+          "annotation_level": "notice",
+          "message": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\""
+        }
+      ]
+    }
+  ],
+  "ciPassClaimed": false,
+  "billingChanged": false
+}

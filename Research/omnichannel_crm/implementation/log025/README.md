@@ -78,3 +78,12 @@ durable receipt/ACK и конфликт ключа с другим payload. За
 Message+audit+event, inbox/outbox/recovery и email regression. ROB-764 In Progress.
 Down проверен на пустых новых таблицах; он не является автоматическим откатом
 живой системы с данными. Каналы SaleBot и действующее демо не менялись.
+
+## Публикация
+
+Код `4cc66d8900d673994dae701e0fbfbc6c5f39615d` отправлен в текущую ветку.
+[Отчёт ROB-764](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-f111f44a).
+Описание и единственный комментарий прочитаны обратно; статусы 11 задач сохранены.
+GitHub CI нового коммита не начал выполнение из-за billing block аккаунта;
+подтверждено аннотациями обоих jobs. Облачный CI pass не заявлен.
+[Метаданные публикации и сверки](publication.json).

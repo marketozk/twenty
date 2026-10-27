@@ -590,5 +590,11 @@ Skills: ai-dev-workflow — реализация по принятому пла�
 server-schrodinger — preflight, ограниченные тестовые ресурсы и их cleanup.
 Следующая порция: ingress persistence с canonical envelope/hash, generation,
 durable ACK и payload conflict; затем Message+audit+event/inbox/outbox/recovery.
-ROB-764 остаётся In Progress, ROB-765–771 Backlog. Публикация и синхронизация
-Linear фиксируются ниже после подтверждённого push.
+ROB-764 остаётся In Progress, ROB-765–771 Backlog.
+
+Код опубликован: `4cc66d8900d673994dae701e0fbfbc6c5f39615d` в
+origin/codex/omnichannel-requirements. Описание ROB-764 и единственный
+[отчёт LOG-025](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-f111f44a)
+прочитаны обратно; статусы 11 задач сохранены. GitHub CI нового коммита не начал
+выполнение из-за billing block аккаунта; подтверждено аннотациями обоих jobs.
+[Метаданные](implementation/log025/publication.json). Настройки оплаты не менялись.

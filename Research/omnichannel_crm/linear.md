@@ -27,11 +27,16 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 ## Сверка текущего состояния — 27.10.2026
 
 LOG-025 / ROB-764 In Progress: schema-only порция из восьми таблиц roots/charges,
-dispatch/budgets/slots, activation/admission/consumer receipts проверена.
+dispatch/budgets/slots, activation/admission/consumer receipts опубликована.
 Прошли 160 тестов, focused typecheck 60 файлов и native upgrade/replay;
 финальный generator diff пустой. Далее — ingress persistence, затем
 Message+audit+event и inbox/outbox/recovery. Новый полный image не собирался,
 демо не менялось. [Проверки](implementation/log025/README.md).
+
+Публикация `4cc66d8900d673994dae701e0fbfbc6c5f39615d`; описание ROB-764 и
+единственный [отчёт LOG-025](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-f111f44a)
+прочитаны обратно, статусы 11 задач сохранены. CI не стартовал из-за billing block.
+[Метаданные](implementation/log025/publication.json).
 
 ### Предыдущая порция
 
