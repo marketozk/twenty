@@ -54,16 +54,16 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-054 / ROB-764 In Progress: финальная DB часть disconnect/transfer/deleteMany
-берёт shared native fence, ordered account locks и повторно проверяет ownership.
-Native APP/null-ID не вызывает обычные provider hooks/revoke/subscriptions.
-Transfer сверяет исходного custodian; delete фиксирует реальные дочерние строки
-под FOR UPDATE и публикует events только после подтверждённого commit.
-Проверено 224 targeted Jest /7 suites +26 guards =250 PASS;
-25 новых PostgreSQL lifecycle cases. Typecheck230 roots:197 baseline/
+LOG-055 / ROB-764 In Progress: webhook claim/settle/clear/status для message/calendar
+выполняются под shared native fence, account/channel locks и fresh full ownership.
+Native APP и retained/derived owned accounts исключены; workspace обязателен.
+Snapshot callbacks сверяют исходный account ID. Локальный unknown commit не
+попадает в provider recovery и не вызывает ложный FAILED или success metric.
+Проверено 278 targeted Jest /6 suites +26 guards =304 PASS;
+85 новых PostgreSQL cases. Typecheck236 roots:197 baseline/
 197 current,0 new/changed-code. Все7 migrations неизменны.
-[Доказательства](Research/omnichannel_crm/implementation/log054/README.md). Scoped review calendar reparent race исправлена и проверена.
-Далее late webhook/status/cursor/folder writers, resolver pending action и итоговый T22.
+[Доказательства](Research/omnichannel_crm/implementation/log055/README.md). Оба замечания scoped review исправлены и проверены.
+Далее sync-status/cursor/folder writers, resolver pending action и итоговый T22.
 ROB-764 остаётся In Progress; публичные API, ACL, UI и транспорт ещё впереди.
 Демо прежнее, GitHub Actions не используется.
 

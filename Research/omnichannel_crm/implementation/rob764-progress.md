@@ -726,3 +726,36 @@ Network effect уже мог выполниться до локального о
 Полный Claude pass/full server typecheck не заявляются. Демо/SaleBot/transports без
 изменений, GitHub Actions не использовался. Применены прежние ai-dev-workflow,
 behavioral-guardrails/server-schrodinger; scoped independent review read-only.
+
+
+## LOG-055 — webhook final write ownership (28.10.2026)
+
+Claim/settle/clear/markActive/Failed/Expired/reset для message/calendar используют
+strict fresh transaction: shared fence → account/share + channel/update lock →
+полная ownership проверка → same-manager update. Native APP/null IDs отклоняется
+даже без binding. Retained legacy provider и derived account ownership защищены.
+Workspace передаётся из всех callers; прежние claim/clientState/subscription CAS
+сохранены. Из snapshot передаётся expectedConnectedAccountId: reparent до claim
+не вызывает HTTP, reparent во время HTTP не записывает результат прежнего account.
+
+Provider HTTP остаётся вне SQL transaction. Renew/delete сохраняют локальный
+результат вне provider catch: потерянный commit ACK не запускает FAILED/recovery
+и не выдаёт ложных success/failure metrics. Existing create orphan-watch cleanup
+сохранён; автоматического повторного provider запроса не добавлено.
+
+278 tests/6 suites +26 guards=304 PASS.
+85 новых PostgreSQL cases: ordinary/native/legacy, missing/wrong workspace, claim
+concurrency/CAS, denied ownership read, lock acquisition reparent, actual create/
+renew/delete late callbacks, preclaim reparent и real commit-ACK loss. Driver HTTP
+подменён; локальные services/repositories/locks/PostgreSQL реальные.
+Typecheck236 roots:197/197,0 new/changed-code.7 migration sources unchanged.
+Первый запуск нового набора упал на загрузке unrelated AI ESM через driver factory;
+fixture теперь подменяет factory, сами проверяемые services остаются реальными.
+Scoped review нашёл unknown-commit recovery и ordinary reparent; оба исправлены,
+повторный scoped review без блокеров. Full Claude/full server typecheck не заявлены.
+
+[Evidence](log055/README.md). Остались [sync/cursor/folder owners](rob764-metadata-writer-inventory.md),
+resolver atomicity и итоговый T22/ROB764 acceptance. External effect может уже
+состояться до локального отказа; SQL rollback его не отменяет. Демо не менялось.
+GitHub Actions не использовался. Прежние skills ai-dev-workflow,
+behavioral-guardrails/server-schrodinger; independent scoped review read-only.

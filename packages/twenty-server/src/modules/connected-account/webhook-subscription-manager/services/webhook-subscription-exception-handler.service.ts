@@ -49,12 +49,14 @@ export class WebhookSubscriptionExceptionHandlerService {
           return await this.handleInsufficientPermissionsException(
             channelType,
             channel,
+            workspaceId,
           );
         case WebhookSubscriptionDriverExceptionCode.TEMPORARY_ERROR:
           return await this.handleTemporaryException(
             exception,
             channelType,
             channel,
+            workspaceId,
           );
         case WebhookSubscriptionDriverExceptionCode.PROVIDER_NOT_CONFIGURED:
         case WebhookSubscriptionDriverExceptionCode.PROVIDER_RESPONSE_INVALID:
@@ -77,12 +79,14 @@ export class WebhookSubscriptionExceptionHandlerService {
           return await this.handleInsufficientPermissionsException(
             channelType,
             channel,
+            workspaceId,
           );
         case ConnectedAccountRefreshAccessTokenExceptionCode.TEMPORARY_NETWORK_ERROR:
           return await this.handleTemporaryException(
             exception,
             channelType,
             channel,
+            workspaceId,
           );
         case ConnectedAccountRefreshAccessTokenExceptionCode.ACCESS_TOKEN_NOT_FOUND:
         case ConnectedAccountRefreshAccessTokenExceptionCode.PROVIDER_NOT_SUPPORTED:
@@ -115,6 +119,7 @@ export class WebhookSubscriptionExceptionHandlerService {
       return await this.handleInsufficientPermissionsException(
         channelType,
         channel,
+        workspaceId,
       );
     }
 
@@ -124,6 +129,7 @@ export class WebhookSubscriptionExceptionHandlerService {
         channel.id,
         workspaceId,
         channel.webhookSubscriptionExternalId,
+        channel.connectedAccountId,
       );
 
     return cleared ? 'RECREATE' : 'NONE';
@@ -132,10 +138,13 @@ export class WebhookSubscriptionExceptionHandlerService {
   private async handleInsufficientPermissionsException(
     channelType: WebhookSubscriptionChannelType,
     channel: WebhookSubscribableChannelReference,
+    workspaceId: string,
   ): Promise<WebhookSubscriptionRecoveryAction> {
     await this.webhookSubscriptionStatusService.markAsExpired(
       channelType,
       channel.id,
+      workspaceId,
+      channel.connectedAccountId,
     );
 
     return 'NONE';
@@ -147,10 +156,13 @@ export class WebhookSubscriptionExceptionHandlerService {
       | ConnectedAccountRefreshAccessTokenException,
     channelType: WebhookSubscriptionChannelType,
     channel: WebhookSubscribableChannelReference,
+    workspaceId: string,
   ): Promise<WebhookSubscriptionRecoveryAction> {
     await this.webhookSubscriptionStatusService.markAsFailed(
       channelType,
       channel.id,
+      workspaceId,
+      channel.connectedAccountId,
     );
 
     throw exception;
@@ -160,11 +172,13 @@ export class WebhookSubscriptionExceptionHandlerService {
     exception: unknown,
     channelType: WebhookSubscriptionChannelType,
     channel: WebhookSubscribableChannelReference,
-    _workspaceId: string,
+    workspaceId: string,
   ): Promise<WebhookSubscriptionRecoveryAction> {
     await this.webhookSubscriptionStatusService.markAsFailed(
       channelType,
       channel.id,
+      workspaceId,
+      channel.connectedAccountId,
     );
 
     throw exception;

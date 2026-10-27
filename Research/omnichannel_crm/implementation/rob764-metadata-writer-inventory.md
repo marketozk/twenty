@@ -13,14 +13,15 @@ Canonical lifecycle requirements remain in the implementation specification.
 - LOG054: final disconnect/transfer/deleteMany transaction; native account network
   bypass; fresh locked child snapshot for truthful deletion events.
 
+- LOG055: webhook message/calendar local status transactions, scoped snapshot parent
+  pin, fresh full account ownership, and local commit errors separated from provider recovery.
+
 ## Remaining owners, in implementation order
 
 Paths below are relative to `packages/twenty-server/src`.
 
 | Owner | Observed gap / required check |
 |---|---|
-| `modules/connected-account/webhook-subscription-manager/services/webhook-subscription-status.service.ts` | claim/settle/clear and markActive/Failed/Expired/reset need fresh ownership at the write. Some mark methods accept only channelId. Pass workspace from existing callers and preserve CAS predicates. |
-| Messaging/Calendar webhook subscription services and exception handler | Driver request may finish after channel reparent/enrollment. Protect final local write; do not automatically repeat the remote request. |
 | `modules/messaging/common/services/message-channel-sync-status.service.ts` | Common update/broadcast, resetSyncStageStartedAt and conditional scheduling bypass final ownership. Existing pre-query exclusion is not atomic. Mixed batches must report only actual ordinary updates. |
 | Same service + `modules/calendar/common/services/calendar-channel-sync-status.service.ts` | authFailed writes need account ownership, including an account owning another channel; not just the selected channel. |
 | `modules/messaging/message-import-manager/services/messaging-process-group-email-actions.service.ts` + message-channel resolver | Pending action and cursor writes are separate; resolver writes pending action before protected metadata update. Move into an atomic owner, with current state checks. |

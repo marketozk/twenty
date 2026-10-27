@@ -1,0 +1,14 @@
+{
+  "baseCommit": "b772ad4dec3edbe397bce254a01bca8a085b3f1c",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/connected-account/webhook-subscription-manager/services/calendar-webhook-subscription.service.ts": "e9eacabab96bc8c8666f6c36d216db33a504fbdb7fda99a8e1e1ff53e716deee",
+    "packages/twenty-server/src/modules/connected-account/webhook-subscription-manager/services/messaging-webhook-subscription.service.ts": "0674729d0344545aaf1a644c355d306c5a519a990774f9da7510dc23d88336ec",
+    "packages/twenty-server/src/modules/connected-account/webhook-subscription-manager/services/webhook-subscription-exception-handler.service.ts": "9b70d01ee891d694875c8962173bf4ab2a5794ef3bac6f8b4982bac1f0a2a7f0",
+    "packages/twenty-server/src/modules/connected-account/webhook-subscription-manager/services/webhook-subscription-status.service.ts": "f0e1852bde8aa9d1d993b03744bc1df7c4545c1847f5cc3fb4051d7cada5c952",
+    "packages/twenty-server/src/modules/omnichannel/services/omni-metadata-transaction.ts": "c481de9380650c1cd038e7fd6d293a1c1b9c8401c74a2aae7cebfdce4fded29a",
+    "packages/twenty-server/src/modules/omnichannel/services/with-ordinary-metadata-channel.ts": "f87286ae523c50b8ce598da20645e722d99cf7c908546128aa8d644c6e4d8504",
+    "packages/twenty-server/test/fork-migration/omni-webhook-status.postgres-spec.ts": "7f38c95c6efb180a8ade7a00bcaa2d56ccc50b031a68b2f09fe3965b81768cbf"
+  }
+}

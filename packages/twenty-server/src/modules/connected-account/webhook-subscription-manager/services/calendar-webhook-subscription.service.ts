@@ -92,6 +92,7 @@ export class CalendarWebhookSubscriptionService {
         WebhookSubscriptionChannelType.CALENDAR,
         calendarChannel.id,
         workspaceId,
+        calendarChannel.connectedAccountId,
       );
 
     if (!isDefined(clientState)) {
@@ -110,6 +111,8 @@ export class CalendarWebhookSubscriptionService {
       await this.webhookSubscriptionStatusService.resetPendingSubscription(
         WebhookSubscriptionChannelType.CALENDAR,
         calendarChannel.id,
+        workspaceId,
+        calendarChannel.connectedAccountId,
       );
 
       this.metricsService.incrementCounterBy({
@@ -136,6 +139,7 @@ export class CalendarWebhookSubscriptionService {
         workspaceId,
         clientState,
         result,
+        calendarChannel.connectedAccountId,
       );
 
     if (!hasSettledClaim) {
@@ -239,22 +243,10 @@ export class CalendarWebhookSubscriptionService {
       connectedAccount.provider,
     );
 
+    let result: WebhookSubscriptionResult;
+
     try {
-      const result = await driver.renewSubscription(
-        this.toContext(calendarChannel),
-      );
-
-      await this.webhookSubscriptionStatusService.markAsActive(
-        WebhookSubscriptionChannelType.CALENDAR,
-        calendarChannel.id,
-        result,
-      );
-
-      this.metricsService.incrementCounterBy({
-        key: MetricsKeys.ConnectedAccountWebhookSubscriptionRenewed,
-        amount: 1,
-        attributes: this.buildMetricAttributes(connectedAccount.provider),
-      });
+      result = await driver.renewSubscription(this.toContext(calendarChannel));
     } catch (error) {
       this.metricsService.incrementCounterBy({
         key: MetricsKeys.ConnectedAccountWebhookSubscriptionRenewalFailed,
@@ -274,7 +266,23 @@ export class CalendarWebhookSubscriptionService {
       if (recoveryAction === 'RECREATE') {
         await this.createSubscription(calendarChannelId, workspaceId);
       }
+      return;
     }
+
+    const applied = await this.webhookSubscriptionStatusService.markAsActive(
+      WebhookSubscriptionChannelType.CALENDAR,
+      calendarChannel.id,
+      workspaceId,
+      result,
+      calendarChannel.connectedAccountId,
+    );
+    if (!applied) return;
+
+    this.metricsService.incrementCounterBy({
+      key: MetricsKeys.ConnectedAccountWebhookSubscriptionRenewed,
+      amount: 1,
+      attributes: this.buildMetricAttributes(connectedAccount.provider),
+    });
   }
 
   async deleteSubscription(
@@ -321,17 +329,6 @@ export class CalendarWebhookSubscriptionService {
 
     try {
       await driver.deleteSubscription(this.toContext(calendarChannel));
-
-      await this.webhookSubscriptionStatusService.markAsExpired(
-        WebhookSubscriptionChannelType.CALENDAR,
-        calendarChannelId,
-      );
-
-      this.metricsService.incrementCounterBy({
-        key: MetricsKeys.ConnectedAccountWebhookSubscriptionDeleted,
-        amount: 1,
-        attributes: this.buildMetricAttributes(connectedAccount.provider),
-      });
     } catch (error) {
       if (
         error instanceof WebhookSubscriptionDriverException &&
@@ -348,6 +345,20 @@ export class CalendarWebhookSubscriptionService {
 
       throw error;
     }
+
+    const applied = await this.webhookSubscriptionStatusService.markAsExpired(
+      WebhookSubscriptionChannelType.CALENDAR,
+      calendarChannelId,
+      workspaceId,
+      calendarChannel.connectedAccountId,
+    );
+    if (!applied) return;
+
+    this.metricsService.incrementCounterBy({
+      key: MetricsKeys.ConnectedAccountWebhookSubscriptionDeleted,
+      amount: 1,
+      attributes: this.buildMetricAttributes(connectedAccount.provider),
+    });
   }
 
   async revokeSubscription({

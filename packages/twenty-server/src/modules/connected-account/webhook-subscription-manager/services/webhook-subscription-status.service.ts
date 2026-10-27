@@ -10,6 +10,7 @@ import { Repository } from 'typeorm';
 import { type QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { v4 } from 'uuid';
 
+import { withOrdinaryMetadataChannel } from 'src/modules/omnichannel/services/with-ordinary-metadata-channel';
 import { CalendarChannelEntity } from 'src/engine/metadata-modules/calendar-channel/entities/calendar-channel.entity';
 import { MessageChannelEntity } from 'src/engine/metadata-modules/message-channel/entities/message-channel.entity';
 import { CLAIMABLE_WEBHOOK_SUBSCRIPTION_STATUSES } from 'src/modules/connected-account/webhook-subscription-manager/constants/claimable-webhook-subscription-statuses.constant';
@@ -32,34 +33,43 @@ export class WebhookSubscriptionStatusService {
     channelType: WebhookSubscriptionChannelType,
     channelId: string,
     workspaceId: string,
+    expectedConnectedAccountId?: string,
   ): Promise<string | null> {
-    const clientState = v4();
+    return this.withOrdinaryChannel(
+      channelType,
+      channelId,
+      workspaceId,
+      async (repository) => {
+        const clientState = v4();
 
-    const updateResult = await this.getRepository(channelType)
-      .createQueryBuilder()
-      .update()
-      .set({
-        webhookSubscriptionStatus: WebhookSubscriptionStatus.PENDING,
-        webhookSubscriptionClientState: clientState,
-      })
-      .where('"id" = :channelId', { channelId })
-      .andWhere('"workspaceId" = :workspaceId', { workspaceId })
-      .andWhere(
-        `("webhookSubscriptionStatus" IS NULL
+        const updateResult = await repository
+          .createQueryBuilder()
+          .update()
+          .set({
+            webhookSubscriptionStatus: WebhookSubscriptionStatus.PENDING,
+            webhookSubscriptionClientState: clientState,
+          })
+          .where('"id" = :channelId', { channelId })
+          .andWhere('"workspaceId" = :workspaceId', { workspaceId })
+          .andWhere(
+            `("webhookSubscriptionStatus" IS NULL
           OR "webhookSubscriptionStatus" IN (:...claimableStatuses)
           OR ("webhookSubscriptionStatus" = :pendingStatus AND "updatedAt" <= :staleClaimBefore))`,
-        {
-          claimableStatuses: CLAIMABLE_WEBHOOK_SUBSCRIPTION_STATUSES,
-          pendingStatus: WebhookSubscriptionStatus.PENDING,
-          staleClaimBefore: new Date(
-            Date.now() - WEBHOOK_SUBSCRIPTION_CLAIM_STALE_MS,
-          ),
-        },
-      )
-      .returning('id')
-      .execute();
+            {
+              claimableStatuses: CLAIMABLE_WEBHOOK_SUBSCRIPTION_STATUSES,
+              pendingStatus: WebhookSubscriptionStatus.PENDING,
+              staleClaimBefore: new Date(
+                Date.now() - WEBHOOK_SUBSCRIPTION_CLAIM_STALE_MS,
+              ),
+            },
+          )
+          .returning('id')
+          .execute();
 
-    return updateResult.raw.length > 0 ? clientState : null;
+        return updateResult.raw.length > 0 ? clientState : null;
+      },
+      expectedConnectedAccountId,
+    );
   }
 
   public async settleClaimedSubscription(
@@ -68,14 +78,52 @@ export class WebhookSubscriptionStatusService {
     workspaceId: string,
     clientState: string,
     result: WebhookSubscriptionResult,
+    expectedConnectedAccountId?: string,
   ): Promise<boolean> {
-    const { affected } = await this.getRepository(channelType).update(
-      {
-        id: channelId,
+    return (
+      (await this.withOrdinaryChannel(
+        channelType,
+        channelId,
         workspaceId,
-        webhookSubscriptionStatus: WebhookSubscriptionStatus.PENDING,
-        webhookSubscriptionClientState: clientState,
-      },
+        async (repository) => {
+          const { affected } = await repository.update(
+            {
+              id: channelId,
+              workspaceId,
+              webhookSubscriptionStatus: WebhookSubscriptionStatus.PENDING,
+              webhookSubscriptionClientState: clientState,
+            },
+            {
+              webhookSubscriptionExternalId: result.externalSubscriptionId,
+              webhookSubscriptionStatus: WebhookSubscriptionStatus.ACTIVE,
+              webhookSubscriptionExpiresAt: result.expiresAt,
+              ...(channelType === WebhookSubscriptionChannelType.CALENDAR
+                ? {
+                    webhookSubscriptionExternalResourceId:
+                      result.externalResourceId,
+                  }
+                : {}),
+            },
+          );
+
+          return isDefined(affected) && affected > 0;
+        },
+        expectedConnectedAccountId,
+      )) ?? false
+    );
+  }
+
+  public async markAsActive(
+    channelType: WebhookSubscriptionChannelType,
+    channelId: string,
+    workspaceId: string,
+    result: WebhookSubscriptionResult,
+    expectedConnectedAccountId?: string,
+  ) {
+    return this.update(
+      channelType,
+      channelId,
+      workspaceId,
       {
         webhookSubscriptionExternalId: result.externalSubscriptionId,
         webhookSubscriptionStatus: WebhookSubscriptionStatus.ACTIVE,
@@ -84,51 +132,59 @@ export class WebhookSubscriptionStatusService {
           ? { webhookSubscriptionExternalResourceId: result.externalResourceId }
           : {}),
       },
+      expectedConnectedAccountId,
     );
-
-    return isDefined(affected) && affected > 0;
-  }
-
-  public async markAsActive(
-    channelType: WebhookSubscriptionChannelType,
-    channelId: string,
-    result: WebhookSubscriptionResult,
-  ) {
-    await this.update(channelType, channelId, {
-      webhookSubscriptionExternalId: result.externalSubscriptionId,
-      webhookSubscriptionStatus: WebhookSubscriptionStatus.ACTIVE,
-      webhookSubscriptionExpiresAt: result.expiresAt,
-      ...(channelType === WebhookSubscriptionChannelType.CALENDAR
-        ? { webhookSubscriptionExternalResourceId: result.externalResourceId }
-        : {}),
-    });
   }
 
   public async markAsFailed(
     channelType: WebhookSubscriptionChannelType,
     channelId: string,
+    workspaceId: string,
+    expectedConnectedAccountId?: string,
   ) {
-    await this.update(channelType, channelId, {
-      webhookSubscriptionStatus: WebhookSubscriptionStatus.FAILED,
-    });
+    return this.update(
+      channelType,
+      channelId,
+      workspaceId,
+      {
+        webhookSubscriptionStatus: WebhookSubscriptionStatus.FAILED,
+      },
+      expectedConnectedAccountId,
+    );
   }
 
   public async markAsExpired(
     channelType: WebhookSubscriptionChannelType,
     channelId: string,
+    workspaceId: string,
+    expectedConnectedAccountId?: string,
   ) {
-    await this.update(channelType, channelId, {
-      webhookSubscriptionStatus: WebhookSubscriptionStatus.EXPIRED,
-    });
+    return this.update(
+      channelType,
+      channelId,
+      workspaceId,
+      {
+        webhookSubscriptionStatus: WebhookSubscriptionStatus.EXPIRED,
+      },
+      expectedConnectedAccountId,
+    );
   }
 
   public async resetPendingSubscription(
     channelType: WebhookSubscriptionChannelType,
     channelId: string,
+    workspaceId: string,
+    expectedConnectedAccountId?: string,
   ) {
-    await this.update(channelType, channelId, {
-      webhookSubscriptionExpiresAt: null,
-    });
+    return this.update(
+      channelType,
+      channelId,
+      workspaceId,
+      {
+        webhookSubscriptionExpiresAt: null,
+      },
+      expectedConnectedAccountId,
+    );
   }
 
   public async clearRemovedSubscription(
@@ -136,34 +192,81 @@ export class WebhookSubscriptionStatusService {
     channelId: string,
     workspaceId: string,
     removedSubscriptionId: string | null,
+    expectedConnectedAccountId?: string,
   ): Promise<boolean> {
-    const { affected } = await this.getRepository(channelType).update(
-      {
-        id: channelId,
+    return (
+      (await this.withOrdinaryChannel(
+        channelType,
+        channelId,
         workspaceId,
-        ...(isDefined(removedSubscriptionId)
-          ? { webhookSubscriptionExternalId: removedSubscriptionId }
-          : {}),
-      },
-      {
-        webhookSubscriptionExternalId: null,
-        webhookSubscriptionStatus: WebhookSubscriptionStatus.FAILED,
-        webhookSubscriptionExpiresAt: null,
-        ...(channelType === WebhookSubscriptionChannelType.CALENDAR
-          ? { webhookSubscriptionExternalResourceId: null }
-          : {}),
-      },
-    );
+        async (repository) => {
+          const { affected } = await repository.update(
+            {
+              id: channelId,
+              workspaceId,
+              ...(isDefined(removedSubscriptionId)
+                ? { webhookSubscriptionExternalId: removedSubscriptionId }
+                : {}),
+            },
+            {
+              webhookSubscriptionExternalId: null,
+              webhookSubscriptionStatus: WebhookSubscriptionStatus.FAILED,
+              webhookSubscriptionExpiresAt: null,
+              ...(channelType === WebhookSubscriptionChannelType.CALENDAR
+                ? { webhookSubscriptionExternalResourceId: null }
+                : {}),
+            },
+          );
 
-    return isDefined(affected) && affected > 0;
+          return isDefined(affected) && affected > 0;
+        },
+        expectedConnectedAccountId,
+      )) ?? false
+    );
   }
 
-  private update(
+  private async update(
     channelType: WebhookSubscriptionChannelType,
     channelId: string,
+    workspaceId: string,
     payload: QueryDeepPartialEntity<WebhookSubscribableChannel>,
-  ) {
-    return this.getRepository(channelType).update(channelId, payload);
+    expectedConnectedAccountId?: string,
+  ): Promise<boolean> {
+    return (
+      (await this.withOrdinaryChannel(
+        channelType,
+        channelId,
+        workspaceId,
+        async (repository) => {
+          const { affected } = await repository.update(
+            { id: channelId, workspaceId },
+            payload,
+          );
+          return isDefined(affected) && affected > 0;
+        },
+        expectedConnectedAccountId,
+      )) ?? false
+    );
+  }
+
+  private withOrdinaryChannel<T>(
+    channelType: WebhookSubscriptionChannelType,
+    channelId: string,
+    workspaceId: string,
+    work: (repository: Repository<WebhookSubscribableChannel>) => Promise<T>,
+    expectedConnectedAccountId?: string,
+  ): Promise<T | null> {
+    const repository = this.getRepository(channelType);
+    return withOrdinaryMetadataChannel(
+      repository.manager,
+      workspaceId,
+      channelId,
+      channelType === WebhookSubscriptionChannelType.CALENDAR
+        ? 'calendar'
+        : 'message',
+      (manager) => work(manager.getRepository(repository.target)),
+      expectedConnectedAccountId,
+    );
   }
 
   private getRepository(

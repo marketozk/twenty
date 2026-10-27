@@ -9,6 +9,12 @@ export class OmniMetadataAccountNotFoundError extends Error {
   }
 }
 
+export class OmniMetadataParentChangedError extends Error {
+  constructor() {
+    super('OMNI_METADATA_PARENT_CHANGED_RETRY');
+  }
+}
+
 export const withOmniMetadataMutation = <TResult>(
   manager: EntityManager,
   workspaceId: string,
@@ -53,15 +59,18 @@ export const lockOmniMetadataChannel = async (
   workspaceId: string,
   channelId: string,
   destinationAccountId?: string | null,
+  kind: 'message' | 'calendar' = 'message',
 ): Promise<void> => {
   if (
     !manager.queryRunner?.isTransactionActive ||
     !isUUID(workspaceId) ||
-    !isUUID(channelId)
+    !isUUID(channelId) ||
+    !['message', 'calendar'].includes(kind)
   )
     throw new Error('OMNI_INVALID_METADATA_LOCK_SCOPE');
+  const table = kind === 'message' ? 'messageChannel' : 'calendarChannel';
   const before: { connectedAccountId: string }[] = await manager.query(
-    'SELECT "connectedAccountId" FROM core."messageChannel" WHERE "workspaceId"=$1 AND id=$2',
+    `SELECT "connectedAccountId" FROM core."${table}" WHERE "workspaceId"=$1 AND id=$2`,
     [workspaceId, channelId],
   );
   if (before.length > 1)
@@ -71,12 +80,10 @@ export const lockOmniMetadataChannel = async (
     ...(destinationAccountId == null ? [] : [destinationAccountId]),
   ]);
   const after: { connectedAccountId: string }[] = await manager.query(
-    'SELECT "connectedAccountId" FROM core."messageChannel" WHERE "workspaceId"=$1 AND id=$2 FOR UPDATE',
+    `SELECT "connectedAccountId" FROM core."${table}" WHERE "workspaceId"=$1 AND id=$2 FOR UPDATE`,
     [workspaceId, channelId],
   );
-  if (
-    after.length > 1 ||
-    before[0]?.connectedAccountId !== after[0]?.connectedAccountId
-  )
-    throw new Error('OMNI_METADATA_PARENT_CHANGED_RETRY');
+  if (after.length > 1) throw new Error('OMNI_INVALID_METADATA_CHANNEL_RESULT');
+  if (before[0]?.connectedAccountId !== after[0]?.connectedAccountId)
+    throw new OmniMetadataParentChangedError();
 };

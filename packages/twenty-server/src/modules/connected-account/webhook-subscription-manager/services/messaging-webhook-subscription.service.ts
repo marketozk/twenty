@@ -92,6 +92,7 @@ export class MessagingWebhookSubscriptionService {
         WebhookSubscriptionChannelType.MESSAGING,
         messageChannel.id,
         workspaceId,
+        messageChannel.connectedAccountId,
       );
 
     if (!isDefined(clientState)) {
@@ -110,6 +111,8 @@ export class MessagingWebhookSubscriptionService {
       await this.webhookSubscriptionStatusService.resetPendingSubscription(
         WebhookSubscriptionChannelType.MESSAGING,
         messageChannel.id,
+        workspaceId,
+        messageChannel.connectedAccountId,
       );
 
       this.metricsService.incrementCounterBy({
@@ -136,6 +139,7 @@ export class MessagingWebhookSubscriptionService {
         workspaceId,
         clientState,
         result,
+        messageChannel.connectedAccountId,
       );
 
     if (!hasSettledClaim) {
@@ -239,22 +243,10 @@ export class MessagingWebhookSubscriptionService {
       connectedAccount.provider,
     );
 
+    let result: WebhookSubscriptionResult;
+
     try {
-      const result = await driver.renewSubscription(
-        this.toContext(messageChannel),
-      );
-
-      await this.webhookSubscriptionStatusService.markAsActive(
-        WebhookSubscriptionChannelType.MESSAGING,
-        messageChannel.id,
-        result,
-      );
-
-      this.metricsService.incrementCounterBy({
-        key: MetricsKeys.ConnectedAccountWebhookSubscriptionRenewed,
-        amount: 1,
-        attributes: this.buildMetricAttributes(connectedAccount.provider),
-      });
+      result = await driver.renewSubscription(this.toContext(messageChannel));
     } catch (error) {
       this.metricsService.incrementCounterBy({
         key: MetricsKeys.ConnectedAccountWebhookSubscriptionRenewalFailed,
@@ -274,7 +266,23 @@ export class MessagingWebhookSubscriptionService {
       if (recoveryAction === 'RECREATE') {
         await this.createSubscription(messageChannelId, workspaceId);
       }
+      return;
     }
+
+    const applied = await this.webhookSubscriptionStatusService.markAsActive(
+      WebhookSubscriptionChannelType.MESSAGING,
+      messageChannel.id,
+      workspaceId,
+      result,
+      messageChannel.connectedAccountId,
+    );
+    if (!applied) return;
+
+    this.metricsService.incrementCounterBy({
+      key: MetricsKeys.ConnectedAccountWebhookSubscriptionRenewed,
+      amount: 1,
+      attributes: this.buildMetricAttributes(connectedAccount.provider),
+    });
   }
 
   async deleteSubscription(
@@ -321,17 +329,6 @@ export class MessagingWebhookSubscriptionService {
 
     try {
       await driver.deleteSubscription(this.toContext(messageChannel));
-
-      await this.webhookSubscriptionStatusService.markAsExpired(
-        WebhookSubscriptionChannelType.MESSAGING,
-        messageChannelId,
-      );
-
-      this.metricsService.incrementCounterBy({
-        key: MetricsKeys.ConnectedAccountWebhookSubscriptionDeleted,
-        amount: 1,
-        attributes: this.buildMetricAttributes(connectedAccount.provider),
-      });
     } catch (error) {
       if (
         error instanceof WebhookSubscriptionDriverException &&
@@ -348,6 +345,20 @@ export class MessagingWebhookSubscriptionService {
 
       throw error;
     }
+
+    const applied = await this.webhookSubscriptionStatusService.markAsExpired(
+      WebhookSubscriptionChannelType.MESSAGING,
+      messageChannelId,
+      workspaceId,
+      messageChannel.connectedAccountId,
+    );
+    if (!applied) return;
+
+    this.metricsService.incrementCounterBy({
+      key: MetricsKeys.ConnectedAccountWebhookSubscriptionDeleted,
+      amount: 1,
+      attributes: this.buildMetricAttributes(connectedAccount.provider),
+    });
   }
 
   async revokeSubscription({
