@@ -825,3 +825,8 @@ APP guard, не закрытие binding TOCTOU, background/cleanup или T05. 
 boundedtestresources переиспользуются. Actions не используется. Skills:
 ai-dev-workflow, behavioral-guardrails, server-schrodinger — разделённое исследование/
 реализация/ревью и изолированные проверки. Продолжаем rematch/targets и domainapply.
+
+Публикация LOG-031: `7f102dfdf622f4533e666c7c92c5e98feb998958`, remote SHA
+проверен API. Описание ROB-764 и комментарий `9d2e3dec-f7ab-46bc-aff7-551646ae9a56`
+прочитаны обратно, 11 статусов прежние. [Метаданные](implementation/log031/publication.json).
+Продолжаем LOG-032.

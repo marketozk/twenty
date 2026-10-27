@@ -43,3 +43,7 @@ target reconciliation, cleaner/delete/merge и generic mutations ещё треб
 и автоматического расширения targets, сохраняя обычные email/APP batches.
 Далее domain apply и inbox/outbox. Демо/живые каналы не менялись; ограниченные
 изолированные тестовые ресурсы переиспользуются. GitHub Actions не используется.
+
+Код опубликован: `7f102dfdf622f4533e666c7c92c5e98feb998958`. Remote SHA проверен
+API, описание/единственный комментарий ROB-764 прочитаны обратно; 11 статусов
+сохранены. [Метаданные](publication.json).

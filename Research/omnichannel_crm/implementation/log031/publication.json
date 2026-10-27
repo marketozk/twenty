@@ -1,0 +1,56 @@
+{
+  "codeCommit": "7f102dfdf622f4533e666c7c92c5e98feb998958",
+  "remoteHeadVerifiedByGithubApi": true,
+  "linearIssue": "ROB-764",
+  "linearStatus": "In Progress",
+  "commentId": "9d2e3dec-f7ab-46bc-aff7-551646ae9a56",
+  "descriptionReadbackMatches": true,
+  "commentReadbackMatches": true,
+  "projectTaskStatesUnchanged": [
+    {
+      "id": "ROB-764",
+      "status": "In Progress"
+    },
+    {
+      "id": "ROB-772",
+      "status": "Done"
+    },
+    {
+      "id": "ROB-762",
+      "status": "Done"
+    },
+    {
+      "id": "ROB-763",
+      "status": "Done"
+    },
+    {
+      "id": "ROB-765",
+      "status": "Backlog"
+    },
+    {
+      "id": "ROB-766",
+      "status": "Backlog"
+    },
+    {
+      "id": "ROB-767",
+      "status": "Backlog"
+    },
+    {
+      "id": "ROB-768",
+      "status": "Backlog"
+    },
+    {
+      "id": "ROB-769",
+      "status": "Backlog"
+    },
+    {
+      "id": "ROB-770",
+      "status": "Backlog"
+    },
+    {
+      "id": "ROB-771",
+      "status": "Backlog"
+    }
+  ],
+  "githubActionsUsed": false
+}
