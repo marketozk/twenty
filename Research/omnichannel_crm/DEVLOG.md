@@ -850,3 +850,6 @@ Dependency guard обнаружил broad-import EE edges; исправлены 
 Демо прежнее; Actions не используется. Skills: ai-dev-workflow (разделение
 исследования, реализации, ревью), behavioral-guardrails (bounded scope и факты),
 server-schrodinger (изолированные лимитированные проверки). Далее receipt apply.
+
+
+Публикация LOG-032: `e80d9dece4b42e34f462e444cb91898a2350c24d`; remote SHA проверен API. Описание ROB-764 и комментарий `fa995c17-80a1-4e93-b037-358dd51ef8cc` прочитаны обратно, все11 статусов прежние. [Метаданные](implementation/log032/publication.json). Продолжаем LOG-033.

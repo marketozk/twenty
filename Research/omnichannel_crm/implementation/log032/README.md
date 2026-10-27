@@ -46,3 +46,6 @@ round не запускался. Все5 migration sources/checksums неизм�
 generic CRUD/merge требуют следующих изменений. Полный T05 и ROB-764 остаются
 открытыми. Демо и живые маршруты не менялись, тестовые ресурсы bounded/reused,
 GitHub Actions не используется. Следом — атомарный domain receipt apply.
+
+
+Публикация LOG-032: `e80d9dece4b42e34f462e444cb91898a2350c24d`; remote SHA проверен API. Описание ROB-764 и комментарий `fa995c17-80a1-4e93-b037-358dd51ef8cc` прочитаны обратно, все11 статусов прежние. [Метаданные](publication.json). Продолжаем LOG-033.
