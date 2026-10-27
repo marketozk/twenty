@@ -157,6 +157,7 @@ const CATALOG: Record<
       'state',
       'statusRevision',
       'nextAttemptAt',
+      'leaseUntil',
     ],
     redacted: [
       'actorId',
@@ -167,6 +168,7 @@ const CATALOG: Record<
       'resolvedReplyNativeRef',
       'connectorAcceptedEvidence',
       'cancelEvidence',
+      'leaseToken',
     ],
   },
   omniConversation: {

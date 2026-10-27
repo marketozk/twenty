@@ -46,6 +46,24 @@ cancelOwnCommand допускается при текущем доступе к 
 
 Recovery dispatching сначала status(commandId). Повтор разрешён только для идемпотентного connector enqueue того же ID при доказанном durable dedup. Единственный владелец provider retry — adapter/journal. Network call вне DB lock Twenty. Lease сам по себе не защищает provider от двойного вызова: fencing реализуется также в connector journal.
 
+Внутренняя выдача lease изменяет только Command.state/statusRevision/lease и audit;
+она не создаёт произвольный status DomainEvent и не увеличивает replyRevision или
+conversationSequence. UI/SSE статусы требуют отдельного подтверждённого контракта.
+Первый claim пока допускает только virgin pending (statusRevision=1, без прежнего
+lease, cancellation и transport evidence). Новая отправка требует current worker
+и captured human author permissions, active route/generation и transport qualification.
+Claim recovery для dispatching/accepted/outcome_unknown даёт только reconcile_only:
+текущее разрешение worker на сверку и квалификация исторического маршрута позволяют
+выяснять исход также после revoke автора, close, disable или смены generation.
+Это не разрешает новые sends под старым generation или чужими правами.
+
+Lease metadata содержит capturedRestoreIncarnation, но существующая таблица не
+сохраняет durable association purpose/incarnation с lease. Возвращённые metadata
+не являются provider-send capability; lost proof нельзя восстановить подстановкой
+текущей incarnation/purpose. Внешний restore fence и повторная квалификация перед
+provider boundary обязательны. До появления закрытого verified connector evidence
+FIFO fail-closed: состояние accepted или произвольный JSON не доказывают приём.
+
 Редакционные контракты: canonical wire enum для неопределённой отправки в CRM, connector и userbot — outcome_unknown; прежнее unknown в prose/state sketches означает этот же terminal uncertainty, отдельного состояния нет. JSON Schema генерация ROB-764 устраняет оба написания из wire. Канонический trusted origin импорта — history_import; import является только описанием операции, не вторым enum. Внешний envelope не задаёт origin. History import никогда автоматически не создаёт Person и не вызывает business listeners: сохраняет external identity и разрешённые explicit links. Создание Person/обогащение после импорта — отдельная явно инициированная операция с обычными правами/audit и видимыми событиями; live auto-createPerson настройка не переносится на import. T16 проверяет отсутствие Person-created effects во время импорта.
 
 <a id="reply"></a>

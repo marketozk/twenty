@@ -1,0 +1,25 @@
+{
+  "affectedJestTests": 194,
+  "affectedJestSuites": 10,
+  "guardTests": 20,
+  "checksumTests": 6,
+  "totalDistinctTests": 220,
+  "typecheckRootFiles": 170,
+  "baselineTypeDiagnostics": 146,
+  "currentTypeDiagnostics": 146,
+  "newTypeDiagnostics": 0,
+  "changedCodeTypeDiagnostics": 0,
+  "fullServerTypecheck": false,
+  "allSixMigrationSourcesUnchanged": true,
+  "allPreviousAggregateMethodsUnchanged": true,
+  "fullForkSuiteRerun": false,
+  "previousFullForkSuite": {
+    "log": "LOG041",
+    "tests": 1025,
+    "commit": "8e764d01037d3f9ea32082d35dd685872441717a"
+  },
+  "independentScopedReview": "PASS first-attempt and historical reconciliation separation, FIFO evidence, callback snapshots, final lease CAS and strict owner",
+  "fullROB764Acceptance": false,
+  "liveDemoChanged": false,
+  "githubActionsUsed": false
+}

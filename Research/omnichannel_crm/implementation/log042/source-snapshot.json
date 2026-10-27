@@ -1,0 +1,18 @@
+{
+  "baseCommit": "1e914d8f727948428dc4bbfafb6e7e46df1cef23",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "allPreviousAggregateMethodsUnchanged": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "91cabb27c0f9f7680674efb45e7bbd6ac7a21f701073c168de0d3d76b5fe1fd1",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts": "a3e40be69300958e1364264c0eca10d0b60e0c64ada13271ecdc0d61312e1d89",
+    "packages/twenty-server/src/modules/omnichannel/contracts/omni-human-command-lease.ts": "3be941210d20ca81911b105d204af5621813d28051bfcbc7a351db84f062dd62",
+    "packages/twenty-server/src/modules/omnichannel/services/append-omni-human-command-lease-failure.ts": "bd4f640174d92109d2ca830b341d9e4785e3839eb8bfba2b4d83f39c40e80256",
+    "packages/twenty-server/src/modules/omnichannel/services/claim-omni-human-command.ts": "c7adeb3488038c9a977f0c01a2564ce72ab5485cc513a327f7abb924a7e334ae",
+    "packages/twenty-server/test/fork-migration/crm-audit-human-command-lease.spec.ts": "ce5e8ab8e8b7da3e66b887e9c8988eba5fb44fbb015c245e1447aeff9e9be12e",
+    "packages/twenty-server/test/fork-migration/omni-human-command-lease-contract.spec.ts": "192de417cf13e0043fad478b6398581a6a44a57aa4c6b6ccc1d2999741767608",
+    "packages/twenty-server/test/fork-migration/omni-human-command-lease-facade.spec.ts": "ce1a5ad6e481e0cabada840b8c639f16a067677f2b0fc321229f173a084f66b1",
+    "packages/twenty-server/test/fork-migration/omni-human-command-lease.postgres-spec.ts": "a2e3e54cfdd84fe97092c097803cc08abcffb5bfff5be8993a86f6dac8a87d50",
+    "packages/twenty-server/test/fork-migration/omni-human-command.fixture.ts": "fb991bc86376f5dcf7897c00a68a01fb500a74f71af69a98645c8f7223d0b9b9"
+  }
+}

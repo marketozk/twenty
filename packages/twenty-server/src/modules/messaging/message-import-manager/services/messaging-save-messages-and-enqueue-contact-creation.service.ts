@@ -51,6 +51,18 @@ import { isOmniHistoryMissingConfigurationError } from 'src/modules/omnichannel/
 import { appendOmniHistoryResumeFailure } from 'src/modules/omnichannel/services/append-omni-history-resume-failure';
 import { appendOmniBindingConfigWakeupFailure } from 'src/modules/omnichannel/services/append-omni-binding-config-wakeup-failure';
 import { appendOmniHumanTextCommandFailure } from 'src/modules/omnichannel/services/append-omni-human-text-command-failure';
+import { appendOmniHumanCommandLeaseFailure } from 'src/modules/omnichannel/services/append-omni-human-command-lease-failure';
+import {
+  claimOmniHumanCommandLease,
+  isOmniHumanCommandLeaseAuthorizationError,
+  snapshotOmniHumanCommandLeaseRequest,
+  type OmniHumanCommandLeaseCallbacks,
+} from 'src/modules/omnichannel/services/claim-omni-human-command';
+import {
+  type OmniHumanCommandLeaseInput,
+  type OmniHumanCommandLeasePrincipal,
+  type OmniHumanCommandLeaseResult,
+} from 'src/modules/omnichannel/contracts/omni-human-command-lease';
 import {
   admitOmniHumanTextCommand,
   isOmniHumanTextCommandAuthorizationError,
@@ -108,6 +120,77 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     @InjectDataSource()
     private readonly dataSource: DataSource,
   ) {}
+
+  async claimOmniHumanCommandLease(
+    principal: OmniHumanCommandLeasePrincipal,
+    input: OmniHumanCommandLeaseInput,
+    callbacks: OmniHumanCommandLeaseCallbacks,
+  ): Promise<OmniHumanCommandLeaseResult> {
+    const request = snapshotOmniHumanCommandLeaseRequest(
+      principal,
+      input,
+      callbacks,
+    );
+    const attemptOperationId = randomUUID();
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        let callbackEntered = false;
+        let authorizationDenied = false;
+        try {
+          return await this.workspaceOrmManager.runInWorkspaceTransaction(
+            async (scope) => {
+              callbackEntered = true;
+              return claimOmniHumanCommandLease(
+                scope,
+                request.principal,
+                request.input,
+                {
+                  ...request.callbacks,
+                  authorize: async (...args) => {
+                    try {
+                      return await request.callbacks.authorize(...args);
+                    } catch (error) {
+                      authorizationDenied = true;
+                      throw error;
+                    }
+                  },
+                },
+              );
+            },
+            { commitOutcome: 'strict' },
+          );
+        } catch (error) {
+          if (
+            callbackEntered &&
+            !(error instanceof NativeTransactionOutcomeUnknownError)
+          ) {
+            try {
+              await this.workspaceOrmManager.runInWorkspaceTransaction(
+                (scope) =>
+                  appendOmniHumanCommandLeaseFailure(
+                    scope,
+                    request.principal,
+                    request.input,
+                    attemptOperationId,
+                    authorizationDenied ||
+                      isOmniHumanCommandLeaseAuthorizationError(error),
+                  ),
+                { commitOutcome: 'strict' },
+              );
+            } catch (auditError) {
+              throw new AggregateError(
+                [error, auditError],
+                'OMNI_HUMAN_COMMAND_LEASE_FAILURE_AUDIT_UNCONFIRMED',
+              );
+            }
+          }
+          throw error;
+        }
+      },
+      buildSystemAuthContext(request.principal.workspaceId),
+      { lite: true },
+    );
+  }
 
   async admitOmniHumanTextCommand(
     principal: OmniHumanTextCommandPrincipal,

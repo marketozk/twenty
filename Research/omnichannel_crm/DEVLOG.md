@@ -1087,3 +1087,22 @@ RETURNING заменён CTE SELECT согласно настоящему QueryR
 Claude cross-review и полный server build/typecheck не заявляются. Продолжаем LOG-042.
 
 Публикация LOG-041: код 8e764d01037d3f9ea32082d35dd685872441717a, remote проверен GitHub API. Описание ROB-764 и комментарий 838d3898-d413-4b7f-b15c-d0d7145e9313 прочитаны обратно; все 11 статусов сохранены. Продолжаем LOG-042.
+
+## LOG-042 — 27.10.2026: human outbox lease
+
+LOG-042 / ROB-764 In Progress: human outbox claim/FIFO/recovery реализован.
+First attempt проверяет автора и текущий маршрут; исторический reconcile использует
+отдельные worker grants и не разрешает повторную отправку. UUID lease, DB expiry,
+statusRevision и audit атомарны; final CAS после аудита, unknown ACK без false failure.
+194 Jest /10 затронутых suites +26 guards =220 PASS, включая32 новых PG cases.
+Typecheck170roots:146 baseline/current,0 новых/0 changed-code; все6 миграций и старые
+методы aggregate неизменны. Полный1025 suite прошёл в LOG041.
+[Доказательства и границы](implementation/log042/README.md). FIFO пока bounded100 с явным отказом сверх лимита;
+qualification/verifier injected, без production implementation. Далее — verified
+connector acceptance reducer. HTTP/UI, transport, scheduler/own ACL и полный
+ROB-764 ещё не готовы. Демо прежнее, GitHub Actions не используется.
+
+Root review сохранил journalSequence=0 согласно существующей схеме; verified
+accepted fixture это подтверждает. Аудит задержан реальным PG trigger до expiry,
+token tampering/COMMIT ACK loss проверены. Scoped review без блокеров; применены
+ai-dev-workflow, behavioral-guardrails, server-schrodinger. Продолжаем LOG-043.

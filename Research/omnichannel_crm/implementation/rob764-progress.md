@@ -363,3 +363,17 @@ Typecheck162roots:146 baseline/current,0 новых/0 changed-code. Все6 ми
 Далее — outbox claim/FIFO и восстановление попыток. Writer пока text-only/v0,
 с injected current grants; HTTP/UI, transport, scheduler и own ACL ещё впереди.
 Полные ROB-764/T05 не закрыты. Демо прежнее, GitHub Actions не используется.
+
+## LOG-042 — human outbox lease
+
+LOG-042 / ROB-764 In Progress: human outbox claim/FIFO/recovery реализован.
+First attempt проверяет автора и текущий маршрут; исторический reconcile использует
+отдельные worker grants и не разрешает повторную отправку. UUID lease, DB expiry,
+statusRevision и audit атомарны; final CAS после аудита, unknown ACK без false failure.
+194 Jest /10 затронутых suites +26 guards =220 PASS, включая32 новых PG cases.
+Typecheck170roots:146 baseline/current,0 новых/0 changed-code; все6 миграций и старые
+методы aggregate неизменны. Полный1025 suite прошёл в LOG041.
+[Доказательства и границы](log042/README.md). FIFO пока bounded100 с явным отказом сверх лимита;
+qualification/verifier injected, без production implementation. Далее — verified
+connector acceptance reducer. HTTP/UI, transport, scheduler/own ACL и полный
+ROB-764 ещё не готовы. Демо прежнее, GitHub Actions не используется.
