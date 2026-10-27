@@ -1421,3 +1421,5 @@ unknown типизирован, rollback failure агрегирует причи
 Новый PG case подтверждает освобождение account lock запросом второго connection;
 lost ACK не вызывает success event. Extraction отдельно просмотрена, blockers не найдены.
 Финальный affected run244/9 +26 guards=270 PASS; typecheck219 roots162/162,0new/changed.
+
+Публикация LOG-052: код 85054d1d33c477dc7793a482bb1e5af5f69ead57, remote проверен GitHub API. Описание ROB-764 и комментарий 37f43863-e63a-4eac-a091-add606506683 прочитаны обратно; все11 статусов сохранены. Продолжаем network lifecycle/reconnect guards.
