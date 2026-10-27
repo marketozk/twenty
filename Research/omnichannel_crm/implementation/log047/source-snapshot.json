@@ -1,0 +1,22 @@
+{
+  "baseCommit": "2c87bf83c5a402b98648c125650bf67b39bc8d44",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "allPreviousAggregateMethodsUnchanged": true,
+  "lfSha256": {
+    "packages/twenty-server/src/database/commands/fork-upgrade/fork-migrations.ts": "fe7b2c807070e34d48938055b5167d1886acac2aee90fd3b892466d176e94c89",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "f39ce4ea31d4602a927f040539f9903c3b003c8dcacd30895a2d22ac443fcbf3",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-outgoing-command.entity.ts": "37dd167adffa33063abf93e2a556b0cbf31438b6a7d7f180982f0905a1a51962",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/fork-schema-checks.ts": "851fe9b8686b8b204a195cf51ab4f55807d7e93eed87d4e98f34dde9602affde",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/fork-schema-manifest.json": "88afa889235867b767438371b7f486ae32520705c979822357f611b4d04eede8",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/message-persistence.check.ts": "fde99823eb8587c01301b11ee032b53af5fe84bea9fc5c3f7c10e6362884c5ff",
+    "packages/twenty-server/src/modules/omnichannel/contracts/omni-human-command-lease.ts": "999f9350c43fe22addcc0d4f916cf7422b2134eba448998835864e950dfd9642",
+    "packages/twenty-server/src/modules/omnichannel/services/admit-omni-human-text-command.ts": "2ea372d5fbe3d7c3ecd2edd2dbb4b8e21c402a54e7642e30b118908b51ea4ceb",
+    "packages/twenty-server/src/modules/omnichannel/services/claim-omni-human-command.ts": "8395169a77d6fc4df24065ee66dd3e7b804f78f4843700db1b699c60b055f1e1",
+    "packages/twenty-server/test/fork-migration/binding-config-wakeup-schema.postgres-spec.ts": "dcb5851473d605c66a0921c4bff9717d2cdcab94da0e78af203b3d04f55a77bb",
+    "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-command-restore-context.migration.ts": "16d9e337583612b09b0eae0d383dab8cb0e177f47e285bb39504469af4c4aaf4",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/command-restore-context.check.ts": "a2f223c24a9f6ad89725617957a40b62c0319c0ff80fd9bb472a1ee63bffe79a",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/command-restore-context.schema.json": "f02938cb40061bec9461607b008e562a658459bd91d03afe3a3fbac089fd5186",
+    "packages/twenty-server/test/fork-migration/omni-command-restore-context.postgres-spec.ts": "8921e147e926b73f903ddc11253118835ca3432be240617c29df5ab10a2d99eb"
+  }
+}

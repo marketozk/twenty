@@ -1,0 +1,506 @@
+[
+  {
+    "name": "core.omniOutgoingCommand",
+    "columns": [
+      {
+        "name": "actorId",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "actorKind",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "cancelEvidence",
+        "type": "jsonb",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "cancelReason",
+        "type": "text",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "cancelRequestedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "capturedTurnFence",
+        "type": "bigint",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "connectorAcceptedEvidence",
+        "type": "jsonb",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "connectorJobId",
+        "type": "text",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "contentProvenance",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "conversationId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "createdRestoreIncarnation",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "expectedAutomationEpoch",
+        "type": "bigint",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "generation",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "idempotencyKey",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "initiatingActorId",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "journalSequence",
+        "type": "bigint",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "leaseToken",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "leaseUntil",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "nextAttemptAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "outboundSequence",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "payload",
+        "type": "jsonb",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "payloadHash",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "policyId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "policyVersion",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "producerTurnId",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "referenceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "replacesCommandId",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "replyToMessageLinkId",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "resolvedReplyNativeRef",
+        "type": "jsonb",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "senderClass",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "state",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'pending'"
+      },
+      {
+        "name": "statusRevision",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'1'"
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workflowCancellationRefs",
+        "type": "jsonb",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'[]'"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniOutgoingCommand_actor_key",
+        "columns": [
+          "actorId",
+          "actorKind",
+          "idempotencyKey",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniOutgoingCommand_conversation_id",
+        "columns": [
+          "conversationId",
+          "id",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniOutgoingCommand_sequence",
+        "columns": [
+          "conversationId",
+          "outboundSequence",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniOutgoingCommand_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniOutgoingCommand_ai_producer",
+        "expression": "((\"senderClass\" <> 'ai_turn'::text) OR (\"producerTurnId\" IS NOT NULL))"
+      },
+      {
+        "name": "CHK_omniOutgoingCommand_counters",
+        "expression": "((generation > 0) AND (\"policyVersion\" >= 0) AND (\"outboundSequence\" > 0) AND (\"statusRevision\" > 0) AND ((\"expectedAutomationEpoch\" IS NULL) OR (\"expectedAutomationEpoch\" > 0)) AND ((\"journalSequence\" IS NULL) OR (\"journalSequence\" >= 0)))"
+      },
+      {
+        "name": "CHK_omniOutgoingCommand_identity",
+        "expression": "((length(\"actorKind\") > 0) AND (length(\"actorId\") > 0) AND (length(\"initiatingActorId\") > 0) AND (length(\"idempotencyKey\") > 0) AND (length(\"senderClass\") > 0) AND (length(\"contentProvenance\") > 0))"
+      },
+      {
+        "name": "CHK_omniOutgoingCommand_lease",
+        "expression": "(((\"leaseToken\" IS NULL) AND (\"leaseUntil\" IS NULL)) OR ((\"leaseToken\" IS NOT NULL) AND (\"leaseUntil\" IS NOT NULL)))"
+      },
+      {
+        "name": "CHK_omniOutgoingCommand_nonHuman_context",
+        "expression": "((\"senderClass\" = 'human'::text) OR ((\"referenceId\" IS NOT NULL) AND (\"expectedAutomationEpoch\" IS NOT NULL)))"
+      },
+      {
+        "name": "CHK_omniOutgoingCommand_payload",
+        "expression": "((jsonb_typeof(payload) = 'object'::text) AND (jsonb_typeof(\"workflowCancellationRefs\") = 'array'::text))"
+      },
+      {
+        "name": "CHK_omniOutgoingCommand_payloadHash",
+        "expression": "(\"payloadHash\" ~ '^[a-f0-9]{64}$'::text)"
+      },
+      {
+        "name": "CHK_omniOutgoingCommand_producer_fence",
+        "expression": "(((\"producerTurnId\" IS NULL) AND (\"capturedTurnFence\" IS NULL)) OR ((\"producerTurnId\" IS NOT NULL) AND (\"capturedTurnFence\" IS NOT NULL) AND (\"capturedTurnFence\" > 0)))"
+      },
+      {
+        "name": "CHK_omniOutgoingCommand_replacement",
+        "expression": "((\"replacesCommandId\" IS NULL) OR ((\"replacesCommandId\" <> id) AND (\"senderClass\" = 'human'::text)))"
+      },
+      {
+        "name": "CHK_omniOutgoingCommand_reply_snapshot",
+        "expression": "(((\"replyToMessageLinkId\" IS NULL) AND (\"resolvedReplyNativeRef\" IS NULL)) OR ((\"replyToMessageLinkId\" IS NOT NULL) AND (\"resolvedReplyNativeRef\" IS NOT NULL) AND (jsonb_typeof(\"resolvedReplyNativeRef\") = 'object'::text)))"
+      },
+      {
+        "name": "CHK_omniOutgoingCommand_state",
+        "expression": "(state = ANY (ARRAY['pending'::text, 'dispatching'::text, 'accepted'::text, 'outcome_unknown'::text, 'sent'::text, 'failed'::text, 'cancelled'::text]))"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_4c51809b3735871f01378f8397c",
+        "columns": [
+          "workspaceId",
+          "conversationId",
+          "replacesCommandId"
+        ],
+        "target": "core.omniOutgoingCommand",
+        "targetColumns": [
+          "workspaceId",
+          "conversationId",
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_51c34c7bfddc94a4784e3278f3e",
+        "columns": [
+          "workspaceId",
+          "conversationId"
+        ],
+        "target": "core.omniConversation",
+        "targetColumns": [
+          "workspaceId",
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_90b21275f597eac5c8288f9b48e",
+        "columns": [
+          "workspaceId",
+          "policyId",
+          "policyVersion"
+        ],
+        "target": "core.omniAutomationPolicyVersion",
+        "targetColumns": [
+          "workspaceId",
+          "policyId",
+          "version"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_9ef7c69562033d824e51fdc9b58",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_e2fccd197f2a86a7f73fbd46857",
+        "columns": [
+          "workspaceId",
+          "conversationId",
+          "replyToMessageLinkId"
+        ],
+        "target": "core.omniMessageLink",
+        "targetColumns": [
+          "workspaceId",
+          "conversationId",
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": [
+      {
+        "name": "IDX_omniOutgoingCommand_policy_cleanup",
+        "definition": "CREATE INDEX \"IDX_omniOutgoingCommand_policy_cleanup\" ON core.\"omniOutgoingCommand\" USING btree (\"workspaceId\", \"policyId\", \"policyVersion\", state, id) WHERE (\"senderClass\" <> 'human'::text)"
+      },
+      {
+        "name": "IDX_omniOutgoingCommand_recovery",
+        "definition": "CREATE INDEX \"IDX_omniOutgoingCommand_recovery\" ON core.\"omniOutgoingCommand\" USING btree (\"workspaceId\", state, \"nextAttemptAt\", \"leaseUntil\")"
+      }
+    ]
+  }
+]

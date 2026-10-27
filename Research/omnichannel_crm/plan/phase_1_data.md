@@ -6,21 +6,19 @@
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
-Зависимость: этап0. LOG-046 / ROB-764 In Progress: recovery human text/v0 сохраняет outcome_unknown,
-DB backoff, revision и audit атомарно. Только текущие worker grants/qualification,
-точный действующий lease и captured restore incarnation допускают изменение.
-Acceptance/job/journal/cancellation/payload сохраняются; sent не понижается.
-Terminal/pending/superseded/expired/restore-changed дают no-op после current auth.
-Discovery читает due candidates из PostgreSQL с точным курсором, не выдаёт send
-permission; каждый завершённый scan начинается заново.
-392 Jest /14 затронутых suites +26 guards =418 PASS;
-67 новых случаев, включая33 PG. Typecheck197roots:
-146 baseline/current,0 новых/0 changed-code. Все6 миграций и прежние методы
-aggregate неизменны; полный1368 fork suite прошёл в LOG045.
-[Доказательства и границы](../implementation/log046/README.md). Проверены ACK/sent races, lost COMMIT ACK,
-audit/backoff/lease expiry, AFTER UPDATE tamper, другое существующее подключение.
-Далее — оставшиеся критерии outbox/state machine по этапу1; текущий slice не
-закрывает ROB-764 целиком. HTTP/UI, live transport, scheduler/own ACL ещё впереди.
+Зависимость: этап0. LOG-047 / ROB-764 In Progress: Command хранит immutable createdRestoreIncarnation.
+Admission берёт её из policy под lock; первый claim требует совпадения с текущей.
+NULL/старая incarnation запрещают новую отправку, replay не переписывает provenance.
+Историческая сверка dispatching/accepted/outcome_unknown сохраняется, включая NULL.
+Седьмая миграция additive, без default/backfill; первые6 источников неизменны.
+Полный fork suite: 1460 Jest /61 suites +26 guards =
+1486 PASS. Typecheck 200 roots:
+146 baseline/current,0 новых/0 changed-code.
+[Доказательства и границы](../implementation/log047/README.md). PostgreSQL проверяет upgrade populated prefix6,
+schema drift, auth/replay, policy locks и audit/AFTER UPDATE tamper.
+Независимое scoped review без блокеров; полный Claude pass не повторялся.
+Далее — локальная отмена ещё не переданной команды и общий native mutation guard.
+ROB-764 не закрыт; restore coordinator/provider fence, HTTP/UI/ACL/transport ещё впереди.
 Демо прежнее, GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы fork migrations,
@@ -40,13 +38,16 @@ T33 — для текущей схемы, не будущих миграций.
 
 ## Порции реализации
 
+[Матрица приёмки ROB-764](../implementation/rob764-acceptance.md) отделяет
+проверенную основу от оставшихся writers/guards и функций следующих этапов.
+
 1. Entities/indexes: AccountBinding, ExternalIdentity, Conversation, Member, MessageLink, Receipt, Command, DomainEvent, ConsumerReceipt, OmniRootExecution, EventDispatchPlan, OmniReplyBudget; отдельная audit entity. Ограничения уникальности из design, миграции apply/rollback на пустой и заполненной тестовой БД.
 2. Сохранение ingress: узкие credentials, schema validation, durable receipt/ACK, проверка generation; eventId+payload конфликт вместо overwrite. Из raw события нельзя назначить actor/право/import-origin.
 3. Общая транзакционная часть messaging persistence: Message+participants+link+revision+DomainEvent+audit атомарно. Email pipeline использует прежнее поведение; добавить email-regression. DB constraints и блокировка не зависят только от cache lock TTL.
    Выделить из aggregate scope-accepting метод; вызвать существующий saveMessagesWithinTransaction и scope-aware participant/folder/domain projection с withOmniRepositoryOptions(scope) и namespaced header mapping по implementation-spec §15.10. Только transactionScope.getRepository/executeRawQuery: обычный getRepository использует другой pool. Postcommit надёжные jobs — через DB outbox.
 4. Outbox: state machine, lease/recovery, immutable commandId, optimistic revision. Worker checkpoint и enqueue recovery из PostgreSQL. Пустой Redis не означает потерю бизнес-команд.
-5. Event consumer: стабильный execution ID, pending/running/completed, восстановление после claim; импортный origin переносится, публикация только после commit.
-6. RouteActivation и AutomationAdmission: отдельная дедупликация бизнес-эффекта относительно доверенной границы активации. Сохранение текста import не занимает навсегда право на обработку нового live-события; admission/event/outbox атомарны. Полный контракт — design/02-behavior.md.
+5. Event consumer: на этапе 1 — durable схема/контракт execution ID, состояния и origin; v0 roots/dispatch подавлены. Реальные consumers с восстановлением после claim и публикацией только после commit вводятся вместе с ROB-769, T14. Наличие schema не включает обработчики.
+6. RouteActivation и AutomationAdmission: на этапе 1 — схема отдельной дедупликации бизнес-эффекта относительно доверенной границы активации. Runtime writers и atomic admission/event/outbox вводятся вместе с ROB-769; import/live overlap проверяется в ROB-770/769, T16. Сохранение текста import не занимает навсегда право на обработку нового live-события. Полный контракт — design/02-behavior.md.
 
 **Verify:** параллельные повторы/конфликт payload; fault injection перед каждым commit; DB unique keys; задержка дольше TTL; потеря Redis; late receipts; один audit success на одну committed mutation. Все на PostgreSQL, а не только mock. Минимальный audit transaction context/flush до COMMIT по spec §15.27 входит уже в ROB-764 для собственных omni-мутаций: два UPDATE одной строки одним action в одной операции агрегируются first-before/last-after; T06 проверяет один success, верный diff и полный rollback при flush failure. ROB-765 расширяет этот же writer на native ORM/merge/bulk, не вводит второй протокол.
 

@@ -69,9 +69,12 @@ const wakeup = (fields: Record<string, unknown> = {}) =>
     ...fields,
   });
 const apply = () =>
-  new ForkMigrationRunner(dataSource, FORK_MIGRATIONS).apply();
+  new ForkMigrationRunner(dataSource, FORK_MIGRATIONS.slice(0, 6)).apply();
 const ready = () =>
-  new ForkSchemaVerifier(dataSource, FORK_SCHEMA_CHECKS).verifyReady();
+  new ForkSchemaVerifier(
+    dataSource,
+    FORK_SCHEMA_CHECKS.slice(0, 6),
+  ).verifyReady();
 const readPrior = () =>
   Promise.all(
     ['omniAccountBinding', 'omniDomainEvent', 'omniIncomingReceipt'].map(
@@ -123,7 +126,9 @@ describe('binding config wakeup sixth schema migration', () => {
       FORK_SCHEMA_CHECKS.slice(0, 5),
     ).verifyReady();
     await expect(ready()).rejects.toThrow('Pending fork migrations');
-    expect(FORK_MIGRATIONS).toHaveLength(6);
+    expect(FORK_MIGRATIONS[5].migrationId).toBe(
+      'omni-1793116941052-binding-config-wakeup',
+    );
     expect(await apply()).toEqual([FORK_MIGRATIONS[5].migrationId]);
     expect(
       await dataSource.query('SELECT * FROM core."omniBindingConfigWakeup"'),

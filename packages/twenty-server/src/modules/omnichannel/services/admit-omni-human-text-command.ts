@@ -128,6 +128,7 @@ const storedCommandSchema = z.object({
   policyId: uuid,
   policyVersion: z.literal('0'),
   generation: positive,
+  createdRestoreIncarnation: uuid.nullable(),
   workflowCancellationRefs: z.array(z.unknown()).length(0),
   senderClass: z.literal('human'),
   contentProvenance: z.literal('human_direct'),
@@ -178,10 +179,10 @@ export const admitOmniHumanTextCommand = async (
   };
   // Same validated UUID/base36 mapping as Twenty; its utility barrel reaches Enterprise code.
   const schema = `workspace_${BigInt(`0x${workspaceId.replaceAll('-', '')}`).toString(36)}`;
-  one(
-    z.object({ id: uuid }),
+  const workspacePolicy = one(
+    z.object({ id: uuid, restoreIncarnation: uuid }),
     await query(
-      'SELECT id FROM core."omniWorkspacePolicyState" WHERE "workspaceId"=$1 FOR SHARE',
+      'SELECT id,"restoreIncarnation" FROM core."omniWorkspacePolicyState" WHERE "workspaceId"=$1 FOR SHARE',
       [workspaceId],
     ),
   );
@@ -455,8 +456,8 @@ export const admitOmniHumanTextCommand = async (
     ),
   );
   const inserted = await query(
-    `INSERT INTO core."omniOutgoingCommand" (id,"workspaceId","conversationId","actorKind","actorId","initiatingActorId","idempotencyKey","payloadHash",payload,"policyId","policyVersion",generation,"senderClass","contentProvenance","outboundSequence")
-    VALUES ($1,$2,$3,'workspaceMember',$4,$4,$5,$6,$7::jsonb,$8,0,$9,'human','human_direct',$10)
+    `INSERT INTO core."omniOutgoingCommand" (id,"workspaceId","conversationId","actorKind","actorId","initiatingActorId","idempotencyKey","payloadHash",payload,"policyId","policyVersion",generation,"senderClass","contentProvenance","outboundSequence","createdRestoreIncarnation")
+    VALUES ($1,$2,$3,'workspaceMember',$4,$4,$5,$6,$7::jsonb,$8,0,$9,'human','human_direct',$10,$11)
     ON CONFLICT ("workspaceId","actorKind","actorId","idempotencyKey") DO NOTHING RETURNING id`,
     [
       commandId,
@@ -469,6 +470,7 @@ export const admitOmniHumanTextCommand = async (
       policy.id,
       binding.routeGeneration,
       conversation.nextOutboundSequence,
+      workspacePolicy.restoreIncarnation,
     ],
   );
   if (inserted.length === 0) return replay(await findCommand());
@@ -531,6 +533,7 @@ export const admitOmniHumanTextCommand = async (
   const saved = one(storedCommandSchema, await findCommand());
   if (
     saved.id !== commandId ||
+    saved.createdRestoreIncarnation !== workspacePolicy.restoreIncarnation ||
     saved.state !== 'pending' ||
     saved.statusRevision !== '1' ||
     saved.generation !== binding.routeGeneration ||
@@ -580,6 +583,19 @@ export const admitOmniHumanTextCommand = async (
   record('omniDomainEvent', eventId, null, event);
   record('omniEventDispatchPlan', dispatchId, null, dispatch);
   await audit.flush();
+  const committedCommand = one(storedCommandSchema, await findCommand());
+  const currentPolicy = one(
+    z.object({ restoreIncarnation: uuid }),
+    await query(
+      'SELECT "restoreIncarnation" FROM core."omniWorkspacePolicyState" WHERE "workspaceId"=$1',
+      [workspaceId],
+    ),
+  );
+  if (
+    canonicalAuditJson(committedCommand) !== canonicalAuditJson(saved) ||
+    currentPolicy.restoreIncarnation !== workspacePolicy.restoreIncarnation
+  )
+    return fail('COMMAND_POSTCONDITION');
   assertActive();
   return Object.freeze({
     commandId,

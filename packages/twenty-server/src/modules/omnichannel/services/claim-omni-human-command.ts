@@ -46,6 +46,7 @@ const commandSchema = z.object({
   payloadHash: z.string().regex(/^[a-f0-9]{64}$/),
   payload: z.json(),
   generation: positive,
+  createdRestoreIncarnation: uuid.nullable(),
   policyId: uuid,
   policyVersion: counter,
   senderClass: z.string().min(1),
@@ -391,6 +392,8 @@ export const claimOmniHumanCommandLease = async (
       initial.cancelEvidence !== null
     )
       return noClaim('non_virgin_pending');
+    if (initial.createdRestoreIncarnation !== policy.restoreIncarnation)
+      return noClaim('restore_reconciliation_required');
     if (
       binding.status !== 'active' ||
       initial.generation !== binding.routeGeneration
@@ -544,6 +547,21 @@ export const claimOmniHumanCommandLease = async (
   if (
     !updated.leaseLive ||
     canonicalAuditJson(stableSnapshot(updated)) !== canonicalAuditJson(after)
+  )
+    return fail('CLAIM_POSTCONDITION');
+  const persisted = one(commandSchema, await readCommand());
+  const currentPolicy = one(
+    z.object({ restoreIncarnation: uuid }),
+    await query(
+      'SELECT "restoreIncarnation" FROM core."omniWorkspacePolicyState" WHERE "workspaceId"=$1',
+      [workspaceId],
+    ),
+  );
+  if (
+    !persisted.leaseLive ||
+    canonicalAuditJson(stableSnapshot(persisted)) !==
+      canonicalAuditJson(after) ||
+    currentPolicy.restoreIncarnation !== policy.restoreIncarnation
   )
     return fail('CLAIM_POSTCONDITION');
   assertActive();

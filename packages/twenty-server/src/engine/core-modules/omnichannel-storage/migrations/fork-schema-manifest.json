@@ -28,5 +28,10 @@
     "migrationId": "omni-1793116941052-binding-config-wakeup",
     "checksum": "1a8105afdea0ef51011f7dd3fface32098ca35f5b61718759a59e1474c0ebb48",
     "sourcePath": "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-binding-config-wakeup.migration.ts"
+  },
+  {
+    "migrationId": "omni-1793127619000-command-restore-context",
+    "checksum": "16d9e337583612b09b0eae0d383dab8cb0e177f47e285bb39504469af4c4aaf4",
+    "sourcePath": "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-command-restore-context.migration.ts"
   }
 ]

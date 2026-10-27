@@ -1,6 +1,7 @@
 import { type ForkMigration } from 'src/database/commands/fork-upgrade/fork-migration.type';
 import { OmniAuditBootstrapFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/omni-audit-bootstrap.migration';
 import { OmniBindingConfigWakeupFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/omni-binding-config-wakeup.migration';
+import { OmniCommandRestoreContextFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/omni-command-restore-context.migration';
 import { OmniConversationFoundationFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/omni-conversation-foundation.migration';
 import { OmniEventGovernanceFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/omni-event-governance.migration';
 import { OmniMessagePersistenceFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/omni-message-persistence.migration';
@@ -37,6 +38,11 @@ export const FORK_MIGRATIONS: readonly ForkMigration[] = [
     ...FORK_SCHEMA_CHECKS[5],
     kind: OmniBindingConfigWakeupFastInstanceCommand.kind,
     command: new OmniBindingConfigWakeupFastInstanceCommand(),
+  },
+  {
+    ...FORK_SCHEMA_CHECKS[6],
+    kind: OmniCommandRestoreContextFastInstanceCommand.kind,
+    command: new OmniCommandRestoreContextFastInstanceCommand(),
   },
 ];
 

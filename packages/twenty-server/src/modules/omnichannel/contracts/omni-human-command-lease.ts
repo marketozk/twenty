@@ -53,5 +53,6 @@ export type OmniHumanCommandLeaseResult =
         | 'waiting_predecessor'
         | 'terminal'
         | 'non_virgin_pending'
+        | 'restore_reconciliation_required'
         | 'predecessor_scan_limit';
     }>;

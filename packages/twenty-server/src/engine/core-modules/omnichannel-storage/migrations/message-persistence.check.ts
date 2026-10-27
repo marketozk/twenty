@@ -1,5 +1,6 @@
 import { type QueryRunner } from 'typeorm';
 
+import restoreSchema from 'src/engine/core-modules/omnichannel-storage/migrations/command-restore-context.schema.json';
 import governanceSchema from 'src/engine/core-modules/omnichannel-storage/migrations/event-governance.schema.json';
 import manifest from 'src/engine/core-modules/omnichannel-storage/migrations/fork-schema-manifest.json';
 import schema from 'src/engine/core-modules/omnichannel-storage/migrations/message-persistence.schema.json';
@@ -46,6 +47,17 @@ export const verifyMessagePersistence = async (
 
     expectedSchema = expectedSchema.map((table) =>
       table.name === 'core.omniIncomingReceipt' ? updatedReceipt : table,
+    );
+  }
+
+  if (appliedMigrationIds.includes(manifest[6].migrationId)) {
+    const updatedCommand = restoreSchema.find(
+      (table) => table.name === 'core.omniOutgoingCommand',
+    );
+    if (!updatedCommand)
+      throw new Error('Missing command restore context snapshot');
+    expectedSchema = expectedSchema.map((table) =>
+      table.name === 'core.omniOutgoingCommand' ? updatedCommand : table,
     );
   }
 

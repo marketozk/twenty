@@ -1,20 +1,18 @@
 # Технический план реализации CRM — v1
 
-LOG-046 / ROB-764 In Progress: recovery human text/v0 сохраняет outcome_unknown,
-DB backoff, revision и audit атомарно. Только текущие worker grants/qualification,
-точный действующий lease и captured restore incarnation допускают изменение.
-Acceptance/job/journal/cancellation/payload сохраняются; sent не понижается.
-Terminal/pending/superseded/expired/restore-changed дают no-op после current auth.
-Discovery читает due candidates из PostgreSQL с точным курсором, не выдаёт send
-permission; каждый завершённый scan начинается заново.
-392 Jest /14 затронутых suites +26 guards =418 PASS;
-67 новых случаев, включая33 PG. Typecheck197roots:
-146 baseline/current,0 новых/0 changed-code. Все6 миграций и прежние методы
-aggregate неизменны; полный1368 fork suite прошёл в LOG045.
-[Доказательства и границы](../implementation/log046/README.md). Проверены ACK/sent races, lost COMMIT ACK,
-audit/backoff/lease expiry, AFTER UPDATE tamper, другое существующее подключение.
-Далее — оставшиеся критерии outbox/state machine по этапу1; текущий slice не
-закрывает ROB-764 целиком. HTTP/UI, live transport, scheduler/own ACL ещё впереди.
+LOG-047 / ROB-764 In Progress: Command хранит immutable createdRestoreIncarnation.
+Admission берёт её из policy под lock; первый claim требует совпадения с текущей.
+NULL/старая incarnation запрещают новую отправку, replay не переписывает provenance.
+Историческая сверка dispatching/accepted/outcome_unknown сохраняется, включая NULL.
+Седьмая миграция additive, без default/backfill; первые6 источников неизменны.
+Полный fork suite: 1460 Jest /61 suites +26 guards =
+1486 PASS. Typecheck 200 roots:
+146 baseline/current,0 новых/0 changed-code.
+[Доказательства и границы](../implementation/log047/README.md). PostgreSQL проверяет upgrade populated prefix6,
+schema drift, auth/replay, policy locks и audit/AFTER UPDATE tamper.
+Независимое scoped review без блокеров; полный Claude pass не повторялся.
+Далее — локальная отмена ещё не переданной команды и общий native mutation guard.
+ROB-764 не закрыт; restore coordinator/provider fence, HTTP/UI/ACL/transport ещё впереди.
 Демо прежнее, GitHub Actions не используется.
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.

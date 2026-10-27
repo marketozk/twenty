@@ -1,0 +1,21 @@
+{
+  "fullForkJestTests": 1460,
+  "fullForkJestSuites": 61,
+  "guardTests": 20,
+  "checksumTests": 6,
+  "totalDistinctTests": 1486,
+  "typecheckRootFiles": 200,
+  "baselineTypeDiagnostics": 146,
+  "currentTypeDiagnostics": 146,
+  "newTypeDiagnostics": 0,
+  "changedCodeTypeDiagnostics": 0,
+  "fullServerTypecheck": false,
+  "firstSixMigrationSourcesUnchanged": true,
+  "migrationCount": 7,
+  "allPreviousAggregateMethodsUnchanged": true,
+  "fullForkSuiteRerun": true,
+  "independentScopedReview": "No blockers in read-only scoped review; extra migrated NULL reconciliation cases added. Full Claude pass not rerun.",
+  "fullROB764Acceptance": false,
+  "liveDemoChanged": false,
+  "githubActionsUsed": false
+}

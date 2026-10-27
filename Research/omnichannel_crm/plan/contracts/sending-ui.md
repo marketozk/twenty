@@ -26,6 +26,26 @@ Disabled policy v0 допускает сохранение provenance ручно
 HTTP, transport dispatch и qualification capabilities этим внутренним writer
 не включаются. Полный контракт файлов/reply/отправки остаётся обязательным далее.
 
+### Версия восстановления при создании команды
+
+Сервер сохраняет `createdRestoreIncarnation` из WorkspacePolicyState под policy
+lock в транзакции admission. Это immutable provenance команды, не поле клиентского
+payload и не новый idempotency key. У прежних строк остаётся NULL: миграция не
+может установить, была ли отправка после сохранённого снимка БД. Replay не меняет
+это поле, даже если текущая incarnation уже другая.
+
+First-attempt claim допускается только при совпадении сохранённой и текущей
+incarnation. NULL/несовпадение возвращает `restore_reconciliation_required` после
+текущей авторизации, без нового lease, audit success или отправки. Локальная отмена
+до enqueue также обязана учитывать эту границу; pending/revision=1 само по себе
+после restore не доказывает отсутствие внешней отправки. Историческое
+reconciliation для dispatching/accepted/outcome_unknown продолжает работать и
+сохраняет исходный provenance, включая NULL.
+
+Restore coordinator обязан записать новую incarnation до допуска workers по G12.
+Эта проверка не заменяет внешний provider fence/journal: выданный lease всё ещё
+не является разрешением повторить вызов провайдера после восстановления.
+
 <a id="command-states"></a>
 
 ## Состояния и неопределённый результат

@@ -1,0 +1,8 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-command-restore-context.postgres-spec.ts (14.36 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/binding-config-wakeup-schema.postgres-spec.ts (52.848 s)
+
+Test Suites: 2 passed, 2 total
+Tests:       53 passed, 53 total
+Snapshots:   0 total
+Time:        67.316 s
+Ran all test suites matching /command-restore-context|binding-config-wakeup-schema/i.

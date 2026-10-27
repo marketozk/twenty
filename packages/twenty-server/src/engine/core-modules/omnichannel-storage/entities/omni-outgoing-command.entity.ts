@@ -160,6 +160,9 @@ export class OmniOutgoingCommandEntity extends OmniWorkspaceRow {
   @Column({ type: 'bigint', nullable: false, update: false })
   generation: string;
 
+  @Column({ type: 'uuid', nullable: true, update: false })
+  createdRestoreIncarnation: string | null;
+
   @Column({ type: 'jsonb', nullable: false, default: [], update: false })
   workflowCancellationRefs: Record<string, unknown>[];
 

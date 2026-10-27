@@ -148,6 +148,7 @@ const CATALOG: Record<
       'policyId',
       'policyVersion',
       'generation',
+      'createdRestoreIncarnation',
       'producerTurnId',
       'capturedTurnFence',
       'referenceId',
