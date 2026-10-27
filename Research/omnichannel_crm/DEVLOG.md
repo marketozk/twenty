@@ -1063,3 +1063,5 @@ suites, новые38 cases и native transaction regressions. После 226PASS
 Независимое scoped review facade/snapshot/housekeeping без блокеров; полный Claude
 cross-review не заявляется. Skills: ai-dev-workflow, behavioral-guardrails,
 server-schrodinger. Продолжаем LOG-041: первый human text command/outbox.
+
+Публикация LOG-040: код 7fc9f425fd2937fbcdae82ec47ac29bf5aa5162f, remote проверен GitHub API. Описание ROB-764 и комментарий 06e55d29-8e42-43c1-aeb4-af6dc6202808 прочитаны обратно; все 11 статусов сохранены. Продолжаем LOG-041.
