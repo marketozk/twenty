@@ -488,4 +488,74 @@ describe('transactional CRM audit', () => {
       ),
     ).toEqual([{ workspaceId: operation.workspaceId }]);
   });
+
+  it('keeps native message text and subject out of the audit payload', async () => {
+    const messageId = randomUUID();
+    const threadId = randomUUID();
+    await transaction(async (runner) => {
+      const context = new CrmAuditTransactionContext(runner, operation);
+      context.record({
+        resourceKind: 'omniMessage',
+        resourceId: messageId,
+        action: 'create',
+        before: null,
+        after: {
+          text: 'private customer message',
+          subject: 'private subject',
+          headerMessageId: 'private provider header',
+          messageThreadId: threadId,
+          isDraft: false,
+        },
+        securityDescriptor: {
+          resourceKind: 'omniMessage',
+          resourceId: messageId,
+          bindingId: randomUUID(),
+          conversationId: randomUUID(),
+        },
+      });
+      await context.flush();
+    });
+    const rows = await dataSource.query(
+      'SELECT * FROM crm_audit."crmAuditEntry"',
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].redactedDiff.values).toEqual({
+      messageThreadId: { before: null, after: threadId },
+      isDraft: { before: null, after: false },
+    });
+    expect(rows[0].redactedDiff.changedFields).toContain('text');
+    expect(JSON.stringify(rows)).not.toMatch(
+      /private customer|private subject|private provider/,
+    );
+  });
+
+  it.each(['bindingId', 'conversationId'] as const)(
+    'rejects native message audit without %s scope',
+    async (missing) => {
+      await expect(
+        transaction(async (runner) => {
+          const context = new CrmAuditTransactionContext(runner, operation);
+          const securityDescriptor = {
+            resourceKind: 'omniMessage' as const,
+            resourceId,
+            bindingId: randomUUID(),
+            conversationId: randomUUID(),
+            [missing]: undefined,
+          };
+          context.record({
+            resourceKind: 'omniMessage',
+            resourceId,
+            action: 'create',
+            before: null,
+            after: { text: 'must not be saved' },
+            securityDescriptor,
+          });
+          await context.flush();
+        }),
+      ).rejects.toThrow('binding and conversation scope');
+      expect(
+        await dataSource.query('SELECT * FROM crm_audit."crmAuditEntry"'),
+      ).toEqual([]);
+    },
+  );
 });

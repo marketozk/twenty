@@ -753,3 +753,24 @@ Skills: ai-dev-workflow, behavioral-guardrails, server-schrodinger; незави
 [комментарий](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-4fd0c275)
 прочитаны обратно, статусы 11 задач прежние.
 [Метаданные](implementation/log028/publication.json). Продолжаем LOG-029.
+
+## LOG-029 — 27.10.2026: native Message, canonical Thread и аудит
+
+Добавлен optional expected Thread contract к штатному messaging helper. Mapping
+фиксируется до await, проверяется точное покрытие, workspace/strict lifecycle;
+existing header/channel conflicts и текущие tombstones отклоняются. Найденный
+ревью дефект исправлен: удалённая старая история не мешает новому сообщению.
+Audit omniMessage требует binding/conversation и не раскрывает body/subject/header.
+
+Проверки: 261 PG + 93 unit + 20 guard + 5 checksum = 379 PASS. После исправлений
+типов повторены 19 native PG. Сравнительный typecheck 101 roots: 0 новых/0 в
+изменённых файлах, 141 baseline расширенного графа сохранена. Реальные native
+metadata/repositories/SQL проверяют Message и Person relation с атомарным audit;
+fixture не включает полный ownership/каналы/receipt apply. Все четыре миграции
+прежние. Независимое адресное ревью без blocker/major. [Evidence](implementation/log029/README.md).
+
+Демо и живые каналы не менялись, bounded test resources переиспользуются.
+GitHub Actions не используется; Claude Code/full architecture review не запускался.
+Skills ai-dev-workflow, behavioral-guardrails и server-schrodinger: разделённая
+реализация/ревью, проверяемые границы, изолированные ограниченные проверки.
+Далее trusted capture context, domain writers и полный apply. ROB-764 In Progress.

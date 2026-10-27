@@ -1,0 +1,14 @@
+{
+  "baseCommit": "43e6743674c6d1e6ff00f282460d43c3467d2b99",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "0866a95b439f3e436a8a6b714f451544383bd690ceea00f50092d6fa8b4e28df",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "94168ca9b706591aa687a7f7d698f399e0f2224988bc15d913d38154a63da863",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-message.service.ts": "a37dd97d18ac92ae6c0e42613e75e52462d3405e3b10545596d00eca93b20c77",
+    "packages/twenty-server/test/fork-migration/crm-audit.postgres-spec.ts": "28912233c452f41cf679a0fcae03c4dfe65bdd8f75e0cf6d15397e94b55206ce",
+    "packages/twenty-server/test/fork-migration/omni-native-message.fixture.ts": "3a3d5f31d1a08afd9b7eebec0cdcd95df41c4ff0f437c626b447d66a2f7d4350",
+    "packages/twenty-server/test/fork-migration/omni-native-message.postgres-spec.ts": "38158dd36a35217cdc991f0422a318f0c0ddf02c1faf9220fea2d93dc37006a8",
+    "packages/twenty-server/jest-fork-migration.config.mjs": "f667b583522198028b7d0fe36a8e8e7da428e015d139bc9a5359c01844ac4933"
+  }
+}

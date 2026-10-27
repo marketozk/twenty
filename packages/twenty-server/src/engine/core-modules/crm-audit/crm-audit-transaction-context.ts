@@ -68,6 +68,10 @@ const CATALOG: Record<
     ],
     redacted: ['eventId', 'validatedEnvelope', 'leaseOwner'],
   },
+  omniMessage: {
+    values: ['messageThreadId', 'isDraft'],
+    redacted: ['text', 'subject', 'headerMessageId', 'receivedAt', 'deletedAt'],
+  },
 };
 
 type CapturedValue = { hash: string; value?: unknown };
@@ -115,6 +119,13 @@ const descriptor = (
   >,
 ): CrmAuditSecurityDescriptor => {
   const source = mutation.securityDescriptor;
+
+  if (
+    mutation.resourceKind === 'omniMessage' &&
+    (source.bindingId === undefined || source.conversationId === undefined)
+  ) {
+    throw new Error('Message audit requires binding and conversation scope');
+  }
 
   if (
     source.resourceKind !== mutation.resourceKind ||

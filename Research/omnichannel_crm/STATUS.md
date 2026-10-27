@@ -1,14 +1,15 @@
 # Текущее состояние Twenty CRM
 
-LOG-028 / ROB-764 In Progress: общий executor native transaction/audit,
-strict lifecycle/unknown COMMIT, adapters событий и canonical message keys.
-357 тестов прошли; новых type diagnostics нет, 122 baseline diagnostics
-сохраняются. Миграции прежние, dependency guard проходит без исключений.
-[Доказательства и границы](implementation/log028/README.md).
-Далее — actual native Message integration, ownership guards и атомарные
-Message+participants+link+audit+event, config wake-up и inbox/outbox/recovery.
-Scheduler/HTTP/коннекторы/UI ещё не подключены, демо и живые каналы прежние.
-Actions не является gate; проверки выполняем в своей среде.
+LOG-029 / ROB-764 In Progress: штатные Message/Thread/participants сохраняются
+с canonical Thread ID; audit скрывает содержимое и требует binding/conversation.
+19 native PG сценариев проверяют Person relation, rollback, replay и tombstones.
+Всего 379 тестов PASS; новых type diagnostics нет, 141 baseline расширенного
+native графа остаётся. Четыре миграции прежние, dependency guard проходит.
+[Доказательства и границы](implementation/log029/README.md).
+Далее — trusted capture context, domain ownership и полный receipt apply с
+Message+link+revision+event+audit, затем inbox/outbox/recovery. Full ingress
+acceptance, scheduler/HTTP/own ACL/UI/живые каналы ещё не готовы. Демо прежнее.
+GitHub Actions не используется.
 
 ## Предыдущая порция — LOG-022
 

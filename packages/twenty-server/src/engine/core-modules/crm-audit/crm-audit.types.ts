@@ -6,6 +6,7 @@ export type CrmAuditPrincipal = {
 export type CrmAuditResourceKind =
   | 'omniAccountBinding'
   | 'omniIncomingReceipt'
+  | 'omniMessage'
   | 'omniAutomationPolicy'
   | 'omniAutomationPolicyVersion'
   | 'omniWorkspacePolicyState'

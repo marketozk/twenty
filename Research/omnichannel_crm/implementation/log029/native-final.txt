@@ -1,0 +1,27 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-message.postgres-spec.ts (7.291 s)
+  canonical native Message persistence on PostgreSQL
+    ✓ commits native messages, participant Person links and audit on the same connection without raw events (129 ms)
+    ✓ rejects an unresolved Person link through the actual native foreign key and rolls back the message (87 ms)
+    ✓ leaves ordinary native events enabled and defers them until COMMIT (54 ms)
+    ✓ rolls back native rows and success audit together after a later failure (65 ms)
+    ✓ rolls back native rows when audit insert is refused (64 ms)
+    ✓ reuses one canonical thread for two messages and does not duplicate a replay (81 ms)
+    ✓ reuses a preallocated native thread with no previous channel associations (54 ms)
+    ✓ rejects a deleted preallocated thread instead of reviving it (49 ms)
+    ✓ keeps a deleted old message while accepting a different new message in the same canonical thread (71 ms)
+    ✓ keeps a deleted old messageChannelMessageAssociation while accepting a different new message in the same canonical thread (62 ms)
+    ✓ rejects replay of the current deleted message without restoring its tombstone (56 ms)
+    ✓ rejects replay of the current deleted messageChannelMessageAssociation without restoring its tombstone (60 ms)
+    ✓ rejects missing canonical mapping before writes (32 ms)
+    ✓ rejects extra canonical mapping before writes (27 ms)
+    ✓ rejects duplicate-target canonical mapping before writes (46 ms)
+    ✓ rejects an existing header/association bound to another canonical thread (48 ms)
+    ✓ rejects a conflicting header for the same channel external message (42 ms)
+    ✓ rejects a conflicting direction for the same channel external message (50 ms)
+    ✓ snapshots canonical IDs before the first asynchronous repository read (33 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       19 passed, 19 total
+Snapshots:   0 total
+Time:        7.393 s
+Ran all test suites within paths "/source/packages/twenty-server/test/fork-migration/omni-native-message.postgres-spec.ts".

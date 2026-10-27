@@ -6,14 +6,16 @@
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
-Зависимость: этап0. Статус: In Progress (LOG-028). После ingress/receipt lease
-реализованы общий native audit executor, strict lifecycle/unknown COMMIT,
-event suppression wrapper и canonical key references. 357 тестов PASS;
-typecheck comparison — без новых диагностик (122 baseline остаются).
-Новых миграций нет. applied/native Message, scheduler и config wake-up ещё не
-реализованы. Далее — actual native Message integration, ownership guards,
-Message+audit+event и inbox/outbox/recovery. [LOG-028](../implementation/log028/README.md).
-HTTP/коннекторы/UI не подключены, демо прежнее. Actions не используется как gate.
+Зависимость: этап0. LOG-029 / ROB-764 In Progress: штатные Message/Thread/participants сохраняются
+с canonical Thread ID; audit скрывает содержимое и требует binding/conversation.
+19 native PG сценариев проверяют Person relation, rollback, replay и tombstones.
+Всего 379 тестов PASS; новых type diagnostics нет, 141 baseline расширенного
+native графа остаётся. Четыре миграции прежние, dependency guard проходит.
+[Доказательства и границы](../implementation/log029/README.md).
+Далее — trusted capture context, domain ownership и полный receipt apply с
+Message+link+revision+event+audit, затем inbox/outbox/recovery. Full ingress
+acceptance, scheduler/HTTP/own ACL/UI/живые каналы ещё не готовы. Демо прежнее.
+GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы fork migrations,
 первые9 core entities, audit entry/PolicyMutationReceipt, минимальный audit writer

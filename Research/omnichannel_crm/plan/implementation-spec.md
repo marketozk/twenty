@@ -450,6 +450,19 @@ Fork migration split по §15.5 дополнительно: static test зап�
 
 Helper только создаёт первоначальную canonical Message. Placeholder→filled для одного native key, edit и delete идут через domain revision operation: сравнить trusted source variant/order, обновить точный messageId/body/attachments и current search data в общей транзакции, receipt/revision/audit; не полагаться на no-op существующего helper. Изменение placeholder не создаёт повторный admission/effect; automation получает eligible complete content только один раз по явно определённой adapter completeness, pending placeholder не запускает AI. OmniMessageRevision минимальная metadata-only схема и write service вводятся уже в ROB-764 (перенос из прежнего ROB-770); ROB-770 расширяет защищённый payload/files/retention. T01: одинаковые raw IDs в двух аккаунтах/чатах, попытка reserved header чужим каналом, concurrent replay; T17: placeholder→filled/late create/delete-before-fill дают один Message, верный текст/тombstone, два receipts и не более одного допустимого admission.
 
+Native Thread ID задаётся domain writer до создания Conversation и передаётся
+штатному helper через optional canonicalThreadIdByThreadExternalId. В этом
+режиме нужен active strict scope того же workspace; map покрывает batch точно
+и не объединяет разные providerChatId в один Thread. Существующий Thread,
+header hit и channel associations должны совпадать с ожидаемым ID. Удалённые
+текущие совпавшие Message/association или canonical Thread дают conflict;
+несвязанные удалённые исторические строки не препятствуют новому сообщению.
+Противоречивые активные ссылки дают conflict, а не новую цепочку. Пустой существующий Thread
+переиспользуется по точному ID, отсутствующий создаётся с заранее выбранным ID.
+Это persistence contract, не авторизация: owning binding/Conversation/MessageLink,
+порядок locks и foreign-header checks остаются обязанностью domain writer.
+Email/обычные APP callers без options сохраняют прежнее поведение.
+
 ### 15.11 Отправка менеджера, владелец канала и исторический автор
 
 Определение: [access-control — takeover](contracts/access-control.md#takeover).

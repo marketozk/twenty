@@ -1,0 +1,19 @@
+{
+  "postgresTests": 261,
+  "unitTests": 93,
+  "jestTotal": 354,
+  "guardTests": 20,
+  "checksumTests": 5,
+  "totalExecutedTests": 379,
+  "finalNativeRerun": 19,
+  "typecheckComparison": "PASS no new diagnostics; zero in changed files",
+  "baselineTypeDiagnostics": 141,
+  "typecheckRootFiles": 101,
+  "fullServerTypecheck": false,
+  "allFourMigrationChecksumsUnchanged": true,
+  "nativeMessagePersistenceFixture": true,
+  "fullReceiptApplyAcceptance": false,
+  "liveDemoChanged": false,
+  "githubActionsGate": false,
+  "independentScopedReview": "No confirmed blocker/major"
+}

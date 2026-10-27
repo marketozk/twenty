@@ -1,4 +1,4 @@
-# ROB-764 — реализация, LOG-028
+# ROB-764 — реализация, LOG-029
 
 27.10.2026 пользователь ответил «хорошо приступай» на предложение принять
 исправленный план за основу и начать ROB-764 с проверками конкретного кода.
@@ -169,3 +169,16 @@ Bindings не активируются до собственных прав ROB-
 переведены в manual-only; проверки выполняются в собственной среде перед
 commit/push. Исторические результаты CI не переписываются, но новых запусков
 и ожидания Actions для обычной публикации нет. Настройки оплаты не менялись.
+
+## LOG-029 — native Message persistence
+
+LOG-029 / ROB-764 In Progress: штатные Message/Thread/participants сохраняются
+с canonical Thread ID; audit скрывает содержимое и требует binding/conversation.
+19 native PG сценариев проверяют Person relation, rollback, replay и tombstones.
+Всего 379 тестов PASS; новых type diagnostics нет, 141 baseline расширенного
+native графа остаётся. Четыре миграции прежние, dependency guard проходит.
+[Доказательства и границы](log029/README.md).
+Далее — trusted capture context, domain ownership и полный receipt apply с
+Message+link+revision+event+audit, затем inbox/outbox/recovery. Full ingress
+acceptance, scheduler/HTTP/own ACL/UI/живые каналы ещё не готовы. Демо прежнее.
+GitHub Actions не используется.

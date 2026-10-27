@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { isUUID } from 'class-validator';
 import { isDefined } from 'twenty-shared/utils';
 import { In } from 'typeorm';
 import { v4 } from 'uuid';
@@ -37,6 +38,11 @@ type MessageAccumulator = {
     | 'direction'
   >;
 };
+
+export type CanonicalMessageThreadOptions = {
+  canonicalThreadIdByThreadExternalId: ReadonlyMap<string, string>;
+};
+
 @Injectable()
 export class MessagingMessageService {
   private readonly logger = new Logger(MessagingMessageService.name);
@@ -48,6 +54,7 @@ export class MessagingMessageService {
     messageChannelId: string,
     transactionScope: WorkspaceTransactionScope,
     workspaceId: string,
+    options?: CanonicalMessageThreadOptions,
   ): Promise<{
     createdMessages: Partial<MessageWorkspaceEntity>[];
     messageExternalIdsAndIdsMap: Map<string, string>;
@@ -57,6 +64,22 @@ export class MessagingMessageService {
     >;
     messageExternalIdToMessageThreadIdMap: Map<string, string>;
   }> {
+    const canonicalThreadIds = options
+      ? this.captureCanonicalThreadIds(
+          messages,
+          transactionScope,
+          workspaceId,
+          options,
+        )
+      : undefined;
+
+    if (canonicalThreadIds) {
+      messages = messages.map((message) => ({
+        ...message,
+        receivedAt: message.receivedAt ? new Date(message.receivedAt) : null,
+      }));
+    }
+
     const authContext = buildSystemAuthContext(workspaceId);
 
     return this.workspaceOrmManager.executeInWorkspaceContext(
@@ -86,6 +109,7 @@ export class MessagingMessageService {
               messages.map((message) => message.headerMessageId),
             ),
           },
+          ...(canonicalThreadIds ? { withDeleted: true } : {}),
         });
 
         const messageChannelMessageAssociationsReferencingMessageThread =
@@ -97,6 +121,7 @@ export class MessagingMessageService {
               messageChannelId,
             },
             relations: { message: true },
+            ...(canonicalThreadIds ? { withDeleted: true } : {}),
           });
 
         const existingMessageChannelMessageAssociations =
@@ -105,19 +130,47 @@ export class MessagingMessageService {
               messageId: In(existingMessagesInDB.map((message) => message.id)),
               messageChannelId,
             },
+            ...(canonicalThreadIds ? { withDeleted: true } : {}),
           });
+
+        const canonicalThreads = canonicalThreadIds
+          ? await messageThreadRepository.find({
+              where: { id: In([...canonicalThreadIds.values()]) },
+              withDeleted: true,
+            })
+          : [];
+
+        if (canonicalThreadIds) {
+          this.assertCanonicalThreadReferences(
+            messages,
+            canonicalThreadIds,
+            canonicalThreads,
+            existingMessagesInDB,
+            messageChannelMessageAssociationsReferencingMessageThread,
+            existingMessageChannelMessageAssociations,
+          );
+        }
+
+        const inheritableThreadAssociations = canonicalThreadIds
+          ? messageChannelMessageAssociationsReferencingMessageThread.filter(
+              (association) =>
+                !isDefined(association.deletedAt) &&
+                isDefined(association.message) &&
+                !isDefined(association.message.deletedAt),
+            )
+          : messageChannelMessageAssociationsReferencingMessageThread;
 
         await this.enrichMessageAccumulatorWithExistingMessages(
           messages,
           messageAccumulatorMap,
           existingMessagesInDB,
-          messageChannelMessageAssociationsReferencingMessageThread,
+          inheritableThreadAssociations,
         );
 
         await this.enrichMessageAccumulatorWithExistingMessageThreadIds(
           messages,
           messageAccumulatorMap,
-          messageChannelMessageAssociationsReferencingMessageThread,
+          inheritableThreadAssociations,
           workspaceId,
         );
 
@@ -126,13 +179,15 @@ export class MessagingMessageService {
           messageAccumulatorMap,
           [
             ...existingMessageChannelMessageAssociations,
-            ...messageChannelMessageAssociationsReferencingMessageThread,
+            ...inheritableThreadAssociations,
           ],
         );
 
         await this.enrichMessageAccumulatorWithMessageThreadToCreate(
           messages,
           messageAccumulatorMap,
+          canonicalThreadIds,
+          new Set(canonicalThreads.map((thread) => thread.id)),
         );
 
         const associationToCreateByMessageId = new Map<
@@ -336,6 +391,150 @@ export class MessagingMessageService {
     );
   }
 
+  private captureCanonicalThreadIds(
+    messages: MessageWithParticipants[],
+    transactionScope: WorkspaceTransactionScope,
+    workspaceId: string,
+    options: CanonicalMessageThreadOptions,
+  ): ReadonlyMap<string, string> {
+    const lifecycle = transactionScope.transactionLifecycle;
+
+    if (
+      transactionScope.workspaceId !== workspaceId ||
+      lifecycle?.commitOutcome !== 'strict' ||
+      !lifecycle.isTransactionActive ||
+      lifecycle.isReleased
+    ) {
+      throw new Error(
+        'Canonical message threads require an active strict workspace transaction',
+      );
+    }
+
+    const canonicalThreadIds = new Map(
+      options.canonicalThreadIdByThreadExternalId,
+    );
+    const threadExternalIds = new Set(
+      messages.map((message) => message.messageThreadExternalId),
+    );
+    const messageExternalIds = new Set(
+      messages.map((message) => message.externalId),
+    );
+    const headerMessageIds = new Set(
+      messages.map((message) => message.headerMessageId),
+    );
+
+    if (
+      canonicalThreadIds.size !== threadExternalIds.size ||
+      messageExternalIds.size !== messages.length ||
+      headerMessageIds.size !== messages.length
+    ) {
+      throw new Error(
+        'Canonical message thread mapping does not match the batch',
+      );
+    }
+
+    for (const [externalId, threadId] of canonicalThreadIds) {
+      if (!threadExternalIds.has(externalId) || !isUUID(threadId)) {
+        throw new Error('Canonical message thread mapping is invalid');
+      }
+
+      canonicalThreadIds.set(externalId, threadId.toLowerCase());
+    }
+
+    if (new Set(canonicalThreadIds.values()).size !== canonicalThreadIds.size) {
+      throw new Error(
+        'Canonical message thread mapping must not merge external threads',
+      );
+    }
+
+    return canonicalThreadIds;
+  }
+
+  private assertCanonicalThreadReferences(
+    messages: MessageWithParticipants[],
+    canonicalThreadIds: ReadonlyMap<string, string>,
+    canonicalThreads: MessageThreadWorkspaceEntity[],
+    existingMessages: MessageWorkspaceEntity[],
+    threadAssociations: MessageChannelMessageAssociationWorkspaceEntity[],
+    existingAssociations: MessageChannelMessageAssociationWorkspaceEntity[],
+  ): void {
+    if (canonicalThreads.some((thread) => isDefined(thread.deletedAt))) {
+      throw new Error('Canonical message thread is deleted');
+    }
+
+    for (const message of messages) {
+      const expectedThreadId = canonicalThreadIds.get(
+        message.messageThreadExternalId,
+      );
+      const headerMatches = existingMessages.filter(
+        (existing) => existing.headerMessageId === message.headerMessageId,
+      );
+      const externalMatches = threadAssociations.filter(
+        (association) => association.messageExternalId === message.externalId,
+      );
+      const relatedAssociations = threadAssociations.filter(
+        (association) =>
+          association.messageThreadExternalId ===
+            message.messageThreadExternalId &&
+          !isDefined(association.deletedAt) &&
+          isDefined(association.message) &&
+          !isDefined(association.message.deletedAt),
+      );
+
+      if (
+        headerMatches.length > 1 ||
+        externalMatches.length > 1 ||
+        headerMatches.some(
+          (existing) =>
+            isDefined(existing.deletedAt) ||
+            existing.messageThreadId !== expectedThreadId,
+        ) ||
+        externalMatches.some(
+          (association) =>
+            isDefined(association.deletedAt) ||
+            !association.message ||
+            isDefined(association.message.deletedAt) ||
+            association.message.headerMessageId !== message.headerMessageId ||
+            association.direction !== message.direction,
+        ) ||
+        relatedAssociations.some(
+          (association) =>
+            association.message?.messageThreadId !== expectedThreadId,
+        ) ||
+        ((headerMatches.length > 0 || relatedAssociations.length > 0) &&
+          !canonicalThreads.some((thread) => thread.id === expectedThreadId)) ||
+        (headerMatches[0] &&
+          externalMatches[0] &&
+          headerMatches[0].id !== externalMatches[0].messageId)
+      ) {
+        throw new Error(
+          'Canonical message thread conflicts with existing messages',
+        );
+      }
+
+      const matchedIds = new Set([
+        ...headerMatches.map((existing) => existing.id),
+        ...externalMatches.map((association) => association.messageId),
+      ]);
+
+      if (
+        existingAssociations.some(
+          (association) =>
+            matchedIds.has(association.messageId) &&
+            (isDefined(association.deletedAt) ||
+              association.messageThreadExternalId !==
+                message.messageThreadExternalId ||
+              association.messageExternalId !== message.externalId ||
+              association.direction !== message.direction),
+        )
+      ) {
+        throw new Error(
+          'Canonical message thread conflicts with existing channel associations',
+        );
+      }
+    }
+  }
+
   private async enrichMessageAccumulatorWithExistingMessages(
     messages: MessageWithParticipants[],
     messageAccumulatorMap: Map<string, MessageAccumulator>,
@@ -478,6 +677,8 @@ export class MessagingMessageService {
   private async enrichMessageAccumulatorWithMessageThreadToCreate(
     messages: MessageWithParticipants[],
     messageAccumulatorMap: Map<string, MessageAccumulator>,
+    canonicalThreadIds?: ReadonlyMap<string, string>,
+    existingCanonicalThreadIds = new Set<string>(),
   ) {
     for (const [index, message] of messages.entries()) {
       const messageAccumulator = messageAccumulatorMap.get(message.externalId);
@@ -495,6 +696,17 @@ export class MessagingMessageService {
       );
 
       let newOrExistingMessageThreadId: string | undefined;
+
+      const expectedThreadId = canonicalThreadIds?.get(
+        message.messageThreadExternalId,
+      );
+
+      if (
+        expectedThreadId &&
+        existingCanonicalThreadIds.has(expectedThreadId)
+      ) {
+        messageAccumulator.existingThreadInDB = { id: expectedThreadId };
+      }
 
       if (isDefined(messageAccumulator.existingThreadInDB)) {
         newOrExistingMessageThreadId = messageAccumulator.existingThreadInDB.id;
@@ -522,7 +734,7 @@ export class MessagingMessageService {
       }
 
       if (!isDefined(newOrExistingMessageThreadId)) {
-        newOrExistingMessageThreadId = v4();
+        newOrExistingMessageThreadId = expectedThreadId ?? v4();
 
         messageAccumulator.threadToCreate = {
           id: newOrExistingMessageThreadId,
