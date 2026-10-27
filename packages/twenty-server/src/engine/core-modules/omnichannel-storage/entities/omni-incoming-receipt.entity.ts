@@ -63,6 +63,13 @@ export type OmniIncomingReceiptState =
   'CHK_omniIncomingReceipt_identity',
   'length("eventId") > 0 AND length("kind") > 0',
 )
+@Check(
+  'CHK_omniIncomingReceipt_trusted_capture',
+  '("trustedCaptureContext" IS NULL AND "trustedCaptureContextHash" IS NULL) OR ' +
+    '("trustedCaptureContext" IS NOT NULL AND "trustedCaptureContextHash" IS NOT NULL AND ' +
+    `jsonb_typeof("trustedCaptureContext") = 'object' AND ` +
+    `"trustedCaptureContextHash" ~ '^[a-f0-9]{64}$')`,
+)
 export class OmniIncomingReceiptEntity extends OmniWorkspaceRow {
   @Column({ type: 'uuid', nullable: false, update: false })
   bindingId: string;
@@ -94,6 +101,12 @@ export class OmniIncomingReceiptEntity extends OmniWorkspaceRow {
 
   @Column({ type: 'jsonb', nullable: false, update: false })
   validatedEnvelope: Record<string, unknown>;
+
+  @Column({ type: 'jsonb', nullable: true, update: false })
+  trustedCaptureContext: Record<string, unknown> | null;
+
+  @Column({ type: 'text', nullable: true, update: false })
+  trustedCaptureContextHash: string | null;
 
   @Column({ type: 'text', nullable: false, default: 'accepted' })
   state: OmniIncomingReceiptState;

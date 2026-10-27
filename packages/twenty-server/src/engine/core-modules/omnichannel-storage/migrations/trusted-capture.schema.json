@@ -1,0 +1,260 @@
+[
+  {
+    "name": "core.omniIncomingReceipt",
+    "columns": [
+      {
+        "name": "attempts",
+        "type": "integer",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'0'"
+      },
+      {
+        "name": "bindingId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "canonicalPayloadHash",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "errorCode",
+        "type": "text",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "eventId",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "kind",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "leaseOwner",
+        "type": "text",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "leaseToken",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'0'"
+      },
+      {
+        "name": "leaseUntil",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "nextAttemptAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "resultId",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "routeGeneration",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "schemaVersion",
+        "type": "integer",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "state",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'accepted'"
+      },
+      {
+        "name": "trustedCaptureContext",
+        "type": "jsonb",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "trustedCaptureContextHash",
+        "type": "text",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "validatedEnvelope",
+        "type": "jsonb",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniIncomingReceipt_binding_event",
+        "columns": ["bindingId", "eventId", "workspaceId"]
+      },
+      {
+        "name": "UQ_omniIncomingReceipt_workspace_id",
+        "columns": ["id", "workspaceId"]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniIncomingReceipt_counters",
+        "expression": "((\"schemaVersion\" > 0) AND (\"routeGeneration\" > 0) AND (attempts >= 0) AND (\"leaseToken\" >= 0))"
+      },
+      {
+        "name": "CHK_omniIncomingReceipt_hash",
+        "expression": "(\"canonicalPayloadHash\" ~ '^[a-f0-9]{64}$'::text)"
+      },
+      {
+        "name": "CHK_omniIncomingReceipt_identity",
+        "expression": "((length(\"eventId\") > 0) AND (length(kind) > 0))"
+      },
+      {
+        "name": "CHK_omniIncomingReceipt_lease",
+        "expression": "(((\"leaseOwner\" IS NULL) = (\"leaseUntil\" IS NULL)) AND ((state <> 'processing'::text) OR ((\"leaseOwner\" IS NOT NULL) AND (\"leaseToken\" > 0))))"
+      },
+      {
+        "name": "CHK_omniIncomingReceipt_state",
+        "expression": "(state = ANY (ARRAY['accepted'::text, 'processing'::text, 'applied'::text, 'retryable_error'::text, 'blocked_config'::text, 'quarantined'::text]))"
+      },
+      {
+        "name": "CHK_omniIncomingReceipt_trusted_capture",
+        "expression": "(((\"trustedCaptureContext\" IS NULL) AND (\"trustedCaptureContextHash\" IS NULL)) OR ((\"trustedCaptureContext\" IS NOT NULL) AND (\"trustedCaptureContextHash\" IS NOT NULL) AND (jsonb_typeof(\"trustedCaptureContext\") = 'object'::text) AND (\"trustedCaptureContextHash\" ~ '^[a-f0-9]{64}$'::text)))"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_e81b7dc3a4057fde7c295b35fc0",
+        "columns": ["workspaceId", "bindingId"],
+        "target": "core.omniAccountBinding",
+        "targetColumns": ["workspaceId", "id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_ebb7c9f5ee2031ff76a3753c3e8",
+        "columns": ["workspaceId"],
+        "target": "core.workspace",
+        "targetColumns": ["id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": [
+      {
+        "name": "IDX_omniIncomingReceipt_binding_due",
+        "definition": "CREATE INDEX \"IDX_omniIncomingReceipt_binding_due\" ON core.\"omniIncomingReceipt\" USING btree (\"workspaceId\", \"bindingId\", state, \"nextAttemptAt\")"
+      },
+      {
+        "name": "IDX_omniIncomingReceipt_due",
+        "definition": "CREATE INDEX \"IDX_omniIncomingReceipt_due\" ON core.\"omniIncomingReceipt\" USING btree (\"workspaceId\", state, \"nextAttemptAt\", \"leaseUntil\")"
+      }
+    ]
+  }
+]

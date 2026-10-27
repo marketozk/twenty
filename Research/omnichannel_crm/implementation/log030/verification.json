@@ -1,0 +1,22 @@
+{
+  "postgresTests": 294,
+  "unitTests": 146,
+  "jestTotal": 440,
+  "guardTests": 20,
+  "checksumTests": 5,
+  "totalExecutedTests": 465,
+  "typecheckRootFiles": 106,
+  "baselineTypeDiagnostics": 141,
+  "newTypeDiagnostics": 0,
+  "changedFileTypeDiagnostics": 0,
+  "fullServerTypecheck": false,
+  "priorFourMigrationSourcesUnchanged": true,
+  "forkMigrationCount": 5,
+  "nativeGeneratorBaselineAndFinalDiff": "empty",
+  "nativeRegisteredApplyReplayReadiness": true,
+  "nativeHistoryRowsPreserved": 256,
+  "independentScopedReview": "PASS after authorizer snapshot fix",
+  "fullReceiptApplyAcceptance": false,
+  "liveDemoChanged": false,
+  "githubActionsUsed": false
+}

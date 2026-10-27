@@ -3,6 +3,7 @@ import { type QueryRunner } from 'typeorm';
 import governanceSchema from 'src/engine/core-modules/omnichannel-storage/migrations/event-governance.schema.json';
 import manifest from 'src/engine/core-modules/omnichannel-storage/migrations/fork-schema-manifest.json';
 import schema from 'src/engine/core-modules/omnichannel-storage/migrations/message-persistence.schema.json';
+import captureSchema from 'src/engine/core-modules/omnichannel-storage/migrations/trusted-capture.schema.json';
 import { verifyForkTableSnapshot } from 'src/engine/core-modules/omnichannel-storage/migrations/verify-fork-table-snapshot';
 
 export const verifyMessagePersistence = async (
@@ -26,6 +27,25 @@ export const verifyMessagePersistence = async (
 
     expectedSchema = schema.map((table) =>
       table.name === 'core.omniDomainEvent' ? updatedEvent : table,
+    );
+  }
+
+  const captureMigration = manifest[4];
+
+  if (
+    captureMigration &&
+    appliedMigrationIds.includes(captureMigration.migrationId)
+  ) {
+    const updatedReceipt = captureSchema.find(
+      (table) => table.name === 'core.omniIncomingReceipt',
+    );
+
+    if (!updatedReceipt) {
+      throw new Error('Missing receipt snapshot for trusted capture migration');
+    }
+
+    expectedSchema = expectedSchema.map((table) =>
+      table.name === 'core.omniIncomingReceipt' ? updatedReceipt : table,
     );
   }
 

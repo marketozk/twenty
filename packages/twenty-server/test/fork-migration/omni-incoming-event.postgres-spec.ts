@@ -4,11 +4,15 @@ import { DataSource } from 'typeorm';
 
 import { ForkMigrationRunner } from 'src/database/commands/fork-upgrade/fork-migration-runner';
 import { FORK_MIGRATIONS } from 'src/database/commands/fork-upgrade/fork-migrations';
+import { auditPayloadHash } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
+import { snapshotOmniIncomingCaptureContext } from 'src/modules/omnichannel/contracts/omni-incoming-capture-context';
+import { parseOmniIncomingEnvelope } from 'src/modules/omnichannel/contracts/omni-incoming-envelope';
 import {
   acceptOmniIncomingEvent,
   OmniIncomingConflictError,
   OmniIncomingOutcomeUnknownError,
   type OmniIncomingAuthorizer,
+  type OmniIncomingCaptureAuthorizer,
   type OmniIncomingPrincipal,
 } from 'src/modules/omnichannel/services/accept-omni-incoming-event';
 
@@ -69,6 +73,31 @@ let input: ReturnType<typeof envelope>;
 
 const accept = (candidate: unknown = input, authorizer = authorize) =>
   acceptOmniIncomingEvent(runtime, principal, candidate, authorizer);
+
+const captureContext = () => ({
+  schemaVersion: 1,
+  envelopeHash: auditPayloadHash(parseOmniIncomingEnvelope(input)),
+  origin: 'live',
+  qualification: {
+    adapterId: 'synthetic-capture-fixture',
+    adapterVersion: 'fixture-v1',
+  },
+  nativeMessageKeyVersion: 1,
+  nativeMessageKey: `fixture:v1:incoming:${input.providerMessageId}`,
+  sourceVariant: input.sourceVariant,
+  sourcePosition: { ...input.sourcePosition },
+});
+
+// These tests exercise the boundary, not a real connector qualification registry.
+const acceptCaptured = (
+  context: unknown = captureContext(),
+  captureAuthorizer: OmniIncomingCaptureAuthorizer = async () => undefined,
+  authorizer: OmniIncomingAuthorizer = authorize,
+) =>
+  acceptOmniIncomingEvent(runtime, principal, input, authorizer, {
+    context,
+    authorize: captureAuthorizer,
+  });
 
 const receipts = () => owner.query('SELECT * FROM core."omniIncomingReceipt"');
 const auditEntries = () =>
@@ -168,6 +197,328 @@ afterAll(async () => {
     await owner.query(`DROP ROLE "${roleName}"`);
     await owner.destroy();
   }
+});
+
+describe('trusted incoming capture persistence on PostgreSQL', () => {
+  it('commits the detached capture and its hash with a redacted success audit', async () => {
+    const context = captureContext();
+    const snapshot = snapshotOmniIncomingCaptureContext(context, input);
+    const result = await acceptCaptured(context);
+
+    expect(result).toMatchObject({ created: true, state: 'accepted' });
+    expect(await receipts()).toEqual([
+      expect.objectContaining({
+        id: result.receiptId,
+        trustedCaptureContext: snapshot.context,
+        trustedCaptureContextHash: snapshot.hash,
+        validatedEnvelope: input,
+      }),
+    ]);
+    const audits = await auditEntries();
+    expect(audits).toHaveLength(1);
+    expect(audits[0].outcome).toBe('success');
+    const serialized = JSON.stringify(audits);
+    for (const value of [
+      input.payload.text,
+      input.payload.sourceAuthorId,
+      input.providerChatId,
+      context.nativeMessageKey,
+      context.qualification.adapterId,
+    ])
+      expect(serialized).not.toContain(value);
+  });
+
+  it('keeps legacy four-argument receipts explicitly unqualified', async () => {
+    await accept();
+    expect((await receipts())[0]).toMatchObject({
+      trustedCaptureContext: null,
+      trustedCaptureContextHash: null,
+    });
+  });
+
+  it('replays a reordered identical capture after fresh authorization without duplicating audit', async () => {
+    const context = captureContext();
+    const captureAuthorizer = jest.fn(async () => undefined);
+    const first = await acceptCaptured(context, captureAuthorizer);
+    const reordered = {
+      ...Object.fromEntries(Object.entries(context).reverse()),
+      qualification: Object.fromEntries(
+        Object.entries(context.qualification).reverse(),
+      ),
+      sourcePosition: Object.fromEntries(
+        Object.entries(context.sourcePosition).reverse(),
+      ),
+    };
+
+    expect(await acceptCaptured(reordered, captureAuthorizer)).toEqual({
+      ...first,
+      created: false,
+    });
+    expect(captureAuthorizer).toHaveBeenCalledTimes(2);
+    expect(await receipts()).toHaveLength(1);
+    expect(await auditEntries()).toHaveLength(1);
+  });
+
+  it.each(['origin', 'nativeMessageKey', 'adapterVersion'] as const)(
+    'rejects a valid but changed capture %s on replay without replacing the winner',
+    async (field) => {
+      const context = captureContext();
+      await acceptCaptured(context);
+      const before = await receipts();
+      if (field === 'adapterVersion')
+        context.qualification.adapterVersion = 'fixture-v2';
+      else if (field === 'origin') context.origin = 'history_import';
+      else context.nativeMessageKey = 'fixture:v1:different-canonical-key';
+
+      expect(() =>
+        snapshotOmniIncomingCaptureContext(context, input),
+      ).not.toThrow();
+      await expect(acceptCaptured(context)).rejects.toBeInstanceOf(
+        OmniIncomingConflictError,
+      );
+      expect(await receipts()).toEqual(before);
+    },
+  );
+
+  it.each([true, false])(
+    'rejects qualification upgrade or downgrade on replay (initially qualified: %s)',
+    async (qualifiedFirst) => {
+      if (qualifiedFirst) await acceptCaptured();
+      else await accept();
+      const before = await receipts();
+
+      await expect(
+        qualifiedFirst ? accept() : acceptCaptured(),
+      ).rejects.toBeInstanceOf(OmniIncomingConflictError);
+      expect(await receipts()).toEqual(before);
+    },
+  );
+
+  it('requires an explicit capture authorizer before opening a transaction', async () => {
+    const baseAuthorizer = jest.fn(authorize);
+    const createQueryRunner = jest.spyOn(runtime, 'createQueryRunner');
+    await expect(
+      acceptOmniIncomingEvent(runtime, principal, input, baseAuthorizer, {
+        context: captureContext(),
+        // @ts-expect-error Exercise a malformed runtime caller without its required callback.
+        authorize: undefined,
+      }),
+    ).rejects.toThrow('OMNI_INGRESS_CAPTURE_AUTHORIZER_REQUIRED');
+    expect(baseAuthorizer).not.toHaveBeenCalled();
+    expect(createQueryRunner).not.toHaveBeenCalled();
+    expect(await receipts()).toHaveLength(0);
+    expect(await auditEntries()).toHaveLength(0);
+  });
+
+  it.each([false, true])(
+    'refuses capture authorization before persistence or replay disclosure (existing: %s)',
+    async (existing) => {
+      if (existing) await acceptCaptured();
+      const before = await receipts();
+      const baseAuthorizer = jest.fn(authorize);
+      const captureAuthorizer = jest.fn(async () => {
+        expect(baseAuthorizer).toHaveBeenCalledTimes(1);
+        throw new Error('fixture-private-capture-denial');
+      });
+
+      await expect(
+        acceptCaptured(captureContext(), captureAuthorizer, baseAuthorizer),
+      ).rejects.toThrow('fixture-private-capture-denial');
+      expect(captureAuthorizer).toHaveBeenCalledTimes(1);
+      expect(await receipts()).toEqual(before);
+      const audits = await auditEntries();
+      expect(
+        audits.filter((row: { outcome: string }) => row.outcome === 'denied'),
+      ).toHaveLength(1);
+      expect(JSON.stringify(audits)).not.toContain(
+        'fixture-private-capture-denial',
+      );
+    },
+  );
+
+  it('reads a capture authorizer accessor exactly once and executes the retained validator', async () => {
+    const captureAuthorizer = jest.fn(async () => {
+      throw new Error('fixture-captured-authorizer-denied');
+    });
+    const trustedCapture = {
+      context: captureContext(),
+      authorize: captureAuthorizer,
+    };
+    let reads = 0;
+    Object.defineProperty(trustedCapture, 'authorize', {
+      get: () => (++reads === 1 ? captureAuthorizer : undefined),
+    });
+
+    await expect(
+      acceptOmniIncomingEvent(
+        runtime,
+        principal,
+        input,
+        authorize,
+        trustedCapture,
+      ),
+    ).rejects.toThrow('fixture-captured-authorizer-denied');
+    expect(reads).toBe(1);
+    expect(captureAuthorizer).toHaveBeenCalledTimes(1);
+    expect(await receipts()).toHaveLength(0);
+  });
+
+  it.each(['context accessor', 'asynchronous base authorizer'] as const)(
+    'retains the original capture validator when replaced by the %s',
+    async (mutationPoint) => {
+      const captureAuthorizer = jest.fn(async () => {
+        throw new Error('fixture-original-validator-denied');
+      });
+      const replacement = jest.fn(async () => undefined);
+      const context = captureContext();
+      const trustedCapture: Parameters<typeof acceptOmniIncomingEvent>[4] = {
+        context,
+        authorize: captureAuthorizer,
+      };
+      if (mutationPoint === 'context accessor') {
+        Object.defineProperty(trustedCapture, 'context', {
+          get: () => {
+            trustedCapture.authorize = replacement;
+            return context;
+          },
+        });
+      }
+      const baseAuthorizer: OmniIncomingAuthorizer = async (
+        queryRunner,
+        authorization,
+      ) => {
+        await authorize(queryRunner, authorization);
+        if (mutationPoint === 'asynchronous base authorizer') {
+          trustedCapture.authorize = replacement;
+        }
+      };
+
+      await expect(
+        acceptOmniIncomingEvent(
+          runtime,
+          principal,
+          input,
+          baseAuthorizer,
+          trustedCapture,
+        ),
+      ).rejects.toThrow('fixture-original-validator-denied');
+      expect(captureAuthorizer).toHaveBeenCalledTimes(1);
+      expect(replacement).not.toHaveBeenCalled();
+      expect(await receipts()).toHaveLength(0);
+    },
+  );
+
+  it('snapshots caller-owned capture before base authorization and freezes the capture authorization view', async () => {
+    const context = captureContext();
+    const original = JSON.parse(JSON.stringify(context));
+    const captureAuthorizer: OmniIncomingCaptureAuthorizer = async (
+      queryRunner,
+      authorization,
+    ) => {
+      expect(queryRunner.isTransactionActive).toBe(true);
+      expect(authorization).toEqual({
+        ...principal,
+        routeGeneration: input.routeGeneration,
+        kind: input.kind,
+        captureContext: original,
+      });
+      for (const value of [
+        authorization,
+        authorization.actor,
+        authorization.captureContext,
+        authorization.captureContext.qualification,
+        authorization.captureContext.sourcePosition,
+      ]) {
+        expect(Object.isFrozen(value)).toBe(true);
+      }
+      expect(
+        Reflect.set(authorization.captureContext, 'origin', 'restore_replay'),
+      ).toBe(false);
+      expect(
+        Reflect.set(
+          authorization.captureContext.qualification,
+          'adapterVersion',
+          'injected',
+        ),
+      ).toBe(false);
+    };
+    await acceptCaptured(context, captureAuthorizer, async () => {
+      await Promise.resolve();
+      context.origin = 'history_import';
+      context.qualification.adapterVersion = 'changed-after-validation';
+      context.sourcePosition.value = 'changed-after-validation';
+      context.nativeMessageKey = 'changed-after-validation';
+    });
+    expect((await receipts())[0]).toMatchObject({
+      trustedCaptureContext: original,
+      trustedCaptureContextHash: auditPayloadHash(original),
+    });
+  });
+
+  it('holds both policy and binding SHARE fences during capture authorization', async () => {
+    const competitor = owner.createQueryRunner();
+    try {
+      await acceptCaptured(captureContext(), async (queryRunner) => {
+        expect(queryRunner.isTransactionActive).toBe(true);
+        for (const [table, column, value] of [
+          ['omniWorkspacePolicyState', 'workspaceId', principal.workspaceId],
+          ['omniAccountBinding', 'id', principal.bindingId],
+        ]) {
+          await competitor.startTransaction();
+          await expect(
+            competitor.query(
+              `SELECT id FROM core."${table}" WHERE "${column}"=$1 FOR UPDATE NOWAIT`,
+              [value],
+            ),
+          ).rejects.toMatchObject({ driverError: { code: '55P03' } });
+          await competitor.rollbackTransaction();
+        }
+      });
+    } finally {
+      if (competitor.isTransactionActive)
+        await competitor.rollbackTransaction();
+      await competitor.release();
+    }
+    expect(await receipts()).toHaveLength(1);
+  });
+
+  it('rolls the trusted capture and receipt back when success audit cannot commit', async () => {
+    await owner.query(
+      'ALTER TABLE crm_audit."crmAuditEntry" ADD CONSTRAINT fixture_reject_success CHECK (outcome <> \'success\')',
+    );
+    await expect(acceptCaptured()).rejects.toThrow();
+    expect(await receipts()).toHaveLength(0);
+    expect(
+      (await auditEntries()).map((row: { outcome: string }) => row.outcome),
+    ).toEqual(['failed']);
+  });
+
+  it('recovers a committed qualified receipt after a lost COMMIT acknowledgement by exact replay', async () => {
+    const context = captureContext();
+    const queryRunner = runtime.createQueryRunner('master');
+    const commit = queryRunner.commitTransaction.bind(queryRunner);
+    jest.spyOn(runtime, 'createQueryRunner').mockReturnValueOnce(queryRunner);
+    jest
+      .spyOn(queryRunner, 'commitTransaction')
+      .mockImplementationOnce(async () => {
+        await commit();
+        throw new Error('fixture lost capture commit ACK');
+      });
+    await expect(acceptCaptured(context)).rejects.toBeInstanceOf(
+      OmniIncomingOutcomeUnknownError,
+    );
+    const rows = await receipts();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].trustedCaptureContextHash).toBe(auditPayloadHash(context));
+    expect(await acceptCaptured(context)).toEqual({
+      receiptId: rows[0].id,
+      state: 'accepted',
+      created: false,
+    });
+    expect(
+      (await auditEntries()).map((row: { outcome: string }) => row.outcome),
+    ).toEqual(['success']);
+  });
 });
 
 describe('durable incoming event acceptance on PostgreSQL', () => {

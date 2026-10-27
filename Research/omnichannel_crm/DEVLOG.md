@@ -779,3 +779,26 @@ Skills ai-dev-workflow, behavioral-guardrails и server-schrodinger: разде�
 подтверждён GitHub API. Описание ROB-764 и комментарий `e9ecaf38-03b8-4ca5-956f-649de9b995fa`
 прочитаны обратно, 11 статусов прежние. [Метаданные](implementation/log029/publication.json).
 Продолжаем LOG-030 без остановки.
+
+## LOG-030 — 27.10.2026: trusted capture и безопасный replay
+
+Добавлен закрытый detached/frozen контекст происхождения/квалификации с hash
+полного wire envelope. Ingress принимает его только с отдельным текущим
+server authorizer; фиксирует callback до parse/await. Ревью выявило и исправило
+accessor-подмену callback. Контекст+receipt+redacted audit атомарны, changed context
+и NULL↔qualified дают conflict. Старые строки NULL без backfill/угадывания live.
+
+Пятая миграция: штатный генератор, 3up/3down SQL без изменений; prefix-aware
+verifier, прежние4 source/checksum сохранены. Native up/down/up, registered
+apply/replay/readiness и final metadata zero-diff пройдены,256 history rows сохранены.
+294 PG +146 unit +20 guard +5 checksum =465 PASS. Typecheck106roots:0new/0changed,
+141 baseline остаётся. Исправлена test-only structuredClone realm несовместимость,
+serializer не ослаблен. [Доказательства и пределы](implementation/log030/README.md).
+
+Full apply, реальные adapter qualification/import permissions и live каналы ещё
+не готовы. Immutability service/ORM, не отдельный raw SQL trigger. Независимое
+адресное review PASS после P2, Claude/fullarchitecture review не запускался.
+Демо прежнее, bounded test resources переиспользуются. Actions не используется.
+Skills ai-dev-workflow, behavioral-guardrails, server-schrodinger: разделение
+работ/ревью, проверяемый scope, изолированные генерация и PG tests. Продолжаем
+ownership guards и domain apply; ROB-764 In Progress.

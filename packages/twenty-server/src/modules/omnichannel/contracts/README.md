@@ -45,3 +45,22 @@ The whole validated, detached envelope is canonically serialized and hashed
 before the first await. Key order does not matter; semantic fields do. A successful
 receipt only transfers durable replay responsibility to the CRM. Message apply,
 automation dispatch and sending are separate subsequent work.
+
+## Trusted capture context
+
+The separate internal `omni-incoming-capture-context.ts` schema snapshots capture
+origin (`live`, `history_import`, `restore_replay`), qualification adapter ID and
+version, canonical native key/version, completeness and opaque source position.
+Its `envelopeHash` binds the entire normalized wire envelope. Shape validation
+and hashes are not signatures or authority: the optional fifth ingress argument
+requires its own current server authorizer under policy/binding locks, including
+replay. The future transport must obtain this context from a qualified server
+adapter/import boundary, never forward it from the public JSON body.
+
+The receipt stores both context and its separate hash atomically with its audit.
+The existing wire hash is unchanged. Replaying the same event with different
+capture context, or switching between null and qualified context, conflicts.
+The four-argument internal call remains unqualified (both columns NULL). No
+backfill invents `live`, a key or an ordering guarantee for existing receipts.
+A future apply must reject/quarantine unqualified context. This addition does
+not activate connectors or implement the old-generation recovery path.

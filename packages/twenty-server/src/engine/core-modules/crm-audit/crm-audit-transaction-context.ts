@@ -66,7 +66,12 @@ const CATALOG: Record<
       'nextAttemptAt',
       'errorCode',
     ],
-    redacted: ['eventId', 'validatedEnvelope', 'leaseOwner'],
+    redacted: [
+      'eventId',
+      'validatedEnvelope',
+      'leaseOwner',
+      'trustedCaptureContext',
+    ],
   },
   omniMessage: {
     values: ['messageThreadId', 'isDraft'],

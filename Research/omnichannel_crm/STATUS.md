@@ -1,15 +1,15 @@
 # Текущее состояние Twenty CRM
 
-LOG-029 / ROB-764 In Progress: штатные Message/Thread/participants сохраняются
-с canonical Thread ID; audit скрывает содержимое и требует binding/conversation.
-19 native PG сценариев проверяют Person relation, rollback, replay и tombstones.
-Всего 379 тестов PASS; новых type diagnostics нет, 141 baseline расширенного
-native графа остаётся. Четыре миграции прежние, dependency guard проходит.
-[Доказательства и границы](implementation/log029/README.md).
-Далее — trusted capture context, domain ownership и полный receipt apply с
-Message+link+revision+event+audit, затем inbox/outbox/recovery. Full ingress
-acceptance, scheduler/HTTP/own ACL/UI/живые каналы ещё не готовы. Демо прежнее.
-GitHub Actions не используется.
+LOG-030 / ROB-764 In Progress: receipt сохраняет trusted capture context/hash,
+с обязательной текущей авторизацией при приёме и replay. Изменённый context и
+NULL↔qualified дают conflict; старые строки остаются неквалифицированными.
+465 тестов PASS; новых ошибок типов нет (141 baseline, 106 roots).
+Пятая миграция штатно сгенерирована; старые четыре неизменны. Native up/down/up,
+apply/replay/readiness и итоговый zero-diff подтверждены, 256 history rows сохранены.
+[Доказательства и границы](implementation/log030/README.md).
+Далее — ownership guards APP/background и полный Message+link+revision+event+audit
+apply, inbox/outbox/recovery. Полный ingress acceptance ещё не выполнен.
+HTTP/own ACL/UI/живые коннекторы не подключены; демо прежнее. Actions не используется.
 
 ## Предыдущая порция — LOG-022
 

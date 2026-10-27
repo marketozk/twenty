@@ -1,0 +1,3 @@
+[Nest] 28  - 10/27/2026, 12:33:39 PM     LOG [GenerateInstanceCommandCommand] fast instance command generated successfully: /app/packages/twenty-server/src/database/commands/upgrade-version-command/2-52/2-52-instance-command-fast-1793104418386-omni-trusted-capture.ts
+[Nest] 28  - 10/27/2026, 12:33:39 PM     LOG [GenerateInstanceCommandCommand]   Class: OmniTrustedCaptureFastInstanceCommand
+[Nest] 28  - 10/27/2026, 12:33:39 PM     LOG [GenerateInstanceCommandCommand]   Version: 2.52.0

@@ -1,0 +1,19 @@
+import { QueryRunner } from 'typeorm';
+
+import { RegisteredInstanceCommand } from 'src/engine/core-modules/upgrade/decorators/registered-instance-command.decorator';
+import { FastInstanceCommand } from 'src/engine/core-modules/upgrade/interfaces/fast-instance-command.interface';
+
+@RegisteredInstanceCommand('2.52.0', 1793104418386)
+export class OmniTrustedCaptureFastInstanceCommand implements FastInstanceCommand {
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query('ALTER TABLE "core"."omniIncomingReceipt" ADD "trustedCaptureContext" jsonb');
+    await queryRunner.query('ALTER TABLE "core"."omniIncomingReceipt" ADD "trustedCaptureContextHash" text');
+    await queryRunner.query('ALTER TABLE "core"."omniIncomingReceipt" ADD CONSTRAINT "CHK_omniIncomingReceipt_trusted_capture" CHECK (("trustedCaptureContext" IS NULL AND "trustedCaptureContextHash" IS NULL) OR ("trustedCaptureContext" IS NOT NULL AND "trustedCaptureContextHash" IS NOT NULL AND jsonb_typeof("trustedCaptureContext") = \'object\' AND "trustedCaptureContextHash" ~ \'^[a-f0-9]{64}$\'))');
+  }
+
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query('ALTER TABLE "core"."omniIncomingReceipt" DROP CONSTRAINT "CHK_omniIncomingReceipt_trusted_capture"');
+    await queryRunner.query('ALTER TABLE "core"."omniIncomingReceipt" DROP COLUMN "trustedCaptureContextHash"');
+    await queryRunner.query('ALTER TABLE "core"."omniIncomingReceipt" DROP COLUMN "trustedCaptureContext"');
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "generatedSqlStatementsPreserved": 6,
+  "upStatements": 3,
+  "downStatements": 3,
+  "priorFourManifestEntriesUnchanged": true,
+  "priorFourMigrationSourcesByteIdentical": true,
+  "newMigration": {
+    "migrationId": "omni-1793104418386-trusted-capture",
+    "checksum": "8fd7b96cfcfbd4d0dad52fdf8db41d93403bcdeabc571cb5bab217d97a6087ac",
+    "sourcePath": "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-trusted-capture.migration.ts"
+  }
+}

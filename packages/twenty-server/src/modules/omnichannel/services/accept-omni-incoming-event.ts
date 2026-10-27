@@ -16,6 +16,10 @@ import {
   type OmniIncomingEnvelope,
   parseOmniIncomingEnvelope,
 } from 'src/modules/omnichannel/contracts/omni-incoming-envelope';
+import {
+  type OmniIncomingCaptureContext,
+  snapshotOmniIncomingCaptureContext,
+} from 'src/modules/omnichannel/contracts/omni-incoming-capture-context';
 
 export type OmniIncomingPrincipal = {
   workspaceId: string;
@@ -37,6 +41,24 @@ export type OmniIncomingAcceptance = {
   receiptId: string;
   state: OmniIncomingReceiptState;
   created: boolean;
+};
+
+// This authorizer must resolve the registered adapter/import qualification and
+// permitted capture origin for the locked binding. A valid DTO is not proof.
+export type OmniIncomingCaptureAuthorizer = (
+  queryRunner: QueryRunner,
+  authorization: Readonly<
+    OmniIncomingPrincipal & {
+      routeGeneration: string;
+      kind: OmniIncomingEnvelope['kind'];
+      captureContext: OmniIncomingCaptureContext;
+    }
+  >,
+) => Promise<void>;
+
+export type OmniTrustedIncomingCapture = {
+  context: unknown;
+  authorize: OmniIncomingCaptureAuthorizer;
 };
 
 export class OmniIncomingConflictError extends Error {
@@ -112,6 +134,7 @@ export const acceptOmniIncomingEvent = async (
   trustedPrincipal: OmniIncomingPrincipal,
   input: unknown,
   authorize: OmniIncomingAuthorizer,
+  trustedCapture?: OmniTrustedIncomingCapture,
 ): Promise<OmniIncomingAcceptance> => {
   if (
     !trustedPrincipal ||
@@ -143,6 +166,14 @@ export const acceptOmniIncomingEvent = async (
   // Capture detached content before authorization can yield to a mutating caller.
   const envelopeJson = canonicalAuditJson(envelope);
   const payloadHash = auditPayloadHash(envelope);
+  const authorizeCapture = trustedCapture?.authorize;
+  if (trustedCapture !== undefined && typeof authorizeCapture !== 'function') {
+    throw new Error('OMNI_INGRESS_CAPTURE_AUTHORIZER_REQUIRED');
+  }
+  const capture =
+    trustedCapture === undefined
+      ? null
+      : snapshotOmniIncomingCaptureContext(trustedCapture.context, envelope);
   let receiptId: string = randomUUID();
   const attemptId = randomUUID();
   let auditEligible = false;
@@ -184,6 +215,19 @@ export const acceptOmniIncomingEvent = async (
           kind: envelope.kind,
         }),
       );
+      if (capture && authorizeCapture) {
+        await authorizeCapture(
+          queryRunner,
+          Object.freeze({
+            workspaceId,
+            bindingId,
+            actor,
+            routeGeneration: envelope.routeGeneration,
+            kind: envelope.kind,
+            captureContext: capture.context,
+          }),
+        );
+      }
     } catch (error) {
       authorizationDenied = true;
       throw error;
@@ -199,8 +243,9 @@ export const acceptOmniIncomingEvent = async (
     const inserted: { id: string }[] = await queryRunner.query(
       `INSERT INTO core."omniIncomingReceipt"
        (id, "workspaceId", "bindingId", "eventId", kind, "schemaVersion",
-        "routeGeneration", "canonicalPayloadHash", "validatedEnvelope")
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)
+        "routeGeneration", "canonicalPayloadHash", "validatedEnvelope",
+        "trustedCaptureContext", "trustedCaptureContextHash")
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11)
        ON CONFLICT ("workspaceId", "bindingId", "eventId") DO NOTHING RETURNING id`,
       [
         receiptId,
@@ -212,21 +257,27 @@ export const acceptOmniIncomingEvent = async (
         envelope.routeGeneration,
         payloadHash,
         envelopeJson,
+        capture?.canonicalJson ?? null,
+        capture?.hash ?? null,
       ],
     );
     const [receipt]: {
       id: string;
       canonicalPayloadHash: string;
+      trustedCaptureContextHash: string | null;
       state: OmniIncomingReceiptState;
     }[] = await queryRunner.query(
-      `SELECT id, "canonicalPayloadHash", state FROM core."omniIncomingReceipt"
+      `SELECT id, "canonicalPayloadHash", "trustedCaptureContextHash", state FROM core."omniIncomingReceipt"
        WHERE "workspaceId" = $1 AND "bindingId" = $2 AND "eventId" = $3 FOR SHARE`,
       [workspaceId, bindingId, envelope.eventId],
     );
 
     if (!receipt) throw new Error('OMNI_INGRESS_RECEIPT_MISSING');
     receiptId = receipt.id;
-    if (receipt.canonicalPayloadHash !== payloadHash) {
+    if (
+      receipt.canonicalPayloadHash !== payloadHash ||
+      receipt.trustedCaptureContextHash !== (capture?.hash ?? null)
+    ) {
       throw new OmniIncomingConflictError();
     }
 
@@ -252,6 +303,7 @@ export const acceptOmniIncomingEvent = async (
           state: receipt.state,
           eventId: envelope.eventId,
           validatedEnvelope: envelope,
+          trustedCaptureContext: capture?.context ?? null,
         },
         securityDescriptor: {
           resourceKind: 'omniIncomingReceipt',

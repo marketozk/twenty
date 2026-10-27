@@ -1,16 +1,15 @@
 # Дорожная карта проекта
 
-Состояние после LOG-028: ROB-772 Done как планирование, ROB-764 In Progress.
-Миграции, первая группа таблиц, порядок запуска, минимальный аудит и создание
-неактивного подключения и таблицы сообщений/команд/событий реализованы. Добавлены
-roots/charges/consumer receipts/dispatch/budgets/slots/activation/admission.
-LOG-026 реализовал внутренний ingress receipt writer и строгий envelope v1.
-LOG-027 добавил receipt-only claim/reclaim/renew/defer. LOG-028 — общий native
-audit executor, strict lifecycle, adapters событий/ключей. Далее — actual native
-Message+audit+event и inbox/outbox.
-[Текущее состояние](../STATUS.md)
-и [ход реализации](../implementation/rob764-progress.md) содержат проверки и
-ограничения. Чаты ещё не реализованы; изменения ROB-764 в демо не выкачены.
+LOG-030 / ROB-764 In Progress: receipt сохраняет trusted capture context/hash,
+с обязательной текущей авторизацией при приёме и replay. Изменённый context и
+NULL↔qualified дают conflict; старые строки остаются неквалифицированными.
+465 тестов PASS; новых ошибок типов нет (141 baseline, 106 roots).
+Пятая миграция штатно сгенерирована; старые четыре неизменны. Native up/down/up,
+apply/replay/readiness и итоговый zero-diff подтверждены, 256 history rows сохранены.
+[Доказательства и границы](../implementation/log030/README.md).
+Далее — ownership guards APP/background и полный Message+link+revision+event+audit
+apply, inbox/outbox/recovery. Полный ingress acceptance ещё не выполнен.
+HTTP/own ACL/UI/живые коннекторы не подключены; демо прежнее. Actions не используется.
 
 Полный объём описан в [requirements.md](../requirements.md). Переход к следующей фазе подтверждается результатом предыдущей. Даты и трудозатраты появятся после исследования; сейчас их нельзя обоснованно назначить.
 

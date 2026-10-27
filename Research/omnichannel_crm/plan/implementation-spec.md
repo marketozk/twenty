@@ -52,7 +52,7 @@
 | ConversationReadCursor | workspaceId, conversationId, workspaceMemberId, lastReadSequence bigint | UNIQUE(workspaceId,conversationId,workspaceMemberId); composite FK(workspaceId,conversationId) только на core Conversation; dynamic workspaceMemberId проверяется сервером по общему правилу §3; личная отметка чтения, не участие и не grant; правило в [sending-ui](contracts/sending-ui.md#ui) |
 | HistoricalAuthorMapping | bindingId,sourceSystem,sourceAuthorId,workspaceMemberId nullable,revision bigint,verificationEvidenceRef | UNIQUE(workspaceId,bindingId,sourceSystem,sourceAuthorId); mapping только явным admin writer, dynamic member server-validated; ROB-770; original message author snapshot неизменен |
 | MessageLink | conversationId, bindingId, rawNativeMessageId, nativeMessageKey/version, messageId, providerRevision/sourcePosition nullable, displayOccurredAt, displayTimeSource, outgoingCommandId nullable, immutableAuthorSnapshot jsonb, sourceAuthorId/sourceDisplayName/authorVerification nullable, senderProvenance, correlationState | UNIQUE(workspaceId,bindingId,conversationId,nativeMessageKey), UNIQUE(workspaceId,messageId) |
-| IncomingReceipt | bindingId, eventId, kind/version/generation, canonicalPayloadHash, validatedEnvelope jsonb, state, attempts, nextAttemptAt, leaseOwner/token/until, resultId/errorCode | UNIQUE(workspaceId,bindingId,eventId); index state/nextAttemptAt/leaseUntil |
+| IncomingReceipt | bindingId, eventId, kind/version/generation, canonicalPayloadHash, validatedEnvelope jsonb, trustedCaptureContext/jsonb и trustedCaptureContextHash nullable immutable pair, state, attempts, nextAttemptAt, leaseOwner/token/until, resultId/errorCode | UNIQUE(workspaceId,bindingId,eventId); index state/nextAttemptAt/leaseUntil |
 | OutgoingCommand | conversationId, actorKind/id, initiatingActorId, idempotencyKey, payloadHash/jsonb, expectedAutomationEpoch (non-human)/policyId/policyVersion/generation, workflowCancellationRefs, senderClass/contentProvenance, producerTurnId/capturedTurnFence nullable, referenceId nullable (required non-human), cancelRequestedAt/cancelReason/cancelEvidence nullable, replacesCommandId nullable, outboundSequence, replyToMessageLinkId nullable, resolvedReplyNativeRef nullable, state, connectorJobId, connectorAcceptedEvidence/journalSequence nullable (monotonic), leaseToken/until, nextAttemptAt, statusRevision | UNIQUE(workspaceId,actorKind,actorId,idempotencyKey); UNIQUE(workspaceId,conversationId,outboundSequence); id=commandId; target/payload/reply native snapshot immutable  partial index(workspaceId,policyId,policyVersion,state,id) WHERE senderClass != human; |
 | DomainEvent | eventId=id, conversationId nullable, kind, origin, causation/rootExecutionId, conversationSequence, payloadVersion/jsonb | UNIQUE(workspaceId,conversationId,conversationSequence) для conversation events |
 | CommandResolutionRequest | commandId,actorKind/id,idempotencyKey,evidenceRef,evidenceHash,payloadHash,state,resultReceiptId nullable,leaseUntil nullable,reasonCode | UNIQUE(workspaceId,actorKind,actorId,idempotencyKey); immutable command/evidence intent; queued/checking/resolved/unresolved/denied; same key/hash returns same request; no status override |
@@ -326,6 +326,24 @@ Tests T21: менеджер с Person/connectedAccount, но без conversation
 ### 15.2 Идентичность источника, контакта и внешнего автора
 
 Различаем `sourceEventKey` (idempotency доставки) и `nativeMessageKey` (одно логическое сообщение). MAX bridge journal имеет UNIQUE(account,chat,messageId,direction,content_empty), что подтверждено source schema: это варианты source events, а не автоматически два разных bubbles. Adapter contract v1 включает raw ID, direction, source variant и canonical key version. Сравнение placeholder→populated сохраняет оба receipts и одну canonical Message, если adapter доказал одну identity; противоположные направления/неоднозначные variants не склеиваются. Mapping tests на реально выбранной версии предшествуют включению adapter. MessageLink UNIQUE использует versioned canonical nativeMessageKey; raw ID сохраняется для диагностики. Если native order/identity не доказаны, quarantined/reconciliation, не silent drop.
+
+Доверенная граница ingress сохраняет `trustedCaptureContext` и его canonical
+hash в одной транзакции с receipt/audit, отдельно от внешнего envelope. Контекст
+v1 связывается через `envelopeHash` с полным нормализованным envelope и содержит
+server-selected origin (`live/history_import/restore_replay`), ссылку
+qualification adapterId/version, уже квалифицированный nativeMessageKey/version,
+подтверждённые sourceVariant/sourcePosition. Это происхождение захвата, не actor.
+Закрытая schema и hash не доказывают доверие: отдельный обязательный server
+authorizer проверяет origin и зарегистрированную qualification для binding под
+policy/binding locks до новой записи и каждого replay. Wire payload этих полей
+не принимает. Выбранный callback и detached/frozen context фиксируются до await.
+Повтор eventId сравнивает wire hash и capture hash; изменение либо NULL→qualified
+не перезаписывает receipt. Прежний/внутренний неквалифицированный приём сохраняет
+оба поля NULL: такой receipt нельзя применять как live/квалифицированный без
+отдельного доказанного reconciliation. Ни schema, ни поздний worker не выводят
+canonical identity/order из raw ID и не назначают происхождение по умолчанию.
+Обычный ingress сохраняет current generation fence; old-generation restore
+потребует отдельного authenticated recovery path по §15.4.
 
 SaleBot.history возвращает identity_verified=false/direction_verified=false/replay_ready=false в исследованном коде. Поэтому SaleBot record ID не считается native Telegram/MAX ID. Source adapter либо предоставляет проверенную mapping, либо сохраняет history в namespaced legacy key и отключает автоматическую cross-source dedup; UI показывает legacy/unverified provenance, отчёт содержит возможные дубли. Даже неперекрывающиеся даты не доказывают идентичность; точное объединение только после mapping. Auto effects из legacy import запрещены. Чистая native/connector history имеет свой проверенный native key и полноценные overlap tests.
 

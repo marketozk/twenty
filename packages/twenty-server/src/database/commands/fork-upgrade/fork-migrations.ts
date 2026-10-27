@@ -3,6 +3,7 @@ import { OmniAuditBootstrapFastInstanceCommand } from 'src/database/commands/for
 import { OmniConversationFoundationFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/omni-conversation-foundation.migration';
 import { OmniEventGovernanceFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/omni-event-governance.migration';
 import { OmniMessagePersistenceFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/omni-message-persistence.migration';
+import { OmniTrustedCaptureFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/omni-trusted-capture.migration';
 import { FORK_SCHEMA_CHECKS } from 'src/engine/core-modules/omnichannel-storage/migrations/fork-schema-checks';
 
 export const FORK_MIGRATIONS: readonly ForkMigration[] = [
@@ -25,6 +26,11 @@ export const FORK_MIGRATIONS: readonly ForkMigration[] = [
     ...FORK_SCHEMA_CHECKS[3],
     kind: OmniEventGovernanceFastInstanceCommand.kind,
     command: new OmniEventGovernanceFastInstanceCommand(),
+  },
+  {
+    ...FORK_SCHEMA_CHECKS[4],
+    kind: OmniTrustedCaptureFastInstanceCommand.kind,
+    command: new OmniTrustedCaptureFastInstanceCommand(),
   },
 ];
 

@@ -1,0 +1,15 @@
+{
+  "applied": [
+    "omni-1793104418386-trusted-capture"
+  ],
+  "replayNoop": true,
+  "readiness": true,
+  "nativeHistory": [
+    {
+      "count": 256,
+      "hash": "7b709ffef05d1857b947f9524de3c6e1"
+    }
+  ],
+  "finalMetadataDiff": "empty",
+  "compilation": "focused SWC in existing image; not a full image build"
+}

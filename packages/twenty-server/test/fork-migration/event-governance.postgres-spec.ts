@@ -26,6 +26,8 @@ const dataSource = new DataSource({
   migrationsRun: false,
   extra: { max: 3, statement_timeout: 10000 },
 });
+const GOVERNANCE_MIGRATIONS = FORK_MIGRATIONS.slice(0, 4);
+const GOVERNANCE_SCHEMA_CHECKS = FORK_SCHEMA_CHECKS.slice(0, 4);
 const HASH = 'a'.repeat(64);
 type Row = Record<string, unknown>;
 type Fixture = {
@@ -241,7 +243,7 @@ beforeEach(async () => {
   ).apply();
   fixture = await seed();
   oldRows = await snapshotOldRows();
-  await new ForkMigrationRunner(dataSource, FORK_MIGRATIONS).apply();
+  await new ForkMigrationRunner(dataSource, GOVERNANCE_MIGRATIONS).apply();
 });
 afterAll(async () => {
   if (dataSource.isInitialized) await dataSource.destroy();
@@ -251,14 +253,17 @@ describe('event governance schema on PostgreSQL', () => {
   it('upgrades populated message tables and replays without changing their rows', async () => {
     expect(await snapshotOldRows()).toEqual(oldRows);
     expect(
-      await new ForkMigrationRunner(dataSource, FORK_MIGRATIONS).apply(),
+      await new ForkMigrationRunner(dataSource, GOVERNANCE_MIGRATIONS).apply(),
     ).toEqual([]);
     expect(
       await dataSource.query(
         'SELECT count(*)::int AS count FROM core."forkMigrationLedger"',
       ),
     ).toEqual([{ count: 4 }]);
-    await new ForkSchemaVerifier(dataSource, FORK_SCHEMA_CHECKS).verifyReady();
+    await new ForkSchemaVerifier(
+      dataSource,
+      GOVERNANCE_SCHEMA_CHECKS,
+    ).verifyReady();
   });
 
   it('reverses empty new tables and reapplies without losing the populated previous prefix', async () => {
@@ -273,7 +278,10 @@ describe('event governance schema on PostgreSQL', () => {
       await migration.up(manager.queryRunner!);
     });
     expect(await snapshotOldRows()).toEqual(oldRows);
-    await new ForkSchemaVerifier(dataSource, FORK_SCHEMA_CHECKS).verifyReady();
+    await new ForkSchemaVerifier(
+      dataSource,
+      GOVERNANCE_SCHEMA_CHECKS,
+    ).verifyReady();
   });
 
   it('refuses an orphan root reference in the old prefix and rolls back the new DDL', async () => {
@@ -292,7 +300,7 @@ describe('event governance schema on PostgreSQL', () => {
       [orphanId, fixture.eventId],
     );
     await rejectsWith(
-      new ForkMigrationRunner(dataSource, FORK_MIGRATIONS).apply(),
+      new ForkMigrationRunner(dataSource, GOVERNANCE_MIGRATIONS).apply(),
       '23503',
     );
     expect(

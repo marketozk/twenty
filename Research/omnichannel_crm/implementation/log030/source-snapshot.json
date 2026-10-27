@@ -1,0 +1,23 @@
+{
+  "baseCommit": "0bd01c442f4afb210ab61f3e041b586da8c42369",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/database/commands/fork-upgrade/fork-migrations.ts": "968a32463fa6d4cfe102ea936e8a20d6ff3bd58f68c93187df2add073e344eec",
+    "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-trusted-capture.migration.ts": "8fd7b96cfcfbd4d0dad52fdf8db41d93403bcdeabc571cb5bab217d97a6087ac",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "2677be2c82adf72464aee0b988d9ec5bbb32f4a149af67610c574da7f3f62437",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-incoming-receipt.entity.ts": "8d388d83beca6dbf9aa98c067f32ab718e599ac215577ae48399ec7b6e5dc717",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/fork-schema-checks.ts": "3bfdf1c647bb60491986073bb8bd2cb7607c4e37f297b9bf2dcb5657f95d1641",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/fork-schema-manifest.json": "5b52829b09e74331b4ce134a0cb09dd86800850d7a9de0be20ca807ef8624e05",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/message-persistence.check.ts": "82951a148a9f841413292da99ae1a96bcb46b8fac2c2462c467c37f25c8e4f6b",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/trusted-capture.check.ts": "9f83e151a4e9640f597d68e783740379893a79d9932158db476e00078b1c8483",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/trusted-capture.schema.json": "76ed63fec3ec793d69138e1f0933c7d7fe7bee42f568f3f53cf20a189e33be7e",
+    "packages/twenty-server/src/modules/omnichannel/contracts/README.md": "3b178313fbba43eb1ddbee4c40005a2ae01d549c2f4161ed27b8a198ca31fcf9",
+    "packages/twenty-server/src/modules/omnichannel/contracts/omni-incoming-capture-context.ts": "6f6134b5abfd6504073e1194d6b2f37e3dfa597601bb180fa92ec313f4cc919e",
+    "packages/twenty-server/src/modules/omnichannel/services/accept-omni-incoming-event.ts": "e82959f4b505d609f55b8c02a0a39c64f4878c18922139a940da3cbb66da2bab",
+    "packages/twenty-server/test/fork-migration/event-governance.postgres-spec.ts": "83be1e7c9b7f49c9da045023d89b9e860f44e0bd38b50ef82abe25b944339b1b",
+    "packages/twenty-server/test/fork-migration/omni-incoming-capture-context.spec.ts": "31caba0f22b2370e003ef7e11ed0c6f6bbb100ee4e7d25e99cbefcac2cbf8252",
+    "packages/twenty-server/test/fork-migration/omni-incoming-event.postgres-spec.ts": "f8c0fc22cb8ed73644d7be54f0c16848df8361428f6e1e2353f1265629afa409",
+    "packages/twenty-server/test/fork-migration/trusted-capture.postgres-spec.ts": "12a3a075c603ca9061e2ff8f7ea964f2c8b76f9bc473f399f651855ba34724cc"
+  }
+}

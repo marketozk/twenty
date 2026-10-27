@@ -18,5 +18,10 @@
     "migrationId": "omni-1793095884267-event-governance",
     "checksum": "0a09b9a98d78795565d154fec08497a5e39c909d49486433afe4e02cddb08e9d",
     "sourcePath": "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-event-governance.migration.ts"
+  },
+  {
+    "migrationId": "omni-1793104418386-trusted-capture",
+    "checksum": "8fd7b96cfcfbd4d0dad52fdf8db41d93403bcdeabc571cb5bab217d97a6087ac",
+    "sourcePath": "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-trusted-capture.migration.ts"
   }
 ]
