@@ -1,12 +1,13 @@
 # Текущее состояние Twenty CRM
 
-LOG-024 / ROB-764 In Progress: добавлены шесть таблиц сообщений/ревизий/CRM-связей,
-входящих событий, исходящих команд и доменных событий. Реализована проверка схемы
-по версии миграции. Прошли138 тестов, focused typecheck49 файлов и native
-upgrade/replay; финальный generator diff пустой. Новый полный image не собирался.
-[Доказательства и границы](implementation/log024/README.md).
-Далее — оставшиеся roots/consumer receipts/dispatch/budgets/activation/admission,
-затем ingress/inbox/outbox/recovery. Демо и реальные каналы не менялись.
+LOG-025 / ROB-764 In Progress: добавлены восемь таблиц roots/charges/dispatch,
+reply budgets/slots, activation/admission и consumer receipts. Прошли 160 тестов,
+focused typecheck 60 файлов и native upgrade/replay; финальный generator diff
+пустой. Новый полный image не собирался.
+[Доказательства и границы](implementation/log025/README.md).
+Далее — ingress persistence: canonical envelope/hash, generation, durable receipt/ACK
+и конфликт payload; затем Message+audit+event, inbox/outbox/recovery.
+Демо и реальные каналы не менялись; runtime automation ещё не реализована.
 
 ## Предыдущая порция — LOG-022
 

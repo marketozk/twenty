@@ -6,13 +6,13 @@
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
-Зависимость: этап0. Статус: In Progress (LOG-024). К LOG-022 добавлены
-MessageLink/MessageRevision/ConversationTarget/IncomingReceipt/OutgoingCommand/
-DomainEvent, generated up/down и version-aware проверка схемы. Прошли113 PG и25
-Python tests, focused typecheck49 файлов; native upgrade/replay и финальный пустой
-generator diff. Полного нового image build/typecheck и runtime writers нет.
-Остаток схемы: roots/consumer receipts/dispatch/budgets/activation/admission, затем
-domain writers и ingress/outbox. [LOG-024](../implementation/log024/README.md).
+Зависимость: этап0. Статус: In Progress (LOG-025). К схеме сообщений LOG-024
+добавлены RootExecution/RootBudgetCharge/EventDispatchPlan/ReplyBudget/ReplySlot/
+RouteActivation/AutomationAdmission/ConsumerReceipt. Прошли 135 PG и 25 Python tests,
+focused typecheck 60 файлов; native upgrade/replay и финальный пустой generator diff.
+Это schema-only порция; полного нового image build/typecheck и runtime writers нет.
+Далее — ingress persistence, Message+audit+event, inbox/outbox/recovery.
+[LOG-025](../implementation/log025/README.md).
 
 Предыдущая порция LOG-022: реализованы fork migrations,
 первые9 core entities, audit entry/PolicyMutationReceipt, минимальный audit writer

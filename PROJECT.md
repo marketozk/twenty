@@ -54,12 +54,13 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-024 / ROB-764 In Progress: добавлены шесть таблиц хранения сообщений, ревизий,
-связей CRM, receipts, commands и events. Version-aware schema verification
-сохраняет строгую проверку старой и новой версии. Прошли138 тестов, focused
-typecheck49 файлов и native upgrade/replay с пустым итоговым generator diff.
-[Проверки и оставшаяся схема этапа1](Research/omnichannel_crm/implementation/log024/README.md).
-Демо не обновлялось, runtime приём/отправка ещё предстоят.
+LOG-025 / ROB-764 In Progress: к схеме сообщений добавлены восемь таблиц
+roots/charges/dispatch plans/reply budgets/slots/activation/admission/consumer receipts.
+Прошли 160 тестов, focused typecheck 60 файлов и native upgrade/replay;
+финальный generator diff пустой. Старые миграции сохранены.
+[Проверки и ограничения](Research/omnichannel_crm/implementation/log025/README.md).
+Следующий шаг — ingress persistence с durable receipt/ACK и конфликтом payload,
+затем атомарное Message+audit+event и inbox/outbox/recovery. Демо не обновлялось.
 
 Предыдущая порция LOG-022: реализованы минимальный аудит и атомарное создание
 inactive binding/disabled policy v0 с receipt, текущей проверкой прав через
@@ -67,7 +68,7 @@ inactive binding/disabled policy v0 с receipt, текущей проверко�
 audit entry и PolicyMutationReceipt. Runtime gate проверяет append-only privileges.
 Прошли81 PostgreSQL,25 Python guard/checksum и7 shell tests, focused strict typecheck.
 [Доказательства и ограничения](Research/omnichannel_crm/implementation/log022/README.md).
-Демо не обновлялось. Следующие работы — схема сообщений/команд/событий и ingress/outbox;
+Демо не обновлялось. Схема расширена в LOG-024/025; следующие работы — ingress/outbox;
 публичный API, собственные права и чаты ещё не готовы. ROB-772 Done как планирование;
 полного нового архитектурного review pass не заявлено.
 

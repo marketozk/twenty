@@ -171,7 +171,10 @@ beforeEach(async () => {
   ).apply();
   fixture = await seed();
   oldRows = await snapshotOldRows();
-  await new ForkMigrationRunner(dataSource, FORK_MIGRATIONS).apply();
+  await new ForkMigrationRunner(
+    dataSource,
+    FORK_MIGRATIONS.slice(0, 3),
+  ).apply();
 });
 afterAll(async () => {
   if (dataSource.isInitialized) await dataSource.destroy();
@@ -181,14 +184,20 @@ describe('message persistence schema on PostgreSQL', () => {
   it('upgrades populated previous prefix and replays without altering earlier records', async () => {
     expect(await snapshotOldRows()).toEqual(oldRows);
     expect(
-      await new ForkMigrationRunner(dataSource, FORK_MIGRATIONS).apply(),
+      await new ForkMigrationRunner(
+        dataSource,
+        FORK_MIGRATIONS.slice(0, 3),
+      ).apply(),
     ).toEqual([]);
     expect(
       await dataSource.query(
         'SELECT count(*)::int AS count FROM core."forkMigrationLedger"',
       ),
-    ).toEqual([{ count: FORK_MIGRATIONS.length }]);
-    await new ForkSchemaVerifier(dataSource, FORK_SCHEMA_CHECKS).verifyReady();
+    ).toEqual([{ count: 3 }]);
+    await new ForkSchemaVerifier(
+      dataSource,
+      FORK_SCHEMA_CHECKS.slice(0, 3),
+    ).verifyReady();
   });
 
   it('reverses empty new tables and reapplies without losing populated foundation', async () => {
@@ -204,7 +213,10 @@ describe('message persistence schema on PostgreSQL', () => {
       await migration.up(manager.queryRunner!);
     });
     expect(await snapshotOldRows()).toEqual(oldRows);
-    await new ForkSchemaVerifier(dataSource, FORK_SCHEMA_CHECKS).verifyReady();
+    await new ForkSchemaVerifier(
+      dataSource,
+      FORK_SCHEMA_CHECKS.slice(0, 3),
+    ).verifyReady();
   });
 
   it('refuses drift in the new conversation composite key', async () => {
@@ -212,7 +224,10 @@ describe('message persistence schema on PostgreSQL', () => {
       'ALTER TABLE core."omniConversation" DROP CONSTRAINT "UQ_omniConversation_binding_id" CASCADE',
     );
     await expect(
-      new ForkSchemaVerifier(dataSource, FORK_SCHEMA_CHECKS).verifyReady(),
+      new ForkSchemaVerifier(
+        dataSource,
+        FORK_SCHEMA_CHECKS.slice(0, 3),
+      ).verifyReady(),
     ).rejects.toThrow();
   });
 

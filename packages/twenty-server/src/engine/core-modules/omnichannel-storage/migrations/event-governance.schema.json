@@ -1,0 +1,1725 @@
+[
+  {
+    "name": "core.omniAutomationAdmission",
+    "columns": [
+      {
+        "name": "activationVersion",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "bindingId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "conversationId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "effectKind",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'customer_inbound'"
+      },
+      {
+        "name": "eventId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "messageLinkId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "trustedSourcePosition",
+        "type": "jsonb",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniAutomationAdmission_message_effect",
+        "columns": [
+          "bindingId",
+          "effectKind",
+          "messageLinkId",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniAutomationAdmission_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniAutomationAdmission_activation",
+        "expression": "(\"activationVersion\" > 0)"
+      },
+      {
+        "name": "CHK_omniAutomationAdmission_effect",
+        "expression": "(\"effectKind\" = 'customer_inbound'::text)"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_1db3e5dbb41954639f0315b8e74",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_55456843352270d3819b2c2b71c",
+        "columns": [
+          "workspaceId",
+          "bindingId",
+          "conversationId",
+          "messageLinkId"
+        ],
+        "target": "core.omniMessageLink",
+        "targetColumns": [
+          "workspaceId",
+          "bindingId",
+          "conversationId",
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_81931e8f57f820ed375e3e756f4",
+        "columns": [
+          "workspaceId",
+          "conversationId",
+          "eventId"
+        ],
+        "target": "core.omniDomainEvent",
+        "targetColumns": [
+          "workspaceId",
+          "conversationId",
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_eb43706f676e08c8a43e76691af",
+        "columns": [
+          "workspaceId",
+          "bindingId",
+          "activationVersion"
+        ],
+        "target": "core.omniRouteActivation",
+        "targetColumns": [
+          "workspaceId",
+          "bindingId",
+          "activationVersion"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "core.omniConsumerReceipt",
+    "columns": [
+      {
+        "name": "attempt",
+        "type": "integer",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'0'"
+      },
+      {
+        "name": "consumerId",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "eventId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "executionId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "leaseToken",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'0'"
+      },
+      {
+        "name": "leaseUntil",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "nextAttemptAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "pinnedVersionId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "referenceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "runIntentId",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "state",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'pending'"
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniConsumerReceipt_event_consumer",
+        "columns": [
+          "consumerId",
+          "eventId",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniConsumerReceipt_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniConsumerReceipt_counters",
+        "expression": "((attempt >= 0) AND (\"leaseToken\" >= 0))"
+      },
+      {
+        "name": "CHK_omniConsumerReceipt_identity",
+        "expression": "((length(\"consumerId\") > 0) AND (length(state) > 0))"
+      },
+      {
+        "name": "CHK_omniConsumerReceipt_lease",
+        "expression": "((state <> 'running'::text) OR ((\"leaseToken\" > 0) AND (\"leaseUntil\" IS NOT NULL)))"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_0cf04a3ca448999545900e6a8db",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_ae044f832e08516faaa0c3980ca",
+        "columns": [
+          "workspaceId",
+          "eventId"
+        ],
+        "target": "core.omniDomainEvent",
+        "targetColumns": [
+          "workspaceId",
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": [
+      {
+        "name": "IDX_omniConsumerReceipt_recovery",
+        "definition": "CREATE INDEX \"IDX_omniConsumerReceipt_recovery\" ON core.\"omniConsumerReceipt\" USING btree (\"workspaceId\", state, \"nextAttemptAt\", \"leaseUntil\")"
+      }
+    ]
+  },
+  {
+    "name": "core.omniDomainEvent",
+    "columns": [
+      {
+        "name": "causationId",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "conversationId",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "conversationSequence",
+        "type": "bigint",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "kind",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "origin",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "payload",
+        "type": "jsonb",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "payloadVersion",
+        "type": "integer",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "rootExecutionId",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniDomainEvent_conversation_id",
+        "columns": [
+          "conversationId",
+          "id",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniDomainEvent_conversation_sequence",
+        "columns": [
+          "conversationId",
+          "conversationSequence",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniDomainEvent_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniDomainEvent_identity",
+        "expression": "((length(kind) > 0) AND (length(origin) > 0) AND (origin <> 'import'::text))"
+      },
+      {
+        "name": "CHK_omniDomainEvent_payload",
+        "expression": "((\"payloadVersion\" > 0) AND (jsonb_typeof(payload) = 'object'::text))"
+      },
+      {
+        "name": "CHK_omniDomainEvent_sequence",
+        "expression": "(((\"conversationId\" IS NULL) AND (\"conversationSequence\" IS NULL)) OR ((\"conversationId\" IS NOT NULL) AND (\"conversationSequence\" IS NOT NULL) AND (\"conversationSequence\" > 0)))"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_0a6b809604753f3f26796788e17",
+        "columns": [
+          "workspaceId",
+          "rootExecutionId"
+        ],
+        "target": "core.omniRootExecution",
+        "targetColumns": [
+          "workspaceId",
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_a48dae9646760693513a2668e0e",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_c818d5db1dafabc2aa910ad48a6",
+        "columns": [
+          "workspaceId",
+          "conversationId"
+        ],
+        "target": "core.omniConversation",
+        "targetColumns": [
+          "workspaceId",
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "core.omniEventDispatchPlan",
+    "columns": [
+      {
+        "name": "activationVersion",
+        "type": "bigint",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "eventId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "initialPlan",
+        "type": "boolean",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "payloadHash",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "policyId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "policyVersion",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "rootId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "rootKind",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "state",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "targets",
+        "type": "jsonb",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniEventDispatchPlan_event",
+        "columns": [
+          "eventId",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniEventDispatchPlan_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniEventDispatchPlan_identity",
+        "expression": "((length(\"rootKind\") > 0) AND (length(state) > 0))"
+      },
+      {
+        "name": "CHK_omniEventDispatchPlan_payloadHash",
+        "expression": "(\"payloadHash\" ~ '^[a-f0-9]{64}$'::text)"
+      },
+      {
+        "name": "CHK_omniEventDispatchPlan_targets",
+        "expression": "(jsonb_typeof(targets) = 'array'::text)"
+      },
+      {
+        "name": "CHK_omniEventDispatchPlan_versions",
+        "expression": "((\"policyVersion\" >= 0) AND ((\"activationVersion\" IS NULL) OR (\"activationVersion\" > 0)))"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_1289697da8d44091570febe2c55",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_526e3aaca9a74a6144e7b15a9b3",
+        "columns": [
+          "workspaceId",
+          "eventId"
+        ],
+        "target": "core.omniDomainEvent",
+        "targetColumns": [
+          "workspaceId",
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_f71c5206041695c86f35068682d",
+        "columns": [
+          "workspaceId",
+          "rootKind",
+          "rootId",
+          "policyId",
+          "policyVersion"
+        ],
+        "target": "core.omniRootExecution",
+        "targetColumns": [
+          "workspaceId",
+          "rootKind",
+          "rootId",
+          "policyId",
+          "policyVersion"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "core.omniReplyBudget",
+    "columns": [
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "maxReplies",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "policyId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "policyVersion",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "rootId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "rootKind",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniReplyBudget_root",
+        "columns": [
+          "rootId",
+          "rootKind",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniReplyBudget_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniReplyBudget_limits",
+        "expression": "((\"policyVersion\" >= 0) AND (\"maxReplies\" >= 0))"
+      },
+      {
+        "name": "CHK_omniReplyBudget_root_kind",
+        "expression": "(length(\"rootKind\") > 0)"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_5faa1ff38014a8071d8b927fdb2",
+        "columns": [
+          "workspaceId",
+          "rootKind",
+          "rootId",
+          "policyId",
+          "policyVersion"
+        ],
+        "target": "core.omniRootExecution",
+        "targetColumns": [
+          "workspaceId",
+          "rootKind",
+          "rootId",
+          "policyId",
+          "policyVersion"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_d1f01164c7b2b03d5f0ff4b5c05",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "core.omniReplySlot",
+    "columns": [
+      {
+        "name": "commandId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "effectRef",
+        "type": "jsonb",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "payloadHash",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "producerId",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "producerKind",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "replySlot",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "rootId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "rootKind",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "state",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'bound'"
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniReplySlot_root_slot",
+        "columns": [
+          "replySlot",
+          "rootId",
+          "rootKind",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniReplySlot_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniReplySlot_effect",
+        "expression": "(jsonb_typeof(\"effectRef\") = 'object'::text)"
+      },
+      {
+        "name": "CHK_omniReplySlot_number",
+        "expression": "(\"replySlot\" > 0)"
+      },
+      {
+        "name": "CHK_omniReplySlot_payloadHash",
+        "expression": "(\"payloadHash\" ~ '^[a-f0-9]{64}$'::text)"
+      },
+      {
+        "name": "CHK_omniReplySlot_producer",
+        "expression": "((length(\"rootKind\") > 0) AND (length(\"producerKind\") > 0) AND (length(\"producerId\") > 0))"
+      },
+      {
+        "name": "CHK_omniReplySlot_state",
+        "expression": "(state = 'bound'::text)"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_b215fd471676534380331131838",
+        "columns": [
+          "workspaceId",
+          "commandId"
+        ],
+        "target": "core.omniOutgoingCommand",
+        "targetColumns": [
+          "workspaceId",
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_bedfbd784ad5c44d1e561406c74",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_d4dbc95d250ffd76d17e4a34f8c",
+        "columns": [
+          "workspaceId",
+          "rootKind",
+          "rootId"
+        ],
+        "target": "core.omniReplyBudget",
+        "targetColumns": [
+          "workspaceId",
+          "rootKind",
+          "rootId"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "core.omniRootBudgetCharge",
+    "columns": [
+      {
+        "name": "chargeKind",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "cost",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "executionRef",
+        "type": "jsonb",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "rootId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "rootKind",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "stableChargeKey",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniRootBudgetCharge_charge",
+        "columns": [
+          "chargeKind",
+          "rootId",
+          "rootKind",
+          "stableChargeKey",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniRootBudgetCharge_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniRootBudgetCharge_cost",
+        "expression": "(((\"chargeKind\" = 'crm_effect'::text) AND (cost >= 0)) OR ((\"chargeKind\" = 'hop'::text) AND (cost = 1)))"
+      },
+      {
+        "name": "CHK_omniRootBudgetCharge_execution",
+        "expression": "(jsonb_typeof(\"executionRef\") = 'object'::text)"
+      },
+      {
+        "name": "CHK_omniRootBudgetCharge_identity",
+        "expression": "((length(\"rootKind\") > 0) AND (length(\"stableChargeKey\") > 0))"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_931cb36a0eb4315dac1123a0413",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_fe8a481eaecc2ec18cb69138aa0",
+        "columns": [
+          "workspaceId",
+          "rootKind",
+          "rootId"
+        ],
+        "target": "core.omniRootExecution",
+        "targetColumns": [
+          "workspaceId",
+          "rootKind",
+          "rootId"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "core.omniRootExecution",
+    "columns": [
+      {
+        "name": "causationId",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "coveredRoots",
+        "type": "jsonb",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "initialEventIds",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": true,
+        "default": null
+      },
+      {
+        "name": "maxCrmEffects",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "maxHops",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "origin",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "policyId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "policyVersion",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "rootId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "rootKind",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "scope",
+        "type": "jsonb",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "sourceKey",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "state",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "usedCrmEffects",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'0'"
+      },
+      {
+        "name": "usedHops",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'0'"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniRootExecution_root",
+        "columns": [
+          "rootId",
+          "rootKind",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniRootExecution_root_policy",
+        "columns": [
+          "policyId",
+          "policyVersion",
+          "rootId",
+          "rootKind",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniRootExecution_source",
+        "columns": [
+          "rootKind",
+          "sourceKey",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniRootExecution_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniRootExecution_budgets",
+        "expression": "((\"policyVersion\" >= 0) AND (\"maxCrmEffects\" >= 0) AND (\"maxHops\" >= 0) AND (\"usedCrmEffects\" >= 0) AND (\"usedCrmEffects\" <= \"maxCrmEffects\") AND (\"usedHops\" >= 0) AND (\"usedHops\" <= \"maxHops\"))"
+      },
+      {
+        "name": "CHK_omniRootExecution_context",
+        "expression": "((jsonb_typeof(scope) = 'object'::text) AND (jsonb_typeof(\"coveredRoots\") = 'array'::text))"
+      },
+      {
+        "name": "CHK_omniRootExecution_identity",
+        "expression": "((length(\"rootKind\") > 0) AND (length(\"sourceKey\") > 0) AND (length(origin) > 0) AND (origin <> 'import'::text) AND (length(state) > 0))"
+      },
+      {
+        "name": "CHK_omniRootExecution_initial_events",
+        "expression": "(array_position(\"initialEventIds\", NULL::uuid) IS NULL)"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_4d2ef20ff80800aa832ae409af8",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_8167ef657038b22eea89d7e2bdb",
+        "columns": [
+          "workspaceId",
+          "policyId",
+          "policyVersion"
+        ],
+        "target": "core.omniAutomationPolicyVersion",
+        "targetColumns": [
+          "workspaceId",
+          "policyId",
+          "version"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": [
+      {
+        "name": "IDX_omniRootExecution_policy_state",
+        "definition": "CREATE INDEX \"IDX_omniRootExecution_policy_state\" ON core.\"omniRootExecution\" USING btree (\"workspaceId\", \"policyId\", \"policyVersion\", state, id)"
+      }
+    ]
+  },
+  {
+    "name": "core.omniRouteActivation",
+    "columns": [
+      {
+        "name": "activationVersion",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "bindingId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "boundary",
+        "type": "jsonb",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "sourcePositionType",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniRouteActivation_binding_version",
+        "columns": [
+          "activationVersion",
+          "bindingId",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniRouteActivation_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniRouteActivation_position_type",
+        "expression": "(length(\"sourcePositionType\") > 0)"
+      },
+      {
+        "name": "CHK_omniRouteActivation_version",
+        "expression": "(\"activationVersion\" > 0)"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_0411bc70d6216634394b8ea4f64",
+        "columns": [
+          "workspaceId",
+          "bindingId"
+        ],
+        "target": "core.omniAccountBinding",
+        "targetColumns": [
+          "workspaceId",
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_cb14f9a79f2009e37e19d679f50",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": []
+  }
+]

@@ -13,5 +13,10 @@
     "migrationId": "omni-1793094313685-message-persistence",
     "checksum": "2fbd5c91d07f4934aff21d646dc69adf14e79aa5f77c807634d92eef05645ce7",
     "sourcePath": "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-message-persistence.migration.ts"
+  },
+  {
+    "migrationId": "omni-1793095884267-event-governance",
+    "checksum": "0a09b9a98d78795565d154fec08497a5e39c909d49486433afe4e02cddb08e9d",
+    "sourcePath": "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-event-governance.migration.ts"
   }
 ]

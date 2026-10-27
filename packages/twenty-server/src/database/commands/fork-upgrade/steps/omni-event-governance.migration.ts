@@ -1,0 +1,191 @@
+import { type QueryRunner } from 'typeorm';
+
+import { type ForkMigrationCommand } from 'src/database/commands/fork-upgrade/fork-migration.type';
+
+export class OmniEventGovernanceFastInstanceCommand
+  implements ForkMigrationCommand
+{
+  static readonly kind = 'fork' as const;
+
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      'CREATE TABLE "core"."omniRootExecution" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "workspaceId" uuid NOT NULL, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "rootKind" text NOT NULL, "rootId" uuid NOT NULL, "sourceKey" text NOT NULL, "initialEventIds" uuid array NOT NULL, "origin" text NOT NULL, "scope" jsonb NOT NULL, "causationId" uuid, "coveredRoots" jsonb NOT NULL, "policyId" uuid NOT NULL, "policyVersion" bigint NOT NULL, "maxCrmEffects" bigint NOT NULL, "maxHops" bigint NOT NULL, "usedCrmEffects" bigint NOT NULL DEFAULT \'0\', "usedHops" bigint NOT NULL DEFAULT \'0\', "state" text NOT NULL, CONSTRAINT "UQ_omniRootExecution_root_policy" UNIQUE ("workspaceId", "rootKind", "rootId", "policyId", "policyVersion"), CONSTRAINT "UQ_omniRootExecution_root" UNIQUE ("workspaceId", "rootKind", "rootId"), CONSTRAINT "UQ_omniRootExecution_source" UNIQUE ("workspaceId", "rootKind", "sourceKey"), CONSTRAINT "UQ_omniRootExecution_workspace_id" UNIQUE ("workspaceId", "id"), CONSTRAINT "CHK_omniRootExecution_initial_events" CHECK (array_position("initialEventIds", NULL) IS NULL), CONSTRAINT "CHK_omniRootExecution_context" CHECK (jsonb_typeof("scope") = \'object\' AND jsonb_typeof("coveredRoots") = \'array\'), CONSTRAINT "CHK_omniRootExecution_budgets" CHECK ("policyVersion" >= 0 AND "maxCrmEffects" >= 0 AND "maxHops" >= 0 AND "usedCrmEffects" >= 0 AND "usedCrmEffects" <= "maxCrmEffects" AND "usedHops" >= 0 AND "usedHops" <= "maxHops"), CONSTRAINT "CHK_omniRootExecution_identity" CHECK (length("rootKind") > 0 AND length("sourceKey") > 0 AND length("origin") > 0 AND "origin" != \'import\' AND length("state") > 0), CONSTRAINT "PK_725b1d1294f91a025ba330ca817" PRIMARY KEY ("id"))',
+    );
+    await queryRunner.query(
+      'CREATE INDEX "IDX_omniRootExecution_policy_state" ON "core"."omniRootExecution" ("workspaceId", "policyId", "policyVersion", "state", "id") ',
+    );
+    await queryRunner.query(
+      'CREATE TABLE "core"."omniRouteActivation" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "workspaceId" uuid NOT NULL, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "bindingId" uuid NOT NULL, "activationVersion" bigint NOT NULL, "sourcePositionType" text NOT NULL, "boundary" jsonb NOT NULL, CONSTRAINT "UQ_omniRouteActivation_binding_version" UNIQUE ("workspaceId", "bindingId", "activationVersion"), CONSTRAINT "UQ_omniRouteActivation_workspace_id" UNIQUE ("workspaceId", "id"), CONSTRAINT "CHK_omniRouteActivation_position_type" CHECK (length("sourcePositionType") > 0), CONSTRAINT "CHK_omniRouteActivation_version" CHECK ("activationVersion" > 0), CONSTRAINT "PK_417127da5ae4eecee2c4e49c5fb" PRIMARY KEY ("id"))',
+    );
+    await queryRunner.query(
+      'CREATE TABLE "core"."omniRootBudgetCharge" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "workspaceId" uuid NOT NULL, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "rootKind" text NOT NULL, "rootId" uuid NOT NULL, "chargeKind" text NOT NULL, "stableChargeKey" text NOT NULL, "cost" bigint NOT NULL, "executionRef" jsonb NOT NULL, CONSTRAINT "UQ_omniRootBudgetCharge_charge" UNIQUE ("workspaceId", "rootKind", "rootId", "chargeKind", "stableChargeKey"), CONSTRAINT "UQ_omniRootBudgetCharge_workspace_id" UNIQUE ("workspaceId", "id"), CONSTRAINT "CHK_omniRootBudgetCharge_execution" CHECK (jsonb_typeof("executionRef") = \'object\'), CONSTRAINT "CHK_omniRootBudgetCharge_cost" CHECK (("chargeKind" = \'crm_effect\' AND "cost" >= 0) OR ("chargeKind" = \'hop\' AND "cost" = 1)), CONSTRAINT "CHK_omniRootBudgetCharge_identity" CHECK (length("rootKind") > 0 AND length("stableChargeKey") > 0), CONSTRAINT "PK_b21846503887b08ea234eea3112" PRIMARY KEY ("id"))',
+    );
+    await queryRunner.query(
+      'CREATE TABLE "core"."omniReplySlot" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "workspaceId" uuid NOT NULL, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "rootKind" text NOT NULL, "rootId" uuid NOT NULL, "replySlot" bigint NOT NULL, "producerKind" text NOT NULL, "producerId" text NOT NULL, "commandId" uuid NOT NULL, "payloadHash" text NOT NULL, "effectRef" jsonb NOT NULL, "state" text NOT NULL DEFAULT \'bound\', CONSTRAINT "UQ_omniReplySlot_root_slot" UNIQUE ("workspaceId", "rootKind", "rootId", "replySlot"), CONSTRAINT "UQ_omniReplySlot_workspace_id" UNIQUE ("workspaceId", "id"), CONSTRAINT "CHK_omniReplySlot_state" CHECK ("state" = \'bound\'), CONSTRAINT "CHK_omniReplySlot_effect" CHECK (jsonb_typeof("effectRef") = \'object\'), CONSTRAINT "CHK_omniReplySlot_payloadHash" CHECK ("payloadHash" ~ \'^[a-f0-9]{64}$\'), CONSTRAINT "CHK_omniReplySlot_producer" CHECK (length("rootKind") > 0 AND length("producerKind") > 0 AND length("producerId") > 0), CONSTRAINT "CHK_omniReplySlot_number" CHECK ("replySlot" > 0), CONSTRAINT "PK_63b1d8ba9c9d47c9e688d7b05ef" PRIMARY KEY ("id"))',
+    );
+    await queryRunner.query(
+      'CREATE TABLE "core"."omniReplyBudget" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "workspaceId" uuid NOT NULL, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "rootKind" text NOT NULL, "rootId" uuid NOT NULL, "policyId" uuid NOT NULL, "policyVersion" bigint NOT NULL, "maxReplies" bigint NOT NULL, CONSTRAINT "UQ_omniReplyBudget_root" UNIQUE ("workspaceId", "rootKind", "rootId"), CONSTRAINT "UQ_omniReplyBudget_workspace_id" UNIQUE ("workspaceId", "id"), CONSTRAINT "CHK_omniReplyBudget_limits" CHECK ("policyVersion" >= 0 AND "maxReplies" >= 0), CONSTRAINT "CHK_omniReplyBudget_root_kind" CHECK (length("rootKind") > 0), CONSTRAINT "PK_80315996b7c0ba78be527f6d17a" PRIMARY KEY ("id"))',
+    );
+    await queryRunner.query(
+      'CREATE TABLE "core"."omniEventDispatchPlan" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "workspaceId" uuid NOT NULL, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "eventId" uuid NOT NULL, "rootKind" text NOT NULL, "rootId" uuid NOT NULL, "policyId" uuid NOT NULL, "policyVersion" bigint NOT NULL, "activationVersion" bigint, "targets" jsonb NOT NULL, "payloadHash" text NOT NULL, "initialPlan" boolean NOT NULL, "state" text NOT NULL, CONSTRAINT "UQ_omniEventDispatchPlan_event" UNIQUE ("workspaceId", "eventId"), CONSTRAINT "UQ_omniEventDispatchPlan_workspace_id" UNIQUE ("workspaceId", "id"), CONSTRAINT "CHK_omniEventDispatchPlan_payloadHash" CHECK ("payloadHash" ~ \'^[a-f0-9]{64}$\'), CONSTRAINT "CHK_omniEventDispatchPlan_targets" CHECK (jsonb_typeof("targets") = \'array\'), CONSTRAINT "CHK_omniEventDispatchPlan_versions" CHECK ("policyVersion" >= 0 AND ("activationVersion" IS NULL OR "activationVersion" > 0)), CONSTRAINT "CHK_omniEventDispatchPlan_identity" CHECK (length("rootKind") > 0 AND length("state") > 0), CONSTRAINT "PK_57e20caf522445b30d6b90735e9" PRIMARY KEY ("id"))',
+    );
+    await queryRunner.query(
+      'CREATE TABLE "core"."omniConsumerReceipt" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "workspaceId" uuid NOT NULL, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "eventId" uuid NOT NULL, "consumerId" text NOT NULL, "pinnedVersionId" uuid NOT NULL, "executionId" uuid NOT NULL, "runIntentId" uuid, "referenceId" uuid, "state" text NOT NULL DEFAULT \'pending\', "attempt" integer NOT NULL DEFAULT \'0\', "leaseToken" bigint NOT NULL DEFAULT \'0\', "leaseUntil" TIMESTAMP WITH TIME ZONE, "nextAttemptAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "UQ_omniConsumerReceipt_event_consumer" UNIQUE ("workspaceId", "eventId", "consumerId"), CONSTRAINT "UQ_omniConsumerReceipt_workspace_id" UNIQUE ("workspaceId", "id"), CONSTRAINT "CHK_omniConsumerReceipt_lease" CHECK ("state" <> \'running\' OR ("leaseToken" > 0 AND "leaseUntil" IS NOT NULL)), CONSTRAINT "CHK_omniConsumerReceipt_counters" CHECK ("attempt" >= 0 AND "leaseToken" >= 0), CONSTRAINT "CHK_omniConsumerReceipt_identity" CHECK (length("consumerId") > 0 AND length("state") > 0), CONSTRAINT "PK_99dae89b81b1643e0bf3328deab" PRIMARY KEY ("id"))',
+    );
+    await queryRunner.query(
+      'CREATE INDEX "IDX_omniConsumerReceipt_recovery" ON "core"."omniConsumerReceipt" ("workspaceId", "state", "nextAttemptAt", "leaseUntil") ',
+    );
+    await queryRunner.query(
+      'CREATE TABLE "core"."omniAutomationAdmission" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "workspaceId" uuid NOT NULL, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "bindingId" uuid NOT NULL, "conversationId" uuid NOT NULL, "messageLinkId" uuid NOT NULL, "effectKind" text NOT NULL DEFAULT \'customer_inbound\', "activationVersion" bigint NOT NULL, "trustedSourcePosition" jsonb NOT NULL, "eventId" uuid NOT NULL, CONSTRAINT "UQ_omniAutomationAdmission_message_effect" UNIQUE ("workspaceId", "bindingId", "messageLinkId", "effectKind"), CONSTRAINT "UQ_omniAutomationAdmission_workspace_id" UNIQUE ("workspaceId", "id"), CONSTRAINT "CHK_omniAutomationAdmission_activation" CHECK ("activationVersion" > 0), CONSTRAINT "CHK_omniAutomationAdmission_effect" CHECK ("effectKind" = \'customer_inbound\'), CONSTRAINT "PK_fb478e82bace002fe9dcbbf5f11" PRIMARY KEY ("id"))',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniDomainEvent" ADD CONSTRAINT "UQ_omniDomainEvent_conversation_id" UNIQUE ("workspaceId", "conversationId", "id")',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniRootExecution" ADD CONSTRAINT "FK_4d2ef20ff80800aa832ae409af8" FOREIGN KEY ("workspaceId") REFERENCES "core"."workspace"("id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniRootExecution" ADD CONSTRAINT "FK_8167ef657038b22eea89d7e2bdb" FOREIGN KEY ("workspaceId", "policyId", "policyVersion") REFERENCES "core"."omniAutomationPolicyVersion"("workspaceId","policyId","version") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniRouteActivation" ADD CONSTRAINT "FK_cb14f9a79f2009e37e19d679f50" FOREIGN KEY ("workspaceId") REFERENCES "core"."workspace"("id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniRouteActivation" ADD CONSTRAINT "FK_0411bc70d6216634394b8ea4f64" FOREIGN KEY ("workspaceId", "bindingId") REFERENCES "core"."omniAccountBinding"("workspaceId","id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniRootBudgetCharge" ADD CONSTRAINT "FK_931cb36a0eb4315dac1123a0413" FOREIGN KEY ("workspaceId") REFERENCES "core"."workspace"("id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniRootBudgetCharge" ADD CONSTRAINT "FK_fe8a481eaecc2ec18cb69138aa0" FOREIGN KEY ("workspaceId", "rootKind", "rootId") REFERENCES "core"."omniRootExecution"("workspaceId","rootKind","rootId") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniReplySlot" ADD CONSTRAINT "FK_bedfbd784ad5c44d1e561406c74" FOREIGN KEY ("workspaceId") REFERENCES "core"."workspace"("id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniReplySlot" ADD CONSTRAINT "FK_d4dbc95d250ffd76d17e4a34f8c" FOREIGN KEY ("workspaceId", "rootKind", "rootId") REFERENCES "core"."omniReplyBudget"("workspaceId","rootKind","rootId") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniReplySlot" ADD CONSTRAINT "FK_b215fd471676534380331131838" FOREIGN KEY ("workspaceId", "commandId") REFERENCES "core"."omniOutgoingCommand"("workspaceId","id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniReplyBudget" ADD CONSTRAINT "FK_d1f01164c7b2b03d5f0ff4b5c05" FOREIGN KEY ("workspaceId") REFERENCES "core"."workspace"("id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniReplyBudget" ADD CONSTRAINT "FK_5faa1ff38014a8071d8b927fdb2" FOREIGN KEY ("workspaceId", "rootKind", "rootId", "policyId", "policyVersion") REFERENCES "core"."omniRootExecution"("workspaceId","rootKind","rootId","policyId","policyVersion") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniEventDispatchPlan" ADD CONSTRAINT "FK_1289697da8d44091570febe2c55" FOREIGN KEY ("workspaceId") REFERENCES "core"."workspace"("id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniEventDispatchPlan" ADD CONSTRAINT "FK_526e3aaca9a74a6144e7b15a9b3" FOREIGN KEY ("workspaceId", "eventId") REFERENCES "core"."omniDomainEvent"("workspaceId","id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniEventDispatchPlan" ADD CONSTRAINT "FK_f71c5206041695c86f35068682d" FOREIGN KEY ("workspaceId", "rootKind", "rootId", "policyId", "policyVersion") REFERENCES "core"."omniRootExecution"("workspaceId","rootKind","rootId","policyId","policyVersion") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniDomainEvent" ADD CONSTRAINT "FK_0a6b809604753f3f26796788e17" FOREIGN KEY ("workspaceId", "rootExecutionId") REFERENCES "core"."omniRootExecution"("workspaceId","id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniConsumerReceipt" ADD CONSTRAINT "FK_0cf04a3ca448999545900e6a8db" FOREIGN KEY ("workspaceId") REFERENCES "core"."workspace"("id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniConsumerReceipt" ADD CONSTRAINT "FK_ae044f832e08516faaa0c3980ca" FOREIGN KEY ("workspaceId", "eventId") REFERENCES "core"."omniDomainEvent"("workspaceId","id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniAutomationAdmission" ADD CONSTRAINT "FK_1db3e5dbb41954639f0315b8e74" FOREIGN KEY ("workspaceId") REFERENCES "core"."workspace"("id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniAutomationAdmission" ADD CONSTRAINT "FK_55456843352270d3819b2c2b71c" FOREIGN KEY ("workspaceId", "bindingId", "conversationId", "messageLinkId") REFERENCES "core"."omniMessageLink"("workspaceId","bindingId","conversationId","id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniAutomationAdmission" ADD CONSTRAINT "FK_eb43706f676e08c8a43e76691af" FOREIGN KEY ("workspaceId", "bindingId", "activationVersion") REFERENCES "core"."omniRouteActivation"("workspaceId","bindingId","activationVersion") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniAutomationAdmission" ADD CONSTRAINT "FK_81931e8f57f820ed375e3e756f4" FOREIGN KEY ("workspaceId", "conversationId", "eventId") REFERENCES "core"."omniDomainEvent"("workspaceId","conversationId","id") ON DELETE RESTRICT ON UPDATE NO ACTION',
+    );
+  }
+
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniAutomationAdmission" DROP CONSTRAINT "FK_81931e8f57f820ed375e3e756f4"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniAutomationAdmission" DROP CONSTRAINT "FK_eb43706f676e08c8a43e76691af"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniAutomationAdmission" DROP CONSTRAINT "FK_55456843352270d3819b2c2b71c"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniAutomationAdmission" DROP CONSTRAINT "FK_1db3e5dbb41954639f0315b8e74"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniConsumerReceipt" DROP CONSTRAINT "FK_ae044f832e08516faaa0c3980ca"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniConsumerReceipt" DROP CONSTRAINT "FK_0cf04a3ca448999545900e6a8db"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniDomainEvent" DROP CONSTRAINT "FK_0a6b809604753f3f26796788e17"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniEventDispatchPlan" DROP CONSTRAINT "FK_f71c5206041695c86f35068682d"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniEventDispatchPlan" DROP CONSTRAINT "FK_526e3aaca9a74a6144e7b15a9b3"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniEventDispatchPlan" DROP CONSTRAINT "FK_1289697da8d44091570febe2c55"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniReplyBudget" DROP CONSTRAINT "FK_5faa1ff38014a8071d8b927fdb2"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniReplyBudget" DROP CONSTRAINT "FK_d1f01164c7b2b03d5f0ff4b5c05"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniReplySlot" DROP CONSTRAINT "FK_b215fd471676534380331131838"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniReplySlot" DROP CONSTRAINT "FK_d4dbc95d250ffd76d17e4a34f8c"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniReplySlot" DROP CONSTRAINT "FK_bedfbd784ad5c44d1e561406c74"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniRootBudgetCharge" DROP CONSTRAINT "FK_fe8a481eaecc2ec18cb69138aa0"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniRootBudgetCharge" DROP CONSTRAINT "FK_931cb36a0eb4315dac1123a0413"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniRouteActivation" DROP CONSTRAINT "FK_0411bc70d6216634394b8ea4f64"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniRouteActivation" DROP CONSTRAINT "FK_cb14f9a79f2009e37e19d679f50"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniRootExecution" DROP CONSTRAINT "FK_8167ef657038b22eea89d7e2bdb"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniRootExecution" DROP CONSTRAINT "FK_4d2ef20ff80800aa832ae409af8"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "core"."omniDomainEvent" DROP CONSTRAINT "UQ_omniDomainEvent_conversation_id"',
+    );
+    await queryRunner.query('DROP TABLE "core"."omniAutomationAdmission"');
+    await queryRunner.query(
+      'DROP INDEX "core"."IDX_omniConsumerReceipt_recovery"',
+    );
+    await queryRunner.query('DROP TABLE "core"."omniConsumerReceipt"');
+    await queryRunner.query('DROP TABLE "core"."omniEventDispatchPlan"');
+    await queryRunner.query('DROP TABLE "core"."omniReplyBudget"');
+    await queryRunner.query('DROP TABLE "core"."omniReplySlot"');
+    await queryRunner.query('DROP TABLE "core"."omniRootBudgetCharge"');
+    await queryRunner.query('DROP TABLE "core"."omniRouteActivation"');
+    await queryRunner.query(
+      'DROP INDEX "core"."IDX_omniRootExecution_policy_state"',
+    );
+    await queryRunner.query('DROP TABLE "core"."omniRootExecution"');
+  }
+}

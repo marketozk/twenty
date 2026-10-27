@@ -1,0 +1,14 @@
+{
+  "postgresTests": 135,
+  "guardTests": 20,
+  "sourceChecksumTests": 5,
+  "totalExecutedTests": 160,
+  "focusedStrictTypecheckFiles": 60,
+  "generatedSqlCallsPreserved": 64,
+  "previousMigrationChecksumsUnchanged": true,
+  "fullServerTypecheck": false,
+  "newFullImageBuild": false,
+  "liveDemoChanged": false,
+  "runtimeWritersImplemented": false,
+  "independentScopedReview": "PASS; no confirmed blocker/major"
+}

@@ -548,3 +548,47 @@ origin/codex/omnichannel-requirements. Описание ROB-764 и единст�
 [отчёт LOG-024](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-a5c2ec75)
 прочитаны обратно; статусы11 задач сохранены. Оба GitHub job не стартовали из-за
 billing block, подтверждено аннотациями. [Метаданные](implementation/log024/publication.json).
+
+## LOG-025 — 27.10.2026: схема событий, запусков и общих лимитов
+
+Пользователь разрешил продолжение ROB-764. Добавлены восемь core entities:
+RootExecution, RootBudgetCharge, EventDispatchPlan, ReplyBudget, ReplySlot,
+RouteActivation, AutomationAdmission, ConsumerReceipt. Budget сохраняется
+отдельно от slots, включая нулевой предел. Captured policy связана с root через
+composite FK; admission связан с MessageLink и Event того же диалога. Ключи
+consumer/admission не расширяются pinned version/activationVersion.
+
+Штатный generator после пустого baseline создал 64 SQL-вызова up/down;
+перенесены без изменения в четвёртую fork migration. Три прежних source/checksum
+сохранены. DomainEvent получил root FK и composite UNIQUE для admission.
+Version-aware snapshot выбирается по проверенному prefix, без ослабления
+старых checks. Legacy NULL root допустим; orphan root вызывает rollback всей
+новой миграции с сохранением прежних записей и ledger prefix 3.
+
+Прошли 135 PostgreSQL, 20 dependency guard и 5 checksum tests — 160 PASS.
+Focused strict typecheck 60 файлов с imports PASS. Native up/down/up восстановил
+17 прежних таблиц после down, сохранил остальные 16 после up и 256 записей
+истории. Зарегистрированные upgrade/replay/readiness прошли; итоговый generator
+diff пустой. Нового полного image/server typecheck не было.
+[Evidence](implementation/log025/README.md).
+
+Адресное независимое ревью entities/FK, registry/snapshots/checksums и тестов —
+PASS без подтверждённых blocker/major. Claude Code и полный архитектурный круг
+не запускались. Runtime writers, cross-row quota, initial-event membership,
+source-position comparison, permissions и lifecycle не выдаются за готовые.
+`update:false` не является запретом прямого SQL. Spec §3 уточнён по физическому
+разделению budget/slots и структурному conversationId admission; основные
+семантические владельцы контрактов не дублируются.
+
+Собственные временные PostgreSQL/Redis containers, exclusive volumes и сеть
+удалены после проверки идентичности. Неактивные caches оставлены; builder не
+запускался. Demo image/start timestamps/health прежние, живые каналы не менялись.
+[Cleanup](implementation/log025/cleanup.json).
+
+Skills: ai-dev-workflow — реализация по принятому плану и независимое адресное
+ревью; behavioral-guardrails — минимальный diff и фактические проверки;
+server-schrodinger — preflight, ограниченные тестовые ресурсы и их cleanup.
+Следующая порция: ingress persistence с canonical envelope/hash, generation,
+durable ACK и payload conflict; затем Message+audit+event/inbox/outbox/recovery.
+ROB-764 остаётся In Progress, ROB-765–771 Backlog. Публикация и синхронизация
+Linear фиксируются ниже после подтверждённого push.

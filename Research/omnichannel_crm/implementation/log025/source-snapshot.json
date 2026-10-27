@@ -1,0 +1,26 @@
+{
+  "baseCommit": "9b80e97079fc50b2dbb28ca7748ef4da57f955d9",
+  "testSource": "/opt/twenty-tests/twenty-rob764-408e8cf8bbbf496b/source",
+  "runtimeBaseImage": "marketozk/twenty:log022-candidate",
+  "compilation": "focused SWC inside disposable runner; no new complete Docker image",
+  "lfSha256": {
+    "packages/twenty-server/src/database/commands/fork-upgrade/fork-migrations.ts": "e683f02d5f1edf5988f42e2d0ed74fda9b02a2718966cb8a25b1bc6eb0c610a2",
+    "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-event-governance.migration.ts": "0a09b9a98d78795565d154fec08497a5e39c909d49486433afe4e02cddb08e9d",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-automation-admission.entity.ts": "92ee406f90c40bfb389cd021c2f713ab5a55ab79c3c6f8e25919fd0bf27915ca",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-consumer-receipt.entity.ts": "55662211c72ea1940282ad4efcbe0d4cd282bdd0921f1323a238dbae3ccd5d00",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-domain-event.entity.ts": "f580adbc36ad9d51a03a4788eeb1198d351dd9ec7fb22af6c290eb5c9dca99fc",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-event-dispatch-plan.entity.ts": "21da27dcaac0b6cd1ebf72ee45d035e02c9ffdf568a9c068ad9836e0bb1f5deb",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-reply-budget.entity.ts": "2ceeed7216c68208f77747939b166d4a362feb5af95e3c706208900d099cce5f",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-reply-slot.entity.ts": "ed25bcc63970a170818e7dc0b53b93a36d7c260444669fd31d9e0b8cea613865",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-root-budget-charge.entity.ts": "def8f995b68d8d464526f8c3fe0e994d3aeda046fe8873bcf249b424e0a7ab98",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-root-execution.entity.ts": "3b292eab0e6fabda7e580b7f1e38127ba3333bd9f7cd22c595287ac09c7f4e65",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-route-activation.entity.ts": "1f8abc8e1e2ba5df8afa5e6bec00c67eaaab4f277f329151bc81b239a74d55a4",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/event-governance.check.ts": "27b028576045417d4231996b8b7cf67baa8bd4ec8c0bdbd5166de9056b503e20",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/event-governance.schema.json": "984c5528f04e9b8e03e8faff82a05bde5e17f9d0a9efd633041a049570f94636",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/fork-schema-checks.ts": "009c8c7f6c2cf77e6e226d6ce3d1fd13bbf6cba430b9d02e9ad16b290fad0ad1",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/fork-schema-manifest.json": "8ce72c570cd08693649fd2afffe8a3d9d02a9572d91e559b29f8380537151e7b",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/message-persistence.check.ts": "ded54b98f21636981ffe8114e2455e5389ec64955660bf2a8239d1461842d9fb",
+    "packages/twenty-server/test/fork-migration/event-governance.postgres-spec.ts": "7a8136fb3863e682ce4f9bccdcc1432c2fafa591f8490cc6005712fda96eedaa",
+    "packages/twenty-server/test/fork-migration/message-persistence.postgres-spec.ts": "46c164079664811c5fd46073c7d08a2c58e9e620b315d1a59c54a0d36f494388"
+  }
+}

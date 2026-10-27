@@ -26,12 +26,12 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 
 ## Сверка текущего состояния — 27.10.2026
 
-LOG-024 / ROB-764 In Progress: schema-only порция из шести таблиц сообщений,
-receipts/commands/events/targets/revisions опубликована. Прошли138 тестов,
-focused typecheck49 файлов и native upgrade/replay; финальный generator diff
-пустой. Остаток схемы — roots/consumer receipts/dispatch/budgets/activation/
-admission, затем domain writers/ingress/outbox. Новый полный image не собирался,
-демо не менялось. [Проверки](implementation/log024/README.md).
+LOG-025 / ROB-764 In Progress: schema-only порция из восьми таблиц roots/charges,
+dispatch/budgets/slots, activation/admission/consumer receipts проверена.
+Прошли 160 тестов, focused typecheck 60 файлов и native upgrade/replay;
+финальный generator diff пустой. Далее — ingress persistence, затем
+Message+audit+event и inbox/outbox/recovery. Новый полный image не собирался,
+демо не менялось. [Проверки](implementation/log025/README.md).
 
 ### Предыдущая порция
 

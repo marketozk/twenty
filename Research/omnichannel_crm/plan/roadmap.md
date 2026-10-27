@@ -1,10 +1,11 @@
 # Дорожная карта проекта
 
-Состояние после LOG-024: ROB-772 Done как планирование, ROB-764 In Progress.
+Состояние после LOG-025: ROB-772 Done как планирование, ROB-764 In Progress.
 Миграции, первая группа таблиц, порядок запуска, минимальный аудит и создание
-неактивного подключения и таблицы сообщений/команд/событий реализованы. Следующая
-порция — roots/consumer receipts/dispatch/budgets/activation/admission, затем
-ingress/outbox. [Текущее состояние](../STATUS.md)
+неактивного подключения и таблицы сообщений/команд/событий реализованы. Добавлены
+roots/charges/consumer receipts/dispatch/budgets/slots/activation/admission.
+Следующая порция — ingress persistence, затем Message+audit+event и inbox/outbox.
+[Текущее состояние](../STATUS.md)
 и [ход реализации](../implementation/rob764-progress.md) содержат проверки и
 ограничения. Чаты ещё не реализованы; изменения ROB-764 в демо не выкачены.
 

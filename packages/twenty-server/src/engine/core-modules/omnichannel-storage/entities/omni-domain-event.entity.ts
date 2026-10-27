@@ -9,10 +9,16 @@ import {
 } from 'typeorm';
 
 import { type OmniConversationEntity } from 'src/engine/core-modules/omnichannel-storage/entities/omni-conversation.entity';
+import { type OmniRootExecutionEntity } from 'src/engine/core-modules/omnichannel-storage/entities/omni-root-execution.entity';
 import { OmniWorkspaceRow } from 'src/engine/core-modules/omnichannel-storage/entities/omni-workspace-row';
 
 @Entity({ name: 'omniDomainEvent', schema: 'core' })
 @Unique('UQ_omniDomainEvent_workspace_id', ['workspaceId', 'id'])
+@Unique('UQ_omniDomainEvent_conversation_id', [
+  'workspaceId',
+  'conversationId',
+  'id',
+])
 @Unique('UQ_omniDomainEvent_conversation_sequence', [
   'workspaceId',
   'conversationId',
@@ -53,6 +59,16 @@ export class OmniDomainEventEntity extends OmniWorkspaceRow {
 
   @Column({ type: 'uuid', nullable: true, update: false })
   rootExecutionId: string | null;
+
+  @ManyToOne('OmniRootExecutionEntity', {
+    onDelete: 'RESTRICT',
+    nullable: true,
+  })
+  @JoinColumn([
+    { name: 'workspaceId', referencedColumnName: 'workspaceId' },
+    { name: 'rootExecutionId', referencedColumnName: 'id' },
+  ])
+  rootExecution: Relation<OmniRootExecutionEntity> | null;
 
   @Column({ type: 'bigint', nullable: true, update: false })
   conversationSequence: string | null;

@@ -1,14 +1,37 @@
 import { type QueryRunner } from 'typeorm';
 
+import governanceSchema from 'src/engine/core-modules/omnichannel-storage/migrations/event-governance.schema.json';
+import manifest from 'src/engine/core-modules/omnichannel-storage/migrations/fork-schema-manifest.json';
 import schema from 'src/engine/core-modules/omnichannel-storage/migrations/message-persistence.schema.json';
 import { verifyForkTableSnapshot } from 'src/engine/core-modules/omnichannel-storage/migrations/verify-fork-table-snapshot';
 
 export const verifyMessagePersistence = async (
   queryRunner: QueryRunner,
+  appliedMigrationIds: readonly string[] = [],
 ): Promise<void> => {
+  const governanceMigration = manifest[3];
+  let expectedSchema: readonly { name: string }[] = schema;
+
+  if (
+    governanceMigration &&
+    appliedMigrationIds.includes(governanceMigration.migrationId)
+  ) {
+    const updatedEvent = governanceSchema.find(
+      (table) => table.name === 'core.omniDomainEvent',
+    );
+
+    if (!updatedEvent) {
+      throw new Error('Missing domain event snapshot for governance migration');
+    }
+
+    expectedSchema = schema.map((table) =>
+      table.name === 'core.omniDomainEvent' ? updatedEvent : table,
+    );
+  }
+
   await verifyForkTableSnapshot(
     queryRunner,
-    schema,
+    expectedSchema,
     'Omnichannel message persistence schema does not match its manifest',
   );
 };

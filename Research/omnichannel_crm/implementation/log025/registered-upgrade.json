@@ -1,0 +1,15 @@
+{
+  "applied": [
+    "omni-1793095884267-event-governance"
+  ],
+  "replayNoop": true,
+  "readiness": true,
+  "nativeHistory": [
+    {
+      "count": 256,
+      "hash": "bbecb5ad4c8615a6ebbd739b45843a0b"
+    }
+  ],
+  "finalMetadataDiff": "empty",
+  "compilation": "focused SWC in existing image; not a full image build"
+}

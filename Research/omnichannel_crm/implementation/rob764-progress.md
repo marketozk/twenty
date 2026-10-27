@@ -1,4 +1,4 @@
-# ROB-764 — реализация, LOG-022
+# ROB-764 — реализация, LOG-025
 
 27.10.2026 пользователь ответил «хорошо приступай» на предложение принять
 исправленный план за основу и начать ROB-764 с проверками конкретного кода.
@@ -93,7 +93,7 @@ UPDATE fence до исполнения и replay. Проверяется native 
 typecheck40 файлов с импортами. [Доказательства и ограничения](log022/README.md).
 Каталог аудита пока охватывает пять служебных сущностей; аудит всей CRM — ROB-765.
 
-## Следующая порция и незавершённая работа
+## Пятая порция: сообщения и команды
 
 LOG-024 завершил MessageLink, MessageRevision, ConversationTarget, IncomingReceipt,
 OutgoingCommand и DomainEvent. Новый composite UNIQUE Conversation проверяется
@@ -101,10 +101,26 @@ OutgoingCommand и DomainEvent. Новый composite UNIQUE Conversation про�
 Python tests, focused typecheck49 файлов, native upgrade/replay и generator zero
 diff. [Доказательства и ограничения](log024/README.md). Это schema-only порция.
 
-1. Дополнить ранние roots, consumer receipts, dispatch plans, reply budgets,
-   activation/admission из этапа1; применять уже реализованный audit context.
-2. Реализовать ingress persistence, атомарное сохранение канонических Message,
-   inbox/outbox и recovery согласно [этапу 1](../plan/phase_1_data.md).
+## Шестая порция: события и общие лимиты
+
+LOG-025 добавил RootExecution/RootBudgetCharge/EventDispatchPlan/ReplyBudget/
+ReplySlot/RouteActivation/AutomationAdmission/ConsumerReceipt. Budget хранится
+отдельно от slots, включая нулевую квоту. Tenant/policy/conversation FK и ключи
+дедупликации проверены. DomainEvent получил root FK; старый orphan вызывает
+полный rollback новой миграции. Старые исходники/checksums сохранены.
+Прошли 135 PostgreSQL и 25 Python tests, focused typecheck 60 файлов, native
+up/down/up и зарегистрированные upgrade/replay/readiness; итоговый generator
+diff пустой. [Доказательства и ограничения](log025/README.md).
+
+## Следующая порция и незавершённая работа
+
+1. Ingress persistence: canonical envelope/hash, generation, durable receipt/ACK,
+   конфликт eventId с другим payload; применять уже реализованный audit context.
+2. Атомарное сохранение канонических Message+audit+event, начальных plans/receipts,
+   затем inbox/outbox и recovery согласно [этапу 1](../plan/phase_1_data.md).
+3. Writers проверяют квоты/covered roots, initial-event membership, immutable
+   targets, charge accounting и доверенные activation boundaries. Одна схема
+   этих гарантий не реализует; полномочия и lifecycle остаются обязательными.
 
 T33 выполнен для текущей группы схемы; будущие миграции требуют своих повторов.
 Полный server typecheck не выполнялся: официальный build использует SWC без

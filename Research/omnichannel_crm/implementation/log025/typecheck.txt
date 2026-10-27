@@ -1,0 +1,1 @@
+Focused strict typecheck: PASS (60 files plus imports; entity initialization follows upstream configuration)
