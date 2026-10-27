@@ -34,6 +34,7 @@ Docstrings carry the what and the design; they are not exempt from terseness, bu
 - For our omnichannel CRM work, read `PROJECT.md`, `Research/omnichannel_crm/DEVLOG.md`, the relevant plan phase and its Linear issue before starting.
 - Append results, verification, limitations and the next step to DEVLOG after each work step or interruption; commit the entry with the work. After push, add a concise evidence-linked report to the corresponding Linear issue. If Linear is unavailable, record pending synchronization locally and avoid duplicate reports when recovering.
 - Use `Research/omnichannel_crm/linear.md` for existing issue IDs. Mark Done only after the issue's acceptance checks; distinguish implementation, tests, deployment and customer acceptance. Keep credentials and customer content out of all reports.
+- GitHub Actions is not a development gate for this fork (owner decision, LOG-026). Run relevant tests, typechecks, migration-source and dependency guards in our own environment before commit/push. The two omnichannel workflows are manual-only; do not start or wait for Actions on routine publication.
 
 ## Commands
 

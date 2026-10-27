@@ -598,3 +598,53 @@ origin/codex/omnichannel-requirements. Описание ROB-764 и единст�
 прочитаны обратно; статусы 11 задач сохранены. GitHub CI нового коммита не начал
 выполнение из-за billing block аккаунта; подтверждено аннотациями обоих jobs.
 [Метаданные](implementation/log025/publication.json). Настройки оплаты не менялись.
+
+## LOG-026 — 27.10.2026: внутренний приём событий и собственные проверки
+
+Пользователь разрешил продолжение и исключил GitHub Actions из разработки.
+У двух наших omnichannel workflows убраны automatic push/PR triggers, оставлен
+workflow_dispatch. Проверки в своей среде и commit/push обязательны; правило
+записано в CLAUDE, статусах и задачах. Upstream workflows и billing не менялись.
+
+Реализован acceptOmniIncomingEvent: current trusted principal/authorizer,
+существующий policy SHARE → binding SHARE → active/generation → durable receipt.
+Natural key и semantic hash обеспечивают replay текущего состояния и conflict
+при изменённом payload. Envelope отделён от mutable input до первого await.
+Receipt+success audit атомарны; failure audit только после confirmed rollback;
+неопределённый COMMIT/release даёт typed unknown, без ложного ACK/failed outcome.
+Новый audit catalog ресурс ограничен metadata, без текста/идентификаторов источника
+в открытом diff. Новых таблиц/миграций нет, четыре checksum сохранены.
+
+Добавлены strict Zod envelope v1, generated JSON Schema и синтетические Telegram/
+MAX fixtures. Поддержаны только текстовые message.received/edited/deleted;
+остальные kinds отвергаются до ACK. Decimal-string generation и provider IDs
+не округляются; unknown authority fields запрещены. Unicode/128 KiB ограничения
+зафиксированы. Source position и author metadata не назначают доверие/полномочия.
+Schema и конкретные ограничения ссылаются из design/06 и spec §15.16.
+
+Проверки: 169 PostgreSQL (34 новых ingress), 42 envelope unit, 20 dependency guard,
+5 checksum tests — 236 PASS. Focused strict typecheck 64 файлов PASS. Общий Jest
+config включает schema unit tests, поэтому они не выпадают из будущих проверок.
+Dependency graph без новых нарушений. [Evidence](implementation/log026/README.md).
+Полный server typecheck и новый полный image не выполнялись; схема не менялась,
+новый native upgrade круг не требовался и не заявляется.
+
+На адресном независимом ревью найдена и исправлена проверка lone UTF-16 surrogate
+перед jsonb; лимиты длины согласованы в Unicode code points. Финальное ревью
+writer/audit/контрактов — без подтверждённых blocker/major. Дополнительные PG
+сценарии подтвердили конкурентный conflict, release после фактического COMMIT
+и отсутствие ложного failed audit при неподтверждённом ORM rollback.
+Claude Code и новый полный архитектурный круг не запускались.
+
+Собственные временные containers/exclusive volumes/network удалены после
+проверки идентичности. БД уничтожены с tmpfs, неактивные caches оставлены.
+Builder не запускался, demo image/start timestamps/health сохранены.
+[Cleanup](implementation/log026/cleanup.json). Сервис пока вызывается только
+тестами: HTTP/HMAC, runtime credentials/ACL, Message apply, коннекторы и чаты
+не выдаются за готовые. Синтетическая авторизация находится только в тестах.
+
+Skills: ai-dev-workflow — реализация по принятому плану и независимые исследование/
+ревью; behavioral-guardrails — scoped changes и проверка фактов; server-schrodinger —
+read-only preflight, ограниченные тестовые ресурсы и cleanup своих ресурсов.
+ROB-764 In Progress; далее worker claim/lease, атомарное Message+audit+event,
+inbox/outbox/recovery и email regression. Публикация фиксируется после push.

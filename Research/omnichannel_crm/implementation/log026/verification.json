@@ -1,0 +1,18 @@
+{
+  "postgresTests": 169,
+  "envelopeUnitTests": 42,
+  "jestTotal": 211,
+  "guardTests": 20,
+  "sourceChecksumTests": 5,
+  "totalExecutedTests": 236,
+  "focusedStrictTypecheckFiles": 64,
+  "newIngressPostgresCases": 34,
+  "allFourMigrationChecksumsUnchanged": true,
+  "newSchemaMigration": false,
+  "fullServerTypecheck": false,
+  "newFullImageBuild": false,
+  "liveDemoChanged": false,
+  "publicEndpointImplemented": false,
+  "githubActionsGate": false,
+  "independentScopedReview": "PASS; no confirmed blocker/major; Unicode validation finding fixed"
+}

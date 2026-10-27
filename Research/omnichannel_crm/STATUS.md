@@ -1,13 +1,13 @@
 # Текущее состояние Twenty CRM
 
-LOG-025 / ROB-764 In Progress: добавлены восемь таблиц roots/charges/dispatch,
-reply budgets/slots, activation/admission и consumer receipts. Прошли 160 тестов,
-focused typecheck 60 файлов и native upgrade/replay; финальный generator diff
-пустой. Новый полный image не собирался.
-[Доказательства и границы](implementation/log025/README.md).
-Далее — ingress persistence: canonical envelope/hash, generation, durable receipt/ACK
-и конфликт payload; затем Message+audit+event, inbox/outbox/recovery.
-Демо и реальные каналы не менялись; runtime automation ещё не реализована.
+LOG-026 / ROB-764 In Progress: внутренний receipt writer готов: строгий envelope,
+current auth/generation, дедупликация/conflict, атомарный audit и unknown COMMIT.
+Прошли 236 тестов и focused typecheck 64 файлов. Четыре миграции не менялись.
+[Доказательства и границы](implementation/log026/README.md).
+Далее — worker claim/lease и Message+participants+link+audit+event, затем
+inbox/outbox/recovery. HTTP, реальные коннекторы и UI ещё не подключены.
+Демо и реальные каналы прежние. Actions не является gate; проверки выполняем
+в своей среде. Наши два workflows оставлены только для ручного запуска.
 
 ## Предыдущая порция — LOG-022
 

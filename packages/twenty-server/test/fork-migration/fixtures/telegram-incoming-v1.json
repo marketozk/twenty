@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "eventId": "tg:journal:fixture:123",
+  "accountBindingId": "09162094-e768-4b4d-bd73-3d52fb4ba660",
+  "routeGeneration": "1",
+  "kind": "message.received",
+  "providerChatId": "90071992547409931",
+  "providerMessageId": "34017",
+  "direction": "incoming",
+  "sourceVariant": "complete",
+  "nativeMessageKeyVersion": 1,
+  "occurredAt": "2026-10-27T10:00:00Z",
+  "sourcePosition": { "type": "fixture.telegram.journal", "value": "123" },
+  "payload": { "text": "Синтетический вопрос клиента", "sourceAuthorId": "90071992547409931", "sourceDisplayName": "Тестовый контакт" }
+}

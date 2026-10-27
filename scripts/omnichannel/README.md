@@ -15,7 +15,7 @@ It does not hash compiled artifacts at runtime. See `ops/omnichannel/README.md`.
 
 The baseline is generated **only** from pinned upstream commit
 `729f6236126eddaa68d176fb766bc349b19de11d`, using `--write-baseline`.
-CI regenerates it in memory and rejects any difference. It cannot be refreshed
+The checker regenerates it in memory and rejects any difference. It cannot be refreshed
 from the working tree to silently bless a newly introduced dependency.
 The JSON stores Enterprise paths, known direct inbound edges, dynamic/unresolved
 debt and digests/counts of the full transitive graph. Its sorted `paths` dictionary
@@ -50,3 +50,8 @@ It prevents growth of known source dependencies during ROB-764. ROB-766 and G18
 still require removal of baseline dependencies in the selected free runtime,
 actual build/module inventory and tests with Enterprise providers absent/throwing.
 An unchanged existing call site's behavior cannot be proved from an import graph.
+
+Our fork runs these checks in its own environment before commit/push. Per the
+owner's LOG-026 decision, the two omnichannel GitHub Actions workflows are
+manual-only and are not a development gate. Keep the commands and verification
+evidence; do not substitute a successful push for test results.

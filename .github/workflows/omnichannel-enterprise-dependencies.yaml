@@ -1,9 +1,7 @@
 name: Omnichannel Enterprise dependency guard
 
 on:
-  pull_request:
-  push:
-    branches: ["codex/**"]
+  workflow_dispatch:
 
 permissions:
   contents: read

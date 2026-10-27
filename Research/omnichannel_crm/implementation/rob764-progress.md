@@ -1,4 +1,4 @@
-# ROB-764 — реализация, LOG-025
+# ROB-764 — реализация, LOG-026
 
 27.10.2026 пользователь ответил «хорошо приступай» на предложение принять
 исправленный план за основу и начать ROB-764 с проверками конкретного кода.
@@ -112,15 +112,24 @@ ReplySlot/RouteActivation/AutomationAdmission/ConsumerReceipt. Budget храни
 up/down/up и зарегистрированные upgrade/replay/readiness; итоговый generator
 diff пустой. [Доказательства и ограничения](log025/README.md).
 
+## Седьмая порция: durable ingress
+
+LOG-026: внутренний acceptOmniIncomingEvent валидирует envelope, фиксирует
+semantic hash до await, под policy/binding SHARE проверяет текущие полномочия,
+active и generation. Receipt и redacted success audit атомарны. Одинаковый
+повтор возвращает current state, другой payload конфликтует; unknown COMMIT
+не превращается в ACK. Строгий versioned JSON Schema и TG/MAX fixtures готовы.
+169 PG + 42 envelope unit + 25 Python tests = 236 PASS; focused typecheck 64 файлов.
+Новой миграции нет. [Проверки и границы](log026/README.md).
+
 ## Следующая порция и незавершённая работа
 
-1. Ingress persistence: canonical envelope/hash, generation, durable receipt/ACK,
-   конфликт eventId с другим payload; применять уже реализованный audit context.
-2. Атомарное сохранение канонических Message+audit+event, начальных plans/receipts,
-   затем inbox/outbox и recovery согласно [этапу 1](../plan/phase_1_data.md).
+1. Worker claim/lease с fencing token и recovery; затем атомарные канонические
+   Message+participants+link+revision+audit+event, initial plans/receipts.
+2. Inbox/outbox и recovery согласно [этапу 1](../plan/phase_1_data.md), email regression.
 3. Writers проверяют квоты/covered roots, initial-event membership, immutable
-   targets, charge accounting и доверенные activation boundaries. Одна схема
-   этих гарантий не реализует; полномочия и lifecycle остаются обязательными.
+   targets, charge accounting и доверенные activation boundaries. Полномочия,
+   lifecycle, HTTP/HMAC и qualification реальных коннекторов ещё впереди.
 
 T33 выполнен для текущей группы схемы; будущие миграции требуют своих повторов.
 Полный server typecheck не выполнялся: официальный build использует SWC без
@@ -132,10 +141,9 @@ Session lock не является DB-side fencing после потери со�
 Bindings не активируются до собственных прав ROB-766. Никакие G01–G20 не выбраны
 за пользователя этой командой начала разработки.
 
-## Ограничение CI после публикации
+## Порядок проверок с LOG-026
 
-GitHub Actions не запустил оба job из-за billing block аккаунта (0 steps).
-Собственные PostgreSQL/guard/typecheck проверки прошли; облачный CI pass не заявлен.
-[Метаданные текущих runs и Linear read-back LOG-025](log025/publication.json).
-Описание/комментарий ROB-764 актуализированы; статусы11 задач сохранены.
-Настройки оплаты не менялись.
+По решению пользователя GitHub Actions не является gate. Наши два workflows
+переведены в manual-only; проверки выполняются в собственной среде перед
+commit/push. Исторические результаты CI не переписываются, но новых запусков
+и ожидания Actions для обычной публикации нет. Настройки оплаты не менялись.

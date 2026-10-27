@@ -54,13 +54,15 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-025 / ROB-764 In Progress: к схеме сообщений добавлены восемь таблиц
-roots/charges/dispatch plans/reply budgets/slots/activation/admission/consumer receipts.
-Прошли 160 тестов, focused typecheck 60 файлов и native upgrade/replay;
-финальный generator diff пустой. Старые миграции сохранены.
-[Проверки и ограничения](Research/omnichannel_crm/implementation/log025/README.md).
-Следующий шаг — ingress persistence с durable receipt/ACK и конфликтом payload,
-затем атомарное Message+audit+event и inbox/outbox/recovery. Демо не обновлялось.
+LOG-026 / ROB-764 In Progress: реализован внутренний приём текстовых событий
+в durable receipt вместе с аудитом. Строгий envelope v1, текущая авторизация/
+generation, защита от повторов и payload conflict; unknown COMMIT не даёт ACK.
+Прошли 236 тестов и focused typecheck 64 файлов. Новых миграций нет.
+[Проверки и ограничения](Research/omnichannel_crm/implementation/log026/README.md).
+Следующий шаг — worker claim/lease и атомарное Message+audit+event,
+затем inbox/outbox/recovery. HTTP/коннекторы/чаты ещё не подключены, демо прежнее.
+GitHub Actions по решению пользователя не используется как gate; два наших
+workflow manual-only, проверки выполняем в своей среде перед commit/push.
 
 Предыдущая порция LOG-022: реализованы минимальный аудит и атомарное создание
 inactive binding/disabled policy v0 с receipt, текущей проверкой прав через

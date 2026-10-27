@@ -1,0 +1,10 @@
+{
+  "verifiedContainers": [
+    "twenty-rob764-0c4607f601de4587-db",
+    "twenty-rob764-0c4607f601de4587-redis"
+  ],
+  "verifiedExclusiveVolumes": [
+    "814f1137d058be26c9d9812d393e88e90cff0a5cb075159a260380bc0f320972"
+  ],
+  "internalNetwork": "twenty-rob764-0c4607f601de4587-net"
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "eventId": "max:journal:fixture:124",
+  "accountBindingId": "09162094-e768-4b4d-bd73-3d52fb4ba660",
+  "routeGeneration": "90071992547409931",
+  "kind": "message.received",
+  "providerChatId": "-90071992547409931",
+  "providerMessageId": "90071992547409932",
+  "direction": "incoming",
+  "sourceVariant": "placeholder",
+  "nativeMessageKeyVersion": 1,
+  "occurredAt": null,
+  "sourcePosition": null,
+  "payload": { "text": null, "sourceAuthorId": null, "sourceDisplayName": null }
+}

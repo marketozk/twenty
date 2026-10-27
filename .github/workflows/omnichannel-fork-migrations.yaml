@@ -1,43 +1,7 @@
 name: Omnichannel fork migration transactions
 
 on:
-  pull_request:
-    paths:
-      - 'packages/twenty-server/src/database/commands/fork-upgrade/**'
-      - 'packages/twenty-server/src/engine/core-modules/omnichannel-storage/**'
-      - 'packages/twenty-server/src/engine/core-modules/crm-audit/**'
-      - 'packages/twenty-server/src/modules/omnichannel/**'
-      - 'packages/twenty-server/test/fork-migration/**'
-      - 'packages/twenty-server/jest-fork-migration.config.mjs'
-      - '.github/workflows/omnichannel-fork-migrations.yaml'
-      - 'yarn.lock'
-      - 'scripts/omnichannel/*fork_migration_sources.py'
-      - 'scripts/omnichannel/test_startup_scripts.py'
-      - 'ops/omnichannel/**'
-      - 'packages/twenty-docker/twenty/Dockerfile'
-      - 'packages/twenty-server/src/database/commands/cron-register-all.command.ts'
-      - 'packages/twenty-server/src/database/commands/__tests__/cron-register-all.command.spec.ts'
-      - 'packages/twenty-server/src/engine/core-modules/cache-storage/commands/**'
-      - 'packages/twenty-server/src/engine/core-modules/upgrade/commands/**'
-  push:
-    branches: ['codex/**']
-    paths:
-      - 'packages/twenty-server/src/database/commands/fork-upgrade/**'
-      - 'packages/twenty-server/src/engine/core-modules/omnichannel-storage/**'
-      - 'packages/twenty-server/src/engine/core-modules/crm-audit/**'
-      - 'packages/twenty-server/src/modules/omnichannel/**'
-      - 'packages/twenty-server/test/fork-migration/**'
-      - 'packages/twenty-server/jest-fork-migration.config.mjs'
-      - '.github/workflows/omnichannel-fork-migrations.yaml'
-      - 'yarn.lock'
-      - 'scripts/omnichannel/*fork_migration_sources.py'
-      - 'scripts/omnichannel/test_startup_scripts.py'
-      - 'ops/omnichannel/**'
-      - 'packages/twenty-docker/twenty/Dockerfile'
-      - 'packages/twenty-server/src/database/commands/cron-register-all.command.ts'
-      - 'packages/twenty-server/src/database/commands/__tests__/cron-register-all.command.spec.ts'
-      - 'packages/twenty-server/src/engine/core-modules/cache-storage/commands/**'
-      - 'packages/twenty-server/src/engine/core-modules/upgrade/commands/**'
+  workflow_dispatch:
 
 permissions:
   contents: read

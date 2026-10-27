@@ -1,0 +1,50 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-incoming-envelope.spec.ts
+  incoming message envelope v1
+    ✓ preserves opaque provider IDs in synthetic fixtures (6 ms)
+    ✓ preserves opaque provider IDs in synthetic fixtures (1 ms)
+    ✓ keeps the portable JSON Schema synchronized with the runtime validator (3 ms)
+    ✓ rejects external authority or transport field workspaceId (12 ms)
+    ✓ rejects external authority or transport field actor (1 ms)
+    ✓ rejects external authority or transport field origin (2 ms)
+    ✓ rejects external authority or transport field grants (1 ms)
+    ✓ rejects external authority or transport field personId (1 ms)
+    ✓ rejects external authority or transport field signature (1 ms)
+    ✓ rejects external authority or transport field timestamp (1 ms)
+    ✓ rejects noncanonical or out-of-range generation 0 (1 ms)
+    ✓ rejects noncanonical or out-of-range generation 1
+    ✓ rejects noncanonical or out-of-range generation 0 (1 ms)
+    ✓ rejects noncanonical or out-of-range generation -1 (1 ms)
+    ✓ rejects noncanonical or out-of-range generation 01
+    ✓ rejects noncanonical or out-of-range generation 1.0
+    ✓ rejects noncanonical or out-of-range generation 1e3 (1 ms)
+    ✓ rejects noncanonical or out-of-range generation 9223372036854775808
+    ✓ accepts maximum PostgreSQL generation without numeric rounding
+    ✓ rejects malformed input 0 (1 ms)
+    ✓ rejects malformed input 1 (1 ms)
+    ✓ rejects malformed input 2
+    ✓ rejects malformed input 3 (1 ms)
+    ✓ rejects malformed input 4 (1 ms)
+    ✓ rejects malformed input 5 (1 ms)
+    ✓ rejects malformed input 6
+    ✓ rejects malformed input 7
+    ✓ rejects malformed input 8 (1 ms)
+    ✓ rejects malformed input 9 (1 ms)
+    ✓ enforces a UTF-8 byte limit after validation (3 ms)
+    ✓ rejects malformed Unicode 0 (1 ms)
+    ✓ rejects malformed Unicode 1 (1 ms)
+    ✓ preserves valid supplementary Unicode (1 ms)
+    ✓ measures identifier limits in Unicode code points (1 ms)
+    ✓ hashes reordered keys identically and snapshots nested values (1 ms)
+    ✓ includes every semantic change in the hash 0 (1 ms)
+    ✓ includes every semantic change in the hash 1 (1 ms)
+    ✓ includes every semantic change in the hash 2
+    ✓ includes every semantic change in the hash 3 (1 ms)
+    ✓ includes every semantic change in the hash 4
+    ✓ includes every semantic change in the hash 5 (1 ms)
+    ✓ includes every semantic change in the hash 6
+
+Test Suites: 1 passed, 1 total
+Tests:       42 passed, 42 total
+Snapshots:   0 total
+Time:        0.419 s
+Ran all test suites.

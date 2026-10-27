@@ -1,0 +1,20 @@
+{
+  "baseCommit": "477f480d86050c2041ee57ed2feae296fe2e0abf",
+  "testSource": "/opt/twenty-tests/twenty-rob764-0c4607f601de4587/source",
+  "runtimeBaseImage": "marketozk/twenty:log022-candidate",
+  "lfSha256": {
+    ".github/workflows/omnichannel-enterprise-dependencies.yaml": "232e2081ea8cc75fa2a6b307c8912c80ebac9be7bfbfde9b86d9b4b09a1df8cb",
+    ".github/workflows/omnichannel-fork-migrations.yaml": "ede0871ed64c41b29aaf6b45af05ee7ac09be6ba287b8c5290f9588b0fe3efcb",
+    "packages/twenty-server/jest-fork-migration.config.mjs": "eaa63aa05fb2618a11260086eb7f06b4b64a94e24e228b327866341ea4a3a4f2",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "8e076dcdbf4b0bc06672ebb6c6c5508f528e03b32b249b3171a76cfb52bd096c",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "bf324e32a3944bd2fbffce389a41260edcfb2cd89b4772f50b950af1cdf09084",
+    "packages/twenty-server/src/modules/omnichannel/contracts/README.md": "94286f1549aaf7e1c60a98117a244417774322e40bcbf6b7cb8ff57ca061f62e",
+    "packages/twenty-server/src/modules/omnichannel/contracts/omni-incoming-envelope-v1.schema.json": "1f1b7b903ef9e4c789bcaec755941146902bdb8e1f008157314117e664d7d207",
+    "packages/twenty-server/src/modules/omnichannel/contracts/omni-incoming-envelope.ts": "cad253accf92846f28d68afffdaa4df6f40a9ac77c8f79cd65f845cfb39a5d23",
+    "packages/twenty-server/src/modules/omnichannel/services/accept-omni-incoming-event.ts": "643d18e022c7a506aae096e90582e62eb966c2a0b36e50c9c82946f20a0c99dc",
+    "packages/twenty-server/test/fork-migration/fixtures/max-incoming-v1.json": "41ec21c668e865acb19103a4a884428e874e57da772eabfa7e8ab1410b9f5f16",
+    "packages/twenty-server/test/fork-migration/fixtures/telegram-incoming-v1.json": "15d8972652c8b1681e519910547fce8c4e77c50f72f9a9394034d9e6be656f7d",
+    "packages/twenty-server/test/fork-migration/omni-incoming-envelope.spec.ts": "b9d3acad65ae9e513d02dc663d2f266ef4ad3b475feacdf50750358f98d31e7d",
+    "packages/twenty-server/test/fork-migration/omni-incoming-event.postgres-spec.ts": "358cc0971d545b2fc9f1cd322b77b33f829432d56af2f91849ba4996bb179948"
+  }
+}

@@ -50,27 +50,32 @@ Subscription выдаёт только разрешённые conversation event
 
 ## Connector -> Twenty: входящие и квитанции
 
-Предлагаемый внутренний HTTP endpoint принимает версионированный envelope:
+LOG-026 реализует внутренний receipt service; HTTP endpoint ещё не подключён.
+Единый контракт и ограничения первой текстовой порции: [envelope v1](../../../packages/twenty-server/src/modules/omnichannel/contracts/README.md),
+[JSON Schema](../../../packages/twenty-server/src/modules/omnichannel/contracts/omni-incoming-envelope-v1.schema.json).
+Иллюстрация (полный набор правил задаёт schema):
 
 ```json
 {
   "schemaVersion": 1,
   "eventId": "stable-source-event-id",
-  "accountBindingId": "binding-id",
-  "routeGeneration": 1,
+  "accountBindingId": "09162094-e768-4b4d-bd73-3d52fb4ba660",
+  "routeGeneration": "1",
   "kind": "message.received",
   "providerChatId": "opaque-provider-id",
   "providerMessageId": "opaque-provider-id",
-  "occurredAt": "provider-timestamp",
+  "occurredAt": "2026-10-27T10:00:00Z",
   "sourcePosition": {"type": "adapter-defined", "value": "opaque-position"},
   "sourceVariant": "complete",
-  "payload": {}
+  "direction": "incoming",
+  "nativeMessageKeyVersion": 1,
+  "payload": {"text": "Тестовое сообщение", "sourceAuthorId": null, "sourceDisplayName": null}
 }
 ```
 
 `workspaceId`, actor и полномочия выводятся из аутентифицированной привязки; входящий payload не выбирает их. Для каждого binding — ограниченный credential, подпись тела с timestamp и проверкой replay window; TLS, ротация и отзыв ключа. Стабильный eventId обеспечивает безопасные повторы после transport timeout. Ключи не доступны браузеру/ИИ. Параметры окна, лимитов и rotation фиксируются при реализации, не считаются настроенными.
 
-Ответ после durable receipt: accepted + receiptId; повтор того же payload — тот же receiptId. Неверная подпись/отозванное поколение — отказ; ID с изменённым payload — conflict; перегрузка — retryable отказ до ACK. Kind имеет отдельную schema: received/edited/deleted, command.receipt, connection.state. Не доверять присланным полям actor/admin, URL для скачивания или relationship IDs.
+Ответ после durable receipt: accepted + receiptId; повтор того же payload — тот же receiptId. Неверная подпись/отозванное поколение — отказ; ID с изменённым payload — conflict; перегрузка — retryable отказ до ACK. Первая реализованная schema поддерживает message.received/edited/deleted; command.receipt и connection.state пока отвергаются и требуют отдельного будущего контракта. Не доверять присланным полям actor/admin, URL для скачивания или relationship IDs.
 
 Поле origin запрещено во внешнем envelope. Trusted history_import назначает только внутренний import job после pull страницы по scoped history.read credential; источник не управляет suppression. Omni generic record events полностью подавлены. Safe projection из DomainEvent поступает в типизированный OMNICHANNEL_EVENT workflow trigger по implementation-spec §15.10, не в общий WorkspaceEventBatch.
 

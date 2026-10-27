@@ -6,13 +6,14 @@
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
-Зависимость: этап0. Статус: In Progress (LOG-025). К схеме сообщений LOG-024
-добавлены RootExecution/RootBudgetCharge/EventDispatchPlan/ReplyBudget/ReplySlot/
-RouteActivation/AutomationAdmission/ConsumerReceipt. Прошли 135 PG и 25 Python tests,
-focused typecheck 60 файлов; native upgrade/replay и финальный пустой generator diff.
-Это schema-only порция; полного нового image build/typecheck и runtime writers нет.
-Далее — ingress persistence, Message+audit+event, inbox/outbox/recovery.
-[LOG-025](../implementation/log025/README.md).
+Зависимость: этап0. Статус: In Progress (LOG-026). После схемы LOG-025 реализован
+внутренний acceptOmniIncomingEvent: строгий envelope v1, receipt+audit атомарно,
+current auth/generation, dedup/conflict, unknown COMMIT без ложного ACK.
+Прошли 169 PG, 42 envelope unit и 25 Python tests; focused typecheck 64 файлов.
+Новых миграций нет. HTTP/HMAC/credential verifier и runtime callers ещё не
+подключены; реальные каналы и демо прежние. Далее — worker claim/lease,
+Message+audit+event и inbox/outbox/recovery. [LOG-026](../implementation/log026/README.md).
+Проверки выполняются в своей среде; GitHub Actions больше не является gate.
 
 Предыдущая порция LOG-022: реализованы fork migrations,
 первые9 core entities, audit entry/PolicyMutationReceipt, минимальный audit writer

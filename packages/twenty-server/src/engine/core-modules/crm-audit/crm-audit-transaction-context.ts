@@ -53,6 +53,10 @@ const CATALOG: Record<
     values: ['bindingId', 'active', 'revision'],
     redacted: ['name'],
   },
+  omniIncomingReceipt: {
+    values: ['bindingId', 'kind', 'schemaVersion', 'routeGeneration', 'state'],
+    redacted: ['eventId', 'validatedEnvelope'],
+  },
 };
 
 type CapturedValue = { hash: string; value?: unknown };
