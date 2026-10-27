@@ -990,3 +990,5 @@ GitHub Actions не используется.
 behavioral-guardrails, server-schrodinger. Следующий LOG-038 — config mutation writer;
 schema уже поддерживает nullable-conversation event, но audit descriptor needs narrow
 binding-event support. Full worker recovery ещё не объявляется готовым.
+
+Публикация LOG-037: код 377da6291ad8d93bf9c96e63bfb04d5c4d022fde, remote проверен GitHub API. Описание ROB-764 и комментарий eda007d4-a5a7-40b4-a616-cc33deaf852d прочитаны обратно; все11 статусов сохранены. Продолжаем LOG-038.

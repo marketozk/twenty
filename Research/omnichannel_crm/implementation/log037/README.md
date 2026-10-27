@@ -57,3 +57,5 @@ unknown commit/rollback/release, failure-audit error и отсутствие att
 Никаких фиктивных workflow execution/pinnedVersion IDs для maintenance receipts.
 Scoped independent review runtime/facade без блокеров; новый Claude review не заявляется.
 ROB-764 In Progress; GitHub Actions не использовался.
+
+Публикация LOG-037: код 377da6291ad8d93bf9c96e63bfb04d5c4d022fde, remote проверен GitHub API. Описание ROB-764 и комментарий eda007d4-a5a7-40b4-a616-cc33deaf852d прочитаны обратно; все11 статусов сохранены. Продолжаем LOG-038.
