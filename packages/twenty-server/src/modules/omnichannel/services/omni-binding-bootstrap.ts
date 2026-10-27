@@ -5,6 +5,7 @@ import { type DataSource, type QueryRunner } from 'typeorm';
 
 import { auditPayloadHash } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
 import { lockOmniNativeOwnership } from 'src/modules/omnichannel/services/lock-omni-native-ownership';
+import { assertOmniWorkspaceAcceptsBootstrap } from 'src/modules/omnichannel/services/omni-workspace-deletion';
 import {
   appendCrmAuditAttempt,
   CrmAuditTransactionContext,
@@ -228,6 +229,10 @@ export const bootstrapOmniAccountBinding = async (
       },
       normalized.workspaceId,
       'exclusive',
+    );
+    await assertOmniWorkspaceAcceptsBootstrap(
+      queryRunner,
+      normalized.workspaceId,
     );
     const createdState: { id: string }[] = await queryRunner.query(
       `INSERT INTO core."omniWorkspacePolicyState" ("workspaceId")

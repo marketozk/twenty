@@ -103,6 +103,10 @@ import { RoleAssignmentValidationService } from 'src/engine/metadata-modules/rol
 import { WorkspaceCacheStorageService } from 'src/engine/workspace-cache-storage/workspace-cache-storage.service';
 import { getWorkspaceSchemaName } from 'src/engine/workspace-datasource/utils/get-workspace-schema-name.util';
 import { WorkspaceSchemaService } from 'src/engine/workspace-datasource/workspace-schema.service';
+import {
+  admitOmniWorkspaceDeletion,
+  OmniWorkspaceLifecycleOutcomeUnknownError,
+} from 'src/modules/omnichannel/services/omni-workspace-deletion';
 import { PrefillLogicFunctionService } from 'src/engine/workspace-manager/standard-objects-prefill-data/services/prefill-logic-function.service';
 import { prefillCompanies } from 'src/engine/workspace-manager/standard-objects-prefill-data/utils/prefill-companies.util';
 import { prefillDashboards } from 'src/engine/workspace-manager/standard-objects-prefill-data/utils/prefill-dashboards.util';
@@ -719,6 +723,28 @@ export class WorkspaceService {
 
     assert(workspace, 'Workspace not found');
 
+    try {
+      workspace.deletedAt = await admitOmniWorkspaceDeletion(
+        this.coreDataSource,
+        id,
+      );
+    } catch (error) {
+      if (error instanceof OmniWorkspaceLifecycleOutcomeUnknownError) {
+        try {
+          await this.coreEntityCacheService.invalidate('workspaceEntity', id);
+        } catch (cacheError) {
+          throw new OmniWorkspaceLifecycleOutcomeUnknownError(
+            new AggregateError(
+              [error, cacheError],
+              'Workspace cache invalidation failed',
+            ),
+          );
+        }
+      }
+      throw error;
+    }
+    await this.coreEntityCacheService.invalidate('workspaceEntity', id);
+
     if (!softDelete) {
       return this.hardDeleteWorkspaceWithApplicationUninstallLock(workspace);
     }
@@ -741,9 +767,6 @@ export class WorkspaceService {
 
     this.logger.log(`workspace ${id} cache flushed`);
 
-    await this.workspaceRepository.softDelete({ id, deletedAt: IsNull() });
-    await this.coreEntityCacheService.invalidate('workspaceEntity', id);
-
     this.eventEmitter.emit(WORKSPACE_SOFT_DELETED_EVENT, {
       workspaceId: id,
     } satisfies WorkspaceSoftDeletedEvent);
@@ -762,6 +785,11 @@ export class WorkspaceService {
       await this.postgresAdvisoryLockService.tryWithLock(
         getWorkspaceApplicationUninstallLockName(workspace.id),
         async () => {
+          if (this.billingService.isBillingEnabled()) {
+            await this.billingSubscriptionService.assertSubscriptionCanceledOrNone(
+              workspace.id,
+            );
+          }
           const userWorkspaces = await this.userWorkspaceRepository.find({
             where: {
               workspaceId: workspace.id,
@@ -779,12 +807,6 @@ export class WorkspaceService {
           this.logger.log(`workspace ${workspace.id} user workspaces deleted`);
 
           this.logger.log(`workspace ${workspace.id} cache flushed`);
-
-          if (this.billingService.isBillingEnabled()) {
-            await this.billingSubscriptionService.assertSubscriptionCanceledOrNone(
-              workspace.id,
-            );
-          }
 
           await this.runPendingApplicationUninstallHooksBeforeHardDelete(
             workspace,

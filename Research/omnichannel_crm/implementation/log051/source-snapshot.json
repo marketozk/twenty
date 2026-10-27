@@ -1,0 +1,15 @@
+{
+  "baseCommit": "fb2ae19f050453b94e987c01ce790978c9c53cc1",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/workspace/services/workspace.service.ts": "20871271e9509759880e5ecd778e1acf2f57cc3e61df64923185e9b2177e867c",
+    "packages/twenty-server/src/engine/workspace-datasource/workspace-schema.service.ts": "1a1fdf92b53dcd9e84c6b1136ad1e5ab36b764e12a80c09b893878d2d85d7cb7",
+    "packages/twenty-server/src/modules/omnichannel/services/omni-binding-bootstrap.ts": "27f708c1fb6e935e679d2994b0546f5941ad08d202f7958035377559b01e848b",
+    "packages/twenty-server/test/fork-migration/omni-binding-bootstrap.postgres-spec.ts": "a3d2f069df5205840d33e8dfef18f8aacd98998d1986dac5b0be25e20f581293",
+    "packages/twenty-server/test/fork-migration/omni-native-message.fixture.ts": "bd94350987468b4e58f8c0914c9170561be00543c64f465b46169197a62101d9",
+    "packages/twenty-server/src/modules/omnichannel/services/omni-workspace-deletion.ts": "83fce36bc4e13b97da7364acdccf25847f197106b0f6735bcc1e31abcdc0a451",
+    "packages/twenty-server/test/fork-migration/omni-workspace-deletion.postgres-spec.ts": "13e077c853183fd445707f6ed22a4f31d68df504e2f87d8a840f09361ec464a3",
+    "packages/twenty-server/test/fork-migration/omni-workspace-lifecycle-owners.spec.ts": "041054f7c773afaccecc9c462db61b56d870d35591454d63d569fce16c49cb81"
+  }
+}

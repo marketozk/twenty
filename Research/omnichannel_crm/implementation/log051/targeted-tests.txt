@@ -1,0 +1,9 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-mutation-guard.postgres-spec.ts (20.556 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-binding-bootstrap.postgres-spec.ts (5.083 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-workspace-deletion.postgres-spec.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       120 passed, 120 total
+Snapshots:   0 total
+Time:        30.62 s
+Ran all test suites matching /omni-workspace-deletion|omni-binding-bootstrap|omni-native-mutation-guard/i.

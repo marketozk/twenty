@@ -1344,3 +1344,34 @@ RESTRICT и гонку metadata check/write с первым bootstrap; эти п
 матрицы приёмки: identity/Person relation уже есть, explicit target projector ещё нет.
 
 Публикация LOG-050: код 6a4cc84b40683d19f82dff362d0dc2373a887c17, remote проверен GitHub API. Описание ROB-764 и комментарий c3ebd531-91b3-4c8a-be8f-6719fbc1b7a6 прочитаны обратно; все 11 статусов сохранены. Продолжаем workspace lifecycle guard.
+
+## LOG-051 — 28.10.2026: защита удаления рабочей области
+
+LOG-051 / ROB-764 In Progress: WorkspaceService отказывает при retained omni данных
+до membership/uninstall/schema/file effects. Короткая транзакция сохраняет deletedAt
+под ownership fence; bootstrap проверяет эту отметку до первого INSERT. Direct DROP
+SCHEMA требует ту же проверку и ранее сохранённую отметку удаления. Повтор сохраняет
+дату, ошибки очистки не возвращают область в активное состояние.
+Полный набор: 1635 Jest /67 suites +26 guards =
+1661 PASS; 18 новых PostgreSQL и 13 owner-level случаев. Typecheck
+216 roots: 162 baseline/current, 0 новых/0 changed-code. Все7 migrations неизменны.
+[Доказательства и границы](implementation/log051/README.md). Scoped independent review: blockers не найдены;
+полный Claude pass не повторялся. Далее — metadata check/write против first bootstrap
+и итоговый T22 inventory. ROB-764 не закрыт; controlled purge, публичный API, ACL и UI
+ещё впереди. Демо прежнее, GitHub Actions не используется.
+
+Первый targeted запуск: 113 PASS, 7 FAIL. Причина подтверждена в текущем
+PostgresQueryRunner: UPDATE RETURNING возвращает [rows, affected], а не rows.
+Исправлена обработка результата с проверкой affected=1; финальные проверки успешны.
+Для owner tests изолированы unrelated DI/AI ESM imports, реальные методы
+WorkspaceService/WorkspaceSchemaService/DestroySoftDeletedWorkspaceJob исполнены.
+Scoped review предложил сохранить исходный unknown outcome при ошибке cache:
+теперь AggregateError сохраняет обе причины, дальнейшая очистка не начинается.
+Проверены оба порядка bootstrap/delete на PostgreSQL, immutable deletedAt retry,
+недоступность retained catalog, потеря COMMIT ACK, уничтожение соединения после
+неподтверждённого rollback, direct schema DROP, billing/hook/cache failures.
+Применены ai-dev-workflow, behavioral-guardrails, server-schrodinger. Живой экземпляр
+и коннекторы не менялись; отдельный стенд — только уже существующая isolated CI-среда.
+Оставшийся риск metadata check/write подтверждён по коду. archivedAt не подходит как
+самостоятельная необратимая резервация: штатный reconnect его снимает. Следующая
+порция закроет чистые DB mutations, затем network lifecycle без длинной transaction.

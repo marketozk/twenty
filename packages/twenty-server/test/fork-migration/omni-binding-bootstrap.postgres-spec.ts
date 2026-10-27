@@ -68,7 +68,9 @@ beforeEach(async () => {
   await owner.query('DROP SCHEMA IF EXISTS crm_audit CASCADE');
   await owner.query('DROP SCHEMA IF EXISTS core CASCADE');
   await owner.query('CREATE SCHEMA core');
-  await owner.query('CREATE TABLE core.workspace (id uuid PRIMARY KEY)');
+  await owner.query(
+    'CREATE TABLE core.workspace (id uuid PRIMARY KEY, "deletedAt" timestamptz)',
+  );
   await owner.query(
     'CREATE TABLE core."connectedAccount" (id uuid PRIMARY KEY, "workspaceId" uuid NOT NULL, "archivedAt" timestamptz, "applicationId" uuid, "connectionProviderId" uuid)',
   );
@@ -98,7 +100,7 @@ beforeEach(async () => {
     idempotencyKey: randomUUID(),
     expectedRevision: '0',
   };
-  await owner.query('INSERT INTO core.workspace VALUES ($1)', [
+  await owner.query('INSERT INTO core.workspace(id) VALUES ($1)', [
     input.workspaceId,
   ]);
   await owner.query(

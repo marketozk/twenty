@@ -190,7 +190,9 @@ export const createOmniNativeMessageFixture = (
     await owner.query('DROP SCHEMA IF EXISTS crm_audit CASCADE');
     await owner.query('DROP SCHEMA IF EXISTS core CASCADE');
     await owner.query('CREATE SCHEMA core');
-    await owner.query('CREATE TABLE core.workspace (id uuid PRIMARY KEY)');
+    await owner.query(
+      'CREATE TABLE core.workspace (id uuid PRIMARY KEY, "deletedAt" timestamptz)',
+    );
     await owner.query(`CREATE SCHEMA "${schemaName}"`);
     const queryRunner = owner.createQueryRunner();
 

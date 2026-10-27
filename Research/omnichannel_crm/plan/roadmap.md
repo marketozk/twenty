@@ -1,19 +1,17 @@
 # Дорожная карта проекта
 
-LOG-050 / ROB-764 In Progress: generic hard-delete защищает retained core targets,
-ExternalIdentity и native references Person/Company/Opportunity/MessageCampaign.
-Проверка выполняется под ownership fence и parent row locks, независимо от bypass,
-skipEvents и native capability. Обычные email FK и WorkspaceMember SET NULL сохранены.
-Корзина пропускает protected records, двигает точный PostgreSQL (deletedAt,id) cursor
-и повторно проверяет retention после lock; concurrent restore не удаляется.
-Полный набор: 1604 Jest /65 suites +26 guards =
-1630 PASS; 26 новых PostgreSQL случаев. Typecheck 211 roots:
-146 baseline/current,0 новых/0 changed-code. Все7 migrations неизменны.
-[Доказательства и границы](../implementation/log050/README.md). Scoped independent review: замечание о
-микросекундах исправлено и проверено. Полный Claude pass не повторялся.
-Далее — запрет workspace deletion до первого side effect и гонки metadata/first bootstrap.
-ROB-764 не закрыт; разрешённый domain destroy, публичный API, ACL и UI ещё впереди.
-Демо прежнее, GitHub Actions не используется.
+LOG-051 / ROB-764 In Progress: WorkspaceService отказывает при retained omni данных
+до membership/uninstall/schema/file effects. Короткая транзакция сохраняет deletedAt
+под ownership fence; bootstrap проверяет эту отметку до первого INSERT. Direct DROP
+SCHEMA требует ту же проверку и ранее сохранённую отметку удаления. Повтор сохраняет
+дату, ошибки очистки не возвращают область в активное состояние.
+Полный набор: 1635 Jest /67 suites +26 guards =
+1661 PASS; 18 новых PostgreSQL и 13 owner-level случаев. Typecheck
+216 roots: 162 baseline/current, 0 новых/0 changed-code. Все7 migrations неизменны.
+[Доказательства и границы](../implementation/log051/README.md). Scoped independent review: blockers не найдены;
+полный Claude pass не повторялся. Далее — metadata check/write против first bootstrap
+и итоговый T22 inventory. ROB-764 не закрыт; controlled purge, публичный API, ACL и UI
+ещё впереди. Демо прежнее, GitHub Actions не используется.
 
 Полный объём описан в [requirements.md](../requirements.md). Переход к следующей фазе подтверждается результатом предыдущей. Даты и трудозатраты появятся после исследования; сейчас их нельзя обоснованно назначить.
 

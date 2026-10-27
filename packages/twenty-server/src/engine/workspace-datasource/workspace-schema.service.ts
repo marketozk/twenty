@@ -10,6 +10,7 @@ import {
   WorkspaceDataSourceExceptionCode,
 } from 'src/engine/workspace-datasource/exceptions/workspace-datasource.exception';
 import { getWorkspaceSchemaName } from 'src/engine/workspace-datasource/utils/get-workspace-schema-name.util';
+import { dropOmniUnownedWorkspaceSchema } from 'src/modules/omnichannel/services/omni-workspace-deletion';
 
 @Injectable()
 export class WorkspaceSchemaService {
@@ -48,14 +49,6 @@ export class WorkspaceSchemaService {
 
   public async deleteWorkspaceDBSchema(workspaceId: string): Promise<void> {
     this.assertDDLNotLocked();
-
-    const schemaName = getWorkspaceSchemaName(workspaceId);
-    const queryRunner = this.coreDataSource.createQueryRunner();
-
-    try {
-      await queryRunner.dropSchema(schemaName, true, true);
-    } finally {
-      await queryRunner.release();
-    }
+    await dropOmniUnownedWorkspaceSchema(this.coreDataSource, workspaceId);
   }
 }
