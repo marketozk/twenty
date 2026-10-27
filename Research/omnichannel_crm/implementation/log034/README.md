@@ -41,3 +41,6 @@ metadata ConnectedAccount/MessageChannel/MessageFolder и гонки с binding 
 закрывает именно эту границу и предварительные внешние эффекты account deletion.
 Обычный count API cleaner не расширялся. Полный T05/ROB-764 остаётся открыт.
 Демо, HTTP, production ACL и коннекторы не активировались; Actions не запускался.
+
+
+Публикация LOG-034: `863a3a0ae72e1fae7fa70bd686025c8543f1739d`; remote SHA проверен API. Описание ROB-764 и комментарий `4752855f-4672-46a1-b0c6-1eda69278025` прочитаны обратно, все11 статусов прежние. [Метаданные](publication.json). Продолжаем LOG-035.

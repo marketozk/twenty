@@ -903,3 +903,6 @@ junctions сохранены. Полный T05/ROB-764 не завершён. Д
 Skills: ai-dev-workflow (разделённые implementation/review), behavioral-guardrails
 (точные границы), server-schrodinger (ограниченные изолированные проверки).
 GitHub Actions не использовался. Продолжаем LOG-035 lifecycle guards.
+
+
+Публикация LOG-034: `863a3a0ae72e1fae7fa70bd686025c8543f1739d`; remote SHA проверен API. Описание ROB-764 и комментарий `4752855f-4672-46a1-b0c6-1eda69278025` прочитаны обратно, все11 статусов прежние. [Метаданные](implementation/log034/publication.json). Продолжаем LOG-035.
