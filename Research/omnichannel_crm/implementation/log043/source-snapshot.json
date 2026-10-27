@@ -1,0 +1,18 @@
+{
+  "baseCommit": "584542b5a2a967e4eaf0d659bfb23c05558caf54",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "allPreviousAggregateMethodsUnchanged": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "8bc25e0c22803c5f381b26c4a5fc17856fe781e4da50040ad9f2ff4d18dde0c9",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts": "2c7536db8c8acb5b9e775b8810d3d1390fbeef3b36fce54a2eb2a5779da7a19e",
+    "packages/twenty-server/src/modules/omnichannel/services/claim-omni-human-command.ts": "6a5994cfb7cacd9c973442d76c77aee91ec35850f6fc72320fef3588b683c261",
+    "packages/twenty-server/src/modules/omnichannel/contracts/omni-connector-acceptance.ts": "c286c054d1eeeb318a1ffd8e62d67dcfd628f8cb643f4ee7daab3ed1aae76663",
+    "packages/twenty-server/src/modules/omnichannel/services/append-omni-connector-acceptance-failure.ts": "b9bb66f00f35bf474f3c672d7bb84e571edb376865551b4fd98ad7b1fbf98b17",
+    "packages/twenty-server/src/modules/omnichannel/services/apply-omni-connector-acceptance.ts": "4ebbd0689d3c2379d08f1629af1b58cacaf39884245cd743b031eabb9a2c25fd",
+    "packages/twenty-server/test/fork-migration/crm-audit-connector-acceptance.spec.ts": "7cf86b24f02354a9e14f17709b2dd4e57ab4dfa56ff178a3b6c8f8562be6cee6",
+    "packages/twenty-server/test/fork-migration/omni-connector-acceptance-contract.spec.ts": "a65f2b868fa83cc9f37a01050d39e9cd47dabf670ce039ed41a43ee0453c5415",
+    "packages/twenty-server/test/fork-migration/omni-connector-acceptance-facade.spec.ts": "db62a5cff62ba9c50527ce6171dff2b06bc881fda5f72957aeedc86a8ab4aae5",
+    "packages/twenty-server/test/fork-migration/omni-connector-acceptance.postgres-spec.ts": "b9613bf08ffcd06dfd09dc741bd61f4558f29097bbb17e8f38858d6580cd5c12"
+  }
+}

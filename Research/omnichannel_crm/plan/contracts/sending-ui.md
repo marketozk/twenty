@@ -64,6 +64,30 @@ Lease metadata содержит capturedRestoreIncarnation, но существ�
 provider boundary обязательны. До появления закрытого verified connector evidence
 FIFO fail-closed: состояние accepted или произвольный JSON не доказывают приём.
 
+Verified connector acceptance сохраняется отдельным внутренним reducer, а не через
+message envelope с вымышленным providerMessageId. Единственный закрытый формат
+нормализованного доказательства связывает Command с его immutable scope/target/hash,
+generation, connector job/journal и квалифицированным источником. Текущие worker
+reconciliation grants и проверка источника обязательны также при повторе. Формат
+является server storage contract; существующий внешний userbot protocol не объявляется
+совместимым автоматически. Произвольный JSON или флаг verified не дают доверия.
+
+Новый доказанный факт приёма переводит dispatching в accepted, сохраняет остальные
+подтверждённые состояния без downgrade и очищает старый lease с statusRevision++.
+Сам факт прошлого приёма не разрешает provider outcome_unknown: это состояние
+сохраняется, FIFO при этом может двигаться. Переход unknown→accepted по свежему
+authoritative status остаётся отдельной проверкой актуальности журнала. Подтверждение
+sent/echo и native Message здесь не создаются. Pending/failed/cancelled, конфликтующие
+с новым приёмом, требуют видимого reconciliation conflict, не overwrite.
+Cancellation, generation и payload не очищаются. Exact replay не меняет revision,
+audit или lease новой операции. Lease expiry/current route disable/revoke автора
+не опровергают уже случившийся приём при текущем historical reconciliation grant.
+
+FIFO может исключать в SQL только сохранённое нормализованное доказательство,
+точно соответствующее этой Command и её scope. Непроверенные прежние записи не
+получают доверия при backfill; требуется явная проверка reducer. JS/SQL определения
+формата принадлежат одному contract helper и проверяются parity cases на PostgreSQL.
+
 Редакционные контракты: canonical wire enum для неопределённой отправки в CRM, connector и userbot — outcome_unknown; прежнее unknown в prose/state sketches означает этот же terminal uncertainty, отдельного состояния нет. JSON Schema генерация ROB-764 устраняет оба написания из wire. Канонический trusted origin импорта — history_import; import является только описанием операции, не вторым enum. Внешний envelope не задаёт origin. History import никогда автоматически не создаёт Person и не вызывает business listeners: сохраняет external identity и разрешённые explicit links. Создание Person/обогащение после импорта — отдельная явно инициированная операция с обычными правами/audit и видимыми событиями; live auto-createPerson настройка не переносится на import. T16 проверяет отсутствие Person-created effects во время импорта.
 
 <a id="reply"></a>

@@ -54,17 +54,20 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-042 / ROB-764 In Progress: human outbox claim/FIFO/recovery реализован.
-First attempt проверяет автора и текущий маршрут; исторический reconcile использует
-отдельные worker grants и не разрешает повторную отправку. UUID lease, DB expiry,
-statusRevision и audit атомарны; final CAS после аудита, unknown ACK без false failure.
-194 Jest /10 затронутых suites +26 guards =220 PASS, включая32 новых PG cases.
-Typecheck170roots:146 baseline/current,0 новых/0 changed-code; все6 миграций и старые
-методы aggregate неизменны. Полный1025 suite прошёл в LOG041.
-[Доказательства и границы](Research/omnichannel_crm/implementation/log042/README.md). FIFO пока bounded100 с явным отказом сверх лимита;
-qualification/verifier injected, без production implementation. Далее — verified
-connector acceptance reducer. HTTP/UI, transport, scheduler/own ACL и полный
-ROB-764 ещё не готовы. Демо прежнее, GitHub Actions не используется.
+LOG-043 / ROB-764 In Progress: внутренний verified connector acceptance реализован.
+Current worker grant и qualified evidence обязательны также при replay. Новый
+факт атомарно сохраняет proof/job/journal, меняет state/revision, снимает lease
+и пишет audit; duplicate сохраняет новый reconcile lease. Historical ACK разрешён
+без нового send; outcome_unknown не превращается в доставленное сообщение.
+FIFO пропускает только строго сопоставленные proofs; неизвестные остаются bounded100.
+285 Jest /14 затронутых suites +26 guards =311 PASS;91 новый case, включая53 PG.
+Typecheck177roots:146 baseline/current,0 новых/0 changed-code; все6 миграций и
+старые методы aggregate неизменны. Полный1025 suite прошёл в LOG041.
+[Доказательства и границы](Research/omnichannel_crm/implementation/log043/README.md). Проверены151 подтверждённый predecessor,
+23 malformed JS/SQL parity cases, rollback/lost ACK. Это внутренний server-owned
+proof, не готовый протокол userbot. Далее — confirmed sent и штатный Message.
+HTTP/UI, live transport, scheduler/own ACL и полный ROB-764 ещё не готовы.
+Демо прежнее, GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы минимальный аудит и атомарное создание
 inactive binding/disabled policy v0 с receipt, текущей проверкой прав через

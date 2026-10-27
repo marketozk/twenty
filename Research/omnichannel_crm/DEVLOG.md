@@ -1108,3 +1108,26 @@ token tampering/COMMIT ACK loss проверены. Scoped review без бло�
 ai-dev-workflow, behavioral-guardrails, server-schrodinger. Продолжаем LOG-043.
 
 Публикация LOG-042: код 8e644d41396efa48e30d01a7e20cf4fda17881b5, remote проверен GitHub API. Описание ROB-764 и комментарий 9bae8625-4880-4e4a-bd83-65792248d5ca прочитаны обратно; все 11 статусов сохранены. Продолжаем LOG-043.
+
+
+## LOG-043 — 27.10.2026: verified connector acceptance
+
+LOG-043 / ROB-764 In Progress: внутренний verified connector acceptance реализован.
+Current worker grant и qualified evidence обязательны также при replay. Новый
+факт атомарно сохраняет proof/job/journal, меняет state/revision, снимает lease
+и пишет audit; duplicate сохраняет новый reconcile lease. Historical ACK разрешён
+без нового send; outcome_unknown не превращается в доставленное сообщение.
+FIFO пропускает только строго сопоставленные proofs; неизвестные остаются bounded100.
+285 Jest /14 затронутых suites +26 guards =311 PASS;91 новый case, включая53 PG.
+Typecheck177roots:146 baseline/current,0 новых/0 changed-code; все6 миграций и
+старые методы aggregate неизменны. Полный1025 suite прошёл в LOG041.
+[Доказательства и границы](implementation/log043/README.md). Проверены151 подтверждённый predecessor,
+23 malformed JS/SQL parity cases, rollback/lost ACK. Это внутренний server-owned
+proof, не готовый протокол userbot. Далее — confirmed sent и штатный Message.
+HTTP/UI, live transport, scheduler/own ACL и полный ROB-764 ещё не готовы.
+Демо прежнее, GitHub Actions не используется.
+
+Ревью выявило разницу regex end anchor и BigInt refinement для непроверенных
+строк; исправлено до тестов, добавлены25 contract cases. Защищённый нормализованный
+proof проверяется общей JS/SQL семантикой на реальном PostgreSQL. Применены
+ai-dev-workflow, behavioral-guardrails, server-schrodinger. Продолжаем LOG-044.

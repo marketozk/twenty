@@ -377,3 +377,21 @@ Typecheck170roots:146 baseline/current,0 новых/0 changed-code; все6 ми
 qualification/verifier injected, без production implementation. Далее — verified
 connector acceptance reducer. HTTP/UI, transport, scheduler/own ACL и полный
 ROB-764 ещё не готовы. Демо прежнее, GitHub Actions не используется.
+
+
+## LOG-043 — verified connector acceptance
+
+LOG-043 / ROB-764 In Progress: внутренний verified connector acceptance реализован.
+Current worker grant и qualified evidence обязательны также при replay. Новый
+факт атомарно сохраняет proof/job/journal, меняет state/revision, снимает lease
+и пишет audit; duplicate сохраняет новый reconcile lease. Historical ACK разрешён
+без нового send; outcome_unknown не превращается в доставленное сообщение.
+FIFO пропускает только строго сопоставленные proofs; неизвестные остаются bounded100.
+285 Jest /14 затронутых suites +26 guards =311 PASS;91 новый case, включая53 PG.
+Typecheck177roots:146 baseline/current,0 новых/0 changed-code; все6 миграций и
+старые методы aggregate неизменны. Полный1025 suite прошёл в LOG041.
+[Доказательства и границы](log043/README.md). Проверены151 подтверждённый predecessor,
+23 malformed JS/SQL parity cases, rollback/lost ACK. Это внутренний server-owned
+proof, не готовый протокол userbot. Далее — confirmed sent и штатный Message.
+HTTP/UI, live transport, scheduler/own ACL и полный ROB-764 ещё не готовы.
+Демо прежнее, GitHub Actions не используется.

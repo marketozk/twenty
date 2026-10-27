@@ -52,6 +52,17 @@ import { appendOmniHistoryResumeFailure } from 'src/modules/omnichannel/services
 import { appendOmniBindingConfigWakeupFailure } from 'src/modules/omnichannel/services/append-omni-binding-config-wakeup-failure';
 import { appendOmniHumanTextCommandFailure } from 'src/modules/omnichannel/services/append-omni-human-text-command-failure';
 import { appendOmniHumanCommandLeaseFailure } from 'src/modules/omnichannel/services/append-omni-human-command-lease-failure';
+import { appendOmniConnectorAcceptanceFailure } from 'src/modules/omnichannel/services/append-omni-connector-acceptance-failure';
+import {
+  applyOmniConnectorAcceptance,
+  snapshotOmniConnectorAcceptanceRequest,
+  type OmniConnectorAcceptanceCallbacks,
+} from 'src/modules/omnichannel/services/apply-omni-connector-acceptance';
+import {
+  type OmniConnectorAcceptanceInput,
+  type OmniConnectorAcceptancePrincipal,
+  type OmniConnectorAcceptanceResult,
+} from 'src/modules/omnichannel/contracts/omni-connector-acceptance';
 import {
   claimOmniHumanCommandLease,
   isOmniHumanCommandLeaseAuthorizationError,
@@ -120,6 +131,76 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     @InjectDataSource()
     private readonly dataSource: DataSource,
   ) {}
+
+  async applyOmniConnectorAcceptance(
+    principal: OmniConnectorAcceptancePrincipal,
+    input: OmniConnectorAcceptanceInput,
+    callbacks: OmniConnectorAcceptanceCallbacks,
+  ): Promise<OmniConnectorAcceptanceResult> {
+    const request = snapshotOmniConnectorAcceptanceRequest(
+      principal,
+      input,
+      callbacks,
+    );
+    const attemptOperationId = randomUUID();
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        let callbackEntered = false;
+        let authorizationDenied = false;
+        try {
+          return await this.workspaceOrmManager.runInWorkspaceTransaction(
+            async (scope) => {
+              callbackEntered = true;
+              return applyOmniConnectorAcceptance(
+                scope,
+                request.principal,
+                request.input,
+                {
+                  ...request.callbacks,
+                  authorize: async (...args) => {
+                    try {
+                      return await request.callbacks.authorize(...args);
+                    } catch (error) {
+                      authorizationDenied = true;
+                      throw error;
+                    }
+                  },
+                },
+              );
+            },
+            { commitOutcome: 'strict' },
+          );
+        } catch (error) {
+          if (
+            callbackEntered &&
+            !(error instanceof NativeTransactionOutcomeUnknownError)
+          ) {
+            try {
+              await this.workspaceOrmManager.runInWorkspaceTransaction(
+                (scope) =>
+                  appendOmniConnectorAcceptanceFailure(
+                    scope,
+                    request.principal,
+                    request.input,
+                    attemptOperationId,
+                    authorizationDenied,
+                  ),
+                { commitOutcome: 'strict' },
+              );
+            } catch (auditError) {
+              throw new AggregateError(
+                [error, auditError],
+                'OMNI_CONNECTOR_ACCEPTANCE_FAILURE_AUDIT_UNCONFIRMED',
+              );
+            }
+          }
+          throw error;
+        }
+      },
+      buildSystemAuthContext(request.principal.workspaceId),
+      { lite: true },
+    );
+  }
 
   async claimOmniHumanCommandLease(
     principal: OmniHumanCommandLeasePrincipal,

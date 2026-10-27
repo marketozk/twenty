@@ -1,0 +1,25 @@
+{
+  "affectedJestTests": 285,
+  "affectedJestSuites": 14,
+  "guardTests": 20,
+  "checksumTests": 6,
+  "totalDistinctTests": 311,
+  "typecheckRootFiles": 177,
+  "baselineTypeDiagnostics": 146,
+  "currentTypeDiagnostics": 146,
+  "newTypeDiagnostics": 0,
+  "changedCodeTypeDiagnostics": 0,
+  "fullServerTypecheck": false,
+  "allSixMigrationSourcesUnchanged": true,
+  "allPreviousAggregateMethodsUnchanged": true,
+  "fullForkSuiteRerun": false,
+  "previousFullForkSuite": {
+    "log": "LOG041",
+    "tests": 1025,
+    "commit": "8e764d01037d3f9ea32082d35dd685872441717a"
+  },
+  "independentScopedReview": "No confirmed blockers; contract, reducer, owner, negative audit and FIFO reviewed",
+  "fullROB764Acceptance": false,
+  "liveDemoChanged": false,
+  "githubActionsUsed": false
+}
