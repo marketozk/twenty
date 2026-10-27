@@ -1,0 +1,55 @@
+name: Omnichannel fork migration transactions
+
+on:
+  pull_request:
+    paths:
+      - 'packages/twenty-server/src/database/commands/fork-upgrade/**'
+      - 'packages/twenty-server/src/engine/core-modules/omnichannel-storage/**'
+      - 'packages/twenty-server/test/fork-migration/**'
+      - 'packages/twenty-server/jest-fork-migration.config.mjs'
+      - '.github/workflows/omnichannel-fork-migrations.yaml'
+      - 'yarn.lock'
+  push:
+    branches: ['codex/**']
+    paths:
+      - 'packages/twenty-server/src/database/commands/fork-upgrade/**'
+      - 'packages/twenty-server/src/engine/core-modules/omnichannel-storage/**'
+      - 'packages/twenty-server/test/fork-migration/**'
+      - 'packages/twenty-server/jest-fork-migration.config.mjs'
+      - '.github/workflows/omnichannel-fork-migrations.yaml'
+      - 'yarn.lock'
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-transactions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: test_owner
+          POSTGRES_PASSWORD: isolated-test-only
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U test_owner"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/yarn-install
+      - name: Create a dedicated disposable test database
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+        run: |
+          set -euo pipefail
+          test_database="twenty_rob764_test_$(openssl rand -hex 8)"
+          docker exec "$POSTGRES_CONTAINER" createdb -U test_owner "$test_database"
+          echo "FORK_MIGRATION_TEST_URL=postgres://test_owner:isolated-test-only@127.0.0.1:${POSTGRES_PORT}/${test_database}" >> "$GITHUB_ENV"
+      - name: Verify migration transactions without application reset
+        run: node .yarn/releases/yarn-4.18.1.cjs jest --config packages/twenty-server/jest-fork-migration.config.mjs --runInBand

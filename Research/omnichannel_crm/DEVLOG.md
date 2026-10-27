@@ -261,3 +261,22 @@ LOG-018 итог: C1–C5 исправлены и подтверждены;30/30
 
 
 LOG-018 опубликован: commit `f5d806119250cdf589de20cd755da1552e079b14` отправлен в origin/codex/omnichannel-requirements. Linear: обновлены и прочитаны обратно все 11 описаний; статусы не изменены, ROB-772 blocks ROB-764 сохранена. [Единственный отчёт LOG-018](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-5cfabfd8); повторная выборка подтвердила один комментарий. [Метаданные публикации](plan/cross-review/publication-r16.json). После основного push рабочий каталог чистый, ahead/behind 0/0. Следующий commit фиксирует только публикацию и дату сверки; технические контракты не менялись.
+
+
+## LOG-019 — начало ROB-764, 27.10.2026
+
+Пользователь: «хорошо приступай» после предложения принять исправленный план за основу и перейти к коду. Решение владельца завершает ожидание после R16: ROB-772 закрывается как планирование, ROB-764 In Progress. Это не full fresh pass исправленного R16 и не готовность системы. [Критерий перехода, реализация и остаток](implementation/rob764-progress.md).
+
+Первая порция: fork-only migration type/runner и отдельный runtime-safe verifier; DB advisory transaction lock, DDL+ledger atomic commit, prefix/checksum/shape checks, read-only readiness. Production manifest/CLI/startup пока не подключены; реальных chat entities нет. Добавлен immutable Enterprise source baseline и CI no-new-dependency guard; baseline debt не легализуется и остаётся ROB-766/G18. Исходные runtime файлы Twenty и лицензии не менялись.
+
+Проверено: 16 PostgreSQL integration tests PASS, включая параллельные migrators, rollback до ledger, backend termination, replay, checksum/shape drift и runtime роль без DDL/ledger writes. Без test URL запуск отказал до соединения. 20 guard fixtures PASS, полный static graph: 34389 code files / 21251 runtime / 134751 edges, 0 violations. Focused strict TypeScript 5.9.3 и форматирование PASS. [Evidence](implementation/rob764-foundation-verification.json), [Jest output](implementation/rob764-postgres-tests.txt). Полный server build/typecheck и настоящий Twenty upgrade/restart не выполнялись; синтетический cursor не выдаётся за них.
+
+Среда: локально нет node_modules/WSL, Node22. Изолированные тесты выполнены на Шрёдингере: временный PG17 с уникальной БД/tmpfs/internal network (384MiB/1CPU), test runner в существующем pinned app image с нашим source mount (1GiB/2CPU), временные Jest/SWC/TypeScript tools. Первоначально SWC binary не совпал по libc с Alpine image; установлена соответствующая musl версия в отдельном test tooling. После этого все проверки прошли. Демо/рабочая БД/коннекторы не изменялись, сообщения не отправлялись. Очистка собственных временных ресурсов фиксируется ниже.
+
+Адресное self/subagent review: найден duplicate-manifest обход в readiness; вынесена общая валидация, добавлен отрицательный тест, повтор пройден. Уточнён предел ledger shape check (колонки/types/nullability/PK, не вся DDL certification). Во время self-review обнаружено пересечение test discovery со штатной integration suite; выбран отдельный .postgres-spec.ts suffix, не совпадающий с native patterns. Полный архитектурный круг не запускался.
+
+Skills: ai-dev-workflow — уже согласованный Plan → Implement, узкая порция/verify/review; behavioral-guardrails — scoped changes и проверка файлов после правки; server-schrodinger — read-only preflight и ограниченные изолированные тесты; linear-api — fallback после reauthentication error плагина. Субагент по ai-dev-workflow исследовал migration call sites, реализовал dependency guard и сделал адресное ревью.
+
+Следующая порция: настоящие entities и штатная генерация up/down на isolated upstream schema, source-checksummed fork manifest, fail-fast CLI/startup и оставшиеся T33, затем audit/ingress/outbox. До собственных прав реальные bindings выключены. Commit/push и Linear read-back записываются после публикации.
+
+LOG-019 cleanup: после проверки имени/image/network/tmpfs удалены только собственные временные PG container и internal network `twenty-rob764-e9f2b662ed54420d`. Тестовая БД находилась в tmpfs и уничтожена. Папка `/opt/twenty-tests/twenty-rob764-e9f2b662ed54420d` с source snapshot и test tooling оставлена как изолированный cache для следующей порции; активных процессов в ней нет. Контейнеры twenty-demo server/worker/db/redis продолжают работать.

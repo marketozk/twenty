@@ -173,3 +173,8 @@ R13: по явному разрешению выполнен четвёртый 
 | [SKILLS-AUDIT.md](SKILLS-AUDIT.md) | Индекс/ссылки/согласованность текущих документов |
 | [STATUS.md](STATUS.md) | Индекс/ссылки/согласованность текущих документов |
 | [upstream-2.52.json](upstream-2.52.json) | JSON/контроль metadata; scope результата указан внутри |
+
+
+## LOG-019 — переход от плана к коду, 27.10.2026
+
+Обновлены PROJECT/STATUS/README/roadmap/phase1/Linear/реестр; R16 report/residual получили явную пометку последующего решения владельца, прошлые результаты сохранены. Добавлен implementation/rob764-progress.md с границей первой порции и оставшимися шагами. Проверены746 локальных ссылок до записи этой секции: отсутствующих0. Код/T33 foundation проверен отдельно; документы не объявляют выполненными actual Twenty generator/restart, полный server build, ingress/outbox или весь этап ROB-764. 16 PG tests,20 guard tests и focused typecheck отражены в отдельном evidence. Состояния задач подтверждаются read-back после публикации, а не только локальным текстом.

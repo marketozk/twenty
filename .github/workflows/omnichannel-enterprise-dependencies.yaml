@@ -1,0 +1,22 @@
+name: Omnichannel Enterprise dependency guard
+
+on:
+  pull_request:
+  push:
+    branches: ["codex/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+      - name: Verify scanner negative cases
+        run: python3 -m unittest discover -s scripts/omnichannel -p 'test_enterprise_dependencies.py' -v
+      - name: Verify immutable baseline and current dependencies
+        run: python3 scripts/omnichannel/check_enterprise_dependencies.py --verify-baseline

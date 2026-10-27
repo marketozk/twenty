@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-27",
+  "phase": "ROB-764 foundation only",
+  "postgres_tests": {
+    "passed": 16,
+    "failed": 0,
+    "postgres": "17-alpine",
+    "driver": "repository patched TypeORM in marketozk/twenty:2.52-44e1449c",
+    "environment": "isolated internal Docker network, unique disposable database, no application .env/bootstrap",
+    "fresh_and_advanced_cursor": "synthetic fixture, not full Twenty upgrade",
+    "missing_test_url": "rejected before connecting"
+  },
+  "dependency_guard": {
+    "tests_passed": 20,
+    "violations": 0,
+    "code_files": 34389,
+    "runtime_files": 21251,
+    "edges": 134751,
+    "runtime_license_proof": false
+  },
+  "focused_strict_typecheck": "pass TypeScript 5.9.3",
+  "format_check": "pass Prettier 3.6.2",
+  "full_server_build": "not run: local workspace dependencies absent; no source changes to existing server runtime",
+  "application_startup_integration": "not implemented",
+  "schema_generation": "not run; real entity steps not added",
+  "deployment": "not performed",
+  "source_hashes_lf_sha256": {
+    "packages/twenty-server/src/database/commands/fork-upgrade/fork-migration-runner.ts": "62c19819f6cb47d089782812c31f760b0934f86a41236d43153278cde5d59af6",
+    "packages/twenty-server/src/database/commands/fork-upgrade/fork-migration.type.ts": "e0dc2477b3bea7094817fb6df7dbd6784091abea11ee1c0c630132a989cd2abd",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/fork-migration-check.type.ts": "310455ebd7afe218ff1bf83b4878bea79688929fba101804946729f60bf0875f",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/fork-schema-verifier.ts": "3184eab700e54766747bfc72a9fa075a05b2fe78c3494c490b8a1180bf4e0bb3",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/validate-fork-migration-manifest.ts": "9f0bdfde1594bb4e593022935a10311710fac9e025f1792700b78bf39bbec39c",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/verify-fork-migration-prefix.ts": "33280fe2f62782d35cdaa042a2e4f7556e2aec30961fa1831710a27005555722",
+    "packages/twenty-server/test/fork-migration/fork-migration-runner.postgres-spec.ts": "072ff4de7272e725ea82f6e6097a7ffd055141453312c8ff46cd3743dfb5b4ba",
+    "packages/twenty-server/jest-fork-migration.config.mjs": "de9032186f03250f9001f6b911b759e01340716cef66f356c3c6fe14a8757cdf",
+    "scripts/omnichannel/check_enterprise_dependencies.py": "2b3195498eb96e243f59067ce9a69e1fecdeca0a4b2a1ce03e6652a9f1cfe07d",
+    "scripts/omnichannel/test_enterprise_dependencies.py": "6dfbbab0bd02243ba3f69477e6d0da1010e6c0250c2b4f526f4aa345b88888cf"
+  }
+}

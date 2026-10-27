@@ -54,3 +54,8 @@ Cross-review-convergence: новый blind A, затем B по66 stable roots, 
 ## R16 / LOG-018
 
 Cross-review-convergence: fresh A, отдельный B и targeted; root dedup/causality, author self-check, canonical owners; количественный stop (16/27 и21/30), лист остаточного риска без owner acceptance. Claude consult/transparent integration: официальный CLI read-only, новая сессия, reported claude-opus-5-5, без model/auth override; source packet и tool audit. Linear-api: существующие11 задач, concurrency guard, permalink и read-back после push. Не объявляются выполненными все skills каталога, runtime tests или deployment. Следующий широкий круг той же формы не запущен.
+
+
+## LOG-019 — реализация foundation, 27.10.2026
+
+Применены ai-dev-workflow (Implement согласованного плана, focused verification и адресное review), behavioral-guardrails (минимальная область/чтение результата с диска), server-schrodinger (read-only inventory и изолированные PostgreSQL tests с ограничением ресурсов), linear-api (plugin reauthentication → существующий API key). Новый широкий Claude/cross-review цикл не запускался. Делегация research/guard и узкого code review выполнена по ai-dev-workflow; обнаруженный duplicate-manifest gap исправлен. Предыдущее использование cross-review-convergence относится к R16, не подменяет проверки кода. Evidence — DEVLOG LOG-019 и implementation/rob764-foundation-verification.json.

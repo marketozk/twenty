@@ -1,0 +1,24 @@
+PASS fork-migration-postgres test/fork-migration/fork-migration-runner.postgres-spec.ts
+  fork migration transactions on PostgreSQL
+    ✓ applies once, verifies schema, and preserves existing application data (48 ms)
+    ✓ applies a new step without changing an already advanced upstream cursor (31 ms)
+    ✓ rolls back DDL and ledger bootstrap on a failure before recording success (21 ms)
+    ✓ retains a committed prefix and retries only a failed next step (21 ms)
+    ✓ serializes two concurrent migrators and records exactly one application (136 ms)
+    ✓ rejects a checksum change before applying another step (22 ms)
+    ✓ rejects unknown ledger entries instead of adopting a newer schema (30 ms)
+    ✓ rejects a non-prefix ledger and does not recreate the missing entry (31 ms)
+    ✓ does not adopt an unrecorded pre-existing business table (68 ms)
+    ✓ readiness fails without creating a ledger (4 ms)
+    ✓ readiness checks schema even when ledger checksums match (18 ms)
+    ✓ readiness rejects an accidentally mutating verifier (19 ms)
+    ✓ rejects malformed or duplicate manifest entries before connecting (12 ms)
+    ✓ rejects an empty but incompatible ledger before applying business DDL (7 ms)
+    ✓ recovers after the database connection dies during a migration (52 ms)
+    ✓ allows readiness with a read-only role but refuses migration writes (91 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       16 passed, 16 total
+Snapshots:   0 total
+Time:        1.302 s
+Ran all test suites.
