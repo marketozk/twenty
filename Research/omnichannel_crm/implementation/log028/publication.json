@@ -1,0 +1,16 @@
+{
+  "codeCommit": "1445dea548457aa01e4d81af35cc8d737f056baf",
+  "branch": "codex/omnichannel-requirements",
+  "githubApiRemoteVerified": true,
+  "githubActionsGate": false,
+  "githubActionsAgentTriggered": false,
+  "linearIssue": "ROB-764",
+  "linearCommentId": "4fd0c275-5f66-45de-944d-35b2b4720d0d",
+  "descriptionReadbackMatched": true,
+  "commentReadbackMatched": true,
+  "taskStatesUnchanged": true,
+  "taskCount": 11,
+  "testsPassed": 357,
+  "fullServerTypecheck": false,
+  "baselineTypeDiagnostics": 122
+}

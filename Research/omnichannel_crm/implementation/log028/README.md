@@ -73,3 +73,7 @@ APP/background rematch writers для omni-owned записей. Эти треб
 
 applied, native Message acceptance, scheduler, HTTP, коннекторы, UI и переключение
 живых каналов этим шагом не заявляются. Демо не меняется.
+
+Код опубликован: `1445dea548457aa01e4d81af35cc8d737f056baf`.
+GitHub API подтвердил SHA, описание/единственный комментарий Linear прочитаны
+обратно, статусы 11 задач сохранены. [Метаданные](publication.json).

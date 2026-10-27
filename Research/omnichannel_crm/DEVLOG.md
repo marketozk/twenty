@@ -747,3 +747,9 @@ exclusions ещё впереди. applied/доступность чатов не
 порции; рабочее демо/живые каналы не менялись. GitHub Actions не запускались.
 Skills: ai-dev-workflow, behavioral-guardrails, server-schrodinger; независимые
 субагенты исследовали/реализовали/ревьюили разделённые части. ROB-764 In Progress.
+
+Публикация LOG-028: `1445dea548457aa01e4d81af35cc8d737f056baf`, remote SHA
+подтверждён API. ROB-764 description и единственный
+[комментарий](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-4fd0c275)
+прочитаны обратно, статусы 11 задач прежние.
+[Метаданные](implementation/log028/publication.json). Продолжаем LOG-029.
