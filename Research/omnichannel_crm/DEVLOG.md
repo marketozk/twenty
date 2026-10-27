@@ -962,3 +962,6 @@ native insert. Первые2 failures относятся к test harness, исп
 Подробные подтверждения и ограничения — в evidence README. Skills: ai-dev-workflow
 (implementation/review), behavioral-guardrails (границы), server-schrodinger (изолированные
 проверки). Полный Claude cross-review повторно не заявляется. Следующий шаг LOG-037.
+
+
+Публикация LOG-036: код 533fc589ca8774ca28e3266636409d7c14850caa, remote проверен GitHub API. Описание ROB-764 и комментарий fc300f88-88b2-4060-8ae0-c5b56b27c37e прочитаны обратно; все11 статусов сохранены. Продолжаем LOG-037.

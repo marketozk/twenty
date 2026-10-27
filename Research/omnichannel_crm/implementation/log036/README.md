@@ -51,3 +51,6 @@ Message insert в заблокированный Thread не подтверди�
 blocked_config recovery ещё не подключён. Далее bounded resume того же receipt,
 затем настоящий config writer/event consumer/housekeeping. ROB-764 остаётся In Progress.
 Демо/production не менялись; GitHub Actions не использовался.
+
+
+Публикация LOG-036: код 533fc589ca8774ca28e3266636409d7c14850caa, remote проверен GitHub API. Описание ROB-764 и комментарий fc300f88-88b2-4060-8ae0-c5b56b27c37e прочитаны обратно; все11 статусов сохранены. Продолжаем LOG-037.
