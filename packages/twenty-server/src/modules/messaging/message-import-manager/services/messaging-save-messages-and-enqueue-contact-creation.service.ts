@@ -49,6 +49,19 @@ import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/erro
 import { appendOmniHistoryApplyFailure } from 'src/modules/omnichannel/services/append-omni-history-apply-failure';
 import { isOmniHistoryMissingConfigurationError } from 'src/modules/omnichannel/services/omni-history-missing-configuration.error';
 import { appendOmniHistoryResumeFailure } from 'src/modules/omnichannel/services/append-omni-history-resume-failure';
+import { appendOmniBindingConfigWakeupFailure } from 'src/modules/omnichannel/services/append-omni-binding-config-wakeup-failure';
+import {
+  claimOmniBindingConfigWakeups,
+  housekeepOmniBindingConfigWakeups,
+  processOmniBindingConfigWakeupPage,
+  rearmOmniBindingConfigWakeup,
+  reconcileOmniBindingConfigWakeups,
+  snapshotOmniBindingConfigRecoveryRequest,
+  type OmniBindingConfigRecoveryCommand,
+  type OmniBindingConfigRecoveryResult,
+  type OmniBindingConfigWakeupAuthorizer,
+  type OmniBindingConfigWakeupPrincipal,
+} from 'src/modules/omnichannel/services/omni-binding-config-wakeup';
 import {
   resumeOmniBlockedHistoryReceipts,
   snapshotOmniBlockedHistoryResumeRequest,
@@ -83,6 +96,141 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     @InjectDataSource()
     private readonly dataSource: DataSource,
   ) {}
+
+  async executeOmniBindingConfigRecovery(
+    principal: OmniBindingConfigWakeupPrincipal,
+    command: OmniBindingConfigRecoveryCommand,
+    authorize: OmniBindingConfigWakeupAuthorizer,
+    authorizeResume?: OmniBlockedHistoryResumeAuthorizer,
+  ): Promise<OmniBindingConfigRecoveryResult> {
+    const request = snapshotOmniBindingConfigRecoveryRequest(
+      principal,
+      command,
+      authorize,
+      authorizeResume,
+    );
+    const failureOperationId = randomUUID();
+
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        let callbackEntered = false;
+        let authorizationDenied = false;
+        const currentAuthorize: OmniBindingConfigWakeupAuthorizer = async (
+          scope,
+          descriptor,
+        ) => {
+          try {
+            await request.authorize(scope, descriptor);
+          } catch (error) {
+            authorizationDenied = true;
+            throw error;
+          }
+        };
+        const resumeAuthorize = request.authorizeResume;
+        const currentResumeAuthorize: OmniBlockedHistoryResumeAuthorizer =
+          async (scope, descriptor) => {
+            if (!resumeAuthorize)
+              throw new Error('OMNI_CONFIG_WAKEUP_RESUME_AUTHORIZER_REQUIRED');
+            try {
+              await resumeAuthorize(scope, descriptor);
+            } catch (error) {
+              authorizationDenied = true;
+              throw error;
+            }
+          };
+
+        try {
+          return await this.workspaceOrmManager.runInWorkspaceTransaction<OmniBindingConfigRecoveryResult>(
+            async (scope) => {
+              callbackEntered = true;
+              const operation = request.command;
+              switch (operation.operation) {
+                case 'claim':
+                  return {
+                    operation: 'claim',
+                    result: await claimOmniBindingConfigWakeups(
+                      scope,
+                      request.principal,
+                      operation.input,
+                      currentAuthorize,
+                    ),
+                  };
+                case 'process':
+                  return {
+                    operation: 'process',
+                    result: await processOmniBindingConfigWakeupPage(
+                      scope,
+                      request.principal,
+                      operation.proof,
+                      operation.input,
+                      currentAuthorize,
+                      currentResumeAuthorize,
+                    ),
+                  };
+                case 'reconcile':
+                  return {
+                    operation: 'reconcile',
+                    result: await reconcileOmniBindingConfigWakeups(
+                      scope,
+                      request.principal,
+                      operation.input,
+                      currentAuthorize,
+                    ),
+                  };
+                case 'rearm':
+                  return {
+                    operation: 'rearm',
+                    result: await rearmOmniBindingConfigWakeup(
+                      scope,
+                      request.principal,
+                      operation.wakeupId,
+                      currentAuthorize,
+                    ),
+                  };
+                case 'housekeeping':
+                  return {
+                    operation: 'housekeeping',
+                    result: await housekeepOmniBindingConfigWakeups(
+                      scope,
+                      request.principal,
+                      currentAuthorize,
+                    ),
+                  };
+              }
+            },
+            { commitOutcome: 'strict' },
+          );
+        } catch (error) {
+          if (
+            callbackEntered &&
+            !(error instanceof NativeTransactionOutcomeUnknownError)
+          ) {
+            try {
+              await this.workspaceOrmManager.runInWorkspaceTransaction(
+                (scope) =>
+                  appendOmniBindingConfigWakeupFailure(
+                    scope,
+                    request.principal,
+                    failureOperationId,
+                    request.command.operation,
+                    authorizationDenied,
+                  ),
+                { commitOutcome: 'strict' },
+              );
+            } catch (auditError) {
+              throw new AggregateError(
+                [error, auditError],
+                'OMNI_CONFIG_WAKEUP_FAILURE_AUDIT_UNCONFIRMED',
+              );
+            }
+          }
+          throw error;
+        }
+      },
+      buildSystemAuthContext(request.principal.workspaceId),
+      { lite: true },
+    );
+  }
 
   async resumeOmniBlockedHistoryReceipts(
     principal: OmniBlockedHistoryResumePrincipal,

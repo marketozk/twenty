@@ -1040,3 +1040,26 @@ scoped review без блокеров; полный Claude cross-review не з�
 Skills: ai-dev-workflow, behavioral-guardrails, server-schrodinger. Продолжаем LOG-040.
 
 Публикация LOG-039: код be0039477d482fad53d7c868c73269e14bb4973a, remote проверен GitHub API. Описание ROB-764 и комментарий 03b3a849-07b1-4d39-b0f1-0675d015e646 прочитаны обратно; все11 статусов сохранены. Продолжаем LOG-040.
+
+
+## LOG-040 — 27.10.2026: strict recovery owner
+
+LOG-040 / ROB-764 In Progress: recovery связан с существующим strict native
+transaction owner. Пять закрытых команд, snapshot до await, свежие grants;
+failed/denied audit только после подтверждённого rollback, unknown ACK без false failure.
+Housekeeping возвращает один последний завершённый проход для поздних blocked
+receipts. Реальный accepted→blocked→repair→wakeup→claim/apply→Message+Person проверен,
+включая defer после завершения config event. 226 Jest/11 затронутых suites +26 guards
+=252 PASS; финальные21 unit повторены после исправления test typing. Typecheck155roots:
+146 baseline/current,0 новых/0 changed-code; одна baseline ошибка в неизменённом
+старом методе. Все6 миграций и прежние методы aggregate неизменны.
+[Доказательства и границы](implementation/log040/README.md). Далее — human command admission и исходящая очередь.
+Scheduler/current production grants, полные ROB-764/T05, own ACL/UI/HTTP и живые
+коннекторы ещё не готовы. Демо прежнее, GitHub Actions не используется.
+
+Полный fork suite890 последним прошёл в LOG039; здесь повторены11 затронутых
+suites, новые38 cases и native transaction regressions. После 226PASS исправлено
+только typing jest getter spy в новом тесте; финальные21 unitPASS, runtime прежний.
+Независимое scoped review facade/snapshot/housekeeping без блокеров; полный Claude
+cross-review не заявляется. Skills: ai-dev-workflow, behavioral-guardrails,
+server-schrodinger. Продолжаем LOG-041: первый human text command/outbox.

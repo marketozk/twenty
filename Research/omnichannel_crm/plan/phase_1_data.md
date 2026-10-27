@@ -6,17 +6,18 @@
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
-Зависимость: этап0. LOG-039 / ROB-764 In Progress: config events получают отдельный durable wakeup.
-Typed claim/page/reconciliation/rearm сохраняют checkpoint и текущую авторизацию;
-receipt transitions, audit и финальный lease CAS атомарны. Exact DB cursor,
-SKIP LOCKED rescan, generation reset, inactive/unknown handler и lost COMMIT ACK
-проверены. Producer создаёт event+wakeup в одном commit; replay/no-op без дублей.
-Шестая миграция сгенерирована Twenty, native up/down/up проверен; прежние5 неизменны.
-890 Jest/35 suites +26 guards =916 PASS; targeted204 PASS. Typecheck152roots:
-146 baseline/current,0 новых/0 changed-code. [Доказательства и границы](../implementation/log039/README.md).
-Далее — strict runtime owner и bounded housekeeping, затем остальные inbox/outbox
-пути. Scheduler/current production grants, полные ROB-764/T05, own ACL/UI/HTTP и
-живые коннекторы ещё не готовы. Демо прежнее, GitHub Actions не используется.
+Зависимость: этап0. LOG-040 / ROB-764 In Progress: recovery связан с существующим strict native
+transaction owner. Пять закрытых команд, snapshot до await, свежие grants;
+failed/denied audit только после подтверждённого rollback, unknown ACK без false failure.
+Housekeeping возвращает один последний завершённый проход для поздних blocked
+receipts. Реальный accepted→blocked→repair→wakeup→claim/apply→Message+Person проверен,
+включая defer после завершения config event. 226 Jest/11 затронутых suites +26 guards
+=252 PASS; финальные21 unit повторены после исправления test typing. Typecheck155roots:
+146 baseline/current,0 новых/0 changed-code; одна baseline ошибка в неизменённом
+старом методе. Все6 миграций и прежние методы aggregate неизменны.
+[Доказательства и границы](../implementation/log040/README.md). Далее — human command admission и исходящая очередь.
+Scheduler/current production grants, полные ROB-764/T05, own ACL/UI/HTTP и живые
+коннекторы ещё не готовы. Демо прежнее, GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы fork migrations,
 первые9 core entities, audit entry/PolicyMutationReceipt, минимальный audit writer

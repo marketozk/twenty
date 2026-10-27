@@ -1,0 +1,29 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-binding-config-recovery-facade.spec.ts
+  binding config recovery strict transaction facade
+    ✓ dispatches claim only through its typed leaf in a strict native transaction (9 ms)
+    ✓ dispatches process only through its typed leaf in a strict native transaction (2 ms)
+    ✓ dispatches reconcile only through its typed leaf in a strict native transaction (2 ms)
+    ✓ dispatches rearm only through its typed leaf in a strict native transaction (1 ms)
+    ✓ dispatches housekeeping only through its typed leaf in a strict native transaction (1 ms)
+    ✓ snapshots nested command and actor before asynchronous context loading (1 ms)
+    ✓ does not reread callback accessors after awaiting context (1 ms)
+    ✓ records denied claim only after confirmed rollback (2 ms)
+    ✓ records denied process only after confirmed rollback (1 ms)
+    ✓ records denied reconcile only after confirmed rollback (1 ms)
+    ✓ records denied rearm only after confirmed rollback (1 ms)
+    ✓ records denied housekeeping only after confirmed rollback
+    ✓ classifies resume authorization denial as denied for the complete process operation
+    ✓ does not create a false failure attempt after unknown commit (1 ms)
+    ✓ does not create a false failure attempt after unknown rollback
+    ✓ does not create a false failure attempt after unknown release (1 ms)
+    ✓ records ordinary failure after rollback without classifying it as denial
+    ✓ preserves both the original failure and unconfirmed failure audit (1 ms)
+    ✓ does not audit before the transaction callback was entered
+    ✓ requires the process resume grant before context or transaction (24 ms)
+    ✓ rejects malformed command before context loading (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       21 passed, 21 total
+Snapshots:   0 total
+Time:        4.042 s
+Ran all test suites within paths "/source/packages/twenty-server/test/fork-migration/omni-binding-config-recovery-facade.spec.ts".

@@ -1,0 +1,30 @@
+{
+  "affectedJestTests": 226,
+  "affectedJestSuites": 11,
+  "finalRepeatedUnitTests": 21,
+  "newRecoveryPostgresCases": 17,
+  "newFacadeUnitCases": 21,
+  "guardTests": 20,
+  "checksumTests": 6,
+  "totalDistinctTestsThisSlice": 252,
+  "fullForkSuiteRerun": false,
+  "previousFullForkSuite": {
+    "log": "LOG039",
+    "tests": 890,
+    "commit": "be0039477d482fad53d7c868c73269e14bb4973a"
+  },
+  "typecheckRootFiles": 155,
+  "baselineTypeDiagnostics": 146,
+  "currentTypeDiagnostics": 146,
+  "newTypeDiagnostics": 0,
+  "changedCodeTypeDiagnostics": 0,
+  "unchangedLegacyMethodDiagnostics": 1,
+  "fullServerTypecheck": false,
+  "allSixMigrationSourcesUnchanged": true,
+  "allPreviousAggregateMethodsUnchanged": true,
+  "independentScopedReview": "PASS facade, snapshot and housekeeping",
+  "fullROB764Acceptance": false,
+  "productionSchedulerEnabled": false,
+  "liveDemoChanged": false,
+  "githubActionsUsed": false
+}

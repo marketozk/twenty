@@ -1,0 +1,13 @@
+{
+  "baseCommit": "f0acf06f5873f1b2b4f017dad6c04a4cc5c9c535",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "allPreviousAggregateMethodsUnchanged": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts": "7d51a545f9332650259d04ec9a03e1e9f0d0f1aad6673841a409afd80a070e5f",
+    "packages/twenty-server/src/modules/omnichannel/services/omni-binding-config-wakeup.ts": "602c8ca27bc56fe35a54e8fdaf4db04ccd7bef9e4967861714d6380d955f76dd",
+    "packages/twenty-server/src/modules/omnichannel/services/append-omni-binding-config-wakeup-failure.ts": "09ebcfafc41f273d589c3873da20323a9b69083629e7e6328e3be505c896747e",
+    "packages/twenty-server/test/fork-migration/omni-binding-config-recovery-facade.spec.ts": "171ed49baee02e757ad7afd56a688765b5614f3b0ddef2b4c1fab6eb68a7663d",
+    "packages/twenty-server/test/fork-migration/omni-binding-config-recovery.postgres-spec.ts": "b3e66b96cca735cb89156b6ea6b7d5dc5410809f2306ec1664e498eaec0e03af"
+  }
+}

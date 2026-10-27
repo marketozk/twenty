@@ -333,3 +333,19 @@ SKIP LOCKED rescan, generation reset, inactive/unknown handler и lost COMMIT AC
 Далее — strict runtime owner и bounded housekeeping, затем остальные inbox/outbox
 пути. Scheduler/current production grants, полные ROB-764/T05, own ACL/UI/HTTP и
 живые коннекторы ещё не готовы. Демо прежнее, GitHub Actions не используется.
+
+
+## LOG-040 — strict recovery owner
+
+LOG-040 / ROB-764 In Progress: recovery связан с существующим strict native
+transaction owner. Пять закрытых команд, snapshot до await, свежие grants;
+failed/denied audit только после подтверждённого rollback, unknown ACK без false failure.
+Housekeeping возвращает один последний завершённый проход для поздних blocked
+receipts. Реальный accepted→blocked→repair→wakeup→claim/apply→Message+Person проверен,
+включая defer после завершения config event. 226 Jest/11 затронутых suites +26 guards
+=252 PASS; финальные21 unit повторены после исправления test typing. Typecheck155roots:
+146 baseline/current,0 новых/0 changed-code; одна baseline ошибка в неизменённом
+старом методе. Все6 миграций и прежние методы aggregate неизменны.
+[Доказательства и границы](log040/README.md). Далее — human command admission и исходящая очередь.
+Scheduler/current production grants, полные ROB-764/T05, own ACL/UI/HTTP и живые
+коннекторы ещё не готовы. Демо прежнее, GitHub Actions не используется.

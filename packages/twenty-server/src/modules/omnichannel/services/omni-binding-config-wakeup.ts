@@ -62,6 +62,23 @@ const proofSchema = z
     leaseToken: positiveCounter,
   })
   .readonly();
+const recoveryCommandSchema = z.discriminatedUnion('operation', [
+  z
+    .strictObject({ operation: z.literal('claim'), input: claimSchema })
+    .readonly(),
+  z
+    .strictObject({
+      operation: z.literal('process'),
+      proof: proofSchema,
+      input: pageSchema,
+    })
+    .readonly(),
+  z
+    .strictObject({ operation: z.literal('reconcile'), input: scanSchema })
+    .readonly(),
+  z.strictObject({ operation: z.literal('rearm'), wakeupId: uuid }).readonly(),
+  z.strictObject({ operation: z.literal('housekeeping') }).readonly(),
+]);
 const rowSchema = z.object({
   id: uuid,
   workspaceId: uuid,
@@ -100,7 +117,8 @@ export type OmniBindingConfigWakeupAuthorizer = (
         | 'config_wakeup.claim'
         | 'config_wakeup.process'
         | 'config_wakeup.reconcile'
-        | 'config_wakeup.rearm';
+        | 'config_wakeup.rearm'
+        | 'config_wakeup.housekeeping';
       routeGeneration: string;
       bindingRevision: string;
       wakeupId?: string;
@@ -117,6 +135,34 @@ export type OmniBindingConfigWakeupClaim = Readonly<{
   leaseUntil: string;
   routeGeneration: string;
 }>;
+export type OmniBindingConfigRecoveryCommand = z.infer<
+  typeof recoveryCommandSchema
+>;
+export type OmniBindingConfigRecoveryOperation =
+  OmniBindingConfigRecoveryCommand['operation'];
+export type OmniBindingConfigHousekeepingResult = Readonly<{
+  rearmed: boolean;
+  wakeupId: string | null;
+  reason:
+    | 'rearmed'
+    | 'binding_inactive'
+    | 'no_blocked_receipts'
+    | 'unfinished_work'
+    | 'no_completed_event';
+}>;
+type RecoveryResults = {
+  claim: Awaited<ReturnType<typeof claimOmniBindingConfigWakeups>>;
+  process: Awaited<ReturnType<typeof processOmniBindingConfigWakeupPage>>;
+  reconcile: Awaited<ReturnType<typeof reconcileOmniBindingConfigWakeups>>;
+  rearm: boolean;
+  housekeeping: OmniBindingConfigHousekeepingResult;
+};
+export type OmniBindingConfigRecoveryResult = {
+  [Operation in keyof RecoveryResults]: Readonly<{
+    operation: Operation;
+    result: RecoveryResults[Operation];
+  }>;
+}[keyof RecoveryResults];
 
 export { omniBindingConfigWakeupId } from 'src/modules/omnichannel/contracts/omni-binding-config-wakeup';
 const fail = (reason: string): never => {
@@ -139,6 +185,23 @@ const snapshot = (row: WakeupRow) => {
 const callbacks = (authorize: OmniBindingConfigWakeupAuthorizer) => {
   if (typeof authorize !== 'function') return fail('AUTHORIZER_REQUIRED');
   return authorize;
+};
+export const snapshotOmniBindingConfigRecoveryRequest = (
+  inputPrincipal: OmniBindingConfigWakeupPrincipal,
+  inputCommand: OmniBindingConfigRecoveryCommand,
+  inputAuthorize: OmniBindingConfigWakeupAuthorizer,
+  inputAuthorizeResume?: OmniBlockedHistoryResumeAuthorizer,
+) => {
+  const authorize = callbacks(inputAuthorize);
+  const authorizeResume = inputAuthorizeResume;
+  const principal = principalSchema.parse(inputPrincipal);
+  const command = recoveryCommandSchema.parse(inputCommand);
+  if (
+    (command.operation === 'process' || authorizeResume !== undefined) &&
+    typeof authorizeResume !== 'function'
+  )
+    return fail('RESUME_AUTHORIZER_REQUIRED');
+  return Object.freeze({ principal, command, authorize, authorizeResume });
 };
 const open = async (
   inputScope: OmniBindingConfigWakeupScope,
@@ -674,4 +737,78 @@ export const rearmOmniBindingConfigWakeup = async (
   await transaction.audit.flush();
   createCrmAuditWorkspaceExecutor(transaction.scope);
   return true;
+};
+
+// One retained event is enough to rescan current binding state; backfill insertion time
+// is not event order, and unfinished supported work already owns the next scan.
+export const housekeepOmniBindingConfigWakeups = async (
+  scope: OmniBindingConfigWakeupScope,
+  inputPrincipal: OmniBindingConfigWakeupPrincipal,
+  inputAuthorize: OmniBindingConfigWakeupAuthorizer,
+): Promise<OmniBindingConfigHousekeepingResult> => {
+  const principal = principalSchema.parse(inputPrincipal);
+  const authorize = callbacks(inputAuthorize);
+  const transaction = await open(scope, principal);
+  await authorizeCurrent(
+    transaction,
+    principal,
+    authorize,
+    'config_wakeup.housekeeping',
+  );
+  const result = (
+    reason: OmniBindingConfigHousekeepingResult['reason'],
+    wakeupId: string | null = null,
+  ): OmniBindingConfigHousekeepingResult =>
+    Object.freeze({ rearmed: reason === 'rearmed', wakeupId, reason });
+  if (transaction.binding.status !== 'active')
+    return result('binding_inactive');
+  const blocked = z
+    .array(z.object({ id: uuid }))
+    .max(1)
+    .parse(
+      await transaction.query(
+        `SELECT id FROM core."omniIncomingReceipt" WHERE "workspaceId"=$1 AND "bindingId"=$2 AND "routeGeneration"=$3
+     AND state='blocked_config' AND "errorCode"='configuration_missing' LIMIT 1`,
+        [
+          principal.workspaceId,
+          principal.bindingId,
+          transaction.binding.routeGeneration,
+        ],
+      ),
+    );
+  if (blocked.length === 0) return result('no_blocked_receipts');
+  const unfinished = z
+    .array(z.object({ id: uuid }))
+    .max(1)
+    .parse(
+      await transaction.query(
+        `SELECT id FROM core."omniBindingConfigWakeup" WHERE "workspaceId"=$1 AND "bindingId"=$2 AND "handlerVersion"=1
+     AND state IN ('pending','running','retryable','blocked') LIMIT 1`,
+        [principal.workspaceId, principal.bindingId],
+      ),
+    );
+  if (unfinished.length > 0) return result('unfinished_work');
+  const completed = z
+    .array(z.object({ id: uuid }))
+    .max(1)
+    .parse(
+      await transaction.query(
+        `SELECT wakeup.id FROM core."omniBindingConfigWakeup" wakeup
+     JOIN core."omniDomainEvent" event ON event."workspaceId"=wakeup."workspaceId" AND event.id=wakeup."eventId"
+     WHERE wakeup."workspaceId"=$1 AND wakeup."bindingId"=$2 AND wakeup."handlerVersion"=1 AND wakeup.state='completed'
+     ORDER BY event."createdAt" DESC,event.id DESC LIMIT 1`,
+        [principal.workspaceId, principal.bindingId],
+      ),
+    );
+  if (completed.length === 0) return result('no_completed_event');
+  const rearmed = await rearmOmniBindingConfigWakeup(
+    transaction.scope,
+    principal,
+    completed[0].id,
+    authorize,
+  );
+  createCrmAuditWorkspaceExecutor(transaction.scope);
+  return rearmed
+    ? result('rearmed', completed[0].id)
+    : result('unfinished_work');
 };
