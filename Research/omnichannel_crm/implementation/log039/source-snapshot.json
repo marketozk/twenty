@@ -1,0 +1,27 @@
+{
+  "baseCommit": "7a1a6b63e588b9e14fa15b37fdd914e2180f2906",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/database/commands/fork-upgrade/fork-migrations.ts": "8ae742ebb1a2920fd9409a68107c5df25fdf7b204ccbc35b6a8a54bcbaaf5587",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "387249d3a69d9993e2aad061cc0290d467ae6b5e63bfdd98fcad7df6d0e6d050",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "20f33e787fbdffd2f591e429c20d0c019cba42aa802bbf2eb8d9c266b79f5755",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/fork-schema-checks.ts": "1b40bb2753b5293dd18a9f26e66f7d72fc98f26934519722c47a9e490cfa595c",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/fork-schema-manifest.json": "7c56a2ac04133bcfb153e992e3e27b80cb37330c13834ea6b900605b84aa07a5",
+    "packages/twenty-server/src/modules/omnichannel/services/mutate-omni-binding-configuration.ts": "3168d1d33c093e53a72206a3b715b35f7cf139d6c1868f66e1fea7ea84d1a8ac",
+    "packages/twenty-server/src/modules/omnichannel/services/resume-omni-blocked-history-receipts.ts": "5c3c80f620ef6933528a7f98828aba79cf199c20bf8451a5afbe4394ed7a0844",
+    "packages/twenty-server/test/fork-migration/crm-audit-binding-config-event.spec.ts": "9ac8dd9f6e423b1d09668e6e51df9659e13063d09ba88624f68b34f504fac136",
+    "packages/twenty-server/test/fork-migration/omni-binding-configuration.postgres-spec.ts": "85d49c0159f5a567801c926a6e6452892c457dfe81e648aed175c5f8deb5195e",
+    "packages/twenty-server/test/fork-migration/omni-history-resume-facade.spec.ts": "76f71835a5b9b9adbba9f8e143bf5a0423ed3d243255509b5719a38e2dfeed02",
+    "packages/twenty-server/test/fork-migration/omni-history-resume.postgres-spec.ts": "d9419d0b883cdecda89fbc165af9475b1c4ee39e6b5297ef83f7947fedb12e02",
+    "packages/twenty-server/test/fork-migration/trusted-capture.postgres-spec.ts": "16939696435899d057dbd676ffae59f9bfdbded2341f8def865f072470fb2569",
+    "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-binding-config-wakeup.migration.ts": "1a8105afdea0ef51011f7dd3fface32098ca35f5b61718759a59e1474c0ebb48",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/entities/omni-binding-config-wakeup.entity.ts": "f6739c219db6894d12ca67bf1e1a32e4e1772d62f4b21f627c47d4b1ea817dbd",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/binding-config-wakeup.check.ts": "f56eca89c9c7bd2ba28fcb6567ed2fb2d04f8780787ff70996482c8d7d8f3911",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/binding-config-wakeup.schema.json": "8523afc79fb751742127d7cc47781a7812eae3b8ae1e5206e3217d1fed9f154f",
+    "packages/twenty-server/src/modules/omnichannel/contracts/omni-binding-config-wakeup.ts": "307ccd034588590e11c0979b3379c0c1f1cbd77c8c98b2e8b591421aac57a7d7",
+    "packages/twenty-server/src/modules/omnichannel/services/omni-binding-config-wakeup.ts": "4cb85fe9613f5581d1ba82cbc9cea50e1d4e6591a88bc341f3d92aa8bd84f0d6",
+    "packages/twenty-server/test/fork-migration/binding-config-wakeup-schema.postgres-spec.ts": "dda10154138587e40f011dfa6ba51d696bee064e47a0aa8c9a8f17cd27034a5f",
+    "packages/twenty-server/test/fork-migration/omni-binding-config-wakeup.postgres-spec.ts": "97873fd69e3bd39201c8a46c5af634311aa05e3637068aeef8b2d96a11e19708"
+  }
+}

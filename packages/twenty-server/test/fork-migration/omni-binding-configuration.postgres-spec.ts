@@ -90,6 +90,7 @@ const configuration = async () => ({
   policy: await core('omniWorkspacePolicyState'),
   events: await core('omniDomainEvent'),
   receipts: await core('omniPolicyMutationReceipt'),
+  wakeups: await core('omniBindingConfigWakeup'),
 });
 const createActiveQueue = async (name = 'Replacement queue') => {
   const created = await mutate(createCommand(name));
@@ -130,6 +131,9 @@ const noAutomation = async () => {
 
 beforeAll(async () => {
   await fixture.initialize();
+  await fixture.owner.query(
+    `GRANT INSERT,UPDATE ON core."omniBindingConfigWakeup" TO "${fixture.roleName}"`,
+  );
   await fixture.owner.query(
     `GRANT INSERT,UPDATE ON core."omniQueue" TO "${fixture.roleName}"`,
   );
@@ -189,10 +193,26 @@ describe('current authorized binding configuration mutations', () => {
         action: 'queue.create',
       }),
     ]);
+    expect(await core('omniBindingConfigWakeup')).toEqual([
+      expect.objectContaining({
+        workspaceId: fixture.workspaceId,
+        bindingId: context.bindingId,
+        eventId: result.eventId,
+        handlerVersion: 1,
+        state: 'pending',
+        attempts: 0,
+        leaseToken: '0',
+        leaseOwner: null,
+        leaseUntil: null,
+        cursorNextAttemptAt: null,
+        cursorReceiptId: null,
+        needsRescan: false,
+      }),
+    ]);
     expect((await audit()).every((row) => row.outcome === 'success')).toBe(
       true,
     );
-    expect(await audit()).toHaveLength(3);
+    expect(await audit()).toHaveLength(4);
     expect(
       (await audit()).some(
         (row) =>
@@ -570,6 +590,7 @@ describe('current authorized binding configuration mutations', () => {
     'omniDomainEvent',
     'crmAuditEntry',
     'omniPolicyMutationReceipt',
+    'omniBindingConfigWakeup',
   ])(
     'rolls back every configuration write if %s persistence fails',
     async (table) => {
@@ -713,7 +734,7 @@ describe('current authorized binding configuration mutations', () => {
     expect(await core('omniPolicyMutationReceipt')).toHaveLength(1);
     const before = await configuration();
     const beforeAudit = await audit();
-    expect(beforeAudit).toHaveLength(3);
+    expect(beforeAudit).toHaveLength(4);
     expect(beforeAudit.every((row) => row.outcome === 'success')).toBe(true);
     expect(await mutate(command)).toMatchObject({ changed: true });
     expect(await configuration()).toEqual(before);

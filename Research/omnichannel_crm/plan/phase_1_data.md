@@ -6,17 +6,17 @@
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
-Зависимость: этап0. LOG-038 / ROB-764 In Progress: config writer создаёт/изменяет очереди и human
-defaults binding с current authorization, CAS и общим idempotency receipt.
-Policy UPDATE с начала; resource revision/epoch, durable binding.config_changed,
-audit и receipt атомарны. No-op не выпускает event; replay повторно проверяет права.
-Default/retained queue нельзя отключить, existing Conversations не переносятся.
-Actual writer→resume→claim→apply проверен; binding activation остаётся test-only.
-826 Jest полного прогона + финальные84 focused (3 новых) +25 guards =854 distinct PASS.
-Typecheck145roots:0 новых/0 changed-code,146 baseline/current;5 миграций прежние.
-[Доказательства и границы](../implementation/log038/README.md). Далее — typed event consumer и durable recovery/
-housekeeping, затем остальные inbox/outbox пути. ROB-764/T05, own ACL/UI/HTTP и живые
-коннекторы ещё не готовы. Демо прежнее, GitHub Actions не используется.
+Зависимость: этап0. LOG-039 / ROB-764 In Progress: config events получают отдельный durable wakeup.
+Typed claim/page/reconciliation/rearm сохраняют checkpoint и текущую авторизацию;
+receipt transitions, audit и финальный lease CAS атомарны. Exact DB cursor,
+SKIP LOCKED rescan, generation reset, inactive/unknown handler и lost COMMIT ACK
+проверены. Producer создаёт event+wakeup в одном commit; replay/no-op без дублей.
+Шестая миграция сгенерирована Twenty, native up/down/up проверен; прежние5 неизменны.
+890 Jest/35 suites +26 guards =916 PASS; targeted204 PASS. Typecheck152roots:
+146 baseline/current,0 новых/0 changed-code. [Доказательства и границы](../implementation/log039/README.md).
+Далее — strict runtime owner и bounded housekeeping, затем остальные inbox/outbox
+пути. Scheduler/current production grants, полные ROB-764/T05, own ACL/UI/HTTP и
+живые коннекторы ещё не готовы. Демо прежнее, GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы fork migrations,
 первые9 core entities, audit entry/PolicyMutationReceipt, минимальный audit writer

@@ -28,6 +28,7 @@ const dataSource = new DataSource({
 });
 const HASH = 'a'.repeat(64);
 const historicalMigrations = FORK_MIGRATIONS.slice(0, 4);
+const captureMigrations = FORK_MIGRATIONS.slice(0, 5);
 let receiptId: string;
 let originalReceipt: Record<string, unknown>;
 
@@ -95,9 +96,12 @@ afterAll(async () => {
 });
 
 const apply = () =>
-  new ForkMigrationRunner(dataSource, FORK_MIGRATIONS).apply();
+  new ForkMigrationRunner(dataSource, captureMigrations).apply();
 const ready = () =>
-  new ForkSchemaVerifier(dataSource, FORK_SCHEMA_CHECKS).verifyReady();
+  new ForkSchemaVerifier(
+    dataSource,
+    FORK_SCHEMA_CHECKS.slice(0, 5),
+  ).verifyReady();
 const setCapture = (context: string | null, hash: string | null) =>
   dataSource.query(
     'UPDATE core."omniIncomingReceipt" SET "trustedCaptureContext"=$1::jsonb,"trustedCaptureContextHash"=$2 WHERE id=$3',

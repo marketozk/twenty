@@ -76,6 +76,62 @@ const payloadOf = (mutation: CrmAuditMutation) =>
 
 beforeEach(() => jest.clearAllMocks());
 
+describe('binding config wakeup audit scope', () => {
+  const mutation = (): CrmAuditMutation => {
+    const resourceId = randomUUID();
+    const bindingId = randomUUID();
+    return {
+      resourceKind: 'omniBindingConfigWakeup',
+      resourceId,
+      action: 'create',
+      before: null,
+      after: {
+        bindingId,
+        eventId: randomUUID(),
+        handlerVersion: 1,
+        state: 'running',
+        attempts: 1,
+        leaseToken: '1',
+        leaseOwner: 'private-worker-identifier',
+        leaseUntil: '2026-10-27T12:00:00.123456Z',
+        needsRescan: false,
+      },
+      securityDescriptor: {
+        resourceKind: 'omniBindingConfigWakeup',
+        resourceId,
+        bindingId,
+      },
+    };
+  };
+
+  it('records lifecycle metadata and redacts the lease owner', async () => {
+    const { context } = fixture();
+    context.record(mutation());
+    await context.flush();
+    const entry = append.mock.calls[0][1];
+    expect(entry.redactedDiff.values.state.after).toBe('running');
+    expect(entry.redactedDiff.changedFields).toContain('leaseOwner');
+    expect(JSON.stringify(entry)).not.toContain('private-worker-identifier');
+  });
+
+  it('requires a binding scope', () => {
+    const { context } = fixture();
+    const value = mutation();
+    delete value.securityDescriptor.bindingId;
+    expect(() => context.record(value)).toThrow('binding-only scope');
+  });
+
+  it.each(['conversationId', 'queueId'] as const)(
+    'forbids a %s scope',
+    (field) => {
+      const { context } = fixture();
+      const value = mutation();
+      value.securityDescriptor[field] = randomUUID();
+      expect(() => context.record(value)).toThrow('binding-only scope');
+    },
+  );
+});
+
 describe('binding configuration events have one narrowly validated audit scope', () => {
   it.each(['omniAccountBinding', 'omniQueue'] as const)(
     'records a binding-scoped %s event while retaining payload redaction',

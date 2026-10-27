@@ -1,0 +1,4 @@
+Checking baseline
+Baseline complete 145 146
+Checking current
+{"status":"fail","baselineDiagnostics":146,"currentDiagnostics":147,"newDiagnostics":[{"file":"test/fork-migration/omni-binding-config-wakeup.postgres-spec.ts","code":2322,"message":"Type 'T | Promise<T>' is not assignable to type 'Promise<T>'.\n  Type 'T' is not assignable to type 'Promise<T>'.","line":52}],"changedFileDiagnostics":[{"file":"test/fork-migration/omni-binding-config-wakeup.postgres-spec.ts","code":2322,"message":"Type 'T | Promise<T>' is not assignable to type 'Promise<T>'.\n  Type 'T' is not assignable to type 'Promise<T>'.","line":52}],"baselineOnlyUnchangedMethodDiagnostics":[],"changedCodeDiagnostics":[{"file":"test/fork-migration/omni-binding-config-wakeup.postgres-spec.ts","code":2322,"message":"Type 'T | Promise<T>' is not assignable to type 'Promise<T>'.\n  Type 'T' is not assignable to type 'Promise<T>'.","line":52}],"currentRootFiles":152}

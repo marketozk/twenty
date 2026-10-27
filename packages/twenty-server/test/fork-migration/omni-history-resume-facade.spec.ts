@@ -112,7 +112,12 @@ const fixture = () => {
     policyId: randomUUID(),
     policyVersion: '0',
   };
-  const result = { scannedCount: 0, resumedReceiptIds: [], nextCursor: null };
+  const result = {
+    scannedCount: 0,
+    resumedReceiptIds: [],
+    nextCursor: null,
+    needsRescan: false,
+  };
   resume.mockImplementation(
     async (nativeScope, _principal, _input, callback) => {
       await callback(nativeScope, descriptor);

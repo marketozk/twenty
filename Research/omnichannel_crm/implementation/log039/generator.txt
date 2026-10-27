@@ -1,0 +1,3 @@
+{"baseline":"empty","generated":"2-52-instance-command-fast-1793116941052-omni-binding-config-wakeup.ts"}
+
+C:\Users\regis\AppData\Local\Temp\2-52-instance-command-fast-1793116941052-omni-binding-config-wakeup.ts

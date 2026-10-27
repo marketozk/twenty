@@ -41,6 +41,24 @@ const CATALOG: Record<
     ],
     redacted: ['capabilities', 'accountId', 'connectorInstanceId'],
   },
+  omniBindingConfigWakeup: {
+    values: [
+      'bindingId',
+      'eventId',
+      'handlerVersion',
+      'state',
+      'attempts',
+      'leaseToken',
+      'leaseUntil',
+      'nextAttemptAt',
+      'cursorNextAttemptAt',
+      'cursorReceiptId',
+      'needsRescan',
+      'observedRouteGeneration',
+      'errorCode',
+    ],
+    redacted: ['leaseOwner'],
+  },
   omniAutomationPolicy: {
     values: ['bindingId', 'currentVersion', 'revision'],
     redacted: [],
@@ -225,6 +243,15 @@ const descriptor = (
   bindingConfigEvent?: OmniBindingConfigChangedEvent,
 ): CrmAuditSecurityDescriptor => {
   const source = mutation.securityDescriptor;
+
+  if (
+    mutation.resourceKind === 'omniBindingConfigWakeup' &&
+    (source.bindingId === undefined ||
+      source.conversationId !== undefined ||
+      source.queueId !== undefined)
+  ) {
+    throw new Error('Binding config wakeup audit requires binding-only scope');
+  }
 
   if (
     bindingConfigEvent &&

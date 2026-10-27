@@ -1,0 +1,13 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-binding-configuration.postgres-spec.ts (13.228 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-resume.postgres-spec.ts (8.042 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-binding-config-wakeup.postgres-spec.ts (10.255 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-binding-config-event.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/binding-config-wakeup-schema.postgres-spec.ts (53.044 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-resume-facade.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/trusted-capture.postgres-spec.ts (18.913 s)
+
+Test Suites: 7 passed, 7 total
+Tests:       204 passed, 204 total
+Snapshots:   0 total
+Time:        104.061 s
+Ran all test suites within paths "/source/packages/twenty-server/test/fork-migration/binding-config-wakeup-schema.postgres-spec.ts", "/source/packages/twenty-server/test/fork-migration/omni-binding-config-wakeup.postgres-spec.ts", "/source/packages/twenty-server/test/fork-migration/omni-binding-configuration.postgres-spec.ts", "/source/packages/twenty-server/test/fork-migration/omni-history-resume.postgres-spec.ts", "/source/packages/twenty-server/test/fork-migration/omni-history-resume-facade.spec.ts", "/source/packages/twenty-server/test/fork-migration/crm-audit-binding-config-event.spec.ts", "/source/packages/twenty-server/test/fork-migration/trusted-capture.postgres-spec.ts".

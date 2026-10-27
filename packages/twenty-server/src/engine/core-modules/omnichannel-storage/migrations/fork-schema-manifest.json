@@ -23,5 +23,10 @@
     "migrationId": "omni-1793104418386-trusted-capture",
     "checksum": "8fd7b96cfcfbd4d0dad52fdf8db41d93403bcdeabc571cb5bab217d97a6087ac",
     "sourcePath": "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-trusted-capture.migration.ts"
+  },
+  {
+    "migrationId": "omni-1793116941052-binding-config-wakeup",
+    "checksum": "1a8105afdea0ef51011f7dd3fface32098ca35f5b61718759a59e1474c0ebb48",
+    "sourcePath": "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-binding-config-wakeup.migration.ts"
   }
 ]

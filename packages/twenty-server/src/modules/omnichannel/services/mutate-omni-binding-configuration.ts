@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import { auditPayloadHash } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
 import { omniBindingConfigChangedEventSchema } from 'src/engine/core-modules/omnichannel-storage/contracts/omni-binding-config-changed';
+import { omniBindingConfigWakeupId } from 'src/modules/omnichannel/contracts/omni-binding-config-wakeup';
 import {
   appendCrmAuditAttempt,
   CrmAuditTransactionContext,
@@ -567,6 +568,46 @@ export const mutateOmniBindingConfiguration = async (
           ),
         );
         if (insertedEvent.id !== eventId) return fail('EVENT_POSTCONDITION');
+        const wakeupId = omniBindingConfigWakeupId(eventId);
+        const wakeup = one(
+          z.object({
+            id: uuid,
+            nextAttemptAt: z.iso.datetime({ precision: 6 }),
+          }),
+          await runner.query(
+            `INSERT INTO core."omniBindingConfigWakeup" (id,"workspaceId","eventId","bindingId")
+           VALUES ($1,$2,$3,$4) RETURNING id,to_char("nextAttemptAt" AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "nextAttemptAt"`,
+            [wakeupId, workspaceId, eventId, binding.id],
+          ),
+        );
+        if (wakeup.id !== wakeupId) return fail('WAKEUP_POSTCONDITION');
+        audit.record({
+          resourceKind: 'omniBindingConfigWakeup',
+          resourceId: wakeupId,
+          action: 'create',
+          before: null,
+          after: {
+            eventId,
+            bindingId: binding.id,
+            handlerVersion: 1,
+            state: 'pending',
+            attempts: 0,
+            leaseToken: '0',
+            leaseOwner: null,
+            leaseUntil: null,
+            nextAttemptAt: wakeup.nextAttemptAt,
+            cursorNextAttemptAt: null,
+            cursorReceiptId: null,
+            needsRescan: false,
+            observedRouteGeneration: null,
+            errorCode: null,
+          },
+          securityDescriptor: {
+            resourceKind: 'omniBindingConfigWakeup',
+            resourceId: wakeupId,
+            bindingId: binding.id,
+          },
+        });
         audit.record({
           resourceKind: 'omniDomainEvent',
           resourceId: eventId,

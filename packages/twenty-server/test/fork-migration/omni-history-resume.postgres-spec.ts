@@ -170,6 +170,7 @@ describe('qualified blocked history configuration recovery', () => {
       scannedCount: 1,
       resumedReceiptIds: [before.id],
       nextCursor: null,
+      needsRescan: false,
     });
     const after = await receipt(captured.proof.receiptId);
     expect(after).toMatchObject({
@@ -330,6 +331,7 @@ describe('qualified blocked history configuration recovery', () => {
       scannedCount: 1,
       resumedReceiptIds: [third.proof.receiptId],
       nextCursor: null,
+      needsRescan: false,
     });
     expect((await receipt(first.proof.receiptId)).state).toBe('blocked_config');
     expect((await receipt(second.proof.receiptId)).state).toBe(
@@ -362,6 +364,7 @@ describe('qualified blocked history configuration recovery', () => {
       expect(page).toEqual({
         scannedCount: 1,
         resumedReceiptIds: [row.proof.receiptId],
+        needsRescan: false,
         nextCursor: {
           nextAttemptAt: timestamps[index],
           id: row.proof.receiptId,
@@ -373,6 +376,7 @@ describe('qualified blocked history configuration recovery', () => {
       scannedCount: 0,
       resumedReceiptIds: [],
       nextCursor: null,
+      needsRescan: false,
     });
   });
 
@@ -400,6 +404,7 @@ describe('qualified blocked history configuration recovery', () => {
         scannedCount: 1,
         resumedReceiptIds: [],
         nextCursor: { id: early.proof.receiptId },
+        needsRescan: true,
       });
       if (!page.nextCursor) throw new Error('Expected cursor');
       expect(
@@ -445,6 +450,7 @@ describe('qualified blocked history configuration recovery', () => {
       scannedCount: 0,
       resumedReceiptIds: [],
       nextCursor: null,
+      needsRescan: false,
     });
     expect(await audit()).toEqual(persisted);
     await noMessageEffects();
@@ -662,6 +668,7 @@ describe('qualified blocked history configuration recovery', () => {
         scannedCount: 0,
         resumedReceiptIds: [],
         nextCursor: null,
+        needsRescan: false,
       });
       expect(await receipt(id)).toEqual(before);
       expect(await audit()).toEqual(beforeAudit);

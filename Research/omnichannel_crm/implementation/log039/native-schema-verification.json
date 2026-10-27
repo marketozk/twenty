@@ -1,0 +1,23 @@
+{
+  "before": [
+    {
+      "count": 256,
+      "hash": "7b709ffef05d1857b947f9524de3c6e1"
+    }
+  ],
+  "after": [
+    {
+      "count": 256,
+      "hash": "7b709ffef05d1857b947f9524de3c6e1"
+    }
+  ],
+  "oldTableCount": 25,
+  "allOldTablesUnchanged": true,
+  "emptyDownRestoresAll": true,
+  "newTables": 1,
+  "upDownUp": true,
+  "rolledBack": true,
+  "generatedSQLStatements": 10,
+  "wrappedSQLMatchesGenerator": true,
+  "baselineGeneratorDiffEmpty": true
+}

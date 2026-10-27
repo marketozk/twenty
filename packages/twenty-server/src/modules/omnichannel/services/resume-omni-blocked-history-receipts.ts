@@ -74,6 +74,7 @@ export type OmniBlockedHistoryResumeResult = Readonly<{
   scannedCount: number;
   resumedReceiptIds: readonly string[];
   nextCursor: OmniBlockedHistoryResumeCursor | null;
+  needsRescan: boolean;
 }>;
 
 export const snapshotOmniBlockedHistoryResumeRequest = (
@@ -479,5 +480,6 @@ export const resumeOmniBlockedHistoryReceipts = async (
     scannedCount: page.length,
     resumedReceiptIds: Object.freeze(resumedReceiptIds),
     nextCursor,
+    needsRescan: resumedReceiptIds.length < eligible.length,
   });
 };

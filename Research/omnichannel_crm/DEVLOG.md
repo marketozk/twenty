@@ -1017,3 +1017,24 @@ Skills: ai-dev-workflow, behavioral-guardrails, server-schrodinger; unban-ssh-sc
 typed consumer/durable maintenance recovery, full stage пока не завершён.
 
 Публикация LOG-038: код 872f337fe81eb6428a1c7ae2236e28b4be6bcbc2, remote проверен GitHub API. Описание ROB-764 и комментарий e117d3c8-e60b-41e1-9a82-57125d85521e прочитаны обратно; все11 статусов сохранены. Продолжаем LOG-039.
+
+
+## LOG-039 — 27.10.2026: durable config wakeup
+
+LOG-039 / ROB-764 In Progress: config events получают отдельный durable wakeup.
+Typed claim/page/reconciliation/rearm сохраняют checkpoint и текущую авторизацию;
+receipt transitions, audit и финальный lease CAS атомарны. Exact DB cursor,
+SKIP LOCKED rescan, generation reset, inactive/unknown handler и lost COMMIT ACK
+проверены. Producer создаёт event+wakeup в одном commit; replay/no-op без дублей.
+Шестая миграция сгенерирована Twenty, native up/down/up проверен; прежние5 неизменны.
+890 Jest/35 suites +26 guards =916 PASS; targeted204 PASS. Typecheck152roots:
+146 baseline/current,0 новых/0 changed-code. [Доказательства и границы](implementation/log039/README.md).
+Далее — strict runtime owner и bounded housekeeping, затем остальные inbox/outbox
+пути. Scheduler/current production grants, полные ROB-764/T05, own ACL/UI/HTTP и
+живые коннекторы ещё не готовы. Демо прежнее, GitHub Actions не используется.
+
+Root review исправил точность nextAttemptAt в producer/audit и финальный claim expiry.
+Первый targeted204 PASS; typecheck нашёл один Promise union в новом test helper,
+исправлено async. Финальный полный890 PASS, typecheck0 new/changed. Независимое
+scoped review без блокеров; полный Claude cross-review не заявляется.
+Skills: ai-dev-workflow, behavioral-guardrails, server-schrodinger. Продолжаем LOG-040.
