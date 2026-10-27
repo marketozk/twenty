@@ -1560,3 +1560,5 @@ exception и убрать union-repository enum ambiguity в тесте. Пол�
 старых внешних side effects, не закрытие ROB764 и не транспорт. Демо/SaleBot прежние.
 GitHub Actions не использовался; skills ai-dev-workflow, behavioral-guardrails,
 server-schrodinger, независимое scoped review read-only.
+
+LOG-056 publication: code 7c1a2277120f43ebb7dbfc9ab43618fa21be9a2e pushed; GitHub ref verified through API. Linear comment f73921aa-a706-4837-9d40-2bfce4d7aec3; description/comment and all11 project states independently read back. ROB-764 In Progress. See implementation/log056/publication.json.
