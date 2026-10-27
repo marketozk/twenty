@@ -45,6 +45,11 @@ import {
   lockOmniMetadataAccounts,
 } from 'src/modules/omnichannel/services/omni-metadata-transaction';
 
+const isNativeMessengerAccount = (account: ConnectedAccountEntity) =>
+  account.provider === ConnectedAccountProvider.APP &&
+  account.applicationId === null &&
+  account.connectionProviderId === null;
+
 @Injectable()
 export class ConnectedAccountMetadataService {
   private readonly logger = new Logger(ConnectedAccountMetadataService.name);
@@ -443,11 +448,11 @@ export class ConnectedAccountMetadataService {
     const [messageChannels, calendarChannels] = await Promise.all([
       this.messageChannelRepository.find({
         where: { connectedAccountId: In(connectedAccountIds), workspaceId },
-        select: { id: true },
+        select: { id: true, connectedAccountId: true },
       }),
       this.calendarChannelRepository.find({
         where: { connectedAccountId: In(connectedAccountIds), workspaceId },
-        select: { id: true },
+        select: { id: true, connectedAccountId: true },
       }),
     ]);
 
@@ -455,6 +460,9 @@ export class ConnectedAccountMetadataService {
       messageChannels,
       calendarChannels,
       workspaceId,
+      nativeAccountIds: new Set(
+        connectedAccounts.filter(isNativeMessengerAccount).map(({ id }) => id),
+      ),
     }).catch((error) =>
       this.logger.warn(
         `WorkspaceId: ${workspaceId} Failed to stop webhook subscriptions while transferring connected accounts from ${fromUserWorkspaceId}`,
@@ -462,59 +470,83 @@ export class ConnectedAccountMetadataService {
       ),
     );
 
-    await this.repository.manager.transaction(async (entityManager) => {
-      await entityManager.update(
-        ConnectedAccountEntity,
-        { id: In(connectedAccountIds), workspaceId },
-        {
-          userWorkspaceId: toUserWorkspaceId,
-          accessToken: null,
-          refreshToken: null,
-          connectionParameters: null,
-        },
-      );
-
-      await entityManager.update(
-        ConnectedAccountEntity,
-        { id: In(connectedAccountIds), workspaceId, archivedAt: IsNull() },
-        { archivedAt: new Date() },
-      );
-
-      await entityManager.update(
-        MessageChannelEntity,
-        { connectedAccountId: In(connectedAccountIds), workspaceId },
-        { isSyncEnabled: false },
-      );
-
-      await entityManager.update(
-        CalendarChannelEntity,
-        { connectedAccountId: In(connectedAccountIds), workspaceId },
-        { isSyncEnabled: false },
-      );
-
-      await entityManager.update(
-        MessageChannelEntity,
-        {
-          connectedAccountId: In(connectedAccountIds),
+    await withOmniMetadataMutation(
+      this.repository.manager,
+      workspaceId,
+      async (entityManager) => {
+        await lockOmniMetadataAccounts(
+          entityManager,
           workspaceId,
-          webhookSubscriptionStatus: WebhookSubscriptionStatus.PENDING,
-        },
-        { webhookSubscriptionStatus: WebhookSubscriptionStatus.EXPIRED },
-      );
-
-      await entityManager.update(
-        CalendarChannelEntity,
-        {
-          connectedAccountId: In(connectedAccountIds),
+          connectedAccountIds,
+          'write',
+        );
+        await this.assertOrdinaryAccounts(
           workspaceId,
-          webhookSubscriptionStatus: WebhookSubscriptionStatus.PENDING,
-        },
-        { webhookSubscriptionStatus: WebhookSubscriptionStatus.EXPIRED },
-      );
-    });
+          connectedAccountIds,
+          entityManager,
+        );
+        const transfer = await entityManager.update(
+          ConnectedAccountEntity,
+          {
+            id: In(connectedAccountIds),
+            workspaceId,
+            userWorkspaceId: fromUserWorkspaceId,
+          },
+          {
+            userWorkspaceId: toUserWorkspaceId,
+            accessToken: null,
+            refreshToken: null,
+            connectionParameters: null,
+          },
+        );
+
+        if (transfer.affected !== connectedAccountIds.length) {
+          throw new Error('CONNECTED_ACCOUNT_CUSTODIAN_CHANGED_RETRY');
+        }
+        await entityManager.update(
+          ConnectedAccountEntity,
+          { id: In(connectedAccountIds), workspaceId, archivedAt: IsNull() },
+          { archivedAt: new Date() },
+        );
+
+        await entityManager.update(
+          MessageChannelEntity,
+          { connectedAccountId: In(connectedAccountIds), workspaceId },
+          { isSyncEnabled: false },
+        );
+
+        await entityManager.update(
+          CalendarChannelEntity,
+          { connectedAccountId: In(connectedAccountIds), workspaceId },
+          { isSyncEnabled: false },
+        );
+
+        await entityManager.update(
+          MessageChannelEntity,
+          {
+            connectedAccountId: In(connectedAccountIds),
+            workspaceId,
+            webhookSubscriptionStatus: WebhookSubscriptionStatus.PENDING,
+          },
+          { webhookSubscriptionStatus: WebhookSubscriptionStatus.EXPIRED },
+        );
+
+        await entityManager.update(
+          CalendarChannelEntity,
+          {
+            connectedAccountId: In(connectedAccountIds),
+            workspaceId,
+            webhookSubscriptionStatus: WebhookSubscriptionStatus.PENDING,
+          },
+          { webhookSubscriptionStatus: WebhookSubscriptionStatus.EXPIRED },
+        );
+      },
+    );
 
     for (const connectedAccount of connectedAccounts) {
-      await this.appOAuthRevokeService.revokeIfApp(connectedAccount);
+      if (!isNativeMessengerAccount(connectedAccount)) {
+        await this.appOAuthRevokeService.revokeIfApp(connectedAccount);
+      }
     }
   }
 
@@ -539,16 +571,18 @@ export class ConnectedAccountMetadataService {
       });
     }
 
-    await this.appOAuthRevokeService.revokeIfApp(connectedAccount);
+    if (!isNativeMessengerAccount(connectedAccount)) {
+      await this.appOAuthRevokeService.revokeIfApp(connectedAccount);
+    }
 
     const [messageChannels, calendarChannels] = await Promise.all([
       this.messageChannelRepository.find({
         where: { connectedAccountId: id, workspaceId },
-        select: { id: true },
+        select: { id: true, connectedAccountId: true },
       }),
       this.calendarChannelRepository.find({
         where: { connectedAccountId: id, workspaceId },
-        select: { id: true },
+        select: { id: true, connectedAccountId: true },
       }),
     ]);
 
@@ -556,6 +590,9 @@ export class ConnectedAccountMetadataService {
       messageChannels,
       calendarChannels,
       workspaceId,
+      nativeAccountIds: new Set(
+        isNativeMessengerAccount(connectedAccount) ? [id] : [],
+      ),
     }).catch((error) =>
       this.logger.warn(
         `WorkspaceId: ${workspaceId} Failed to stop webhook subscriptions while disconnecting connected account ${id}`,
@@ -563,59 +600,71 @@ export class ConnectedAccountMetadataService {
       ),
     );
 
-    await this.repository.manager.transaction(async (entityManager) => {
-      await entityManager.update(
-        ConnectedAccountEntity,
-        { id, workspaceId },
-        {
-          accessToken: null,
-          refreshToken: null,
-          connectionParameters: null,
-          authFailedAt: null,
-          authFailedReason: null,
-        },
-      );
-
-      await entityManager.update(
-        ConnectedAccountEntity,
-        { id, workspaceId, archivedAt: IsNull() },
-        { archivedAt: new Date() },
-      );
-
-      await entityManager.update(
-        MessageChannelEntity,
-        { connectedAccountId: id, workspaceId },
-        { isSyncEnabled: false },
-      );
-
-      await entityManager.update(
-        CalendarChannelEntity,
-        { connectedAccountId: id, workspaceId },
-        { isSyncEnabled: false },
-      );
-
-      await entityManager.update(
-        MessageChannelEntity,
-        {
-          connectedAccountId: id,
+    return withOmniMetadataMutation(
+      this.repository.manager,
+      workspaceId,
+      async (entityManager) => {
+        await lockOmniMetadataAccounts(
+          entityManager,
           workspaceId,
-          webhookSubscriptionStatus: WebhookSubscriptionStatus.PENDING,
-        },
-        { webhookSubscriptionStatus: WebhookSubscriptionStatus.EXPIRED },
-      );
+          [id],
+          'write',
+        );
+        await this.assertOrdinaryAccounts(workspaceId, [id], entityManager);
+        await entityManager.update(
+          ConnectedAccountEntity,
+          { id, workspaceId },
+          {
+            accessToken: null,
+            refreshToken: null,
+            connectionParameters: null,
+            authFailedAt: null,
+            authFailedReason: null,
+          },
+        );
 
-      await entityManager.update(
-        CalendarChannelEntity,
-        {
-          connectedAccountId: id,
-          workspaceId,
-          webhookSubscriptionStatus: WebhookSubscriptionStatus.PENDING,
-        },
-        { webhookSubscriptionStatus: WebhookSubscriptionStatus.EXPIRED },
-      );
-    });
+        await entityManager.update(
+          ConnectedAccountEntity,
+          { id, workspaceId, archivedAt: IsNull() },
+          { archivedAt: new Date() },
+        );
 
-    return this.repository.findOneOrFail({ where: { id, workspaceId } });
+        await entityManager.update(
+          MessageChannelEntity,
+          { connectedAccountId: id, workspaceId },
+          { isSyncEnabled: false },
+        );
+
+        await entityManager.update(
+          CalendarChannelEntity,
+          { connectedAccountId: id, workspaceId },
+          { isSyncEnabled: false },
+        );
+
+        await entityManager.update(
+          MessageChannelEntity,
+          {
+            connectedAccountId: id,
+            workspaceId,
+            webhookSubscriptionStatus: WebhookSubscriptionStatus.PENDING,
+          },
+          { webhookSubscriptionStatus: WebhookSubscriptionStatus.EXPIRED },
+        );
+
+        await entityManager.update(
+          CalendarChannelEntity,
+          {
+            connectedAccountId: id,
+            workspaceId,
+            webhookSubscriptionStatus: WebhookSubscriptionStatus.PENDING,
+          },
+          { webhookSubscriptionStatus: WebhookSubscriptionStatus.EXPIRED },
+        );
+        return entityManager
+          .getRepository(ConnectedAccountEntity)
+          .findOneOrFail({ where: { id, workspaceId } });
+      },
+    );
   }
 
   async deleteManyByConnectionProviderIds({
@@ -678,11 +727,11 @@ export class ConnectedAccountMetadataService {
     const [messageChannels, calendarChannels] = await Promise.all([
       this.messageChannelRepository.find({
         where: { connectedAccountId: In(connectedAccountIds), workspaceId },
-        select: { id: true },
+        select: { id: true, connectedAccountId: true },
       }),
       this.calendarChannelRepository.find({
         where: { connectedAccountId: In(connectedAccountIds), workspaceId },
-        select: { id: true },
+        select: { id: true, connectedAccountId: true },
       }),
     ]);
 
@@ -704,6 +753,9 @@ export class ConnectedAccountMetadataService {
       messageChannels,
       calendarChannels,
       workspaceId,
+      nativeAccountIds: new Set(
+        connectedAccounts.filter(isNativeMessengerAccount).map(({ id }) => id),
+      ),
     });
 
     // Hooks may have refreshed tokens through getConnection and an overlapping delete may have removed rows
@@ -712,14 +764,58 @@ export class ConnectedAccountMetadataService {
     });
 
     for (const latestConnectedAccount of latestConnectedAccounts) {
-      await this.appOAuthRevokeService.revokeIfApp(latestConnectedAccount);
+      if (!isNativeMessengerAccount(latestConnectedAccount)) {
+        await this.appOAuthRevokeService.revokeIfApp(latestConnectedAccount);
+      }
     }
 
-    await this.repository.delete({ id: In(connectedAccountIds), workspaceId });
+    const deleted = await withOmniMetadataMutation(
+      this.repository.manager,
+      workspaceId,
+      async (manager) => {
+        await lockOmniMetadataAccounts(
+          manager,
+          workspaceId,
+          connectedAccountIds,
+          'write',
+        );
+        await this.assertOrdinaryAccounts(
+          workspaceId,
+          connectedAccountIds,
+          manager,
+        );
+        // FK checks lock the new parent on reparent, not the old one. Keep the
+        // actual child rows stable until cascade DELETE and event snapshot commit.
+        const deletedMessageChannels: Pick<MessageChannelEntity, 'id'>[] =
+          await manager.query(
+            'SELECT id FROM core."messageChannel" WHERE "workspaceId"=$1 AND "connectedAccountId"=ANY($2::uuid[]) ORDER BY id FOR UPDATE',
+            [workspaceId, connectedAccountIds],
+          );
+        const deletedCalendarChannels: Pick<CalendarChannelEntity, 'id'>[] =
+          await manager.query(
+            'SELECT id FROM core."calendarChannel" WHERE "workspaceId"=$1 AND "connectedAccountId"=ANY($2::uuid[]) ORDER BY id FOR UPDATE',
+            [workspaceId, connectedAccountIds],
+          );
+        const deletedAccounts = await manager
+          .getRepository(ConnectedAccountEntity)
+          .find({
+            where: { id: In(connectedAccountIds), workspaceId },
+            select: { id: true, userWorkspaceId: true },
+          });
+        await manager
+          .getRepository(ConnectedAccountEntity)
+          .delete({ id: In(connectedAccountIds), workspaceId });
+        return {
+          messageChannels: deletedMessageChannels,
+          calendarChannels: deletedCalendarChannels,
+          accounts: deletedAccounts,
+        };
+      },
+    );
 
     this.workspaceEventEmitter.emitCustomBatchEvent<MessageChannelDeletedEvent>(
       MESSAGE_CHANNEL_DELETED_EVENT,
-      messageChannels.map((messageChannel) => ({
+      deleted.messageChannels.map((messageChannel) => ({
         messageChannelId: messageChannel.id,
       })),
       workspaceId,
@@ -727,7 +823,7 @@ export class ConnectedAccountMetadataService {
 
     this.workspaceEventEmitter.emitCustomBatchEvent<CalendarChannelDeletedEvent>(
       CALENDAR_CHANNEL_DELETED_EVENT,
-      calendarChannels.map((calendarChannel) => ({
+      deleted.calendarChannels.map((calendarChannel) => ({
         calendarChannelId: calendarChannel.id,
       })),
       workspaceId,
@@ -735,7 +831,7 @@ export class ConnectedAccountMetadataService {
 
     this.workspaceEventEmitter.emitCustomBatchEvent<ConnectedAccountDeletedEvent>(
       CONNECTED_ACCOUNT_DELETED_EVENT,
-      connectedAccounts.map(({ id, userWorkspaceId }) => ({
+      deleted.accounts.map(({ id, userWorkspaceId }) => ({
         connectedAccountId: id,
         userWorkspaceId,
       })),
@@ -765,24 +861,33 @@ export class ConnectedAccountMetadataService {
     messageChannels,
     calendarChannels,
     workspaceId,
+    nativeAccountIds,
   }: {
-    messageChannels: Pick<MessageChannelEntity, 'id'>[];
-    calendarChannels: Pick<CalendarChannelEntity, 'id'>[];
+    messageChannels: Pick<MessageChannelEntity, 'id' | 'connectedAccountId'>[];
+    calendarChannels: Pick<
+      CalendarChannelEntity,
+      'id' | 'connectedAccountId'
+    >[];
     workspaceId: string;
+    nativeAccountIds: Set<string>;
   }): Promise<void> {
     await Promise.all([
-      ...messageChannels.map(({ id: messageChannelId }) =>
-        this.messagingWebhookSubscriptionService.deleteSubscription(
-          messageChannelId,
-          workspaceId,
+      ...messageChannels
+        .filter((channel) => !nativeAccountIds.has(channel.connectedAccountId))
+        .map(({ id: messageChannelId }) =>
+          this.messagingWebhookSubscriptionService.deleteSubscription(
+            messageChannelId,
+            workspaceId,
+          ),
         ),
-      ),
-      ...calendarChannels.map(({ id: calendarChannelId }) =>
-        this.calendarWebhookSubscriptionService.deleteSubscription(
-          calendarChannelId,
-          workspaceId,
+      ...calendarChannels
+        .filter((channel) => !nativeAccountIds.has(channel.connectedAccountId))
+        .map(({ id: calendarChannelId }) =>
+          this.calendarWebhookSubscriptionService.deleteSubscription(
+            calendarChannelId,
+            workspaceId,
+          ),
         ),
-      ),
     ]);
   }
 }

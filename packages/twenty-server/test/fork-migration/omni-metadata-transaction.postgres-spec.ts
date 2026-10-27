@@ -1,6 +1,13 @@
+import { CalendarChannelMetadataService } from 'src/engine/metadata-modules/calendar-channel/calendar-channel-metadata.service';
+jest.mock(
+  'src/engine/metadata-modules/calendar-channel/dtos/calendar-channel.dto',
+  () => ({ CalendarChannelDTO: class {} }),
+);
+import { CalendarChannelEntity } from 'src/engine/metadata-modules/calendar-channel/entities/calendar-channel.entity';
 import { randomUUID } from 'node:crypto';
 import { DataSource, EntitySchema, type QueryRunner } from 'typeorm';
 import {
+  WebhookSubscriptionStatus,
   ConnectedAccountProvider,
   MessageChannelType,
   MessageChannelVisibility,
@@ -89,6 +96,11 @@ const accountSchema = new EntitySchema<ConnectedAccountEntity>({
     scope: { type: 'text' },
     userWorkspaceId: { type: 'uuid' },
     handle: { type: 'text' },
+    accessToken: { type: 'text', nullable: true },
+    refreshToken: { type: 'text', nullable: true },
+    connectionParameters: { type: 'jsonb', nullable: true },
+    authFailedAt: { type: 'timestamptz', nullable: true },
+    authFailedReason: { type: 'text', nullable: true },
   },
 });
 const channelSchema = new EntitySchema<MessageChannelEntity>({
@@ -105,6 +117,7 @@ const channelSchema = new EntitySchema<MessageChannelEntity>({
     displayName: { type: 'text', nullable: true },
     visibility: { type: 'text' },
     isSyncEnabled: { type: 'boolean', default: true },
+    webhookSubscriptionStatus: { type: 'text', nullable: true },
     syncStage: { type: 'text', nullable: true },
     syncStatus: { type: 'text', nullable: true },
     isContactAutoCreationEnabled: { type: 'boolean', nullable: true },
@@ -114,10 +127,29 @@ const channelSchema = new EntitySchema<MessageChannelEntity>({
     pendingGroupEmailsAction: { type: 'text', nullable: true },
   },
 });
+const calendarSchema = new EntitySchema<CalendarChannelEntity>({
+  name: 'LifecycleCalendarFixture',
+  target: CalendarChannelEntity,
+  schema: 'core',
+  tableName: 'calendarChannel',
+  columns: {
+    id: { type: 'uuid', primary: true },
+    workspaceId: { type: 'uuid' },
+    connectedAccountId: { type: 'uuid' },
+    isSyncEnabled: { type: 'boolean' },
+    webhookSubscriptionStatus: { type: 'text', nullable: true },
+  },
+});
+const external = {
+  revoke: jest.fn(),
+  hooks: jest.fn(),
+  message: jest.fn(),
+  calendar: jest.fn(),
+};
 const runtime = new DataSource({
   type: 'postgres',
   url: fixture.runtimeDatabaseUrl,
-  entities: [accountSchema, channelSchema],
+  entities: [accountSchema, channelSchema, calendarSchema],
   synchronize: false,
   migrationsRun: false,
   extra: { max: 4, statement_timeout: 10000 },
@@ -225,20 +257,36 @@ beforeAll(async () => {
   await fixture.owner.query(
     'ALTER TABLE core."messageChannel" ALTER COLUMN id SET DEFAULT gen_random_uuid()',
   );
+  await fixture.owner.query(
+    'ALTER TABLE core."connectedAccount" ADD "accessToken" text,ADD "refreshToken" text,ADD "connectionParameters" jsonb,ADD "authFailedAt" timestamptz,ADD "authFailedReason" text',
+  );
+  await fixture.owner.query(
+    'ALTER TABLE core."messageChannel" ADD "webhookSubscriptionStatus" text',
+  );
+  await fixture.owner.query(
+    'CREATE TABLE core."calendarChannel" (id uuid PRIMARY KEY,"workspaceId" uuid,"connectedAccountId" uuid REFERENCES core."connectedAccount"(id) ON DELETE CASCADE,"isSyncEnabled" boolean,"webhookSubscriptionStatus" text)',
+  );
+  await fixture.owner.query(
+    `GRANT SELECT, INSERT, UPDATE, DELETE ON core."calendarChannel" TO "${fixture.roleName}"`,
+  );
   await runtime.initialize();
   type AccountDependencies = ConstructorParameters<
     typeof ConnectedAccountMetadataService
   >;
   accounts = new ConnectedAccountMetadataService(
     runtime.getRepository(ConnectedAccountEntity),
-    {} as AccountDependencies[1],
+    runtime.getRepository(CalendarChannelEntity),
     runtime.getRepository(MessageChannelEntity),
-    {} as AccountDependencies[3],
-    {} as AccountDependencies[4],
+    { revokeIfApp: external.revoke } as unknown as AccountDependencies[3],
+    { runOnDisconnect: external.hooks } as unknown as AccountDependencies[4],
     {} as AccountDependencies[5],
     events as unknown as AccountDependencies[6],
-    {} as AccountDependencies[7],
-    {} as AccountDependencies[8],
+    {
+      deleteSubscription: external.calendar,
+    } as unknown as AccountDependencies[7],
+    {
+      deleteSubscription: external.message,
+    } as unknown as AccountDependencies[8],
   );
   type ChannelDependencies = ConstructorParameters<
     typeof MessageChannelMetadataService
@@ -290,6 +338,9 @@ beforeEach(async () => {
     visibility: MessageChannelVisibility.SHARE_EVERYTHING,
   });
   events.emitCustomBatchEvent.mockReset();
+  Object.values(external).forEach((fn) =>
+    fn.mockReset().mockResolvedValue(undefined),
+  );
 });
 afterEach(() => jest.restoreAllMocks());
 afterAll(async () => {
@@ -841,4 +892,420 @@ describe('account identity cannot be repurposed by generic metadata', () => {
       ).toEqual([]);
     },
   );
+});
+
+const pauseLifecycleMutation = (matches: (sql: string) => boolean) => {
+  const reached = barrier(),
+    resume = barrier();
+  let used = false;
+  const original = runtime.createQueryRunner.bind(runtime);
+  jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+    const runner = original(),
+      query = runner.query.bind(runner);
+    runner.query = async (...args: Parameters<QueryRunner['query']>) => {
+      const result = await query(...args);
+      if (!used && runner.isTransactionActive && matches(args[0])) {
+        used = true;
+        reached.release();
+        await resume.promise;
+      }
+      return result;
+    };
+    return runner;
+  });
+  return { reached: reached.promise, resume: resume.release };
+};
+describe('account lifecycle final core transaction', () => {
+  const methods = ['disconnect', 'transfer', 'deleteMany'] as const;
+  const invoke = (method: (typeof methods)[number]) =>
+    method === 'disconnect'
+      ? accounts.disconnect({ id: accountId, workspaceId: fixture.workspaceId })
+      : method === 'transfer'
+        ? accounts.transferOwnership({
+            fromUserWorkspaceId: memberId,
+            toUserWorkspaceId: randomUUID(),
+            workspaceId: fixture.workspaceId,
+          })
+        : accounts.deleteMany({
+            ids: [accountId],
+            workspaceId: fixture.workspaceId,
+          });
+  const setupCredentials = async () => {
+    await runtime.getRepository(ConnectedAccountEntity).update(accountId, {
+      accessToken: 'encrypted-fixture' as never,
+      refreshToken: 'encrypted-fixture' as never,
+      connectionParameters: {} as never,
+    });
+    await runtime.getRepository(MessageChannelEntity).update(channelId, {
+      webhookSubscriptionStatus: WebhookSubscriptionStatus.PENDING,
+    });
+    await runtime.getRepository(CalendarChannelEntity).insert({
+      id: randomUUID(),
+      workspaceId: fixture.workspaceId,
+      connectedAccountId: accountId,
+      isSyncEnabled: true,
+      webhookSubscriptionStatus: WebhookSubscriptionStatus.PENDING,
+    });
+  };
+  it.each(methods)(
+    'native unbound %s needs no ordinary provider effects',
+    async (method) => {
+      await setupCredentials();
+      await invoke(method);
+      for (const effect of Object.values(external))
+        expect(effect).not.toHaveBeenCalled();
+      if (method === 'deleteMany') {
+        expect(
+          await runtime
+            .getRepository(ConnectedAccountEntity)
+            .findOneBy({ id: accountId }),
+        ).toBeNull();
+        expect(
+          await runtime
+            .getRepository(MessageChannelEntity)
+            .findOneBy({ id: channelId }),
+        ).toBeNull();
+        expect(events.emitCustomBatchEvent).toHaveBeenCalledTimes(3);
+      } else {
+        const account = await runtime
+          .getRepository(ConnectedAccountEntity)
+          .findOneByOrFail({ id: accountId });
+        expect(account.archivedAt).not.toBeNull();
+        expect(account.accessToken).toBeNull();
+        expect(await readChannel()).toMatchObject({
+          isSyncEnabled: false,
+          webhookSubscriptionStatus: WebhookSubscriptionStatus.EXPIRED,
+        });
+        const [calendar] = await runtime
+          .getRepository(CalendarChannelEntity)
+          .findBy({ connectedAccountId: accountId });
+        expect(calendar).toMatchObject({
+          isSyncEnabled: false,
+          webhookSubscriptionStatus: WebhookSubscriptionStatus.EXPIRED,
+        });
+      }
+    },
+  );
+  it.each(methods)(
+    'bootstrap first rejects %s after its initial unowned read',
+    async (method) => {
+      await setupCredentials();
+      const reached = barrier(),
+        resume = barrier();
+      const first = capture(
+        bootstrap(async () => {
+          reached.release();
+          await resume.promise;
+        }),
+      );
+      await reached.promise;
+      const second = capture(invoke(method));
+      try {
+        await blocked();
+      } finally {
+        resume.release();
+      }
+      expect(await first).toHaveProperty('value');
+      expect(await second).toMatchObject({
+        error: { message: expect.stringContaining('OMNI_OWNED_ACCOUNT') },
+      });
+      expect(
+        (
+          await runtime
+            .getRepository(ConnectedAccountEntity)
+            .findOneByOrFail({ id: accountId })
+        ).accessToken,
+      ).toBe('encrypted-fixture');
+      expect((await readChannel()).isSyncEnabled).toBe(true);
+      for (const effect of Object.values(external))
+        expect(effect).not.toHaveBeenCalled();
+      expect(events.emitCustomBatchEvent).not.toHaveBeenCalled();
+    },
+  );
+  it.each(methods)(
+    '%s first prevents a later bootstrap of archived/deleted account',
+    async (method) => {
+      await setupCredentials();
+      const pause = pauseLifecycleMutation((sql) =>
+        sql.startsWith('SELECT candidate.id FROM unnest'),
+      );
+      const first = capture(invoke(method));
+      await pause.reached;
+      const second = capture(bootstrap());
+      try {
+        await blocked();
+      } finally {
+        pause.resume();
+      }
+      expect(await first).toHaveProperty('value');
+      expect(await second).toMatchObject({
+        error: { message: 'Bootstrap native account/channel mismatch' },
+      });
+    },
+  );
+  it.each(methods)(
+    'ordinary mailbox %s still stops subscriptions',
+    async (method) => {
+      await setupCredentials();
+      await runtime
+        .getRepository(ConnectedAccountEntity)
+        .update(accountId, { provider: ConnectedAccountProvider.GOOGLE });
+      await invoke(method);
+      expect(external.message).toHaveBeenCalledWith(
+        channelId,
+        fixture.workspaceId,
+      );
+      expect(external.calendar).toHaveBeenCalledTimes(1);
+      expect(external.revoke).toHaveBeenCalledTimes(1);
+    },
+  );
+  it.each(methods)(
+    'retained legacy provider binding refuses %s before network',
+    async (method) => {
+      await setupCredentials();
+      await bootstrap();
+      await fixture.owner.query(
+        'UPDATE core."connectedAccount" SET provider=$2 WHERE id=$1',
+        [accountId, ConnectedAccountProvider.GOOGLE],
+      );
+      await expect(invoke(method)).rejects.toThrow('OMNI_OWNED_ACCOUNT');
+      for (const effect of Object.values(external))
+        expect(effect).not.toHaveBeenCalled();
+    },
+  );
+  it.each(['disconnect', 'transfer'] as const)(
+    'rolls back account credentials when %s channel write fails',
+    async (method) => {
+      await setupCredentials();
+      const original = runtime.createQueryRunner.bind(runtime);
+      jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+        const runner = original(),
+          query = runner.query.bind(runner);
+        runner.query = async (...args: Parameters<QueryRunner['query']>) => {
+          if (args[0].startsWith('UPDATE "core"."messageChannel"'))
+            throw new Error('fixture-channel-write-failed');
+          return query(...args);
+        };
+        return runner;
+      });
+      await expect(invoke(method)).rejects.toThrow(
+        'fixture-channel-write-failed',
+      );
+      expect(
+        await runtime
+          .getRepository(ConnectedAccountEntity)
+          .findOneByOrFail({ id: accountId }),
+      ).toMatchObject({
+        accessToken: 'encrypted-fixture',
+        archivedAt: null,
+        userWorkspaceId: memberId,
+      });
+      expect((await readChannel()).isSyncEnabled).toBe(true);
+    },
+  );
+  it('transfer refuses a stale custodian and rolls back the entire batch', async () => {
+    await setupCredentials();
+    const repo = runtime.getRepository(ConnectedAccountEntity),
+      find = repo.find.bind(repo),
+      newCustodian = randomUUID();
+    jest.spyOn(repo, 'find').mockImplementationOnce(async (options) => {
+      const found = await find(options);
+      await fixture.owner.query(
+        'UPDATE core."connectedAccount" SET "userWorkspaceId"=$2 WHERE id=$1',
+        [accountId, newCustodian],
+      );
+      return found;
+    });
+    await expect(invoke('transfer')).rejects.toThrow(
+      'CONNECTED_ACCOUNT_CUSTODIAN_CHANGED_RETRY',
+    );
+    expect(await repo.findOneByOrFail({ id: accountId })).toMatchObject({
+      userWorkspaceId: newCustodian,
+      accessToken: 'encrypted-fixture',
+      archivedAt: null,
+    });
+  });
+  it('provider hook may reenter metadata without holding a core fence/row lock', async () => {
+    await runtime.getRepository(ConnectedAccountEntity).update(accountId, {
+      applicationId: appId,
+      connectionProviderId: randomUUID(),
+    });
+    external.hooks.mockImplementationOnce(async () => {
+      await accounts.update({
+        id: accountId,
+        workspaceId: fixture.workspaceId,
+        data: { handle: 'hook-refreshed' },
+      });
+    });
+    await invoke('disconnect');
+    expect(external.hooks).toHaveBeenCalledTimes(1);
+    expect(
+      (
+        await runtime
+          .getRepository(ConnectedAccountEntity)
+          .findOneByOrFail({ id: accountId })
+      ).handle,
+    ).toBe('hook-refreshed');
+  });
+  it('mixed bulk delete refuses owned native records before ordinary effects', async () => {
+    await bootstrap();
+    const other = randomUUID();
+    await runtime.getRepository(ConnectedAccountEntity).insert({
+      id: other,
+      workspaceId: fixture.workspaceId,
+      provider: ConnectedAccountProvider.GOOGLE,
+      userWorkspaceId: memberId,
+      scope: 'USER',
+      handle: 'ordinary',
+    });
+    await expect(
+      accounts.deleteMany({
+        ids: [other, accountId],
+        workspaceId: fixture.workspaceId,
+      }),
+    ).rejects.toThrow('OMNI_OWNED_ACCOUNT');
+    expect(
+      await runtime
+        .getRepository(ConnectedAccountEntity)
+        .countBy({ workspaceId: fixture.workspaceId }),
+    ).toBe(2);
+    for (const effect of Object.values(external))
+      expect(effect).not.toHaveBeenCalled();
+  });
+  it('delete events use the locked child set after a hook reparents or creates channels', async () => {
+    const destination = randomUUID();
+    await runtime.getRepository(ConnectedAccountEntity).insert({
+      id: destination,
+      workspaceId: fixture.workspaceId,
+      provider: ConnectedAccountProvider.APP,
+      userWorkspaceId: memberId,
+      scope: 'USER',
+      handle: 'destination',
+    });
+    await runtime.getRepository(ConnectedAccountEntity).update(accountId, {
+      applicationId: appId,
+      connectionProviderId: randomUUID(),
+    });
+    let createdId: string | undefined;
+    external.hooks.mockImplementationOnce(async () => {
+      await channels.update({
+        id: channelId,
+        workspaceId: fixture.workspaceId,
+        data: { connectedAccountId: destination },
+      });
+      await bootstrap(async () => undefined, destination, channelId);
+      createdId = (await createChannel(accountId)).id;
+    });
+    await invoke('deleteMany');
+    expect(createdId).toBeDefined();
+    expect(events.emitCustomBatchEvent.mock.calls[0][1]).toEqual([
+      { messageChannelId: createdId },
+    ]);
+    expect(await readChannel()).toMatchObject({
+      id: channelId,
+      connectedAccountId: destination,
+    });
+    expect(
+      await runtime
+        .getRepository(MessageChannelEntity)
+        .findOneBy({ id: createdId }),
+    ).toBeNull();
+  });
+  it.each(['delete-first', 'reparent-first'] as const)(
+    'calendar concurrent reparent has truthful deletion event: %s',
+    async (order) => {
+      await setupCredentials();
+      const destination = randomUUID();
+      await runtime
+        .getRepository(ConnectedAccountEntity)
+        .insert({
+          id: destination,
+          workspaceId: fixture.workspaceId,
+          provider: ConnectedAccountProvider.GOOGLE,
+          userWorkspaceId: memberId,
+          scope: 'USER',
+          handle: 'other',
+        });
+      const [calendar] = await runtime
+        .getRepository(CalendarChannelEntity)
+        .findBy({ connectedAccountId: accountId });
+      const service = new CalendarChannelMetadataService(
+        runtime.getRepository(CalendarChannelEntity),
+        accounts,
+        events as never,
+      );
+      const reparent = () =>
+        service.update({
+          id: calendar.id,
+          workspaceId: fixture.workspaceId,
+          data: { connectedAccountId: destination },
+        });
+      if (order === 'delete-first') {
+        const pause = pauseLifecycleMutation((sql) =>
+          sql.startsWith('SELECT id FROM core."calendarChannel"'),
+        );
+        const first = capture(invoke('deleteMany'));
+        await pause.reached;
+        const second = capture(reparent());
+        try {
+          await blocked();
+        } finally {
+          pause.resume();
+        }
+        expect(await first).toHaveProperty('value');
+        expect(await second).toHaveProperty('error');
+        expect(events.emitCustomBatchEvent.mock.calls[1][1]).toEqual([
+          { calendarChannelId: calendar.id },
+        ]);
+        expect(
+          await runtime
+            .getRepository(CalendarChannelEntity)
+            .findOneBy({ id: calendar.id }),
+        ).toBeNull();
+      } else {
+        await reparent();
+        await invoke('deleteMany');
+        expect(events.emitCustomBatchEvent.mock.calls[1][1]).toEqual([]);
+        expect(
+          await runtime
+            .getRepository(CalendarChannelEntity)
+            .findOneByOrFail({ id: calendar.id }),
+        ).toMatchObject({ connectedAccountId: destination });
+      }
+    },
+  );
+  it('delete events observe committed removal on a second connection', async () => {
+    const observed: Promise<unknown>[] = [];
+    events.emitCustomBatchEvent.mockImplementation(() => {
+      observed.push(
+        fixture.owner.query(
+          'SELECT id FROM core."connectedAccount" WHERE id=$1',
+          [accountId],
+        ),
+      );
+    });
+    await invoke('deleteMany');
+    expect(observed).toHaveLength(3);
+    expect(await Promise.all(observed)).toEqual([[], [], []]);
+  });
+  it('unknown delete commit emits no confirmed deletion events', async () => {
+    const original = runtime.createQueryRunner.bind(runtime);
+    jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+      const runner = original(),
+        commit = runner.commitTransaction.bind(runner);
+      runner.commitTransaction = async () => {
+        await commit();
+        throw new Error('lost-delete-ack');
+      };
+      return runner;
+    });
+    await expect(invoke('deleteMany')).rejects.toThrow('OUTCOME_UNKNOWN');
+    expect(events.emitCustomBatchEvent).not.toHaveBeenCalled();
+    expect(
+      await fixture.owner.query(
+        'SELECT id FROM core."connectedAccount" WHERE id=$1',
+        [accountId],
+      ),
+    ).toEqual([]);
+  });
 });

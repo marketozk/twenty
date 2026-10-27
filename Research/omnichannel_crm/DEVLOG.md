@@ -1456,3 +1456,32 @@ Skills: ранее применённые ai-dev-workflow (bounded independent r
 behavioral-guardrails и server-schrodinger; новые skills не заявляются.
 
 LOG053 опубликован: d4d60d5d2479130d7591482bff5a6316565b4a16; GitHub remote проверен API. Linear description/comment 34d19f8a-8f5e-4e77-a3f6-a9838aafc389 и11 состояний проекта прочитаны обратно: совпали. [Публикация](implementation/log053/publication.json).
+
+
+## LOG-054 — account lifecycle final DB ownership (28.10.2026)
+
+Disconnect/transfer/deleteMany используют strict fresh transaction owner LOG052:
+shared native fence → ordered account FOR UPDATE → persisted ownership → final DB
+mutation. Native APP/null-ID не вызывает обычных provider adapters. Ordinary hooks
+остаются вне transaction, проверена reentry в metadata без deadlock. Transfer
+сверяет from custodian и affected count; ошибка откатывает весь DB batch. Delete
+собирает актуальные child IDs после hooks; channel/calendar rows FOR UPDATE
+удерживаются до cascade DELETE. Events только после подтверждённого commit.
+
+224 tests/7 suites +26 guards=250 PASS.25 новых PG cases:
+оба порядка bootstrap/lifecycle, native/ordinary/legacy/mixed behavior, rollback,
+custodian race, hook reentry, reparent/create child во время hooks, actual calendar
+concurrent reparent, second-connection postcommit visibility, lost ACK no success.
+Typecheck230 roots:197/197,0new/changed-code;7 migration sources unchanged.
+Initial6 failures были test interception: first QueryRunner принадлежал чтению до
+transaction. Test barriers теперь ловят реальную active transaction; fault injection
+действительно достигает final DB writer. Review нашёл calendar reparent после
+SELECT — добавлены child locks и оба порядка actual-owner PG regression.
+
+[Evidence](implementation/log054/README.md). Whole ROB-764 не закрыт. Остались
+[background metadata writers](implementation/rob764-metadata-writer-inventory.md) и resolver side
+effects; существующие ordinary remote actions не становятся транзакционными.
+Network effect уже мог выполниться до локального отказа: не повторять автоматически.
+Полный Claude pass/full server typecheck не заявляются. Демо/SaleBot/transports без
+изменений, GitHub Actions не использовался. Применены прежние ai-dev-workflow,
+behavioral-guardrails/server-schrodinger; scoped independent review read-only.

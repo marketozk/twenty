@@ -1,0 +1,9 @@
+{
+  "baseCommit": "1df6736b6bb15b135b94eb5c31e335d62537c256",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/metadata-modules/connected-account/connected-account-metadata.service.ts": "189e4a22d3e6d45fd25e1b38680b575ce8c2515e95e3225961f360dfdd516b1e",
+    "packages/twenty-server/test/fork-migration/omni-metadata-transaction.postgres-spec.ts": "31a41d5199fe71ae56b6bbac87d671bb0198ad6ad44e5260d6808acfa7049e97"
+  }
+}
