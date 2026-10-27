@@ -1156,3 +1156,5 @@ Pristine/readback postconditions проверены реальным audit trigg
 kind guards проверены на всех трёх message kinds и accepted/retryable/processing
 sent receipts. Scoped review без блокеров; ai-dev-workflow, behavioral-guardrails,
 server-schrodinger. Продолжаем LOG045, не закрывая ROB-764 по наличию receipt.
+
+Публикация LOG-044: код 79db08ce9146db3eea7b56095a6ef9362a3af118, remote проверен GitHub API. Описание ROB-764 и комментарий f9a74d06-42ef-4976-a57a-aba57f82da49 прочитаны обратно; все 11 статусов сохранены. Продолжаем LOG-045.
