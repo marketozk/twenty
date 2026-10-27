@@ -1375,3 +1375,5 @@ Scoped review предложил сохранить исходный unknown out
 Оставшийся риск metadata check/write подтверждён по коду. archivedAt не подходит как
 самостоятельная необратимая резервация: штатный reconnect его снимает. Следующая
 порция закроет чистые DB mutations, затем network lifecycle без длинной transaction.
+
+Публикация LOG-051: код 52c4677015184002463aeb87859c9c14f1e26712, remote проверен GitHub API. Описание ROB-764 и комментарий 73c43b11-270b-4341-8b26-a85fad977a7c прочитаны обратно; все11 статусов сохранены. Продолжаем metadata transaction guards.
