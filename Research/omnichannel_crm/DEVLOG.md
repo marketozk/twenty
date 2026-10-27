@@ -936,3 +936,6 @@ review не заявляется. Это point-in-time guards, не TOCTOU fence
 Skills: ai-dev-workflow (раздельные исследования/реализация/review),
 behavioral-guardrails (пределы), server-schrodinger (лимитированные проверки).
 Демо прежнее, Actions не запускались. Продолжаем first Conversation/Thread apply.
+
+
+Публикация LOG-035: `0eccf952d91f42eec78d272230be75b1e54b5f7a`; remote SHA проверен API. Описание ROB-764 и комментарий `f62440c4-0a1f-4666-9f6c-beb0f20fcbb1` прочитаны обратно, все11 статусов прежние. [Метаданные](implementation/log035/publication.json). Продолжаем LOG-036.

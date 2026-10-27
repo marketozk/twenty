@@ -57,3 +57,6 @@ scheduler entry points не объявляются закрытыми. Reset cal
 Новые проверки не создают production ACL и не активируют реальные коннекторы.
 Следующий шаг — первое атомарное Conversation/Thread при receipt apply и recovery;
 ROB-764 In Progress, T05 целиком не завершён.
+
+
+Публикация LOG-035: `0eccf952d91f42eec78d272230be75b1e54b5f7a`; remote SHA проверен API. Описание ROB-764 и комментарий `f62440c4-0a1f-4666-9f6c-beb0f20fcbb1` прочитаны обратно, все11 статусов прежние. [Метаданные](publication.json). Продолжаем LOG-036.
