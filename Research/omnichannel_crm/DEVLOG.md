@@ -1342,3 +1342,5 @@ metadataId теперь берётся из уже загруженного flat
 RESTRICT и гонку metadata check/write с первым bootstrap; эти пути ещё не закрыты.
 Нельзя считать ни ROB-764, ни полный аудит/ACL готовыми. Исправлена неточность
 матрицы приёмки: identity/Person relation уже есть, explicit target projector ещё нет.
+
+Публикация LOG-050: код 6a4cc84b40683d19f82dff362d0dc2373a887c17, remote проверен GitHub API. Описание ROB-764 и комментарий c3ebd531-91b3-4c8a-be8f-6719fbc1b7a6 прочитаны обратно; все 11 статусов сохранены. Продолжаем workspace lifecycle guard.
