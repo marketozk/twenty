@@ -79,3 +79,11 @@ activation/admission согласно spec §3; текущие шесть таб
 inbox/outbox/recovery и email regression. ROB-764 остаётся In Progress.
 Down проверен только для пустых новых таблиц; применение его к данным удаляет
 их и не является разрешённым автоматическим production rollback.
+
+## Публикация
+
+Код `161269d6b166cc4fe34ea85fefc47162342381d8` отправлен в текущую ветку.
+[Отчёт ROB-764](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-a5c2ec75).
+Описание и единственный комментарий прочитаны обратно; статусы11 задач сохранены.
+GitHub CI не стартовал из-за billing block аккаунта; причина подтверждена
+аннотациями обоих jobs. [Метаданные и аннотации](publication.json).

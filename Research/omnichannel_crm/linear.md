@@ -26,6 +26,15 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 
 ## Сверка текущего состояния — 27.10.2026
 
+LOG-024 / ROB-764 In Progress: schema-only порция из шести таблиц сообщений,
+receipts/commands/events/targets/revisions опубликована. Прошли138 тестов,
+focused typecheck49 файлов и native upgrade/replay; финальный generator diff
+пустой. Остаток схемы — roots/consumer receipts/dispatch/budgets/activation/
+admission, затем domain writers/ingress/outbox. Новый полный image не собирался,
+демо не менялось. [Проверки](implementation/log024/README.md).
+
+### Предыдущая порция
+
 LOG-022 / ROB-764 In Progress: добавлены минимальный audit writer, две таблицы
 и атомарный bootstrap неактивного подключения с авторизацией и безопасным replay.
 113 выполненных тестов, focused typecheck и официальный image build прошли;
@@ -73,3 +82,8 @@ ROB-765 уточнён по существующему audit writer и оста�
 описаний и неизменные статусы проверены чтением; дубли задач не создавались.
 [Отчёт](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-a3d32f51) ·
 [Метаданные](implementation/publication-log023.json). Код и сервисы не менялись.
+
+Публикация LOG-024: `161269d6b166cc4fe34ea85fefc47162342381d8`;
+[отчёт ROB-764](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-a5c2ec75).
+Описание/единственный комментарий проверены чтением, статусы11 задач сохранены.
+Оба CI job вновь заблокированы billing до запуска. [Метаданные](implementation/log024/publication.json).

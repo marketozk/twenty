@@ -1,0 +1,43 @@
+{
+  "commit": "161269d6b166cc4fe34ea85fefc47162342381d8",
+  "issue": "ROB-764",
+  "descriptionReadBack": true,
+  "commentReadBack": true,
+  "state": "In Progress",
+  "projectStatesReadBack": {
+    "ROB-762": "Done",
+    "ROB-763": "Done",
+    "ROB-764": "In Progress",
+    "ROB-765": "Backlog",
+    "ROB-766": "Backlog",
+    "ROB-767": "Backlog",
+    "ROB-768": "Backlog",
+    "ROB-769": "Backlog",
+    "ROB-770": "Backlog",
+    "ROB-771": "Backlog",
+    "ROB-772": "Done"
+  },
+  "commentId": "a5c2ec75-f163-4d9a-b6a8-fe6ef9b14608",
+  "githubChecks": [
+    {
+      "conclusion": "failure",
+      "html_url": "https://github.com/marketozk/twenty/actions/runs/40484390118/job/122122415138",
+      "id": 122122415138,
+      "name": "postgres-transactions",
+      "status": "completed",
+      "failureAnnotations": [
+        "The job was not started because your account is locked due to a billing issue."
+      ]
+    },
+    {
+      "conclusion": "failure",
+      "html_url": "https://github.com/marketozk/twenty/actions/runs/40484390161/job/122122413877",
+      "id": 122122413877,
+      "name": "dependency-guard",
+      "status": "completed",
+      "failureAnnotations": [
+        "The job was not started because your account is locked due to a billing issue."
+      ]
+    }
+  ]
+}

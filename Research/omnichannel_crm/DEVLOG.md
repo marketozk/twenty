@@ -541,4 +541,10 @@ server-schrodinger — read-only preflight, ограниченная тесто�
 
 Следующий шаг: ранние roots/consumer receipts/dispatch plans/reply budgets и
 activation/admission, затем ingress/inbox/outbox/recovery. ROB-764 In Progress,
-ROB-765–771 Backlog. Публикация и Linear/CI read-back фиксируются после push.
+ROB-765–771 Backlog.
+
+Код опубликован: `161269d6b166cc4fe34ea85fefc47162342381d8` в
+origin/codex/omnichannel-requirements. Описание ROB-764 и единственный
+[отчёт LOG-024](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-a5c2ec75)
+прочитаны обратно; статусы11 задач сохранены. Оба GitHub job не стартовали из-за
+billing block, подтверждено аннотациями. [Метаданные](implementation/log024/publication.json).
