@@ -1,0 +1,13 @@
+{
+  "baseCommit": "ea628a803b10504f2487fa97f9215476d25d07b6",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/messaging/blocklist-manager/jobs/messaging-blocklist-item-delete-messages.job.ts": "bb2fca3ccdefc9a30971df71993a70ad2d677e1cec422d9e1a09adf1e48c5856",
+    "packages/twenty-server/src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service.ts": "3da3d854b4cbdaa266c5fe33e0f0b807d4db88fb4c29a373892f786d9b85f657",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-delete-folder-messages.service.ts": "e63cd4e5b658ca2f7b33831107b86c1189fbe272c2e94d3346877a3695227218",
+    "packages/twenty-server/test/fork-migration/omni-native-message.fixture.ts": "698cd4aaaf311d5a4ec31d490e11d5093dc908882fcae673b61001be788064e5",
+    "packages/twenty-server/test/fork-migration/omni-native-cleanup.fixture.ts": "17b735d32f857956508b2277e080c0f21a6bf1d4b632e87bd4321f41ee8eb294",
+    "packages/twenty-server/test/fork-migration/omni-native-cleanup.postgres-spec.ts": "9212cd99414f33d860ec87c80ac00759c71a04d699dd172f6c7484c0b220d71e"
+  }
+}

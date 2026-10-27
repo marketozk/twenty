@@ -54,15 +54,17 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-028 / ROB-764 In Progress: audit теперь может использовать тот же native
-executor; добавлены strict lifecycle/unknown COMMIT и adapters событий/ключей.
-357 тестов прошли; сравнительная проверка типов не выявила новых диагностик,
-122 baseline diagnostics сохраняются. [Проверки](Research/omnichannel_crm/implementation/log028/README.md).
-Следующий шаг — actual native Message integration, ownership и атомарные
-Message+audit+event, затем inbox/outbox/recovery. Scheduler, HTTP,
-коннекторы и чаты ещё не подключены; applied не выставляется без Message.
-Демо прежнее. GitHub Actions не используем как gate; проверки в своей среде
-перед commit/push, два наших workflows manual-only.
+LOG-034 / ROB-764 In Progress: штатные cleanup, blocklist и удаление сообщений
+папки сохраняют omni-owned Message/Thread/связи. Проверяются binding/link/
+conversation, включая пустые диалоги и soft-deleted связи; обычная почта удаляется
+со штатными FK-каскадами. Пагинация проходит защищённую страницу без зацикливания.
+583 Jest +25 guards =608 PASS; новые25 PG, повторены25 после уточнения fixture.
+Typecheck124roots:0 новых/0 changed-code,136 baseline; все5 миграций прежние.
+[Доказательства и границы](Research/omnichannel_crm/implementation/log034/README.md).
+Далее — защита metadata lifecycle аккаунтов/каналов/папок до внешних эффектов,
+затем остальные domain apply, inbox/outbox/recovery. Lifecycle races и полный
+T05/ROB-764 ещё не закрыты. HTTP/own ACL/UI/живые коннекторы не подключены.
+Демо прежнее; GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы минимальный аудит и атомарное создание
 inactive binding/disabled policy v0 с receipt, текущей проверкой прав через

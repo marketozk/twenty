@@ -1,0 +1,25 @@
+test_alias_and_type_only_import_are_conservative_edges (test_enterprise_dependencies.DependencyGuardTest.test_alias_and_type_only_import_are_conservative_edges) ... ok
+test_alias_removal_cannot_disguise_local_import_as_external (test_enterprise_dependencies.DependencyGuardTest.test_alias_removal_cannot_disguise_local_import_as_external) ... ok
+test_comments_and_string_text_do_not_create_edges (test_enterprise_dependencies.DependencyGuardTest.test_comments_and_string_text_do_not_create_edges) ... ok
+test_compact_manifest_retains_direct_edges_and_hashes_transitive_graph (test_enterprise_dependencies.DependencyGuardTest.test_compact_manifest_retains_direct_edges_and_hashes_transitive_graph) ... ok
+test_computed_dynamic_dependency_is_rejected (test_enterprise_dependencies.DependencyGuardTest.test_computed_dynamic_dependency_is_rejected) ... ok
+test_cycle_reaches_enterprise_without_recursion_error (test_enterprise_dependencies.DependencyGuardTest.test_cycle_reaches_enterprise_without_recursion_error) ... ok
+test_direct_import_is_rejected (test_enterprise_dependencies.DependencyGuardTest.test_direct_import_is_rejected) ... ok
+test_escaped_import_literal_cannot_hide_target (test_enterprise_dependencies.DependencyGuardTest.test_escaped_import_literal_cannot_hide_target) ... ok
+test_existing_import_is_not_permission_for_new_source (test_enterprise_dependencies.DependencyGuardTest.test_existing_import_is_not_permission_for_new_source) ... ok
+test_generic_di_lookup_is_inventoried (test_enterprise_dependencies.DependencyGuardTest.test_generic_di_lookup_is_inventoried) ... ok
+test_literal_dynamic_import_and_require_are_edges (test_enterprise_dependencies.DependencyGuardTest.test_literal_dynamic_import_and_require_are_edges) ... ok
+test_nested_template_import_is_opaque (test_enterprise_dependencies.DependencyGuardTest.test_nested_template_import_is_opaque) ... ok
+test_new_path_from_already_tainted_source_is_rejected (test_enterprise_dependencies.DependencyGuardTest.test_new_path_from_already_tainted_source_is_rejected) ... ok
+test_new_unresolved_local_import_is_rejected (test_enterprise_dependencies.DependencyGuardTest.test_new_unresolved_local_import_is_rejected) ... ok
+test_nonliteral_di_is_not_silently_ignored (test_enterprise_dependencies.DependencyGuardTest.test_nonliteral_di_is_not_silently_ignored) ... ok
+test_reducing_existing_dynamic_dependency_count_is_allowed (test_enterprise_dependencies.DependencyGuardTest.test_reducing_existing_dynamic_dependency_count_is_allowed) ... ok
+test_removed_license_marker_does_not_remove_protection (test_enterprise_dependencies.DependencyGuardTest.test_removed_license_marker_does_not_remove_protection) ... ok
+test_safe_new_module_is_allowed (test_enterprise_dependencies.DependencyGuardTest.test_safe_new_module_is_allowed) ... ok
+test_transitive_barrel_and_di_provider_are_rejected (test_enterprise_dependencies.DependencyGuardTest.test_transitive_barrel_and_di_provider_are_rejected) ... ok
+test_workspace_package_barrel_resolves (test_enterprise_dependencies.DependencyGuardTest.test_workspace_package_barrel_resolves) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 0.003s
+
+OK

@@ -879,3 +879,27 @@ GitHub Actions не используется. Продолжаем native cleanu
 
 
 Публикация LOG-033: `ab0a69aa1de352a9b2d12132245d77ed355ea4db`; remote SHA проверен API. Описание ROB-764 и комментарий `024f4cee-eecc-4f2f-b857-0752b76ed7a3` прочитаны обратно, все11 статусов прежние. [Метаданные](implementation/log033/publication.json). Продолжаем LOG-034.
+
+
+## LOG-034 — 27.10.2026: native cleanup ownership
+
+Защищены три центральных cleaner entry, blocklist delete и folder junction path.
+Пагинация по id продвигается до фильтрации; workspace context проверяется.
+Реальные PostgreSQL tests используют native repos и FK actions из metadata.
+Первый прогон выявил две ошибки тестового seed: повторные associations нарушали
+штатный unique index. Seed исправлен отдельными Message в общем owned Thread;
+ограничения БД сохранены. Исправлены два типа fixture без runtime suppression.
+
+583 Jest/24 suites +25 guards =608 PASS. После независимого замечания fixture
+перестаёт навязывать strict-mode production cleaner: передаёт options как есть;
+все25 cleanup tests повторно PASS. Typecheck124roots:0new/0changed,136baseline.
+Пять миграций и dependency guard baseline неизменны. Scoped independent review
+без блокеров; новый полный Claude/architecture pass не заявляется.
+[Доказательства](implementation/log034/README.md).
+
+Метаданные папок/аккаунтов/каналов и lifecycle races ещё впереди. В частности,
+caller после folder cleanup пока может удалить core folder, хотя защищённые
+junctions сохранены. Полный T05/ROB-764 не завершён. Демо не менялось.
+Skills: ai-dev-workflow (разделённые implementation/review), behavioral-guardrails
+(точные границы), server-schrodinger (ограниченные изолированные проверки).
+GitHub Actions не использовался. Продолжаем LOG-035 lifecycle guards.

@@ -43,12 +43,15 @@ type TableName =
   | 'messageThreadTarget'
   | 'calendarEvent'
   | 'calendarEventParticipant'
-  | 'calendarEventTarget';
+  | 'calendarEventTarget'
+  | 'blocklist'
+  | 'messageChannelMessageAssociationMessageFolder';
 
 export const createOmniNativeMessageFixture = (
   options: {
     additionalTables?: readonly TableName[];
     coreSchema?: 'audit' | 'fork';
+    useStandardForeignKeyActions?: boolean;
   } = {},
 ) => {
   const tableNames = [
@@ -282,6 +285,24 @@ export const createOmniNativeMessageFixture = (
           );
 
           if (!target || !relation.joinColumnName) continue;
+          const relationMetadata = Object.values(
+            flatFieldMetadataMaps.byUniversalIdentifier,
+          ).find((field) => field?.id === relation.fieldMetadataId);
+          const settings = relationMetadata?.settings;
+          const action =
+            settings && 'onDelete' in settings ? settings.onDelete : undefined;
+          const deleteActions = {
+            CASCADE: 'CASCADE',
+            SET_NULL: 'SET NULL',
+            RESTRICT: 'RESTRICT',
+            NO_ACTION: 'NO ACTION',
+          } as const;
+          const onDelete =
+            options.useStandardForeignKeyActions &&
+            typeof action === 'string' &&
+            action in deleteActions
+              ? deleteActions[action as keyof typeof deleteActions]
+              : undefined;
           await new WorkspaceSchemaForeignKeyManagerService().createForeignKey({
             queryRunner,
             schemaName,
@@ -290,6 +311,7 @@ export const createOmniNativeMessageFixture = (
               columnName: relation.joinColumnName,
               referencedTableName: target.nameSingular,
               referencedColumnName: 'id',
+              onDelete,
             },
           });
         }

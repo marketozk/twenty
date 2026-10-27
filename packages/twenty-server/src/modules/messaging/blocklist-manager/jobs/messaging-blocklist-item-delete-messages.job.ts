@@ -1,9 +1,9 @@
 import { Scope } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
 import { type ObjectRecordCreateEvent } from 'twenty-shared/database-events';
 import { isDefined } from 'twenty-shared/utils';
-import { And, Any, ILike, In, Not, Or, Repository } from 'typeorm';
+import { And, Any, DataSource, ILike, In, Not, Or, Repository } from 'typeorm';
 
 import { Process } from 'src/engine/core-modules/message-queue/decorators/process.decorator';
 import { Processor } from 'src/engine/core-modules/message-queue/decorators/processor.decorator';
@@ -20,6 +20,7 @@ import { BLOCKLISTED_PARTICIPANT_ROLES } from 'src/modules/messaging/blocklist-m
 import { type MessageChannelMessageAssociationWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-channel-message-association.workspace-entity';
 import { type MessageParticipantWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-participant.workspace-entity';
 import { MessagingMessageCleanerService } from 'src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service';
+import { findOmniOwnedMessageIds } from 'src/modules/omnichannel/services/find-omni-owned-native-record-ids';
 import { type WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
 
 export type BlocklistItemDeleteMessagesJobData = WorkspaceEventBatch<
@@ -40,6 +41,8 @@ export class BlocklistItemDeleteMessagesJob {
     private readonly connectedAccountRepository: Repository<ConnectedAccountEntity>,
     @InjectRepository(UserWorkspaceEntity)
     private readonly userWorkspaceRepository: Repository<UserWorkspaceEntity>,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
   ) {}
 
   @Process(BlocklistItemDeleteMessagesJob.name)
@@ -50,6 +53,9 @@ export class BlocklistItemDeleteMessagesJob {
 
     await this.workspaceOrmManager.executeInWorkspaceContext(
       async () => {
+        if (this.workspaceOrmManager.getWorkspaceId() !== workspaceId) {
+          throw new Error('OMNI_NATIVE_OWNERSHIP_WORKSPACE_MISMATCH');
+        }
         const blocklistItemIds = data.events.map(
           (eventPayload) => eventPayload.recordId,
         );
@@ -233,8 +239,27 @@ export class BlocklistItemDeleteMessagesJob {
         continue;
       }
 
+      const ownedMessageIds = await findOmniOwnedMessageIds(
+        {
+          executeRawQuery: (sql, parameters) =>
+            this.dataSource.query(sql, parameters),
+        },
+        this.workspaceOrmManager.getWorkspaceId(),
+        messageChannelMessageAssociationsToDelete.map(
+          (association) => association.messageId,
+        ),
+      );
+      const ordinaryAssociations =
+        messageChannelMessageAssociationsToDelete.filter(
+          (association) => !ownedMessageIds.has(association.messageId),
+        );
+
+      if (ordinaryAssociations.length === 0) {
+        continue;
+      }
+
       await messageChannelMessageAssociationRepository.delete(
-        messageChannelMessageAssociationsToDelete.map(({ id }) => id),
+        ordinaryAssociations.map(({ id }) => id),
       );
     }
   }

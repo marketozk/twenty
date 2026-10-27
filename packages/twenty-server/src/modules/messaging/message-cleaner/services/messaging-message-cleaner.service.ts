@@ -11,6 +11,10 @@ import { ParticipantTargetReconciliationService } from 'src/modules/match-partic
 import { type MessageChannelMessageAssociationWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-channel-message-association.workspace-entity';
 import { type MessageThreadWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-thread.workspace-entity';
 import { type MessageWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message.workspace-entity';
+import {
+  findOmniOwnedMessageIds,
+  findOmniOwnedMessageThreadIds,
+} from 'src/modules/omnichannel/services/find-omni-owned-native-record-ids';
 
 const ORPHAN_CLEANUP_PAGE_SIZE = 500;
 
@@ -37,6 +41,7 @@ export class MessagingMessageCleanerService {
       async () => {
         await this.workspaceOrmManager.runInWorkspaceTransaction(
           async (transactionScope) => {
+            this.assertWorkspaceScope(workspaceId, transactionScope);
             const messageRepository =
               transactionScope.getRepository<MessageWorkspaceEntity>(
                 'message',
@@ -57,13 +62,23 @@ export class MessagingMessageCleanerService {
               messageExternalIds,
               500,
             )) {
-              const associationsToDelete =
+              const associations =
                 await messageChannelMessageAssociationRepository.find({
                   where: {
                     messageExternalId: In(messageExternalIdsChunk),
                     messageChannelId,
                   },
                 });
+
+              const ownedMessageIds = await findOmniOwnedMessageIds(
+                transactionScope,
+                workspaceId,
+                associations.map(({ messageId }) => messageId),
+              );
+              const associationsToDelete = associations.filter(
+                ({ messageId }) =>
+                  !ownedMessageIds.has(messageId.toLowerCase()),
+              );
 
               if (associationsToDelete.length <= 0) {
                 continue;
@@ -85,11 +100,17 @@ export class MessagingMessageCleanerService {
 
               const orphanMessageIds = await this.filterOrphans(
                 candidateMessageIds,
-                (messageIds) =>
-                  this.findReferencedMessageIds(
+                async (messageIds) => [
+                  ...(await this.findReferencedMessageIds(
                     messageChannelMessageAssociationRepository,
                     messageIds,
-                  ),
+                  )),
+                  ...(await findOmniOwnedMessageIds(
+                    transactionScope,
+                    workspaceId,
+                    messageIds,
+                  )),
+                ],
               );
 
               if (orphanMessageIds.length <= 0) {
@@ -112,8 +133,17 @@ export class MessagingMessageCleanerService {
 
               const orphanThreadIds = await this.filterOrphans(
                 candidateThreadIds,
-                (threadIds) =>
-                  this.findReferencedThreadIds(messageRepository, threadIds),
+                async (threadIds) => [
+                  ...(await this.findReferencedThreadIds(
+                    messageRepository,
+                    threadIds,
+                  )),
+                  ...(await findOmniOwnedMessageThreadIds(
+                    transactionScope,
+                    workspaceId,
+                    threadIds,
+                  )),
+                ],
               );
 
               if (orphanThreadIds.length > 0) {
@@ -150,25 +180,46 @@ export class MessagingMessageCleanerService {
       async () => {
         await this.workspaceOrmManager.runInWorkspaceTransaction(
           async (transactionScope) => {
+            this.assertWorkspaceScope(workspaceId, transactionScope);
             const messageChannelMessageAssociationRepository =
               transactionScope.getRepository<MessageChannelMessageAssociationWorkspaceEntity>(
                 'messageChannelMessageAssociation',
                 { shouldBypassPermissionChecks: true },
               );
 
+            let cursor: string | undefined;
+
             for (;;) {
               const associations =
                 await messageChannelMessageAssociationRepository.find({
-                  where: { messageChannelId },
+                  where: {
+                    messageChannelId,
+                    ...(isDefined(cursor) ? { id: MoreThan(cursor) } : {}),
+                  },
+                  order: { id: 'ASC' },
                   take: ORPHAN_CLEANUP_PAGE_SIZE,
-                  select: { id: true },
+                  select: { id: true, messageId: true },
                 });
 
               if (associations.length === 0) {
                 break;
               }
 
-              const ids = associations.map(({ id }) => id);
+              // Protected rows remain, so progress must follow the full page.
+              cursor = associations[associations.length - 1].id;
+              const ownedMessageIds = await findOmniOwnedMessageIds(
+                transactionScope,
+                workspaceId,
+                associations.map(({ messageId }) => messageId),
+              );
+              const ids = associations
+                .filter(
+                  ({ messageId }) =>
+                    !ownedMessageIds.has(messageId.toLowerCase()),
+                )
+                .map(({ id }) => id);
+
+              if (ids.length === 0) continue;
 
               this.logger.log(
                 `WorkspaceId: ${workspaceId} Deleting ${ids.length} message channel message associations for channel ${messageChannelId}`,
@@ -191,6 +242,7 @@ export class MessagingMessageCleanerService {
       async () => {
         await this.workspaceOrmManager.runInWorkspaceTransaction(
           async (transactionScope) => {
+            this.assertWorkspaceScope(workspaceId, transactionScope);
             const messageThreadRepository =
               transactionScope.getRepository<MessageThreadWorkspaceEntity>(
                 'messageThread',
@@ -246,12 +298,17 @@ export class MessagingMessageCleanerService {
                 );
               },
               (pageIds) =>
-                this.filterOrphans(pageIds, (ids) =>
-                  this.findReferencedMessageIds(
+                this.filterOrphans(pageIds, async (ids) => [
+                  ...(await this.findReferencedMessageIds(
                     messageChannelMessageAssociationRepository,
                     ids,
-                  ),
-                ),
+                  )),
+                  ...(await findOmniOwnedMessageIds(
+                    transactionScope,
+                    workspaceId,
+                    ids,
+                  )),
+                ]),
             );
 
             await this.deleteOrphansByKeyset(
@@ -267,9 +324,17 @@ export class MessagingMessageCleanerService {
               },
               (ids) => messageThreadRepository.delete(ids),
               (pageIds) =>
-                this.filterOrphans(pageIds, (ids) =>
-                  this.findReferencedThreadIds(messageRepository, ids),
-                ),
+                this.filterOrphans(pageIds, async (ids) => [
+                  ...(await this.findReferencedThreadIds(
+                    messageRepository,
+                    ids,
+                  )),
+                  ...(await findOmniOwnedMessageThreadIds(
+                    transactionScope,
+                    workspaceId,
+                    ids,
+                  )),
+                ]),
             );
           },
         );
@@ -277,6 +342,18 @@ export class MessagingMessageCleanerService {
       authContext,
       { lite: true },
     );
+  }
+
+  private assertWorkspaceScope(
+    workspaceId: string,
+    transactionScope: { workspaceId: string },
+  ): void {
+    if (
+      transactionScope.workspaceId !== workspaceId ||
+      this.workspaceOrmManager.getWorkspaceId() !== workspaceId
+    ) {
+      throw new Error('OMNI_NATIVE_OWNERSHIP_WORKSPACE_MISMATCH');
+    }
   }
 
   private async findReferencedMessageIds(

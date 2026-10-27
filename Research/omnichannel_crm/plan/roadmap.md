@@ -1,17 +1,15 @@
 # Дорожная карта проекта
 
-LOG-033 / ROB-764 In Progress: реальный atomic history receipt apply сохраняет
-Message + participant с существующей Person, Link/Revision, DomainEvent,
-suppressed root/dispatch, audit и applied receipt одной строгой транзакцией.
-Поддержан qualified incoming complete text history_import, существующие
-Conversation/Identity/Person, current generation и disabled policy v0; current
-authorizer обязателен. Повторы/ошибки/unknown COMMIT проверены, автоэффектов нет.
-558 Jest +25 guards =583 PASS; новые33 PG cases. Typecheck119roots:0 новых/
-0 в изменённом коде;136 baseline, включая1 в неизменённом старом методе.
-[Доказательства и границы](../implementation/log033/README.md).
-Следом — cleanup/lifecycle ownership guards, затем остальные domain apply,
-inbox/outbox/recovery. Live/new-conversation/Person/edit/delete/admission и
-полный T05/ROB-764 не закрыты. HTTP/own ACL/UI/живые коннекторы не подключены.
+LOG-034 / ROB-764 In Progress: штатные cleanup, blocklist и удаление сообщений
+папки сохраняют omni-owned Message/Thread/связи. Проверяются binding/link/
+conversation, включая пустые диалоги и soft-deleted связи; обычная почта удаляется
+со штатными FK-каскадами. Пагинация проходит защищённую страницу без зацикливания.
+583 Jest +25 guards =608 PASS; новые25 PG, повторены25 после уточнения fixture.
+Typecheck124roots:0 новых/0 changed-code,136 baseline; все5 миграций прежние.
+[Доказательства и границы](../implementation/log034/README.md).
+Далее — защита metadata lifecycle аккаунтов/каналов/папок до внешних эффектов,
+затем остальные domain apply, inbox/outbox/recovery. Lifecycle races и полный
+T05/ROB-764 ещё не закрыты. HTTP/own ACL/UI/живые коннекторы не подключены.
 Демо прежнее; GitHub Actions не используется.
 
 Полный объём описан в [requirements.md](../requirements.md). Переход к следующей фазе подтверждается результатом предыдущей. Даты и трудозатраты появятся после исследования; сейчас их нельзя обоснованно назначить.

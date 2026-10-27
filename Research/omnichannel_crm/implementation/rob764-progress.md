@@ -240,3 +240,18 @@ authorizer обязателен. Повторы/ошибки/unknown COMMIT пр
 inbox/outbox/recovery. Live/new-conversation/Person/edit/delete/admission и
 полный T05/ROB-764 не закрыты. HTTP/own ACL/UI/живые коннекторы не подключены.
 Демо прежнее; GitHub Actions не используется.
+
+
+## LOG-034 — защита native cleanup
+
+LOG-034 / ROB-764 In Progress: штатные cleanup, blocklist и удаление сообщений
+папки сохраняют omni-owned Message/Thread/связи. Проверяются binding/link/
+conversation, включая пустые диалоги и soft-deleted связи; обычная почта удаляется
+со штатными FK-каскадами. Пагинация проходит защищённую страницу без зацикливания.
+583 Jest +25 guards =608 PASS; новые25 PG, повторены25 после уточнения fixture.
+Typecheck124roots:0 новых/0 changed-code,136 baseline; все5 миграций прежние.
+[Доказательства и границы](log034/README.md).
+Далее — защита metadata lifecycle аккаунтов/каналов/папок до внешних эффектов,
+затем остальные domain apply, inbox/outbox/recovery. Lifecycle races и полный
+T05/ROB-764 ещё не закрыты. HTTP/own ACL/UI/живые коннекторы не подключены.
+Демо прежнее; GitHub Actions не используется.

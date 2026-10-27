@@ -1,0 +1,22 @@
+{
+  "jestTests": 583,
+  "jestSuites": 24,
+  "postgresTests": 377,
+  "unitTests": 206,
+  "newCleanupPostgresTests": 25,
+  "finalFixtureParityRetest": 25,
+  "guardTests": 20,
+  "checksumTests": 5,
+  "totalDistinctTests": 608,
+  "typecheckRootFiles": 124,
+  "baselineTypeDiagnostics": 136,
+  "newTypeDiagnostics": 0,
+  "changedCodeTypeDiagnostics": 0,
+  "fullServerTypecheck": false,
+  "allFiveMigrationSourcesUnchanged": true,
+  "independentScopedReview": "PASS no blocker; fixture transaction options corrected and retested",
+  "fullROB764Acceptance": false,
+  "fullOwnershipT05": false,
+  "liveDemoChanged": false,
+  "githubActionsUsed": false
+}
