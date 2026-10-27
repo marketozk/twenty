@@ -1,0 +1,13 @@
+{
+  "baseCommit": "f7553e65fe84dcae7a4d0160254b35d3343048c2",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/metadata-modules/message-channel/message-channel-metadata.service.ts": "e4ee5c19c4ce0a5e459dc4a2d40067686206dc968647f0feb531f9ebb78a090f",
+    "packages/twenty-server/src/engine/metadata-modules/message-channel/resolvers/__tests__/message-channel.resolver.spec.ts": "5c989c606d7721b34f6c19929be048f3790b798edfcd6ce152a567bad6820c28",
+    "packages/twenty-server/src/engine/metadata-modules/message-channel/resolvers/message-channel.resolver.ts": "48de1287586215d3917849e96e314c2c0581764ea9f9e6b037c88a4075195f19",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-cursor.service.ts": "088040f0a046d27af7bf2a41ac15cd8d84e0736230439cc6aa5ebb4646daab7a",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-group-email-actions.service.ts": "b4ebbdac9eaad95998270f9bae278363c05a90ac2bbdcbe876987ecb6cb10fc0",
+    "packages/twenty-server/test/fork-migration/omni-cursor-settings.postgres-spec.ts": "dec139cbd19a60789f8f24b297c5a134811e9657d53867f8e916996cd7b0a7b6"
+  }
+}

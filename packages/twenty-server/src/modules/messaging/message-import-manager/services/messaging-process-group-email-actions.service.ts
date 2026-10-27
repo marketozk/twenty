@@ -28,21 +28,6 @@ export class MessagingProcessGroupEmailActionsService {
     private readonly messagingDeleteGroupEmailMessagesService: MessagingDeleteGroupEmailMessagesService,
   ) {}
 
-  async markMessageChannelAsPendingGroupEmailsAction(
-    messageChannel: MessageChannelEntity,
-    workspaceId: string,
-    pendingGroupEmailsAction: MessageChannelPendingGroupEmailsAction,
-  ): Promise<void> {
-    await this.messageChannelRepository.update(
-      { id: messageChannel.id, workspaceId },
-      { pendingGroupEmailsAction },
-    );
-
-    this.logger.debug(
-      `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannel.id} - Marked message channel as pending group emails action: ${pendingGroupEmailsAction}`,
-    );
-  }
-
   async processGroupEmailActions(
     messageChannel: MessageChannelEntity,
     workspaceId: string,

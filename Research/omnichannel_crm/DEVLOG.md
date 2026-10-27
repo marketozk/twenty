@@ -1562,3 +1562,35 @@ GitHub Actions не использовался; skills ai-dev-workflow, behavior
 server-schrodinger, независимое scoped review read-only.
 
 LOG-056 publication: code 7c1a2277120f43ebb7dbfc9ab43618fa21be9a2e pushed; GitHub ref verified through API. Linear comment f73921aa-a706-4837-9d40-2bfce4d7aec3; description/comment and all11 project states independently read back. ROB-764 In Progress. See implementation/log056/publication.json.
+
+
+## LOG-057 — cursor final writes and atomic channel settings (28.10.2026)
+
+MessagingCursorService фиксирует channel/parent/cursor/folder до await. Existing
+single-channel owner блокирует account/channel и исключает fresh native ownership.
+Numeric cursor сравнивается с текущей DB строкой, поэтому stale input не откатывает
+его назад. Folder write проверяет exact parent, блокирует folder и проверяет полную
+ownership; channel throttle/stage reset использует тот же manager и rollback.
+
+Resolver сохраняет раннюю авторизацию, затем передаёт settingsCaller в metadata
+update. Под блокировкой повторяются current parent/type/busy проверки и существующая
+isAdministrableByCaller по актуальным scope/custodian/provider. Настройка и derived
+pendingGroupEmailsAction пишутся одним UPDATE. EMAIL_GROUP/PENDING_CONFIGURATION/
+unchanged-value semantics сохранены. Неиспользуемый standalone marker удалён.
+
+Review нашёл same-account custodian/scope race; исправлен final authorization по
+locked account, реальные отрицательные PG кейсы добавлены. Scoped re-review без
+новых блокеров. Это не собственный ACL и не глобальная блокировка изменений ролей
+(ROB766). Worker cleanup/finalizers ещё остаются в inventory.
+
+Проверки: 203 targeted Jest/6 suites +26 guards = 229 PASS;
+22 новых PostgreSQL cases. Typecheck 247 roots: 191 baseline/191 current,
+0 new/changed-code. Одна baseline diagnostic в неизменённом worker method сохранена.
+Guard отклонил лишний type import с транзитивным Enterprise path; удалён, тип берётся
+из аргумента уже используемого метода. Guard повторно PASS, 7 migrations неизменны.
+Full suite не повторялся: последний LOG056 1881/71. Локальные и тестовые LF hashes
+сверены. Полный server typecheck, Claude pass и ROB764 acceptance не заявляются.
+
+[Evidence](implementation/log057/README.md). [Remaining writers](implementation/rob764-metadata-writer-inventory.md).
+Демо/SaleBot не менялись; GitHub Actions не использовался. Применён ai-dev-workflow,
+behavioral-guardrails, server-schrodinger и read-only scoped review.

@@ -43,8 +43,6 @@ describe('MessageChannelResolver connectedAccount', () => {
       {} as never,
       connectedAccountMetadataService as never,
       applicationMessageChannelsService as never,
-      {} as never,
-      {} as never,
     );
 
     return {

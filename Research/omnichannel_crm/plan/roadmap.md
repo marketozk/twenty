@@ -1,17 +1,17 @@
 # Дорожная карта проекта
 
-LOG-056 / ROB-764 In Progress: пакетные message/calendar sync-status записи
-используют одну fresh transaction: shared fence → все account locks → channel locks
-→ fresh full ownership → фактические updates. Folder reset и authFailed атомарны.
-Cache/broadcast/metrics/reconnect после commit только для обновлённых IDs и captured
-recipients. Credential failure сверяет исходный parent; unknown commit пробрасывается
-без повторного FAILED/cache replay. Microsoft reset после commit получает channel IDs.
-Проверено 1881 full fork Jest /71 suites +26 guards =1907 PASS;
-66 новых PG cases заменяют в том числе7 прежних mock reset checks.
-Typecheck242 roots:197/191,0 new/changed-code.7 migrations неизменны.
-[Доказательства](../implementation/log056/README.md). Scoped review замечания исправлены.
-Далее group-action/resolver, cursor/throttle/folder writers и итоговый T22.
-ROB-764 остаётся In Progress; публичные API, ACL, UI и транспорт ещё впереди.
+LOG-057 / ROB-764 In Progress: cursor final writes используют shared ownership
+fence, current parent/channel/folder locks и captured parent. Сравнение курсора
+делается с актуальной DB строкой; folder cursor и channel reset атомарны.
+Resolver settings и pending group action записываются одним UPDATE. В транзакции
+повторно проверяются текущий parent, APP/type, busy state и права текущего caller
+по locked account; прежний standalone marker удалён.
+Проверено 203 targeted Jest /6 suites +26 guards =229 PASS,
+22 новых PG cases. Typecheck 247 roots: 191/191, 0 new/changed-code.
+Все7 migrations неизменны. Последний full fork: LOG056, 1881 tests/71 suites.
+[Доказательства](../implementation/log057/README.md). Scoped review finding исправлен и перепроверен.
+Далее group-worker cleanup, throttle/relaunch/CLI/folder writers и итоговый T22.
+ROB-764 остаётся In Progress; собственные ACL, UI и транспорт ещё впереди.
 Демо прежнее, GitHub Actions не используется.
 
 Полный объём описан в [requirements.md](../requirements.md). Переход к следующей фазе подтверждается результатом предыдущей. Даты и трудозатраты появятся после исследования; сейчас их нельзя обоснованно назначить.

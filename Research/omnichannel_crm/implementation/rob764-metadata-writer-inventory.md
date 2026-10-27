@@ -20,14 +20,17 @@ Canonical lifecycle requirements remain in the implementation specification.
   postcommit actual-ID effects, captured credential-failure parent, import unknown
   commit propagation, and Microsoft reset after commit with actual channel IDs.
 
+- LOG057: cursor final writes and atomic folder/channel reset, fresh DB cursor
+  comparison; resolver settings + derived pending action in one UPDATE, locked
+  account administration recheck. The group worker cleanup remains below.
+
 ## Remaining owners, in implementation order
 
 Paths below are relative to `packages/twenty-server/src`.
 
 | Owner | Observed gap / required check |
 |---|---|
-| `modules/messaging/message-import-manager/services/messaging-process-group-email-actions.service.ts` + message-channel resolver | Pending action and cursor writes are separate; resolver writes pending action before protected metadata update. Move into an atomic owner, with current state checks. |
-| `modules/messaging/message-import-manager/services/messaging-cursor.service.ts` | Channel/folder cursor writes after external work need final ownership protection. |
+| `modules/messaging/message-import-manager/services/messaging-process-group-email-actions.service.ts` | Cleanup/final reset writes still need current parent/action guards and atomic channel/folder finalizer. Resolver marker/settings now atomic (LOG057); do not hold a new core transaction across existing nested cleanup transactions. |
 | Messaging/calendar import exception handlers, messages-import/relaunch-failed job | Direct throttle/reset writes need the same final boundary. |
 | Calendar import exception handler throttle writer | Direct throttle count/reset still needs final ownership protection. |
 | `modules/messaging/message-import-manager/commands/messaging-trigger-message-list-fetch.command.ts` | Unfiltered channel selection → status update → enqueue. Protect owned APP channels and queue only admitted ordinary IDs. |

@@ -15,6 +15,7 @@ import {
   MessageChannelSyncStatus,
   MessageChannelType,
   MessageChannelVisibility,
+  MessageFolderPendingSyncAction,
 } from 'twenty-shared/types';
 
 import { EmailingDomainDriver } from 'src/engine/core-modules/emailing-domain/drivers/types/emailing-domain-driver.type';
@@ -295,12 +296,19 @@ export class MessageChannelMetadataService {
     id,
     workspaceId,
     data,
+    settingsCaller,
   }: {
     id: string;
     workspaceId: string;
     data: Partial<MessageChannelEntity>;
+    settingsCaller?: {
+      connectedAccountId: string;
+      userWorkspaceId: string;
+      applicationId?: string;
+    };
   }): Promise<MessageChannelDTO> {
     const updateData = { ...data };
+    const caller = settingsCaller ? { ...settingsCaller } : undefined;
 
     if (
       updateData.workspace !== undefined ||
@@ -336,6 +344,69 @@ export class MessageChannelMetadataService {
             throw new Error('OMNI_OWNED_ACCOUNT_REQUIRES_DOMAIN_LIFECYCLE');
         }
         const repository = manager.getRepository(this.repository.target);
+        if (caller !== undefined) {
+          const current = await repository.findOneOrFail({
+            where: { id, workspaceId },
+          });
+          if (
+            current.connectedAccountId !== caller.connectedAccountId ||
+            current.type === MessageChannelType.APP
+          ) {
+            throw new MessageChannelException(
+              'Message channel ownership changed; reload its settings',
+              MessageChannelExceptionCode.MESSAGE_CHANNEL_OWNERSHIP_VIOLATION,
+            );
+          }
+          const accounts: Parameters<
+            ConnectedAccountMetadataService['isAdministrableByCaller']
+          >[0]['connectedAccount'][] = await manager.query(
+            'SELECT scope, "userWorkspaceId", provider FROM core."connectedAccount" WHERE "workspaceId"=$1 AND id=$2',
+            [workspaceId, current.connectedAccountId],
+          );
+          if (
+            accounts.length !== 1 ||
+            !(await this.connectedAccountMetadataService.isAdministrableByCaller(
+              {
+                connectedAccount: accounts[0],
+                userWorkspaceId: caller.userWorkspaceId,
+                workspaceId,
+                applicationId: caller.applicationId,
+              },
+            ))
+          ) {
+            throw new MessageChannelException(
+              'Message channel cannot be administered by this caller',
+              MessageChannelExceptionCode.MESSAGE_CHANNEL_OWNERSHIP_VIOLATION,
+            );
+          }
+          const pendingFolders: { id: string }[] = await manager.query(
+            'SELECT id FROM core."messageFolder" WHERE "workspaceId"=$1 AND "messageChannelId"=$2 AND "pendingSyncAction"<>$3 LIMIT 1',
+            [workspaceId, id, MessageFolderPendingSyncAction.NONE],
+          );
+          if (
+            current.syncStage ===
+              MessageChannelSyncStage.MESSAGE_LIST_FETCH_ONGOING &&
+            (pendingFolders.length > 0 ||
+              current.pendingGroupEmailsAction !==
+                MessageChannelPendingGroupEmailsAction.NONE)
+          ) {
+            throw new MessageChannelException(
+              'Cannot update message channel while sync is ongoing with pending actions',
+              MessageChannelExceptionCode.INVALID_MESSAGE_CHANNEL_INPUT,
+            );
+          }
+          if (
+            current.type === MessageChannelType.EMAIL &&
+            current.syncStage !==
+              MessageChannelSyncStage.PENDING_CONFIGURATION &&
+            isDefined(updateData.excludeGroupEmails) &&
+            updateData.excludeGroupEmails !== current.excludeGroupEmails
+          ) {
+            updateData.pendingGroupEmailsAction = updateData.excludeGroupEmails
+              ? MessageChannelPendingGroupEmailsAction.GROUP_EMAILS_DELETION
+              : MessageChannelPendingGroupEmailsAction.GROUP_EMAILS_IMPORT;
+          }
+        }
         await repository.update(
           { id, workspaceId },
           updateData as Record<string, unknown>,
