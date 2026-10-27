@@ -1,0 +1,16 @@
+{
+  "baseCommit": "a76344b738a95f66af60636e26c9a1ed834b4938",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "allPreviousAggregateMethodsUnchanged": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts": "506a994d4e8662330429e8bb6fe528fb481ef5f178f7f1ff8f6c6e5350f3a59a",
+    "packages/twenty-server/test/fork-migration/omni-sent-apply.fixture.ts": "5d5de4943b41ffe433b2fa2086d68b2c2b5e9d3a484f38fc201588ef52fd4adf",
+    "packages/twenty-server/src/modules/omnichannel/contracts/omni-human-command-recovery.ts": "8d6de44c18167dd153c2fe74920d54d4336733fbde2f9e17ceb5cf31e6dc7275",
+    "packages/twenty-server/src/modules/omnichannel/services/append-omni-human-command-recovery-failure.ts": "c2d4e58018129486360889539cd877beb9d2637f1ac5120e2ed55020d56398cd",
+    "packages/twenty-server/src/modules/omnichannel/services/recover-omni-human-command.ts": "63aec4e7b7ca11fdbfe0593c50da6c95701f8122a5ca2342dcdd9409c12fbddd",
+    "packages/twenty-server/test/fork-migration/omni-human-command-recovery-contract.spec.ts": "a154f24c8a78898156c7fc12f6e4831271184c7e17090e4dd22839ab98ebf535",
+    "packages/twenty-server/test/fork-migration/omni-human-command-recovery-facade.spec.ts": "4c0fbeb39c583cbe6c13c222269f7a8be372420dc5b2dc46c12694f2a054688f",
+    "packages/twenty-server/test/fork-migration/omni-human-command-recovery.postgres-spec.ts": "f8b3acc8b078e3d60f0b74256b564346688d504b40a7e14fd57812b01251a273"
+  }
+}

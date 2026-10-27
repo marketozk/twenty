@@ -55,6 +55,22 @@ import { appendOmniHumanCommandLeaseFailure } from 'src/modules/omnichannel/serv
 import { appendOmniConnectorAcceptanceFailure } from 'src/modules/omnichannel/services/append-omni-connector-acceptance-failure';
 import { appendOmniSentReceiptFailure } from 'src/modules/omnichannel/services/append-omni-sent-receipt-failure';
 import { appendOmniSentApplyFailure } from 'src/modules/omnichannel/services/append-omni-sent-apply-failure';
+import { appendOmniHumanCommandRecoveryFailure } from 'src/modules/omnichannel/services/append-omni-human-command-recovery-failure';
+import {
+  deferOmniHumanCommandReconciliation,
+  discoverOmniHumanCommandRecovery,
+  snapshotOmniHumanCommandDeferRequest,
+  snapshotOmniHumanCommandDiscoveryRequest,
+  type OmniHumanCommandDeferCallbacks,
+  type OmniHumanCommandDiscoveryCallbacks,
+} from 'src/modules/omnichannel/services/recover-omni-human-command';
+import {
+  type OmniHumanCommandRecoveryPrincipal,
+  type OmniHumanCommandDeferInput,
+  type OmniHumanCommandDeferResult,
+  type OmniHumanCommandDiscoveryInput,
+  type OmniHumanCommandDiscoveryResult,
+} from 'src/modules/omnichannel/contracts/omni-human-command-recovery';
 import {
   applyOmniSentReceipt,
   snapshotOmniSentApplyRequest,
@@ -155,6 +171,103 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     @InjectDataSource()
     private readonly dataSource: DataSource,
   ) {}
+
+  async deferOmniHumanCommandReconciliation(
+    principal: OmniHumanCommandRecoveryPrincipal,
+    input: OmniHumanCommandDeferInput,
+    callbacks: OmniHumanCommandDeferCallbacks,
+  ): Promise<OmniHumanCommandDeferResult> {
+    const request = snapshotOmniHumanCommandDeferRequest(
+      principal,
+      input,
+      callbacks,
+    );
+    const attemptOperationId = randomUUID();
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        let callbackEntered = false;
+        let authorizationDenied = false;
+        try {
+          return await this.workspaceOrmManager.runInWorkspaceTransaction(
+            async (scope) => {
+              callbackEntered = true;
+              return deferOmniHumanCommandReconciliation(
+                scope,
+                request.principal,
+                request.input,
+                {
+                  ...request.callbacks,
+                  authorize: async (...args) => {
+                    try {
+                      return await request.callbacks.authorize(...args);
+                    } catch (error) {
+                      authorizationDenied = true;
+                      throw error;
+                    }
+                  },
+                },
+              );
+            },
+            { commitOutcome: 'strict' },
+          );
+        } catch (error) {
+          if (
+            callbackEntered &&
+            !(error instanceof NativeTransactionOutcomeUnknownError)
+          ) {
+            try {
+              await this.workspaceOrmManager.runInWorkspaceTransaction(
+                (scope) =>
+                  appendOmniHumanCommandRecoveryFailure(
+                    scope,
+                    request.principal,
+                    request.input,
+                    attemptOperationId,
+                    authorizationDenied,
+                  ),
+                { commitOutcome: 'strict' },
+              );
+            } catch (auditError) {
+              throw new AggregateError(
+                [error, auditError],
+                'OMNI_HUMAN_COMMAND_RECOVERY_FAILURE_AUDIT_UNCONFIRMED',
+              );
+            }
+          }
+          throw error;
+        }
+      },
+      buildSystemAuthContext(request.principal.workspaceId),
+      { lite: true },
+    );
+  }
+
+  async discoverOmniHumanCommandRecovery(
+    principal: OmniHumanCommandRecoveryPrincipal,
+    input: OmniHumanCommandDiscoveryInput,
+    callbacks: OmniHumanCommandDiscoveryCallbacks,
+  ): Promise<OmniHumanCommandDiscoveryResult> {
+    const request = snapshotOmniHumanCommandDiscoveryRequest(
+      principal,
+      input,
+      callbacks,
+    );
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      () =>
+        this.workspaceOrmManager.runInWorkspaceTransaction(
+          (scope) =>
+            discoverOmniHumanCommandRecovery(
+              scope,
+              request.principal,
+              request.input,
+              request.callbacks,
+            ),
+          { commitOutcome: 'strict' },
+        ),
+      buildSystemAuthContext(request.principal.workspaceId),
+      { lite: true },
+    );
+  }
 
   async applyOmniSentReceipt(
     principal: OmniSentApplyPrincipal,

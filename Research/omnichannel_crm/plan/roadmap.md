@@ -1,19 +1,20 @@
 # Дорожная карта проекта
 
-LOG-045 / ROB-764 In Progress: подтверждённая отправка атомарно становится штатным
-исходящим Message. Сохраняются Participant, channel association, MessageLink/revision,
-один suppressed message.sent event/root/dispatch, Command sent, receipt applied и audit.
-Повторы проверяют весь граф; несколько receipts одной отправки не создают дубль.
-Удаление автора сохраняет историю; имя/email не выдумываются. Current worker grant
-и qualified historical verifier обязательны. Собственный send не увеличивает
-replyRevision повторно и не запускает AI/workflow/customer admission.
-Полный fork suite: 1368 Jest /57 suites +26 guards =1394 PASS.
-Typecheck191roots:146 baseline/current,0 новых/0 changed-code;
-все6 миграций и старые методы aggregate неизменны.
-[Доказательства и границы](../implementation/log045/README.md). Проверены55 новых PG-сценариев, в том числе
-fault injection, expiry после audit, concurrent replay и lost COMMIT ACK.
-Далее — сохранение неопределённого исхода, backoff и поиск due Commands в PostgreSQL.
-HTTP/UI, transport, scheduler/own ACL и полный ROB-764 ещё не готовы.
+LOG-046 / ROB-764 In Progress: recovery human text/v0 сохраняет outcome_unknown,
+DB backoff, revision и audit атомарно. Только текущие worker grants/qualification,
+точный действующий lease и captured restore incarnation допускают изменение.
+Acceptance/job/journal/cancellation/payload сохраняются; sent не понижается.
+Terminal/pending/superseded/expired/restore-changed дают no-op после current auth.
+Discovery читает due candidates из PostgreSQL с точным курсором, не выдаёт send
+permission; каждый завершённый scan начинается заново.
+392 Jest /14 затронутых suites +26 guards =418 PASS;
+67 новых случаев, включая33 PG. Typecheck197roots:
+146 baseline/current,0 новых/0 changed-code. Все6 миграций и прежние методы
+aggregate неизменны; полный1368 fork suite прошёл в LOG045.
+[Доказательства и границы](../implementation/log046/README.md). Проверены ACK/sent races, lost COMMIT ACK,
+audit/backoff/lease expiry, AFTER UPDATE tamper, другое существующее подключение.
+Далее — оставшиеся критерии outbox/state machine по этапу1; текущий slice не
+закрывает ROB-764 целиком. HTTP/UI, live transport, scheduler/own ACL ещё впереди.
 Демо прежнее, GitHub Actions не используется.
 
 Полный объём описан в [requirements.md](../requirements.md). Переход к следующей фазе подтверждается результатом предыдущей. Даты и трудозатраты появятся после исследования; сейчас их нельзя обоснованно назначить.

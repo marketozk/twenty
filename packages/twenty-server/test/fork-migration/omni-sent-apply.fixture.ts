@@ -135,6 +135,7 @@ export const createOmniSentApplyFixture = () => {
     return {
       ...context,
       commandId,
+      commandLeaseProof: commandLease.proof,
       principal,
       callbacks,
       capture,

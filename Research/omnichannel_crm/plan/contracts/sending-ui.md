@@ -46,6 +46,26 @@ cancelOwnCommand допускается при текущем доступе к 
 
 Recovery dispatching сначала status(commandId). Повтор разрешён только для идемпотентного connector enqueue того же ID при доказанном durable dedup. Единственный владелец provider retry — adapter/journal. Network call вне DB lock Twenty. Lease сам по себе не защищает provider от двойного вызова: fencing реализуется также в connector journal.
 
+Внутренний recovery writer для human text/v0 сохраняет C05: текущий worker с
+historical reconciliation grant и qualification может перевести dispatching/accepted
+в outcome_unknown, оставить прежний unknown и назначить следующую сверку по часам
+PostgreSQL. Он сохраняет acceptance/job/journal, cancellation, generation, payload
+и автора; не создаёт Message/event и не разрешает send. Exact token/until и captured
+restoreIncarnation относятся к выданному lease. Они не восстанавливаются догадкой.
+Terminal/pending, сменившийся/истёкший lease и другая incarnation дают no-op после
+current auth; отсутствие lease не доказывает, что предыдущий defer был успешен.
+Audit и final CAS атомарны; истёкший lease/backoff или неверный readback откатывают
+операцию. Provider fencing по-прежнему обязателен на внешней границе.
+
+Discovery возвращает только подсказки due Commands данного binding из PostgreSQL,
+без Redis, locks на Command и изменения состояния. Каждая подсказка проходит
+отдельный существующий claim с текущими правами. Cursor `(nextAttemptAt,id)` хранит
+микросекунды; после конца страницы/прохода worker обязан начинать новый проход
+с начала, поскольку nextAttemptAt изменяемый. Неактивный исторический route не
+отсекается как новая отправка. Размер страницы ограничен100; это не гарантия
+стоимости SQL на произвольно большом workspace. Scheduler/production qualification
+не включаются наличием этих внутренних операций.
+
 Внутренняя выдача lease изменяет только Command.state/statusRevision/lease и audit;
 она не создаёт произвольный status DomainEvent и не увеличивает replyRevision или
 conversationSequence. UI/SSE статусы требуют отдельного подтверждённого контракта.

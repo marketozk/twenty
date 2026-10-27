@@ -1187,3 +1187,31 @@ server-schrodinger; scoped independent review без блокеров, полн�
 не повторялся. Продолжаем LOG046, ROB-764 остаётся In Progress.
 
 Публикация LOG-045: код 94d0d3fa43f68d5d32a34ba1758b847d6882b2bd, remote проверен GitHub API. Описание ROB-764 и комментарий dd548eab-dcf6-488a-b125-33ce5c6e3599 прочитаны обратно; все 11 статусов сохранены. Продолжаем LOG-046.
+
+## LOG-046 — 27.10.2026: неизвестный исход и PostgreSQL recovery
+
+LOG-046 / ROB-764 In Progress: recovery human text/v0 сохраняет outcome_unknown,
+DB backoff, revision и audit атомарно. Только текущие worker grants/qualification,
+точный действующий lease и captured restore incarnation допускают изменение.
+Acceptance/job/journal/cancellation/payload сохраняются; sent не понижается.
+Terminal/pending/superseded/expired/restore-changed дают no-op после current auth.
+Discovery читает due candidates из PostgreSQL с точным курсором, не выдаёт send
+permission; каждый завершённый scan начинается заново.
+392 Jest /14 затронутых suites +26 guards =418 PASS;
+67 новых случаев, включая33 PG. Typecheck197roots:
+146 baseline/current,0 новых/0 changed-code. Все6 миграций и прежние методы
+aggregate неизменны; полный1368 fork suite прошёл в LOG045.
+[Доказательства и границы](implementation/log046/README.md). Проверены ACK/sent races, lost COMMIT ACK,
+audit/backoff/lease expiry, AFTER UPDATE tamper, другое существующее подключение.
+Далее — оставшиеся критерии outbox/state machine по этапу1; текущий slice не
+закрывает ROB-764 целиком. HTTP/UI, live transport, scheduler/own ACL ещё впереди.
+Демо прежнее, GitHub Actions не используется.
+
+Независимое review выявило истёкший во время audit backoff и недостаточность одного
+UPDATE RETURNING при AFTER UPDATE triggers. Оба случая исправлены и воспроизведены
+на PostgreSQL. Первый общий прогон нашёл ошибочный индекс аргумента в двух новых
+owner-тестах; исправлено, финальные affected tests/typecheck повторены. Существующий
+чужой binding проверен отдельно; mutation входа/callbacks проверена до context await.
+Применены ai-dev-workflow, behavioral-guardrails, server-schrodinger. Scoped review
+без runtime-блокеров; полный Claude pass не повторялся. Текущая queue discovery
+не включает cron и не обещает ограниченной стоимости SQL при любом размере workspace.

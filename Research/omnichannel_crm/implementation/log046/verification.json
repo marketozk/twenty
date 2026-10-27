@@ -1,0 +1,25 @@
+{
+  "affectedJestTests": 392,
+  "affectedJestSuites": 14,
+  "guardTests": 20,
+  "checksumTests": 6,
+  "totalDistinctTests": 418,
+  "typecheckRootFiles": 197,
+  "baselineTypeDiagnostics": 146,
+  "currentTypeDiagnostics": 146,
+  "newTypeDiagnostics": 0,
+  "changedCodeTypeDiagnostics": 0,
+  "fullServerTypecheck": false,
+  "allSixMigrationSourcesUnchanged": true,
+  "allPreviousAggregateMethodsUnchanged": true,
+  "fullForkSuiteRerun": false,
+  "previousFullForkSuite": {
+    "log": "LOG045",
+    "tests": 1368,
+    "commit": "94d0d3fa43f68d5d32a34ba1758b847d6882b2bd"
+  },
+  "independentScopedReview": "Scoped independent review complete; fixes validated by tests; full Claude review not rerun",
+  "fullROB764Acceptance": false,
+  "liveDemoChanged": false,
+  "githubActionsUsed": false
+}
