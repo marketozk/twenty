@@ -5,7 +5,13 @@ Run from the repository root:
 ```sh
 python -m unittest discover -s scripts/omnichannel -p 'test_enterprise_dependencies.py' -v
 python scripts/omnichannel/check_enterprise_dependencies.py --verify-baseline
+python -m unittest discover -s scripts/omnichannel -p 'test_fork_migration_sources.py' -v
+python scripts/omnichannel/check_fork_migration_sources.py
 ```
+
+The migration source check additionally verifies LF-normalized command SHA-256
+against the explicit fork manifest and rejects unlisted/duplicate source files.
+It does not hash compiled artifacts at runtime. See `ops/omnichannel/README.md`.
 
 The baseline is generated **only** from pinned upstream commit
 `729f6236126eddaa68d176fb766bc349b19de11d`, using `--write-baseline`.

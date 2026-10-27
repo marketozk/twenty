@@ -1,4 +1,4 @@
-# ROB-764 — реализация, LOG-019
+# ROB-764 — реализация, LOG-020
 
 27.10.2026 пользователь ответил «хорошо приступай» на предложение принять
 исправленный план за основу и начать ROB-764 с проверками конкретного кода.
@@ -29,21 +29,42 @@
 typecheck и форматирование прошли. Адресное ревью и его исправление отражены
 в DEVLOG LOG-019. [Evidence](rob764-foundation-verification.json). Deployment и внешние сообщения не входят в эту порцию.
 
+## Вторая порция: первая группа схемы и настоящий генератор
+
+LOG-020: 9 core entities — WorkspacePolicyState, AccountBinding, Queue,
+AutomationPolicy/Version, ExternalIdentity, Conversation, Member и ReadCursor.
+Own relations имеют tenant/binding scope; bigint хранится строкой; динамические
+Person/Thread/Member ссылки не получили фиктивных FK. Native account ownership
+и domain validation остаются будущему writer. Nullable head/defaultQueue позволяют
+атомарный disabled-v0 bootstrap; действующий bootstrap service ещё не написан.
+
+Штатный генератор на реально инициализированной upstream core schema сначала
+подтвердил пустой diff, затем создал up/down. Все68 SQL-вызовов сохранены при
+переносе в fork registry; upstream registration/cursor не менялись. Добавлены
+source-checksummed manifest, schema verifier, CLI apply/verify и подготовленный
+runtime wrapper. Проверяются также invalid/deferred constraints и invalid indexes;
+порядок колонок индексов читается непосредственно из PostgreSQL.
+
+Проверки: **35 PostgreSQL tests, 25 Python guard tests, focused strict typecheck**
+прошли. На настоящей upstream core schema apply/verify/replay прошли,
+все256 строк upgradeMigration сохранились. Wrapper отказал при schema drift и
+неправильной настройке миграций; разрешил test command после проверки готовности.
+[Доказательства и ограничения](log020/README.md).
+
 ## Следующая порция и незавершённая работа
 
-1. Подготовить зависимости полного server build и upstream schema в изолированной
-   БД, получить настоящие entity migration commands штатным генератором.
-2. Перенести сгенерированные up/down в явный fork manifest с проверкой source
-   checksum, добавить verifier каждого шага; не менять upstream cursor.
-3. Подключить CLI/migrator orchestration и fail-fast readiness app/worker;
-   проверить настоящие fresh/upgraded Twenty fixtures и restart (остаток T33).
-4. Реализовать служебную модель и минимальный audit transaction writer,
-   защищённый bootstrap, ingress persistence, inbox/outbox и recovery согласно
-   [этапу 1](../plan/phase_1_data.md).
+1. Довести packaging/migrator orchestration и подключение gate к фактическим
+   entrypoints server/worker; выполнить полный build, fresh/upgraded workspace
+   fixtures и настоящий restart. Это остаток T33, текущий wrapper ещё не подключён.
+2. Дополнить схему MessageLink, Receipt, Command, DomainEvent и остальными
+   сущностями этапа 1; минимальный audit writer и защищённый bootstrap.
+3. Реализовать ingress persistence, атомарное сохранение канонических Message,
+   inbox/outbox и recovery согласно [этапу 1](../plan/phase_1_data.md).
 
-Тестовый upstream cursor в первой порции — синтетический fixture. Он не заменяет
-настоящий upgrade Twenty. Генератор, полноценный server build/typecheck, реальные
-chat entities/канонические Message, приём/отправка и весь T01–T33 пока не проверены.
+В LOG-020 проверена настоящая core initialization, но не populated native workspace
+и не обновление существующей клиентской БД. Строгий typecheck охватывает новые
+исходники/тесты; полный server build/typecheck и restart не выполнялись. Новая
+схема и wrapper в демо не выкачены. Приём/отправка и весь T01–T33 не завершены.
 Bindings не активируются до собственных прав ROB-766. Никакие G01–G20 не выбраны
 за пользователя этой командой начала разработки.
 

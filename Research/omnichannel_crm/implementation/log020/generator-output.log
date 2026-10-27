@@ -1,0 +1,720 @@
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [NestFactory] Starting Nest application...
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CommandRootModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] SentryModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] GraphQLConfigModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CoreEngineModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CommandShutdownModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MetadataSideEffectHandlersModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] LogicFunctionLayerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FlatApplicationVariableModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FlatFrontComponentModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] StripeSDKModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FlatConnectionProviderModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FlatAgentModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CommonRecordVisibilityModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RecordTransformerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CoreWorkflowAppOperationsSdlModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FlatWorkflowVersionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceCommandProviderModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_0_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FlatWorkflowModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowTriggerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowQueryHookModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FlatCommandMenuItemModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FlatSkillModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FlatNavigationMenuItemModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FlatWebhookModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] DelayActionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WaitForEventActionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FormActionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FilterActionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] IfElseActionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] EmptyActionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowBuilderModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceResolverNameMapCacheModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TwentyConfigModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessageQueueModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] I18nModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceFeatureFlagsMapCacheModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ModulesModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessagingModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessagingBlocklistManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CalendarModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CallRecordingQueryHookModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MetadataGraphQLApiModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MetadataEngineModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] SearchFieldMetadataModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AdminPanelGraphQLApiModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RestApiModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ConfigHostModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceMigrationBuilderValidatorsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FlatFieldMetadataModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceSchemaManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] HttpModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] DiscoveryModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] DiscoveryModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ConfigModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ConfigModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceSchemaBuilderModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ScheduleModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] EventEmitterModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] EnvironmentModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceEventEmitterModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MetadataSideEffectModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceQueryHookModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] SecretEncryptionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CommandRunnerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TerminusModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] GraphQLSchemaBuilderModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ConnectedAccountTokenEncryptionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] HealthModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ConnectedAccountSyncWebhooksModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RouteTriggerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstallUpgradeAwareRepositoryProxy] [upgrade-proxy] installed getRepository proxy on core DataSource and EntityManager.prototype
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmCoreModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationRegistrationLookupModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] KeyValuePairModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationRegistrationVersionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceVersionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [TwentyConfigService] Database configuration is enabled
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [TwentyConfigService] Using database configuration driver
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] DatabaseConfigModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationRegistrationVariableModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationLookupModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] UserVarsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationTranslationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationAuthorizationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceExportModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WellKnownModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationKeyValueModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TwentyConfigModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] DomainServerConfigModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ClickHouseModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] SecureHttpClientModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] GoogleApiRefreshAccessTokenModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MicrosoftApiRefreshAccessTokenModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RedisClientModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceBillingEntitlementsCacheModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceDataSourceModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] SubdomainManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] JwtModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] DnsManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceDomainsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] UsageAnalyticsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ImapSmtpCaldavValidatorModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AppOAuthRefreshModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TelemetryModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessagingSmtpDriverModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] StripeModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] LoggerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ExceptionHandlerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CodeInterpreterModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RefreshTokensManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CaptchaModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessagingIMAPDriverModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] HttpRequestActionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] GuardRedirectModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AppModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CalDavDriverModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] OAuth2ClientManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessagingInboundEmailDriverModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] EnterpriseModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] GeoMapModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MicrosoftCalendarDriverModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessagingGmailDriverModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] GoogleCalendarDriverModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessagingMicrosoftDriverModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WebhookSubscriptionManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AiModelsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FrontendModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ClientConfigModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CacheModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CacheStorageModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceCacheStorageModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ThrottlerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CoreEntityCacheModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CacheLockModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CronModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] EventLogLiveModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] OnboardingInviteSuggestionsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationStopModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceMetadataVersionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] UpgradeStatusModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceMigrationBuilderModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MetricsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FileUrlModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] JwtModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceCacheModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TypeORMModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] EventLogEmitterModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessageQueueCoreModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceManyOrAllFlatEntityMapsCacheModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RoleAssignmentValidationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] InstanceCommandProviderModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TargetModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FeatureFlagModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CodeInterpreterSessionCleanupModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] StaleRegistrationCleanupModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] EmailModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CalendarBlocklistManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] EventLogIngestionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowMetadataReadModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] DerivedFieldMetadataIdsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceGraphqlSchemaSDLModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationTranslationCatalogModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] SecretEncryptionRotationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] EventLogRetentionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] UserSessionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] GoogleWebhookDriverModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MicrosoftWebhookDriverModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MinimalMetadataModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowVersionValidationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowCommonModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ActorModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CustomDomainManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationJobModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] SettingsMenuItemModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowSchemaModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TimelineQueryHookModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceMigrationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] EventLogCleanupModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FileStorageModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] EmailVerificationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] LogicFunctionResourceModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FileEmailAttachmentModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationPackageModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AiBillingModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] OnboardingModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FileModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CoreWorkflowAccessModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RoleTargetModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RolePermissionFlagModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AgentChatChannelModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AgentHistoryMigrationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ObjectPermissionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowCoreModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RowLevelPermissionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TwentyOrmModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AiEvaluationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AiAgentRoleModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WebhookToolsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] DataloaderModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AgentToolsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MetadataToolsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RecordShareStorageModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RecordPositionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ShortLinkModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowThrottlingModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessagingMonitoringModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RelatedPersonIdsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] DashboardSyncModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ConnectedAccountModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] EmailAliasManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowRunInboxSenderModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessagingQueryHookModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CalendarQueryHookModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceIteratorModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CalendarCommonModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessagingCommonModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TwentyStandardApplicationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessagingFolderSyncManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationRecurringChargeModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] UserRoleModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowVersionCoreModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceMemberModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] PermissionsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowRunRecordShareModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CalendarEventCleanerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] NoteQueryHookModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TaskQueryHookModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowDeletionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MatchParticipantModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TimelineActivityModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AgentHistoryModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ContactCreationManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TrashCleanupModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_5_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_21_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V1_22_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_2_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_3_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_14_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_16_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_17_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_32_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_37_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_48_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_52_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V1_23_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_1_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_4_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_7_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_35_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_49_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] UpgradeModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_9_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_10_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_18_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_27_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_31_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_33_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_34_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceMigrationRunnerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_8_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_19_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_25_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_26_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_38_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_42_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_45_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_13_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_47_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WebhookSubscriptionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_46_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_43_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_15_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_36_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_28_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_22_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_40_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_44_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V1_21_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RecordShareOwnershipTransferModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_20_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_41_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ViewToolsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] IMAPAPIsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] PublicDomainModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] LabModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] UsageModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] PermissionFlagModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationVariableEntityModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] EventLogsViewerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MetadataTranslationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceSsoModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FilesFieldModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] UsageLimitModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_39_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CallRecordingModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RecordPermissionsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] SearchModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ImpersonationAuthorizationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RoleToolsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_50_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] IndexMetadataModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AutomatedTriggerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] UserWorkspaceModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CalendarEventParticipantManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessageParticipantManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessagingMessageCleanerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationPreferencesModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TimelineActivityTypeModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] DpaModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ValidationRuleModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApprovedAccessDomainModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CommandMenuItemModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] SkillModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AiAgentModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ViewFieldGroupModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RecordShareModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TimelineCalendarEventModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] SubscriptionsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FileCorePictureModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationMonitoringModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] EmailingDomainModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] BlocklistValidationManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ViewPermissionsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceQueryRunnerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] DashboardQueryHookModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] DashboardToolsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AgentChatThreadLifecycleModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CloudflareModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MarketplaceModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] PendingWakeUpModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceDataExportModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] BlocklistQueryHookModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] NavigationMenuItemToolsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CalendarEventCreationManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CalendarEventImportManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowStepWaitModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TimelineMessagingModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] BillingModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RoleModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AiAgentRunsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceInvitationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FrontComponentSharedDependenciesModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] NavigationMenuItemModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CompanyEnrichmentModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TokenModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MiddlewareModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CalendarEventWebhookSyncModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] OnboardingRecentMessagesImportModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessagingImportManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AgentChatStreamStateModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AgentChatThreadQueryHookModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AgentChatThreadModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessagingSendManagerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FileUploadModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ViewFieldModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] GraphQLModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] GraphQLModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CreateCalendarEventActionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessagingMessageWebhookSyncModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ImpersonationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ViewFilterModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ViewFilterGroupModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ViewGroupModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ViewSortModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FrontComponentModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowRunModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationConnectionsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WebhookModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApiKeyModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] IteratorActionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowExecutionContextModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RecordExportModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ViewModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ObjectMetadataModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] PageLayoutTabModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] PageLayoutWidgetModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AppBillingModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ClassifyActionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MailSenderActionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowRunQueueModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessagingWebhooksModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] PageLayoutModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FieldMetadataModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] DashboardModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] FileApiModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationRegistrationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AiGenerateTextModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] OpenApiModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ChartDataModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CoreCommonApiModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RecordCrudModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceResolverBuilderModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] DirectExecutionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RecordCRUDActionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CoreGraphQLApiModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] LogicFunctionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] LogicFunctionPrebuiltWarmUpModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] LogicFunctionExecutorModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] GraphQLModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] LogicFunctionActionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CodeActionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] RestApiCoreModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceSchemaMigrationRunnerActionHandlersModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] LogicFunctionTriggerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CodeStepBuildModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] StandardObjectsPrefillModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] SdkClientModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ToolModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_51_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowVersionStepModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceMemberQueryHookModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationHealthModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ConnectionProviderModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CalendarChannelMetadataModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] LogicFunctionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ChannelSyncModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CreateCalendarEventModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationManifestModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ImapSmtpCaldavModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] SendEmailModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ConnectedAccountMetadataModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] CoreWorkflowServicesModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessageFolderMetadataModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] MessageChannelMetadataModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ServerRouteTriggerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] PreInstalledAppsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowToolsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] V2_23_UpgradeVersionCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] BillingReminderModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationDevelopmentModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationInstallModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationUpgradeModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceCleanerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AdminPanelModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkspaceModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] TwoFactorAuthenticationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] UserModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ToolProviderModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowAgentConversationModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] SendChatMessageActionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AiToolCallAnswerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowRunnerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] ApplicationOAuthModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowApiModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] EmailingModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] BillingWebhookModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AiWorkspaceStatsModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] DevSeederModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] DatabaseCommandModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AiAgentActionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AiAgentTriggerModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AiChatModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] WorkflowExecutorModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] McpModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AiAgentExecutionModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [InstanceLoader] AuthModule dependencies initialized
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [DefaultAiCatalogService] Using built-in AI catalog (AI_CATALOG_STORAGE_PATH not set)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 3 fast instance, 0 slow instance, and 14 workspace command(s) for 1.21.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 5 fast instance, 1 slow instance, and 3 workspace command(s) for 1.22.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 6 fast instance, 0 slow instance, and 2 workspace command(s) for 1.23.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 2 fast instance, 1 slow instance, and 2 workspace command(s) for 2.1.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 2 fast instance, 0 slow instance, and 1 workspace command(s) for 2.2.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 8 fast instance, 2 slow instance, and 3 workspace command(s) for 2.3.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 4 fast instance, 0 slow instance, and 1 workspace command(s) for 2.4.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 5 fast instance, 6 slow instance, and 2 workspace command(s) for 2.5.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 5 fast instance, 1 slow instance, and 0 workspace command(s) for 2.6.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 1 fast instance, 1 slow instance, and 3 workspace command(s) for 2.7.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 2 fast instance, 0 slow instance, and 4 workspace command(s) for 2.8.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 2 fast instance, 2 slow instance, and 3 workspace command(s) for 2.9.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 0 fast instance, 0 slow instance, and 4 workspace command(s) for 2.10.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 1 fast instance, 0 slow instance, and 0 workspace command(s) for 2.11.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 2 fast instance, 0 slow instance, and 0 workspace command(s) for 2.12.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 6 fast instance, 1 slow instance, and 2 workspace command(s) for 2.13.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 0 fast instance, 1 slow instance, and 3 workspace command(s) for 2.14.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 4 fast instance, 1 slow instance, and 2 workspace command(s) for 2.15.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 4 fast instance, 1 slow instance, and 2 workspace command(s) for 2.16.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 2 fast instance, 0 slow instance, and 3 workspace command(s) for 2.17.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 1 fast instance, 1 slow instance, and 3 workspace command(s) for 2.18.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 10 fast instance, 4 slow instance, and 3 workspace command(s) for 2.19.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 8 fast instance, 2 slow instance, and 7 workspace command(s) for 2.20.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 1 fast instance, 1 slow instance, and 1 workspace command(s) for 2.21.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 1 fast instance, 1 slow instance, and 4 workspace command(s) for 2.22.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 6 fast instance, 3 slow instance, and 5 workspace command(s) for 2.23.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 2 fast instance, 0 slow instance, and 0 workspace command(s) for 2.24.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 7 fast instance, 0 slow instance, and 6 workspace command(s) for 2.25.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 1 fast instance, 0 slow instance, and 3 workspace command(s) for 2.26.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 4 fast instance, 0 slow instance, and 3 workspace command(s) for 2.27.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 0 fast instance, 0 slow instance, and 3 workspace command(s) for 2.28.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 1 fast instance, 0 slow instance, and 0 workspace command(s) for 2.29.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 2 fast instance, 0 slow instance, and 0 workspace command(s) for 2.30.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 5 fast instance, 2 slow instance, and 5 workspace command(s) for 2.31.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 2 fast instance, 1 slow instance, and 2 workspace command(s) for 2.32.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 2 fast instance, 0 slow instance, and 4 workspace command(s) for 2.33.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 5 fast instance, 0 slow instance, and 5 workspace command(s) for 2.34.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 2 fast instance, 0 slow instance, and 6 workspace command(s) for 2.35.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 2 fast instance, 0 slow instance, and 4 workspace command(s) for 2.36.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 1 fast instance, 1 slow instance, and 3 workspace command(s) for 2.37.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 12 fast instance, 1 slow instance, and 17 workspace command(s) for 2.38.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 4 fast instance, 0 slow instance, and 9 workspace command(s) for 2.39.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 6 fast instance, 4 slow instance, and 4 workspace command(s) for 2.40.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 5 fast instance, 0 slow instance, and 11 workspace command(s) for 2.41.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 11 fast instance, 1 slow instance, and 14 workspace command(s) for 2.42.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 4 fast instance, 2 slow instance, and 13 workspace command(s) for 2.43.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 5 fast instance, 0 slow instance, and 15 workspace command(s) for 2.44.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 3 fast instance, 0 slow instance, and 5 workspace command(s) for 2.45.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 14 fast instance, 3 slow instance, and 15 workspace command(s) for 2.46.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 5 fast instance, 0 slow instance, and 10 workspace command(s) for 2.47.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 2 fast instance, 1 slow instance, and 10 workspace command(s) for 2.48.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 4 fast instance, 0 slow instance, and 5 workspace command(s) for 2.49.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 2 fast instance, 0 slow instance, and 4 workspace command(s) for 2.50.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 4 fast instance, 2 slow instance, and 6 workspace command(s) for 2.51.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeCommandRegistryService] Registered 0 fast instance, 0 slow instance, and 3 workspace command(s) for 2.52.0 (cross-upgrade supported)
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeAwareEntityMetadataAdapter] [upgrade-metadata] hidden columns on AgentEntity: evaluationInputs
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeAwareEntityMetadataAdapter] [upgrade-metadata] hidden columns on RolePermissionFlagEntity: flag
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeAwareEntityMetadataAdapter] [upgrade-metadata] hidden columns on ObjectMetadataEntity: standardOverrides,isCustom
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeAwareEntityMetadataAdapter] [upgrade-metadata] hidden columns on FieldMetadataEntity: standardOverrides,isCustom
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeAwareEntityMetadataAdapter] [upgrade-metadata] hidden columns on TimelineActivityTypeEntity: renderer
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeAwareEntityMetadataAdapter] [upgrade-metadata] applied cursor=518 renamed=0 unavailable=0 hiddenColumns=7
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeAwareEntityMetadataAdapter] [upgrade-metadata] hidden columns on AgentEntity: evaluationInputs
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeAwareEntityMetadataAdapter] [upgrade-metadata] hidden columns on RolePermissionFlagEntity: flag
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeAwareEntityMetadataAdapter] [upgrade-metadata] hidden columns on ObjectMetadataEntity: standardOverrides,isCustom
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeAwareEntityMetadataAdapter] [upgrade-metadata] hidden columns on FieldMetadataEntity: standardOverrides,isCustom
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeAwareEntityMetadataAdapter] [upgrade-metadata] hidden columns on TimelineActivityTypeEntity: renderer
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [UpgradeAwareEntityMetadataAdapter] [upgrade-metadata] applied cursor=509 renamed=0 unavailable=0 hiddenColumns=7
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [DatabaseConfigDriver] [INIT] Loading initial config variables from database
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [DatabaseConfigDriver] [INIT] Config variables loaded: 0 values found in DB, 133 falling to env vars/defaults
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [GenerateInstanceCommandCommand] Generating fast instance command for version 2.52.0...
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [GenerateInstanceCommandCommand] fast instance command generated successfully: /app/packages/twenty-server/src/database/commands/upgrade-version-command/2-52/2-52-instance-command-fast-1793078228031-omni-conversation-foundation.ts
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [GenerateInstanceCommandCommand]   Class: OmniConversationFoundationFastInstanceCommand
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [GenerateInstanceCommandCommand]   Version: 2.52.0
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [GenerateInstanceCommandCommand] Added OmniConversationFoundationFastInstanceCommand to instance-commands.constant.ts
+[Nest] 28  - 10/27/2026, 5:17:08 AM     LOG [BullMQDriver] Message queue shutdown complete

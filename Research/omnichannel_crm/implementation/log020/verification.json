@@ -1,0 +1,14 @@
+{
+  "generatedSqlCalls": 68,
+  "sqlBytesAndOrderUnchanged": true,
+  "sourceSha256Lf": "3414e5e6106b5ffa75e1f95d5bfcf6e3da96f86a4a84d3b4de7e9b2fad85a108",
+  "upstreamRegistryUnchanged": true,
+  "newCoreTables": 9,
+  "foreignKeys": 23,
+  "checks": 15,
+  "postgresTests": 35,
+  "pythonGuardTests": 25,
+  "focusedStrictTypecheck": "pass",
+  "fullBuild": false,
+  "deployed": false
+}

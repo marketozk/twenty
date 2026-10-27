@@ -1,0 +1,18 @@
+{
+  "removedContainers": [
+    "twenty-rob764-dee10a1368c54cf0-db",
+    "twenty-rob764-dee10a1368c54cf0-redis"
+  ],
+  "removedNetwork": "twenty-rob764-dee10a1368c54cf0-net",
+  "temporaryPostgresDatabasesDestroyed": true,
+  "redisAnonymousVolumeRemoved": true,
+  "noTaskContainersRemaining": true,
+  "retainedSourceCache": "/opt/twenty-tests/twenty-rob764-dee10a1368c54cf0",
+  "retainedTools": "/opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools",
+  "demoContainers": [
+    "twenty-demo-worker-1: Up 19 hours",
+    "twenty-demo-server-1: Up 20 hours (healthy)",
+    "twenty-demo-db-1: Up 44 hours (healthy)",
+    "twenty-demo-redis-1: Up 44 hours (healthy)"
+  ]
+}

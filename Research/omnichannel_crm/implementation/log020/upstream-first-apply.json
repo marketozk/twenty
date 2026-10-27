@@ -1,0 +1,15 @@
+{
+  "focusedTypecheck": "pass",
+  "upstreamHistoryRows": 256,
+  "upstreamHistoryUnchanged": true,
+  "missingLedgerRejected": true,
+  "applyVerifyReplay": "pass",
+  "ledgerRows": 1,
+  "wrapperReadyExec": "pass",
+  "wrapperUnsafeConfigRefused": "pass",
+  "wrapperSchemaDriftRefused": "pass",
+  "downCliRejected": true,
+  "nativeFixture": "real upstream core initialization; no native workspace seeded",
+  "fullBuild": false,
+  "actualServerWorkerRestart": false
+}

@@ -1,0 +1,7 @@
+[
+  {
+    "migrationId": "omni-1793078228031-conversation-foundation",
+    "checksum": "3414e5e6106b5ffa75e1f95d5bfcf6e3da96f86a4a84d3b4de7e9b2fad85a108",
+    "sourcePath": "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-conversation-foundation.migration.ts"
+  }
+]

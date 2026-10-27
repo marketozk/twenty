@@ -17,6 +17,10 @@
     "watchAssets": true,
     "assets": [
       {
+        "include": "engine/core-modules/omnichannel-storage/migrations/*.json",
+        "outDir": "dist"
+      },
+      {
         "include": "engine/core-modules/logic-function/logic-function-resource/constants/seed-project/**",
         "outDir": "dist/assets"
       },

@@ -1,0 +1,1243 @@
+[
+  {
+    "name": "core.omniAccountBinding",
+    "columns": [
+      {
+        "name": "accountId",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "autoCreatePersonEnabled",
+        "type": "boolean",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "false"
+      },
+      {
+        "name": "capabilities",
+        "type": "jsonb",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "capabilitiesVersion",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "connectedAccountId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "connectorInstanceId",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "defaultConversationMode",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'human'"
+      },
+      {
+        "name": "defaultQueueId",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "messageChannelId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "platform",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "revision",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'1'"
+      },
+      {
+        "name": "routeGeneration",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'1'"
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'inactive'"
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniAccountBinding_account",
+        "columns": [
+          "workspaceId",
+          "platform",
+          "connectorInstanceId",
+          "accountId"
+        ]
+      },
+      {
+        "name": "UQ_omniAccountBinding_channel",
+        "columns": ["workspaceId", "messageChannelId"]
+      },
+      {
+        "name": "UQ_omniAccountBinding_workspace_id",
+        "columns": ["id", "workspaceId"]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniAccountBinding_active_queue",
+        "expression": "((status <> 'active'::text) OR (\"defaultQueueId\" IS NOT NULL))"
+      },
+      {
+        "name": "CHK_omniAccountBinding_generation",
+        "expression": "(\"routeGeneration\" > 0)"
+      },
+      {
+        "name": "CHK_omniAccountBinding_mode",
+        "expression": "(\"defaultConversationMode\" = ANY (ARRAY['human'::text, 'assist'::text, 'auto'::text]))"
+      },
+      {
+        "name": "CHK_omniAccountBinding_revision",
+        "expression": "(revision > 0)"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_850a1c75cb7b8c12b9906fe47e4",
+        "columns": ["workspaceId", "id", "defaultQueueId"],
+        "target": "core.omniQueue",
+        "targetColumns": ["workspaceId", "bindingId", "id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_a548b215b8704484e54d3ef5628",
+        "columns": ["messageChannelId"],
+        "target": "core.messageChannel",
+        "targetColumns": ["id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_e2b1c50cb2b6b79d693a8cecb91",
+        "columns": ["connectedAccountId"],
+        "target": "core.connectedAccount",
+        "targetColumns": ["id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_e433d621b812b6a3d985665ccea",
+        "columns": ["workspaceId"],
+        "target": "core.workspace",
+        "targetColumns": ["id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "core.omniAutomationPolicy",
+    "columns": [
+      {
+        "name": "bindingId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "currentVersion",
+        "type": "bigint",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "revision",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'1'"
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniAutomationPolicy_binding",
+        "columns": ["workspaceId", "bindingId"]
+      },
+      {
+        "name": "UQ_omniAutomationPolicy_binding_id",
+        "columns": ["id", "workspaceId", "bindingId"]
+      },
+      {
+        "name": "UQ_omniAutomationPolicy_workspace_id",
+        "columns": ["id", "workspaceId"]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniAutomationPolicy_revision",
+        "expression": "(revision > 0)"
+      },
+      {
+        "name": "CHK_omniAutomationPolicy_version",
+        "expression": "((\"currentVersion\" IS NULL) OR (\"currentVersion\" >= 0))"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_a0a5359b3775eb907ac2741cbf2",
+        "columns": ["workspaceId", "id", "currentVersion"],
+        "target": "core.omniAutomationPolicyVersion",
+        "targetColumns": ["workspaceId", "policyId", "version"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_dddee7e820c3a705f62f732a5e3",
+        "columns": ["workspaceId", "bindingId"],
+        "target": "core.omniAccountBinding",
+        "targetColumns": ["workspaceId", "id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_e6de679d58688b13a355c1ae60a",
+        "columns": ["workspaceId"],
+        "target": "core.workspace",
+        "targetColumns": ["id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "core.omniAutomationPolicyVersion",
+    "columns": [
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "policyId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "publishedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "publishedBy",
+        "type": "jsonb",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "settings",
+        "type": "jsonb",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "settingsHash",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "version",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniAutomationPolicyVersion_policy_version",
+        "columns": ["workspaceId", "policyId", "version"]
+      },
+      {
+        "name": "UQ_omniAutomationPolicyVersion_workspace_id",
+        "columns": ["id", "workspaceId"]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniAutomationPolicyVersion_settingsHash",
+        "expression": "(\"settingsHash\" ~ '^[a-f0-9]{64}$'::text)"
+      },
+      {
+        "name": "CHK_omniAutomationPolicyVersion_version",
+        "expression": "(version >= 0)"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_096d6caea23e6d92328b21dce04",
+        "columns": ["workspaceId", "policyId"],
+        "target": "core.omniAutomationPolicy",
+        "targetColumns": ["workspaceId", "id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_b8fb107f164da135345d0736f9b",
+        "columns": ["workspaceId"],
+        "target": "core.workspace",
+        "targetColumns": ["id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "core.omniConversation",
+    "columns": [
+      {
+        "name": "assigneeMemberId",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "automationEpoch",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'1'"
+      },
+      {
+        "name": "bindingId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "controlEpoch",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'1'"
+      },
+      {
+        "name": "conversationSequence",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'0'"
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "messageThreadId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "mode",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'human'"
+      },
+      {
+        "name": "nextOutboundSequence",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'1'"
+      },
+      {
+        "name": "policyId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "policyVersion",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "providerChatId",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "queueId",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "replyRevision",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'1'"
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'open'"
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniConversation_binding_chat",
+        "columns": ["workspaceId", "bindingId", "providerChatId"]
+      },
+      {
+        "name": "UQ_omniConversation_workspace_id",
+        "columns": ["id", "workspaceId"]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniConversation_counters",
+        "expression": "((\"conversationSequence\" >= 0) AND (\"replyRevision\" > 0) AND (\"controlEpoch\" > 0) AND (\"automationEpoch\" > 0) AND (\"nextOutboundSequence\" > 0) AND (\"policyVersion\" >= 0))"
+      },
+      {
+        "name": "CHK_omniConversation_mode",
+        "expression": "(mode = ANY (ARRAY['human'::text, 'assist'::text, 'auto'::text]))"
+      },
+      {
+        "name": "CHK_omniConversation_status",
+        "expression": "(status = ANY (ARRAY['open'::text, 'closed'::text]))"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_1da063b4d2fe387f39ad9f9a92f",
+        "columns": ["workspaceId", "policyId", "policyVersion"],
+        "target": "core.omniAutomationPolicyVersion",
+        "targetColumns": ["workspaceId", "policyId", "version"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_4d4c1c22457b47d6e8edb6ff31a",
+        "columns": ["workspaceId"],
+        "target": "core.workspace",
+        "targetColumns": ["id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_883bbedc3d83f703bb5f462ea0d",
+        "columns": ["workspaceId", "bindingId"],
+        "target": "core.omniAccountBinding",
+        "targetColumns": ["workspaceId", "id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_b15836f21a2aad40c553630db82",
+        "columns": ["workspaceId", "bindingId", "queueId"],
+        "target": "core.omniQueue",
+        "targetColumns": ["workspaceId", "bindingId", "id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_e7c1ce857c6f6b40ca7490a66ae",
+        "columns": ["workspaceId", "bindingId", "policyId"],
+        "target": "core.omniAutomationPolicy",
+        "targetColumns": ["workspaceId", "bindingId", "id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": [
+      {
+        "name": "IDX_omniConversation_assignee_status_updated",
+        "definition": "CREATE INDEX \"IDX_omniConversation_assignee_status_updated\" ON core.\"omniConversation\" USING btree (\"workspaceId\", \"assigneeMemberId\", status, \"updatedAt\")"
+      },
+      {
+        "name": "IDX_omniConversation_queue",
+        "definition": "CREATE INDEX \"IDX_omniConversation_queue\" ON core.\"omniConversation\" USING btree (\"workspaceId\", \"bindingId\", \"queueId\")"
+      }
+    ]
+  },
+  {
+    "name": "core.omniConversationMember",
+    "columns": [
+      {
+        "name": "conversationId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "workspaceMemberId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniConversationMember_conversation_member",
+        "columns": ["workspaceId", "conversationId", "workspaceMemberId"]
+      },
+      {
+        "name": "UQ_omniConversationMember_workspace_id",
+        "columns": ["id", "workspaceId"]
+      }
+    ],
+    "checks": [],
+    "foreignKeys": [
+      {
+        "name": "FK_e3c7bca1a8a3dde15c3de86a0c6",
+        "columns": ["workspaceId"],
+        "target": "core.workspace",
+        "targetColumns": ["id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_ec88935c2ebc93d7ee7e06aa033",
+        "columns": ["workspaceId", "conversationId"],
+        "target": "core.omniConversation",
+        "targetColumns": ["workspaceId", "id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "core.omniConversationReadCursor",
+    "columns": [
+      {
+        "name": "conversationId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "lastReadSequence",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'0'"
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "workspaceMemberId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniConversationReadCursor_conversation_member",
+        "columns": ["workspaceId", "conversationId", "workspaceMemberId"]
+      },
+      {
+        "name": "UQ_omniConversationReadCursor_workspace_id",
+        "columns": ["id", "workspaceId"]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniConversationReadCursor_sequence",
+        "expression": "(\"lastReadSequence\" >= 0)"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_8e6a49256a8ffc797d121d82a9d",
+        "columns": ["workspaceId", "conversationId"],
+        "target": "core.omniConversation",
+        "targetColumns": ["workspaceId", "id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_b00a0ec4dfc5af1d44db66b0767",
+        "columns": ["workspaceId"],
+        "target": "core.workspace",
+        "targetColumns": ["id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "core.omniExternalIdentity",
+    "columns": [
+      {
+        "name": "bindingId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "personId",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "providerPeerId",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "revision",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'1'"
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "verificationSource",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniExternalIdentity_binding_peer",
+        "columns": ["workspaceId", "bindingId", "providerPeerId"]
+      },
+      {
+        "name": "UQ_omniExternalIdentity_workspace_id",
+        "columns": ["id", "workspaceId"]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniExternalIdentity_revision",
+        "expression": "(revision > 0)"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_0c34b54bd098654aa5a43bfc240",
+        "columns": ["workspaceId", "bindingId"],
+        "target": "core.omniAccountBinding",
+        "targetColumns": ["workspaceId", "id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_257fa8459e361174cf7749396de",
+        "columns": ["workspaceId"],
+        "target": "core.workspace",
+        "targetColumns": ["id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "core.omniQueue",
+    "columns": [
+      {
+        "name": "active",
+        "type": "boolean",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "false"
+      },
+      {
+        "name": "bindingId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "revision",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'1'"
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniQueue_binding_id",
+        "columns": ["id", "workspaceId", "bindingId"]
+      },
+      {
+        "name": "UQ_omniQueue_binding_name",
+        "columns": ["workspaceId", "bindingId", "name"]
+      },
+      {
+        "name": "UQ_omniQueue_workspace_id",
+        "columns": ["id", "workspaceId"]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniQueue_revision",
+        "expression": "(revision > 0)"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_b40e6682e40928280195c10a750",
+        "columns": ["workspaceId", "bindingId"],
+        "target": "core.omniAccountBinding",
+        "targetColumns": ["workspaceId", "id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_c2d3e5c8f28a36224687e747cfe",
+        "columns": ["workspaceId"],
+        "target": "core.workspace",
+        "targetColumns": ["id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "core.omniWorkspacePolicyState",
+    "columns": [
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "epoch",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'1'"
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "restoreIncarnation",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniWorkspacePolicyState_workspace",
+        "columns": ["workspaceId"]
+      },
+      {
+        "name": "UQ_omniWorkspacePolicyState_workspace_id",
+        "columns": ["id", "workspaceId"]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniWorkspacePolicyState_epoch",
+        "expression": "(epoch > 0)"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_6fe1984a8227289f6cd3b64044e",
+        "columns": ["workspaceId"],
+        "target": "core.workspace",
+        "targetColumns": ["id"],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": []
+  }
+]

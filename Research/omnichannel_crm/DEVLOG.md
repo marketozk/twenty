@@ -284,3 +284,55 @@ LOG-019 cleanup: после проверки имени/image/network/tmpfs уд
 LOG-019 опубликован: `28cdc295b69103074e95ce93d67117950815db83` в origin/codex/omnichannel-requirements. Read-back11 описаний/статусов подтвердил ROB-772 Done, ROB-764 In Progress, остальные статусы сохранены. Dependency ROB-772 → ROB-764 сохранена как выполненная предпосылка. По одному комментарию LOG-019 в [ROB-764](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-8753ea7f) и [ROB-772](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-a06f566a). [Публикация](implementation/publication-log019.json).
 
 GitHub Actions: оба workflow завершены failure до запуска job (0 steps). Аннотация GitHub: “The job was not started because your account is locked due to a billing issue.” [PostgreSQL run](https://github.com/marketozk/twenty/actions/runs/40426837916), [dependency guard run](https://github.com/marketozk/twenty/actions/runs/40426837919). Это блокировка CI аккаунта, не падение выполненных тестов. Облачный CI pass не заявляется; собственные16 PG/20 guard tests и focused typecheck прошли. Биллинг/настройки аккаунта не менялись, повторный запуск не инициировался.
+
+## LOG-020 — 27.10.2026: первая группа схемы ROB-764
+
+Пользователь: «хорошо делай». Продолжена реализация по принятому плану,
+без развёртывания новой порции в демо и без переключения клиентских каналов.
+
+Реализованы9 core entities: WorkspacePolicyState, AccountBinding, Queue,
+AutomationPolicy/Version, ExternalIdentity, Conversation, Member, ReadCursor.
+23 FK и15 CHECK; composite tenant/binding constraints, bigint как строки,
+disabled-v0 bootstrap shape. Динамические Person/Thread/Member IDs без фиктивных
+FK; native account pairing и runtime authorization остаются domain writer.
+
+В изолированной PostgreSQL17 выполнена настоящая upstream core initialization.
+Штатный CLI generator сначала показал пустой baseline, после новых entities
+создал instance command. 68 SQL-вызовов up/down без изменений перенесены в
+fork-only registry; upstream decorators/registration исключены. Добавлены
+LF-source checksum manifest/CI check, schema verifier, независимый apply/verify
+CLI, Nest JSON asset declaration и подготовленный runtime wrapper.
+
+Проверки:35 PostgreSQL tests,25 Python tests, полный no-new Enterprise dependency
+guard (0 violations), focused strict TypeScript PASS. На настоящей upstream core
+schema apply/verify/replay сохранили все256 строк upgradeMigration и одну запись
+fork ledger; wrapper отказал при drift/неправильной настройке и запустил test
+command при готовности. Empty generated down/up прошёл. [Evidence](implementation/log020/README.md).
+
+Адресное subagent review: SQL совпадает с raw generator, tenant/binding FK
+проверены; найден пропуск NOT VALID/DEFERRABLE/index validity в readiness.
+Добавлены catalog checks и regression tests. PG test выявил недетерминированный
+порядок колонок TypeORM index introspection; использован pg_get_indexdef,
+проверка перестановки колонок проходит. Тип workspaceId в test helper уточнён.
+После исправлений scoped review без новых находок; полный круг планов не запускался.
+
+Skills: ai-dev-workflow — Implement/Verify и адресное независимое ревью;
+behavioral-guardrails — изменения только текущей порции и проверка diff;
+server-schrodinger — отдельные ограниченные containers, readonly preflight;
+linear-api — синхронизация после публикации через сохранённый API fallback.
+Субагент выполнил entities и schema tests, затем два адресных code-review прохода.
+Claude Code в этой порции не запускался.
+
+Ограничения: не выполнены полный server build/Nest packaging, populated native
+workspace upgrade и actual server/worker restart. Wrapper ещё не подключён
+к live entrypoints. Нет runtime bootstrap, audit writer, ingress/outbox и внешних
+сообщений. ROB-764 остаётся In Progress; T01–T33 целиком не закрыты.
+
+Cleanup: после проверки имён/images/network/mounts удалены только собственные
+PG/Redis containers, Redis anonymous volume и internal network. Обе временные
+БД уничтожены с tmpfs. Source/tool caches сохранены без активных процессов;
+демо server/worker/db/redis продолжают работать. [Read-back](implementation/log020/cleanup.json).
+
+Следующий шаг: упаковка/подключение мигратора и gate к фактическому startup,
+полный build/restart T33; затем остальные schema entities, audit/bootstrap и
+ingress/outbox. Commit/push и read-back ROB-764 фиксируются после публикации.
