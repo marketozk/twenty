@@ -1307,3 +1307,4 @@ object identity. Отдельная baseline ошибка TypeScript в преж
 behavioral-guardrails, server-schrodinger. Следующий шаг — parent hard-delete
 guard, core retained references и trash cleanup без starvation; own ACL/audit
 расширение не объявляется завершённым по этому guard.
+`nПубликация LOG-049: код 0aa5e4312253336aa3668d4b5372c3400e289858, remote проверен GitHub API. Описание ROB-764 и комментарий ddec6696-e23c-49fb-b215-f3eee872a910 прочитаны обратно; все 11 статусов сохранены. Далее parent lifecycle guard.
