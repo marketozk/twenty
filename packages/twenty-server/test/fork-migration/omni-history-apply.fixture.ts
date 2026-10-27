@@ -19,11 +19,14 @@ import { claimOmniIncomingReceipts } from 'src/modules/omnichannel/services/omni
 import { createOmniNativeMessageFixture } from 'test/fork-migration/omni-native-message.fixture';
 
 export const createOmniHistoryApplyFixture = (
-  options: { includeTargets?: boolean } = {},
+  options: { includeTargets?: boolean; includeWorkspaceMember?: boolean } = {},
 ) => {
   const native = createOmniNativeMessageFixture({
     coreSchema: 'fork',
-    additionalTables: options.includeTargets ? ['messageThreadTarget'] : [],
+    additionalTables: [
+      ...(options.includeTargets ? ['messageThreadTarget' as const] : []),
+      ...(options.includeWorkspaceMember ? ['workspaceMember' as const] : []),
+    ],
   });
   const runtime = new DataSource({
     type: 'postgres',

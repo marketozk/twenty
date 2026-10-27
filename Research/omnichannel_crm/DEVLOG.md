@@ -1065,3 +1065,23 @@ cross-review не заявляется. Skills: ai-dev-workflow, behavioral-guar
 server-schrodinger. Продолжаем LOG-041: первый human text command/outbox.
 
 Публикация LOG-040: код 7fc9f425fd2937fbcdae82ec47ac29bf5aa5162f, remote проверен GitHub API. Описание ROB-764 и комментарий 06e55d29-8e42-43c1-aeb4-af6dc6202808 прочитаны обратно; все 11 статусов сохранены. Продолжаем LOG-041.
+
+## LOG-041 — 27.10.2026: human text command admission
+
+LOG-041 / ROB-764 In Progress: приём human text command атомарно сохраняет
+pending Command, три счётчика Conversation, suppressed event/root/dispatch и аудит.
+Текущие native member/user/workspace и grants проверяются также при replay; key
+общий для actor/workspace, UI CAS применяется к новому намерению. Проверены
+конкурентные ключи, реальный revoke lock, rollback каждого write и lost COMMIT ACK.
+Полный fork suite: 1025 Jest /41 suites +26 guards =1051 PASS; 97 новых cases.
+Typecheck162roots:146 baseline/current,0 новых/0 changed-code. Все6 миграций и
+прежние методы aggregate неизменны. [Доказательства и границы](implementation/log041/README.md).
+Далее — outbox claim/FIFO и восстановление попыток. Writer пока text-only/v0,
+с injected current grants; HTTP/UI, transport, scheduler и own ACL ещё впереди.
+Полные ROB-764/T05 не закрыты. Демо прежнее, GitHub Actions не используется.
+
+Применены ai-dev-workflow, behavioral-guardrails, server-schrodinger. Scoped независимое
+ревью без блокеров. Enterprise barrel dependency снята без exemption; direct UPDATE
+RETURNING заменён CTE SELECT согласно настоящему QueryRunner. Retained membership
+проверяется EXISTS, чтобы повторное вступление не ломало denied audit. Новый полный
+Claude cross-review и полный server build/typecheck не заявляются. Продолжаем LOG-042.

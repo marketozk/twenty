@@ -1,0 +1,19 @@
+{
+  "fullForkJestTests": 1025,
+  "fullForkJestSuites": 41,
+  "guardTests": 20,
+  "checksumTests": 6,
+  "totalDistinctTests": 1051,
+  "typecheckRootFiles": 162,
+  "baselineTypeDiagnostics": 146,
+  "currentTypeDiagnostics": 146,
+  "newTypeDiagnostics": 0,
+  "changedCodeTypeDiagnostics": 0,
+  "fullServerTypecheck": false,
+  "allSixMigrationSourcesUnchanged": true,
+  "allPreviousAggregateMethodsUnchanged": true,
+  "independentScopedReview": "PASS admission, strict owner, failure audit and PG fixture; ACK spy concern withdrawn after strict connection disposal verified",
+  "fullROB764Acceptance": false,
+  "liveDemoChanged": false,
+  "githubActionsUsed": false
+}

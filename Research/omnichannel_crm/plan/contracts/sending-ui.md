@@ -1,12 +1,30 @@
 # Отправка сообщений и совместный интерфейс
 
-Нормативный контракт. Схема и UNIQUE: [спецификация §3](../implementation-spec.md#3-схема--rob-764). Владельцы правил: [индекс](README.md). Ссылки «§15.x» ниже означают сохранённые разделы спецификации. Новый runtime ещё не реализован.
+Нормативный контракт. Схема и UNIQUE: [спецификация §3](../implementation-spec.md#3-схема--rob-764). Владельцы правил: [индекс](README.md). Ссылки «§15.x» ниже означают сохранённые разделы спецификации. Фактическое покрытие runtime и оставшиеся проверки — [ход реализации](../../implementation/rob764-progress.md); наличие контракта не означает готовность отправки.
 
 <a id="command-admission"></a>
 
 ## Command и admission
 
 Outbound: conversationId,text,readyFileIds,replyToMessageLinkId?,idempotencyKey,expectedControlEpoch,observedReplyRevision (human) → актуальные permissions/route/epoch → immutable pending Command + audit/event одним commit. Повтор ключа сравнивает также target/files, не только текст. После явного пользовательского решения повторить unknown создаётся новый commandId с replacesCommandId и предупреждением о возможном дубле.
+
+Первый внутренний writer принимает только ручной текст: неизвестные поля, файлы,
+reply и replacement отклоняются, а не теряются. Сервер назначает senderClass=human,
+contentProvenance=human_direct и event kind=command.created, origin=human_composer.
+Это событие принятия намерения, не доставки. До доказанного receipt/echo native
+Message не создаётся. Служебный payload содержит commandId, outboundSequence,
+senderClass и dispatchSuppressed; текста и transport identifiers в нём нет.
+
+Current actor/member/workspace membership и разрешение проверяются также при replay.
+Ключ общий для actor/workspace, а не отдельный для каждого conversation: конкурентный
+конфликт не должен создавать счётчики или события проигравшей команды. Replay
+сравнивает прежний immutable target/payload и возвращает текущие UI revisions;
+смена route generation не переписывает сохранённую команду. Только новое намерение
+проверяет open, human/assist и оба UI CAS; auto требует отдельного takeover.
+Disabled policy v0 допускает сохранение provenance ручной команды; её событие
+получает [suppressed root/dispatch](workflow-execution.md#human-command-event).
+HTTP, transport dispatch и qualification capabilities этим внутренним writer
+не включаются. Полный контракт файлов/reply/отправки остаётся обязательным далее.
 
 <a id="command-states"></a>
 

@@ -1,0 +1,19 @@
+{
+  "baseCommit": "d2bf3b41611c12f9328aa801de2f1a6e7795c32b",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "allPreviousAggregateMethodsUnchanged": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "07846de7e8a8447306d8a2109e64def372bece6532b1da38c6586864bafa8824",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "b3f77c68cfa2b8cab43e1e48d19262b5f928b55a546db384c824a971f734b808",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts": "4535df20a0978711fdd6e686dcef3d7438a9a23494800eca1203ecf718868b47",
+    "packages/twenty-server/test/fork-migration/omni-history-apply.fixture.ts": "29dd0f3c3d75966995afc7a67b3eef9726cf71407febf3ad7fcf558f18e3f2ef",
+    "packages/twenty-server/src/modules/omnichannel/contracts/omni-human-text-command.ts": "379f857cce5aeb6a404d8a5eda30796a6412d4965f28b212164ae286e82b29d4",
+    "packages/twenty-server/src/modules/omnichannel/services/admit-omni-human-text-command.ts": "a367fc3ed7031122165be219b75877ab422d09d190660fc76233b35a26ea4777",
+    "packages/twenty-server/src/modules/omnichannel/services/append-omni-human-text-command-failure.ts": "95e24390ca476b6601cb141d8a820949c64a986e9c9b0ebc18fd54eef49267f2",
+    "packages/twenty-server/test/fork-migration/crm-audit-human-text-command.spec.ts": "36222712c4ae9d83c66f200de48c787dabb5f6c4e93277a36b02552ee8d944b1",
+    "packages/twenty-server/test/fork-migration/omni-human-text-command-contract.spec.ts": "6e429021a493a50ddf05522139ce7a3486ffc6fc07eaf335f522ca4cffae2207",
+    "packages/twenty-server/test/fork-migration/omni-human-text-command-facade.spec.ts": "95ae9cf69b699492bd30ef62359647c395605990a078269136f11853a6d7154d",
+    "packages/twenty-server/test/fork-migration/omni-human-text-command.postgres-spec.ts": "33b5904951373b77f00261718903d0232b6cf2c0175f73487bfd3f159f9139c9"
+  }
+}

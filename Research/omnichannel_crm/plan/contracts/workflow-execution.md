@@ -146,6 +146,17 @@ captured policy version. AutomationAdmission, reply budget, consumer/run intents
 live admission. Replay возвращает прежний storage result; публикация подписки
 не превращает suppressed plan в исполнимый.
 
+<a id="human-command-event"></a>
+
+Ручное command.created при disabled policy v0 сохраняется с origin=human_composer.
+Его domain_event root использует ту же стабильную идентичность по eventId;
+state=suppressed, бюджеты/расходы=0, coveredRoots=[], scope=binding/conversation,
+initialEventIds содержит только это событие. Атомарный immutable DispatchPlan:
+targets=[], state=suppressed, activationVersion=NULL, captured policy version=0.
+AutomationAdmission, ReplyBudget и consumer/run intents не создаются. Намерение
+менеджера не расходует autonomous reply budget. Повтор не создаёт второй event,
+а последующая публикация политики не оживляет этот suppressed plan.
+
 <a id="design-28"></a>
 
 Изменения CRM из governed run сохраняют causation и полный inherited root set в trusted transaction context и durable event. Subsequent triggers и дети наследуют его и оставшиеся effect/reply budgets, не объявляют изменение новой независимой причиной. Для (root,workflowId) повторный target не создаётся (UNIQUE в intent target index); при covered set из нескольких roots все target claims резервируются атомарно, runId определяется [единым правилом](#run-identity). Частичный/пересекающийся уже занятый набор отклоняется с видимым handoff, не создаёт ещё один run для части roots; если нужен тот же workflow повторно, это отдельный explicit replay после разбора. Missing/lost causation на внутреннем событии → отказ/quarantine, а не свежий root. Общий конечный max CRM effects/hops и per-route admission/rate budget задаются в G07 до activation; исчерпание → один durable handoff без следующей мутации/рассылки. Это останавливает цикл update→trigger→update. Новые независимые внешние события получают свои roots только после аутентификации и rate admission; клиентский payload не задаёт ancestry. Burst хранит набор (rootKind,rootId); descendants наследуют весь набор без расширения или обнуления.

@@ -50,6 +50,18 @@ import { appendOmniHistoryApplyFailure } from 'src/modules/omnichannel/services/
 import { isOmniHistoryMissingConfigurationError } from 'src/modules/omnichannel/services/omni-history-missing-configuration.error';
 import { appendOmniHistoryResumeFailure } from 'src/modules/omnichannel/services/append-omni-history-resume-failure';
 import { appendOmniBindingConfigWakeupFailure } from 'src/modules/omnichannel/services/append-omni-binding-config-wakeup-failure';
+import { appendOmniHumanTextCommandFailure } from 'src/modules/omnichannel/services/append-omni-human-text-command-failure';
+import {
+  admitOmniHumanTextCommand,
+  isOmniHumanTextCommandAuthorizationError,
+  snapshotOmniHumanTextCommandRequest,
+  type OmniHumanTextCommandAuthorizer,
+} from 'src/modules/omnichannel/services/admit-omni-human-text-command';
+import {
+  type OmniHumanTextCommandInput,
+  type OmniHumanTextCommandPrincipal,
+  type OmniHumanTextCommandResult,
+} from 'src/modules/omnichannel/contracts/omni-human-text-command';
 import {
   claimOmniBindingConfigWakeups,
   housekeepOmniBindingConfigWakeups,
@@ -96,6 +108,72 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     @InjectDataSource()
     private readonly dataSource: DataSource,
   ) {}
+
+  async admitOmniHumanTextCommand(
+    principal: OmniHumanTextCommandPrincipal,
+    input: OmniHumanTextCommandInput,
+    authorize: OmniHumanTextCommandAuthorizer,
+  ): Promise<OmniHumanTextCommandResult> {
+    const request = snapshotOmniHumanTextCommandRequest(
+      principal,
+      input,
+      authorize,
+    );
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        let callbackEntered = false;
+        let authorizationDenied = false;
+        try {
+          return await this.workspaceOrmManager.runInWorkspaceTransaction(
+            async (scope) => {
+              callbackEntered = true;
+              return admitOmniHumanTextCommand(
+                scope,
+                request.principal,
+                request.input,
+                async (authorizationScope, descriptor) => {
+                  try {
+                    await request.authorize(authorizationScope, descriptor);
+                  } catch (error) {
+                    authorizationDenied = true;
+                    throw error;
+                  }
+                },
+              );
+            },
+            { commitOutcome: 'strict' },
+          );
+        } catch (error) {
+          if (
+            callbackEntered &&
+            !(error instanceof NativeTransactionOutcomeUnknownError)
+          ) {
+            try {
+              await this.workspaceOrmManager.runInWorkspaceTransaction(
+                (scope) =>
+                  appendOmniHumanTextCommandFailure(
+                    scope,
+                    request.principal,
+                    request.input,
+                    authorizationDenied ||
+                      isOmniHumanTextCommandAuthorizationError(error),
+                  ),
+                { commitOutcome: 'strict' },
+              );
+            } catch (auditError) {
+              throw new AggregateError(
+                [error, auditError],
+                'OMNI_HUMAN_COMMAND_FAILURE_AUDIT_UNCONFIRMED',
+              );
+            }
+          }
+          throw error;
+        }
+      },
+      buildSystemAuthContext(request.principal.workspaceId),
+      { lite: true },
+    );
+  }
 
   async executeOmniBindingConfigRecovery(
     principal: OmniBindingConfigWakeupPrincipal,
