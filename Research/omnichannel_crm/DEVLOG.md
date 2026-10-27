@@ -1637,3 +1637,5 @@ acceptance не заявляются.
 держать новый core owner вокруг cleaner, открывающего собственную native transaction.
 Демо/SaleBot не менялись; GitHub Actions не использовался. Применены ai-dev-workflow,
 behavioral-guardrails, server-schrodinger и read-only scoped review.
+
+LOG-058 publication: code 5a3f53a1e0d1381a60f2e937602fecb880c33113 pushed; GitHub ref verified through API. Linear comment 71477b48-b833-4ea8-bb41-5c00da480828; description/comment and all11 project states independently read back. ROB-764 In Progress. See implementation/log058/publication.json.
