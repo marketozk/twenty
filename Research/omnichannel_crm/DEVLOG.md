@@ -3510,3 +3510,5 @@ Targets/membership удаляются под общим workspace fence; soft/ha
 [Доказательства](implementation/log114/README.md), [ревью](implementation/log114/review.md). Первичный typecheck нашёл missing this annotation в новом тесте; исправлено. Enterprise guard сначала выявил broad imports; устранены через structural ports/leaf types, baseline не менялся. Full-server typecheck не чистый; native shares spy, HTTP/whole public removal не проверены. Демо/образ/сообщения/Actions не менялись.
 
 Далее — [аудит core membership/FK effects](implementation/log114/next-boundary.md) с trusted actor capture и security-first audit failure по утверждённому контракту. ROB765 остаётся In Progress.
+
+LOG114 publication: be0a504eb17c178e827d2803b50bb6bdd7a34fe7 pushed/API verified. ROB765 description and comment 9a714a2a-8e26-4494-bade-80521595df24 independently read back; all 11 issue states match. Implementation continues.
