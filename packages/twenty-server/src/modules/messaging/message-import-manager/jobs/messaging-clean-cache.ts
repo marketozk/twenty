@@ -1,3 +1,7 @@
+import {
+  messageImportCacheKeys,
+  legacyMessageImportCacheKeys,
+} from 'src/modules/messaging/common/utils/message-import-cache-keys';
 import { InjectCacheStorage } from 'src/engine/core-modules/cache-storage/decorators/cache-storage.decorator';
 import { CacheStorageService } from 'src/engine/core-modules/cache-storage/services/cache-storage.service';
 import { CacheStorageNamespace } from 'src/engine/core-modules/cache-storage/types/cache-storage-namespace.enum';
@@ -8,6 +12,7 @@ import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queu
 export type MessagingCleanCacheJobData = {
   workspaceId: string;
   messageChannelId: string;
+  connectedAccountId?: string;
 };
 
 @Processor(MessageQueue.messagingQueue)
@@ -19,10 +24,14 @@ export class MessagingCleanCacheJob {
 
   @Process(MessagingCleanCacheJob.name)
   async handle(data: MessagingCleanCacheJobData): Promise<void> {
-    await this.cacheStorage.mdel([
-      `messages-to-import:${data.workspaceId}:${data.messageChannelId}`,
-      `messages-to-import-total:${data.workspaceId}:${data.messageChannelId}`,
-      `messages-imported:${data.workspaceId}:${data.messageChannelId}`,
-    ]);
+    const keys =
+      data.connectedAccountId === undefined
+        ? legacyMessageImportCacheKeys(data.workspaceId, data.messageChannelId)
+        : messageImportCacheKeys({
+            workspaceId: data.workspaceId,
+            messageChannelId: data.messageChannelId,
+            connectedAccountId: data.connectedAccountId,
+          });
+    await this.cacheStorage.mdel(Object.values(keys));
   }
 }

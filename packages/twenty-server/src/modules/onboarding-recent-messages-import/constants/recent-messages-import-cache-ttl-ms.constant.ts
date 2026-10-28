@@ -1,1 +1,1 @@
-export const RECENT_MESSAGES_IMPORT_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export { MESSAGE_IMPORT_CACHE_TTL_MS as RECENT_MESSAGES_IMPORT_CACHE_TTL_MS } from 'src/modules/messaging/common/constants/message-import-cache-ttl-ms.constant';

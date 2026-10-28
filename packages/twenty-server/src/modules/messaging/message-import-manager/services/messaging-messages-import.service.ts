@@ -1,3 +1,5 @@
+import { messageImportCacheKeys } from 'src/modules/messaging/common/utils/message-import-cache-keys';
+import { MESSAGE_IMPORT_CACHE_TTL_MS } from 'src/modules/messaging/common/constants/message-import-cache-ttl-ms.constant';
 import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -63,6 +65,15 @@ export class MessagingMessagesImportService {
     workspaceId: string,
     batchSize?: number,
   ) {
+    messageChannel = { ...messageChannel };
+    connectedAccount = { ...connectedAccount };
+    if (messageChannel.connectedAccountId !== connectedAccount.id)
+      throw new Error('MESSAGE_IMPORT_ACCOUNT_MISMATCH');
+    const importKeys = messageImportCacheKeys({
+      workspaceId,
+      messageChannelId: messageChannel.id,
+      connectedAccountId: connectedAccount.id,
+    });
     let messageIdsToFetch: string[] = [];
 
     const messagesGetBatchSize =
@@ -80,6 +91,15 @@ export class MessagingMessagesImportService {
           ) {
             return;
           }
+
+          if (
+            await this.messageChannelSyncStatusService.recoverLegacyMessageImport(
+              messageChannel.id,
+              workspaceId,
+              connectedAccount.id,
+            )
+          )
+            return;
 
           await this.messagingMonitoringService.track({
             eventName: 'messages_import.started',
@@ -102,7 +122,7 @@ export class MessagingMessagesImportService {
           }
 
           messageIdsToFetch = await this.cacheStorage.setPop(
-            `messages-to-import:${workspaceId}:${messageChannel.id}`,
+            importKeys.pending,
             messagesGetBatchSize,
           );
 
@@ -231,8 +251,12 @@ export class MessagingMessagesImportService {
 
           if (!isLastBatch) {
             await this.cacheStorage.incrBy(
-              `messages-imported:${workspaceId}:${messageChannel.id}`,
+              importKeys.imported,
               messageIdsToFetch.length,
+            );
+            await this.cacheStorage.expire(
+              importKeys.imported,
+              MESSAGE_IMPORT_CACHE_TTL_MS,
             );
           }
 
@@ -253,8 +277,9 @@ export class MessagingMessagesImportService {
             `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannel.id} - Error (${code}) importing messages: ${message}`,
           );
           await this.cacheStorage.setAdd(
-            `messages-to-import:${workspaceId}:${messageChannel.id}`,
+            importKeys.pending,
             messageIdsToFetch,
+            MESSAGE_IMPORT_CACHE_TTL_MS,
           );
 
           await this.messageImportErrorHandlerService.handleDriverException(

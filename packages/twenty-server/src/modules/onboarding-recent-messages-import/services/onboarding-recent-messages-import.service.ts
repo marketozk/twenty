@@ -1,3 +1,4 @@
+import { messageImportCacheKeys } from 'src/modules/messaging/common/utils/message-import-cache-keys';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -60,6 +61,11 @@ export class OnboardingRecentMessagesImportService {
             return;
           }
 
+          const importKeys = messageImportCacheKeys({
+            workspaceId,
+            messageChannelId: messageChannel.id,
+            connectedAccountId: messageChannel.connectedAccountId,
+          });
           const messageExternalIds =
             await this.recentMessagesService.getExternalIds({
               connectedAccount: messageChannel.connectedAccount,
@@ -71,7 +77,7 @@ export class OnboardingRecentMessagesImportService {
           }
 
           await this.cacheStorage.setAdd(
-            `messages-to-import:${workspaceId}:${messageChannel.id}`,
+            importKeys.pending,
             messageExternalIds,
             RECENT_MESSAGES_IMPORT_CACHE_TTL_MS,
           );
@@ -105,7 +111,7 @@ export class OnboardingRecentMessagesImportService {
       );
     } catch (error) {
       this.logger.warn(
-        `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannelId} - Could not import recent messages: ${error.message}`,
+        `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannelId} - Could not import recent messages: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }

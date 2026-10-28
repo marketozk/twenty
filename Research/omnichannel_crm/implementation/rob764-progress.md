@@ -1100,3 +1100,44 @@ Last full fork LOG0561881/71; no full fork/full server typecheck/full Claude pas
 ROB764 acceptance claimed. [Evidence](log064/README.md).
 Demo/transport unchanged; GitHub Actions unused. Applied ai-dev-workflow,
 behavioral-guardrails, server-schrodinger and scoped read-only research/review.
+
+
+## LOG-065 — account-scoped message import cache (28.10.2026)
+
+All five runtime key owners now use one validated canonical UUID helper:
+list-fetch, batch importer, sync-status/progress, recent-message onboarding and
+clean-cache job. Pending/total/imported v2 keys include workspace/channel/account.
+Producers capture namespace before provider await; importer copies caller identity
+before awaits and requeues failures only into its captured namespace. Reset/clear/
+broadcast use accepted SQL account descriptors, never a later parent lookup.
+Public progress reads a current ordinary channel before selecting its namespace;
+missing/protected returns null. Old cleanup payloads only delete legacy keys.
+One shared7-day TTL is used by producers, error requeue and counter expiry; Redis
+operations remain separate, not an atomic TTL/SQL protocol.
+
+Retained legacy backlog (pending set or either counter) causes guarded cursor reset
+to list-fetch pending before import/pop/completed. Pending group/folder actions are
+preserved. Only known commit permits old-key deletion. Stale parent/disabled/setup
+returns stop without deleting the backlog; unknown commit propagates. No dual-read
+or reassignment of unknown-origin IDs. This recovery requires surviving legacy keys;
+it cannot discover queues already expired/deleted before upgrade. New keys do not
+isolate overlapping requests for the same account; downstream snapshot guards next.
+
+388 targeted Jest/6 suites +26 guards=414 PASS.
+16 new cases:13 SQL/caller boundaries plus3 pure-key/cleanup cases. Include delayed
+list-fetch/onboarding responses after reparent, captured postcommit reset, current
+progress, legacy refetch/pending actions/stale/unknown outcomes, actual importer
+early stop and account-pinned requeue TTL. Cache is a controlled test double; these
+cases do not claim real Redis atomicity. Initial TTL import referenced a nonexistent
+shared export; the regression caught undefined TTL, replaced with the canonical
+common constant and reran successfully. Runtime behavior tested against real PG
+where stated. Typecheck 269 roots:190/189,0 new/changed-code.
+7 migration sources unchanged; source LF hashes matched. Scoped read-only review
+found no new blockers, did not execute tests. [Evidence](log065/README.md).
+
+Next: guarded import scheduling/current importer and onboarding admission, then
+bounded list-response snapshot/SQL apply cleanup and fresh T22 acceptance. This does
+not close response-to-write races or onboarding's existing broad catch. Last full
+fork LOG0561881/71; no new full fork/full server typecheck/full Claude review or
+ROB764 completion claimed. Demo/SaleBot unchanged; no Actions. Applied ai-dev-workflow,
+behavioral-guardrails, server-schrodinger and scoped read-only research/review.

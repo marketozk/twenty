@@ -1,0 +1,16 @@
+{
+  "baseCommit": "0b21acf9cc6058e8ea57da1184dfa530d90c1bac",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/messaging/common/services/message-channel-sync-status.service.ts": "d6db36b06e3eead49a64319d0c32ee288286e7639d4374802ddb5c86bf879159",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/jobs/messaging-clean-cache.ts": "d1e52c1a5de9924314652e21184cd2390fcfc1e6965c371f0ab5e20fc703e609",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-message-list-fetch.service.ts": "79c65e384cedb9dee6107a1b9decaa9530e77be07bc00eb4f23150bc36a11014",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-messages-import.service.ts": "d460d14eed6dd177cad3e2fd84afaea00041e2627fa6d6a6cfdbe035808427a1",
+    "packages/twenty-server/src/modules/onboarding-recent-messages-import/constants/recent-messages-import-cache-ttl-ms.constant.ts": "ba98290b4e126a55675a365f244b0503e84bd237894ef9bf79367a3e1ed76bdb",
+    "packages/twenty-server/src/modules/onboarding-recent-messages-import/services/onboarding-recent-messages-import.service.ts": "8c4549714cea05b54dbbc658eac2907a62fd53fd039d5b4275ffbf152fe3936a",
+    "packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts": "c237db8c0e252dce9cdc6d73533689ae026acdeb56e96f9f5459b7c3d3615a05",
+    "packages/twenty-server/src/modules/messaging/common/constants/message-import-cache-ttl-ms.constant.ts": "d582ab458832336f41d3d5f1e6f600b8125499f20c6ec7de7c45b84cbb5eb30a",
+    "packages/twenty-server/src/modules/messaging/common/utils/message-import-cache-keys.ts": "ce47f03fcd622a8ce0dce7bf8f7f482d5693ec417369e92e334a509ae6e66a43"
+  }
+}

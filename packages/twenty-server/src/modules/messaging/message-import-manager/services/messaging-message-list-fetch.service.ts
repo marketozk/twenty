@@ -1,3 +1,4 @@
+import { messageImportCacheKeys } from 'src/modules/messaging/common/utils/message-import-cache-keys';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -35,7 +36,7 @@ import { MessagingProcessGroupEmailActionsService } from 'src/modules/messaging/
 import { MessageChannelEntity } from 'src/engine/metadata-modules/message-channel/entities/message-channel.entity';
 import { filterMessageExternalIdsToDelete } from 'src/modules/messaging/message-import-manager/utils/filter-message-external-ids-to-delete.util';
 
-const ONE_WEEK_IN_MILLISECONDS = 7 * 24 * 60 * 60 * 1000;
+import { MESSAGE_IMPORT_CACHE_TTL_MS } from 'src/modules/messaging/common/constants/message-import-cache-ttl-ms.constant';
 
 @Injectable()
 export class MessagingMessageListFetchService {
@@ -119,6 +120,11 @@ export class MessagingMessageListFetchService {
               folder.pendingSyncAction === MessageFolderPendingSyncAction.NONE,
           );
 
+          const importKeys = messageImportCacheKeys({
+            workspaceId,
+            messageChannelId: freshMessageChannel.id,
+            connectedAccountId: freshMessageChannel.connectedAccountId,
+          });
           const messageLists =
             await this.messagingGetMessageListService.getMessageLists(
               freshMessageChannel,
@@ -126,9 +132,9 @@ export class MessagingMessageListFetchService {
             );
 
           await this.cacheStorage.mdel([
-            `messages-to-import:${workspaceId}:${freshMessageChannel.id}`,
-            `messages-to-import-total:${workspaceId}:${freshMessageChannel.id}`,
-            `messages-imported:${workspaceId}:${freshMessageChannel.id}`,
+            importKeys.pending,
+            importKeys.total,
+            importKeys.imported,
           ]);
 
           const messageExternalIds = [
@@ -195,9 +201,9 @@ export class MessagingMessageListFetchService {
               totalMessagesToImportCount += messageExternalIdsToImport.length;
 
               await this.cacheStorage.setAdd(
-                `messages-to-import:${workspaceId}:${freshMessageChannel.id}`,
+                importKeys.pending,
                 messageExternalIdsToImport,
-                ONE_WEEK_IN_MILLISECONDS,
+                MESSAGE_IMPORT_CACHE_TTL_MS,
               );
             }
           }
@@ -269,16 +275,14 @@ export class MessagingMessageListFetchService {
           }
 
           await this.cacheStorage.set(
-            `messages-to-import-total:${workspaceId}:${freshMessageChannel.id}`,
-            await this.cacheStorage.getSetLength(
-              `messages-to-import:${workspaceId}:${freshMessageChannel.id}`,
-            ),
-            ONE_WEEK_IN_MILLISECONDS,
+            importKeys.total,
+            await this.cacheStorage.getSetLength(importKeys.pending),
+            MESSAGE_IMPORT_CACHE_TTL_MS,
           );
           await this.cacheStorage.set(
-            `messages-imported:${workspaceId}:${freshMessageChannel.id}`,
+            importKeys.imported,
             0,
-            ONE_WEEK_IN_MILLISECONDS,
+            MESSAGE_IMPORT_CACHE_TTL_MS,
           );
 
           this.logger.debug(

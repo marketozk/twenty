@@ -1,3 +1,7 @@
+import {
+  messageImportCacheKeys,
+  legacyMessageImportCacheKeys,
+} from 'src/modules/messaging/common/utils/message-import-cache-keys';
 import { scheduleOrdinaryMessageChannels } from 'src/modules/omnichannel/services/schedule-ordinary-message-channels';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -115,7 +119,7 @@ export class MessageChannelSyncStatusService {
     );
     if (!result) return null;
     if (result.exhausted)
-      await this.clearImportProgress([channelId], workspaceId);
+      await this.clearImportProgress([result.channel], workspaceId);
     await this.broadcastMessageChannelsUpdated([result.channel], workspaceId);
     if (result.exhausted)
       await this.metricsService.incrementCounterForEvents({
@@ -206,6 +210,7 @@ export class MessageChannelSyncStatusService {
     workspaceId: string,
     expectedConnectedAccountId: string | undefined,
     schedule: boolean,
+    preservePendingActions = false,
   ): Promise<string[]> {
     if (!messageChannelIds.length) return [];
 
@@ -217,20 +222,31 @@ export class MessageChannelSyncStatusService {
         syncStageStartedAt: schedule ? new Date().toISOString() : null,
         throttleFailureCount: 0,
         throttleRetryAfter: null,
-        pendingGroupEmailsAction: MessageChannelPendingGroupEmailsAction.NONE,
+        ...(preservePendingActions
+          ? {}
+          : {
+              pendingGroupEmailsAction:
+                MessageChannelPendingGroupEmailsAction.NONE,
+            }),
         syncStage: schedule
           ? MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED
           : MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
         ...(schedule ? { syncStatus: MessageChannelSyncStatus.ONGOING } : {}),
       },
-      { resetFolders: true, expectedConnectedAccountId, reconnect: schedule },
+      {
+        resetFolders: true,
+        expectedConnectedAccountId,
+        reconnect: schedule || preservePendingActions,
+        preservePendingActions,
+      },
     );
-    for (const { id } of updated) {
-      await this.cacheStorage.mdel([
-        `messages-to-import:${workspaceId}:${id}`,
-        `messages-to-import-total:${workspaceId}:${id}`,
-        `messages-imported:${workspaceId}:${id}`,
-      ]);
+    for (const { id, connectedAccountId } of updated) {
+      const keys = messageImportCacheKeys({
+        workspaceId,
+        messageChannelId: id,
+        connectedAccountId,
+      });
+      await this.cacheStorage.mdel(Object.values(keys));
     }
     await this.broadcastMessageChannelsUpdated(updated, workspaceId);
     return updated.map(({ id }) => id);
@@ -323,7 +339,7 @@ export class MessageChannelSyncStatusService {
 
     const acceptedIds = updated.map(({ id }) => id);
     if (!acceptedIds.length) return false;
-    await this.clearImportProgress(acceptedIds, workspaceId);
+    await this.clearImportProgress(updated, workspaceId);
     await this.broadcastMessageChannelsUpdated(updated, workspaceId);
     await this.metricsService.incrementCounterForEvents({
       key: MetricsKeys.MessageChannelSyncJobActive,
@@ -402,7 +418,7 @@ export class MessageChannelSyncStatusService {
     );
     const acceptedIds = updated.map(({ id }) => id);
     if (!acceptedIds.length) return;
-    await this.clearImportProgress(acceptedIds, workspaceId);
+    await this.clearImportProgress(updated, workspaceId);
     await this.broadcastMessageChannelsUpdated(updated, workspaceId);
     await this.metricsService.incrementCounterForEvents({
       key: insufficient
@@ -418,6 +434,32 @@ export class MessageChannelSyncStatusService {
       );
   }
 
+  public async recoverLegacyMessageImport(
+    messageChannelId: string,
+    workspaceId: string,
+    expectedConnectedAccountId: string,
+  ): Promise<boolean> {
+    const keys = legacyMessageImportCacheKeys(workspaceId, messageChannelId);
+    const [total, imported] = await this.cacheStorage.mget([
+      keys.total,
+      keys.imported,
+    ]);
+    const pending = await this.cacheStorage.getSetLength(keys.pending);
+    if (!pending && total === undefined && imported === undefined) return false;
+    // A legacy list fetch may already have advanced the SQL cursors. Do not
+    // consume unknown-origin IDs or mistake an empty v2 queue for completion.
+    const accepted = await this.resetMessageChannels(
+      [messageChannelId],
+      workspaceId,
+      expectedConnectedAccountId,
+      false,
+      true,
+    );
+    if (accepted.includes(messageChannelId))
+      await this.cacheStorage.mdel(Object.values(keys));
+    return true;
+  }
+
   public async getImportProgress({
     messageChannelId,
     workspaceId,
@@ -425,12 +467,33 @@ export class MessageChannelSyncStatusService {
     messageChannelId: string;
     workspaceId: string;
   }): Promise<number | null> {
-    const [totalMessagesToImportCount, importedMessagesCount] =
-      await this.cacheStorage.mget<number>([
-        `messages-to-import-total:${workspaceId}:${messageChannelId}`,
-        `messages-imported:${workspaceId}:${messageChannelId}`,
-      ]);
+    const channel = await withOrdinaryMetadataChannels(
+      this.messageChannelRepository.manager,
+      workspaceId,
+      [messageChannelId],
+      'message',
+      async (_manager, channels) => channels[0] ?? null,
+    );
+    if (!channel) return null;
+    return this.getCapturedImportProgress(
+      messageChannelId,
+      workspaceId,
+      channel.connectedAccountId,
+    );
+  }
 
+  private async getCapturedImportProgress(
+    messageChannelId: string,
+    workspaceId: string,
+    connectedAccountId: string,
+  ): Promise<number | null> {
+    const keys = messageImportCacheKeys({
+      workspaceId,
+      messageChannelId,
+      connectedAccountId,
+    });
+    const [totalMessagesToImportCount, importedMessagesCount] =
+      await this.cacheStorage.mget<number>([keys.total, keys.imported]);
     return computeMessageImportProgress({
       importedMessagesCount,
       totalMessagesToImportCount,
@@ -438,14 +501,18 @@ export class MessageChannelSyncStatusService {
   }
 
   private async clearImportProgress(
-    messageChannelIds: string[],
+    channels: Pick<UpdatedMessageChannel, 'id' | 'connectedAccountId'>[],
     workspaceId: string,
   ) {
     await this.cacheStorage.mdel(
-      messageChannelIds.flatMap((messageChannelId) => [
-        `messages-to-import-total:${workspaceId}:${messageChannelId}`,
-        `messages-imported:${workspaceId}:${messageChannelId}`,
-      ]),
+      channels.flatMap(({ id, connectedAccountId }) => {
+        const keys = messageImportCacheKeys({
+          workspaceId,
+          messageChannelId: id,
+          connectedAccountId,
+        });
+        return [keys.total, keys.imported];
+      }),
     );
   }
 
@@ -469,6 +536,7 @@ export class MessageChannelSyncStatusService {
     values: QueryDeepPartialEntity<MessageChannelEntity>,
     options: {
       resetFolders?: boolean;
+      preservePendingActions?: boolean;
       reconnect?: boolean;
       expectedConnectedAccountId?: string;
       authFailure?: { reason: string | null };
@@ -537,7 +605,12 @@ export class MessageChannelSyncStatusService {
                   { id: In(ordinaryFolders) },
                   {
                     syncCursor: '',
-                    pendingSyncAction: MessageFolderPendingSyncAction.NONE,
+                    ...(options.preservePendingActions
+                      ? {}
+                      : {
+                          pendingSyncAction:
+                            MessageFolderPendingSyncAction.NONE,
+                        }),
                   },
                 );
             }
@@ -580,7 +653,13 @@ export class MessageChannelSyncStatusService {
     try {
       const events: WorkspaceBroadcastEvent[] = await Promise.all(
         updatedMessageChannels.map(
-          async ({ id, syncStatus, syncStage, userWorkspaceId }) => ({
+          async ({
+            id,
+            syncStatus,
+            syncStage,
+            userWorkspaceId,
+            connectedAccountId,
+          }) => ({
             type: 'updated',
             entityName: 'messageChannel',
             recordId: id,
@@ -589,10 +668,11 @@ export class MessageChannelSyncStatusService {
                 id,
                 syncStatus,
                 syncStage,
-                importProgress: await this.getImportProgress({
-                  messageChannelId: id,
+                importProgress: await this.getCapturedImportProgress(
+                  id,
                   workspaceId,
-                }),
+                  connectedAccountId,
+                ),
               },
             },
             recipientUserWorkspaceIds: [userWorkspaceId],

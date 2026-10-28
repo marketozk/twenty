@@ -6,16 +6,16 @@
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
-Зависимость: этап0. LOG-064 / ROB-764 In Progress: reconnect reset и SCHEDULED объединены в
-один strict owner. Проверяются текущий parent, enabled и не PENDING_CONFIGURATION;
-только accepted IDs идут в cache effects/очередь. Google/MS/IMAP передают expected
-account; message/calendar jobs читают current channel под полной ownership guard.
-Unknown commit останавливает дальнейшие эффекты. Проверено 372 targeted
-Jest/6 suites +26 guards =398 PASS,30 новых PG cases.
-Typecheck 269 roots:190/190,0 new/changed-code.7 migrations неизменны.
-[Доказательства](../implementation/log064/README.md). Scoped review: подтверждённых blockers нет.
-Последний full fork LOG0561881/71. Далее account-scoped cache, downstream list-fetch
-и import scheduling, затем свежая T22/ROB764 acceptance; этап In Progress.
+Зависимость: этап0. LOG-065 / ROB-764 In Progress: пять runtime owners используют единые
+account-scoped v2 cache keys. Clear/broadcast привязаны к принятому account;
+progress читает current ordinary owner. Legacy backlog не переносится в новый
+account: guarded reset/refetch сохраняет pending actions, затем удаляет старые
+ключи после известного commit. Старый cleanup job удаляет только legacy keys.
+Проверено 388 targeted Jest/6 suites +26 guards =414 PASS,
+16 новых cases. Typecheck 269 roots:190/189,0 new/changed-code.
+7 migrations неизменны. [Доказательства](../implementation/log065/README.md). Scoped review без новых blockers.
+Последний full fork LOG0561881/71. Далее downstream response application,
+import scheduling/onboarding admission, затем свежая T22/ROB764 acceptance.
 Демо прежнее, GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы fork migrations,

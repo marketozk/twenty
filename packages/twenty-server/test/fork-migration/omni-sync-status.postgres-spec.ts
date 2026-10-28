@@ -1,3 +1,13 @@
+import { OnboardingRecentMessagesImportService } from 'src/modules/onboarding-recent-messages-import/services/onboarding-recent-messages-import.service';
+jest.mock(
+  'src/modules/onboarding-recent-messages-import/services/recent-messages.service',
+  () => ({ RecentMessagesService: class {} }),
+);
+import {
+  messageImportCacheKeys,
+  legacyMessageImportCacheKeys,
+} from 'src/modules/messaging/common/utils/message-import-cache-keys';
+import { MessagingCleanCacheJob } from 'src/modules/messaging/message-import-manager/jobs/messaging-clean-cache';
 import { MessagingMessageListFetchJob } from 'src/modules/messaging/message-import-manager/jobs/messaging-message-list-fetch.job';
 import { CalendarEventListFetchJob } from 'src/modules/calendar/calendar-event-import-manager/jobs/calendar-event-list-fetch.job';
 jest.mock(
@@ -228,7 +238,12 @@ const makeService = <T extends object>(prototype: T, dependencies: object): T =>
   Object.assign(Object.create(prototype), dependencies);
 let messaging: MessageChannelSyncStatusService,
   calendar: CalendarChannelSyncStatusService;
-let cache: { mdel: jest.Mock; del: jest.Mock; mget: jest.Mock },
+let cache: {
+    mdel: jest.Mock;
+    del: jest.Mock;
+    mget: jest.Mock;
+    getSetLength: jest.Mock;
+  },
   metrics: { incrementCounterForEvents: jest.Mock },
   broadcast: { broadcast: jest.Mock },
   reconnect: { addAccountToReconnectByKey: jest.Mock };
@@ -340,7 +355,8 @@ beforeEach(async () => {
   cache = {
     mdel: jest.fn().mockResolvedValue(undefined),
     del: jest.fn().mockResolvedValue(undefined),
-    mget: jest.fn().mockResolvedValue([0, 0]),
+    mget: jest.fn().mockResolvedValue([undefined, undefined]),
+    getSetLength: jest.fn().mockResolvedValue(0),
   };
   metrics = {
     incrementCounterForEvents: jest.fn().mockResolvedValue(undefined),
@@ -1725,3 +1741,449 @@ describe('reconnect scheduling and queued parent admission', () => {
     );
   }
 });
+
+describe('account-scoped import cache and legacy recovery', () => {
+  const keys = (account = ordinary.account) =>
+    messageImportCacheKeys({
+      workspaceId: fixture.workspaceId,
+      messageChannelId: ordinary.message,
+      connectedAccountId: account,
+    });
+  const legacy = () =>
+    legacyMessageImportCacheKeys(fixture.workspaceId, ordinary.message);
+  const memory = () => {
+    const values = new Map<string, unknown>();
+    cache.mget.mockImplementation(async (names: string[]) =>
+      names.map((name) => values.get(name)),
+    );
+    cache.mdel.mockImplementation(async (names: string[]) => {
+      for (const name of names) values.delete(name);
+    });
+    cache.getSetLength.mockImplementation(
+      async (name: string) =>
+        (values.get(name) as Set<string> | undefined)?.size ?? 0,
+    );
+    return values;
+  };
+  it('reset after commit clears only its captured account even after reparent', async () => {
+    const other = await seed(),
+      values = memory(),
+      oldKeys = keys(),
+      newKeys = keys(other.account);
+    for (const name of Object.values(oldKeys)) values.set(name, 1);
+    for (const name of Object.values(newKeys)) values.set(name, 2);
+    const original = runtime.createQueryRunner.bind(runtime);
+    let moved = false;
+    jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+      const runner = original(),
+        commit = runner.commitTransaction.bind(runner);
+      runner.commitTransaction = async () => {
+        await commit();
+        if (!moved) {
+          moved = true;
+          await fixture.owner.query(
+            'UPDATE core."messageChannel" SET "connectedAccountId"=$2 WHERE id=$1',
+            [ordinary.message, other.account],
+          );
+        }
+      };
+      return runner;
+    });
+    await messaging.resetAndScheduleMessagesListFetch(
+      [ordinary.message],
+      fixture.workspaceId,
+      ordinary.account,
+    );
+    for (const name of Object.values(oldKeys))
+      expect(values.has(name)).toBe(false);
+    for (const name of Object.values(newKeys)) expect(values.get(name)).toBe(2);
+  });
+  it('progress reads the current account namespace, never the previous one', async () => {
+    const other = await seed(),
+      values = memory();
+    values.set(keys().total, 100);
+    values.set(keys().imported, 50);
+    values.set(keys(other.account).total, 20);
+    values.set(keys(other.account).imported, 5);
+    expect(
+      await messaging.getImportProgress({
+        workspaceId: fixture.workspaceId,
+        messageChannelId: ordinary.message,
+      }),
+    ).toBe(50);
+    await repo('message').update(ordinary.message, {
+      connectedAccountId: other.account,
+    });
+    expect(
+      await messaging.getImportProgress({
+        workspaceId: fixture.workspaceId,
+        messageChannelId: ordinary.message,
+      }),
+    ).toBe(25);
+  });
+  it('protected or missing channel exposes no import progress', async () => {
+    for (const id of [protectedIds.message, randomUUID()])
+      expect(
+        await messaging.getImportProgress({
+          workspaceId: fixture.workspaceId,
+          messageChannelId: id,
+        }),
+      ).toBeNull();
+    expect(cache.mget).not.toHaveBeenCalled();
+  });
+  it.each(['pending', 'total', 'imported'] as const)(
+    'legacy %s triggers reset/refetch and preserves pending actions',
+    async (field) => {
+      const values = memory(),
+        oldKeys = legacy();
+      values.set(
+        oldKeys[field],
+        field === 'pending' ? new Set(['untrusted-id']) : 1,
+      );
+      await repo('message').update(ordinary.message, {
+        pendingGroupEmailsAction: 'GROUP_EMAILS_DELETION' as never,
+      });
+      expect(
+        await messaging.recoverLegacyMessageImport(
+          ordinary.message,
+          fixture.workspaceId,
+          ordinary.account,
+        ),
+      ).toBe(true);
+      expect(
+        await repo('message').findOneByOrFail({ id: ordinary.message }),
+      ).toMatchObject({
+        syncCursor: '',
+        syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
+        pendingGroupEmailsAction: 'GROUP_EMAILS_DELETION',
+      });
+      expect(
+        await runtime
+          .getRepository(MessageFolderEntity)
+          .findOneByOrFail({ id: ordinary.folder }),
+      ).toMatchObject({ syncCursor: '', pendingSyncAction: 'old-action' });
+      for (const name of Object.values(oldKeys))
+        expect(values.has(name)).toBe(false);
+    },
+  );
+  it('legacy stale parent stops import without deleting backlog or resetting new parent', async () => {
+    const values = memory(),
+      oldKeys = legacy();
+    values.set(oldKeys.pending, new Set(['untrusted']));
+    const other = await seed();
+    await repo('message').update(ordinary.message, {
+      connectedAccountId: other.account,
+    });
+    expect(
+      await messaging.recoverLegacyMessageImport(
+        ordinary.message,
+        fixture.workspaceId,
+        ordinary.account,
+      ),
+    ).toBe(true);
+    expect(values.has(oldKeys.pending)).toBe(true);
+    expect(
+      (await repo('message').findOneByOrFail({ id: ordinary.message }))
+        .syncCursor,
+    ).toBe('old-cursor');
+    expect(cache.mdel).not.toHaveBeenCalled();
+  });
+  it('legacy unknown commit keeps backlog and emits no cleanup', async () => {
+    const values = memory(),
+      oldKeys = legacy();
+    values.set(oldKeys.pending, new Set(['untrusted']));
+    const original = runtime.createQueryRunner.bind(runtime);
+    jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+      const runner = original(),
+        commit = runner.commitTransaction.bind(runner);
+      runner.commitTransaction = async () => {
+        await commit();
+        throw new Error('legacy reset ACK lost');
+      };
+      return runner;
+    });
+    await expect(
+      messaging.recoverLegacyMessageImport(
+        ordinary.message,
+        fixture.workspaceId,
+        ordinary.account,
+      ),
+    ).rejects.toThrow('OMNI_CORE_TRANSACTION_OUTCOME_UNKNOWN');
+    expect(values.has(oldKeys.pending)).toBe(true);
+    expect(cache.mdel).not.toHaveBeenCalled();
+  });
+  it('missing legacy backlog leaves current cursor unchanged', async () => {
+    memory();
+    expect(
+      await messaging.recoverLegacyMessageImport(
+        ordinary.message,
+        fixture.workspaceId,
+        ordinary.account,
+      ),
+    ).toBe(false);
+    expect(
+      (await repo('message').findOneByOrFail({ id: ordinary.message }))
+        .syncCursor,
+    ).toBe('old-cursor');
+    expect(cache.mdel).not.toHaveBeenCalled();
+  });
+  it('old cleanup payload cannot delete either account namespace', async () => {
+    const values = memory(),
+      other = randomUUID();
+    for (const name of [
+      ...Object.values(keys()),
+      ...Object.values(keys(other)),
+      ...Object.values(legacy()),
+    ])
+      values.set(name, 1);
+    const cleaner = makeService(MessagingCleanCacheJob.prototype, {
+      cacheStorage: cache,
+    });
+    await cleaner.handle({
+      workspaceId: fixture.workspaceId,
+      messageChannelId: ordinary.message,
+    });
+    for (const name of [
+      ...Object.values(keys()),
+      ...Object.values(keys(other)),
+    ])
+      expect(values.has(name)).toBe(true);
+    for (const name of Object.values(legacy()))
+      expect(values.has(name)).toBe(false);
+    await cleaner.handle({
+      workspaceId: fixture.workspaceId,
+      messageChannelId: ordinary.message,
+      connectedAccountId: ordinary.account,
+    });
+    for (const name of Object.values(keys()))
+      expect(values.has(name)).toBe(false);
+    for (const name of Object.values(keys(other)))
+      expect(values.has(name)).toBe(true);
+  });
+  it('actual importer refuses legacy backlog before pop/provider/completed', async () => {
+    const values = memory();
+    values.set(legacy().pending, new Set(['untrusted']));
+    const setPop = jest.fn(),
+      getMessages = jest.fn(),
+      track = jest.fn();
+    const importer = makeService(MessagingMessagesImportService.prototype, {
+      cacheStorage: { ...cache, setPop },
+      messageChannelSyncStatusService: messaging,
+      workspaceOrmManager: {
+        executeInWorkspaceContext: async (work: () => Promise<void>) => work(),
+      },
+      messagingGetMessagesService: { getMessages },
+      messagingMonitoringService: { track },
+    });
+    const channel = await runtime
+      .getRepository(MessageChannelEntity)
+      .findOneByOrFail({ id: ordinary.message });
+    channel.syncStage = MessageChannelSyncStage.MESSAGES_IMPORT_SCHEDULED;
+    const account = await runtime
+      .getRepository(ConnectedAccountEntity)
+      .findOneByOrFail({ id: ordinary.account });
+    await importer.processMessageBatchImport(
+      channel,
+      account,
+      fixture.workspaceId,
+      1,
+    );
+    expect(setPop).not.toHaveBeenCalled();
+    expect(getMessages).not.toHaveBeenCalled();
+    expect(track).not.toHaveBeenCalled();
+  });
+  it('actual importer requeues errors only to captured account with TTL', async () => {
+    memory();
+    const other = await seed();
+    const channel = await runtime
+      .getRepository(MessageChannelEntity)
+      .findOneByOrFail({ id: ordinary.message });
+    channel.syncStage = MessageChannelSyncStage.MESSAGES_IMPORT_SCHEDULED;
+    const account = await runtime
+      .getRepository(ConnectedAccountEntity)
+      .findOneByOrFail({ id: ordinary.account });
+    account.handleAliases = [];
+    const setPop = jest.fn().mockResolvedValue(['from-A']),
+      setAdd = jest.fn();
+    const importer = makeService(MessagingMessagesImportService.prototype, {
+      cacheStorage: { ...cache, setPop, setAdd },
+      messageChannelSyncStatusService: messaging,
+      workspaceOrmManager: {
+        executeInWorkspaceContext: async (work: () => Promise<void>) => work(),
+      },
+      messagingGetMessagesService: {
+        getMessages: async () => {
+          channel.connectedAccountId = other.account;
+          account.id = other.account;
+          throw new Error('provider interrupted');
+        },
+      },
+      messagingMonitoringService: { track: jest.fn() },
+      logger: { error: jest.fn() },
+      messageImportErrorHandlerService: { handleDriverException: jest.fn() },
+    });
+    await importer.processMessageBatchImport(
+      channel,
+      account,
+      fixture.workspaceId,
+      1,
+    );
+    expect(setPop).toHaveBeenCalledWith(keys().pending, 1);
+    expect(setAdd).toHaveBeenCalledWith(
+      keys().pending,
+      ['from-A'],
+      7 * 24 * 60 * 60 * 1000,
+    );
+  });
+});
+
+it('cache namespace canonicalizes UUIDs and separates tenant and account', () => {
+  const scope = {
+    workspaceId: fixture.workspaceId,
+    messageChannelId: ordinary.message,
+    connectedAccountId: ordinary.account,
+  };
+  const current = messageImportCacheKeys(scope);
+  expect(
+    messageImportCacheKeys({
+      ...scope,
+      connectedAccountId: ordinary.account.toUpperCase(),
+    }),
+  ).toEqual(current);
+  expect(
+    messageImportCacheKeys({ ...scope, connectedAccountId: randomUUID() })
+      .pending,
+  ).not.toBe(current.pending);
+  expect(
+    messageImportCacheKeys({ ...scope, workspaceId: randomUUID() }).pending,
+  ).not.toBe(current.pending);
+});
+it('cache namespace rejects invalid IDs before any cache use', () => {
+  const scope = {
+    workspaceId: fixture.workspaceId,
+    messageChannelId: ordinary.message,
+    connectedAccountId: ordinary.account,
+  };
+  for (const field of Object.keys(scope))
+    expect(() =>
+      messageImportCacheKeys({ ...scope, [field]: '../bad:key' }),
+    ).toThrow('INVALID_MESSAGE_IMPORT_CACHE_SCOPE');
+});
+for (const producer of ['list-fetch', 'onboarding'] as const) {
+  it(
+    producer + ' caches delayed provider IDs only under captured account',
+    async () => {
+      const other = await seed();
+      const channel = await runtime
+        .getRepository(MessageChannelEntity)
+        .findOne({
+          where: { id: ordinary.message },
+          relations: { connectedAccount: true, messageFolders: true },
+        });
+      if (!channel) throw new Error('missing test channel');
+      const oldKeys = messageImportCacheKeys({
+        workspaceId: fixture.workspaceId,
+        messageChannelId: ordinary.message,
+        connectedAccountId: ordinary.account,
+      });
+      const targetKeys = messageImportCacheKeys({
+        workspaceId: fixture.workspaceId,
+        messageChannelId: ordinary.message,
+        connectedAccountId: other.account,
+      });
+      const testCache = {
+        ...cache,
+        setAdd: jest.fn(),
+        set: jest.fn(),
+        getSetLength: jest.fn().mockResolvedValue(1),
+      };
+      const provider = async () => {
+        await repo('message').update(ordinary.message, {
+          connectedAccountId: other.account,
+        });
+        return ['from-original-account'];
+      };
+      const status = {
+        markAsMessagesListFetchOngoing: jest.fn(),
+        markAsMessagesImportScheduled: jest.fn(),
+        markAsMessagesListFetchPending: jest.fn(),
+      };
+      const importBatch = jest.fn();
+      const dependencies = {
+        cacheStorage: testCache,
+        messageChannelRepository: runtime.getRepository(MessageChannelEntity),
+        workspaceOrmManager: {
+          executeInWorkspaceContext: async (work: () => Promise<void>) =>
+            work(),
+          getRepository: () => ({ find: async () => [] }),
+        },
+        messageChannelSyncStatusService: status,
+        messagingMessagesImportService: {
+          processMessageBatchImport: importBatch,
+        },
+        logger: {
+          log: jest.fn(),
+          debug: jest.fn(),
+          warn: jest.fn(),
+          error: jest.fn(),
+        },
+      };
+      if (producer === 'list-fetch') {
+        const service = makeService(
+          MessagingMessageListFetchService.prototype,
+          {
+            ...dependencies,
+            processPendingGroupEmailActions: async () => false,
+            processPendingFolderActions: async () => null,
+            syncMessageFoldersService: { syncMessageFolders: async () => [] },
+            messagingGetMessageListService: {
+              getMessageLists: async () => [
+                {
+                  messageExternalIds: await provider(),
+                  messageExternalIdsToDelete: [],
+                  previousSyncCursor: 'previous',
+                  nextSyncCursor: 'next',
+                },
+              ],
+            },
+            messagingCursorService: { updateCursor: jest.fn() },
+            messageImportErrorHandlerService: {
+              handleDriverException: async (error: unknown) => {
+                throw error;
+              },
+            },
+          },
+        );
+        await service.processMessageListFetch(channel, fixture.workspaceId);
+        expect(cache.mdel).toHaveBeenCalledWith(Object.values(oldKeys));
+        expect(testCache.set).toHaveBeenCalledWith(
+          oldKeys.total,
+          1,
+          7 * 24 * 60 * 60 * 1000,
+        );
+      } else {
+        const service = makeService(
+          OnboardingRecentMessagesImportService.prototype,
+          {
+            ...dependencies,
+            recentMessagesService: { getExternalIds: provider },
+          },
+        );
+        await service.importRecentMessages({
+          workspaceId: fixture.workspaceId,
+          messageChannelId: ordinary.message,
+        });
+      }
+      expect(testCache.setAdd).toHaveBeenCalledWith(
+        oldKeys.pending,
+        ['from-original-account'],
+        7 * 24 * 60 * 60 * 1000,
+      );
+      expect(
+        testCache.setAdd.mock.calls.some(
+          (call) => call[0] === targetKeys.pending,
+        ),
+      ).toBe(false);
+    },
+  );
+}
