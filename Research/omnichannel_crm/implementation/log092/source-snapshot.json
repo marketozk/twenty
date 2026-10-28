@@ -1,0 +1,15 @@
+{
+  "baseCommit": "2463341f3feb22cf44030e835c3eed0aaaa1a2b5",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "74037cf9eaa87e7e5006420793ce70f0f56ef0b3e3be842e6a7d311a45ebe424",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "4aa283a008b622c3bd032877ae8831e2a35e59ca58e8025f76d7803d6ab2c5d9",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-record.ts": "9854ed70e5d7eefb35770effbfce4216f017b8cec4ffd814c800b1b259f86569",
+    "packages/twenty-server/src/engine/twenty-orm/field-operations/files-field-sync/files-field-sync.ts": "de49ccae78fe97b4580141333e12c3c50eca34e5a3cbb5be2563754561dbcd75",
+    "packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts": "e31067787becf55b0905988c196e2b8a56bed1f95b3148d8731ed6a7bf30d184",
+    "packages/twenty-server/src/engine/twenty-orm/types/workspace-transaction-lifecycle.type.ts": "734002c3aaf25d82f367fd873d5854f2aa1907514f1c4a3c8c3b9a6a6ca66f95",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-records.postgres-spec.ts": "bc04a5f19b8adcf3b6f7c4cb88bc011f424c424da36e3e26e7a0addd536f600d",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-files.ts": "bc0974d99a918ed74baa19dee8243ba266813233f9252b762f1ee5cad554a06f",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-files.postgres-spec.ts": "5e32eaae7895b27110a85f0a6693182dd36d7a4d67b590572de0f92d81680610"
+  },
+  "uploadedSourceHashesVerified": true
+}

@@ -11,6 +11,7 @@ export type CrmAuditPrincipal = {
 
 export type CrmAuditResourceKind =
   | 'crmRecord'
+  | 'crmFile'
   | 'omniAccountBinding'
   | 'omniPerson'
   | 'omniCompany'
@@ -41,6 +42,11 @@ export type CrmAuditSecurityDescriptor = {
   resourceKind: CrmAuditResourceKind;
   resourceId: string;
   objectMetadataId?: string;
+  fileParent?: {
+    objectMetadataId: string;
+    recordId: string;
+    fieldMetadataId: string;
+  };
   bindingId?: string;
   conversationId?: string;
   queueId?: string;

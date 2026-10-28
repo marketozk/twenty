@@ -9,7 +9,7 @@
 | Rollback при сбое журнала, безопасный unknown | LOG089 PG insert fault, actual lost COMMIT ACK, poisoned caller-caught failure |
 | Точный безопасный diff и aggregation | LOG089 first-before/last-after, custom NUMERIC >2^53, metadata IDs, без значений |
 | Повтор не скрывает вторую mutation | LOG089 sequential/concurrent reuse rejected; повтор после rollback допустим. General command replay ещё не реализован |
-| Общий native CRUD/merge/bulk и API | Предстоит; LOG091 opt-in non-file updates Company/Person/Opportunity. FilesFieldSync — отдельный pool |
+| Общий native CRUD/merge/bulk и API | Предстоит; LOG091/092 opt-in updates Company/Person/Opportunity, включая FILES через same executor; public entry points впереди |
 | Metadata/role/session lifecycle | Предстоит, каждый через реального transaction owner |
 | Denied/failed audit и health | Omni уже имеет отдельные attempts; general native post-rollback/alert предстоит |
 | AI/workflow/connector события | Дополняются ROB768/769, текущий срез их не подключает |
@@ -20,4 +20,6 @@
 Следом завершаем native transaction boundary и покрытие writers, затем core/metadata/session.
 Просмотр и экспорт относятся к ROB767, свои права — ROB766; обе задачи пока Backlog.
 
-LOG091: [проверки расширенного native покрытия](log091/README.md);606 tests/24 suites PASS,27 новых PG tests. Следующий срез — FilesFieldSync same-executor и batch owner mapping.
+LOG091: [проверки расширенного native покрытия](log091/README.md);606 tests/24 suites PASS,27 новых PG tests. FilesFieldSync и batch owner mapping реализованы LOG092.
+
+LOG092: [core File transaction/audit](log092/README.md),642 tests/25 suites PASS. Далее public valid-input parity и UPDATE owner; общий CRUD/merge/metadata/session/negative audit не готовы.

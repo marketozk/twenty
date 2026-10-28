@@ -54,7 +54,7 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-ROB764 завершена по LOG088; ROB765 In Progress. LOG089–091 добавили внутренний native audit owner для non-file updates Company/Person/Opportunity и индекс операций; общий аудит CRM пока не готов. Актуальные проверки, ограничения и следующий шаг — в [STATUS](Research/omnichannel_crm/STATUS.md).
+ROB764 завершена по LOG088; ROB765 In Progress. LOG089–092 добавили внутренний native audit owner для updates Company/Person/Opportunity, включая FILES, и индекс операций; общий аудит CRM пока не готов. Актуальные проверки, ограничения и следующий шаг — в [STATUS](Research/omnichannel_crm/STATUS.md).
 [Доказательства и ограничения](Research/omnichannel_crm/implementation/log088/README.md).
 
 Предыдущая порция LOG-022: реализованы минимальный аудит и атомарное создание

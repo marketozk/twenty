@@ -3034,3 +3034,19 @@ ROB765 In Progress. Далее FilesFieldSync same-executor и authoritative bat
 LOG091 publication: `a51ca162af0ca34d7639ebb69e7b6767a9f766e6` pushed/API verified.
 ROB765 description and comment `23e2d47a-826d-45e7-9ca7-ff9ed7f5caed` independently
 read back; all11 states match. ROB765 remains In Progress; implementation continues.
+
+
+## LOG-092 — FilesFieldSync в native audit transaction
+
+Optional scoped file store переиспользует FilesFieldSync, same executor и sorted locks.
+Batch owner привязан к authoritative input.id. Core File audit имеет отдельный crmFile
+kind и exact parent record/field scope; значения редактируются. Missing/deleted/foreign
+files и ambiguous owners отказаны. По review добавлен actual parent/File readback:
+RETURNING ID недостаточно при triggers. Физическое storage deletion отдельно.
+
+642 tests/25 suites PASS,36 новых PG cases;91 targeted;26 guards/checksum PASS,
+10 migrations неизменны. Types330/332 roots,189/189 existing diagnostics,0 новых/changed.
+9 source hashes совпадают.6 test-only types и random first-row fixture failure исправлены;
+финальные проверки повторены. [Evidence](implementation/log092/README.md).
+ROB765 In Progress. Далее public input parity (FILES null/system timestamps), затем
+public UPDATE owner/nested reads/hooks. Демо не менялось, Actions не использовался.

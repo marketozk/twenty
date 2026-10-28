@@ -50,7 +50,7 @@ const AUDITED_OBJECTS: Record<string, string> = {
 
 const coverageError = () =>
   new Error(
-    'Native audit non-file update coverage does not include this value or field',
+    'Native audit update coverage does not include this value or field',
   );
 
 const captureInputValue = (
@@ -127,6 +127,28 @@ export const assertNativeCrmAuditWriteSupported = (
     if (['createdAt', 'updatedAt', 'deletedAt'].includes(name))
       throw coverageError();
     const column = shape.columnShapeByColumnName[name];
+    if (column?.fieldMetadataType === 'FILES') {
+      if (!Array.isArray(value)) throw coverageError();
+      const ids = new Set<string>();
+      for (const file of value) {
+        if (
+          !file ||
+          typeof file !== 'object' ||
+          typeof file.fileId !== 'string' ||
+          !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(file.fileId) ||
+          typeof file.label !== 'string' ||
+          (file.extension !== undefined &&
+            typeof file.extension !== 'string') ||
+          Object.keys(file).some(
+            (key) => !['fileId', 'label', 'extension'].includes(key),
+          ) ||
+          ids.has(file.fileId.toLowerCase())
+        )
+          throw coverageError();
+        ids.add(file.fileId.toLowerCase());
+      }
+      continue;
+    }
     const compositeColumns = Object.values(
       shape.columnShapeByColumnName,
     ).filter((item) => item.compositeParentFieldName === name);

@@ -13,10 +13,14 @@ EXPLAIN использует индекс. Проверка типов не до
 
 [LOG091](implementation/log091/README.md): non-file updates Company/Person/Opportunity,
 606 tests/24 suites +26 guards PASS,27 новых PG cases. Composite/JSON/array/Date/FK,
-mutable input protection;0 новых type diagnostics. FILES пока отказаны.
+mutable input protection;0 новых type diagnostics.
 
 Это ещё не общий аудит UI/API: без opt-in обычный ORM работает как прежде.
-Продолжаем native CRUD/merge/files и подключение реальных writers, затем
+[LOG092](implementation/log092/README.md): FILES включены в тот же executor,
+core File audit и actual parent/state readback;642 tests/25 suites +26 guards PASS.
+Типы без новых диагностик. Перед public UPDATE wiring сохраняем FILES null/timestamp parity.
+
+Продолжаем native CRUD/merge и подключение реальных writers, затем
 metadata/session и negative audit. [Приёмка ROB765](implementation/rob765-progress.md).
 
 ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.

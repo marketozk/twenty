@@ -62,5 +62,12 @@ LOG087 adds bounded parent delete audit and retained current-administrative dele
 [LOG091](../implementation/log091/README.md) расширяет внутренний opt-in на non-file
 updates Company/Person/Opportunity, включая composite/JSON/arrays/Date/resolved FK.
 606 tests/24 suites и26 guards PASS;27 новых PG cases. Snapshot-before-coverage
-закрывает mutable input/accessor bypass. FILES по-прежнему отказаны; public writers
+закрывает mutable input/accessor bypass. В этом срезе FILES были отказаны; public writers
 не подключены. Общие критерии Done не выполнены.
+
+
+[LOG092](../implementation/log092/README.md) добавляет same-executor FilesFieldSync,
+actual parent/File postconditions и25-й ресурс crmFile с exact parent scope.
+642 tests/25 suites,36 новых PG cases и26 guards PASS. Ordinary path ещё не подключён;
+перед public UPDATE wiring выполняем parity для FILES null и OPEN system timestamps.
+Подробные критерии и остаток — [приёмка ROB765](../implementation/rob765-progress.md).

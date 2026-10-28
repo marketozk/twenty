@@ -722,3 +722,16 @@ Housekeeping ограничен одним binding и одним rearm за вы
 **Аудит.** operationId — серверный стабильный ID одной логической domain mutation, не rootExecutionId/correlationId; две разные workflow mutations получают разные operationId, replay принятой mutation использует прежний. Для success eventKey детерминирован по workspace/operationId/resourceKind/resourceId/action; одна затронутая строка — один success на это действие. При повторных writes одной пары (resource,action) общий transaction audit context собирает первый before и последний after; owner flush-ит один redacted entry на пару тем же executor до COMMIT. Nested writers переиспользуют context, самостоятельный audited repository write создаёт его в собственной transaction; flush error откатывает все mutations. Это не afterCommit buffer. CREATE/UPDATE/DELETE имеют нормализованные разные action keys, UPSERT определяется по фактическому действию; root/correlation не дедуплицирует разные domain mutations. Отказ после rollback имеет отдельный server attemptId в eventKey, чтобы попытка не конфликтовала с последующим success. Key/hash конфликт отклоняется, не overwrite. Один root workflow/массовая операция связывает разные mutations через correlation/causation. T06: lost commit ACK, duplicate callback, два изменения одной строки одним action внутри merge/bulk дают один aggregated success с верным before/after, flush failure откатывает всю transaction; разные шаги с разными operationId сохраняют отдельные записи, bulk audit содержит только actual rows.
 
 Для native `crmRecord` ключ и security descriptor дополнительно включают `objectMetadataId`: одинаковые UUID записей разных объектов не объединяются. Поля native diff обозначаются fieldMetadataId, значения до явной allowlist не сохраняются. PostgreSQL NUMERIC и вложенные значения сравниваются без преобразования точных чисел в JS number. LOG089 вводит внутренний opt-in `nativeAudit` для Company scalar update/updateMany с одним strict owner; это ещё не автоматическое покрытие публичного ORM. Без domain command receipt повтор уже закоммиченного native operationId запрещён под общей workspace/operation блокировкой до callback; после подтверждённого rollback повтор допустим. Unknown outcome не означает retry и не записывается как failed. Общий replay принятой команды по receipt остаётся отдельным обязательным контрактом; operationId сам по себе его не реализует.
+
+
+Для core File изменения в native FILES update используется отдельный `crmFile`, action update,
+resourceId=File ID и exact fileParent(objectMetadataId,recordId,fieldMetadataId). Parent
+берётся из authoritative locked native records/metadata, не из payload.id. Scope должен
+сохраняться после отвязки. Settings/deletedAt сравниваются по actual final DB snapshot,
+значения редактируются; path/labels/contents не копируются. File rows блокируются по ID
+после native parent locks, workspace/field/temporary/status проверяются заново. Все
+core writes используют тот же executor и проверенные actual written parents; actual
+parent FILES список и final File state проверяются до commit. Missing/deleted/foreign
+File reference и неоднозначные владельцы отказаны, не исправляются молча. Физическое
+storage deletion остаётся отдельным lifecycle. LOG092 реализует внутренний array-input
+update путь; public null/timestamp parity и автоматическое подключение ещё впереди.

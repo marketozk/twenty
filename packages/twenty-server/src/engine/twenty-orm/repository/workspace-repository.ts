@@ -37,6 +37,7 @@ import {
   PermissionsExceptionMessage,
 } from 'src/engine/metadata-modules/permissions/permissions.exception';
 import { FilesFieldSync } from 'src/engine/twenty-orm/field-operations/files-field-sync/files-field-sync';
+import { createNativeCrmAuditFilesStore } from 'src/engine/core-modules/crm-audit/native-crm-audit-files';
 import {
   type OperationType,
   validateOperationIsPermittedOrThrow,
@@ -1314,8 +1315,25 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       }
     }
 
-    let dataByInputIndex = writableInputs.map((input) => input.data);
+    const hasAuditedFiles =
+      nativeAudit &&
+      writableInputs.some((input) =>
+        this.filesFieldSync.isUpdatingFilesField(
+          input.data,
+          this.options.flatObjectMetadata.id,
+        ),
+      );
+    if (
+      hasAuditedFiles &&
+      new Set(writableInputs.map((input) => input.id)).size !==
+        writableInputs.length
+    )
+      throw new Error('Native file batch cannot repeat a record');
+    let dataByInputIndex = writableInputs.map((input) =>
+      hasAuditedFiles ? { ...input.data, id: input.id } : input.data,
+    );
     let filesFieldFileIds = null;
+    let nativeFilesStore: ReturnType<typeof createNativeCrmAuditFilesStore>;
 
     const filesFieldDiff =
       this.filesFieldSync.computeFilesFieldDiffBeforeUpsert(
@@ -1325,11 +1343,19 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       );
 
     if (isDefined(filesFieldDiff)) {
+      nativeFilesStore = createNativeCrmAuditFilesStore(
+        this.options.executor,
+        this.options.internalContext.workspaceId,
+        this.options.tableShape,
+        filesFieldDiff,
+        writableInputs.map((input) => input.id),
+      );
       const enriched = await this.filesFieldSync.enrichFilesFields({
         entities: dataByInputIndex,
         filesFieldDiffByEntityIndex: filesFieldDiff,
         workspaceId: this.options.internalContext.workspaceId,
         target: this.options.tableShape.nameSingular,
+        store: nativeFilesStore,
       });
 
       filesFieldFileIds = enriched.fileIds;
@@ -1418,7 +1444,11 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     await validateWrittenRecords?.(generatedMaps);
 
     if (isDefined(filesFieldFileIds)) {
-      await this.filesFieldSync.updateFileEntityRecords(filesFieldFileIds);
+      await this.filesFieldSync.updateFileEntityRecords(
+        filesFieldFileIds,
+        nativeFilesStore,
+        generatedMaps.map((row) => row.id),
+      );
     }
 
     await recordNativeCrmUpdates(
@@ -1927,6 +1957,7 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
 
     let filesFieldFileIds = null;
     let dataToWrite = data;
+    let nativeFilesStore: ReturnType<typeof createNativeCrmAuditFilesStore>;
 
     if (kind === 'update' && isDefined(data)) {
       const formattedBefore = this.formatResult<ObjectRecord[]>(recordsBefore);
@@ -1938,11 +1969,19 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
         );
 
       if (isDefined(filesFieldDiff)) {
+        nativeFilesStore = createNativeCrmAuditFilesStore(
+          this.options.executor,
+          this.options.internalContext.workspaceId,
+          this.options.tableShape,
+          filesFieldDiff,
+          formattedBefore.map((row) => row.id),
+        );
         const enriched = await this.filesFieldSync.enrichFilesFields({
           entities: formattedBefore.map(() => data),
           filesFieldDiffByEntityIndex: filesFieldDiff,
           workspaceId: this.options.internalContext.workspaceId,
           target: this.options.tableShape.nameSingular,
+          store: nativeFilesStore,
         });
 
         filesFieldFileIds = enriched.fileIds;
@@ -2002,7 +2041,11 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     await validateWrittenRecords?.(mutationResult.generatedMaps);
 
     if (isDefined(filesFieldFileIds)) {
-      await this.filesFieldSync.updateFileEntityRecords(filesFieldFileIds);
+      await this.filesFieldSync.updateFileEntityRecords(
+        filesFieldFileIds,
+        nativeFilesStore,
+        mutationResult.generatedMaps.map((row) => row.id),
+      );
     }
 
     const recordsAfterWrite =

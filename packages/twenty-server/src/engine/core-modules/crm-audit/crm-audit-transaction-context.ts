@@ -27,6 +27,7 @@ const CATALOG: Record<
   { values: string[]; redacted: string[] }
 > = {
   crmRecord: { values: [], redacted: [] },
+  crmFile: { values: [], redacted: ['settings', 'deletedAt'] },
   omniPerson: { values: ['destroyScopeHash'], redacted: ['name'] },
   omniCompany: { values: ['destroyScopeHash'], redacted: ['name'] },
   omniExternalIdentity: {
@@ -319,6 +320,31 @@ const descriptor = (
 ): CrmAuditSecurityDescriptor => {
   const source = mutation.securityDescriptor;
   const nativeRecord = mutation.resourceKind === 'crmRecord';
+  const nativeFile = mutation.resourceKind === 'crmFile';
+  let fileParent: CrmAuditSecurityDescriptor['fileParent'];
+  if (nativeFile || source.fileParent !== undefined) {
+    const parent = source.fileParent;
+    if (
+      !nativeFile ||
+      mutation.action !== 'update' ||
+      !parent ||
+      Object.keys(parent).sort().join(',') !==
+        'fieldMetadataId,objectMetadataId,recordId' ||
+      source.objectMetadataId !== undefined ||
+      source.bindingId !== undefined ||
+      source.conversationId !== undefined ||
+      source.queueId !== undefined ||
+      source.deletedParent !== undefined
+    )
+      throw new Error(
+        'Native file audit requires its exact parent record and field',
+      );
+    fileParent = {
+      objectMetadataId: requireUuid(parent.objectMetadataId),
+      recordId: requireUuid(parent.recordId),
+      fieldMetadataId: requireUuid(parent.fieldMetadataId),
+    };
+  }
   if (nativeRecord || source.objectMetadataId !== undefined) {
     if (
       !nativeRecord ||
@@ -416,6 +442,7 @@ const descriptor = (
   return {
     resourceKind: mutation.resourceKind,
     resourceId: requireUuid(mutation.resourceId),
+    ...(fileParent === undefined ? {} : { fileParent }),
     ...(nativeRecord
       ? { objectMetadataId: requireUuid(source.objectMetadataId!) }
       : {}),

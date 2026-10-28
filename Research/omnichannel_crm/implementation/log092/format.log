@@ -1,0 +1,12 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts 298ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts 12ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-record.ts 79ms (unchanged)
+../../../source/packages/twenty-server/src/engine/twenty-orm/field-operations/files-field-sync/files-field-sync.ts 106ms (unchanged)
+../../../source/packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts 475ms (unchanged)
+../../../source/packages/twenty-server/src/engine/twenty-orm/types/workspace-transaction-lifecycle.type.ts 4ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-records.postgres-spec.ts 92ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-files.ts 17ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-files.postgres-spec.ts 158ms (unchanged)
+
+{"formattedFiles": 9, "singleSshSession": true}

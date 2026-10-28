@@ -46,6 +46,14 @@ type FilesFieldDiffByEntityIndex = {
   };
 };
 
+export type FilesFieldSyncStore = {
+  readFiles: (
+    ids: string[],
+    workspaceId: string,
+  ) => Promise<Pick<FileEntity, 'id' | 'path' | 'settings' | 'status'>[]>;
+  apply: (writtenRecordIds: string[]) => Promise<void>;
+};
+
 export class FilesFieldSync {
   private readonly internalContext: WorkspaceInternalContext;
   private readonly fileRepository: Repository<FileEntity>;
@@ -295,7 +303,7 @@ export class FilesFieldSync {
 
   private validateFileFieldUniversalIdentifier(
     fileId: string,
-    fileEntity: FileEntity,
+    fileEntity: Pick<FileEntity, 'path'>,
     fileIdToFieldUniversalIdentifier: Map<string, string>,
   ): void {
     const expectedUniversalIdentifier =
@@ -384,11 +392,13 @@ export class FilesFieldSync {
     filesFieldDiffByEntityIndex,
     workspaceId,
     target,
+    store,
   }: {
     entities: QueryDeepPartialEntity<Entity>[];
     filesFieldDiffByEntityIndex: FilesFieldDiffByEntityIndex;
     workspaceId: string;
     target: EntityTarget<Entity>;
+    store?: FilesFieldSyncStore;
   }): Promise<{
     entities: QueryDeepPartialEntity<Entity>[];
     fileIds: {
@@ -417,6 +427,7 @@ export class FilesFieldSync {
       filesFieldDiffByEntityIndex,
       workspaceId,
       objectMetadata.id,
+      store,
     );
 
     const updatedEntities = this.updateEntitiesWithEnrichedFilesFieldValues(
@@ -434,6 +445,7 @@ export class FilesFieldSync {
     filesFieldDiffByEntityIndex: FilesFieldDiffByEntityIndex,
     workspaceId: string,
     objectMetadataId: string,
+    store?: FilesFieldSyncStore,
   ): Promise<{
     toAdd: Set<string>;
     toUpdate: Set<string>;
@@ -481,6 +493,11 @@ export class FilesFieldSync {
         });
         diff.toRemove.forEach((file) => {
           allFileIds.toRemove.add(file.fileId);
+          if (store && isDefined(fieldUniversalIdentifier))
+            fileIdToFieldUniversalIdentifier.set(
+              file.fileId,
+              fieldUniversalIdentifier,
+            );
         });
       }
     }
@@ -489,13 +506,18 @@ export class FilesFieldSync {
       return allFileIds;
     }
 
-    const existingFiles = await this.fileRepository.find({
-      where: {
-        id: In([...allFileIdsToFetch, ...allFileIds.toRemove]),
-        workspaceId,
-      },
-      select: ['id', 'path', 'settings', 'status'],
-    });
+    const existingFiles = store
+      ? await store.readFiles(
+          [...allFileIdsToFetch, ...allFileIds.toRemove],
+          workspaceId,
+        )
+      : await this.fileRepository.find({
+          where: {
+            id: In([...allFileIdsToFetch, ...allFileIds.toRemove]),
+            workspaceId,
+          },
+          select: ['id', 'path', 'settings', 'status'],
+        });
 
     const existingFileMap = new Map(
       existingFiles.map((file) => [file.id, file]),
@@ -503,6 +525,21 @@ export class FilesFieldSync {
 
     for (const entityDiffs of Object.values(filesFieldDiffByEntityIndex)) {
       for (const diff of Object.values(entityDiffs)) {
+        if (store) {
+          for (const file of diff.toRemove) {
+            const fileEntity = existingFileMap.get(file.fileId);
+            if (!fileEntity || fileEntity.settings?.isTemporaryFile)
+              throw new TwentyOrmException(
+                'Attached file is missing or temporary',
+                TwentyOrmExceptionCode.INVALID_INPUT,
+              );
+            this.validateFileFieldUniversalIdentifier(
+              file.fileId,
+              fileEntity,
+              fileIdToFieldUniversalIdentifier,
+            );
+          }
+        }
         for (const file of diff.toAdd) {
           const fileEntity = existingFileMap.get(file.fileId);
 
@@ -581,11 +618,19 @@ export class FilesFieldSync {
     return allFileIds;
   }
 
-  async updateFileEntityRecords(fileIds: {
-    toAdd: Set<string>;
-    toUpdate: Set<string>;
-    toRemove: Set<string>;
-  }): Promise<void> {
+  async updateFileEntityRecords(
+    fileIds: {
+      toAdd: Set<string>;
+      toUpdate: Set<string>;
+      toRemove: Set<string>;
+    },
+    store?: FilesFieldSyncStore,
+    writtenRecordIds: string[] = [],
+  ): Promise<void> {
+    if (store) {
+      await store.apply(writtenRecordIds);
+      return;
+    }
     if (fileIds.toAdd.size > 0) {
       await this.fileRepository.update(
         { id: In([...fileIds.toAdd]) },

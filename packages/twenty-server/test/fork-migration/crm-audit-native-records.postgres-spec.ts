@@ -286,7 +286,7 @@ it.each([
   { privatePayload: { number: Infinity } },
   { privatePayload: new Date('invalid') },
   { attachments: [] },
-  { privateFiles: [] },
+  { privateFiles: null },
 ])(
   'refuses unsupported values and file writes %# before persistence',
   async (data) => {
