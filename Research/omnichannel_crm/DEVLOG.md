@@ -2631,3 +2631,5 @@ Skills: ai-dev-workflow, behavioral-guardrails, server-schrodinger; scoped read-
 No live demo, real messaging, route activation or GitHub Actions changes.
 
 [Evidence](implementation/log082/README.md).
+
+LOG-082 publication: code `dc58792e0b0c645106c239c2c5924a1e9b7dcb39` pushed; GitHub ref verified by API. Linear ROB764 and ROB765 descriptions/comment `d1b7b5f5-be11-4af0-9d3a-f3ede47fbb75` independently read back; all11 project states match. ROB-764 remains In Progress.
