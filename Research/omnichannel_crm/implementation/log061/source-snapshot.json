@@ -1,0 +1,19 @@
+{
+  "baseCommit": "36f6ca53020e30a2f603ed7ef9ce8f5044ebd02c",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service.ts": "f1264e5648565fa183494ef7c9ca54d922e530f94eff8676ce1c12fa3667582f",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/drivers/gmail/services/gmail-get-message-list.service.ts": "fc221861eaec6c9cedff03dfb9660273765a700bf175301453e968e2e7cee9c3",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/drivers/gmail/utils/build-gmail-label-search-name.util.ts": "04b22327dc40d28f4e381e5c3444c0126dd866739af6596c851609130a316b5f",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/drivers/gmail/utils/compute-gmail-exclude-search-filter.util.ts": "069e959a226faa6b8013f7d502d4c0e75d80b0650d872082d4b5f3bced7896b0",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-delete-folder-messages.service.ts": "48236ab960aecb957248c2c0fbb36d0ee5f16b63380131a95bde47a8cc54c568",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-import-folder-messages.service.ts": "fd123f97ced5f29d3633445b32256002b470b68219379ad59683513d82ff5eef",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts": "e419a4d072b5a6ef0cdeffdfa358c2618c902960779e5496879e06fee40bfd58",
+    "packages/twenty-server/src/modules/omnichannel/services/ordinary-group-email-action.ts": "4bbf91239e99a04ac5a778903bca9c5f3b1c9932273cf47b18484c382a857f5e",
+    "packages/twenty-server/test/fork-migration/omni-native-metadata-effects-log035.spec.ts": null,
+    "packages/twenty-server/src/modules/omnichannel/services/lock-ordinary-metadata-action-channel.ts": "73b73df354806f71f85a2e32dd0e927fb13e3cdb525e273fe05f830524911198",
+    "packages/twenty-server/src/modules/omnichannel/services/ordinary-folder-action.ts": "1e3ebaa8dfe6bea4c249511a7ac01a69b68b85f88f3aec13f0f5c3e266db7df6",
+    "packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts": "8771e26ce764bacd2a2b13cbc499b3dee5036742cab520ab0f5ac8c9b0d2a0f3"
+  }
+}

@@ -54,17 +54,17 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-060 / ROB-764 In Progress: group-email cleanup проверяет captured parent,
-settings/action и точный updatedAt перед каждой порцией в её native transaction.
-Устаревшая работа останавливает следующие порции и list-fetch. Finalizer атомарно
-сбрасывает допустимые folder cursors, channel cursor и pending action. Native
-unknown commit распространяется наружу до обработки обычных ошибок импорта.
-Проверено 189 targeted Jest /5 suites +26 guards =215 PASS,
-22 новых PG cases. Typecheck 259 roots: 191/190, 0 new/changed-code.
-Все7 migrations неизменны. Последний full fork: LOG056, 1881 tests/71 suites.
-[Доказательства](Research/omnichannel_crm/implementation/log060/README.md). Scoped review без подтверждённых блокеров.
-Далее folder background cleanup, provider predicate, итоговый T22.
-ROB-764 остаётся In Progress; собственные ACL, UI и транспорт ещё впереди.
+LOG-061 / ROB-764 In Progress: folder actions фиксируют текущие parent/action,
+точные версии папки/канала и полную иерархию. Каждая порция удаления связей и сообщений
+использует одну native transaction; stale прекращает работу. Finalizer повторно
+проверяет snapshot и ownership; папка удаляется только без оставшихся junctions.
+Gmail import ограничен выбранной меткой с полным именем; неполная иерархия отклоняется.
+Проверено 226 targeted Jest/6 suites +13 Gmail +26 guards =265 PASS,
+37 новых PG cases заменили14 устаревших mock cases. Typecheck 265 roots:
+190/190, 0 new/changed-code. Все7 migrations неизменны.
+[Доказательства](Research/omnichannel_crm/implementation/log061/README.md). Две находки scoped review исправлены и повторно проверены.
+Последний full fork: LOG056,1881 tests/71 suites. Далее sync-folder discovery,
+provider predicate и итоговый T22. ROB-764 остаётся In Progress.
 Демо прежнее, GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы минимальный аудит и атомарное создание

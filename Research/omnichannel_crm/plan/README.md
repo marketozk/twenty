@@ -1,16 +1,16 @@
 # Технический план реализации CRM — v1
 
-LOG-060 / ROB-764 In Progress: group-email cleanup проверяет captured parent,
-settings/action и точный updatedAt перед каждой порцией в её native transaction.
-Устаревшая работа останавливает следующие порции и list-fetch. Finalizer атомарно
-сбрасывает допустимые folder cursors, channel cursor и pending action. Native
-unknown commit распространяется наружу до обработки обычных ошибок импорта.
-Проверено 189 targeted Jest /5 suites +26 guards =215 PASS,
-22 новых PG cases. Typecheck 259 roots: 191/190, 0 new/changed-code.
-Все7 migrations неизменны. Последний full fork: LOG056, 1881 tests/71 suites.
-[Доказательства](../implementation/log060/README.md). Scoped review без подтверждённых блокеров.
-Далее folder background cleanup, provider predicate, итоговый T22.
-ROB-764 остаётся In Progress; собственные ACL, UI и транспорт ещё впереди.
+LOG-061 / ROB-764 In Progress: folder actions фиксируют текущие parent/action,
+точные версии папки/канала и полную иерархию. Каждая порция удаления связей и сообщений
+использует одну native transaction; stale прекращает работу. Finalizer повторно
+проверяет snapshot и ownership; папка удаляется только без оставшихся junctions.
+Gmail import ограничен выбранной меткой с полным именем; неполная иерархия отклоняется.
+Проверено 226 targeted Jest/6 suites +13 Gmail +26 guards =265 PASS,
+37 новых PG cases заменили14 устаревших mock cases. Typecheck 265 roots:
+190/190, 0 new/changed-code. Все7 migrations неизменны.
+[Доказательства](../implementation/log061/README.md). Две находки scoped review исправлены и повторно проверены.
+Последний full fork: LOG056,1881 tests/71 suites. Далее sync-folder discovery,
+provider predicate и итоговый T22. ROB-764 остаётся In Progress.
 Демо прежнее, GitHub Actions не используется.
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.

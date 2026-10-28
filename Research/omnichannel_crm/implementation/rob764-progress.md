@@ -941,3 +941,44 @@ Last full fork LOG0561881/71; no new full server typecheck/Claude pass or ROB764
 Next: folder destructive batch and finalizer sharing actual native scope; then sync
 folder discovery and provider predicate. Demo/SaleBot unchanged, GitHub Actions unused.
 Applied ai-dev-workflow, behavioral-guardrails, server-schrodinger and scoped review.
+
+
+## LOG-061 — folder action ownership, cleanup and Gmail selection (28.10.2026)
+
+Folder worker captures current parent, pending action, synced state, external ID,
+exact6 PostgreSQL folder/channel timestamps and complete folder hierarchy. It no
+longer trusts the loaded folder name/hierarchy. Each deletion page holds ownership
+fence and account/channel/folder locks, checks current action and performs native
+association/message/thread/target cleanup plus folder-junction removal in the same
+strict native transaction. A stale page returns explicit refusal and stops the action.
+
+Deletion finalizer uses exclusive native ownership fence, rechecks token and all
+remaining junctions (including deleted/unrelated channel rows), then deletes metadata.
+Import finalizer compares the full hierarchy and resets pending action before returning
+provider IDs. Unknown core/native commit propagates. Ordinary failures remain logged
+with pending action preserved. Each page and finalizer is atomic separately; previously
+committed pages survive later stale/error. Legacy three-argument low-level deletion
+remains unchanged; production folder worker supplies the guarded action token.
+
+Scoped review found two Gmail regressions: singleton folder input could enable a
+whole-mailbox shortcut, and incomplete parent names could produce a partial label.
+Worker now passes captured complete hierarchy; strict selected-folder mode bypasses
+all-folder shortcuts and rejects missing/null/empty/whitespace parent names. Existing
+non-strict Gmail callers retain their behavior. Re-review found no confirmed blockers.
+
+226 targeted Jest/6 suites +13 Gmail/2 suites +26 guards=265 PASS.
+37 new PostgreSQL cases cover actual worker/importer/cleaner, stale parent/action/
+settings/time,1µs ABA, hierarchy drift, protected ownership, mixed requests,201-junction
+interruption, rollback and unknown commit. Retired14 mock cases that asserted the old
+metadata repository orchestration; real PG workflow coverage replaces them. A test
+injection initially assumed a SQL string rather than pg QueryConfig; corrected and
+re-run. Typecheck caught implicit parentId inference; explicit type fixed it.
+Typecheck 265 roots:190/190,0 new/changed-code.
+7 migrations unchanged; local/remote LF source hashes matched, deleted test absent.
+Last full fork LOG0561881/71; no new full fork/full server typecheck/full Claude pass
+or ROB764 acceptance claimed. Deployment and client acceptance remain separate.
+
+[Evidence](log061/README.md). [Remaining writers](rob764-metadata-writer-inventory.md).
+Next: sync-folder discovery, derived provider ownership and final T22/acceptance.
+Demo/SaleBot unchanged; GitHub Actions unused. Applied ai-dev-workflow,
+behavioral-guardrails, server-schrodinger and scoped read-only review.

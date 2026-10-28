@@ -1,0 +1,8 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/src/modules/messaging/message-import-manager/drivers/gmail/utils/__tests__/compute-gmail-exclude-search-filter.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/src/modules/messaging/message-import-manager/drivers/gmail/utils/__tests__/build-gmail-label-search-name.spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       13 passed, 13 total
+Snapshots:   0 total
+Time:        3.517 s
+Ran all test suites within paths "/source/packages/twenty-server/src/modules/messaging/message-import-manager/drivers/gmail/utils/__tests__/compute-gmail-exclude-search-filter.spec.ts", "/source/packages/twenty-server/src/modules/messaging/message-import-manager/drivers/gmail/utils/__tests__/build-gmail-label-search-name.spec.ts".
