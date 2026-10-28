@@ -3320,3 +3320,4 @@ STATUS переписан как актуальная сводка; истори
 
 Далее internal native hard-delete leaf records; retained omni guard сохраняется.
 Public DESTROY/MERGE, metadata/roles и negative audit/health ещё открыты.
+\nLOG104 publication: 22921c4ce2309cc253695c9a25d7b648dac69467 pushed/API verified. ROB765 description and comment 5d34c30b-72df-4c4d-be85-238c86b991a3 independently read back; all 11 issue states match. ROB765 remains In Progress; implementation continues.
