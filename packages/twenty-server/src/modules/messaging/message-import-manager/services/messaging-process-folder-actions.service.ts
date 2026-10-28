@@ -1,19 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-
-import { isDefined } from 'twenty-shared/utils';
-import { DataSource, In } from 'typeorm';
-
+import { DataSource } from 'typeorm';
 import { type MessageChannelEntity } from 'src/engine/metadata-modules/message-channel/entities/message-channel.entity';
-import { MessageFolderEntity } from 'src/engine/metadata-modules/message-folder/entities/message-folder.entity';
+import { type MessageFolderEntity } from 'src/engine/metadata-modules/message-folder/entities/message-folder.entity';
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
-import { MessageFolderPendingSyncAction } from 'twenty-shared/types';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
+import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
+import {
+  captureOrdinaryFolderAction,
+  finishOrdinaryFolderAction,
+} from 'src/modules/omnichannel/services/ordinary-folder-action';
 import { MessagingDeleteFolderMessagesService } from 'src/modules/messaging/message-import-manager/services/messaging-delete-folder-messages.service';
 import { MessagingImportFolderMessagesService } from 'src/modules/messaging/message-import-manager/services/messaging-import-folder-messages.service';
-import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
-import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
-import { findOmniOwnedMessageFolderIds } from 'src/modules/omnichannel/services/find-omni-owned-metadata-ids';
 
 export type ProcessFolderActionsResult = {
   messageExternalIdsToImport: string[];
@@ -24,15 +23,11 @@ export class MessagingProcessFolderActionsService {
   private readonly logger = new Logger(
     MessagingProcessFolderActionsService.name,
   );
-
   constructor(
     private readonly workspaceOrmManager: WorkspaceOrmManager,
-    @InjectWorkspaceScopedRepository(MessageFolderEntity)
-    private readonly messageFolderRepository: WorkspaceScopedRepository<MessageFolderEntity>,
     private readonly messagingDeleteFolderMessagesService: MessagingDeleteFolderMessagesService,
     private readonly messagingImportFolderMessagesService: MessagingImportFolderMessagesService,
-    @InjectDataSource()
-    private readonly dataSource: DataSource,
+    @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
   async processFolderActions(
@@ -40,167 +35,109 @@ export class MessagingProcessFolderActionsService {
     messageFolders: MessageFolderEntity[],
     workspaceId: string,
   ): Promise<ProcessFolderActionsResult> {
-    const pendingFolders = messageFolders
+    const pending = messageFolders
       .filter(
         (folder) =>
-          isDefined(folder.pendingSyncAction) &&
-          folder.pendingSyncAction !== MessageFolderPendingSyncAction.NONE,
+          folder.pendingSyncAction === 'FOLDER_IMPORT' ||
+          folder.pendingSyncAction === 'FOLDER_DELETION',
       )
       .map((folder) => ({ ...folder }));
-
-    if (pendingFolders.length === 0) {
-      return { messageExternalIdsToImport: [] };
-    }
-
-    messageChannel = {
+    if (!pending.length) return { messageExternalIdsToImport: [] };
+    const channel = {
       ...messageChannel,
       connectedAccount: messageChannel.connectedAccount
         ? { ...messageChannel.connectedAccount }
         : messageChannel.connectedAccount,
-      messageFolders: messageChannel.messageFolders?.map((folder) => ({
-        ...folder,
-      })),
     };
     if (
-      messageChannel.workspaceId !== workspaceId ||
-      pendingFolders.some(
+      channel.workspaceId !== workspaceId ||
+      pending.some(
         (folder) =>
           folder.workspaceId !== workspaceId ||
-          folder.messageChannelId !== messageChannel.id,
+          folder.messageChannelId !== channel.id,
       )
-    ) {
+    )
       throw new Error('OMNI_NATIVE_OWNERSHIP_WORKSPACE_MISMATCH');
-    }
-    const foldersWithPendingActions =
-      await this.workspaceOrmManager.executeInWorkspaceContext(
-        async () => {
-          if (this.workspaceOrmManager.getWorkspaceId() !== workspaceId) {
-            throw new Error('OMNI_NATIVE_OWNERSHIP_WORKSPACE_MISMATCH');
-          }
-          const ownedFolderIds = await findOmniOwnedMessageFolderIds(
-            {
-              executeRawQuery: (sql, parameters) =>
-                this.dataSource.query(sql, parameters),
-            },
-            workspaceId,
-            pendingFolders.map((folder) => folder.id),
-          );
-          return pendingFolders.filter(
-            (folder) => !ownedFolderIds.has(folder.id.toLowerCase()),
-          );
-        },
-        buildSystemAuthContext(workspaceId),
-        { lite: true },
-      );
-    if (foldersWithPendingActions.length === 0) {
-      return { messageExternalIdsToImport: [] };
-    }
-
-    this.logger.log(
-      `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannel.id} - Processing ${foldersWithPendingActions.length} folders with pending actions`,
-    );
-
-    const messageExternalIdsToImport = new Set<string>();
-    const folderIdsToDelete: string[] = [];
-    const processedFolderIds: string[] = [];
-    const failedFolderIds: Array<{ folderId: string; error: Error }> = [];
-
-    for (const folder of foldersWithPendingActions) {
-      try {
-        this.logger.debug(
-          `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannel.id}, FolderId: ${folder.id} - Processing folder action: ${folder.pendingSyncAction}`,
-        );
-
-        switch (folder.pendingSyncAction) {
-          case MessageFolderPendingSyncAction.FOLDER_DELETION: {
-            await this.messagingDeleteFolderMessagesService.deleteFolderMessages(
-              workspaceId,
-              messageChannel,
-              folder,
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        if (this.workspaceOrmManager.getWorkspaceId() !== workspaceId)
+          throw new Error('OMNI_NATIVE_OWNERSHIP_WORKSPACE_MISMATCH');
+        const ids = new Set<string>();
+        for (const folder of pending) {
+          try {
+            const expected = await captureOrdinaryFolderAction(
+              this.dataSource.manager,
+              {
+                workspaceId,
+                messageChannelId: channel.id,
+                connectedAccountId: channel.connectedAccountId,
+                messageFolderId: folder.id,
+                action: folder.pendingSyncAction,
+              },
             );
-
-            folderIdsToDelete.push(folder.id);
-
-            this.logger.debug(
-              `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannel.id}, FolderId: ${folder.id} - Completed FOLDER_DELETION action`,
-            );
-            break;
-          }
-          case MessageFolderPendingSyncAction.FOLDER_IMPORT: {
-            const folderMessageExternalIdsToImport =
-              await this.messagingImportFolderMessagesService.getFolderMessageIdsToImport(
-                messageChannel,
-                folder,
-              );
-
-            for (const messageExternalId of folderMessageExternalIdsToImport) {
-              messageExternalIdsToImport.add(messageExternalId);
+            if (!expected) continue;
+            const currentFolder = {
+              ...folder,
+              isSynced: expected.isSynced,
+              externalId: expected.externalId,
+              name: expected.name,
+              parentFolderId: expected.parentFolderId,
+            };
+            let imported: string[] = [];
+            if (expected.action === 'FOLDER_DELETION') {
+              const deleted =
+                await this.messagingDeleteFolderMessagesService.deleteFolderMessages(
+                  workspaceId,
+                  channel,
+                  currentFolder,
+                  expected,
+                );
+              if (deleted === null) continue;
+            } else {
+              imported =
+                await this.messagingImportFolderMessagesService.getFolderMessageIdsToImport(
+                  {
+                    ...channel,
+                    messageFolders: expected.hierarchy.map((item) => ({
+                      ...currentFolder,
+                      id: item.id,
+                      name: item.name,
+                      externalId: item.externalId,
+                      parentFolderId: item.parentFolderId,
+                    })),
+                  },
+                  currentFolder,
+                );
             }
-
-            this.logger.debug(
-              `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannel.id}, FolderId: ${folder.id} - Completed FOLDER_IMPORT action`,
+            if (
+              await finishOrdinaryFolderAction(
+                this.dataSource.manager,
+                expected,
+              )
+            )
+              for (const id of imported) ids.add(id);
+          } catch (error) {
+            if (
+              error instanceof OmniCoreTransactionOutcomeUnknownError ||
+              error instanceof NativeTransactionOutcomeUnknownError
+            )
+              throw error;
+            const normalized =
+              error instanceof Error
+                ? error
+                : new Error('Unexpected folder processing failure', {
+                    cause: error,
+                  });
+            this.logger.error(
+              `WorkspaceId: ${workspaceId}, MessageChannelId: ${channel.id}, FolderId: ${folder.id} - Error processing folder action: ${normalized.message}`,
+              normalized.stack,
             );
-            break;
           }
         }
-
-        processedFolderIds.push(folder.id);
-      } catch (error) {
-        const normalizedError =
-          error instanceof Error
-            ? error
-            : new Error('Unexpected folder processing failure', {
-                cause: error,
-              });
-
-        this.logger.error(
-          `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannel.id}, FolderId: ${folder.id} - Error processing folder action: ${normalizedError.message}`,
-          normalizedError.stack,
-        );
-        failedFolderIds.push({ folderId: folder.id, error: normalizedError });
-      }
-    }
-
-    if (failedFolderIds.length > 0) {
-      this.logger.warn(
-        `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannel.id} - Failed to process ${failedFolderIds.length} folders. They will be retried on next sync.`,
-      );
-    }
-
-    if (processedFolderIds.length > 0 || folderIdsToDelete.length > 0) {
-      const authContext = buildSystemAuthContext(workspaceId);
-
-      await this.workspaceOrmManager.executeInWorkspaceContext(
-        async () => {
-          if (processedFolderIds.length > 0) {
-            await this.messageFolderRepository.update(
-              workspaceId,
-              { id: In(processedFolderIds) },
-              { pendingSyncAction: MessageFolderPendingSyncAction.NONE },
-            );
-
-            this.logger.debug(
-              `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannel.id} - Reset pendingSyncAction to NONE for ${processedFolderIds.length} folders`,
-            );
-          }
-
-          if (folderIdsToDelete.length > 0) {
-            await this.messageFolderRepository.delete(workspaceId, {
-              id: In(folderIdsToDelete),
-            });
-
-            this.logger.log(
-              `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannel.id} - Deleted ${folderIdsToDelete.length} folders`,
-            );
-          }
-        },
-        authContext,
-        { lite: true },
-      );
-    }
-
-    return {
-      messageExternalIdsToImport: [...messageExternalIdsToImport],
-    };
+        return { messageExternalIdsToImport: [...ids] };
+      },
+      buildSystemAuthContext(workspaceId),
+      { lite: true },
+    );
   }
 }

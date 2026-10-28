@@ -10,8 +10,9 @@ type FolderInput = Pick<
 export const buildGmailLabelSearchName = (
   folder: FolderInput,
   allFolders: FolderInput[],
+  requireCompleteHierarchy = false,
 ): string | null => {
-  if (!folder.name) {
+  if (!folder.name || (requireCompleteHierarchy && !folder.name.trim())) {
     return null;
   }
 
@@ -27,9 +28,10 @@ export const buildGmailLabelSearchName = (
 
   while (current?.name && depth < MAXIMUM_GMAIL_FOLDER_DEPTH) {
     pathParts.unshift(current.name);
-    current = current.parentFolderId
-      ? folderMap.get(current.parentFolderId)
-      : undefined;
+    const parentId: string | null = current.parentFolderId;
+    current = parentId ? folderMap.get(parentId) : undefined;
+    if (requireCompleteHierarchy && parentId && !current?.name?.trim())
+      return null;
     depth++;
   }
 

@@ -37,6 +37,7 @@ export class MessagingImportFolderMessagesService {
             {
               messageFolderImportPolicy:
                 MessageFolderImportPolicy.SELECTED_FOLDERS,
+              requireSelectedFolders: true,
             },
           );
 

@@ -14,6 +14,7 @@ export const computeGmailExcludeSearchFilter = (
     'externalId' | 'isSynced' | 'name' | 'parentFolderId'
   >[],
   messageFolderImportPolicy: MessageFolderImportPolicy,
+  requireSelectedFolders = false,
 ): string => {
   const allExclusions = MESSAGING_GMAIL_DEFAULT_EXCLUDED_LABELS.map(
     computeGmailDefaultNotSyncedLabelsSearchFilter,
@@ -23,7 +24,10 @@ export const computeGmailExcludeSearchFilter = (
     computeGmailDefaultNotSyncedLabelsSearchFilter,
   ).join(' ');
 
-  if (messageFolderImportPolicy === MessageFolderImportPolicy.ALL_FOLDERS) {
+  if (
+    messageFolderImportPolicy === MessageFolderImportPolicy.ALL_FOLDERS &&
+    !requireSelectedFolders
+  ) {
     return allExclusions;
   }
 
@@ -33,15 +37,19 @@ export const computeGmailExcludeSearchFilter = (
     messageFolders.length > 0 &&
     messageFolders.every((folder) => folder.isSynced);
 
-  if (allFoldersSynced) {
+  if (allFoldersSynced && !requireSelectedFolders) {
     return allExclusions;
   }
 
   const labelNamesToInclude = syncedFolders
-    .map((folder) => buildGmailLabelSearchName(folder, messageFolders))
+    .map((folder) =>
+      buildGmailLabelSearchName(folder, messageFolders, requireSelectedFolders),
+    )
     .filter(isDefined);
 
   if (labelNamesToInclude.length === 0) {
+    if (requireSelectedFolders)
+      throw new Error('GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL');
     return '';
   }
 

@@ -20,6 +20,10 @@ import {
   findOmniOwnedMessageThreadIds,
 } from 'src/modules/omnichannel/services/find-omni-owned-native-record-ids';
 
+type CleanupTransactionScope = Parameters<
+  Parameters<WorkspaceOrmManager['runInWorkspaceTransaction']>[0]
+>[0];
+
 const ORPHAN_CLEANUP_PAGE_SIZE = 500;
 
 @Injectable()
@@ -72,120 +76,12 @@ export class MessagingMessageCleanerService {
               )
                 return false;
             }
-            const messageRepository =
-              transactionScope.getRepository<MessageWorkspaceEntity>(
-                'message',
-                { shouldBypassPermissionChecks: true },
-              );
-            const messageChannelMessageAssociationRepository =
-              transactionScope.getRepository<MessageChannelMessageAssociationWorkspaceEntity>(
-                'messageChannelMessageAssociation',
-                { shouldBypassPermissionChecks: true },
-              );
-            const messageThreadRepository =
-              transactionScope.getRepository<MessageThreadWorkspaceEntity>(
-                'messageThread',
-                { shouldBypassPermissionChecks: true },
-              );
-
-            for (const messageExternalIdsChunk of chunk(externalIds, 500)) {
-              const associations =
-                await messageChannelMessageAssociationRepository.find({
-                  where: {
-                    messageExternalId: In(messageExternalIdsChunk),
-                    messageChannelId,
-                  },
-                });
-
-              const ownedMessageIds = await findOmniOwnedMessageIds(
-                transactionScope,
-                workspaceId,
-                associations.map(({ messageId }) => messageId),
-              );
-              const associationsToDelete = associations.filter(
-                ({ messageId }) =>
-                  !ownedMessageIds.has(messageId.toLowerCase()),
-              );
-
-              if (associationsToDelete.length <= 0) {
-                continue;
-              }
-
-              await messageChannelMessageAssociationRepository.delete(
-                associationsToDelete.map(({ id }) => id),
-              );
-
-              this.logger.log(
-                `WorkspaceId: ${workspaceId} Deleting ${associationsToDelete.length} message channel message associations`,
-              );
-
-              const candidateMessageIds = [
-                ...new Set(
-                  associationsToDelete.map(({ messageId }) => messageId),
-                ),
-              ];
-
-              const orphanMessageIds = await this.filterOrphans(
-                candidateMessageIds,
-                async (messageIds) => [
-                  ...(await this.findReferencedMessageIds(
-                    messageChannelMessageAssociationRepository,
-                    messageIds,
-                  )),
-                  ...(await findOmniOwnedMessageIds(
-                    transactionScope,
-                    workspaceId,
-                    messageIds,
-                  )),
-                ],
-              );
-
-              if (orphanMessageIds.length <= 0) {
-                continue;
-              }
-
-              const orphanMessages = await messageRepository.find({
-                where: { id: In(orphanMessageIds) },
-              });
-
-              await messageRepository.delete(orphanMessageIds);
-
-              const candidateThreadIds = [
-                ...new Set(
-                  orphanMessages
-                    .map(({ messageThreadId }) => messageThreadId)
-                    .filter(isDefined),
-                ),
-              ];
-
-              const orphanThreadIds = await this.filterOrphans(
-                candidateThreadIds,
-                async (threadIds) => [
-                  ...(await this.findReferencedThreadIds(
-                    messageRepository,
-                    threadIds,
-                  )),
-                  ...(await findOmniOwnedMessageThreadIds(
-                    transactionScope,
-                    workspaceId,
-                    threadIds,
-                  )),
-                ],
-              );
-
-              if (orphanThreadIds.length > 0) {
-                await messageThreadRepository.delete(orphanThreadIds);
-              }
-
-              await this.participantTargetReconciliationService.reconcileMessageThreadTargets(
-                {
-                  messageThreadIds: candidateThreadIds.filter(
-                    (threadId) => !orphanThreadIds.includes(threadId),
-                  ),
-                  transactionScope,
-                },
-              );
-            }
+            await this.cleanMessageAssociationsInScope(
+              transactionScope,
+              workspaceId,
+              messageChannelId,
+              externalIds,
+            );
             return true;
           },
           expected ? { commitOutcome: 'strict' } : undefined,
@@ -194,6 +90,145 @@ export class MessagingMessageCleanerService {
       authContext,
       { lite: true },
     );
+  }
+
+  async deleteMessageAssociationsWithinTransaction(
+    transactionScope: CleanupTransactionScope,
+    args: {
+      workspaceId: string;
+      messageChannelId: string;
+      messageExternalIds: string[];
+    },
+  ): Promise<void> {
+    const lifecycle = transactionScope.transactionLifecycle;
+    if (
+      !lifecycle?.isTransactionActive ||
+      lifecycle.isReleased ||
+      lifecycle.commitOutcome !== 'strict'
+    )
+      throw new Error('OMNI_CLEANUP_REQUIRES_STRICT_TRANSACTION');
+    this.assertWorkspaceScope(args.workspaceId, transactionScope);
+    return this.cleanMessageAssociationsInScope(
+      transactionScope,
+      args.workspaceId,
+      args.messageChannelId,
+      [...args.messageExternalIds],
+    );
+  }
+
+  private async cleanMessageAssociationsInScope(
+    transactionScope: CleanupTransactionScope,
+    workspaceId: string,
+    messageChannelId: string,
+    externalIds: string[],
+  ): Promise<void> {
+    const messageRepository =
+      transactionScope.getRepository<MessageWorkspaceEntity>('message', {
+        shouldBypassPermissionChecks: true,
+      });
+    const messageChannelMessageAssociationRepository =
+      transactionScope.getRepository<MessageChannelMessageAssociationWorkspaceEntity>(
+        'messageChannelMessageAssociation',
+        { shouldBypassPermissionChecks: true },
+      );
+    const messageThreadRepository =
+      transactionScope.getRepository<MessageThreadWorkspaceEntity>(
+        'messageThread',
+        { shouldBypassPermissionChecks: true },
+      );
+
+    for (const messageExternalIdsChunk of chunk(externalIds, 500)) {
+      const associations =
+        await messageChannelMessageAssociationRepository.find({
+          where: {
+            messageExternalId: In(messageExternalIdsChunk),
+            messageChannelId,
+          },
+        });
+
+      const ownedMessageIds = await findOmniOwnedMessageIds(
+        transactionScope,
+        workspaceId,
+        associations.map(({ messageId }) => messageId),
+      );
+      const associationsToDelete = associations.filter(
+        ({ messageId }) => !ownedMessageIds.has(messageId.toLowerCase()),
+      );
+
+      if (associationsToDelete.length <= 0) {
+        continue;
+      }
+
+      await messageChannelMessageAssociationRepository.delete(
+        associationsToDelete.map(({ id }) => id),
+      );
+
+      this.logger.log(
+        `WorkspaceId: ${workspaceId} Deleting ${associationsToDelete.length} message channel message associations`,
+      );
+
+      const candidateMessageIds = [
+        ...new Set(associationsToDelete.map(({ messageId }) => messageId)),
+      ];
+
+      const orphanMessageIds = await this.filterOrphans(
+        candidateMessageIds,
+        async (messageIds) => [
+          ...(await this.findReferencedMessageIds(
+            messageChannelMessageAssociationRepository,
+            messageIds,
+          )),
+          ...(await findOmniOwnedMessageIds(
+            transactionScope,
+            workspaceId,
+            messageIds,
+          )),
+        ],
+      );
+
+      if (orphanMessageIds.length <= 0) {
+        continue;
+      }
+
+      const orphanMessages = await messageRepository.find({
+        where: { id: In(orphanMessageIds) },
+      });
+
+      await messageRepository.delete(orphanMessageIds);
+
+      const candidateThreadIds = [
+        ...new Set(
+          orphanMessages
+            .map(({ messageThreadId }) => messageThreadId)
+            .filter(isDefined),
+        ),
+      ];
+
+      const orphanThreadIds = await this.filterOrphans(
+        candidateThreadIds,
+        async (threadIds) => [
+          ...(await this.findReferencedThreadIds(messageRepository, threadIds)),
+          ...(await findOmniOwnedMessageThreadIds(
+            transactionScope,
+            workspaceId,
+            threadIds,
+          )),
+        ],
+      );
+
+      if (orphanThreadIds.length > 0) {
+        await messageThreadRepository.delete(orphanThreadIds);
+      }
+
+      await this.participantTargetReconciliationService.reconcileMessageThreadTargets(
+        {
+          messageThreadIds: candidateThreadIds.filter(
+            (threadId) => !orphanThreadIds.includes(threadId),
+          ),
+          transactionScope,
+        },
+      );
+    }
   }
 
   async deleteMessageChannelMessageAssociationsByChannelId({

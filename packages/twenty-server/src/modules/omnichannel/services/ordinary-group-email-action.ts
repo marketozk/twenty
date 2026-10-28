@@ -1,10 +1,12 @@
-import { type EntityManager } from 'typeorm';
-import { isUUID } from 'class-validator';
-
 import {
-  findOmniOwnedConnectedAccountIds,
-  findOmniOwnedMessageFolderIds,
-} from 'src/modules/omnichannel/services/find-omni-owned-metadata-ids';
+  lockOrdinaryMetadataActionChannel,
+  METADATA_ACTION_TIMESTAMP_SQL,
+  isMetadataActionTimestamp,
+  type MetadataActionQuery,
+} from 'src/modules/omnichannel/services/lock-ordinary-metadata-action-channel';
+import { type EntityManager } from 'typeorm';
+
+import { findOmniOwnedMessageFolderIds } from 'src/modules/omnichannel/services/find-omni-owned-metadata-ids';
 import { withOrdinaryMetadataChannels } from 'src/modules/omnichannel/services/with-ordinary-metadata-channels';
 
 export type OrdinaryGroupEmailAction = {
@@ -16,61 +18,27 @@ export type OrdinaryGroupEmailAction = {
   updatedAt: string;
 };
 
-type Query = {
-  executeRawQuery: (
-    sql: string,
-    parameters?: unknown[],
-  ) => Promise<Record<string, unknown>[]>;
-};
-const TIMESTAMP = `to_char("updatedAt" AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
-
 // Call only inside a transaction holding the shared native-ownership fence.
 export const lockCurrentGroupEmailAction = async (
-  query: Query,
+  query: MetadataActionQuery,
   expected: OrdinaryGroupEmailAction,
 ): Promise<boolean> => {
   if (
-    ![
-      expected.workspaceId,
-      expected.messageChannelId,
-      expected.connectedAccountId,
-    ].every((id) => isUUID(id)) ||
     !['GROUP_EMAILS_IMPORT', 'GROUP_EMAILS_DELETION'].includes(
       expected.action,
     ) ||
     expected.excludeGroupEmails !==
       (expected.action === 'GROUP_EMAILS_DELETION') ||
-    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/.test(expected.updatedAt)
+    !isMetadataActionTimestamp(expected.updatedAt)
   )
     throw new Error('OMNI_INVALID_GROUP_ACTION_SCOPE');
-  const accounts = await query.executeRawQuery(
-    'SELECT id,provider,"applicationId","connectionProviderId" FROM core."connectedAccount" WHERE "workspaceId"=$1 AND id=$2 FOR SHARE',
-    [expected.workspaceId, expected.connectedAccountId],
+  const channel = await lockOrdinaryMetadataActionChannel(query, expected);
+  return (
+    channel !== null &&
+    channel.pendingGroupEmailsAction === expected.action &&
+    channel.excludeGroupEmails === expected.excludeGroupEmails &&
+    channel.version === expected.updatedAt
   );
-  const channels = await query.executeRawQuery(
-    `SELECT "connectedAccountId","pendingGroupEmailsAction","excludeGroupEmails",${TIMESTAMP} AS version FROM core."messageChannel" WHERE "workspaceId"=$1 AND id=$2 FOR UPDATE`,
-    [expected.workspaceId, expected.messageChannelId],
-  );
-  const account = accounts[0],
-    channel = channels[0];
-  if (
-    !account ||
-    !channel ||
-    channel.connectedAccountId !== expected.connectedAccountId ||
-    channel.pendingGroupEmailsAction !== expected.action ||
-    channel.excludeGroupEmails !== expected.excludeGroupEmails ||
-    channel.version !== expected.updatedAt ||
-    (account.provider === 'app' &&
-      account.applicationId === null &&
-      account.connectionProviderId === null)
-  )
-    return false;
-  const owned = await findOmniOwnedConnectedAccountIds(
-    query,
-    expected.workspaceId,
-    [expected.connectedAccountId],
-  );
-  return !owned.size;
 };
 
 export const captureOrdinaryGroupEmailAction = async (
@@ -90,7 +58,7 @@ export const captureOrdinaryGroupEmailAction = async (
     async (transaction, channels) => {
       if (!channels.length) return null;
       const rows = await transaction.query(
-        `SELECT "excludeGroupEmails",${TIMESTAMP} AS version FROM core."messageChannel" WHERE "workspaceId"=$1 AND id=$2 AND "connectedAccountId"=$3 AND "pendingGroupEmailsAction"=$4`,
+        `SELECT "excludeGroupEmails",${METADATA_ACTION_TIMESTAMP_SQL} AS version FROM core."messageChannel" WHERE "workspaceId"=$1 AND id=$2 AND "connectedAccountId"=$3 AND "pendingGroupEmailsAction"=$4`,
         [workspaceId, messageChannelId, connectedAccountId, action],
       );
       if (!rows.length) return null;

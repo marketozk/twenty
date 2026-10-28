@@ -37,7 +37,9 @@ export class GmailGetMessageListService {
       MessageFolderEntity,
       'name' | 'externalId' | 'isSynced' | 'parentFolderId'
     >[],
-    messageChannel: Pick<MessageChannelEntity, 'messageFolderImportPolicy'>,
+    messageChannel: Pick<MessageChannelEntity, 'messageFolderImportPolicy'> & {
+      requireSelectedFolders?: boolean;
+    },
   ): Promise<GetMessageListsResponse> {
     const oAuth2Client = await this.googleOAuth2ClientProvider.getClient(
       connectedAccount.id,
@@ -55,6 +57,7 @@ export class GmailGetMessageListService {
     const excludedSearchFilter = computeGmailExcludeSearchFilter(
       messageFolders,
       messageChannel.messageFolderImportPolicy,
+      messageChannel.requireSelectedFolders,
     );
 
     while (hasMoreMessages) {

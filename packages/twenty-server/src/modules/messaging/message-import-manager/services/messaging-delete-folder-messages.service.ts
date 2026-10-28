@@ -1,3 +1,7 @@
+import {
+  lockCurrentFolderAction,
+  type OrdinaryFolderAction,
+} from 'src/modules/omnichannel/services/ordinary-folder-action';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 
@@ -32,7 +36,15 @@ export class MessagingDeleteFolderMessagesService {
     workspaceId: string,
     messageChannel: MessageChannelEntity,
     messageFolder: MessageFolderEntity,
-  ): Promise<number> {
+    folderAction?: OrdinaryFolderAction,
+  ): Promise<number | null> {
+    if (folderAction)
+      return this.deleteGuardedFolderMessages(
+        workspaceId,
+        messageChannel.id,
+        messageFolder.id,
+        { ...folderAction },
+      );
     this.logger.log(
       `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannel.id}, FolderId: ${messageFolder.id} - Deleting messages from folder: ${messageFolder.name}`,
     );
@@ -153,5 +165,104 @@ export class MessagingDeleteFolderMessagesService {
     );
 
     return totalDeletedCount;
+  }
+  private async deleteGuardedFolderMessages(
+    workspaceId: string,
+    messageChannelId: string,
+    messageFolderId: string,
+    expected: OrdinaryFolderAction,
+  ): Promise<number | null> {
+    if (
+      expected.workspaceId !== workspaceId ||
+      expected.messageChannelId !== messageChannelId ||
+      expected.messageFolderId !== messageFolderId ||
+      expected.action !== 'FOLDER_DELETION'
+    )
+      throw new Error('OMNI_INVALID_FOLDER_ACTION_SCOPE');
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        if (this.workspaceOrmManager.getWorkspaceId() !== workspaceId)
+          throw new Error('OMNI_NATIVE_OWNERSHIP_WORKSPACE_MISMATCH');
+        let cursor: string | undefined;
+        let deleted = 0;
+        for (;;) {
+          const page = await this.workspaceOrmManager.runInWorkspaceTransaction(
+            async (scope) => {
+              if (scope.workspaceId !== workspaceId)
+                throw new Error('OMNI_NATIVE_OWNERSHIP_WORKSPACE_MISMATCH');
+              if (!(await lockCurrentFolderAction(scope, expected)))
+                return null;
+              const junctions =
+                scope.getRepository<MessageChannelMessageAssociationMessageFolderWorkspaceEntity>(
+                  'messageChannelMessageAssociationMessageFolder',
+                  { shouldBypassPermissionChecks: true },
+                );
+              const associations =
+                scope.getRepository<MessageChannelMessageAssociationWorkspaceEntity>(
+                  'messageChannelMessageAssociation',
+                  { shouldBypassPermissionChecks: true },
+                );
+              const rows = await junctions.find({
+                withDeleted: true,
+                where: {
+                  messageFolderId,
+                  ...(cursor ? { id: MoreThan(cursor) } : {}),
+                },
+                order: { id: 'ASC' },
+                take: BATCH_SIZE,
+              });
+              if (!rows.length)
+                return { cursor: undefined, count: 0, done: true };
+              const candidates = await associations.find({
+                withDeleted: true,
+                where: {
+                  id: In(
+                    rows.map((row) => row.messageChannelMessageAssociationId),
+                  ),
+                  messageChannelId,
+                },
+              });
+              const owned = await findOmniOwnedMessageIds(
+                scope,
+                workspaceId,
+                candidates.map((row) => row.messageId),
+              );
+              const ordinary = candidates.filter(
+                (row) => !owned.has(row.messageId),
+              );
+              const allowed = new Set(ordinary.map((row) => row.id));
+              const junctionIds = rows
+                .filter((row) =>
+                  allowed.has(row.messageChannelMessageAssociationId),
+                )
+                .map((row) => row.id);
+              const messageExternalIds = ordinary
+                .filter((row) => !isDefined(row.deletedAt))
+                .map((row) => row.messageExternalId)
+                .filter(isDefined);
+              if (messageExternalIds.length)
+                await this.messagingMessageCleanerService.deleteMessageAssociationsWithinTransaction(
+                  scope,
+                  { workspaceId, messageChannelId, messageExternalIds },
+                );
+              if (junctionIds.length)
+                await junctions.delete({ id: In(junctionIds) });
+              return {
+                cursor: rows[rows.length - 1].id,
+                count: messageExternalIds.length,
+                done: rows.length < BATCH_SIZE,
+              };
+            },
+            { commitOutcome: 'strict' },
+          );
+          if (page === null) return null;
+          deleted += page.count;
+          cursor = page.cursor;
+          if (page.done) return deleted;
+        }
+      },
+      buildSystemAuthContext(workspaceId),
+      { lite: true },
+    );
   }
 }
