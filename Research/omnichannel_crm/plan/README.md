@@ -1,12 +1,11 @@
 # Технический план реализации CRM — v1
 
-LOG-080 / ROB-764 In Progress: входящие сообщения принимаются от существующей
-ExternalIdentity без привязки к Person. Native participant и исторический автор
-сохраняют null; контакт не создаётся и не угадывается. Bound identity с отсутствующей
-Person по-прежнему отклоняется. 116 tests/4 suites +26 guards =142 PASS; 15 new PG cases. Differential typecheck 308 roots:187 baseline/187 current,0 new/changed-code. All nine migration sources unchanged.
-[Доказательства](../implementation/log080/README.md). Предыдущий полный fork regression: LOG079,2598 tests/80 suites.
-Далее discovery/registration и явные identity/target writers с audit/rollback;
-полный ACL/API остаётся ROB-766.
+LOG-081 / ROB-764 In Progress: внутренний writer регистрирует qualified ExternalIdentity
+без Person. Actor-scoped receipt, identity и policy epoch сохраняются с audit одной
+транзакцией; replay проходит текущую авторизацию и проверяет исходный success audit. 183 tests/11 suites +26 guards =209 PASS; 27 new PG cases. Differential typecheck 310 roots:187 baseline/187 current,0 new/changed-code. All nine migration sources unchanged.
+[Доказательства](../implementation/log081/README.md). Предыдущий полный fork regression: LOG079,2598 tests/80 suites.
+Далее explicit identity link/unlink/rebind и target projection; transport discovery
+ещё не подключён, полный ACL/API остаётся ROB-766.
 Демо прежнее, GitHub Actions не используется.
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.

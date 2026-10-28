@@ -1,0 +1,11 @@
+{
+  "baseCommit": "59fe4882b51416bbc50a2ca2a0b39f50300ca023",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "6d9917dc9a882f1dd29829f5e571b3d7ab90e85faa2d8e014294a1a00c9e59f9",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "b5fa891dc185c88b0f9068f88bd19a97b51f22646c97cbda26236899fd4c7eb5",
+    "packages/twenty-server/src/modules/omnichannel/services/register-omni-external-identity.ts": "d77bb5c45428cc44e36acd8597213c1b653a5d8c95043b40f668a3c9ab32c516",
+    "packages/twenty-server/test/fork-migration/omni-identity-registration.postgres-spec.ts": "e6fc8f18e9e0e4996b1f2921c1ffdc4867421026deba59e484ce13ad04f64255"
+  }
+}

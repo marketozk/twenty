@@ -5,6 +5,7 @@ export type CrmAuditPrincipal = {
 
 export type CrmAuditResourceKind =
   | 'omniAccountBinding'
+  | 'omniExternalIdentity'
   | 'omniBindingConfigWakeup'
   | 'omniIncomingReceipt'
   | 'omniOutgoingCommand'

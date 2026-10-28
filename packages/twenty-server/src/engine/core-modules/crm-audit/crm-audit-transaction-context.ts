@@ -26,6 +26,10 @@ const CATALOG: Record<
   CrmAuditResourceKind,
   { values: string[]; redacted: string[] }
 > = {
+  omniExternalIdentity: {
+    values: ['bindingId', 'personId', 'revision'],
+    redacted: ['providerPeerId', 'verificationSource'],
+  },
   omniAccountBinding: {
     values: [
       'platform',
