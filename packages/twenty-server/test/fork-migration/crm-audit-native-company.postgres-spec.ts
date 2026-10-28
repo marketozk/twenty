@@ -246,7 +246,9 @@ it('refuses unaudited delete and other-object writes inside the bounded owner', 
         .getRepository('task', permissions)
         .update(randomUUID(), { name: 'x' }),
   ])
-    await expect(run<unknown>(work)).rejects.toThrow('only covered local CRM');
+    await expect(run<unknown>(work)).rejects.toThrow(
+      'Native audit coverage excludes',
+    );
   expect((await readCompany()).length).toBe(2);
   expect(await audit()).toEqual([]);
 });

@@ -108,3 +108,13 @@ non-standard application objects. Metadata authority и canonical table identity
 в одном explicit scope. 766 tests/28 suites PASS, 22 новых PG cases; 26 guards,
 0 новых diagnostics. Public selector остаётся прежним. Далее soft-delete/restore;
 CREATE/shareWith, физический delete/merge и прочие owners ещё не закрыты.
+
+LOG098: native soft-delete/restore покрытых standard/custom records и автоматические
+public DELETE_ONE/MANY, RESTORE_ONE/MANY Company/Person/Opportunity. Actual IDs,
+scoped nested reads, deletedAt postconditions и audit используют один executor.
+Matched restore/агрегация сохраняют success с пустым diff; hard-delete не включён.
+792 tests/29 suites PASS, 26 новых PG cases, 140 targeted; 26 guards, 10 unchanged
+migration checksums. Types 336/337 roots, 189/189 diagnostics, 0 новых/changed.
+11 source hashes проверены. Демо не менялось, GitHub Actions не используется.
+[Доказательства LOG098](../implementation/log098/README.md). Далее core user-session CREATE;
+public CREATE/shared access, physical delete/merge, остальные owners и negative audit открыты.

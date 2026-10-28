@@ -1,0 +1,29 @@
+{
+  "status": "pass-scoped-not-phase-complete",
+  "issue": "ROB-765",
+  "newPostgresTests": 26,
+  "targetedTests": 140,
+  "regressionTests": 792,
+  "regressionSuites": 29,
+  "regressionSeconds": 167.288,
+  "guardUnitTests": 20,
+  "checksumUnitTests": 6,
+  "unchangedMigrations": 10,
+  "typecheck": {
+    "baselineRoots": 336,
+    "currentRoots": 337,
+    "baselineDiagnostics": 189,
+    "currentDiagnostics": 189,
+    "newDiagnostics": 0,
+    "changedFileDiagnostics": 0,
+    "fullServerTypecheck": false
+  },
+  "uploadedSourceHashesVerified": 11,
+  "publicStandardSoftDeleteRestoreEnabled": true,
+  "nativeCustomLifecycleSupported": true,
+  "publicCreateEnabled": false,
+  "publicCustomOwnerEnabled": false,
+  "physicalDeleteEnabled": false,
+  "productionDeployment": false,
+  "githubActionsUsed": false
+}

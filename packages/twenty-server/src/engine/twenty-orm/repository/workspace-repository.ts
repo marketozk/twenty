@@ -1905,6 +1905,7 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       )
         args = {
           ...args,
+          columnsToReturn: [...args.columnsToReturn],
           data: args.data
             ? getNativeCrmAuditContext(this.options.executor)
               ? captureNativeCrmAuditWriteData(args.data)
@@ -2133,6 +2134,8 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
         ? await this.fetchInheritedReadabilityChildRecords(recordsBefore)
         : undefined;
 
+    const lifecycleAudit =
+      nativeAudit && (kind === 'soft-delete' || kind === 'restore');
     const mutationResult = await this.morphAndExecute({
       selectQueryBuilder,
       kind,
@@ -2142,7 +2145,9 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
               columnsToReturn,
               this.options.tableShape,
             )
-          : columnsToReturn,
+          : lifecycleAudit
+            ? [...new Set([...columnsToReturn, 'id'])]
+            : columnsToReturn,
       setColumns,
     });
 
@@ -2188,6 +2193,7 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
           ? []
           : mutationResult.generatedMaps.map((row) => row.id),
       ),
+      kind === 'soft-delete' || kind === 'restore' ? kind : undefined,
     );
     this.emitMutationEvent({
       kind,
@@ -2196,7 +2202,11 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       inheritedReadabilityChildRecordsByRecordId,
     });
 
-    return mutationResult.generatedMaps;
+    return lifecycleAudit && !columnsToReturn.includes('id')
+      ? mutationResult.generatedMaps.map(
+          ({ id: _id, ...row }) => row as ObjectRecord,
+        )
+      : mutationResult.generatedMaps;
   }
 
   private async fetchInheritedReadabilityChildRecords(

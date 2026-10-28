@@ -942,3 +942,15 @@ it('does not replace an explicit null parent ID with a generated identity', asyn
   expect(await readCompanies()).toHaveLength(2);
   expect(await audits()).toHaveLength(0);
 });
+
+it('preserves core File state across soft-delete and restore of its parent', async () => {
+  await seed();
+  await attach();
+  const before = await files();
+  await run((scope) => repo(scope).softDelete(recordId));
+  expect(await files()).toEqual(before);
+  await run((scope) => repo(scope).restore(recordId));
+  expect(await files()).toEqual(before);
+  expect((await record()).documents).toHaveLength(1);
+  expect(await audits()).toHaveLength(4);
+});

@@ -3164,3 +3164,21 @@ ROB765 In Progress. Следом soft-delete/restore и соответствую
 LOG097 publication: `d3bbfe8b7abaf63bf8b13adc6bb2e91f0d27a207` pushed/API verified.
 ROB765 description and comment `41484965-d47f-490f-8263-6e0180fc4b44` independently
 read back; all 11 states match. ROB765 remains In Progress; implementation continues.
+
+## LOG-098 — soft-delete/restore и public lifecycle audit
+
+LOG098: native soft-delete/restore покрытых standard/custom records и автоматические
+public DELETE_ONE/MANY, RESTORE_ONE/MANY Company/Person/Opportunity. Actual IDs,
+scoped nested reads, deletedAt postconditions и audit используют один executor.
+Matched restore/агрегация сохраняют success с пустым diff; hard-delete не включён.
+792 tests/29 suites PASS, 26 новых PG cases, 140 targeted; 26 guards, 10 unchanged
+migration checksums. Types 336/337 roots, 189/189 diagnostics, 0 новых/changed.
+11 source hashes проверены. Демо не менялось, GitHub Actions не используется.
+
+Независимое read-only review без блокеров. Первичные тесты исправлены по реальному
+контракту: matched SQL success с пустым diff сохраняется; PG errors проверяются по
+всей cause chain. Финальные target, types и полный regression повторены.
+[Доказательства](implementation/log098/README.md).
+
+ROB765 In Progress. Следом actual core user-session CREATE; logout/revoke требуют
+отдельного security-first owner: ошибка журнала не должна отменять отзыв доступа.

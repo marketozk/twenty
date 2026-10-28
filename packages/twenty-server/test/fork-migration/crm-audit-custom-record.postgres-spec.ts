@@ -90,7 +90,7 @@ it('keeps native permission checks for custom creation', async () => {
   expect(await audit()).toHaveLength(0);
 });
 
-it.each(['delete', 'restore'] as const)(
+it.each(['delete'] as const)(
   'keeps custom %s outside create/update coverage and poisons caught failures',
   async (method) => {
     await expect(
@@ -137,9 +137,7 @@ it.each([
           await repo(scope, name).insert({ id });
         } catch {}
       }),
-    ).rejects.toThrow(
-      'Native audit supports only covered local CRM creates and updates',
-    );
+    ).rejects.toThrow('Native audit coverage excludes this object or mutation');
     expect(await f.read('_customCase')).toHaveLength(0);
     expect(await audit()).toHaveLength(0);
   },

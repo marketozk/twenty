@@ -42,10 +42,12 @@ LOG096: 744 tests/27 suites PASS, 28 новых PostgreSQL cases; 26 guards PASS
 [LOG097](implementation/log097/README.md): внутренние create/update local custom
 objects, включая FILES и вложенную цепочку standard→custom→standard. 766 tests/28
 suites PASS, 22 новых PG cases; 0 новых type diagnostics. Public custom owner и CREATE
-ещё не включены. Следом soft-delete/restore; shares остаются отдельным access owner.
+ещё не включены; shares остаются отдельным access owner.
 
-Продолжаем native CRUD/merge и подключение реальных writers, затем
-metadata/session и negative audit. [Приёмка ROB765](implementation/rob765-progress.md).
+[LOG098](implementation/log098/README.md): soft-delete/restore и public lifecycle owner,
+792 tests/29 suites PASS, 26 новых PG cases, 0 новых type diagnostics.
+Следом создание core user-session; physical delete/merge, public CREATE/shared access,
+metadata/roles и negative audit ещё открыты. [Приёмка ROB765](implementation/rob765-progress.md).
 
 ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.
 Чаты, внешние коннекторы, собственные права и автоматизация ещё не готовы.

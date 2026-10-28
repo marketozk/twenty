@@ -170,7 +170,7 @@ export const assertNativeCrmAuditWriteSupported = (
 ): void => {
   if (!getNativeCrmAuditContext(executor)) return;
   if (
-    !['create', 'update'].includes(kind) ||
+    !['create', 'update', 'soft-delete', 'restore'].includes(kind) ||
     !isNativeCrmAuditMetadata(metadata, workspaceId) ||
     metadata.id !== shape.objectMetadataId ||
     metadata.nameSingular !== shape.nameSingular ||
@@ -181,9 +181,7 @@ export const assertNativeCrmAuditWriteSupported = (
           TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER,
       )
   )
-    throw new Error(
-      'Native audit supports only covered local CRM creates and updates',
-    );
+    throw new Error('Native audit coverage excludes this object or mutation');
   for (const [name, value] of Object.entries(data)) {
     if (name === 'id' || value === undefined) continue;
     const column = shape.columnShapeByColumnName[name];
@@ -340,6 +338,7 @@ export const recordNativeCrmUpdates = async (
   before: ObjectRecord[],
   actualIds: string[],
   explicitUpdatedAtIds: ReadonlySet<string> = new Set(),
+  lifecycle?: 'soft-delete' | 'restore',
 ): Promise<void> => {
   const audit = getNativeCrmAuditContext(executor);
   if (!audit || !actualIds.length) return;
@@ -350,6 +349,14 @@ export const recordNativeCrmUpdates = async (
     const previous = before.find((item) => item.id === row.id);
     if (!previous)
       throw new Error('Native audited update has no locked before image');
+    if (
+      lifecycle &&
+      (row.deletedAt === undefined ||
+        (lifecycle === 'restore'
+          ? String(row.deletedAt) !== 'null'
+          : String(row.deletedAt) === 'null'))
+    )
+      throw new Error('Native CRM lifecycle postcondition failed');
     audit.record({
       resourceKind: 'crmRecord',
       resourceId: row.id,

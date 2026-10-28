@@ -27,6 +27,10 @@ import { createOmniNativeMessageFixture } from 'test/fork-migration/omni-native-
 import { addCustomCrmMetadata } from 'test/fork-migration/custom-crm-metadata.fixture';
 import { CommonCreateOneQueryRunnerService } from 'src/engine/api/common/common-query-runners/common-create-one-query-runner.service';
 import { CommonCreateManyQueryRunnerService } from 'src/engine/api/common/common-query-runners/common-create-many-query-runner/common-create-many-query-runner.service';
+import { CommonDeleteOneQueryRunnerService } from 'src/engine/api/common/common-query-runners/common-delete-one-query-runner.service';
+import { CommonDeleteManyQueryRunnerService } from 'src/engine/api/common/common-query-runners/common-delete-many-query-runner.service';
+import { CommonRestoreOneQueryRunnerService } from 'src/engine/api/common/common-query-runners/common-restore-one-query-runner.service';
+import { CommonRestoreManyQueryRunnerService } from 'src/engine/api/common/common-query-runners/common-restore-many-query-runner.service';
 
 jest.mock(
   'src/engine/metadata-modules/index-metadata/index-metadata.entity',
@@ -118,7 +122,7 @@ const harness = (
         {
           canReadObjectRecords: true,
           canUpdateObjectRecords: canUpdate,
-          canSoftDeleteObjectRecords: false,
+          canSoftDeleteObjectRecords: canUpdate,
           canDestroyObjectRecords: false,
           restrictedFields: {},
           rowLevelPermissionPredicates: [],
@@ -178,7 +182,20 @@ const harness = (
     >[1],
   );
   const createOne = new CommonCreateOneQueryRunnerService(createMany);
-  for (const runner of [one, many, createOne, createMany])
+  const deleteMany = new CommonDeleteManyQueryRunnerService(),
+    deleteOne = new CommonDeleteOneQueryRunnerService(deleteMany);
+  const restoreMany = new CommonRestoreManyQueryRunnerService(),
+    restoreOne = new CommonRestoreOneQueryRunnerService(restoreMany);
+  for (const runner of [
+    one,
+    many,
+    createOne,
+    createMany,
+    deleteOne,
+    deleteMany,
+    restoreOne,
+    restoreMany,
+  ])
     Object.assign(runner, {
       workspaceOrmManager: manager,
       workspaceQueryHookService: hooks,
@@ -216,6 +233,10 @@ const harness = (
     many,
     createOne,
     createMany,
+    deleteOne,
+    deleteMany,
+    restoreOne,
+    restoreMany,
     shares,
     queryContext,
     hooks,
@@ -774,4 +795,192 @@ it('resolves public connect and disconnect with the scoped nested relation write
   expect(disconnected.results.company).toBeNull();
   expect(await audit()).toHaveLength(2);
   expect(h.managerPort.getRepository).not.toHaveBeenCalled();
+});
+
+it.each(
+  ['company', 'person', 'opportunity'].flatMap((object) =>
+    [false, true].map((batch) => ({ object, batch })),
+  ),
+)(
+  'audits public soft-delete and restore for $object; batch=$batch',
+  async ({ object, batch }) => {
+    const h = harness('user');
+    const ids = object === 'company' && batch ? [id, secondId] : [id];
+    if (batch)
+      await h.deleteMany.execute(
+        {
+          filter: { id: { in: ids } },
+          selectedFields: { id: true, deletedAt: true },
+        },
+        h.queryContext(object),
+      );
+    else
+      await h.deleteOne.execute(
+        { id, selectedFields: { id: true, deletedAt: true } },
+        h.queryContext(object),
+      );
+    const deleted = (await f.read(object)) as ObjectRecord[];
+    expect(
+      deleted
+        .filter((row) => ids.some((value) => value === row.id))
+        .every((row) => row.deletedAt instanceof Date),
+    ).toBe(true);
+    if (batch)
+      await h.restoreMany.execute(
+        {
+          filter: { id: { in: ids } },
+          selectedFields: { id: true, deletedAt: true },
+        },
+        h.queryContext(object),
+      );
+    else
+      await h.restoreOne.execute(
+        { id, selectedFields: { id: true, deletedAt: true } },
+        h.queryContext(object),
+      );
+    expect(
+      ((await f.read(object)) as ObjectRecord[]).every(
+        (row) => row.deletedAt === null,
+      ),
+    ).toBe(true);
+    const entries = await audit();
+    expect(entries).toHaveLength(ids.length * 2);
+    expect(
+      entries.every(
+        (entry) => entry.action === 'update' && entry.actor.id === actorId,
+      ),
+    ).toBe(true);
+    expect(new Set(entries.map((entry) => entry.operationId)).size).toBe(2);
+    expect(h.managerPort.getRepository).not.toHaveBeenCalled();
+  },
+);
+
+it.each(['deleteOne', 'restoreOne'] as const)(
+  'preserves public permission denial for %s',
+  async (method) => {
+    if (method === 'restoreOne')
+      await f.owner.query(
+        `UPDATE "${f.schemaName}".company SET "deletedAt"=CURRENT_TIMESTAMP WHERE id=$1`,
+        [id],
+      );
+    const before = await f.read('company'),
+      h = harness('apiKey', false);
+    await expect(
+      h[method].execute(
+        { id, selectedFields: { id: true } },
+        h.queryContext('company'),
+      ),
+    ).rejects.toThrow();
+    expect(await f.read('company')).toEqual(before);
+    expect(await audit()).toHaveLength(0);
+  },
+);
+
+it.each(['deleteOne', 'restoreOne'] as const)(
+  'rolls %s back on a real audit INSERT failure',
+  async (method) => {
+    if (method === 'restoreOne')
+      await f.owner.query(
+        `UPDATE "${f.schemaName}".company SET "deletedAt"=CURRENT_TIMESTAMP WHERE id=$1`,
+        [id],
+      );
+    const before = await f.read('company'),
+      h = harness();
+    await f.owner.query(
+      `CREATE FUNCTION crm_audit.fail_public_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'LIFECYCLE_AUDIT_FAILURE'; END $$`,
+    );
+    await f.owner.query(
+      'CREATE TRIGGER fail_public_audit BEFORE INSERT ON crm_audit."crmAuditEntry" FOR EACH ROW EXECUTE FUNCTION crm_audit.fail_public_audit()',
+    );
+    let cause: unknown = await h[method]
+      .execute({ id, selectedFields: { id: true } }, h.queryContext('company'))
+      .then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+    expect(cause).toBeInstanceOf(Error);
+    const messages: string[] = [],
+      seen = new Set<Error>();
+    while (cause instanceof Error && !seen.has(cause)) {
+      seen.add(cause);
+      messages.push(cause.message);
+      cause = 'cause' in cause ? cause.cause : undefined;
+    }
+    expect(messages).toContain('LIFECYCLE_AUDIT_FAILURE');
+    expect(await f.read('company')).toEqual(before);
+    expect(await audit()).toHaveLength(0);
+    expect(f.eventEmitter).not.toHaveBeenCalled();
+  },
+);
+
+it('loads lifecycle nested relations through the current transaction repository', async () => {
+  const h = harness('user');
+  await h.run(() =>
+    h.dataSource.transaction(
+      async (scope) => {
+        await scope
+          .getRepository('company', bypass)
+          .update(id, { name: 'uncommitted parent' });
+        for (const method of ['deleteOne', 'restoreOne'] as const) {
+          const result = await h[method].execute(
+            {
+              id,
+              selectedFields: { id: true, company: { id: true, name: true } },
+            },
+            h.queryContext('person', scope),
+          );
+          expect(result.results.company).toEqual({
+            id,
+            name: 'uncommitted parent',
+          });
+        }
+        expect(await audit()).toHaveLength(0);
+      },
+      { nativeAudit: { operationId: randomUUID() } },
+    ),
+  );
+  expect(h.managerPort.getRepository).not.toHaveBeenCalled();
+  const entries = await audit();
+  expect(entries).toHaveLength(2);
+  expect(
+    entries.find(
+      (entry) =>
+        entry.securityDescriptor.objectMetadataId ===
+        base.objectIdByNameSingular.person,
+    )?.redactedDiff.changedFields,
+  ).toEqual([]);
+});
+
+it('does not retry lifecycle writes after a lost real COMMIT acknowledgement', async () => {
+  const h = harness(),
+    client = await f.pool.connect(),
+    query = client.query.bind(client),
+    statements: string[] = [];
+  jest.spyOn(client, 'query').mockImplementation((async (
+    statement: string | { text: string },
+    values?: unknown[],
+  ) => {
+    const text = typeof statement === 'string' ? statement : statement.text;
+    statements.push(text);
+    const result = await query(statement as string, values);
+    if (text === 'COMMIT') throw new Error('lost ack');
+    return result;
+  }) as typeof client.query);
+  jest
+    .spyOn(f.pool, 'connect')
+    .mockImplementationOnce(() => Promise.resolve(client));
+  await expect(
+    h.deleteOne.execute(
+      { id, selectedFields: { id: true } },
+      h.queryContext('company'),
+    ),
+  ).rejects.toBeInstanceOf(NativeTransactionOutcomeUnknownError);
+  expect(statements.filter((text) => text === 'COMMIT')).toHaveLength(1);
+  expect(statements).not.toContain('ROLLBACK');
+  expect(
+    ((await f.read('company')) as ObjectRecord[]).find((row) => row.id === id)
+      ?.deletedAt,
+  ).toBeInstanceOf(Date);
+  expect(await audit()).toHaveLength(1);
+  expect(f.eventEmitter).not.toHaveBeenCalled();
 });

@@ -775,3 +775,13 @@ upstream флаг isCustom. Требуются !isSystem, !isRemote, совпа�
 shape и canonical table name; standard names/IDs вне исходных трёх объектов отказаны.
 Это не допуск для recordShare/workflow/calendar/message и не включение public custom
 autoowner. Цепочка standard→custom→standard использует один явный native scope.
+
+LOG098: soft-delete/restore в покрытом native scope нормализуются как update с
+фактическим deletedAt diff. Actual affected IDs берутся из RETURNING независимо от
+caller selection, служебный id затем удаляется. Soft-delete требует non-null deletedAt,
+restore — null; несовпадение после trigger откатывает mutation и audit. Не затронутые
+строки не дают success. Matched restore активной строки и soft-delete→restore могут
+дать один success с пустым changedFields: существующая aggregation не фильтрует его.
+Common DELETE_ONE/MANY и RESTORE_ONE/MANY exact трёх standard объектов получают
+тот же strict owner и scoped nested reads, что UPDATE. Public CREATE/custom owner,
+physical delete/merge и FK side effects не считаются покрытыми.

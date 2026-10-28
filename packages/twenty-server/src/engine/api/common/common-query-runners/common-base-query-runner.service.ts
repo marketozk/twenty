@@ -286,15 +286,21 @@ export abstract class CommonBaseQueryRunnerService<
       });
       return { results, extendedQueryRunnerContext };
     };
-    const auditedUpdate =
-      (this.operationName === CommonQueryNames.UPDATE_ONE ||
-        this.operationName === CommonQueryNames.UPDATE_MANY) &&
+    const auditedMutation =
+      [
+        CommonQueryNames.UPDATE_ONE,
+        CommonQueryNames.UPDATE_MANY,
+        CommonQueryNames.DELETE_ONE,
+        CommonQueryNames.DELETE_MANY,
+        CommonQueryNames.RESTORE_ONE,
+        CommonQueryNames.RESTORE_MANY,
+      ].includes(this.operationName) &&
       isNativeCrmAuditObject(
         queryRunnerContext.flatObjectMetadata.nameSingular,
         queryRunnerContext.flatObjectMetadata.universalIdentifier,
       );
     const auth = getWorkspaceContext().authContext;
-    const { results, extendedQueryRunnerContext } = auditedUpdate
+    const { results, extendedQueryRunnerContext } = auditedMutation
       ? queryRunnerContext.transactionScope
         ? await runInExistingNativeCrmAuditScope(
             queryRunnerContext.transactionScope,
@@ -308,7 +314,13 @@ export abstract class CommonBaseQueryRunnerService<
               nativeAudit: {
                 operationId: randomUUID(),
                 ...(auth.type === 'system'
-                  ? { systemActorId: 'crm-api-update' }
+                  ? {
+                      systemActorId:
+                        this.operationName === CommonQueryNames.UPDATE_ONE ||
+                        this.operationName === CommonQueryNames.UPDATE_MANY
+                          ? 'crm-api-update'
+                          : 'crm-api-lifecycle',
+                    }
                   : {}),
               },
             },

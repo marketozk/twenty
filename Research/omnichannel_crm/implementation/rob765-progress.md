@@ -9,7 +9,7 @@
 | Rollback при сбое журнала, безопасный unknown | LOG089 PG insert fault, actual lost COMMIT ACK, poisoned caller-caught failure |
 | Точный безопасный diff и aggregation | LOG089 first-before/last-after, custom NUMERIC >2^53, metadata IDs, без значений |
 | Повтор не скрывает вторую mutation | LOG089 sequential/concurrent reuse rejected; повтор после rollback допустим. General command replay ещё не реализован |
-| Общий native CRUD/merge/bulk и API | Частично: LOG094 автоматически включает public UPDATE Company/Person/Opportunity; CREATE/delete/merge и остальные writers впереди. FILES same-executor — LOG092/093 |
+| Общий native CRUD/merge/bulk и API | Частично: LOG094 автоматически включает public UPDATE Company/Person/Opportunity; LOG098 включает public soft-delete/restore и native custom lifecycle; public CREATE, physical delete/merge и остальные writers впереди. FILES same-executor — LOG092/093 |
 | Metadata/role/session lifecycle | Предстоит, каждый через реального transaction owner |
 | Denied/failed audit и health | Omni уже имеет отдельные attempts; general native post-rollback/alert предстоит |
 | AI/workflow/connector события | Дополняются ROB768/769, текущий срез их не подключает |
@@ -17,7 +17,7 @@
 | Production rollout | Не выполнялся; нужны полная native coverage и согласованный выкат с остановленными writers при построении индекса |
 
 Подробные результаты: [LOG089 native owner](log089/README.md), [LOG090 operation index](log090/README.md).
-Следом завершаем native transaction boundary и покрытие writers, затем core/metadata/session.
+Следом core user-session CREATE; оставшиеся native writers, metadata/roles и negative audit ещё требуют реализации.
 Просмотр и экспорт относятся к ROB767, свои права — ROB766; обе задачи пока Backlog.
 
 LOG091: [проверки расширенного native покрытия](log091/README.md);606 tests/24 suites PASS,27 новых PG tests. FilesFieldSync и batch owner mapping реализованы LOG092.
@@ -47,3 +47,12 @@ LOG097: [custom records](log097/README.md), 766 tests/28 suites PASS, 22 нов�
 Custom create/update/FILES внутри явного owner, metadata boundaries и цепочка
 Company→customCase→Company с полным rollback. Public selector пока standard UPDATE.
 Следом soft-delete/restore; public CREATE/shares сохраняются в открытом остатке.
+
+LOG098: native soft-delete/restore покрытых standard/custom records и автоматические
+public DELETE_ONE/MANY, RESTORE_ONE/MANY Company/Person/Opportunity. Actual IDs,
+scoped nested reads, deletedAt postconditions и audit используют один executor.
+Matched restore/агрегация сохраняют success с пустым diff; hard-delete не включён.
+792 tests/29 suites PASS, 26 новых PG cases, 140 targeted; 26 guards, 10 unchanged
+migration checksums. Types 336/337 roots, 189/189 diagnostics, 0 новых/changed.
+11 source hashes проверены. Демо не менялось, GitHub Actions не используется.
+[Доказательства](log098/README.md). ROB765 остаётся In Progress.

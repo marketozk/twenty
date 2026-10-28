@@ -35,7 +35,7 @@ export const runInExistingNativeCrmAuditScope = async <TData>(
 ): Promise<TData> => {
   const binding = scopes.get(scope);
   if (!binding)
-    throw new Error('Public CRM update requires a proven native audit scope');
+    throw new Error('Public CRM mutation requires a proven native audit scope');
   return runNativeCrmAuditWrite(binding.executor, async () => {
     createCrmAuditWorkspaceExecutor(scope);
     const expected = captureNativeCrmAuditOperation(scope.workspaceId, auth, {
@@ -50,7 +50,7 @@ export const runInExistingNativeCrmAuditScope = async <TData>(
       expected.actor.id !== binding.operation.actor.id
     )
       throw new Error(
-        'Public CRM update scope has a different workspace or actor',
+        'Public CRM mutation scope has a different workspace or actor',
       );
     return work();
   });
