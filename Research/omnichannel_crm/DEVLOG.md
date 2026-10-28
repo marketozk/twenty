@@ -1799,3 +1799,5 @@ Next: derived provider ownership with actual writer serialization, then remainin
 list-fetch cache/cleanup boundaries and final T22 acceptance. Demo/SaleBot unchanged,
 GitHub Actions unused. Applied ai-dev-workflow, behavioral-guardrails,
 server-schrodinger and scoped read-only review.
+
+LOG-062 publication: code aa40ea54b4611666a6ed842673b4e7067e34d3a7 pushed; GitHub ref verified through API. Linear comment d736f145-369a-43ef-b47a-0659c29f47ee; description/comment and all11 project states independently read back. ROB764 In Progress. See implementation/log062/publication.json.
