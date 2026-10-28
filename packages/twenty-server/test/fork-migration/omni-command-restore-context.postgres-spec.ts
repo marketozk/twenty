@@ -77,6 +77,11 @@ describe('command creation restore context', () => {
       await commands();
     const migration = FORK_MIGRATIONS[6];
     await fixture.owner.transaction(async (manager) => {
+      await FORK_MIGRATIONS[7].command.down(manager.queryRunner!);
+      await manager.query(
+        'DELETE FROM core."forkMigrationLedger" WHERE "migrationId"=$1',
+        [FORK_MIGRATIONS[7].migrationId],
+      );
       await migration.command.down(manager.queryRunner!);
       await manager.query(
         'DELETE FROM core."forkMigrationLedger" WHERE "migrationId"=$1',
@@ -92,7 +97,7 @@ describe('command creation restore context', () => {
     ).rejects.toThrow('Pending fork migrations');
     expect(
       await new ForkMigrationRunner(fixture.owner, FORK_MIGRATIONS).apply(),
-    ).toEqual([migration.migrationId]);
+    ).toEqual([migration.migrationId, FORK_MIGRATIONS[7].migrationId]);
     expect(await commands()).toEqual([
       { ...before, createdRestoreIncarnation: null },
     ]);

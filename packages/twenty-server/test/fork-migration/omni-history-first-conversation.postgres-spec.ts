@@ -409,6 +409,9 @@ describe('first qualified history receipt creates one native conversation graph'
 
   it('does not reconstruct a missing Conversation for a previously applied receipt', async () => {
     await apply();
+    await fixture.owner.query(
+      'UPDATE core."omniMessageLink" SET "currentRevisionId"=NULL',
+    );
     for (const table of [
       'omniEventDispatchPlan',
       'omniDomainEvent',

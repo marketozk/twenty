@@ -907,6 +907,7 @@ export const applyOmniHistoryReceipt = async (
       z.object({
         id: uuid,
         messageId: uuid,
+        currentRevisionId: uuid.nullable(),
         rawNativeMessageId: z.string(),
         nativeMessageKeyVersion: z.literal(1),
         sourcePosition: z.unknown(),
@@ -925,6 +926,8 @@ export const applyOmniHistoryReceipt = async (
     );
     if (
       initialReceipt.resultId !== link.id ||
+      (link.currentRevisionId !== null &&
+        link.currentRevisionId !== revisionId) ||
       link.rawNativeMessageId !== envelope.providerMessageId ||
       canonicalAuditJson(link.sourcePosition) !==
         canonicalAuditJson(capture.context.sourcePosition) ||
@@ -979,6 +982,16 @@ export const applyOmniHistoryReceipt = async (
       revision.contentHash !== contentHash
     )
       return fail('REPLAY_REVISION_INTEGRITY');
+    const revisions = z
+      .array(z.object({ id: uuid }))
+      .parse(
+        await query(
+          'SELECT id FROM core."omniMessageRevision" WHERE "workspaceId"=$1 AND "messageLinkId"=$2',
+          [workspaceId, link.id],
+        ),
+      );
+    if (revisions.length !== 1 || revisions[0].id !== revisionId)
+      return fail('REPLAY_REVISION_HEAD_INTEGRITY');
     const replayEvents = [
       {
         eventId,
@@ -1151,6 +1164,7 @@ export const applyOmniHistoryReceipt = async (
     bindingId: binding.id,
     conversationId: conversation.id,
     messageId: nativeIds.messageId,
+    currentRevisionId: revisionId,
     rawNativeMessageId: envelope.providerMessageId,
     nativeMessageKey: capture.context.nativeMessageKey,
     nativeMessageKeyVersion: capture.context.nativeMessageKeyVersion,
@@ -1206,6 +1220,22 @@ export const applyOmniHistoryReceipt = async (
       contentHash,
     ],
   );
+  await query(
+    'UPDATE core."omniMessageLink" SET "currentRevisionId"=$3 WHERE "workspaceId"=$1 AND id=$2 AND "currentRevisionId" IS NULL',
+    [workspaceId, messageLinkId, revisionId],
+  );
+  const verifyHead = async () => {
+    const head = requireOne(
+      z.object({ currentRevisionId: uuid }),
+      await query(
+        'SELECT "currentRevisionId" FROM core."omniMessageLink" WHERE "workspaceId"=$1 AND id=$2',
+        [workspaceId, messageLinkId],
+      ),
+    );
+    if (head.currentRevisionId !== revisionId)
+      return fail('REVISION_HEAD_POSTCONDITION');
+  };
+  await verifyHead();
   const advanced = requireOne(
     z.object({
       conversationSequence: positiveBigint,
@@ -1342,6 +1372,7 @@ export const applyOmniHistoryReceipt = async (
     ],
   );
   if (applied.length !== 1) return fail('LEASE_LOST');
+  await verifyHead();
   return Object.freeze({
     receiptId: proof.receiptId,
     messageLinkId,

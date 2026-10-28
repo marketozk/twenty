@@ -1,3 +1,4 @@
+import currentRevisionSchema from 'src/engine/core-modules/omnichannel-storage/migrations/message-current-revision.schema.json';
 import { type QueryRunner } from 'typeorm';
 
 import restoreSchema from 'src/engine/core-modules/omnichannel-storage/migrations/command-restore-context.schema.json';
@@ -58,6 +59,14 @@ export const verifyMessagePersistence = async (
       throw new Error('Missing command restore context snapshot');
     expectedSchema = expectedSchema.map((table) =>
       table.name === 'core.omniOutgoingCommand' ? updatedCommand : table,
+    );
+  }
+
+  if (appliedMigrationIds.includes(manifest[7].migrationId)) {
+    expectedSchema = expectedSchema.map(
+      (table) =>
+        currentRevisionSchema.find((updated) => updated.name === table.name) ??
+        table,
     );
   }
 

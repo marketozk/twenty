@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 
 import { type OmniConversationEntity } from 'src/engine/core-modules/omnichannel-storage/entities/omni-conversation.entity';
+import { type OmniMessageRevisionEntity } from 'src/engine/core-modules/omnichannel-storage/entities/omni-message-revision.entity';
 import { type OmniOutgoingCommandEntity } from 'src/engine/core-modules/omnichannel-storage/entities/omni-outgoing-command.entity';
 import { OmniWorkspaceRow } from 'src/engine/core-modules/omnichannel-storage/entities/omni-workspace-row';
 
@@ -83,6 +84,24 @@ export class OmniMessageLinkEntity extends OmniWorkspaceRow {
 
   @Column({ type: 'text', nullable: true })
   providerRevision: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  currentRevisionId: string | null;
+
+  @ManyToOne('OmniMessageRevisionEntity', {
+    onDelete: 'RESTRICT',
+    nullable: true,
+  })
+  @JoinColumn([
+    {
+      name: 'workspaceId',
+      referencedColumnName: 'workspaceId',
+      foreignKeyConstraintName: 'FK_omniMessageLink_current_revision',
+    },
+    { name: 'id', referencedColumnName: 'messageLinkId' },
+    { name: 'currentRevisionId', referencedColumnName: 'id' },
+  ])
+  currentRevision: Relation<OmniMessageRevisionEntity> | null;
 
   @Column({ type: 'jsonb', nullable: true })
   sourcePosition: Record<string, unknown> | null;

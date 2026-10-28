@@ -94,6 +94,95 @@ afterEach(() => jest.restoreAllMocks());
 afterAll(() => fixture.dispose());
 
 describe('qualified history receipt through actual native messaging composition', () => {
+  it.each(['audit', 'receipt'])(
+    'rolls back a head cleared after final %s write',
+    async (boundary) => {
+      const schema = boundary === 'audit' ? 'crm_audit' : 'core';
+      const table =
+        boundary === 'audit' ? 'crmAuditEntry' : 'omniIncomingReceipt';
+      const event = boundary === 'audit' ? 'INSERT' : 'UPDATE';
+      const condition =
+        boundary === 'audit' ? "NEW.outcome='success'" : "NEW.state='applied'";
+      await fixture.owner.query(
+        `CREATE FUNCTION core.clear_late_head() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF ${condition} THEN UPDATE core."omniMessageLink" SET "currentRevisionId"=NULL; END IF; RETURN NEW; END $$`,
+      );
+      await fixture.owner.query(
+        `CREATE TRIGGER clear_late_head AFTER ${event} ON "${schema}"."${table}" FOR EACH ROW EXECUTE FUNCTION core.clear_late_head()`,
+      );
+      try {
+        await expect(apply()).rejects.toThrow();
+        await expectNoAppliedMutation();
+      } finally {
+        await fixture.owner.query(
+          `DROP TRIGGER clear_late_head ON "${schema}"."${table}"`,
+        );
+        await fixture.owner.query('DROP FUNCTION core.clear_late_head()');
+      }
+    },
+  );
+  it('records the initial head and replays legacy null without changing retained audit', async () => {
+    const result = await apply();
+    const [link] = await core('omniMessageLink');
+    const [revision] = await core('omniMessageRevision');
+    expect(link.currentRevisionId).toBe(revision.id);
+    const audit = await operationAudit();
+    expect(JSON.stringify(audit)).toContain('currentRevisionId');
+    await fixture.owner.query(
+      'UPDATE core."omniMessageLink" SET "currentRevisionId"=NULL WHERE id=$1',
+      [link.id],
+    );
+    const before = await canonicalSnapshot();
+    expect(await apply()).toEqual({ ...result, created: false });
+    expect(await canonicalSnapshot()).toEqual(before);
+  });
+
+  it.each([false, true])(
+    'rejects ambiguous initial revisions with null head=%s',
+    async (legacy) => {
+      await apply();
+      const [link] = await core('omniMessageLink');
+      const [revision] = await core('omniMessageRevision');
+      await fixture.coreInsert('omniMessageRevision', {
+        workspaceId: fixture.workspaceId,
+        messageLinkId: link.id,
+        sourceRevisionKey: 'another',
+        sourceEventId: randomUUID(),
+        contentHash: revision.contentHash,
+        tombstone: false,
+        origin: 'history_import',
+      });
+      if (legacy)
+        await fixture.owner.query(
+          'UPDATE core."omniMessageLink" SET "currentRevisionId"=NULL WHERE id=$1',
+          [link.id],
+        );
+      const before = await fixture.read('message');
+      await expect(apply()).rejects.toThrow('REVISION_HEAD_INTEGRITY');
+      expect(await fixture.read('message')).toEqual(before);
+    },
+  );
+
+  it.each(['raise', 'clear'])(
+    'rolls back initial persistence when head update is %s',
+    async (kind) => {
+      await fixture.owner.query(
+        `CREATE FUNCTION core.fail_head_write() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN ${kind === 'raise' ? "RAISE EXCEPTION 'head update fault';" : 'NEW."currentRevisionId" := NULL;'} RETURN NEW; END $$`,
+      );
+      await fixture.owner.query(
+        'CREATE TRIGGER fail_head_write BEFORE UPDATE OF "currentRevisionId" ON core."omniMessageLink" FOR EACH ROW EXECUTE FUNCTION core.fail_head_write()',
+      );
+      try {
+        await expect(apply()).rejects.toThrow();
+        await expectNoAppliedMutation();
+      } finally {
+        await fixture.owner.query(
+          'DROP TRIGGER fail_head_write ON core."omniMessageLink"',
+        );
+        await fixture.owner.query('DROP FUNCTION core.fail_head_write()');
+      }
+    },
+  );
+
   it('atomically applies the claimed receipt to a bound Person and suppressed durable history event', async () => {
     const result = await apply();
     expect(result).toMatchObject({

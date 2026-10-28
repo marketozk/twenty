@@ -1,0 +1,497 @@
+[
+  {
+    "name": "core.omniMessageLink",
+    "columns": [
+      {
+        "name": "authorVerification",
+        "type": "text",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "bindingId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "conversationId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "correlationState",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "currentRevisionId",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "displayOccurredAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "displayTimeSource",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "immutableAuthorSnapshot",
+        "type": "jsonb",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "messageId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "nativeMessageKey",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "nativeMessageKeyVersion",
+        "type": "integer",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "outgoingCommandId",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "providerRevision",
+        "type": "text",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "rawNativeMessageId",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "senderProvenance",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "sourceAuthorId",
+        "type": "text",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "sourceDisplayName",
+        "type": "text",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "sourcePosition",
+        "type": "jsonb",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniMessageLink_binding_conversation_id",
+        "columns": [
+          "bindingId",
+          "conversationId",
+          "id",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniMessageLink_conversation_id",
+        "columns": [
+          "conversationId",
+          "id",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniMessageLink_message",
+        "columns": [
+          "messageId",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniMessageLink_native_key",
+        "columns": [
+          "bindingId",
+          "conversationId",
+          "nativeMessageKey",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniMessageLink_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniMessageLink_identity",
+        "expression": "((length(\"rawNativeMessageId\") > 0) AND (length(\"nativeMessageKey\") > 0) AND (length(\"senderProvenance\") > 0) AND (length(\"correlationState\") > 0))"
+      },
+      {
+        "name": "CHK_omniMessageLink_key_version",
+        "expression": "(\"nativeMessageKeyVersion\" > 0)"
+      },
+      {
+        "name": "CHK_omniMessageLink_time_source",
+        "expression": "(\"displayTimeSource\" = ANY (ARRAY['source'::text, 'capture'::text]))"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_138455732577a6f101169a09c3c",
+        "columns": [
+          "workspaceId",
+          "conversationId",
+          "outgoingCommandId"
+        ],
+        "target": "core.omniOutgoingCommand",
+        "targetColumns": [
+          "workspaceId",
+          "conversationId",
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_72d7b8ba1546d2ce1f97a153e6d",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_b6391cae8fb1af8094a63f5d969",
+        "columns": [
+          "workspaceId",
+          "bindingId",
+          "conversationId"
+        ],
+        "target": "core.omniConversation",
+        "targetColumns": [
+          "workspaceId",
+          "bindingId",
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_omniMessageLink_current_revision",
+        "columns": [
+          "workspaceId",
+          "id",
+          "currentRevisionId"
+        ],
+        "target": "core.omniMessageRevision",
+        "targetColumns": [
+          "workspaceId",
+          "messageLinkId",
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": [
+      {
+        "name": "IDX_omniMessageLink_timeline",
+        "definition": "CREATE INDEX \"IDX_omniMessageLink_timeline\" ON core.\"omniMessageLink\" USING btree (\"workspaceId\", \"conversationId\", \"displayOccurredAt\", id)"
+      }
+    ]
+  },
+  {
+    "name": "core.omniMessageRevision",
+    "columns": [
+      {
+        "name": "contentHash",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "messageLinkId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "origin",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "protectedPayloadRef",
+        "type": "text",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "sourceEventId",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "sourceRevisionKey",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "tombstone",
+        "type": "boolean",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_omniMessageRevision_link_id",
+        "columns": [
+          "id",
+          "messageLinkId",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniMessageRevision_source_revision",
+        "columns": [
+          "messageLinkId",
+          "sourceRevisionKey",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_omniMessageRevision_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_omniMessageRevision_hash",
+        "expression": "(\"contentHash\" ~ '^[a-f0-9]{64}$'::text)"
+      },
+      {
+        "name": "CHK_omniMessageRevision_source",
+        "expression": "((length(\"sourceRevisionKey\") > 0) AND (length(\"sourceEventId\") > 0) AND (length(origin) > 0))"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_a4ab4b365dee480d0fd89dddbf6",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_e8c4a7d6ddeea20cce43f32f584",
+        "columns": [
+          "workspaceId",
+          "messageLinkId"
+        ],
+        "target": "core.omniMessageLink",
+        "targetColumns": [
+          "workspaceId",
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": []
+  }
+]

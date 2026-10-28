@@ -33,5 +33,10 @@
     "migrationId": "omni-1793127619000-command-restore-context",
     "checksum": "16d9e337583612b09b0eae0d383dab8cb0e177f47e285bb39504469af4c4aaf4",
     "sourcePath": "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-command-restore-context.migration.ts"
+  },
+  {
+    "migrationId": "omni-1793163618643-message-current-revision",
+    "checksum": "b84451ed10c83419144d6f09212134f46b5f7aa0f11418ebe29e465f66767e49",
+    "sourcePath": "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-message-current-revision.migration.ts"
   }
 ]

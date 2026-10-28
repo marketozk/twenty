@@ -89,6 +89,69 @@ afterEach(() => jest.restoreAllMocks());
 afterAll(() => fixture.dispose());
 
 describe('atomic native sent-message application', () => {
+  it('records initial head and replays legacy null without changing retained audit', async () => {
+    const result = await apply();
+    const [link] = await core('omniMessageLink');
+    const [revision] = await core('omniMessageRevision');
+    expect(link.currentRevisionId).toBe(revision.id);
+    const retained = await audit();
+    expect(JSON.stringify(retained)).toContain('currentRevisionId');
+    await fixture.owner.query(
+      'UPDATE core."omniMessageLink" SET "currentRevisionId"=NULL WHERE id=$1',
+      [link.id],
+    );
+    const before = await snapshot();
+    expect(await apply()).toEqual({ ...result, created: false });
+    expect(await snapshot()).toEqual(before);
+    expect(await audit()).toEqual(retained);
+  });
+  it.each([false, true])(
+    'rejects ambiguous initial revisions with null head=%s',
+    async (legacy) => {
+      await apply();
+      const [link] = await core('omniMessageLink');
+      const [revision] = await core('omniMessageRevision');
+      await fixture.owner.query(
+        `INSERT INTO core."omniMessageRevision" (id,"workspaceId","messageLinkId","sourceRevisionKey","sourceEventId","contentHash",tombstone,origin) VALUES ($1,$2,$3,'another',$4,$5,false,'connector_outcome')`,
+        [
+          randomUUID(),
+          fixture.workspaceId,
+          link.id,
+          randomUUID(),
+          revision.contentHash,
+        ],
+      );
+      if (legacy)
+        await fixture.owner.query(
+          'UPDATE core."omniMessageLink" SET "currentRevisionId"=NULL WHERE id=$1',
+          [link.id],
+        );
+      const before = await snapshot();
+      await expect(apply()).rejects.toThrow('REVISION_HEAD_INTEGRITY');
+      expect(await snapshot()).toEqual(before);
+    },
+  );
+  it.each(['raise', 'clear'])(
+    'rolls back initial graph when head update is %s',
+    async (kind) => {
+      const before = await snapshot();
+      await fixture.owner.query(
+        `CREATE FUNCTION core.fail_head_write() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN ${kind === 'raise' ? "RAISE EXCEPTION 'head update fault';" : 'NEW."currentRevisionId" := NULL;'} RETURN NEW; END $$`,
+      );
+      await fixture.owner.query(
+        'CREATE TRIGGER fail_head_write BEFORE UPDATE OF "currentRevisionId" ON core."omniMessageLink" FOR EACH ROW EXECUTE FUNCTION core.fail_head_write()',
+      );
+      try {
+        await expect(apply()).rejects.toThrow();
+        expect(await snapshot()).toEqual(before);
+      } finally {
+        await fixture.owner.query(
+          'DROP TRIGGER fail_head_write ON core."omniMessageLink"',
+        );
+        await fixture.owner.query('DROP FUNCTION core.fail_head_write()');
+      }
+    },
+  );
   it('creates one outgoing bubble from the actual admitted, claimed and accepted command', async () => {
     const priorAudit = await audit();
     const result = await apply();
@@ -552,7 +615,7 @@ describe('atomic native sent-message application', () => {
   it('rejects multiple persisted links claiming the same command', async () => {
     await apply();
     await fixture.owner.query(
-      `INSERT INTO core."omniMessageLink" SELECT (jsonb_populate_record(NULL::core."omniMessageLink",to_jsonb(link)||jsonb_build_object('id',$2::text,'messageId',$3::text,'nativeMessageKey','second-command-key'))).* FROM core."omniMessageLink" link WHERE "outgoingCommandId"=$1`,
+      `INSERT INTO core."omniMessageLink" SELECT (jsonb_populate_record(NULL::core."omniMessageLink",to_jsonb(link)||jsonb_build_object('id',$2::text,'messageId',$3::text,'nativeMessageKey','second-command-key','currentRevisionId',NULL))).* FROM core."omniMessageLink" link WHERE "outgoingCommandId"=$1`,
       [context.commandId, randomUUID(), randomUUID()],
     );
     const before = await snapshot();

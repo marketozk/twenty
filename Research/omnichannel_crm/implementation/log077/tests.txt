@@ -1,0 +1,12 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-sent-apply.postgres-spec.ts (31.566 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-apply.postgres-spec.ts (13.911 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-first-conversation.postgres-spec.ts (9.731 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/message-persistence.postgres-spec.ts (17.987 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-command-restore-context.postgres-spec.ts (10.618 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-message-current-revision.postgres-spec.ts (7.484 s)
+
+Test Suites: 6 passed, 6 total
+Tests:       188 passed, 188 total
+Snapshots:   0 total
+Time:        91.442 s
+Ran all test suites matching /omni-message-current-revision|omni-history-apply.postgres|omni-history-first-conversation|omni-sent-apply.postgres|omni-command-restore-context|message-persistence.postgres/i.

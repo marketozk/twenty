@@ -6,13 +6,13 @@
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
-Зависимость: этап0. LOG-076 / ROB-764 In Progress: 20 одновременных доставок и 20 apply дают одну
-receipt/message/link и один набор success-аудита. Задержанный importer и matcher
-после появления omni ownership не меняют защищённые записи; обычный email control работает.
-170 targeted Jest/4 suites +26 guards=196 PASS; 4 new PG cases. Typecheck 295 roots:187/187,0 new/changed-code. Seven migrations unchanged.
-[Доказательства](../implementation/log076/README.md). Admission/status в importer test подменены; native apply настоящий.
-Последний full fork LOG074:2443/76. Далее минимальный domain revision writer
-по §15.10; ROB-764 ещё не Done. Демо прежнее, GitHub Actions не используется.
+Зависимость: этап0. LOG-077 / ROB-764 In Progress: MessageLink хранит currentRevisionId с составной
+ссылкой на редакцию именно этого сообщения и workspace. Initial history/sent writes
+сохраняют head атомарно; старые NULL replay не переписываются. Откат при непустых
+heads явно запрещён. Full fork 2508/77 before final history readback; final targeted 188/6 +26 guards PASS. Typecheck 298 roots:187/187,0 new/changed-code. Eight migration sources verified; first seven unchanged.
+[Доказательства](../implementation/log077/README.md). Reviewer finding: final history head readback после audit/receipt добавлен и проверен.
+Далее domain revision writer и durable receipt disposition для повторов/устаревших
+событий; ROB-764 ещё не Done. Демо прежнее, GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы fork migrations,
 первые9 core entities, audit entry/PolicyMutationReceipt, минимальный audit writer

@@ -54,13 +54,13 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-076 / ROB-764 In Progress: 20 одновременных доставок и 20 apply дают одну
-receipt/message/link и один набор success-аудита. Задержанный importer и matcher
-после появления omni ownership не меняют защищённые записи; обычный email control работает.
-170 targeted Jest/4 suites +26 guards=196 PASS; 4 new PG cases. Typecheck 295 roots:187/187,0 new/changed-code. Seven migrations unchanged.
-[Доказательства](Research/omnichannel_crm/implementation/log076/README.md). Admission/status в importer test подменены; native apply настоящий.
-Последний full fork LOG074:2443/76. Далее минимальный domain revision writer
-по §15.10; ROB-764 ещё не Done. Демо прежнее, GitHub Actions не используется.
+LOG-077 / ROB-764 In Progress: MessageLink хранит currentRevisionId с составной
+ссылкой на редакцию именно этого сообщения и workspace. Initial history/sent writes
+сохраняют head атомарно; старые NULL replay не переписываются. Откат при непустых
+heads явно запрещён. Full fork 2508/77 before final history readback; final targeted 188/6 +26 guards PASS. Typecheck 298 roots:187/187,0 new/changed-code. Eight migration sources verified; first seven unchanged.
+[Доказательства](Research/omnichannel_crm/implementation/log077/README.md). Reviewer finding: final history head readback после audit/receipt добавлен и проверен.
+Далее domain revision writer и durable receipt disposition для повторов/устаревших
+событий; ROB-764 ещё не Done. Демо прежнее, GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы минимальный аудит и атомарное создание
 inactive binding/disabled policy v0 с receipt, текущей проверкой прав через

@@ -524,6 +524,11 @@ export const applyOmniSentReceipt = async (
   );
   if (links.length > 1) return fail('MULTIPLE_COMMAND_LINKS');
   const existing = links.length === 1;
+  const currentRevisionId = existing
+    ? uuid.nullable().parse(links[0].currentRevisionId)
+    : revisionId;
+  if (currentRevisionId !== null && currentRevisionId !== revisionId)
+    return fail('REVISION_HEAD_INTEGRITY');
   if (command.state === 'sent' && !existing) return fail('SENT_GRAPH_MISSING');
   if (receipt.state === 'applied' && !existing)
     return fail('APPLIED_GRAPH_MISSING');
@@ -587,6 +592,7 @@ export const applyOmniSentReceipt = async (
     initiatingActorId: command.initiatingActorId,
   };
   const expectedLink = {
+    currentRevisionId,
     bindingId,
     conversationId: conversation.id,
     rawNativeMessageId: creatorInput.envelope.providerMessageId,
@@ -827,6 +833,12 @@ export const applyOmniSentReceipt = async (
   });
   let sequence = conversation.conversationSequence;
   if (existing) {
+    const revisions = await query(
+      'SELECT id FROM core."omniMessageRevision" WHERE "workspaceId"=$1 AND "messageLinkId"=$2',
+      [workspaceId, messageLinkId],
+    );
+    if (revisions.length !== 1 || revisions[0].id !== revisionId)
+      return fail('REVISION_HEAD_INTEGRITY');
     exact(
       await query(
         'SELECT * FROM core."omniMessageRevision" WHERE "workspaceId"=$1 AND id=$2',
@@ -879,6 +891,10 @@ export const applyOmniSentReceipt = async (
         envelope.eventId,
         contentHash,
       ],
+    );
+    await query(
+      'UPDATE core."omniMessageLink" SET "currentRevisionId"=$3 WHERE "workspaceId"=$1 AND id=$2 AND "currentRevisionId" IS NULL',
+      [workspaceId, messageLinkId, revisionId],
     );
     exact(
       await query(

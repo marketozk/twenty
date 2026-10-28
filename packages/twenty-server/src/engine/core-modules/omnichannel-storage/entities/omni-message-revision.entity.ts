@@ -13,6 +13,11 @@ import { OmniWorkspaceRow } from 'src/engine/core-modules/omnichannel-storage/en
 
 @Entity({ name: 'omniMessageRevision', schema: 'core' })
 @Unique('UQ_omniMessageRevision_workspace_id', ['workspaceId', 'id'])
+@Unique('UQ_omniMessageRevision_link_id', [
+  'workspaceId',
+  'messageLinkId',
+  'id',
+])
 @Unique('UQ_omniMessageRevision_source_revision', [
   'workspaceId',
   'messageLinkId',

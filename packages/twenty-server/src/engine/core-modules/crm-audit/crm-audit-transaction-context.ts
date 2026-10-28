@@ -117,6 +117,7 @@ const CATALOG: Record<
       'bindingId',
       'conversationId',
       'messageId',
+      'currentRevisionId',
       'nativeMessageKeyVersion',
       'displayTimeSource',
       'senderProvenance',

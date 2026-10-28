@@ -105,6 +105,9 @@ export const createOmniHistoryApplyFixture = (
     await native.owner.query(
       `GRANT INSERT, UPDATE ON core."omniConversation" TO "${native.roleName}"`,
     );
+    await native.owner.query(
+      `GRANT UPDATE ("currentRevisionId") ON core."omniMessageLink" TO "${native.roleName}"`,
+    );
     for (const table of [
       'omniWorkspacePolicyState',
       'omniAccountBinding',
