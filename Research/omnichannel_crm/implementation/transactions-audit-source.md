@@ -119,3 +119,14 @@ Entry points сходятся в common query runners:
 ## Уточнение omni target writers
 
 `ParticipantTargetPersonListener` → `ReconcilePersonCompanyTargetsJob` → `ParticipantTargetReconciliationService.reconcileTargetsForPeople` выбирает всех messageParticipant по personId (метод :37–92); buildDesiredTargets (:386–462) добавляет Company и Opportunity по связям Person. Это не допустимый projector явных ConversationTarget. Для omni все входы автоматического reconciliation фильтруют persisted ownership до чтения/записи target batch; email/calendar сохраняют поведение. Канонический контракт — spec §7/§15.18 и repository-adapter, T05/T23. Наличие transactionScope само по себе не делает этот helper безопасным для omni.
+
+
+## Уточнение реализации LOG089
+
+Внутренний `WorkspaceDataSource.transaction({nativeAudit})` принудительно strict,
+захватывает server actor до await, один context на executor, flush до COMMIT.
+Company scalar update/updateMany берут row locks, читают PostgreSQL JSON-text
+snapshots и записывают только фактически изменённые IDs, независимо от skipEvents.
+Повтор operationId между committed transactions запрещён до callback под advisory lock.
+Обычные вызовы без opt-in, файлы, другие mutation kinds и public wiring пока не покрыты.
+Полная матрица реализации: [ROB765](rob765-progress.md).

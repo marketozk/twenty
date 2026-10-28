@@ -26,14 +26,7 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 
 ## Сверка текущего состояния — 28.10.2026
 
-LOG-088: собственный объём ROB-764 проверен и завершён. Полный fork regression:
-2814 tests/88 suites +33 guard/checksum/Linux startup tests =2847 PASS.
-Образ из commit8855d9e4 проходит миграции пустой/заполненной старой базы, replay,
-реальный startup/restart server+worker и отрицательные schema/ledger/privilege gates.
-CRM-записи и upstream ledger сохранены по контрольным суммам. Новых ошибок типов нет.
-Следующий этап ROB-765 — аудит обычных CRM/ORM изменений; он начат.
-Публичные права, внешние коннекторы, чаты и автоматизация ещё не готовы.
-Демо прежнее; GitHub Actions не используется.
+ROB764 завершена по LOG088; ROB765 In Progress. LOG089 добавил первый внутренний native audit owner для Company updates; общий аудит CRM пока не готов. Актуальные проверки, ограничения и следующий шаг — в [STATUS](STATUS.md).
 [Доказательства и ограничения](implementation/log088/README.md).
 
 ### Предыдущая порция

@@ -26,6 +26,7 @@ const CATALOG: Record<
   CrmAuditResourceKind,
   { values: string[]; redacted: string[] }
 > = {
+  crmRecord: { values: [], redacted: [] },
   omniPerson: { values: ['destroyScopeHash'], redacted: ['name'] },
   omniCompany: { values: ['destroyScopeHash'], redacted: ['name'] },
   omniExternalIdentity: {
@@ -294,9 +295,14 @@ const requireUuid = (value: string): string => {
 
 const principal = (value: CrmAuditPrincipal): CrmAuditPrincipal => {
   if (
-    !['workspaceMember', 'system', 'agent', 'workflow', 'application'].includes(
-      value.kind,
-    )
+    ![
+      'workspaceMember',
+      'system',
+      'agent',
+      'workflow',
+      'application',
+      'apiKey',
+    ].includes(value.kind)
   ) {
     throw new Error('Audit principal kind is invalid');
   }
@@ -312,6 +318,24 @@ const descriptor = (
   bindingConfigEvent?: OmniBindingConfigChangedEvent,
 ): CrmAuditSecurityDescriptor => {
   const source = mutation.securityDescriptor;
+  const nativeRecord = mutation.resourceKind === 'crmRecord';
+  if (nativeRecord || source.objectMetadataId !== undefined) {
+    if (
+      !nativeRecord ||
+      mutation.action !== 'update' ||
+      source.objectMetadataId === undefined ||
+      source.bindingId !== undefined ||
+      source.conversationId !== undefined ||
+      source.queueId !== undefined ||
+      source.deletedParent !== undefined
+    ) {
+      throw new Error(
+        'Native CRM audit requires an exact object/record update scope',
+      );
+    }
+    requireUuid(source.objectMetadataId);
+  }
+
   const parentDelete =
     mutation.action === 'delete' &&
     ['omniPerson', 'omniCompany'].includes(mutation.resourceKind);
@@ -392,6 +416,9 @@ const descriptor = (
   return {
     resourceKind: mutation.resourceKind,
     resourceId: requireUuid(mutation.resourceId),
+    ...(nativeRecord
+      ? { objectMetadataId: requireUuid(source.objectMetadataId!) }
+      : {}),
     ...(deletedParent === undefined ? {} : { deletedParent }),
     ...(source.bindingId === undefined
       ? {}
@@ -416,6 +443,14 @@ const capture = (
   }
 
   const output: Snapshot = {};
+  // Native metadata IDs identify fields without retaining user-defined labels or values.
+  // All native values are redacted until an explicit per-field allowlist is introduced.
+  if (resourceKind === 'crmRecord') {
+    for (const [fieldId, value] of Object.entries(input ?? {})) {
+      output[requireUuid(fieldId)] = { hash: auditPayloadHash(value) };
+    }
+    return output;
+  }
 
   for (const field of [...catalog.values, ...catalog.redacted]) {
     if (input === null || !Object.hasOwn(input, field)) continue;
@@ -532,6 +567,9 @@ export class CrmAuditTransactionContext {
     );
     const key = canonicalAuditJson([
       mutation.resourceKind,
+      ...(mutation.resourceKind === 'crmRecord'
+        ? [securityDescriptor.objectMetadataId]
+        : []),
       securityDescriptor.resourceId,
       mutation.action,
     ]);
@@ -564,6 +602,9 @@ export class CrmAuditTransactionContext {
         this.operation.workspaceId,
         this.operation.operationId,
         mutation.resourceKind,
+        ...(mutation.resourceKind === 'crmRecord'
+          ? [mutation.securityDescriptor.objectMetadataId]
+          : []),
         mutation.resourceId,
         mutation.action,
       ]);
@@ -636,6 +677,9 @@ export const appendCrmAuditAttempt = async (
       workspaceId,
       operationId,
       attempt.resourceKind,
+      ...(attempt.resourceKind === 'crmRecord'
+        ? [securityDescriptor.objectMetadataId]
+        : []),
       securityDescriptor.resourceId,
       attempt.action,
       attemptId,

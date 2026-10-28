@@ -1,3 +1,7 @@
+import {
+  captureNativeCrmAuditOperation,
+  withNativeCrmAuditTransaction,
+} from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
 import { Logger } from '@nestjs/common';
 
 import { type Pool } from 'pg';
@@ -81,6 +85,20 @@ export class WorkspaceDataSource {
     work: (transactionScope: WorkspaceTransactionScope) => Promise<T>,
     options: WorkspaceTransactionOptions = {},
   ): Promise<T> {
+    const nativeAuditOperation =
+      options.nativeAudit === undefined
+        ? undefined
+        : captureNativeCrmAuditOperation(
+            this.internalContext.workspaceId,
+            this.authContext,
+            options.nativeAudit,
+          );
+    if (nativeAuditOperation && options.commitOutcome === 'legacy')
+      throw new Error('Native audit requires strict transaction ownership');
+    options = {
+      ...options,
+      ...(nativeAuditOperation ? { commitOutcome: 'strict' as const } : {}),
+    };
     const afterCommitCallbacks: Array<() => void | Promise<void>> = [];
     let transactionLifecycle: WorkspaceTransactionLifecycle | undefined;
     const assertActive = () => {
@@ -168,7 +186,14 @@ export class WorkspaceDataSource {
           lifecycle,
           nativeOwnershipLock,
         });
-        return work(scope);
+        return nativeAuditOperation
+          ? withNativeCrmAuditTransaction(
+              executor,
+              scope,
+              nativeAuditOperation,
+              () => work(scope),
+            )
+          : work(scope);
       },
       options,
     );

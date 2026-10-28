@@ -1,19 +1,18 @@
 # Текущее состояние Twenty CRM
 
-LOG-088: собственный объём ROB-764 проверен и завершён. Полный fork regression:
-2814 tests/88 suites +33 guard/checksum/Linux startup tests =2847 PASS.
-Образ из commit8855d9e4 проходит миграции пустой/заполненной старой базы, replay,
-реальный startup/restart server+worker и отрицательные schema/ledger/privilege gates.
-CRM-записи и upstream ledger сохранены по контрольным суммам. Новых ошибок типов нет.
-Следующий этап ROB-765 — аудит обычных CRM/ORM изменений; он начат.
-Публичные права, внешние коннекторы, чаты и автоматизация ещё не готовы.
-Демо прежнее; GitHub Actions не используется.
+ROB764 завершена по [приёмке LOG088](implementation/rob764-acceptance.md).
+ROB765 In Progress: [LOG089](implementation/log089/README.md) добавил внутренний
+атомарный аудит Company scalar update/updateMany.570 tests/22 suites и26 guards
+прошли; новые28 PG tests проверяют rollback, concurrency, NUMERIC precision,
+operationId reuse, permissions и unknown COMMIT. Новых ошибок типов нет;
+189 существующих диагностик остаются, full-server typecheck не чистый.
 
-[Проверки LOG088](implementation/log088/README.md) · [Приёмка ROB764](implementation/rob764-acceptance.md) · [Следующий этап](plan/phase_2_audit.md).
+Это ещё не общий аудит UI/API: без opt-in обычный ORM работает как прежде.
+Продолжаем native CRUD/merge/files и подключение реальных writers, затем
+metadata/session и negative audit. [Приёмка ROB765](implementation/rob765-progress.md).
 
-ROB-762/763/772 и ROB-764 — Done; ROB-765 — In Progress; ROB-766–771 — Backlog.
-Полный server typecheck не является чистым:189 существующих диагностик в сопоставимых снимках,0 новых/в изменённом коде. Это ограничение не скрывается результатами Jest и SWC.
+ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.
+Чаты, внешние коннекторы, собственные права и автоматизация ещё не готовы.
+Демо прежнее; отправок клиентам не было; GitHub Actions не используется.
 
-Демо на прежнем образе. Текущие функции проверены в изолированных synthetic PostgreSQL fixtures; реальных отправок клиентам не было. Критерии всей CRM ещё не выполнены.
-
-[Журнал](DEVLOG.md) · [Задачи](linear.md) · [Владельцы контрактов](plan/contracts/README.md).
+[Журнал](DEVLOG.md) · [Задачи](linear.md) · [Контракты](plan/contracts/README.md).

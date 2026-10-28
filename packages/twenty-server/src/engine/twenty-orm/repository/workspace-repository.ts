@@ -1,3 +1,12 @@
+import {
+  getNativeCrmAuditContext,
+  runNativeCrmAuditWrite,
+} from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
+import {
+  assertNativeCrmAuditWriteSupported,
+  readNativeCrmAuditRows,
+  recordNativeCrmUpdates,
+} from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
 import { randomUUID } from 'node:crypto';
 
 import { msg } from '@lingui/core/macro';
@@ -1070,15 +1079,23 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     generatedMaps: ObjectRecord[];
     raw: ObjectRecord[];
   }> {
-    if (this.isOmniNativeRepository)
-      args = {
-        ...args,
-        records: args.records.map((record) => ({ ...record })),
-      };
-    return this.runWithValidationRules({
-      inputRecordIds: args.records.map((record) => record.id),
-      write: (repository, validateWrittenRecords) =>
-        repository.performInsert({ ...args, validateWrittenRecords }),
+    return runNativeCrmAuditWrite(this.options.executor, async () => {
+      assertNativeCrmAuditWriteSupported(
+        this.options.executor,
+        this.options.tableShape,
+        this.options.flatObjectMetadata.universalIdentifier,
+        'create',
+      );
+      if (this.isOmniNativeRepository)
+        args = {
+          ...args,
+          records: args.records.map((record) => ({ ...record })),
+        };
+      return this.runWithValidationRules({
+        inputRecordIds: args.records.map((record) => record.id),
+        write: (repository, validateWrittenRecords) =>
+          repository.performInsert({ ...args, validateWrittenRecords }),
+      });
     });
   }
 
@@ -1191,18 +1208,33 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     generatedMaps: ObjectRecord[];
     raw: ObjectRecord[];
   }> {
-    if (this.isOmniNativeRepository)
-      args = {
-        ...args,
-        inputs: args.inputs.map((input) => ({
-          id: input.id,
-          data: { ...input.data },
-        })),
-      };
-    return this.runWithValidationRules({
-      inputRecordIds: args.inputs.map((input) => input.id),
-      write: (repository, validateWrittenRecords) =>
-        repository.performBatchUpdate({ ...args, validateWrittenRecords }),
+    return runNativeCrmAuditWrite(this.options.executor, async () => {
+      if (getNativeCrmAuditContext(this.options.executor)) {
+        for (const input of args.inputs)
+          assertNativeCrmAuditWriteSupported(
+            this.options.executor,
+            this.options.tableShape,
+            this.options.flatObjectMetadata.universalIdentifier,
+            'update',
+            input.data,
+          );
+      }
+      if (
+        this.isOmniNativeRepository ||
+        getNativeCrmAuditContext(this.options.executor)
+      )
+        args = {
+          ...args,
+          inputs: args.inputs.map((input) => ({
+            id: input.id,
+            data: { ...input.data },
+          })),
+        };
+      return this.runWithValidationRules({
+        inputRecordIds: args.inputs.map((input) => input.id),
+        write: (repository, validateWrittenRecords) =>
+          repository.performBatchUpdate({ ...args, validateWrittenRecords }),
+      });
     });
   }
 
@@ -1231,16 +1263,25 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       writableRecordIds.has(input.id),
     );
 
-    if (this.requiresOmniOwnershipCheck) {
+    const nativeAudit = getNativeCrmAuditContext(this.options.executor);
+    let nativeAuditBefore: ObjectRecord[] = [];
+    if (this.requiresOmniOwnershipCheck || nativeAudit) {
       const locked = await this.lockNativeWriteRows(
         writableInputs.map((input) => input.id),
       );
+      if (nativeAudit)
+        nativeAuditBefore = await readNativeCrmAuditRows(
+          this.options.executor,
+          this.options.tableShape,
+          locked.map((row) => row.id),
+        );
       const after = writableInputs.flatMap((input) => {
         const before = locked.find((record) => record.id === input.id);
         const { id: _id, ...columns } = this.formatWriteData(input.data);
         return before ? [{ ...before, ...columns }] : [];
       });
-      await this.assertNativeWriteUnowned([...locked, ...after]);
+      if (this.requiresOmniOwnershipCheck)
+        await this.assertNativeWriteUnowned([...locked, ...after]);
     }
 
     const recordsBefore: ObjectRecord[] = [];
@@ -1377,6 +1418,12 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       await this.filesFieldSync.updateFileEntityRecords(filesFieldFileIds);
     }
 
+    await recordNativeCrmUpdates(
+      this.options.executor,
+      this.options.tableShape,
+      nativeAuditBefore,
+      generatedMaps.map((row) => row.id),
+    );
     this.emitMutationEvent({ kind: 'update', recordsBefore, recordsAfter });
 
     return {
@@ -1707,32 +1754,46 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     columnsToReturn: string[];
     data?: Partial<ObjectRecord>;
   }): Promise<ObjectRecord[]> {
-    if (this.isOmniNativeRepository)
-      args = { ...args, data: args.data ? { ...args.data } : undefined };
-    if (args.kind !== 'update') {
-      return this.isOmniNativeRepository || args.kind === 'delete'
-        ? this.runAtomically((repository) =>
-            repository.performMutation({
-              ...args,
-              selectQueryBuilder:
-                repository === this
-                  ? args.selectQueryBuilder
-                  : args.selectQueryBuilder.clone(repository.options.executor),
-            }),
-          )
-        : this.performMutation(args);
-    }
+    return runNativeCrmAuditWrite(this.options.executor, async () => {
+      assertNativeCrmAuditWriteSupported(
+        this.options.executor,
+        this.options.tableShape,
+        this.options.flatObjectMetadata.universalIdentifier,
+        args.kind,
+        args.data,
+      );
+      if (
+        this.isOmniNativeRepository ||
+        getNativeCrmAuditContext(this.options.executor)
+      )
+        args = { ...args, data: args.data ? { ...args.data } : undefined };
+      if (args.kind !== 'update') {
+        return this.isOmniNativeRepository || args.kind === 'delete'
+          ? this.runAtomically((repository) =>
+              repository.performMutation({
+                ...args,
+                selectQueryBuilder:
+                  repository === this
+                    ? args.selectQueryBuilder
+                    : args.selectQueryBuilder.clone(
+                        repository.options.executor,
+                      ),
+              }),
+            )
+          : this.performMutation(args);
+      }
 
-    return this.runWithValidationRules({
-      write: (repository, validateWrittenRecords) =>
-        repository.performMutation({
-          ...args,
-          selectQueryBuilder:
-            repository === this
-              ? args.selectQueryBuilder
-              : args.selectQueryBuilder.clone(repository.options.executor),
-          validateWrittenRecords,
-        }),
+      return this.runWithValidationRules({
+        write: (repository, validateWrittenRecords) =>
+          repository.performMutation({
+            ...args,
+            selectQueryBuilder:
+              repository === this
+                ? args.selectQueryBuilder
+                : args.selectQueryBuilder.clone(repository.options.executor),
+            validateWrittenRecords,
+          }),
+      });
     });
   }
 
@@ -1765,13 +1826,21 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       this.applyRowLevelPermissionPredicates(selectQueryBuilder, kind);
     }
 
-    if (this.requiresOmniOwnershipCheck || kind === 'delete') {
+    const nativeAudit = getNativeCrmAuditContext(this.options.executor);
+    let nativeAuditBefore: ObjectRecord[] = [];
+    if (this.requiresOmniOwnershipCheck || kind === 'delete' || nativeAudit) {
       const candidates = await this.buildEventSnapshotQueryBuilder(
         selectQueryBuilder,
       ).getMany<ObjectRecord>({ noFormatting: true });
       const locked = await this.lockNativeWriteRows(
         candidates.map((record) => String(record.id)),
       );
+      if (nativeAudit)
+        nativeAuditBefore = await readNativeCrmAuditRows(
+          this.options.executor,
+          this.options.tableShape,
+          locked.map((row) => row.id),
+        );
       const { id: _id, ...columns } = data ? this.formatWriteData(data) : {};
       if (this.requiresOmniOwnershipCheck)
         await this.assertNativeWriteUnowned([
@@ -1944,6 +2013,12 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
           )
         : recordsAfterWrite;
 
+    await recordNativeCrmUpdates(
+      this.options.executor,
+      this.options.tableShape,
+      nativeAuditBefore,
+      mutationResult.generatedMaps.map((row) => row.id),
+    );
     this.emitMutationEvent({
       kind,
       recordsBefore,

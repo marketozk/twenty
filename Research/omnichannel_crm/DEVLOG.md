@@ -2973,3 +2973,24 @@ CRM-записи и upstream ledger сохранены по контрольны
 Read-only acceptance review новых собственных gaps не нашёл; исправлены устаревшие pending формулировки. ROB765 reuse research выявило отсутствие гарантированной транзакции у обычного Company update и зависимость snapshots от event flag; следующий patch исправляет это для первого audited native среза. Existing omni audit protocol сохраняется.
 
 LOG-088 final publication: acceptance commit `043e5e0fd02cf41947b0718854d0dd2619b685fe` pushed/API verified. ROB764 Done and ROB765 In Progress descriptions, completion comment `48fb3320-1879-4ec1-aa48-db15de601041` and all11 project states independently read back. New phase work continues.
+
+
+## LOG-089 — первый native CRM audit owner, ROB765
+
+Внутренний opt-in Company scalar update/updateMany: server-derived actor, strict
+transaction/executor, locked precise before/after, first/last aggregation и flush
+до COMMIT независимо от events. Новые crmRecord/objectMetadataId и apiKey principal;
+все значения native diff редактируются, field IDs сохраняются. Unsupported writes
+poison owner даже при caught error. Ревью выявило NUMERIC rounding и опасный повтор
+operationId; исправлены DB-side JSON-text и operation lock/reuse refusal до callback.
+
+570 tests/22 suites PASS +26 guard/checksum tests,9 migration checksums неизменны.
+28 новых PG cases. Typecheck323/326 roots:189/189 baseline diagnostics,0 новых и0
+в изменённых файлах.8 uploaded/local LF hashes совпадают. Первичные test-fixture
+ошибки (metadata field name, nullable custom NUMERIC, error cause chain) и12 test-only
+TypeScript diagnostics исправлены; финальные результаты сохранены.
+
+[Evidence](implementation/log089/README.md). ROB765 In Progress; это opt-in основа,
+не public native coverage. Далее native CRUD/merge/files, operation lookup index,
+actual writer wiring, metadata/session owners и negative audit. Демо не менялось,
+GitHub Actions и внешние отправки не использовались.

@@ -1,0 +1,35 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-company.postgres-spec.ts (7.451 s)
+  ✓ writes one scoped redacted audit with the actual native update despite suppressed events (102 ms)
+  ✓ audits real affected batch rows only, including repeated inputs as one aggregated event (62 ms)
+  ✓ aggregates first-before and last-after across repositories in one owned transaction (55 ms)
+  ✓ keeps ordinary events without making them the audit source (54 ms)
+  ✓ does not audit a predicate that affects no rows (41 ms)
+  ✓ rolls native changes and events back when audit insert fails (61 ms)
+  ✓ poisons the transaction even if its caller catches an unsupported write (104 ms)
+  ✓ refuses unsupported file writes before persistence (28 ms)
+  ✓ refuses unsupported raw function writes before persistence (26 ms)
+  ✓ refuses unsupported system timestamp writes before persistence (24 ms)
+  ✓ refuses unaudited create/delete and other-object writes inside the bounded owner (33 ms)
+  ✓ rejects a legacy audit owner before executing its callback (23 ms)
+  ✓ requires an explicit system actor, never record createdBy or a guessed ID (24 ms)
+  ✓ captures operation metadata before awaiting the connection and caller data before SQL (39 ms)
+  ✓ captures each batch input before the first await (38 ms)
+  ✓ uses the committed concurrent before-image rather than the earlier unlocked candidate (78 ms)
+  ✓ reports lost real COMMIT acknowledgement as unknown with one success and no failed audit (38 ms)
+  ✓ refuses retained repositories after the audit transaction ended (40 ms)
+  ✓ preserves the explicit rollout boundary for an ordinary uninstrumented repository (33 ms)
+  ✓ derives user principal only from server authentication (26 ms)
+  ✓ derives apiKey principal only from server authentication (22 ms)
+  ✓ derives application principal only from server authentication (22 ms)
+  ✓ derives agent principal only from server authentication (23 ms)
+  ✓ preserves NUMERIC precision when detecting native field changes (37 ms)
+  ✓ refuses reuse of an already committed operation before another mutation (42 ms)
+  ✓ serializes concurrent reuse of one operation across different rows (45 ms)
+  ✓ allows retry after a confirmed rollback without a committed audit (53 ms)
+  ✓ does not bypass native permissions when auditing an update (40 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       28 passed, 28 total
+Snapshots:   0 total
+Time:        7.563 s
+Ran all test suites matching /crm-audit-native-company/i.

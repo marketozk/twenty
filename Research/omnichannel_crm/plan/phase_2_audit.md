@@ -7,7 +7,7 @@
 Спецификация: [design/08-audit.md](../design/08-audit.md). Статус: ROB-765 In Progress, реализация начата после подтверждённой приёмки ROB-764 (LOG088). ROB-767 остаётся Backlog. 2a зависит от 1; 2b зависит от собственной политики этапа 3. Остальные этапы дополняют аудит своими событиями.
 
 Основа уже реализована в ROB-764 / LOG-022: CrmAuditEntry, транзакционный context,
-append-only writer, безопасный diff и проверка DB privileges. Текущий каталог охватывает 23 вида ресурсов; собственные omni operations, native Message
+append-only writer, безопасный diff и проверка DB privileges. Каталог до начала ROB-765 охватывал 23 вида ресурсов; собственные omni operations, native Message
 composition, receipts/outbox/revisions используют общий atomic audit context (LOG028–087).
 ROB-765 расширяет этот механизм на CRM/ORM/merge/bulk/session/metadata; ROB-767
 добавляет просмотр и экспорт после собственных прав. ROB-765 начат; ROB-767 остаётся Backlog до собственных прав.
@@ -54,4 +54,6 @@ ROB-764 уже вводит минимальный audit transaction context д�
 
 LOG087 adds bounded parent delete audit and retained current-administrative deletedParent scope, including multi-binding manifest hash. Native/custom FK effects without an audited writer refuse the operation. ROB765 must preserve this contract while broadening native ORM/lifecycle coverage; new destroy is not proof that generic native audit is complete.
 
-Первый срез ROB-765: обычные Company scalar update/updateMany через текущие native kernels, один strict transaction-owned audit context и фактические row snapshots независимо от emission flags. Предварительно подтверждены: no-validation Company update может идти без transaction; FilesFieldSync использует отдельный core pool. Поэтому файловая атомарность и полный native audit ещё не заявляются.
+Первый срез ROB-765 реализован в [LOG089](../implementation/log089/README.md): внутренний `nativeAudit` owner для Company scalar update/updateMany, server-derived actor, row locks и точные snapshots независимо от emission flags; crmRecord — 24-й вид ресурса. Успех и audit атомарны, перехваченная ошибка mutation отравляет transaction. Повтор уже committed operationId отказывается до callback, это не command replay. Значения native полей редактируются полностью; NUMERIC сохраняет точность при сравнении.
+
+**Остаётся до Done:** автоматическое подключение native entry points и общий CRM CRUD/merge/bulk, файловый executor, metadata/role/session owners, отрицательные события после подтверждённого rollback, health/alert, доказательства API/AI/workflow. До публичного включения нужен индекс audit(workspaceId, operationId). Вызовы без opt-in пока сохраняют прежнее поведение; их изменения не объявляются аудированными. Просмотр/экспорт — ROB767 после ROB766. [Текущая приёмка ROB765](../implementation/rob765-progress.md).

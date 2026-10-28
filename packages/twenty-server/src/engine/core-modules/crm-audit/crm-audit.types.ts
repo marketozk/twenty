@@ -1,9 +1,16 @@
 export type CrmAuditPrincipal = {
-  kind: 'workspaceMember' | 'system' | 'agent' | 'workflow' | 'application';
+  kind:
+    | 'workspaceMember'
+    | 'system'
+    | 'agent'
+    | 'workflow'
+    | 'application'
+    | 'apiKey';
   id: string;
 };
 
 export type CrmAuditResourceKind =
+  | 'crmRecord'
   | 'omniAccountBinding'
   | 'omniPerson'
   | 'omniCompany'
@@ -33,6 +40,7 @@ export type CrmAuditAction = 'create' | 'update' | 'delete';
 export type CrmAuditSecurityDescriptor = {
   resourceKind: CrmAuditResourceKind;
   resourceId: string;
+  objectMetadataId?: string;
   bindingId?: string;
   conversationId?: string;
   queueId?: string;
