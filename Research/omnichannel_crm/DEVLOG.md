@@ -3182,3 +3182,7 @@ migration checksums. Types 336/337 roots, 189/189 diagnostics, 0 новых/chan
 
 ROB765 In Progress. Следом actual core user-session CREATE; logout/revoke требуют
 отдельного security-first owner: ошибка журнала не должна отменять отзыв доступа.
+
+LOG098 publication: `c9d93096e5fb40e388a2fafcc676421476fac352` pushed/API verified.
+ROB765 description and comment `4b9a2dc4-c07f-4965-b76f-be783526b742` independently
+read back; all 11 states match. ROB765 remains In Progress; implementation continues.
