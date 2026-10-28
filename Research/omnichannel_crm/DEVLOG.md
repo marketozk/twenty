@@ -1922,3 +1922,5 @@ not close response-to-write races or onboarding's existing broad catch. Last ful
 fork LOG0561881/71; no new full fork/full server typecheck/full Claude review or
 ROB764 completion claimed. Demo/SaleBot unchanged; no Actions. Applied ai-dev-workflow,
 behavioral-guardrails, server-schrodinger and scoped read-only research/review.
+
+LOG065 publication: code e99085b8f7c2e06be8a0a8192c7ea6e4d1f06863 pushed and GitHub API ref verified; Linear comment 894dcf36-9a9b-43e3-8d4a-c64734ff1d09, description/comment and all11 project states independently read back. ROB764 remains In Progress.
