@@ -2002,3 +2002,5 @@ not around provider network or a nested transaction. Fresh full suite is regress
 evidence, not full ROB764/CRM acceptance. No full server typecheck/full Claude review.
 Demo/SaleBot unchanged; no Actions. Skills ai-dev-workflow, behavioral-guardrails,
 server-schrodinger with narrow read-only research/review.
+
+LOG067 publication: code 1408d41a9e46d7fa3c4d827d004bf13757ebf62f pushed; GitHub API ref verified. Linear comment abd3075b-4a4f-4456-9931-b01aa373fcdf, description/comment and all11 project states independently verified. Full fork2205/75 PASS; ROB764 In Progress.
