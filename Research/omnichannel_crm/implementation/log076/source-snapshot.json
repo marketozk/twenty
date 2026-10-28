@@ -1,0 +1,12 @@
+{
+  "baseCommit": "fd9d6e896078f09cf959f1a5ee66061a10f5520c",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/test/fork-migration/omni-history-apply.fixture.ts": "012580ec441e7a08c2a21b47707eb1c2b8dff5144fe5c976982f0f50da52efa1",
+    "packages/twenty-server/test/fork-migration/omni-history-apply.postgres-spec.ts": "bd470921bbcbf84e625bf678bdd9751c669137fb226ea6a8975a2e8029b12c9b",
+    "packages/twenty-server/test/fork-migration/omni-incoming-event.postgres-spec.ts": "1daa77573088e9656fc48eb4af3305a748800232909e7cf22858004d28df1b9b",
+    "packages/twenty-server/test/fork-migration/omni-native-reconciliation.postgres-spec.ts": "89a37576278bc8a1dc19a3a868785be2ce4ddd427bc0023564b5077430b747c5",
+    "packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts": "1c53db1f4a41aba3d934de6a8be6030ed65e8b0c214ed9b938697551bbb7ab77"
+  }
+}

@@ -60,7 +60,11 @@ type Seed = {
 };
 let seed: Seed;
 
-const createSeed = async (marker: Marker = 'binding', identity = 'old') => {
+const createSeed = async (
+  marker: Marker = 'binding',
+  identity = 'old',
+  beforeOwnership?: (seed: Seed) => Promise<void>,
+) => {
   const binding = await fixture.createBinding();
   const result = await seedRun(async (scope) => {
     const oldCompanyId = await insertNative(scope, 'company', {
@@ -148,6 +152,7 @@ const createSeed = async (marker: Marker = 'binding', identity = 'old') => {
       omni,
     };
   });
+  if (beforeOwnership) await beforeOwnership(result);
   if (marker !== 'binding') {
     const conversationId = await fixture.markConversation(
       binding,
@@ -585,4 +590,37 @@ describe('native mixed email and omnichannel participant/target reconciliation',
     expect(await fixture.read('messageParticipant')).toEqual(before);
     expect(fixture.eventEmitter).not.toHaveBeenCalled();
   });
+});
+
+it('postcommit participant snapshot captured before enrollment cannot rematch newly owned history', async () => {
+  let queued: MessageParticipantWorkspaceEntity[] = [];
+  seed = await createSeed('conversation', 'old', async () => {
+    queued = await run((scope) => participants(scope));
+  });
+  expect(queued).toHaveLength(2);
+  const before = await omniSnapshot();
+  const messagesBefore = await fixture.read('message');
+  await fixture.withContext(async () => {
+    await fixture.matcher.matchParticipants({
+      participants: queued,
+      sourceRecordIds: [seed.email.messageId, seed.omni.messageId],
+      objectMetadataName: 'messageParticipant',
+      matchWith: 'workspaceMemberAndPerson',
+    });
+    await fixture.targets.reconcileMessageThreadTargets({
+      messageThreadIds: [seed.email.threadId, seed.omni.threadId],
+    });
+  });
+  expect(await omniSnapshot()).toEqual(before);
+  expect(await fixture.read('message')).toEqual(messagesBefore);
+  expect(
+    (await fixture.read('messageParticipant')).find(
+      (row: Record<string, unknown>) => row.id === seed.email.participantId,
+    ),
+  ).toMatchObject({
+    personId: seed.personId,
+    workspaceMemberId: seed.memberId,
+  });
+  await expectEmailTargets();
+  expectOnlyEmailEvents();
 });

@@ -217,6 +217,39 @@ describe('qualified history receipt through actual native messaging composition'
     expect(await operationAudit()).toHaveLength(10);
   });
 
+  it('T01: 20 concurrent deliveries and apply retries retain one receipt/message/link and one success audit set', async () => {
+    context = await fixture.reset();
+    captured = await fixture.capture(context, {}, 'history_import', 20);
+    originalThreads = await fixture.read('messageThread');
+    expect(captured.deliveryResults).toHaveLength(20);
+    expect(
+      captured.deliveryResults.filter((result) => result.created),
+    ).toHaveLength(1);
+    expect(
+      new Set(captured.deliveryResults.map((result) => result.receiptId)).size,
+    ).toBe(1);
+    const results = await Promise.all(
+      Array.from({ length: 20 }, () => apply()),
+    );
+    expect(results.filter((result) => result.created)).toHaveLength(1);
+    expect(results.filter((result) => !result.created)).toHaveLength(19);
+    expect(new Set(results.map((result) => result.messageId)).size).toBe(1);
+    expect(await core('omniIncomingReceipt')).toHaveLength(1);
+    expect(await fixture.read('message')).toHaveLength(1);
+    for (const table of tables) expect(await core(table)).toHaveLength(1);
+    expect(await fixture.read('messageParticipant')).toEqual([
+      expect.objectContaining({
+        personId: context.personId,
+        messageId: results[0].messageId,
+      }),
+    ]);
+    expect(await fixture.read('messageThread')).toEqual(originalThreads);
+    const audit = await operationAudit();
+    expect(audit).toHaveLength(10);
+    expect(audit.every((row) => row.outcome === 'success')).toBe(true);
+    expect(fixture.eventEmitter).not.toHaveBeenCalled();
+  });
+
   it('snapshots caller data before waiting for workspace context', async () => {
     const principal = {
       ...context.principal,

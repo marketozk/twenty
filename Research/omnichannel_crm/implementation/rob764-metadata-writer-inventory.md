@@ -66,10 +66,10 @@ Canonical lifecycle requirements remain in the implementation specification.
 
 | Boundary | Required evidence / retained semantics |
 |---|---|
-| Delayed ordinary cache callback after ownership change | Exercise actual callback and final guards: zero protected native/core mutations and zero raw omni events. Nine legacy cache owners retain ordinary delivery semantics. |
-| Delayed postcommit matching/contact job | Existing ownership filters and final native guard protect omni rows; integration acceptance must delay until ownership introduced. Ordinary contact creation/enrichment remains permitted legacy behavior. |
+| Delayed ordinary cache callback after ownership change | LOG076: actual importer delayed at cache pop reaches actual native apply; zero protected native/core mutations/raw events or completion effects. Admission/status are doubles. Nine legacy cache owners retain ordinary delivery semantics. |
+| Delayed postcommit matching/contact job | Existing ownership filters and final native guard protect omni rows; LOG076 delays actual matcher/target reconciliation until ownership introduced; protected records unchanged and ordinary positive control passes. Full contact job pipeline is not exercised. Ordinary contact creation/enrichment remains permitted legacy behavior. |
 | Domain revision operation | Initial revision persistence exists; §15.10 requires metadata-only domain operation, with trusted source ordering and replay against retained revision/head. Placeholder/edit/delete native apply still pending. |
-| Exact T01 and final acceptance | 20 concurrent identical deliveries, one receipt/message/link; final full fork and guard run after changes. |
+| Exact T01 and final acceptance | LOG076 verifies 20 concurrent identical deliveries and 20 apply attempts, one receipt/message/link and one success-audit set. Final full fork and guard run after revision changes. |
 
 ### Ordinary cache scope
 

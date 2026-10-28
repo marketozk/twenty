@@ -571,9 +571,9 @@ describe('durable incoming event acceptance on PostgreSQL', () => {
     expect(await auditEntries()).toHaveLength(1);
   });
 
-  it('serializes concurrent duplicate events into one durable receipt and success audit', async () => {
+  it('serializes 20 concurrent duplicate events into one durable receipt and success audit', async () => {
     const results = await Promise.all(
-      Array.from({ length: 6 }, () => accept()),
+      Array.from({ length: 20 }, () => accept()),
     );
     expect(new Set(results.map((result) => result.receiptId)).size).toBe(1);
     expect(results.filter((result) => result.created)).toHaveLength(1);

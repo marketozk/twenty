@@ -247,6 +247,7 @@ export const createOmniHistoryApplyFixture = (
     context: Awaited<ReturnType<typeof reset>>,
     changes: Record<string, unknown> = {},
     origin: 'history_import' | 'live' | null = 'history_import',
+    deliveries = 1,
   ) => {
     const envelope = {
       schemaVersion: 1,
@@ -278,15 +279,20 @@ export const createOmniHistoryApplyFixture = (
       sourceVariant: envelope.sourceVariant,
       sourcePosition: envelope.sourcePosition,
     };
-    const accepted = await acceptOmniIncomingEvent(
-      runtime,
-      context.principal,
-      envelope,
-      async () => undefined,
-      origin === null
-        ? undefined
-        : { context: captureContext, authorize: async () => undefined },
+    const deliveryResults = await Promise.all(
+      Array.from({ length: deliveries }, () =>
+        acceptOmniIncomingEvent(
+          runtime,
+          context.principal,
+          envelope,
+          async () => undefined,
+          origin === null
+            ? undefined
+            : { context: captureContext, authorize: async () => undefined },
+        ),
+      ),
     );
+    const accepted = deliveryResults[0];
     const claims = await claimOmniIncomingReceipts(
       runtime,
       context.principal,
@@ -300,6 +306,7 @@ export const createOmniHistoryApplyFixture = (
       envelope,
       captureContext,
       accepted,
+      deliveryResults,
       proof: {
         receiptId,
         leaseOwner,

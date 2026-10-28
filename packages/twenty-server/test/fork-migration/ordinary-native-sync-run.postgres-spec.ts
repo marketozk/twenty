@@ -1,3 +1,5 @@
+import { MessagingMessagesImportService } from 'src/modules/messaging/message-import-manager/services/messaging-messages-import.service';
+import { CalendarEventsImportService } from 'src/modules/calendar/calendar-event-import-manager/services/calendar-events-import.service';
 import { MessagingMessageCleanerService } from 'src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service';
 import { CalendarEventCleanerService } from 'src/modules/calendar/calendar-event-cleaner/services/calendar-event-cleaner.service';
 import { DataSource } from 'typeorm';
@@ -60,6 +62,52 @@ jest.mock(
   () => ({ CreateCompanyAndContactJob: class {} }),
 );
 
+jest.mock(
+  'src/engine/core-modules/exception-handler/exception-handler.service',
+  () => ({ ExceptionHandlerService: class {} }),
+);
+jest.mock(
+  'src/modules/messaging/monitoring/services/messaging-monitoring.service',
+  () => ({ MessagingMonitoringService: class {} }),
+);
+jest.mock(
+  'src/engine/core-modules/twenty-config/twenty-config.service',
+  () => ({ TwentyConfigService: class {} }),
+);
+jest.mock('src/engine/core-modules/workspace/workspace.entity', () => ({
+  WorkspaceEntity: class {},
+}));
+jest.mock(
+  'src/engine/core-modules/user-workspace/user-workspace.entity',
+  () => ({ UserWorkspaceEntity: class {} }),
+);
+jest.mock(
+  'src/engine/metadata-modules/message-channel/entities/message-channel.entity',
+  () => ({ MessageChannelEntity: class {} }),
+);
+jest.mock('src/modules/blocklist/repositories/blocklist.repository', () => ({
+  BlocklistRepository: class {},
+}));
+jest.mock(
+  'src/modules/connected-account/email-alias-manager/services/email-alias-manager.service',
+  () => ({ EmailAliasManagerService: class {} }),
+);
+jest.mock(
+  'src/modules/messaging/message-import-manager/services/messaging-get-messages.service',
+  () => ({ MessagingGetMessagesService: class {} }),
+);
+jest.mock(
+  'src/modules/calendar/calendar-event-import-manager/services/calendar-import-events.service',
+  () => ({ CalendarImportEventsService: class {} }),
+);
+jest.mock(
+  'src/modules/messaging/common/services/message-channel-sync-status.service',
+  () => ({ MessageChannelSyncStatusService: class {} }),
+);
+jest.mock(
+  'src/modules/calendar/common/services/calendar-channel-sync-status.service',
+  () => ({ CalendarChannelSyncStatusService: class {} }),
+);
 const fixture = createOmniNativeMessageFixture({
   useStandardForeignKeyActions: true,
   additionalTables: [
@@ -1104,3 +1152,133 @@ for (const kind of ['message', 'calendar'] as const)
           }
         },
       );
+
+for (const kind of ['message', 'calendar'] as const)
+  it(
+    kind +
+      ' importer delayed at cache pop cannot apply after account enrollment',
+    async () => {
+      let entered!: () => void, release!: () => void;
+      const enteredPromise = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      const releasePromise = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const complete = jest.fn(),
+        pending = jest.fn();
+      const channel = kind === 'message' ? messageChannel : calendarChannel;
+      const status = {
+        beginMessagesImport: async () => ({
+          channel: { ...channel, connectedAccount: account },
+          run: run(kind),
+        }),
+        beginCalendarEventsImport: async () => ({
+          channel: { ...channel, connectedAccount: account },
+          run: run(kind),
+        }),
+        recoverLegacyMessageImport: async () => false,
+        recoverLegacyCalendarImport: async () => false,
+        markAsMessageSyncCompleted: complete,
+        markAsMessagesImportPending: pending,
+        markAsCalendarEventSyncCompleted: complete,
+        markAsCalendarEventsImportPending: pending,
+      };
+      const cache = {
+        setPop: jest.fn().mockImplementation(async () => {
+          entered();
+          await releasePromise;
+          return ['provider-id'];
+        }),
+        setAdd: jest.fn(),
+      };
+      const externalEmail = email();
+      externalEmail.participants[0].handle = 'client@customer.test';
+      const provider = jest
+        .fn()
+        .mockResolvedValue([kind === 'message' ? externalEmail : event()]);
+      const nativeApply =
+        kind === 'message'
+          ? jest.spyOn(messages, 'saveMessagesAndEnqueueContactCreation')
+          : jest.spyOn(
+              calendar,
+              'saveCalendarEventsAndEnqueueContactCreationJob',
+            );
+      const importer = makeService(
+        kind === 'message'
+          ? MessagingMessagesImportService.prototype
+          : CalendarEventsImportService.prototype,
+        {
+          workspaceOrmManager: {
+            ...manager,
+            getRepository: () => ({ findOne: async () => null }),
+          },
+          messageChannelSyncStatusService: status,
+          calendarChannelSyncStatusService: status,
+          cacheStorage: cache,
+          messagingGetMessagesService: { getMessages: provider },
+          calendarImportEventsService: { getCalendarEvents: provider },
+          userWorkspaceRepository: { findOne: async () => null },
+          workspaceRepository: {
+            findOne: async () => ({ isInternalMessagesImportEnabled: false }),
+          },
+          blocklistRepository: {
+            getEntriesApplicableToWorkspaceMember: async () => [],
+          },
+          saveMessagesAndEnqueueContactCreationService: messages,
+          calendarSaveEventsService: calendar,
+          messagingMonitoringService: { track: jest.fn() },
+          messageImportErrorHandlerService: {
+            handleDriverException: async (error: unknown) => {
+              throw error;
+            },
+          },
+          calendarEventImportErrorHandlerService: {
+            handleDriverException: async (error: unknown) => {
+              throw error;
+            },
+          },
+          logger: { error: jest.fn() },
+        },
+      );
+      const importing =
+        importer instanceof MessagingMessagesImportService
+          ? importer.processMessageBatchImport(
+              messageChannel,
+              account,
+              fixture.workspaceId,
+              100,
+            )
+          : importer.processCalendarEventsImport(
+              calendarChannel,
+              account,
+              fixture.workspaceId,
+            );
+      await enteredPromise;
+      await mutateRun(kind, 'derived-owned');
+      const before = await snapshot();
+      const coreBefore = await fixture.owner.query(
+        `SELECT row_to_json(channel) AS channel FROM core."${table(kind)}" channel WHERE id=$1`,
+        [channel.id],
+      );
+      fixture.eventEmitter.mockClear();
+      release();
+      await importing;
+      expect(provider).toHaveBeenCalledTimes(1);
+      expect(nativeApply).toHaveBeenCalledTimes(1);
+      expect(await snapshot()).toEqual(before);
+      expect(
+        await fixture.owner.query(
+          `SELECT row_to_json(channel) AS channel FROM core."${table(kind)}" channel WHERE id=$1`,
+          [channel.id],
+        ),
+      ).toEqual(coreBefore);
+      expect(fixture.eventEmitter).not.toHaveBeenCalled();
+      expect(complete).not.toHaveBeenCalled();
+      expect(pending).not.toHaveBeenCalled();
+      expect(contacts.add).not.toHaveBeenCalled();
+      expect(matchMessages).not.toHaveBeenCalled();
+      expect(matchCalendar).not.toHaveBeenCalled();
+      expect(cache.setAdd).not.toHaveBeenCalled();
+    },
+  );

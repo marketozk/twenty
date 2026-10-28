@@ -1,14 +1,12 @@
 # Дорожная карта проекта
 
-LOG-075 / ROB-764 In Progress: provider cleanup проверяет текущий run внутри
-native transaction. Calendar association/orphan cleanup атомарны; message cursor
-продвигается после принятых cleanup chunks. Parent/association locks и повторное
-чтение защищают конкурентные ссылки и перенос ассоциаций.
-496 targeted Jest/5 suites +26 guards=522 PASS; 41 new PG/caller cases. Typecheck 295 roots:187/187,0 new/changed-code. Seven migrations unchanged.
-[Доказательства](../implementation/log075/README.md). Review races исправлены и проверены двумя соединениями.
-Последний full fork LOG074:2443/76. Далее final ownership acceptance, 20-way T01
-и минимальный domain revision writer по §15.10; ROB-764 ещё не Done.
-Демо прежнее, GitHub Actions не используется.
+LOG-076 / ROB-764 In Progress: 20 одновременных доставок и 20 apply дают одну
+receipt/message/link и один набор success-аудита. Задержанный importer и matcher
+после появления omni ownership не меняют защищённые записи; обычный email control работает.
+170 targeted Jest/4 suites +26 guards=196 PASS; 4 new PG cases. Typecheck 295 roots:187/187,0 new/changed-code. Seven migrations unchanged.
+[Доказательства](../implementation/log076/README.md). Admission/status в importer test подменены; native apply настоящий.
+Последний full fork LOG074:2443/76. Далее минимальный domain revision writer
+по §15.10; ROB-764 ещё не Done. Демо прежнее, GitHub Actions не используется.
 
 Полный объём описан в [requirements.md](../requirements.md). Переход к следующей фазе подтверждается результатом предыдущей. Даты и трудозатраты появятся после исследования; сейчас их нельзя обоснованно назначить.
 
