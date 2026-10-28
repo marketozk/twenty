@@ -54,16 +54,16 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-069 / ROB-764 In Progress: все четыре calendar cache owners используют
-v2 workspace/channel/account key. Producer/consumer фиксируют identity до await;
-postcommit clear использует принятый account. Retained legacy backlog запускает
-guarded reset/refetch до fetch/import, удаляется только после известного commit.
-Cursor/notfound/unknown error reset/flush теперь проверяет captured parent.
-Проверено 587 targeted Jest/7 suites +26 guards =613 PASS,
-19 новых cases. Typecheck 291 roots:189/188,0 new/changed-code.
-7 migrations неизменны. [Доказательства](Research/omnichannel_crm/implementation/log069/README.md). Scoped review без blockers.
-Последний full fork LOG067:2205/75. Далее MS notification lifecycle,
-direct importer/onboarding и provider stage/cursor/native apply.
+LOG-070 / ROB-764 In Progress: Microsoft lifecycle передаёт проверенный snapshot
+аккаунта/подписки/clientState/status/expiry. Claim, renew apply, delete, clear и
+повторное создание сравнивают актуальное состояние под существующей блокировкой.
+Поздний ответ не меняет заменённую подписку или более новое продление.
+Unknown commit из OAuth проходит без reset/failure metrics.
+Проверено 659 targeted Jest/7 suites +26 guards =685 PASS,
+72 новых PostgreSQL/caller cases. Typecheck 291 roots:188/188,0 new/changed-code.
+7 migrations неизменны. [Доказательства](Research/omnichannel_crm/implementation/log070/README.md). Обе находки ревью исправлены и перепроверены.
+Последний full fork LOG067:2205/75. Далее direct importer/onboarding,
+точные токены запусков и provider stage/cursor/native apply.
 Демо прежнее, GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы минимальный аудит и атомарное создание

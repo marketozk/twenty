@@ -18,6 +18,8 @@ import { WebhookSyncTriggerService } from 'src/modules/connected-account/webhook
 import { type MicrosoftGraphNotification } from 'src/modules/connected-account-sync-webhooks/types/microsoft-graph-notification.type';
 import { type WebhookNotificationHandler } from 'src/modules/connected-account-sync-webhooks/types/webhook-notification-handler.type';
 
+import { webhookSubscriptionSnapshot } from 'src/modules/connected-account/webhook-subscription-manager/utils/webhook-subscription-snapshot';
+
 @Injectable()
 export class MicrosoftCalendarNotificationHandler
   implements WebhookNotificationHandler<MicrosoftGraphNotification[]>
@@ -134,12 +136,15 @@ export class MicrosoftCalendarNotificationHandler
     removedSubscriptionId: string;
     calendarChannel: CalendarChannelEntity;
   }): Promise<void> {
+    calendarChannel = { ...calendarChannel };
+    const expectedSubscription = webhookSubscriptionSnapshot(calendarChannel);
     switch (lifecycleEvent) {
       case 'subscriptionRemoved':
         await this.calendarWebhookSubscriptionService.recreateSubscription({
           calendarChannelId: calendarChannel.id,
           workspaceId: calendarChannel.workspaceId,
           removedSubscriptionId,
+          expectedSubscription,
         });
         await this.webhookSyncTriggerService.triggerCalendarSync(
           calendarChannel.id,
@@ -151,6 +156,7 @@ export class MicrosoftCalendarNotificationHandler
         await this.calendarWebhookSubscriptionService.renewSubscription({
           calendarChannelId: calendarChannel.id,
           workspaceId: calendarChannel.workspaceId,
+          expectedSubscription,
         });
         break;
       case 'missed':

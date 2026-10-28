@@ -2077,3 +2077,39 @@ unchanged; no Actions. Skills ai-dev-workflow, behavioral-guardrails, server-sch
 scoped read-only review/research.
 
 LOG-069 publication: code `36f747cf239c0f2462b0574971f6fa578eb1096c` pushed; GitHub ref verified by API. Linear description/comment `8423b44f-d45f-4afe-94bd-bcdc689f024e` independently read back; all11 project states match. ROB-764 remains In Progress.
+
+## LOG-070 — Microsoft subscription lifecycle snapshot CAS (28.10.2026)
+
+Authenticated Microsoft notification snapshots now reach renew/recreate. Snapshots
+copy account, external subscription ID, clientState, status and expiry. Current
+ordinary owner admission precedes renew network calls. Existing locked status owner
+compares exact nullable values before claim/update/clear; optional legacy callers
+remain supported. Create claim pins the fetched snapshot, then failures pin the new
+PENDING clientState. Known reset/clear advances expected null expiry/externalId;
+recovery cannot adopt a new account or replacement claim. Renew success/error and
+delete completion cannot overwrite replacement or newer successful renewal.
+Unknown core commit from token refresh is rethrown before failure reset/metrics
+in all provider catches and the exception handler; local unknown commit similarly
+prevents follow-on operations. No network is held inside a metadata transaction.
+
+659 targeted Jest/7 suites +26 guards=685 PASS;
+72 new PostgreSQL/caller cases. Actual orchestration, SQL ownership and Microsoft
+handlers execute with explicit network/notification-repository doubles. Coverage:
+stale parent/externalId/clientState/status, late renewal/expiry responses, removed/
+NOT_FOUND recovery races, new claim vs old create failure, exact null, unknown
+admission/clear/OAuth outcomes and unchanged ordinary paths. Initial existing85
+and expanded157 webhook cases passed; expanded seven-suite run passed.
+Typecheck 291 roots:188/188,0 new/changed-code;
+7 migration sources unchanged; LF hashes matched. New helper initially introduced
+an unnecessary transitive entity import; moved the single structural snapshot type
+to the pure helper, preserving dependency baseline. All guards passed afterward.
+Read-only review found expiry CAS and OAuth unknown-commit gaps; both fixed with
+regressions, rereview found no further blockers in scope. Reviewer ran no tests.
+[Evidence](implementation/log070/README.md).
+
+Limits: local CAS does not fence or serialize external provider operations. No new
+full fork run/full server typecheck/whole-project acceptance is claimed. Last full
+fork LOG0672205/75. Next: direct import/onboarding admission, DB-precision run token,
+provider stage/cursor and native apply. ROB764 remains In Progress, next stages
+Backlog; demo/SaleBot unchanged. No Actions. Skills ai-dev-workflow,
+behavioral-guardrails, server-schrodinger; scoped read-only review/research.

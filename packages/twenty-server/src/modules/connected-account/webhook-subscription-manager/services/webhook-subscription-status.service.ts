@@ -18,7 +18,13 @@ import { WEBHOOK_SUBSCRIPTION_CLAIM_STALE_MS } from 'src/modules/connected-accou
 import {
   type WebhookSubscribableChannel,
   type WebhookSubscriptionResult,
+  type WebhookSubscriptionSnapshot,
 } from 'src/modules/connected-account/webhook-subscription-manager/types/webhook-subscription-driver.type';
+
+import {
+  matchesWebhookSubscription,
+  webhookSubscriptionSnapshot,
+} from 'src/modules/connected-account/webhook-subscription-manager/utils/webhook-subscription-snapshot';
 
 @Injectable()
 export class WebhookSubscriptionStatusService {
@@ -34,6 +40,7 @@ export class WebhookSubscriptionStatusService {
     channelId: string,
     workspaceId: string,
     expectedConnectedAccountId?: string,
+    expectedSubscription?: WebhookSubscriptionSnapshot,
   ): Promise<string | null> {
     return this.withOrdinaryChannel(
       channelType,
@@ -69,6 +76,7 @@ export class WebhookSubscriptionStatusService {
         return updateResult.raw.length > 0 ? clientState : null;
       },
       expectedConnectedAccountId,
+      expectedSubscription,
     );
   }
 
@@ -113,12 +121,31 @@ export class WebhookSubscriptionStatusService {
     );
   }
 
+  public async isCurrentSubscription(
+    channelType: WebhookSubscriptionChannelType,
+    channelId: string,
+    workspaceId: string,
+    expectedSubscription: WebhookSubscriptionSnapshot,
+  ): Promise<boolean> {
+    return (
+      (await this.withOrdinaryChannel(
+        channelType,
+        channelId,
+        workspaceId,
+        async () => true,
+        expectedSubscription.connectedAccountId,
+        webhookSubscriptionSnapshot(expectedSubscription),
+      )) ?? false
+    );
+  }
+
   public async markAsActive(
     channelType: WebhookSubscriptionChannelType,
     channelId: string,
     workspaceId: string,
     result: WebhookSubscriptionResult,
     expectedConnectedAccountId?: string,
+    expectedSubscription?: WebhookSubscriptionSnapshot,
   ) {
     return this.update(
       channelType,
@@ -133,6 +160,7 @@ export class WebhookSubscriptionStatusService {
           : {}),
       },
       expectedConnectedAccountId,
+      expectedSubscription,
     );
   }
 
@@ -141,6 +169,7 @@ export class WebhookSubscriptionStatusService {
     channelId: string,
     workspaceId: string,
     expectedConnectedAccountId?: string,
+    expectedSubscription?: WebhookSubscriptionSnapshot,
   ) {
     return this.update(
       channelType,
@@ -150,6 +179,7 @@ export class WebhookSubscriptionStatusService {
         webhookSubscriptionStatus: WebhookSubscriptionStatus.FAILED,
       },
       expectedConnectedAccountId,
+      expectedSubscription,
     );
   }
 
@@ -158,6 +188,7 @@ export class WebhookSubscriptionStatusService {
     channelId: string,
     workspaceId: string,
     expectedConnectedAccountId?: string,
+    expectedSubscription?: WebhookSubscriptionSnapshot,
   ) {
     return this.update(
       channelType,
@@ -167,6 +198,7 @@ export class WebhookSubscriptionStatusService {
         webhookSubscriptionStatus: WebhookSubscriptionStatus.EXPIRED,
       },
       expectedConnectedAccountId,
+      expectedSubscription,
     );
   }
 
@@ -175,6 +207,7 @@ export class WebhookSubscriptionStatusService {
     channelId: string,
     workspaceId: string,
     expectedConnectedAccountId?: string,
+    expectedSubscription?: WebhookSubscriptionSnapshot,
   ) {
     return this.update(
       channelType,
@@ -184,6 +217,7 @@ export class WebhookSubscriptionStatusService {
         webhookSubscriptionExpiresAt: null,
       },
       expectedConnectedAccountId,
+      expectedSubscription,
     );
   }
 
@@ -193,6 +227,7 @@ export class WebhookSubscriptionStatusService {
     workspaceId: string,
     removedSubscriptionId: string | null,
     expectedConnectedAccountId?: string,
+    expectedSubscription?: WebhookSubscriptionSnapshot,
   ): Promise<boolean> {
     return (
       (await this.withOrdinaryChannel(
@@ -221,6 +256,7 @@ export class WebhookSubscriptionStatusService {
           return isDefined(affected) && affected > 0;
         },
         expectedConnectedAccountId,
+        expectedSubscription,
       )) ?? false
     );
   }
@@ -231,6 +267,7 @@ export class WebhookSubscriptionStatusService {
     workspaceId: string,
     payload: QueryDeepPartialEntity<WebhookSubscribableChannel>,
     expectedConnectedAccountId?: string,
+    expectedSubscription?: WebhookSubscriptionSnapshot,
   ): Promise<boolean> {
     return (
       (await this.withOrdinaryChannel(
@@ -245,6 +282,7 @@ export class WebhookSubscriptionStatusService {
           return isDefined(affected) && affected > 0;
         },
         expectedConnectedAccountId,
+        expectedSubscription,
       )) ?? false
     );
   }
@@ -255,7 +293,10 @@ export class WebhookSubscriptionStatusService {
     workspaceId: string,
     work: (repository: Repository<WebhookSubscribableChannel>) => Promise<T>,
     expectedConnectedAccountId?: string,
+    expectedSubscription?: WebhookSubscriptionSnapshot,
   ): Promise<T | null> {
+    expectedSubscription =
+      expectedSubscription && webhookSubscriptionSnapshot(expectedSubscription);
     const repository = this.getRepository(channelType);
     return withOrdinaryMetadataChannel(
       repository.manager,
@@ -264,8 +305,22 @@ export class WebhookSubscriptionStatusService {
       channelType === WebhookSubscriptionChannelType.CALENDAR
         ? 'calendar'
         : 'message',
-      (manager) => work(manager.getRepository(repository.target)),
-      expectedConnectedAccountId,
+      async (manager) => {
+        const scopedRepository = manager.getRepository(repository.target);
+        if (expectedSubscription) {
+          const channel = await scopedRepository.findOneBy({
+            id: channelId,
+            workspaceId,
+          });
+          if (
+            !channel ||
+            !matchesWebhookSubscription(channel, expectedSubscription)
+          )
+            return null;
+        }
+        return work(scopedRepository);
+      },
+      expectedConnectedAccountId ?? expectedSubscription?.connectedAccountId,
     );
   }
 

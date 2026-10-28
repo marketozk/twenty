@@ -38,3 +38,5 @@ export type WebhookSubscriptionDriver = {
 
   deleteSubscription(context: WebhookSubscriptionContext): Promise<void>;
 };
+
+export { type WebhookSubscriptionSnapshot } from 'src/modules/connected-account/webhook-subscription-manager/utils/webhook-subscription-snapshot';

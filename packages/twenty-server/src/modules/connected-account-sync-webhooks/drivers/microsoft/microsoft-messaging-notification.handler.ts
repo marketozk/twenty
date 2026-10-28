@@ -18,6 +18,8 @@ import { WebhookSyncTriggerService } from 'src/modules/connected-account/webhook
 import { type MicrosoftGraphNotification } from 'src/modules/connected-account-sync-webhooks/types/microsoft-graph-notification.type';
 import { type WebhookNotificationHandler } from 'src/modules/connected-account-sync-webhooks/types/webhook-notification-handler.type';
 
+import { webhookSubscriptionSnapshot } from 'src/modules/connected-account/webhook-subscription-manager/utils/webhook-subscription-snapshot';
+
 @Injectable()
 export class MicrosoftMessagingNotificationHandler
   implements WebhookNotificationHandler<MicrosoftGraphNotification[]>
@@ -133,12 +135,15 @@ export class MicrosoftMessagingNotificationHandler
     removedSubscriptionId: string;
     messageChannel: MessageChannelEntity;
   }): Promise<void> {
+    messageChannel = { ...messageChannel };
+    const expectedSubscription = webhookSubscriptionSnapshot(messageChannel);
     switch (lifecycleEvent) {
       case 'subscriptionRemoved':
         await this.messagingWebhookSubscriptionService.recreateSubscription({
           messageChannelId: messageChannel.id,
           workspaceId: messageChannel.workspaceId,
           removedSubscriptionId,
+          expectedSubscription,
         });
         await this.webhookSyncTriggerService.triggerMessagingSync(
           messageChannel.id,
@@ -150,6 +155,7 @@ export class MicrosoftMessagingNotificationHandler
         await this.messagingWebhookSubscriptionService.renewSubscription({
           messageChannelId: messageChannel.id,
           workspaceId: messageChannel.workspaceId,
+          expectedSubscription,
         });
         break;
       case 'missed':

@@ -1,3 +1,16 @@
+import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
+import { webhookSubscriptionSnapshot } from 'src/modules/connected-account/webhook-subscription-manager/utils/webhook-subscription-snapshot';
+import { type WebhookSubscriptionSnapshot } from 'src/modules/connected-account/webhook-subscription-manager/types/webhook-subscription-driver.type';
+import { MicrosoftMessagingNotificationHandler } from 'src/modules/connected-account-sync-webhooks/drivers/microsoft/microsoft-messaging-notification.handler';
+import { MicrosoftCalendarNotificationHandler } from 'src/modules/connected-account-sync-webhooks/drivers/microsoft/microsoft-calendar-notification.handler';
+jest.mock(
+  'src/modules/connected-account/webhook-subscription-manager/services/webhook-sync-trigger.service',
+  () => ({ WebhookSyncTriggerService: class {} }),
+);
+jest.mock(
+  'src/engine/core-modules/exception-handler/exception-handler.service',
+  () => ({ ExceptionHandlerService: class {} }),
+);
 import { randomUUID } from 'node:crypto';
 import { DataSource, EntitySchema, type QueryRunner } from 'typeorm';
 import {
@@ -475,6 +488,463 @@ describe.each(kinds)('actual provider late callbacks %s', (kind) => {
       await bootstrap(destination, bindingChannel);
     }
   };
+  const lifecycle = (
+    owner:
+      | MessagingWebhookSubscriptionService
+      | CalendarWebhookSubscriptionService,
+    operation: 'renew' | 'recreate',
+    snapshot?: WebhookSubscriptionSnapshot,
+  ) => {
+    const options = {
+      workspaceId: fixture.workspaceId,
+      expectedSubscription: snapshot,
+    };
+    if (owner instanceof MessagingWebhookSubscriptionService) {
+      return operation === 'renew'
+        ? owner.renewSubscription({ ...options, messageChannelId: messageId })
+        : owner.recreateSubscription({
+            ...options,
+            messageChannelId: messageId,
+            removedSubscriptionId: 'old-subscription',
+          });
+    }
+    return operation === 'renew'
+      ? owner.renewSubscription({ ...options, calendarChannelId: calendarId })
+      : owner.recreateSubscription({
+          ...options,
+          calendarChannelId: calendarId,
+          removedSubscriptionId: 'old-subscription',
+        });
+  };
+  const activate = async () => {
+    await repoFor(kind).update(idFor(kind), {
+      webhookSubscriptionStatus: WebhookSubscriptionStatus.ACTIVE,
+    });
+    return webhookSubscriptionSnapshot(await read(kind));
+  };
+  const changeIdentity = async (
+    change: 'parent' | 'externalId' | 'clientState' | 'status',
+  ) => {
+    if (change === 'parent') {
+      const destination = randomUUID();
+      await runtime.getRepository(ConnectedAccountEntity).insert({
+        id: destination,
+        workspaceId: fixture.workspaceId,
+        provider: ConnectedAccountProvider.GOOGLE,
+      });
+      await repoFor(kind).update(idFor(kind), {
+        connectedAccountId: destination,
+      });
+    } else
+      await repoFor(kind).update(
+        idFor(kind),
+        change === 'externalId'
+          ? { webhookSubscriptionExternalId: 'replacement' }
+          : change === 'clientState'
+            ? { webhookSubscriptionClientState: 'replacement-state' }
+            : { webhookSubscriptionStatus: WebhookSubscriptionStatus.EXPIRED },
+      );
+  };
+  const driverDouble = () => ({
+    createSubscription: jest.fn().mockResolvedValue(result),
+    renewSubscription: jest.fn().mockResolvedValue(result),
+    deleteSubscription: jest.fn().mockResolvedValue(undefined),
+  });
+
+  describe.each(['renew', 'recreate'] as const)(
+    'pinned lifecycle %s',
+    (operation) => {
+      it.each(['parent', 'externalId', 'clientState', 'status'] as const)(
+        'stale %s snapshot sends no provider request or local write',
+        async (change) => {
+          const snapshot = await activate();
+          await changeIdentity(change);
+          const before = await read(kind),
+            driver = driverDouble();
+          await lifecycle(
+            service(driver, { incrementCounterBy: jest.fn() }),
+            operation,
+            snapshot,
+          );
+          expect(await read(kind)).toEqual(before);
+          expect(driver.createSubscription).not.toHaveBeenCalled();
+          expect(driver.renewSubscription).not.toHaveBeenCalled();
+        },
+      );
+    },
+  );
+  it.each(['externalId', 'clientState', 'status'] as const)(
+    'late renew success cannot overwrite changed %s',
+    async (change) => {
+      const snapshot = await activate(),
+        driver = driverDouble(),
+        metrics = { incrementCounterBy: jest.fn() };
+      let before: Awaited<ReturnType<typeof read>>;
+      driver.renewSubscription.mockImplementationOnce(async () => {
+        await changeIdentity(change);
+        before = await read(kind);
+        return result;
+      });
+      await lifecycle(service(driver, metrics), 'renew', snapshot);
+      expect(await read(kind)).toEqual(before!);
+      expect(metrics.incrementCounterBy).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    WebhookSubscriptionDriverExceptionCode.NOT_FOUND,
+    WebhookSubscriptionDriverExceptionCode.INSUFFICIENT_PERMISSIONS,
+    WebhookSubscriptionDriverExceptionCode.TEMPORARY_ERROR,
+    WebhookSubscriptionDriverExceptionCode.UNKNOWN,
+  ])(
+    'late renew error %s preserves replacement and cannot recreate',
+    async (code) => {
+      const snapshot = await activate(),
+        driver = driverDouble();
+      const error = new WebhookSubscriptionDriverException(
+        'delayed-renew',
+        code,
+      );
+      let before: Awaited<ReturnType<typeof read>>;
+      driver.renewSubscription.mockImplementationOnce(async () => {
+        await changeIdentity('clientState');
+        before = await read(kind);
+        throw error;
+      });
+      const pending = lifecycle(
+        service(driver, { incrementCounterBy: jest.fn() }),
+        'renew',
+        snapshot,
+      );
+      if (
+        [
+          WebhookSubscriptionDriverExceptionCode.TEMPORARY_ERROR,
+          WebhookSubscriptionDriverExceptionCode.UNKNOWN,
+        ].includes(code)
+      )
+        await expect(pending).rejects.toBe(error);
+      else await pending;
+      expect(await read(kind)).toEqual(before!);
+      expect(driver.createSubscription).not.toHaveBeenCalled();
+    },
+  );
+  describe.each(['removed', 'notFound'] as const)('recovery %s', (cause) => {
+    it.each(['ordinary', 'parent', 'replacement'] as const)(
+      'only clears and recreates its own subscription: %s',
+      async (race) => {
+        const snapshot = await activate(),
+          driver = driverDouble();
+        if (cause === 'notFound')
+          driver.renewSubscription.mockRejectedValueOnce(
+            new WebhookSubscriptionDriverException(
+              'notfound',
+              WebhookSubscriptionDriverExceptionCode.NOT_FOUND,
+            ),
+          );
+        const clear = status.clearRemovedSubscription.bind(status);
+        let afterClear: Awaited<ReturnType<typeof read>>;
+        jest
+          .spyOn(status, 'clearRemovedSubscription')
+          .mockImplementationOnce(async (...args) => {
+            const accepted = await clear(...args);
+            expect(accepted).toBe(true);
+            if (race === 'parent') await changeIdentity('parent');
+            if (race === 'replacement')
+              await repoFor(kind).update(idFor(kind), {
+                webhookSubscriptionStatus: WebhookSubscriptionStatus.PENDING,
+                webhookSubscriptionClientState: 'new-claim',
+              });
+            afterClear = await read(kind);
+            return accepted;
+          });
+        await lifecycle(
+          service(driver, { incrementCounterBy: jest.fn() }),
+          cause === 'removed' ? 'recreate' : 'renew',
+          snapshot,
+        );
+        if (race === 'ordinary') {
+          expect(driver.createSubscription).toHaveBeenCalledWith(
+            accountId,
+            kind,
+            expect.any(String),
+          );
+          expect((await read(kind)).webhookSubscriptionExternalId).toBe(
+            result.externalSubscriptionId,
+          );
+          expect((await read(kind)).webhookSubscriptionStatus).toBe(
+            WebhookSubscriptionStatus.ACTIVE,
+          );
+        } else {
+          expect(driver.createSubscription).not.toHaveBeenCalled();
+          expect(await read(kind)).toEqual(afterClear!);
+        }
+      },
+    );
+  });
+  it('same-account claim replacement before creation claim sends no request', async () => {
+    const claim = status.claimSubscriptionCreation.bind(status),
+      driver = driverDouble();
+    jest
+      .spyOn(status, 'claimSubscriptionCreation')
+      .mockImplementationOnce(async (...args) => {
+        await changeIdentity('clientState');
+        return claim(...args);
+      });
+    await service(driver, { incrementCounterBy: jest.fn() }).createSubscription(
+      idFor(kind),
+      fixture.workspaceId,
+    );
+    expect(driver.createSubscription).not.toHaveBeenCalled();
+    expect((await read(kind)).webhookSubscriptionClientState).toBe(
+      'replacement-state',
+    );
+  });
+  it('late create failure cannot reset or fail a newer pending claim', async () => {
+    const driver = driverDouble(),
+      error = new WebhookSubscriptionDriverException(
+        'delayed-create',
+        WebhookSubscriptionDriverExceptionCode.TEMPORARY_ERROR,
+      );
+    let before: Awaited<ReturnType<typeof read>>;
+    driver.createSubscription.mockImplementationOnce(async () => {
+      await changeIdentity('clientState');
+      before = await read(kind);
+      throw error;
+    });
+    await expect(
+      service(driver, { incrementCounterBy: jest.fn() }).createSubscription(
+        idFor(kind),
+        fixture.workspaceId,
+      ),
+    ).rejects.toBe(error);
+    expect(await read(kind)).toEqual(before!);
+  });
+  it('ordinary create failure expires its own new claim', async () => {
+    const driver = driverDouble();
+    driver.createSubscription.mockRejectedValueOnce(
+      new WebhookSubscriptionDriverException(
+        'permissions',
+        WebhookSubscriptionDriverExceptionCode.INSUFFICIENT_PERMISSIONS,
+      ),
+    );
+    await service(driver, { incrementCounterBy: jest.fn() }).createSubscription(
+      idFor(kind),
+      fixture.workspaceId,
+    );
+    const row = await read(kind);
+    expect(row.webhookSubscriptionStatus).toBe(
+      WebhookSubscriptionStatus.EXPIRED,
+    );
+    expect(row.webhookSubscriptionExpiresAt).toBeNull();
+    expect(row.webhookSubscriptionClientState).not.toBe('state');
+  });
+  it('null expected externalId is exact and never matches a newly assigned subscription', async () => {
+    await repoFor(kind).update(idFor(kind), {
+      webhookSubscriptionExternalId: null,
+      webhookSubscriptionClientState: null,
+    });
+    const snapshot = webhookSubscriptionSnapshot(await read(kind));
+    await changeIdentity('externalId');
+    expect(
+      await status.claimSubscriptionCreation(
+        kind,
+        idFor(kind),
+        fixture.workspaceId,
+        accountId,
+        snapshot,
+      ),
+    ).toBeNull();
+    expect((await read(kind)).webhookSubscriptionExternalId).toBe(
+      'replacement',
+    );
+  });
+  it.each(['reauthorizationRequired', 'subscriptionRemoved'] as const)(
+    'actual Microsoft %s notification retains authenticated snapshot across reparent',
+    async (lifecycleEvent) => {
+      await activate();
+      const snapshot = await read(kind),
+        driver = driverDouble(),
+        owner = service(driver, { incrementCounterBy: jest.fn() });
+      const dependencies = {
+        messageChannelRepository: {
+          find: async () => {
+            await changeIdentity('parent');
+            return [snapshot];
+          },
+        },
+        calendarChannelRepository: {
+          find: async () => {
+            await changeIdentity('parent');
+            return [snapshot];
+          },
+        },
+        messagingWebhookSubscriptionService: owner,
+        calendarWebhookSubscriptionService: owner,
+        webhookSyncTriggerService: {
+          triggerMessagingSync: jest.fn(),
+          triggerCalendarSync: jest.fn(),
+        },
+        metricsService: { incrementCounterBy: jest.fn() },
+        exceptionHandlerService: { captureExceptions: jest.fn() },
+        logger: { log: jest.fn(), warn: jest.fn(), error: jest.fn() },
+      };
+      const handler =
+        kind === WebhookSubscriptionChannelType.MESSAGING
+          ? makeService(
+              MicrosoftMessagingNotificationHandler.prototype,
+              dependencies,
+            )
+          : makeService(
+              MicrosoftCalendarNotificationHandler.prototype,
+              dependencies,
+            );
+      await handler.handle([
+        {
+          subscriptionId: 'old-subscription',
+          clientState: 'state',
+          lifecycleEvent,
+        } as never,
+      ]);
+      expect(driver.createSubscription).not.toHaveBeenCalled();
+      expect(driver.renewSubscription).not.toHaveBeenCalled();
+      expect((await read(kind)).webhookSubscriptionExternalId).toBe(
+        'old-subscription',
+      );
+    },
+  );
+  it('unknown pre-network admission commit stops renew and recovery', async () => {
+    const snapshot = await activate(),
+      driver = driverDouble();
+    const original = runtime.createQueryRunner.bind(runtime);
+    jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+      const runner = original(),
+        commit = runner.commitTransaction.bind(runner);
+      runner.commitTransaction = async () => {
+        await commit();
+        throw new Error('lost-admission-ack');
+      };
+      return runner;
+    });
+    await expect(
+      lifecycle(
+        service(driver, { incrementCounterBy: jest.fn() }),
+        'renew',
+        snapshot,
+      ),
+    ).rejects.toThrow('OMNI_CORE_TRANSACTION_OUTCOME_UNKNOWN');
+    expect(driver.renewSubscription).not.toHaveBeenCalled();
+    expect(driver.createSubscription).not.toHaveBeenCalled();
+  });
+  it.each(['success', 'temporary', 'permissions'] as const)(
+    'newer successful renewal survives older %s response',
+    async (outcome) => {
+      const snapshot = await activate(),
+        driver = driverDouble();
+      let renewed: Awaited<ReturnType<typeof read>>;
+      const newer = {
+        ...result,
+        externalSubscriptionId: 'old-subscription',
+        expiresAt: new Date('2031-01-01T00:00:00Z'),
+      };
+      driver.renewSubscription.mockImplementationOnce(async () => {
+        expect(
+          await status.markAsActive(
+            kind,
+            idFor(kind),
+            fixture.workspaceId,
+            newer,
+            accountId,
+            snapshot,
+          ),
+        ).toBe(true);
+        renewed = await read(kind);
+        if (outcome === 'success') return result;
+        throw new WebhookSubscriptionDriverException(
+          'older-renew',
+          outcome === 'temporary'
+            ? WebhookSubscriptionDriverExceptionCode.TEMPORARY_ERROR
+            : WebhookSubscriptionDriverExceptionCode.INSUFFICIENT_PERMISSIONS,
+        );
+      });
+      const pending = lifecycle(
+        service(driver, { incrementCounterBy: jest.fn() }),
+        'renew',
+        snapshot,
+      );
+      if (outcome === 'temporary')
+        await expect(pending).rejects.toThrow('older-renew');
+      else await pending;
+      expect(await read(kind)).toEqual(renewed!);
+    },
+  );
+  it.each(['create', 'renew', 'delete'] as const)(
+    'unknown OAuth commit during %s is not provider failure',
+    async (operation) => {
+      if (operation !== 'create') await activate();
+      const driver = driverDouble(),
+        metrics = { incrementCounterBy: jest.fn() },
+        unknown = new OmniCoreTransactionOutcomeUnknownError(
+          new Error('token-commit-ack'),
+        );
+      let before: Awaited<ReturnType<typeof read>>;
+      const fail = async () => {
+        before = await read(kind);
+        throw unknown;
+      };
+      driver.createSubscription.mockImplementationOnce(fail);
+      driver.renewSubscription.mockImplementationOnce(fail);
+      driver.deleteSubscription.mockImplementationOnce(fail);
+      const owner = service(driver, metrics);
+      const pending =
+        operation === 'create'
+          ? owner.createSubscription(idFor(kind), fixture.workspaceId)
+          : operation === 'delete'
+            ? owner.deleteSubscription(idFor(kind), fixture.workspaceId)
+            : lifecycle(owner, 'renew');
+      await expect(pending).rejects.toBe(unknown);
+      expect(await read(kind)).toEqual(before!);
+      expect(metrics.incrementCounterBy).not.toHaveBeenCalled();
+    },
+  );
+  it('direct exception handler propagates unknown commit without mutation', async () => {
+    const snapshot = await read(kind),
+      error = new OmniCoreTransactionOutcomeUnknownError(new Error('unknown'));
+    await expect(
+      new WebhookSubscriptionExceptionHandlerService(
+        status,
+      ).handleDriverException(
+        error,
+        'RENEW',
+        kind,
+        snapshot,
+        fixture.workspaceId,
+        webhookSubscriptionSnapshot(snapshot),
+      ),
+    ).rejects.toBe(error);
+    expect(await read(kind)).toEqual(snapshot);
+  });
+  it('unknown clear commit never triggers replacement creation', async () => {
+    const snapshot = await activate(),
+      driver = driverDouble(),
+      original = runtime.createQueryRunner.bind(runtime);
+    jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+      const runner = original(),
+        commit = runner.commitTransaction.bind(runner);
+      runner.commitTransaction = async () => {
+        await commit();
+        throw new Error('lost-clear-ack');
+      };
+      return runner;
+    });
+    await expect(
+      lifecycle(
+        service(driver, { incrementCounterBy: jest.fn() }),
+        'recreate',
+        snapshot,
+      ),
+    ).rejects.toThrow('OMNI_CORE_TRANSACTION_OUTCOME_UNKNOWN');
+    expect(driver.createSubscription).not.toHaveBeenCalled();
+    expect((await read(kind)).webhookSubscriptionExternalId).toBeNull();
+  });
   it.each(['delete', 'renew'] as const)(
     '%s response after reparent/enrollment cannot update status or report local success',
     async (operation) => {
@@ -524,13 +994,11 @@ describe.each(kinds)('actual provider late callbacks %s', (kind) => {
       .spyOn(status, 'claimSubscriptionCreation')
       .mockImplementationOnce(async (...args) => {
         const destination = randomUUID();
-        await runtime
-          .getRepository(ConnectedAccountEntity)
-          .insert({
-            id: destination,
-            workspaceId: fixture.workspaceId,
-            provider: ConnectedAccountProvider.GOOGLE,
-          });
+        await runtime.getRepository(ConnectedAccountEntity).insert({
+          id: destination,
+          workspaceId: fixture.workspaceId,
+          provider: ConnectedAccountProvider.GOOGLE,
+        });
         await repoFor(kind).update(idFor(kind), {
           connectedAccountId: destination,
         });
@@ -575,7 +1043,8 @@ describe.each(kinds)('actual provider late callbacks %s', (kind) => {
         runner.commitTransaction = async () => {
           await commit();
           committed++;
-          throw new Error('webhook-lost-commit-ack');
+          if (committed === (operation === 'renew' ? 2 : 1))
+            throw new Error('webhook-lost-commit-ack');
         };
         return runner;
       });
@@ -594,7 +1063,7 @@ describe.each(kinds)('actual provider late callbacks %s', (kind) => {
       await expect(pending).rejects.toThrow(
         'OMNI_CORE_TRANSACTION_OUTCOME_UNKNOWN',
       );
-      expect(committed).toBe(1);
+      expect(committed).toBe(operation === 'renew' ? 2 : 1);
       expect((await read(kind)).webhookSubscriptionStatus).toBe(
         operation === 'delete'
           ? WebhookSubscriptionStatus.EXPIRED

@@ -1,3 +1,4 @@
+import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -23,7 +24,13 @@ import { WorkspaceActivationService } from 'src/modules/connected-account/webhoo
 import {
   type WebhookSubscriptionContext,
   type WebhookSubscriptionResult,
+  type WebhookSubscriptionSnapshot,
 } from 'src/modules/connected-account/webhook-subscription-manager/types/webhook-subscription-driver.type';
+
+import {
+  matchesWebhookSubscription,
+  webhookSubscriptionSnapshot,
+} from 'src/modules/connected-account/webhook-subscription-manager/utils/webhook-subscription-snapshot';
 
 @Injectable()
 export class CalendarWebhookSubscriptionService {
@@ -42,7 +49,10 @@ export class CalendarWebhookSubscriptionService {
   async createSubscription(
     calendarChannelId: string,
     workspaceId: string,
+    expectedSubscription?: WebhookSubscriptionSnapshot,
   ): Promise<void> {
+    expectedSubscription =
+      expectedSubscription && webhookSubscriptionSnapshot(expectedSubscription);
     const isWorkspaceServiceable =
       await this.workspaceActivationService.isWorkspaceServiceable(workspaceId);
 
@@ -58,6 +68,13 @@ export class CalendarWebhookSubscriptionService {
     if (!isDefined(calendarChannel?.connectedAccount)) {
       return;
     }
+
+    if (
+      expectedSubscription &&
+      !matchesWebhookSubscription(calendarChannel, expectedSubscription)
+    )
+      return;
+    const snapshot = webhookSubscriptionSnapshot(calendarChannel);
 
     const { connectedAccount } = calendarChannel;
 
@@ -93,12 +110,18 @@ export class CalendarWebhookSubscriptionService {
         calendarChannel.id,
         workspaceId,
         calendarChannel.connectedAccountId,
+        snapshot,
       );
 
     if (!isDefined(clientState)) {
       return;
     }
 
+    const claimedSnapshot = {
+      ...snapshot,
+      webhookSubscriptionClientState: clientState,
+      webhookSubscriptionStatus: WebhookSubscriptionStatus.PENDING,
+    };
     let result: WebhookSubscriptionResult;
 
     try {
@@ -108,12 +131,15 @@ export class CalendarWebhookSubscriptionService {
         clientState,
       );
     } catch (error) {
-      await this.webhookSubscriptionStatusService.resetPendingSubscription(
-        WebhookSubscriptionChannelType.CALENDAR,
-        calendarChannel.id,
-        workspaceId,
-        calendarChannel.connectedAccountId,
-      );
+      if (error instanceof OmniCoreTransactionOutcomeUnknownError) throw error;
+      const reset =
+        await this.webhookSubscriptionStatusService.resetPendingSubscription(
+          WebhookSubscriptionChannelType.CALENDAR,
+          calendarChannel.id,
+          workspaceId,
+          calendarChannel.connectedAccountId,
+          claimedSnapshot,
+        );
 
       this.metricsService.incrementCounterBy({
         key: MetricsKeys.ConnectedAccountWebhookSubscriptionCreationFailed,
@@ -127,6 +153,9 @@ export class CalendarWebhookSubscriptionService {
         WebhookSubscriptionChannelType.CALENDAR,
         calendarChannel,
         workspaceId,
+        reset
+          ? { ...claimedSnapshot, webhookSubscriptionExpiresAt: null }
+          : claimedSnapshot,
       );
 
       return;
@@ -173,33 +202,50 @@ export class CalendarWebhookSubscriptionService {
     calendarChannelId,
     workspaceId,
     removedSubscriptionId,
+    expectedSubscription,
   }: {
     calendarChannelId: string;
     workspaceId: string;
     removedSubscriptionId: string | null;
+    expectedSubscription?: WebhookSubscriptionSnapshot;
   }): Promise<void> {
+    const channel = expectedSubscription
+      ? webhookSubscriptionSnapshot(expectedSubscription)
+      : await this.calendarChannelRepository.findOneBy({
+          id: calendarChannelId,
+          workspaceId,
+        });
+    if (!channel) return;
+    const snapshot = webhookSubscriptionSnapshot(channel);
     const cleared =
       await this.webhookSubscriptionStatusService.clearRemovedSubscription(
         WebhookSubscriptionChannelType.CALENDAR,
         calendarChannelId,
         workspaceId,
         removedSubscriptionId,
+        snapshot.connectedAccountId,
+        snapshot,
       );
-
-    if (!cleared) {
-      return;
-    }
-
-    await this.createSubscription(calendarChannelId, workspaceId);
+    if (!cleared) return;
+    await this.createSubscription(calendarChannelId, workspaceId, {
+      ...snapshot,
+      webhookSubscriptionExpiresAt: null,
+      webhookSubscriptionExternalId: null,
+      webhookSubscriptionStatus: WebhookSubscriptionStatus.FAILED,
+    });
   }
 
   async renewSubscription({
     calendarChannelId,
     workspaceId,
+    expectedSubscription,
   }: {
     calendarChannelId: string;
     workspaceId: string;
+    expectedSubscription?: WebhookSubscriptionSnapshot;
   }): Promise<void> {
+    expectedSubscription =
+      expectedSubscription && webhookSubscriptionSnapshot(expectedSubscription);
     const isWorkspaceServiceable =
       await this.workspaceActivationService.isWorkspaceServiceable(workspaceId);
 
@@ -217,10 +263,17 @@ export class CalendarWebhookSubscriptionService {
     }
 
     if (
+      expectedSubscription &&
+      !matchesWebhookSubscription(calendarChannel, expectedSubscription)
+    )
+      return;
+    const snapshot = webhookSubscriptionSnapshot(calendarChannel);
+
+    if (
       calendarChannel.webhookSubscriptionStatus !==
       WebhookSubscriptionStatus.ACTIVE
     ) {
-      await this.createSubscription(calendarChannelId, workspaceId);
+      await this.createSubscription(calendarChannelId, workspaceId, snapshot);
 
       return;
     }
@@ -243,11 +296,22 @@ export class CalendarWebhookSubscriptionService {
       connectedAccount.provider,
     );
 
+    if (
+      !(await this.webhookSubscriptionStatusService.isCurrentSubscription(
+        WebhookSubscriptionChannelType.CALENDAR,
+        calendarChannelId,
+        workspaceId,
+        snapshot,
+      ))
+    )
+      return;
+
     let result: WebhookSubscriptionResult;
 
     try {
       result = await driver.renewSubscription(this.toContext(calendarChannel));
     } catch (error) {
+      if (error instanceof OmniCoreTransactionOutcomeUnknownError) throw error;
       this.metricsService.incrementCounterBy({
         key: MetricsKeys.ConnectedAccountWebhookSubscriptionRenewalFailed,
         amount: 1,
@@ -261,10 +325,16 @@ export class CalendarWebhookSubscriptionService {
           WebhookSubscriptionChannelType.CALENDAR,
           calendarChannel,
           calendarChannel.workspaceId,
+          snapshot,
         );
 
       if (recoveryAction === 'RECREATE') {
-        await this.createSubscription(calendarChannelId, workspaceId);
+        await this.createSubscription(calendarChannelId, workspaceId, {
+          ...snapshot,
+          webhookSubscriptionExpiresAt: null,
+          webhookSubscriptionExternalId: null,
+          webhookSubscriptionStatus: WebhookSubscriptionStatus.FAILED,
+        });
       }
       return;
     }
@@ -275,6 +345,7 @@ export class CalendarWebhookSubscriptionService {
       workspaceId,
       result,
       calendarChannel.connectedAccountId,
+      snapshot,
     );
     if (!applied) return;
 
@@ -327,9 +398,11 @@ export class CalendarWebhookSubscriptionService {
       connectedAccount.provider,
     );
 
+    const snapshot = webhookSubscriptionSnapshot(calendarChannel);
     try {
       await driver.deleteSubscription(this.toContext(calendarChannel));
     } catch (error) {
+      if (error instanceof OmniCoreTransactionOutcomeUnknownError) throw error;
       if (
         error instanceof WebhookSubscriptionDriverException &&
         error.code === WebhookSubscriptionDriverExceptionCode.NOT_FOUND
@@ -351,6 +424,7 @@ export class CalendarWebhookSubscriptionService {
       calendarChannelId,
       workspaceId,
       calendarChannel.connectedAccountId,
+      snapshot,
     );
     if (!applied) return;
 

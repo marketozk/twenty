@@ -1,0 +1,16 @@
+{
+  "baseCommit": "dbfb8a8455bb050a7ac92c3744f1fc9a999e56cd",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/connected-account-sync-webhooks/drivers/microsoft/microsoft-calendar-notification.handler.ts": "1003839ec468ede2ff8bce583827be3c040c9550a7f8c704b36412e485a6a1f4",
+    "packages/twenty-server/src/modules/connected-account-sync-webhooks/drivers/microsoft/microsoft-messaging-notification.handler.ts": "39b9bde3c86be25a1b77a47c0075231922adbb5b09f4b3d51b002748f117333f",
+    "packages/twenty-server/src/modules/connected-account/webhook-subscription-manager/services/calendar-webhook-subscription.service.ts": "9fe9ce3c56243d1c485cbc46e982e5bedbd1a1cdc15876353d43b05e9b0ba311",
+    "packages/twenty-server/src/modules/connected-account/webhook-subscription-manager/services/messaging-webhook-subscription.service.ts": "de58c4384576363e4a8eb4e0cd087bad2844f550abc8b573114bb97244e5576f",
+    "packages/twenty-server/src/modules/connected-account/webhook-subscription-manager/services/webhook-subscription-exception-handler.service.ts": "b66facb27ce2271815d8ca9d08dbf76b031361ae12abaa6ed25baa56497df4bb",
+    "packages/twenty-server/src/modules/connected-account/webhook-subscription-manager/services/webhook-subscription-status.service.ts": "9cc7e2e6be9cdfb0802aaf083d365a6095e1fd872ad1123d734b544e2915f6dd",
+    "packages/twenty-server/src/modules/connected-account/webhook-subscription-manager/types/webhook-subscription-driver.type.ts": "0c1a9637fabb12272fdacf7519297b6c75f7a88f72ad3e188d4d66eae1ca1342",
+    "packages/twenty-server/test/fork-migration/omni-webhook-status.postgres-spec.ts": "bcf089d4f0f3abbe52898de9b70147b3860a46324d2301be6ee6d90b87eebc4f",
+    "packages/twenty-server/src/modules/connected-account/webhook-subscription-manager/utils/webhook-subscription-snapshot.ts": "ff1261f581950c8c976a1f0d54c6152a42d0dfead2a6acda88ccf6a5cc343046"
+  }
+}
