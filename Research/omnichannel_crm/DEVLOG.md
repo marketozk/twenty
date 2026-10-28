@@ -2226,3 +2226,5 @@ last full fork LOG067:2205/75. Scoped read-only review, no reviewer tests.
 Next: native result apply and cleanup, then fresh regression/acceptance.
 Demo/SaleBot unchanged, no Actions. Skills ai-dev-workflow, behavioral-guardrails,
 server-schrodinger; scoped read-only research/review.
+
+LOG-073 publication: code `a01939626bf9e9b72f151973410ea64aed8bf536` pushed; GitHub ref verified by API. Linear description/comment `22092ed5-291d-41a2-858e-18bd28fa2c6b` independently read back; all11 project states match. ROB-764 remains In Progress.
