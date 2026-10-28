@@ -1,0 +1,10 @@
+{
+  "baseCommit": "6dff1d0875e6f6b68a1185e68c0200c509626c9f",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/twenty-orm/workspace-orm.manager.ts": "315ba27242ec213861abf1a60c990c14653c806c83237f2782c2f3d22b663b46",
+    "packages/twenty-shared/src/application-runtime/index.ts": "5e2a396824e85acc9a060a21e946a1cb3c42323d2ae7922d4bb14b41c516c19b",
+    "packages/twenty-shared/src/application-runtime/StandardObjectUniversalIdentifiers.ts": "ba3e0824f8d33dde544f1ec8f3344e49f201dbacac52728098e486713c0e1d96",
+    "packages/twenty-shared/src/application-runtime/TwentyStandardApplicationUniversalIdentifier.ts": "5ed10a914ac1a9d3c9e68ca7897bf6ba6ffb01d9631af3842cb8c1a3f193a6b6"
+  },
+  "uploadedSourceHashesVerified": true
+}

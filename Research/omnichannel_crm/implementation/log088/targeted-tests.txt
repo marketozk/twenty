@@ -1,0 +1,8 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-parent-destroy.postgres-spec.ts (20.519 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-conversation-target.postgres-spec.ts (12.266 s)
+
+Test Suites: 2 passed, 2 total
+Tests:       69 passed, 69 total
+Snapshots:   0 total
+Time:        32.904 s
+Ran all test suites matching /omni-parent-destroy|omni-conversation-target/i.

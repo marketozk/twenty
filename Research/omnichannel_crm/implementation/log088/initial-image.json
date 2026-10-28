@@ -1,0 +1,7 @@
+{
+  "id": "sha256:a409b1a8649ef78197d96b1e37c4b3252a43a984d44fc85820ffc3956c71b957",
+  "revision": "6dff1d0875e6f6b68a1185e68c0200c509626c9f",
+  "entrypoint": [
+    "/app/omnichannel/entrypoint.sh"
+  ]
+}

@@ -1,6 +1,8 @@
 import { computeTableName } from 'src/engine/utils/compute-table-name.util';
-import { TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER } from 'twenty-shared/application/constants/TwentyStandardApplicationUniversalIdentifier';
-import { STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS } from 'twenty-shared/metadata/constants/standard-object-universal-identifiers.constant';
+import {
+  TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER,
+  STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS,
+} from 'twenty-shared/application-runtime';
 import {
   PermissionsException,
   PermissionsExceptionCode,

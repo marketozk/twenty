@@ -19,3 +19,5 @@ export type {
   CreditAvailability,
 } from './creditAvailabilityType';
 export { CREDIT_UNAVAILABLE_REASONS } from './creditAvailabilityType';
+export { STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS } from './StandardObjectUniversalIdentifiers';
+export { TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER } from './TwentyStandardApplicationUniversalIdentifier';

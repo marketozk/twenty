@@ -1,14 +1,12 @@
 # Текущее состояние Twenty CRM
 
-LOG-087 / ROB-764 In Progress: внутренний Person/Company destroy атомарно снимает
-identity/target связи, сохраняет историю, пишет административный audit и receipt.
-Повтор после удаления и потери COMMIT ACK проверяет актуальные права и прежний результат.
-209 tests/8 suites +26 guards =235 PASS;37 new PG cases. Differential typecheck 323 roots:187 baseline/187 current,0 new/changed-code. All nine migration sources unchanged.
-[Доказательства](implementation/log087/README.md). Последний полный fork regression: LOG082,2661 tests/83 suites.
-Необработанные native/custom FK приводят к полному отказу; generic delete не открыт.
-Далее актуальный startup/restart девяти миграций и полный fork regression для ROB-764.
-Полный native audit остаётся ROB-765, ACL/API — ROB-766, governed events — ROB-769.
-Демо прежнее, GitHub Actions не используется.
+LOG-088 / ROB-764 In Progress: реальный запуск нового образа выявил два импорта
+через закрытые package subpaths. Исправлены экспорты констант через узкий application-runtime.
+69 PostgreSQL tests/2 suites и26 guard/checksum tests проходят; typecheck189/189,0 новых.
+Полная пересборка, startup/restart и негативные runtime gates пока проверяются.
+Последний полный fork regression — LOG082:2661 tests/83 suites; LOG087:235 targeted+guard PASS.
+Демо прежнее; GitHub Actions не используется.
+[Доказательства и ограничения](implementation/log088/README.md).
 
 ## Предыдущая порция — LOG-022
 
