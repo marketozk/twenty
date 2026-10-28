@@ -12,6 +12,7 @@ export type CrmAuditPrincipal = {
 
 export type CrmAuditResourceKind =
   | 'userSession'
+  | 'refreshToken'
   | 'crmRecord'
   | 'crmFile'
   | 'omniAccountBinding'
@@ -46,6 +47,10 @@ export type CrmAuditSecurityDescriptor = {
   sessionOwner?: {
     userId: string;
     userWorkspaceId: string;
+    access: 'currentWorkspaceAdministration';
+  };
+  tokenOwner?: {
+    userId: string;
     access: 'currentWorkspaceAdministration';
   };
   objectMetadataId?: string;

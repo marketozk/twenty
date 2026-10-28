@@ -3406,3 +3406,19 @@ refresh token. Он не обещает family revocation уже выданны�
 998 tests/33 suites PASS (197.09s); 134 targeted/4 suites PASS. Прирост 20 PostgreSQL cases. 26 guards PASS; 10 migration checksums неизменны. Types 345/345 roots, 189/189 прежних диагностик, 0 новых/changed-code. 3 local/remote source hashes совпадают.
 
 LOG108 publication: 6fcc1feab00f83f88d652376ea5e3d4aacac4a9e pushed/API verified. ROB765 description and comment 9c6a82d9-67bd-4abc-a614-c6c966681729 independently read back; all 11 issue states match. Implementation continues.
+
+## LOG-109 — refresh logout security revoke и audit
+
+Реальный JWT/PG regression подтвердил renew после logout в grace. SignOut теперь
+сопоставляет verified subject с persisted owner/type, использует общий auth fence,
+сохраняет прежний timestamp/strong reason и добавляет security reason вместо rotation-only
+revokedAt. Same-owner SAVEPOINT audit не удерживает отзыв при audit failure.
+Read-only review нашёл deletedAt skip; удалён, actual-service regression добавлен.
+24 PG + 6 descriptor cases, включая обе очередности actual renew/logout, audit failure,
+corrupting trigger, savepoint recovery, lost ACK и privacy. [Доказательства](implementation/log109/README.md).
+
+ROB765 In Progress; следом workspace refresh issuance/rotation audit. Family revoke,
+workspace-null audit и stateless application tokens не объявлены закрытыми. Демо,
+образ, сообщения и Actions не затронуты.
+
+1028 tests/34 suites PASS (197.443s); 103 targeted/3 suites PASS. 24 PG + 6 descriptor cases. 26 guards PASS; 10 migration checksums неизменны. Types 344/345 roots, 189/189 прежних диагностик, 0 новых/changed-code. 4 local/remote source hashes совпадают.

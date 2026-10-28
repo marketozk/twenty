@@ -1,9 +1,12 @@
 import { randomUUID } from 'node:crypto';
+import { isUUID } from 'class-validator';
 
 import { Injectable, Logger } from '@nestjs/common';
 
 import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
 import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
+import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
+import { acquireUserAuthenticationLock } from 'src/engine/core-modules/auth/utils/acquire-user-authentication-lock.util';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { isNonEmptyString } from '@sniptt/guards';
@@ -713,20 +716,149 @@ export class UserSessionService {
 
     if (
       payload?.type !== JwtTokenTypeEnum.REFRESH ||
-      !isNonEmptyString(payload.jti)
+      !isNonEmptyString(payload.jti) ||
+      !isUUID(payload.jti) ||
+      !isNonEmptyString(payload.sub) ||
+      !isUUID(payload.sub) ||
+      (isDefined(payload.userId) &&
+        (!isNonEmptyString(payload.userId) ||
+          payload.userId.toLowerCase() !== payload.sub.toLowerCase()))
     ) {
       return;
     }
 
-    // Outside the catch: a storage failure leaves a usable refresh token behind, so it must surface.
-    await this.appTokenRepository.update(
-      {
-        id: payload.jti,
-        type: AppTokenType.RefreshToken,
-        revokedAt: IsNull(),
-      },
-      { revokedAt: new Date() },
-    );
+    if (this.appTokenRepository.manager.queryRunner)
+      throw new Error(
+        'Refresh revocation requires ownership of the core transaction',
+      );
+    const userId = payload.sub.toLowerCase(),
+      tokenId = payload.jti;
+    const initiatorMembershipId = payload.impersonatorUserWorkspaceId;
+    const operationId = randomUUID();
+    let auditLost = false;
+    try {
+      await runInCoreAuditTransaction(
+        this.appTokenRepository.manager.connection,
+        async (runner) => {
+          await acquireUserAuthenticationLock({
+            entityManager: runner.manager,
+            userId,
+            mode: 'exclusive',
+          });
+          const repository = runner.manager.getRepository(AppTokenEntity);
+          const before = await repository.findOne({
+            where: { id: tokenId, userId, type: AppTokenType.RefreshToken },
+            lock: { mode: 'pessimistic_write' },
+          });
+          if (
+            !before ||
+            (before.revokedAt && isDefined(before.context?.revokedReason))
+          )
+            return;
+          if (
+            before.context !== null &&
+            (typeof before.context !== 'object' ||
+              Array.isArray(before.context))
+          )
+            throw new Error('Refresh revocation context is invalid');
+          const revokedAt = before.revokedAt ?? new Date();
+          const revokedReason =
+            before.context?.revokedReason ??
+            UserSessionRevokedReason.UserSignOut;
+          const context = { ...before.context, revokedReason };
+          const result = await repository
+            .createQueryBuilder()
+            .update(AppTokenEntity)
+            .set({ revokedAt, context })
+            .where('id = :id', { id: before.id })
+            .returning(['id'])
+            .execute();
+          if (result.raw.length !== 1 || result.raw[0].id !== before.id)
+            throw new Error('Refresh revocation affected unexpected rows');
+          const validate = async () => {
+            const after = await repository.findOneBy({ id: before.id });
+            if (!after) throw new Error('Refresh revocation lost its target');
+            for (const [field, previous] of Object.entries(before)) {
+              if (field === 'updatedAt') continue;
+              const expected =
+                field === 'revokedAt'
+                  ? revokedAt
+                  : field === 'context'
+                    ? context
+                    : previous;
+              const actual = (after as unknown as Record<string, unknown>)[
+                field
+              ];
+              if (actual === undefined && expected === undefined) continue;
+              const normalize = (value: unknown) =>
+                value instanceof Date ? value.toISOString() : value;
+              if (
+                canonicalAuditJson(normalize(actual)) !==
+                canonicalAuditJson(normalize(expected))
+              )
+                throw new Error(
+                  'Refresh revocation persisted state does not match',
+                );
+            }
+          };
+          await validate();
+          // Credential revocation survives an unavailable audit, just like session logout.
+          await runner.query('SAVEPOINT refresh_revocation_audit');
+          try {
+            if (before.workspaceId) {
+              let initiator: { kind: 'coreUser'; id: string } | undefined;
+              if (initiatorMembershipId) {
+                const memberships: { userId: string }[] = await runner.query(
+                  'SELECT "userId" FROM core."userWorkspace" WHERE id=$1 AND "deletedAt" IS NULL',
+                  [initiatorMembershipId],
+                );
+                if (memberships.length !== 1)
+                  throw new Error('Refresh revocation initiator unavailable');
+                initiator = { kind: 'coreUser', id: memberships[0].userId };
+              }
+              const audit = new CrmAuditTransactionContext(runner, {
+                workspaceId: before.workspaceId,
+                operationId,
+                actor: { kind: 'coreUser', id: userId },
+                ...(initiator ? { initiator } : {}),
+              });
+              audit.record({
+                resourceKind: 'refreshToken',
+                resourceId: before.id,
+                action: 'update',
+                before: {
+                  revokedAt: before.revokedAt?.toISOString() ?? null,
+                  revokedReason: before.context?.revokedReason ?? null,
+                },
+                after: { revokedAt: revokedAt.toISOString(), revokedReason },
+                securityDescriptor: {
+                  resourceKind: 'refreshToken',
+                  resourceId: before.id,
+                  tokenOwner: {
+                    userId,
+                    access: 'currentWorkspaceAdministration',
+                  },
+                },
+              });
+              await audit.flush();
+            }
+            await validate();
+          } catch {
+            auditLost = true;
+            await runner.query(
+              'ROLLBACK TO SAVEPOINT refresh_revocation_audit',
+            );
+          }
+          await runner.query('RELEASE SAVEPOINT refresh_revocation_audit');
+          await validate();
+        },
+      );
+    } finally {
+      if (auditLost)
+        this.logger.error(
+          `REFRESH_REVOCATION_AUDIT_UNAVAILABLE operationId=${operationId}`,
+        );
+    }
   }
 
   private async revokeSessionEntity(

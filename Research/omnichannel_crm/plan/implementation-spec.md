@@ -885,3 +885,14 @@ parent IDs определяют child delete либо surviving SET_NULL, про
 не создают ложного эффекта. Child absence/full-column survivor postconditions обязательны.
 Audit delete/update используют прежний context; SQL cascade events/permissions не
 подменяются отдельными repository calls. Public DESTROY/MERGE и file cleanup owner открыты.
+
+LOG109: signOut security-revoke предъявленного refresh token использует verified
+subject/jti → persisted userId/type, exclusive user-auth fence → row lock → fresh
+snapshot. Existing revokedAt/reason сохраняются; отсутствие security reason заменяется
+USER_SIGN_OUT. DeletedAt не является признаком недействительного AppToken для текущих
+consumers, поэтому не исключает revoke. Strict core owner + audit SAVEPOINT сохраняет
+security action при недоступном журнале с явным сигналом; unrecoverable/unknown ошибки
+не скрываются. Resource refreshToken разрешает update с exact tokenOwner={userId,
+access:currentWorkspaceAdministration}; reason в allowlist, timestamp redacted,
+credential/context отсутствуют. Workspace-null audit остаётся за пределами coverage.
+Обе очередности renew/logout проверены; ранее выданный successor не считается revoked.

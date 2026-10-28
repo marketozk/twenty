@@ -1,0 +1,42 @@
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-refresh-logout.postgres-spec.ts
+  ✕ logout immediately prevents renewing the presented token inside the rotation grace period (71 ms)
+
+  ● logout immediately prevents renewing the presented token inside the rotation grace period
+
+    expect(received).rejects.toThrow()
+
+    Received promise resolved instead of rejected
+    Resolved to value: {"authProvider": undefined, "impersonatedUserWorkspaceId": undefined, "impersonatorUserWorkspaceId": undefined, "isImpersonating": undefined, "targetedTokenType": "ACCESS", "token": {"context": {"email": "private@example.test"}, "createdAt": 2026-10-28T20:43:03.422Z, "deletedAt": null, "expiresAt": 2026-10-28T21:43:03.417Z, "id": "c56584fb-da72-4325-9e84-6db49a724543", "revokedAt": 2026-10-28T20:43:03.447Z, "type": "REFRESH_TOKEN", "updatedAt": 2026-10-28T20:43:03.453Z, "user": undefined, "userId": "4912a726-18e3-42eb-8469-4d7775171774", "value": "private-token-value", "workspace": undefined, "workspaceId": "55859e8d-f878-4c0d-bdad-ad4329c13e37"}, "user": {"id": "4912a726-18e3-42eb-8469-4d7775171774"}}
+
+      227 |     { service, refresh } = services();
+      228 |   await service.signOut({ refreshToken: token });
+    > 229 |   await expect(refresh.verifyRefreshToken(token)).rejects.toThrow('revoked');
+          |         ^
+      230 |   expect((await tokens())[0].context?.revokedReason).toBe(
+      231 |     UserSessionRevokedReason.UserSignOut,
+      232 |   );
+
+      at expect (../../../tools/node_modules/@jest/expect/node_modules/expect/build/index.js:113:15)
+      at Object.expect (test/fork-migration/crm-audit-refresh-logout.postgres-spec.ts:229:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 total
+Snapshots:   0 total
+Time:        4.935 s
+Ran all test suites matching /crm-audit-refresh-logout/i.
+Traceback (most recent call last):
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log109-target.py", line 6, in <module>
+    m['node'](['/tools/node_modules/jest/bin/jest.js','--config','/source/packages/twenty-server/jest-fork-migration.config.mjs','--runInBand','--testPathPattern='+pattern],{'FORK_MIGRATION_TEST_URL':'postgres://test_owner:isolated-test-only@postgres/'+s['database']})
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log109-run.py", line 16, in node
+    return ssh(cmd+['--entrypoint','node','marketozk/twenty:log088-server-fixed',*args])
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log109-run.py", line 4, in ssh
+    def ssh(args,**kw):return call(['ssh',HOST,shlex.join(args)],**kw)
+                              ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log109-run.py", line 3, in call
+    def call(args,**kw):return subprocess.run(args,check=True,**kw)
+                               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['ssh', 'root@176.114.84.194', 'docker run --rm --user 0:0 --network twenty-rob764-3e371e20ab394c2b-net --memory 3g --cpus 2 -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source:/source:ro -v /opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools:/tools:ro -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/out:/out:rw -e NODE_PATH=/out/tools/node_modules:/tools/node_modules:/app/node_modules -e FORK_MIGRATION_TEST_URL=postgres://test_owner:isolated-test-only@postgres/twenty_rob764_test_3e371e20ab394c2b --entrypoint node marketozk/twenty:log088-server-fixed /tools/node_modules/jest/bin/jest.js --config /source/packages/twenty-server/jest-fork-migration.config.mjs --runInBand --testPathPattern=crm-audit-refresh-logout']' returned non-zero exit status 1.

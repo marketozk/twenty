@@ -26,6 +26,7 @@ const CATALOG: Record<
   CrmAuditResourceKind,
   { values: string[]; redacted: string[] }
 > = {
+  refreshToken: { values: ['revokedReason'], redacted: ['revokedAt'] },
   userSession: {
     values: ['authProvider', 'isImpersonating', 'origin', 'revokedReason'],
     redacted: ['expiresAt', 'createdAt', 'revokedAt'],
@@ -350,6 +351,35 @@ const descriptor = (
       );
     deletedRecord = { access: 'currentWorkspaceAdministration' };
   }
+  let tokenOwner: CrmAuditSecurityDescriptor['tokenOwner'];
+  if (
+    mutation.resourceKind === 'refreshToken' ||
+    source.tokenOwner !== undefined
+  ) {
+    const owner = source.tokenOwner;
+    if (
+      mutation.resourceKind !== 'refreshToken' ||
+      mutation.action !== 'update' ||
+      !owner ||
+      Object.keys(owner).sort().join(',') !== 'access,userId' ||
+      owner.access !== 'currentWorkspaceAdministration' ||
+      source.sessionOwner !== undefined ||
+      source.objectMetadataId !== undefined ||
+      source.fileParent !== undefined ||
+      source.bindingId !== undefined ||
+      source.conversationId !== undefined ||
+      source.queueId !== undefined ||
+      source.deletedParent !== undefined ||
+      source.deletedRecord !== undefined
+    )
+      throw new Error(
+        'Refresh token audit requires its exact administrative owner scope',
+      );
+    tokenOwner = {
+      userId: requireUuid(owner.userId),
+      access: 'currentWorkspaceAdministration',
+    };
+  }
   let sessionOwner: CrmAuditSecurityDescriptor['sessionOwner'];
   if (
     mutation.resourceKind === 'userSession' ||
@@ -497,6 +527,7 @@ const descriptor = (
   return {
     resourceKind: mutation.resourceKind,
     resourceId: requireUuid(mutation.resourceId),
+    ...(tokenOwner === undefined ? {} : { tokenOwner }),
     ...(sessionOwner === undefined ? {} : { sessionOwner }),
     ...(fileParent === undefined ? {} : { fileParent }),
     ...(deletedRecord === undefined ? {} : { deletedRecord }),

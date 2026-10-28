@@ -72,15 +72,17 @@ ROB765 остаётся In Progress. Единственная текущая т�
 | Internal hard-delete и direct covered SET_NULL; retained guards, actual effects | [LOG105](../implementation/log105/README.md), [LOG106](../implementation/log106/README.md) |
 | Guard неаудированных ON UPDATE effects: composite keys, timestamps, BEFORE triggers | [LOG107](../implementation/log107/README.md) |
 | Direct covered ON DELETE CASCADE с retained child guards и actual-effects audit | [LOG108](../implementation/log108/README.md) |
+| Refresh signOut: immediate security revoke, auth fence и security-first audit | [LOG109](../implementation/log109/README.md) |
 
 Открыто: остальные native/system writers и FK effects, real share writes, public
 DESTROY/MERGE, metadata/roles, общий denied/failed audit после rollback и health/alert.
-Session refresh/appToken/concurrent-sign-in fencing не объявлены покрытыми CREATE/revoke.
+LOG109 покрывает signOut предъявленного refresh token. Выпуск/rotation, family revoke,
+stateless application JWT и concurrent-sign-in fencing ещё не объявлены покрытыми.
 Просмотр/экспорт — ROB767 после ROB766; AI/workflow/connector добавляют свои события
 в ROB768/769. Полный HTTP/JWT и сборка/выкат изменений после LOG088 не выполнялись.
 
-Последние проверки: 998 tests/33 suites PASS (197.09s); 134 targeted/4 suites PASS. Прирост 20 PostgreSQL cases. 26 guards PASS; 10 migration checksums неизменны. Types 345/345 roots, 189/189 прежних диагностик, 0 новых/changed-code. 3 local/remote source hashes совпадают.
-Full-server typecheck не чистый. [Проверки LOG108](../implementation/log108/results.json).
+Последние проверки: 1028 tests/34 suites PASS (197.443s); 103 targeted/3 suites PASS. 24 PG + 6 descriptor cases. 26 guards PASS; 10 migration checksums неизменны. Types 344/345 roots, 189/189 прежних диагностик, 0 новых/changed-code. 4 local/remote source hashes совпадают.
+Full-server typecheck не чистый. [Проверки LOG109](../implementation/log109/results.json).
 
 Демо остаётся прежним. При будущем выкате migration10 writers останавливаются на
 время построения индекса. GitHub Actions не используется.
