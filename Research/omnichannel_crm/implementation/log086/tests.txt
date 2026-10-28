@@ -1,0 +1,18 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-conversation-target.postgres-spec.ts (17.695 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-detached-parent-delete.postgres-spec.ts (11.607 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-identity-person.postgres-spec.ts (9.541 s)
+[32m[Nest] 1  - [39m10/28/2026, 10:06:08 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 1 record(s) from person in workspace 138dc7eb-7d02-4475-8918-9f68d4a9b1d9[39m
+[32m[Nest] 1  - [39m10/28/2026, 10:06:08 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 1 record(s) from workspace 138dc7eb-7d02-4475-8918-9f68d4a9b1d9[39m
+[32m[Nest] 1  - [39m10/28/2026, 10:06:08 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 1 record(s) from messageParticipant in workspace 138dc7eb-7d02-4475-8918-9f68d4a9b1d9[39m
+[32m[Nest] 1  - [39m10/28/2026, 10:06:08 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 1 record(s) from workspace 138dc7eb-7d02-4475-8918-9f68d4a9b1d9[39m
+[32m[Nest] 1  - [39m10/28/2026, 10:06:08 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 1 record(s) from person in workspace 138dc7eb-7d02-4475-8918-9f68d4a9b1d9[39m
+[32m[Nest] 1  - [39m10/28/2026, 10:06:08 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 1 record(s) from workspace 138dc7eb-7d02-4475-8918-9f68d4a9b1d9[39m
+[32m[Nest] 1  - [39m10/28/2026, 10:06:08 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 0 record(s) from workspace 138dc7eb-7d02-4475-8918-9f68d4a9b1d9[39m
+[32m[Nest] 1  - [39m10/28/2026, 10:06:09 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 0 record(s) from workspace 138dc7eb-7d02-4475-8918-9f68d4a9b1d9[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-parent-lifecycle.postgres-spec.ts (8.192 s)
+
+Test Suites: 4 passed, 4 total
+Tests:       105 passed, 105 total
+Snapshots:   0 total
+Time:        47.167 s
+Ran all test suites matching /omni-detached-parent-delete|omni-parent-lifecycle|omni-conversation-target|omni-identity-person/i.

@@ -1,13 +1,13 @@
 # Технический план реализации CRM — v1
 
-LOG-085 / ROB-764 In Progress: opt-in live autoCreatePerson реализован внутренним
-same-transaction writer; default disabled, отдельный current create grant, безопасный
-import/live overlap и replay после unlink. Настройка изменяется через CAS/audit/event.
-170 tests/5 suites +26 guards =196 PASS;34 new PG cases. Differential typecheck 318 roots:187 baseline/187 current,0 new/changed-code. All nine migration sources unchanged.
-[Доказательства](../implementation/log085/README.md). Последний полный fork regression: LOG082,2661 tests/83 suites.
-Далее разрешённый Person/Company destroy с сохранением истории и актуальный
-startup/restart smoke девяти миграций; только затем итоговая приёмка ROB-764.
-Governed Person-created event/visibility остаётся ROB-769, публичный ACL/API — ROB-766.
+LOG-086 / ROB-764 In Progress: добавлена транзакционная граница удаления одной
+Person/Company после доказанного снятия omni-связей. Сохраняются история, author
+snapshots и tombstones; generic delete защищённых записей по-прежнему запрещён.
+231 tests/6 suites (105/4 +126/2) +26 guards =257 PASS;28 new PG cases. Differential typecheck 320 roots:187 baseline/187 current,0 new/changed-code. All nine migration sources unchanged.
+[Доказательства](../implementation/log086/README.md). Последний полный fork regression: LOG082,2661 tests/83 suites.
+Это подготовка: доменный destroy writer с общим audit/receipt ещё не реализован.
+Далее этот writer, актуальный startup/restart девяти миграций и полная приёмка ROB-764.
+Governed events остаются ROB-769, публичный ACL/API — ROB-766.
 Демо прежнее, GitHub Actions не используется.
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.

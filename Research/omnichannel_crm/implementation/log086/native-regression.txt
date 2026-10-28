@@ -1,0 +1,8 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-mutation-guard.postgres-spec.ts (20.95 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-ownership-log032.spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       126 passed, 126 total
+Snapshots:   0 total
+Time:        21.28 s
+Ran all test suites matching /omni-native-mutation-guard|omni-native-ownership-log032/i.

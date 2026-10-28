@@ -1,0 +1,43 @@
+{
+  "targetedJestTests": 231,
+  "targetedJestSuites": 6,
+  "separateJestRuns": [
+    {
+      "tests": 105,
+      "suites": 4
+    },
+    {
+      "tests": 126,
+      "suites": 2
+    }
+  ],
+  "allTestsPassed": true,
+  "fullSuiteRun": false,
+  "previousFullSuite": "LOG082: 2661/83",
+  "newRegressionCases": 28,
+  "guardTests": 20,
+  "checksumTests": 6,
+  "totalTests": 257,
+  "typecheckRootFiles": 320,
+  "baselineTypeDiagnostics": 187,
+  "currentTypeDiagnostics": 187,
+  "newTypeDiagnostics": 0,
+  "changedCodeTypeDiagnostics": 0,
+  "fullServerTypecheck": false,
+  "allNineMigrationSourcesUnchanged": true,
+  "migrationCount": 9,
+  "independentScopedReview": "Read-only review found no confirmed blocker. Requested concurrent rebind/target races were added in both lock orders and pass. This is only a transaction-bound deletion prerequisite; domain destroy/audit/receipt and current startup remain pending",
+  "existingUnboundIdentityApply": true,
+  "internalIdentityRegistrationImplemented": true,
+  "transportDiscoveryWired": false,
+  "identityLinkWriterImplemented": true,
+  "automaticTargetProjection": false,
+  "explicitTargetWriterImplemented": true,
+  "explicitPersonCreationImplemented": true,
+  "liveAutoPersonCreationImplemented": true,
+  "governedPersonCreatedEventImplemented": false,
+  "detachedParentCapabilityImplemented": true,
+  "domainParentDestroyImplemented": false,
+  "liveDemoChanged": false,
+  "githubActionsUsed": false
+}

@@ -1,0 +1,11 @@
+{
+  "baseCommit": "0237f3273b8357731fc2ccd7b84eb3b7f22da928",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/twenty-orm/repository/omni-native-write-capability.ts": "3024de1200b2e2e7365785fe865f3dcb22d79b730903d282c922f783be343c8e",
+    "packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts": "0d987257eaa93f1d8cf71f64e19ad46742d009a2f5dc7b046c0814919e479995",
+    "packages/twenty-server/src/modules/omnichannel/services/verify-omni-detached-parent.ts": "7c560324d5504435f360610d1b9e73791e4b43f7fcd5516754d09d0873663320",
+    "packages/twenty-server/test/fork-migration/omni-detached-parent-delete.postgres-spec.ts": "dabe7f176e78b9b15d5ee3287c8b167340e6583aa6ead1d125047f56893f9d51"
+  }
+}

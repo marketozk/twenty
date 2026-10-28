@@ -1,3 +1,9 @@
+import {
+  snapshotOmniDetachedParentManifest,
+  verifyOmniDetachedParent,
+  type OmniDetachedParentManifest,
+} from 'src/modules/omnichannel/services/verify-omni-detached-parent';
+import { type OmniNativeOwnershipQuery } from 'src/modules/omnichannel/services/lock-omni-native-ownership';
 import { type WorkspaceTransactionLifecycle } from 'src/engine/twenty-orm/types/workspace-transaction-lifecycle.type';
 
 type Transaction = {
@@ -13,6 +19,10 @@ const scopes = new WeakMap<object, Transaction>();
 const executors = new WeakMap<object, Transaction>();
 const repositories = new WeakMap<object, Transaction>();
 const grants = new WeakMap<object, Transaction>();
+const parentDeletes = new WeakMap<
+  object,
+  { transaction: Transaction; manifest: OmniDetachedParentManifest }
+>();
 
 export const registerOmniWorkspaceTransaction = (
   scope: object,
@@ -77,4 +87,51 @@ export const hasOmniNativeRepositoryWrite = (repository: object): boolean => {
   if (!transaction) return false;
   assertActive(transaction);
   return true;
+};
+
+export const withOmniDetachedParentDelete = async <T>(
+  scope: OmniNativeOwnershipQuery,
+  repository: unknown,
+  input: OmniDetachedParentManifest,
+  work: () => Promise<T>,
+): Promise<T> => {
+  const manifest = snapshotOmniDetachedParentManifest(input);
+  if (typeof work !== 'function')
+    throw new Error('OMNI_PARENT_DELETE_CALLBACK_REQUIRED');
+  assertIssuedOmniNativeScope(scope);
+  const transaction = assertActive(scopes.get(scope));
+  if (
+    typeof repository !== 'object' ||
+    repository === null ||
+    repositories.get(repository) !== transaction ||
+    transaction.workspaceId !== manifest.workspaceId
+  )
+    throw new Error('OMNI_FOREIGN_PARENT_DELETE_SCOPE');
+  if (parentDeletes.has(repository))
+    throw new Error('OMNI_PARENT_DELETE_ALREADY_GRANTED');
+  // Hold policy before the repository acquires parent rows; never upgrade after DELETE selection.
+  const states = await scope.executeRawQuery(
+    'SELECT id FROM core."omniWorkspacePolicyState" WHERE "workspaceId"=$1 FOR UPDATE',
+    [manifest.workspaceId],
+  );
+  if (states.length !== 1)
+    throw new Error('OMNI_PARENT_DELETE_POLICY_REQUIRED');
+  await verifyOmniDetachedParent(scope, manifest);
+  parentDeletes.set(repository, { transaction, manifest });
+  try {
+    return await work();
+  } finally {
+    parentDeletes.delete(repository);
+  }
+};
+
+export const getOmniDetachedParentDelete = (
+  repository: object,
+): OmniDetachedParentManifest | null => {
+  const grant = parentDeletes.get(repository);
+  if (!grant) return null;
+  assertActive(grant.transaction);
+  if (repositories.get(repository) !== grant.transaction)
+    throw new Error('OMNI_FOREIGN_PARENT_DELETE_SCOPE');
+  return grant.manifest;
 };

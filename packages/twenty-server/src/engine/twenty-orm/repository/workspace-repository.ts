@@ -83,6 +83,7 @@ import {
 import { type QueryExecutor } from 'src/engine/twenty-orm/executor/types/query-executor.type';
 import {
   hasOmniNativeRepositoryWrite,
+  getOmniDetachedParentDelete,
   registerOmniWorkspaceRepository,
 } from 'src/engine/twenty-orm/repository/omni-native-write-capability';
 import {
@@ -90,6 +91,7 @@ import {
   OMNI_NATIVE_REPOSITORIES,
 } from 'src/modules/omnichannel/services/assert-omni-native-write-unowned';
 import { findOmniProtectedParentIds } from 'src/modules/omnichannel/services/find-omni-protected-parent-ids';
+import { verifyOmniDetachedParent } from 'src/modules/omnichannel/services/verify-omni-detached-parent';
 import {
   buildInsertStatement,
   type InsertRowValue,
@@ -1776,22 +1778,32 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
           ...locked,
           ...locked.map((record) => ({ ...record, ...columns })),
         ]);
-      if (
-        kind === 'delete' &&
-        (
-          await findOmniProtectedParentIds(
-            {
-              executeRawQuery: (text, values = []) =>
-                this.options.executor.execute({ text, values }),
-            },
-            this.options.internalContext.workspaceId,
-            this.options.flatObjectMetadata.id,
-            this.options.tableShape.nameSingular,
-            locked.map((record) => record.id),
+      if (kind === 'delete') {
+        const query = {
+          executeRawQuery: (text: string, values: unknown[] = []) =>
+            this.options.executor.execute({ text, values }),
+        };
+        const protectedIds = await findOmniProtectedParentIds(
+          query,
+          this.options.internalContext.workspaceId,
+          this.options.flatObjectMetadata.id,
+          this.options.tableShape.nameSingular,
+          locked.map((record) => record.id),
+        );
+        if (protectedIds.size) {
+          const grant = getOmniDetachedParentDelete(this);
+          if (
+            !grant ||
+            grant.workspaceId !== this.options.internalContext.workspaceId ||
+            grant.objectMetadataId !== this.options.flatObjectMetadata.id ||
+            grant.name !== this.options.tableShape.nameSingular ||
+            locked.length !== 1 ||
+            locked[0].id !== grant.recordId
           )
-        ).size
-      )
-        throw new Error('OMNI_PARENT_DELETE_REQUIRES_DOMAIN_COMMAND');
+            throw new Error('OMNI_PARENT_DELETE_REQUIRES_DOMAIN_COMMAND');
+          await verifyOmniDetachedParent(query, grant);
+        }
+      }
       // Preserve the original predicate AND the captured set. Row-access clauses
       // group the entire user OR expression; a plain andWhere would not do so.
       const parameter = `omniNativeIds_${randomUUID().replaceAll('-', '')}`;
