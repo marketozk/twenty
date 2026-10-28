@@ -841,3 +841,16 @@ Admission повторяется после child prehook внутри registere
 отравляет общий owner даже при caller-caught error. Первоначально unsupported graph
 остаётся полностью legacy. Предел200/201 проверен admission-only; PG depth5/6,
 rollback и actual lost COMMIT ACK проверены отдельно.
+
+LOG105: internal nativeAudit delete допускает covered CRM records без входящих
+FK-ссылок и непустых FILES. Родители заблокированы FOR UPDATE; FK проверяются по
+pg_constraint, включая composite/soft-deleted references. Omni retained-parent
+guard сохраняется. Actual RETURNING определяет audit, affected и DESTROYED event
+IDs; внутренний id не расширяет caller selection. После DELETE проверяется
+отсутствие строк. Security descriptor crmRecord/delete требует objectMetadataId и
+deletedRecord={access:currentWorkspaceAdministration}; для других actions/kinds
+deletedRecord запрещён. Это сохранённое требование к будущему ROB767 reader, а не
+выдача прав. Create→delete в одной операции хранит оба action events.
+Public DESTROY/MERGE и FK side effects ещё не включены: blanket отказ обычных
+связанных записей изменил бы прежний контракт SET_NULL. Следом аудит actual SET_NULL
+для covered child records без замены PostgreSQL cascade ручным repository.update.

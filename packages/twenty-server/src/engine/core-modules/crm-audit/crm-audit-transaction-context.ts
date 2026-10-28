@@ -332,6 +332,24 @@ const descriptor = (
   const source = mutation.securityDescriptor;
   const nativeRecord = mutation.resourceKind === 'crmRecord';
   const nativeFile = mutation.resourceKind === 'crmFile';
+  let deletedRecord: CrmAuditSecurityDescriptor['deletedRecord'];
+  if (
+    (nativeRecord && mutation.action === 'delete') ||
+    source.deletedRecord !== undefined
+  ) {
+    const candidate = source.deletedRecord;
+    if (
+      !nativeRecord ||
+      mutation.action !== 'delete' ||
+      !candidate ||
+      Object.keys(candidate).join(',') !== 'access' ||
+      candidate.access !== 'currentWorkspaceAdministration'
+    )
+      throw new Error(
+        'Deleted CRM record requires current administrative scope',
+      );
+    deletedRecord = { access: 'currentWorkspaceAdministration' };
+  }
   let sessionOwner: CrmAuditSecurityDescriptor['sessionOwner'];
   if (
     mutation.resourceKind === 'userSession' ||
@@ -387,16 +405,14 @@ const descriptor = (
   if (nativeRecord || source.objectMetadataId !== undefined) {
     if (
       !nativeRecord ||
-      !['create', 'update'].includes(mutation.action) ||
+      !['create', 'update', 'delete'].includes(mutation.action) ||
       source.objectMetadataId === undefined ||
       source.bindingId !== undefined ||
       source.conversationId !== undefined ||
       source.queueId !== undefined ||
       source.deletedParent !== undefined
     ) {
-      throw new Error(
-        'Native CRM audit requires an exact object/record create or update scope',
-      );
+      throw new Error('Native CRM audit requires an exact object/record scope');
     }
     requireUuid(source.objectMetadataId);
   }
@@ -483,6 +499,7 @@ const descriptor = (
     resourceId: requireUuid(mutation.resourceId),
     ...(sessionOwner === undefined ? {} : { sessionOwner }),
     ...(fileParent === undefined ? {} : { fileParent }),
+    ...(deletedRecord === undefined ? {} : { deletedRecord }),
     ...(nativeRecord
       ? { objectMetadataId: requireUuid(source.objectMetadataId!) }
       : {}),

@@ -186,7 +186,7 @@ it('poisons a lifecycle owner when a later unsupported write is caught', async (
     run(async (scope) => {
       await repo(scope).softDelete(id);
       try {
-        await repo(scope).delete(secondId);
+        await repo(scope, 'task').delete(secondId);
       } catch {}
     }),
   ).rejects.toThrow('Native audit coverage excludes');

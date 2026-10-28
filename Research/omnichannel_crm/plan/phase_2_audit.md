@@ -165,3 +165,7 @@ audit и scoped reads атомарны; hooks после confirmed COMMIT. ROB76
 LOG104: bounded nested public CREATE/upsert standard/custom объектов использует единый native audit owner. Исходный граф и каждый child после prehook проверяются; unsupported/share/actor injection отравляет транзакцию. Права, FILES, actual rows и postcommit hooks сохраняются. Первоначально неподдерживаемый граф остаётся на прежнем пути целиком. ROB765 In Progress. [Доказательства](../implementation/log104/README.md).
 
 905 tests/30 suites PASS (174.02s); 109 targeted PASS. 17 новых cases: 15 PostgreSQL и 2 admission-only. 26 guards PASS; 10 migration checksums неизменны. Types 342/342 roots, 189/189 baseline diagnostics, 0 новых/changed-code. 4 local/remote source hashes совпадают.
+
+LOG105: internal nativeAudit hard-delete covered standard/custom records без входящих FK и непустых FILES. Actual RETURNING определяет audit/events, deletedRecord descriptor требует текущую администрацию. Проверены rollback, FK races, retained omni protection и lost actual ACK. Public DESTROY/MERGE пока не включены, ROB765 In Progress. [Доказательства](../implementation/log105/README.md).
+
+935 tests/31 suites PASS (180.29s); 124 targeted/4 suites PASS. 30 новых cases: 25 PostgreSQL и 5 descriptor-only. 26 guards PASS; 10 migration checksums неизменны. Types 341/343 roots, 189/189 прежних диагностик, 0 новых/changed-code. 9 local/remote source hashes совпадают.

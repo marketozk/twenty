@@ -3320,4 +3320,22 @@ STATUS переписан как актуальная сводка; истори
 
 Далее internal native hard-delete leaf records; retained omni guard сохраняется.
 Public DESTROY/MERGE, metadata/roles и negative audit/health ещё открыты.
-\nLOG104 publication: 22921c4ce2309cc253695c9a25d7b648dac69467 pushed/API verified. ROB765 description and comment 5d34c30b-72df-4c4d-be85-238c86b991a3 independently read back; all 11 issue states match. ROB765 remains In Progress; implementation continues.
+
+LOG104 publication: 22921c4ce2309cc253695c9a25d7b648dac69467 pushed/API verified. ROB765 description and comment 5d34c30b-72df-4c4d-be85-238c86b991a3 independently read back; all 11 issue states match. ROB765 remains In Progress; implementation continues.
+
+## LOG-105 — внутреннее удаление с атомарным аудитом
+
+LOG105: internal nativeAudit hard-delete covered standard/custom records без входящих FK и непустых FILES. Actual RETURNING определяет audit/events, deletedRecord descriptor требует текущую администрацию. Проверены rollback, FK races, retained omni protection и lost actual ACK. Public DESTROY/MERGE пока не включены, ROB765 In Progress.
+
+935 tests/31 suites PASS (180.29s); 124 targeted/4 suites PASS. 30 новых cases: 25 PostgreSQL и 5 descriptor-only. 26 guards PASS; 10 migration checksums неизменны. Types 341/343 roots, 189/189 прежних диагностик, 0 новых/changed-code. 9 local/remote source hashes совпадают.
+
+Read-only review нашёл ложный DESTROYED для trigger-skipped row; исправлен фильтр
+по actual RETURNING, добавлены skip/all-skip event/stock assertions. Второй проход
+подтвердил исправление без новых blockers. Оба FK race порядка проверены в PG,
+в delete-first наблюдался настоящий Lock wait, затем FK23503. Существующий omni
+retained guard сохраняется без нового domain grant.
+Fixture ошибки и пять тестовых type diagnostics исправлены по фактическим contracts.
+Полный HTTP/JWT и build/deploy не заявляются. [Доказательства](implementation/log105/README.md).
+
+Далее actual SET_NULL side effects для covered children; blanket public leaf gate
+не включаем, поскольку он запрещал бы прежнее удаление компании с контактами.

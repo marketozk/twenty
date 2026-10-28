@@ -170,7 +170,7 @@ export const assertNativeCrmAuditWriteSupported = (
 ): void => {
   if (!getNativeCrmAuditContext(executor)) return;
   if (
-    !['create', 'update', 'soft-delete', 'restore'].includes(kind) ||
+    !['create', 'update', 'soft-delete', 'restore', 'delete'].includes(kind) ||
     !isNativeCrmAuditMetadata(metadata, workspaceId) ||
     metadata.id !== shape.objectMetadataId ||
     metadata.nameSingular !== shape.nameSingular ||
@@ -327,6 +327,49 @@ export const recordNativeCrmCreates = async (
         resourceKind: 'crmRecord',
         resourceId: row.id,
         objectMetadataId: shape.objectMetadataId,
+      },
+    });
+  }
+};
+
+export const assertNativeCrmDeleteFilesEmpty = (
+  shape: WorkspaceTableShape,
+  before: ObjectRecord[],
+): void => {
+  for (const row of before)
+    for (const column of Object.values(shape.columnShapeByColumnName)) {
+      if (column.fieldMetadataType !== 'FILES') continue;
+      const value = JSON.parse(String(row[column.columnName]));
+      if (value !== null && (!Array.isArray(value) || value.length))
+        throw new Error('Native audit delete excludes linked files');
+    }
+};
+
+export const recordNativeCrmDeletes = async (
+  executor: QueryExecutor,
+  shape: WorkspaceTableShape,
+  before: ObjectRecord[],
+  actualIds: string[],
+): Promise<void> => {
+  const audit = getNativeCrmAuditContext(executor);
+  if (!audit || !actualIds.length) return;
+  if ((await readNativeCrmAuditRows(executor, shape, actualIds)).length)
+    throw new Error('Native audited row remains after delete');
+  for (const id of new Set(actualIds)) {
+    const previous = before.find((row) => row.id === id);
+    if (!previous)
+      throw new Error('Native audited delete has no locked before image');
+    audit.record({
+      resourceKind: 'crmRecord',
+      resourceId: id,
+      action: 'delete',
+      before: snapshot(shape, previous),
+      after: null,
+      securityDescriptor: {
+        resourceKind: 'crmRecord',
+        resourceId: id,
+        objectMetadataId: shape.objectMetadataId,
+        deletedRecord: { access: 'currentWorkspaceAdministration' },
       },
     });
   }

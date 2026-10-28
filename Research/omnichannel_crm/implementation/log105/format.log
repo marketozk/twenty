@@ -1,0 +1,12 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts 321ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts 9ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-record.ts 105ms (unchanged)
+../../../source/packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts 470ms (unchanged)
+../../../source/packages/twenty-server/src/modules/omnichannel/services/assert-no-unhandled-parent-references.ts 3ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-company.postgres-spec.ts 131ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-lifecycle.postgres-spec.ts 73ms (unchanged)
+../../../source/packages/twenty-server/src/engine/twenty-orm/utils/has-referencing-records.ts 5ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-delete.postgres-spec.ts 45ms
+
+{"formattedFiles": 9, "singleSshSession": true}

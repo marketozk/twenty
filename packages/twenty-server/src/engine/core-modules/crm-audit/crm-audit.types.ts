@@ -49,6 +49,7 @@ export type CrmAuditSecurityDescriptor = {
     access: 'currentWorkspaceAdministration';
   };
   objectMetadataId?: string;
+  deletedRecord?: { access: 'currentWorkspaceAdministration' };
   fileParent?: {
     objectMetadataId: string;
     recordId: string;

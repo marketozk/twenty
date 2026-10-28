@@ -9,7 +9,7 @@
 | Rollback при сбое журнала, безопасный unknown | LOG089 PG insert fault, actual lost COMMIT ACK, poisoned caller-caught failure |
 | Точный безопасный diff и aggregation | LOG089 first-before/last-after, custom NUMERIC >2^53, metadata IDs, без значений |
 | Повтор не скрывает вторую mutation | LOG089 sequential/concurrent reuse rejected; повтор после rollback допустим. General command replay ещё не реализован |
-| Общий native CRUD/merge/bulk и API | Частично: LOG094 автоматически включает public UPDATE Company/Person/Opportunity; LOG098 включает public soft-delete/restore и native custom lifecycle; LOG101 включает обычный public CREATE standard/custom; LOG102 добавляет flat public upsert; LOG103 добавляет public custom UPDATE/lifecycle; LOG104 — bounded nested CREATE/upsert. Real shares, physical delete/merge и остальные writers впереди. FILES same-executor — LOG092/093 |
+| Общий native CRUD/merge/bulk и API | Частично: LOG094 автоматически включает public UPDATE Company/Person/Opportunity; LOG098 включает public soft-delete/restore и native custom lifecycle; LOG101 включает обычный public CREATE standard/custom; LOG102 добавляет flat public upsert; LOG103 добавляет public custom UPDATE/lifecycle; LOG104 — bounded nested CREATE/upsert. LOG105 добавляет internal leaf hard-delete. Real shares, public DESTROY/MERGE, FK side effects и остальные writers впереди. FILES same-executor — LOG092/093 |
 | Metadata/role/session lifecycle | LOG099: workspace session CREATE через реальный core owner; LOG100: single/bulk revoke с audit SAVEPOINT и DB cache recheck; metadata и roles открыты |
 | Denied/failed audit и health | Omni уже имеет отдельные attempts; general native post-rollback/alert предстоит |
 | AI/workflow/connector события | Дополняются ROB768/769, текущий срез их не подключает |
@@ -103,3 +103,7 @@ audit и scoped reads атомарны; hooks после confirmed COMMIT. ROB76
 LOG104: bounded nested public CREATE/upsert standard/custom объектов использует единый native audit owner. Исходный граф и каждый child после prehook проверяются; unsupported/share/actor injection отравляет транзакцию. Права, FILES, actual rows и postcommit hooks сохраняются. Первоначально неподдерживаемый граф остаётся на прежнем пути целиком. ROB765 In Progress. [Доказательства](log104/README.md).
 
 905 tests/30 suites PASS (174.02s); 109 targeted PASS. 17 новых cases: 15 PostgreSQL и 2 admission-only. 26 guards PASS; 10 migration checksums неизменны. Types 342/342 roots, 189/189 baseline diagnostics, 0 новых/changed-code. 4 local/remote source hashes совпадают.
+
+LOG105: internal nativeAudit hard-delete covered standard/custom records без входящих FK и непустых FILES. Actual RETURNING определяет audit/events, deletedRecord descriptor требует текущую администрацию. Проверены rollback, FK races, retained omni protection и lost actual ACK. Public DESTROY/MERGE пока не включены, ROB765 In Progress. [Доказательства](log105/README.md).
+
+935 tests/31 suites PASS (180.29s); 124 targeted/4 suites PASS. 30 новых cases: 25 PostgreSQL и 5 descriptor-only. 26 guards PASS; 10 migration checksums неизменны. Types 341/343 roots, 189/189 прежних диагностик, 0 новых/changed-code. 9 local/remote source hashes совпадают.

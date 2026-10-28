@@ -4,9 +4,11 @@ import {
 } from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
 import {
   assertNativeCrmAuditWriteSupported,
+  assertNativeCrmDeleteFilesEmpty,
   captureNativeCrmAuditWriteData,
   readNativeCrmAuditRows,
   recordNativeCrmCreates,
+  recordNativeCrmDeletes,
   recordNativeCrmUpdates,
 } from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
 import { randomUUID } from 'node:crypto';
@@ -103,6 +105,7 @@ import {
   OMNI_NATIVE_REPOSITORIES,
 } from 'src/modules/omnichannel/services/assert-omni-native-write-unowned';
 import { findOmniProtectedParentIds } from 'src/modules/omnichannel/services/find-omni-protected-parent-ids';
+import { hasReferencingRecords } from 'src/engine/twenty-orm/utils/has-referencing-records';
 import { verifyOmniDetachedParent } from 'src/modules/omnichannel/services/verify-omni-detached-parent';
 import {
   buildInsertStatement,
@@ -2025,6 +2028,21 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
             throw new Error('OMNI_PARENT_DELETE_REQUIRES_DOMAIN_COMMAND');
           await verifyOmniDetachedParent(query, grant);
         }
+        if (nativeAudit) {
+          assertNativeCrmDeleteFilesEmpty(
+            this.options.tableShape,
+            nativeAuditBefore,
+          );
+          if (
+            await hasReferencingRecords(
+              query,
+              this.options.tableShape.schemaName,
+              this.options.tableShape.tableName,
+              locked.map((record) => record.id),
+            )
+          )
+            throw new Error('Native audit delete excludes referenced records');
+        }
       }
       // Preserve the original predicate AND the captured set. Row-access clauses
       // group the entire user OR expression; a plain andWhere would not do so.
@@ -2135,7 +2153,8 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
         : undefined;
 
     const lifecycleAudit =
-      nativeAudit && (kind === 'soft-delete' || kind === 'restore');
+      nativeAudit &&
+      (kind === 'soft-delete' || kind === 'restore' || kind === 'delete');
     const mutationResult = await this.morphAndExecute({
       selectQueryBuilder,
       kind,
@@ -2183,21 +2202,35 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
           )
         : recordsAfterWrite;
 
-    await recordNativeCrmUpdates(
-      this.options.executor,
-      this.options.tableShape,
-      nativeAuditBefore,
-      mutationResult.generatedMaps.map((row) => row.id),
-      new Set(
-        data?.updatedAt === undefined
-          ? []
-          : mutationResult.generatedMaps.map((row) => row.id),
-      ),
-      kind === 'soft-delete' || kind === 'restore' ? kind : undefined,
-    );
+    if (kind === 'delete')
+      await recordNativeCrmDeletes(
+        this.options.executor,
+        this.options.tableShape,
+        nativeAuditBefore,
+        mutationResult.generatedMaps.map((row) => row.id),
+      );
+    else
+      await recordNativeCrmUpdates(
+        this.options.executor,
+        this.options.tableShape,
+        nativeAuditBefore,
+        mutationResult.generatedMaps.map((row) => row.id),
+        new Set(
+          data?.updatedAt === undefined
+            ? []
+            : mutationResult.generatedMaps.map((row) => row.id),
+        ),
+        kind === 'soft-delete' || kind === 'restore' ? kind : undefined,
+      );
+    const deletedIds =
+      nativeAudit && kind === 'delete'
+        ? new Set(mutationResult.generatedMaps.map((row) => row.id))
+        : undefined;
     this.emitMutationEvent({
       kind,
-      recordsBefore,
+      recordsBefore: deletedIds
+        ? recordsBefore.filter((row) => deletedIds.has(row.id))
+        : recordsBefore,
       recordsAfter,
       inheritedReadabilityChildRecordsByRecordId,
     });
