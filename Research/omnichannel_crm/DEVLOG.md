@@ -2113,3 +2113,5 @@ fork LOG0672205/75. Next: direct import/onboarding admission, DB-precision run t
 provider stage/cursor and native apply. ROB764 remains In Progress, next stages
 Backlog; demo/SaleBot unchanged. No Actions. Skills ai-dev-workflow,
 behavioral-guardrails, server-schrodinger; scoped read-only review/research.
+
+LOG-070 publication: code `a458b5820c226d3b9fb8048f94a6e3428bac6e0d` pushed; GitHub ref verified by API. Linear description/comment `43009748-9290-4ae0-85a9-3771b463008c` independently read back; all11 project states match. ROB-764 remains In Progress.
