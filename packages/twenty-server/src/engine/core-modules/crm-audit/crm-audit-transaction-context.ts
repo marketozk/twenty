@@ -27,8 +27,8 @@ const CATALOG: Record<
   { values: string[]; redacted: string[] }
 > = {
   userSession: {
-    values: ['authProvider', 'isImpersonating', 'origin'],
-    redacted: ['expiresAt', 'createdAt'],
+    values: ['authProvider', 'isImpersonating', 'origin', 'revokedReason'],
+    redacted: ['expiresAt', 'createdAt', 'revokedAt'],
   },
   crmRecord: { values: [], redacted: [] },
   crmFile: { values: [], redacted: ['settings', 'deletedAt'] },
@@ -340,7 +340,7 @@ const descriptor = (
     const owner = source.sessionOwner;
     if (
       mutation.resourceKind !== 'userSession' ||
-      mutation.action !== 'create' ||
+      !['create', 'update'].includes(mutation.action) ||
       !owner ||
       Object.keys(owner).sort().join(',') !== 'access,userId,userWorkspaceId' ||
       owner.access !== 'currentWorkspaceAdministration' ||

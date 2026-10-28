@@ -1,0 +1,7 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts 319ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/impersonation/services/impersonation.service.ts 32ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/user-session/services/user-session.service.ts 154ms
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-user-session.postgres-spec.ts 198ms
+
+{"formattedFiles": 4, "singleSshSession": true}

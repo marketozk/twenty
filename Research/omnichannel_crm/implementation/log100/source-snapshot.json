@@ -1,0 +1,10 @@
+{
+  "baseCommit": "9537a50a450d802fd27dd0ae1459c59c1a78fea9",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "fa1b3f9fd2a3d9433113d8e2bb179e78a782dfb103d09813b266de49dcb937db",
+    "packages/twenty-server/src/engine/core-modules/impersonation/services/impersonation.service.ts": "bec4154b6c6aae8edfd02c1f4aed01c01d06af8e9ba8ca4854d14e2ef9e9d6b0",
+    "packages/twenty-server/src/engine/core-modules/user-session/services/user-session.service.ts": "7fa90b8b02e74a5be0257f5526b8343f70c659e9ad3747f6f3017a099b2b52f0",
+    "packages/twenty-server/test/fork-migration/crm-audit-user-session.postgres-spec.ts": "078e4c25ae8bd2b09a9a9e92ddd03688da9a5900674de4c19aa79bfc60271826"
+  },
+  "uploadedSourceHashesVerified": true
+}

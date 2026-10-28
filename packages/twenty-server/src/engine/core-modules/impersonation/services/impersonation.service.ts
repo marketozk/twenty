@@ -134,6 +134,7 @@ export class ImpersonationService {
       await this.userSessionService.revokeSessionByToken(
         presentedSessionToken,
         UserSessionRevokedReason.ImpersonationEnded,
+        impersonatorUserWorkspace.user.id,
       );
     }
 

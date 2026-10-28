@@ -11,7 +11,7 @@ import { addMilliseconds } from 'date-fns';
 import { type Request } from 'express';
 import ms from 'ms';
 import { isDefined } from 'twenty-shared/utils';
-import { IsNull, MoreThan, Repository } from 'typeorm';
+import { In, IsNull, MoreThan, Repository } from 'typeorm';
 
 import {
   AppTokenEntity,
@@ -174,6 +174,7 @@ export class UserSessionService {
         await this.revokeSessionByToken(
           presentedSessionToken,
           UserSessionRevokedReason.Superseded,
+          session.userId,
         );
       } catch (error) {
         // The handoff already succeeded; a cleanup failure must not turn it into another logout.
@@ -507,6 +508,10 @@ export class UserSessionService {
       }
 
       await this.touchSessionIfDue(tokenHash, cachedSession);
+      await this.assertNotRevokedAfterCaching(
+        cachedSession.sessionId,
+        tokenHash,
+      );
 
       return this.toResolvedSession(cachedSession);
     }
@@ -600,6 +605,7 @@ export class UserSessionService {
   async revokeSessionByToken(
     sessionToken: string,
     reason: UserSessionRevokedReason,
+    actingUserId?: string,
   ): Promise<boolean> {
     const session = await this.findSessionByToken(sessionToken);
 
@@ -607,7 +613,16 @@ export class UserSessionService {
       return false;
     }
 
-    return await this.revokeSessionEntity(session, reason);
+    return await this.revokeSessionEntity(
+      session,
+      reason,
+      actingUserId ?? session.userId,
+      actingUserId === undefined &&
+        session.isImpersonating &&
+        reason === UserSessionRevokedReason.UserSignOut
+        ? (session.impersonatorUserWorkspaceId ?? undefined)
+        : undefined,
+    );
   }
 
   async revokeSessionByIdForUserWorkspace({
@@ -649,47 +664,14 @@ export class UserSessionService {
     reason: UserSessionRevokedReason;
     exceptSessionId?: string;
   }): Promise<number> {
-    // Narrows but does not close the race: a sign-in committing after this snapshot survives.
-    const revokingQuery = this.userSessionRepository
-      .createQueryBuilder()
-      .update(UserSessionEntity)
-      .set({ revokedAt: new Date(), revokedReason: reason })
-      .where('"userId" = :userId', { userId })
-      .andWhere('"revokedAt" IS NULL');
-
-    if (isDefined(workspaceId)) {
-      revokingQuery.andWhere('"workspaceId" = :workspaceId', { workspaceId });
-    }
-
-    if (isDefined(exceptSessionId)) {
-      revokingQuery.andWhere('"id" != :exceptSessionId', { exceptSessionId });
-    }
-
-    const { raw } = await revokingQuery
-      .returning(['id', 'tokenHash', 'userId', 'workspaceId', 'authProvider'])
-      .execute();
-
-    const revokedSessions = raw as Pick<
-      UserSessionEntity,
-      'id' | 'tokenHash' | 'userId' | 'workspaceId' | 'authProvider'
-    >[];
-
-    if (revokedSessions.length === 0) {
-      return 0;
-    }
-
-    for (const revokedSession of revokedSessions) {
-      this.emitAuthSessionEvent(
-        revokedSession as UserSessionEntity,
-        'session_revoked',
-      );
-    }
-
-    await this.cacheStorageService.mdel(
-      revokedSessions.map((revokedSession) => revokedSession.tokenHash),
-    );
-
-    return revokedSessions.length;
+    const revoked = await this.revokeSessionsWithAudit({
+      userId,
+      workspaceId,
+      reason,
+      exceptSessionId,
+      actingUserId: userId,
+    });
+    return revoked.length;
   }
 
   async signOut({
@@ -750,26 +732,203 @@ export class UserSessionService {
   private async revokeSessionEntity(
     session: UserSessionEntity,
     reason: UserSessionRevokedReason,
+    actingUserId = session.userId,
+    initiatorMembershipId?: string,
   ): Promise<boolean> {
-    const { affected } = await this.userSessionRepository.update(
-      { id: session.id, revokedAt: IsNull() },
-      { revokedAt: new Date(), revokedReason: reason },
-    );
+    const revoked = await this.revokeSessionsWithAudit({
+      sessionId: session.id,
+      reason,
+      actingUserId,
+      initiatorMembershipId,
+    });
+    return revoked.length === 1;
+  }
 
-    await this.cacheStorageService.del(session.tokenHash);
+  private async revokeSessionsWithAudit(input: {
+    sessionId?: string;
+    userId?: string;
+    workspaceId?: string;
+    exceptSessionId?: string;
+    actingUserId: string;
+    initiatorMembershipId?: string;
+    reason: UserSessionRevokedReason;
+  }): Promise<UserSessionEntity[]> {
+    input = { ...input };
+    if (this.userSessionRepository.manager.queryRunner)
+      throw new Error(
+        'Session revocation requires ownership of the core transaction',
+      );
+    const operationId = randomUUID();
+    const cacheKeys: string[] = [];
+    let auditLost = false;
+    let revoked: UserSessionEntity[];
+    try {
+      revoked = await runInCoreAuditTransaction(
+        this.userSessionRepository.manager.connection,
+        async (runner) => {
+          const repository = runner.manager.getRepository(UserSessionEntity);
+          const query = repository
+            .createQueryBuilder('session')
+            .where('session."revokedAt" IS NULL')
+            .orderBy('session.id', 'ASC')
+            .setLock('pessimistic_write');
+          if (isDefined(input.sessionId))
+            query.andWhere('session.id = :sessionId', {
+              sessionId: input.sessionId,
+            });
+          if (isDefined(input.userId))
+            query.andWhere('session."userId" = :userId', {
+              userId: input.userId,
+            });
+          if (isDefined(input.workspaceId))
+            query.andWhere('session."workspaceId" = :workspaceId', {
+              workspaceId: input.workspaceId,
+            });
+          if (isDefined(input.exceptSessionId))
+            query.andWhere('session.id != :exceptSessionId', {
+              exceptSessionId: input.exceptSessionId,
+            });
+          if (!isDefined(input.sessionId) && !isDefined(input.userId))
+            throw new Error('Session revocation requires a bounded target');
+          const before = await query.getMany();
+          cacheKeys.push(...before.map((row) => row.tokenHash));
+          if (!before.length) return [];
+          const revokedAt = new Date();
+          const result = await repository
+            .createQueryBuilder()
+            .update(UserSessionEntity)
+            .set({ revokedAt, revokedReason: input.reason })
+            .whereInIds(before.map((row) => row.id))
+            .andWhere('"revokedAt" IS NULL')
+            .returning(['id'])
+            .execute();
+          const actualIds: string[] = result.raw.map(
+            (row: { id: string }) => row.id,
+          );
+          if (
+            actualIds.length !== before.length ||
+            before.some((row) => !actualIds.includes(row.id))
+          )
+            throw new Error('Session revocation affected unexpected rows');
+          const readAndValidate = async () => {
+            const after = await repository.findBy({ id: In(actualIds) });
+            if (after.length !== before.length)
+              throw new Error('Session revocation lost its target');
+            for (const row of after) {
+              const old = before.find((item) => item.id === row.id)!;
+              for (const [field, previous] of Object.entries(old)) {
+                if (['revokedAt', 'revokedReason', 'updatedAt'].includes(field))
+                  continue;
+                const actual = (row as unknown as Record<string, unknown>)[
+                  field
+                ];
+                if (
+                  previous instanceof Date
+                    ? !(actual instanceof Date) ||
+                      actual.getTime() !== previous.getTime()
+                    : actual !== previous
+                )
+                  throw new Error(
+                    'Session revocation changed an unrelated persisted field',
+                  );
+              }
 
-    const wasRevoked = affected === 1;
-
-    if (wasRevoked) {
+              if (
+                row.revokedAt?.getTime() !== revokedAt.getTime() ||
+                row.revokedReason !== input.reason ||
+                row.tokenHash !== old.tokenHash ||
+                row.userId !== old.userId ||
+                row.workspaceId !== old.workspaceId ||
+                row.userWorkspaceId !== old.userWorkspaceId
+              )
+                throw new Error(
+                  'Session revocation persisted state does not match',
+                );
+            }
+            return after;
+          };
+          await readAndValidate();
+          await runner.query('SAVEPOINT session_revocation_audit');
+          try {
+            let initiator: { kind: 'coreUser'; id: string } | undefined;
+            if (input.initiatorMembershipId) {
+              const memberships: { userId: string }[] = await runner.query(
+                'SELECT "userId" FROM core."userWorkspace" WHERE id=$1 AND "deletedAt" IS NULL',
+                [input.initiatorMembershipId],
+              );
+              if (memberships.length !== 1)
+                throw new Error('Session revocation initiator unavailable');
+              initiator = { kind: 'coreUser', id: memberships[0].userId };
+            }
+            const contexts = new Map<string, CrmAuditTransactionContext>();
+            for (const row of before) {
+              if (!row.workspaceId) continue;
+              let context = contexts.get(row.workspaceId);
+              if (!context) {
+                context = new CrmAuditTransactionContext(runner, {
+                  workspaceId: row.workspaceId,
+                  operationId,
+                  actor: { kind: 'coreUser', id: input.actingUserId },
+                  ...(initiator ? { initiator } : {}),
+                });
+                contexts.set(row.workspaceId, context);
+              }
+              context.record({
+                resourceKind: 'userSession',
+                resourceId: row.id,
+                action: 'update',
+                before: { revokedAt: null, revokedReason: row.revokedReason },
+                after: {
+                  revokedAt: revokedAt.toISOString(),
+                  revokedReason: input.reason,
+                },
+                securityDescriptor: {
+                  resourceKind: 'userSession',
+                  resourceId: row.id,
+                  sessionOwner: {
+                    userId: row.userId,
+                    userWorkspaceId: row.userWorkspaceId!,
+                    access: 'currentWorkspaceAdministration',
+                  },
+                },
+              });
+            }
+            for (const context of contexts.values()) await context.flush();
+            await readAndValidate();
+          } catch {
+            auditLost = true;
+            await runner.query(
+              'ROLLBACK TO SAVEPOINT session_revocation_audit',
+            );
+          }
+          await runner.query('RELEASE SAVEPOINT session_revocation_audit');
+          return await readAndValidate();
+        },
+      );
+    } finally {
+      if (auditLost)
+        this.logger.error(
+          `SESSION_REVOCATION_AUDIT_UNAVAILABLE operationId=${operationId}`,
+        );
+      if (cacheKeys.length) {
+        try {
+          await this.cacheStorageService.mdel(cacheKeys);
+        } catch {
+          this.logger.error(
+            `SESSION_REVOCATION_CACHE_INVALIDATION_FAILED operationId=${operationId}`,
+          );
+        }
+      }
+    }
+    for (const session of revoked) {
       this.emitAuthSessionEvent(
         session,
-        reason === UserSessionRevokedReason.UserSignOut
+        input.reason === UserSessionRevokedReason.UserSignOut
           ? 'user_signed_out'
           : 'session_revoked',
       );
     }
-
-    return wasRevoked;
+    return revoked;
   }
 
   private isSessionActive(session: UserSessionEntity): boolean {

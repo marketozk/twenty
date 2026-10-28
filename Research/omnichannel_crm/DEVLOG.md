@@ -3210,3 +3210,23 @@ roles, negative audit/health ещё открыты. Demo/Actions/внешние 
 LOG099 publication: `01f8718b538eb6d29d765dcc2a6a8f6f26619eee` pushed/API verified.
 ROB765 description and comment `4fd700de-3925-4477-b9da-f9ad595cdaaf` independently
 read back; all 11 states match. ROB765 remains In Progress; implementation continues.
+
+## LOG-100 — безопасный отзыв сессий и cache recheck
+
+Single/bulk revoke — strict core transaction, ordered locks, actual UPDATE IDs,
+SAVEPOINT для audit после revoke. Audit failure/corruption откатывает только audit
+portion; явный audit loss alert. Cache eviction в finally, cached authentication
+проверяет authoritative DB revocation. Current server actor, supersede/impersonation
+attribution, filters и остальные persisted fields сохранены.
+
+835 tests/30 suites PASS, 15 новых PG cases, 43 targeted. 26 guards PASS, 10 migration checksums неизменны. Types: все изменённые server roots включены явно, 341/341 roots, 189/189 baseline diagnostics, 0 новых/changed. 4 source hashes совпадают.
+
+Read-only review исправления: неполный postcondition других колонок и truthy scope
+filters. Добавлены реальный audit fault/trigger corruption, stale cache, concurrent
+revoke, savepoint recovery failure, lost actual COMMIT ACK и event failure tests.
+Обе проверки типов прошли; финальная расширяет roots на все изменённые server files.
+[Доказательства](implementation/log100/README.md).
+
+ROB765 In Progress. Далее public CREATE с сохранением sharing/nested contracts;
+refresh-token/global-session audit, physical delete/merge, metadata/roles и negative
+audit ещё открыты. Образ/демо, GitHub Actions и внешние сообщения не затронуты.

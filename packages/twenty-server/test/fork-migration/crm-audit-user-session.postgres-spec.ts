@@ -1,3 +1,5 @@
+import { Logger } from '@nestjs/common';
+import { UserSessionRevokedReason } from 'src/engine/core-modules/user-session/types/user-session-revoked-reason.type';
 import { randomUUID } from 'node:crypto';
 import { type Request } from 'express';
 import { DataSource } from 'typeorm';
@@ -126,10 +128,16 @@ const makeService = () => {
   const decode = jest
     .fn()
     .mockReturnValue({ ...input(), type: 'ACCESS', sub: userId });
+  const cache = {
+    get: jest.fn(),
+    set: jest.fn(),
+    del: jest.fn(),
+    mdel: jest.fn(),
+  };
   const service = new UserSessionService(
     runtime.getRepository(UserSessionEntity),
     {} as never,
-    { get: jest.fn(), set: jest.fn(), del: jest.fn() } as never,
+    cache as never,
     { get: jest.fn().mockReturnValue('7d') } as never,
     { decode } as never,
     {
@@ -140,7 +148,7 @@ const makeService = () => {
       attachSessionTokenToResponse: attach,
     } as never,
   );
-  return { service, event, attach, decode };
+  return { service, event, attach, decode, cache };
 };
 const issue = (service: UserSessionService) =>
   service.issueSessionForTokenPair({
@@ -593,5 +601,303 @@ describe('strict TypeORM core transaction owner', () => {
         await runner.query('SELECT txid_current()::text AS id'),
       ).toHaveLength(1);
     });
+  });
+});
+
+describe('security-first session revocation audit', () => {
+  it('evicts cache on lost actual revoke COMMIT acknowledgement without publishing success', async () => {
+    const { service, cache, event } = makeService();
+    const created = await service.createSession(input());
+    event.mockClear();
+    const create = runtime.createQueryRunner.bind(runtime);
+    jest.spyOn(runtime, 'createQueryRunner').mockImplementation((mode) => {
+      const runner = create(mode);
+      const connect = runner.connect.bind(runner);
+      let patched = false;
+      jest.spyOn(runner, 'connect').mockImplementation(async () => {
+        const client = await connect();
+        if (!patched) {
+          patched = true;
+          const query = client.query.bind(client);
+          client.query = async (sql: string, ...args: unknown[]) => {
+            const result = await query(sql, ...args);
+            if (sql === 'COMMIT') throw new Error('revoke commit ack lost');
+            return result;
+          };
+        }
+        return client;
+      });
+      return runner;
+    });
+    await expect(
+      service.revokeSessionByToken(
+        created.sessionToken,
+        UserSessionRevokedReason.UserSignOut,
+      ),
+    ).rejects.toMatchObject({ phase: 'commit' });
+    expect((await sessions())[0].revokedAt).not.toBeNull();
+    expect(await audits()).toHaveLength(2);
+    expect(cache.mdel).toHaveBeenCalled();
+    expect(event).not.toHaveBeenCalled();
+  });
+
+  it.each(['workspaceId', 'exceptSessionId'] as const)(
+    'does not widen a malformed %s filter',
+    async (field) => {
+      const { service } = makeService();
+      await service.createSession(input());
+      await expect(
+        service.revokeAllSessionsForUser({
+          userId,
+          reason: UserSessionRevokedReason.UserRevoked,
+          [field]: '',
+        }),
+      ).rejects.toThrow();
+      expect((await sessions())[0].revokedAt).toBeNull();
+    },
+  );
+  it('rolls back unrelated expiry corruption by an audit trigger', async () => {
+    const { service } = makeService();
+    const created = await service.createSession(input());
+    await owner.query(`CREATE FUNCTION crm_audit.reject_session_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN UPDATE core."userSession" SET "expiresAt"=now()+interval '100 years' WHERE id=NEW."resourceId"::uuid;RETURN NEW;END $$;
+      CREATE TRIGGER fail_session_audit AFTER INSERT ON crm_audit."crmAuditEntry" FOR EACH ROW EXECUTE FUNCTION crm_audit.reject_session_audit()`);
+    jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+    await service.revokeSessionByToken(
+      created.sessionToken,
+      UserSessionRevokedReason.UserSignOut,
+    );
+    const row = (await sessions())[0];
+    expect(row.revokedAt).not.toBeNull();
+    expect(row.expiresAt.getTime()).toBe(created.session.expiresAt.getTime());
+    expect(await audits()).toHaveLength(1);
+  });
+
+  it('keeps current impersonation initiator for credential sign-out', async () => {
+    const { service } = makeService();
+    const created = await service.createSession(
+      input({
+        isImpersonating: true,
+        authProvider: AuthProviderEnum.Impersonation,
+        impersonatorUserWorkspaceId: initiatorMembershipId,
+        impersonatedUserWorkspaceId: userWorkspaceId,
+      }),
+    );
+    await service.revokeSessionByToken(
+      created.sessionToken,
+      UserSessionRevokedReason.UserSignOut,
+    );
+    expect(
+      (await audits()).find(
+        (row: { action: string }) => row.action === 'update',
+      ),
+    ).toMatchObject({
+      actor: { kind: 'coreUser', id: userId },
+      initiator: { kind: 'coreUser', id: initiatingUserId },
+    });
+  });
+  it('rolls back a corrupting audit trigger while preserving the revoke', async () => {
+    const { service } = makeService();
+    const created = await service.createSession(input());
+    await owner.query(`CREATE FUNCTION crm_audit.reject_session_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN UPDATE core."userSession" SET "revokedAt"=NULL WHERE id=NEW."resourceId"::uuid;RETURN NEW;END $$;
+      CREATE TRIGGER fail_session_audit AFTER INSERT ON crm_audit."crmAuditEntry" FOR EACH ROW EXECUTE FUNCTION crm_audit.reject_session_audit()`);
+    jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+    await service.revokeSessionByToken(
+      created.sessionToken,
+      UserSessionRevokedReason.UserSignOut,
+    );
+    expect((await sessions())[0].revokedAt).not.toBeNull();
+    expect(await audits()).toHaveLength(1);
+  });
+  it('does not report success when savepoint recovery fails', async () => {
+    const { service, cache } = makeService();
+    const created = await service.createSession(input());
+    await auditFault();
+    const create = runtime.createQueryRunner.bind(runtime);
+    jest.spyOn(runtime, 'createQueryRunner').mockImplementation((mode) => {
+      const runner = create(mode);
+      const query = runner.query.bind(runner);
+      runner.query = async (
+        sql: string,
+        params?: unknown[],
+        structured?: true,
+      ) => {
+        if (sql === 'ROLLBACK TO SAVEPOINT session_revocation_audit')
+          throw new Error('savepoint recovery failed');
+        return structured ? query(sql, params, true) : query(sql, params);
+      };
+      return runner;
+    });
+    jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+    await expect(
+      service.revokeSessionByToken(
+        created.sessionToken,
+        UserSessionRevokedReason.UserSignOut,
+      ),
+    ).rejects.toThrow('savepoint recovery failed');
+    expect((await sessions())[0].revokedAt).toBeNull();
+    expect(cache.mdel).toHaveBeenCalled();
+  });
+  it('evicts cached sessions even when the legacy event hook throws', async () => {
+    const { service, cache, event } = makeService();
+    const created = await service.createSession(input());
+    event.mockImplementation(() => {
+      throw new Error('event failure');
+    });
+    await expect(
+      service.revokeSessionByToken(
+        created.sessionToken,
+        UserSessionRevokedReason.UserSignOut,
+      ),
+    ).rejects.toThrow('event failure');
+    expect(cache.mdel).toHaveBeenCalled();
+    expect((await sessions())[0].revokedAt).not.toBeNull();
+    expect(await audits()).toHaveLength(2);
+  });
+  it('does not authenticate from cached data when the authoritative read fails', async () => {
+    const { service, cache } = makeService();
+    const created = await service.createSession(input());
+    await service.resolveSession(created.sessionToken);
+    cache.get.mockResolvedValue(cache.set.mock.calls[0][1]);
+    const repository = runtime.getRepository(UserSessionEntity);
+    jest
+      .spyOn(repository, 'findOne')
+      .mockRejectedValue(new Error('database unavailable'));
+    await expect(service.resolveSession(created.sessionToken)).rejects.toThrow(
+      'database unavailable',
+    );
+  });
+  it('handles concurrent revoke with one actual update and audit', async () => {
+    const { service } = makeService();
+    const created = await service.createSession(input());
+    const results = await Promise.all([
+      service.revokeSessionByToken(
+        created.sessionToken,
+        UserSessionRevokedReason.UserSignOut,
+      ),
+      service.revokeSessionByToken(
+        created.sessionToken,
+        UserSessionRevokedReason.UserSignOut,
+      ),
+    ]);
+    expect(results.sort()).toEqual([false, true]);
+    expect(await audits()).toHaveLength(2);
+  });
+
+  it('records single revoke once and preserves its first reason', async () => {
+    const { service, cache } = makeService();
+    const created = await service.createSession(input());
+    expect(
+      await service.revokeSessionByToken(
+        created.sessionToken,
+        UserSessionRevokedReason.UserSignOut,
+      ),
+    ).toBe(true);
+    expect(
+      await service.revokeSessionByToken(
+        created.sessionToken,
+        UserSessionRevokedReason.UserRevoked,
+      ),
+    ).toBe(false);
+    const row = (await sessions())[0];
+    expect(row.revokedReason).toBe(UserSessionRevokedReason.UserSignOut);
+    const entries = await audits();
+    expect(entries).toHaveLength(2);
+    expect(
+      entries.find((x: { action: string }) => x.action === 'update'),
+    ).toMatchObject({
+      actor: { kind: 'coreUser', id: userId },
+      redactedDiff: {
+        values: { revokedReason: { before: null, after: 'USER_SIGN_OUT' } },
+      },
+    });
+    expect(cache.mdel).toHaveBeenCalledWith([created.session.tokenHash]);
+  });
+  it('commits revoke when audit insert fails and explicitly alerts', async () => {
+    const { service, cache, event } = makeService();
+    const created = await service.createSession(input());
+    event.mockClear();
+    await auditFault();
+    const log = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => {});
+    expect(
+      await service.revokeSessionByToken(
+        created.sessionToken,
+        UserSessionRevokedReason.UserSignOut,
+      ),
+    ).toBe(true);
+    expect((await sessions())[0].revokedAt).not.toBeNull();
+    expect(await audits()).toHaveLength(1);
+    expect(cache.mdel).toHaveBeenCalled();
+    expect(event).toHaveBeenCalledTimes(1);
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining('SESSION_REVOCATION_AUDIT_UNAVAILABLE'),
+    );
+  });
+  it('rejects a cached credential after failed Redis invalidation', async () => {
+    const { service, cache } = makeService();
+    const created = await service.createSession(input());
+    await service.resolveSession(created.sessionToken);
+    const cached = cache.set.mock.calls[0][1];
+    cache.get.mockResolvedValue(cached);
+    cache.mdel.mockRejectedValue(new Error('redis unavailable'));
+    jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+    await service.revokeSessionByToken(
+      created.sessionToken,
+      UserSessionRevokedReason.UserSignOut,
+    );
+    await expect(service.resolveSession(created.sessionToken)).rejects.toThrow(
+      'Session',
+    );
+  });
+  it('revokes mixed workspace and agnostic sessions while preserving exceptSessionId', async () => {
+    const { service } = makeService();
+    const kept = await service.createSession(input());
+    const second = await service.createSession(input());
+    const member = randomUUID();
+    await owner.query(
+      'INSERT INTO core."userWorkspace"(id,"userId","workspaceId")VALUES($1,$2,$3)',
+      [member, userId, otherWorkspaceId],
+    );
+    const third = await service.createSession(
+      input({ workspaceId: otherWorkspaceId, userWorkspaceId: member }),
+    );
+    const agnostic = await service.createSession(
+      input({ workspaceId: null, userWorkspaceId: null }),
+    );
+    expect(
+      await service.revokeAllSessionsForUser({
+        userId,
+        exceptSessionId: kept.session.id,
+        reason: UserSessionRevokedReason.PasswordChanged,
+      }),
+    ).toBe(3);
+    const rows = await sessions();
+    expect(
+      rows.find((row) => row.id === kept.session.id)?.revokedAt,
+    ).toBeNull();
+    for (const id of [second.session.id, third.session.id, agnostic.session.id])
+      expect(rows.find((row) => row.id === id)?.revokedAt).not.toBeNull();
+    const revoked = (await audits()).filter(
+      (row: { action: string }) => row.action === 'update',
+    );
+    expect(revoked).toHaveLength(2);
+    expect(
+      new Set(revoked.map((row: { workspaceId: string }) => row.workspaceId)),
+    ).toEqual(new Set([workspaceId, otherWorkspaceId]));
+  });
+  it('attributes superseded-session revocation to the new authenticated user', async () => {
+    const { service } = makeService();
+    const created = await service.createSession(input());
+    await service.revokeSessionByToken(
+      created.sessionToken,
+      UserSessionRevokedReason.Superseded,
+      initiatingUserId,
+    );
+    expect(
+      (await audits()).find(
+        (row: { action: string }) => row.action === 'update',
+      ).actor,
+    ).toEqual({ kind: 'coreUser', id: initiatingUserId });
   });
 });

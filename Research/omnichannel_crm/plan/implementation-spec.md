@@ -798,3 +798,17 @@ credential/lifecycle readback проверяется после audit flush. Coo
 подтверждённого COMMIT не считается rollback. NULL-workspace sessions пока используют
 прежний путь. Отзыв доступа должен сохраняться при отказе audit и не полагаться
 исключительно на успешное удаление Redis cache. Его реализация остаётся открытой.
+
+LOG100: userSession UPDATE audit разрешён для actual revoke. Transaction owner
+блокирует scoped session rows по id, UPDATE сохраняет original reason/time при
+повторе и проверяет actual IDs. Audit SAVEPOINT расположен после UPDATE; writer
+failure либо изменение сторонних session fields из audit trigger откатывает только
+audit portion. SESSION_REVOCATION_AUDIT_UNAVAILABLE сигнализирует отсутствие журнала.
+Ошибка rollback savepoint не считается успешным revoke. Final persisted state
+проверяется до strict COMMIT. Cache eviction выполняется независимо от audit/event
+outcome; SESSION_REVOCATION_CACHE_INVALIDATION_FAILED сообщает отказ. На cache-hit
+перед выдачей authentication перечитывается DB revoked state; DB failure fail-closed.
+Actor — текущий server caller, не автоматически владелец старой superseded session.
+Sign-out impersonation сохраняет реального initiator через membership resolution;
+невозможность audit attribution не отменяет отзыв. Это не refresh-token audit и не
+глобальный запрет concurrent sign-in после bulk snapshot.

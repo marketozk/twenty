@@ -10,14 +10,14 @@
 | Точный безопасный diff и aggregation | LOG089 first-before/last-after, custom NUMERIC >2^53, metadata IDs, без значений |
 | Повтор не скрывает вторую mutation | LOG089 sequential/concurrent reuse rejected; повтор после rollback допустим. General command replay ещё не реализован |
 | Общий native CRUD/merge/bulk и API | Частично: LOG094 автоматически включает public UPDATE Company/Person/Opportunity; LOG098 включает public soft-delete/restore и native custom lifecycle; public CREATE, physical delete/merge и остальные writers впереди. FILES same-executor — LOG092/093 |
-| Metadata/role/session lifecycle | LOG099: workspace session CREATE через реальный core owner; revoke/logout, metadata и roles открыты |
+| Metadata/role/session lifecycle | LOG099: workspace session CREATE через реальный core owner; LOG100: single/bulk revoke с audit SAVEPOINT и DB cache recheck; metadata и roles открыты |
 | Denied/failed audit и health | Omni уже имеет отдельные attempts; general native post-rollback/alert предстоит |
 | AI/workflow/connector события | Дополняются ROB768/769, текущий срез их не подключает |
 | Operation lookup index | LOG090: generated migration10, populated prefix upgrade/replay/down, real EXPLAIN, drift refusal; не выкатывалось |
 | Production rollout | Не выполнялся; нужны полная native coverage и согласованный выкат с остановленными writers при построении индекса |
 
 Подробные результаты: [LOG089 native owner](log089/README.md), [LOG090 operation index](log090/README.md).
-Следом core user-session logout/revoke; оставшиеся native writers, metadata/roles и negative audit ещё требуют реализации.
+Logout/revoke покрыт LOG100; оставшиеся native writers, metadata/roles и negative audit ещё требуют реализации.
 Просмотр и экспорт относятся к ROB767, свои права — ROB766; обе задачи пока Backlog.
 
 LOG091: [проверки расширенного native покрытия](log091/README.md);606 tests/24 suites PASS,27 новых PG tests. FilesFieldSync и batch owner mapping реализованы LOG092.
@@ -65,3 +65,13 @@ Postflush credential/lifecycle проверка и различимый committe
 не позволяют принять неизвестный исход за rollback. [Доказательства](log099/README.md).
 
 820 tests/30 suites PASS, 28 новых PG cases; 26 guards, 10 unchanged migration checksums. Types 338/340 roots, 189/189 baseline diagnostics, 0 новых/changed. 5 source hashes совпадают.
+
+LOG100: single/bulk UserSession revoke использует strict core owner и audit SAVEPOINT
+после actual UPDATE. Отказ журнала не отменяет отзыв, но явно сигнализируется.
+Cache-hit перепроверяет DB revocation, поэтому failed Redis eviction не возвращает
+доступ. Current actor/impersonation initiator, exact actual rows, preserved filters и
+полная проверка остальных session fields покрываются PostgreSQL tests.
+Workspace-agnostic revoke сохраняется без выдуманного audit tenant; appToken и
+concurrent sign-in fencing пока открыты. [Доказательства](log100/README.md).
+
+835 tests/30 suites PASS, 15 новых PG cases, 43 targeted. 26 guards PASS, 10 migration checksums неизменны. Types: все изменённые server roots включены явно, 341/341 roots, 189/189 baseline diagnostics, 0 новых/changed. 4 source hashes совпадают.

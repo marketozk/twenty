@@ -46,7 +46,7 @@ suites PASS, 22 новых PG cases; 0 новых type diagnostics. Public custo
 
 [LOG098](implementation/log098/README.md): soft-delete/restore и public lifecycle owner,
 792 tests/29 suites PASS, 26 новых PG cases, 0 новых type diagnostics.
-Создание core user-session покрыто LOG099; далее logout/revoke; physical delete/merge, public CREATE/shared access,
+Создание core user-session покрыто LOG099, logout/revoke — LOG100; physical delete/merge, public CREATE/shared access,
 metadata/roles и negative audit ещё открыты. [Приёмка ROB765](implementation/rob765-progress.md).
 
 ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.
@@ -63,3 +63,13 @@ Postflush credential/lifecycle проверка и различимый committe
 не позволяют принять неизвестный исход за rollback. [Доказательства](implementation/log099/README.md).
 
 820 tests/30 suites PASS, 28 новых PG cases; 26 guards, 10 unchanged migration checksums. Types 338/340 roots, 189/189 baseline diagnostics, 0 новых/changed. 5 source hashes совпадают.
+
+LOG100: single/bulk UserSession revoke использует strict core owner и audit SAVEPOINT
+после actual UPDATE. Отказ журнала не отменяет отзыв, но явно сигнализируется.
+Cache-hit перепроверяет DB revocation, поэтому failed Redis eviction не возвращает
+доступ. Current actor/impersonation initiator, exact actual rows, preserved filters и
+полная проверка остальных session fields покрываются PostgreSQL tests.
+Workspace-agnostic revoke сохраняется без выдуманного audit tenant; appToken и
+concurrent sign-in fencing пока открыты. [Доказательства](implementation/log100/README.md).
+
+835 tests/30 suites PASS, 15 новых PG cases, 43 targeted. 26 guards PASS, 10 migration checksums неизменны. Types: все изменённые server roots включены явно, 341/341 roots, 189/189 baseline diagnostics, 0 новых/changed. 4 source hashes совпадают.
