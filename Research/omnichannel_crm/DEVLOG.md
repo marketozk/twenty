@@ -3050,3 +3050,7 @@ RETURNING ID недостаточно при triggers. Физическое stor
 финальные проверки повторены. [Evidence](implementation/log092/README.md).
 ROB765 In Progress. Далее public input parity (FILES null/system timestamps), затем
 public UPDATE owner/nested reads/hooks. Демо не менялось, Actions не использовался.
+
+LOG092 publication: `608d8b7668f272d5b34d61efdce2ac79b20309ca` pushed/API verified.
+ROB765 description and comment `14248efd-20f7-4638-ac37-35ac760c7845` independently
+read back; all11 states match. ROB765 remains In Progress; implementation continues.
