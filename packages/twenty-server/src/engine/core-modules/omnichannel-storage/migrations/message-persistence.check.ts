@@ -1,3 +1,4 @@
+import applicationSchema from 'src/engine/core-modules/omnichannel-storage/migrations/incoming-application-result.schema.json';
 import currentRevisionSchema from 'src/engine/core-modules/omnichannel-storage/migrations/message-current-revision.schema.json';
 import { type QueryRunner } from 'typeorm';
 
@@ -70,6 +71,13 @@ export const verifyMessagePersistence = async (
     );
   }
 
+  if (appliedMigrationIds.includes(manifest[8].migrationId)) {
+    expectedSchema = expectedSchema.map(
+      (table) =>
+        applicationSchema.find((updated) => updated.name === table.name) ??
+        table,
+    );
+  }
   await verifyForkTableSnapshot(
     queryRunner,
     expectedSchema,

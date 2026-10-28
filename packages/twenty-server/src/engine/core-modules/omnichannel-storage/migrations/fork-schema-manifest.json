@@ -38,5 +38,10 @@
     "migrationId": "omni-1793163618643-message-current-revision",
     "checksum": "b84451ed10c83419144d6f09212134f46b5f7aa0f11418ebe29e465f66767e49",
     "sourcePath": "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-message-current-revision.migration.ts"
+  },
+  {
+    "migrationId": "omni-1793165655229-incoming-application-result",
+    "checksum": "10538f9e3f195c19f18c4b91b0f9ca5cdcdb79b7271d972cc32e10507b21959e",
+    "sourcePath": "packages/twenty-server/src/database/commands/fork-upgrade/steps/omni-incoming-application-result.migration.ts"
   }
 ]

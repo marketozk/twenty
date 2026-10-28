@@ -1,3 +1,4 @@
+import { OmniIncomingApplicationResultFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/omni-incoming-application-result.migration';
 import { OmniMessageCurrentRevisionFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/omni-message-current-revision.migration';
 import { type ForkMigration } from 'src/database/commands/fork-upgrade/fork-migration.type';
 import { OmniAuditBootstrapFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/omni-audit-bootstrap.migration';
@@ -49,6 +50,11 @@ export const FORK_MIGRATIONS: readonly ForkMigration[] = [
     ...FORK_SCHEMA_CHECKS[7],
     kind: OmniMessageCurrentRevisionFastInstanceCommand.kind,
     command: new OmniMessageCurrentRevisionFastInstanceCommand(),
+  },
+  {
+    ...FORK_SCHEMA_CHECKS[8],
+    kind: OmniIncomingApplicationResultFastInstanceCommand.kind,
+    command: new OmniIncomingApplicationResultFastInstanceCommand(),
   },
 ];
 

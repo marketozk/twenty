@@ -1,12 +1,12 @@
 # Технический план реализации CRM — v1
 
-LOG-077 / ROB-764 In Progress: MessageLink хранит currentRevisionId с составной
-ссылкой на редакцию именно этого сообщения и workspace. Initial history/sent writes
-сохраняют head атомарно; старые NULL replay не переписываются. Откат при непустых
-heads явно запрещён. Full fork 2508/77 before final history readback; final targeted 188/6 +26 guards PASS. Typecheck 298 roots:187/187,0 new/changed-code. Eight migration sources verified; first seven unchanged.
-[Доказательства](../implementation/log077/README.md). Reviewer finding: final history head readback после audit/receipt добавлен и проверен.
-Далее domain revision writer и durable receipt disposition для повторов/устаревших
-событий; ROB-764 ещё не Done. Демо прежнее, GitHub Actions не используется.
+LOG-078 / ROB-764 In Progress: IncomingReceipt.applicationResult хранит nullable
+versioned outcome для created/advanced/duplicate/stale. SQL ограничивает state/version/
+kind/disposition; строгий parser проверяет форму и согласованность UUID. Audit скрывает
+source evidence; down отказывается удалять сохранённые outcomes. 269 targeted Jest/10 suites +26 guards=295 PASS; 50 new cases. Typecheck 303 roots:187/187,0 new/changed-code. Nine migration sources verified; first eight unchanged.
+[Доказательства](../implementation/log078/README.md). Это storage/contract, domain revision writer пока впереди.
+Далее placeholder/fill/edit/delete и replay с проверкой current head и сохранённого
+disposition. ROB-764 ещё не Done. Демо прежнее, GitHub Actions не используется.
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 

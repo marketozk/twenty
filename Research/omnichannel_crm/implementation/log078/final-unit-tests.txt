@@ -1,0 +1,33 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-incoming-application-result.spec.ts
+  ✓ snapshots a consistent created disposition (7 ms)
+  ✓ snapshots a consistent advanced disposition (1 ms)
+  ✓ snapshots a consistent duplicate disposition
+  ✓ snapshots a consistent stale disposition (1 ms)
+  ✓ normalizes revision UUIDs before equality checks (1 ms)
+  ✓ rejects malformed application outcome 0 (9 ms)
+  ✓ rejects malformed application outcome 1 (1 ms)
+  ✓ rejects malformed application outcome 2 (1 ms)
+  ✓ rejects malformed application outcome 3
+  ✓ rejects malformed application outcome 4
+  ✓ rejects malformed application outcome 5 (1 ms)
+  ✓ rejects malformed application outcome 6 (1 ms)
+  ✓ rejects malformed application outcome 7
+  ✓ rejects malformed application outcome 8 (1 ms)
+  ✓ rejects malformed application outcome 9
+  ✓ rejects malformed application outcome 10 (1 ms)
+  ✓ rejects malformed application outcome 11 (1 ms)
+  ✓ rejects malformed application outcome 12
+  ✓ rejects malformed application outcome 13 (1 ms)
+  ✓ rejects malformed application outcome 14
+  ✓ rejects malformed application outcome 15 (1 ms)
+  ✓ rejects advanced self-reference and stale selection of a different revision (1 ms)
+  ✓ rejects invalid outer shape 0 without echoing its content
+  ✓ rejects invalid outer shape 1 without echoing its content
+  ✓ rejects invalid outer shape 2 without echoing its content (1 ms)
+  ✓ rejects invalid outer shape 3 without echoing its content
+
+Test Suites: 1 passed, 1 total
+Tests:       26 passed, 26 total
+Snapshots:   0 total
+Time:        2.992 s
+Ran all test suites matching /omni-incoming-application-result.spec/i.

@@ -70,6 +70,14 @@ export type OmniIncomingReceiptState =
     `jsonb_typeof("trustedCaptureContext") = 'object' AND ` +
     `"trustedCaptureContextHash" ~ '^[a-f0-9]{64}$')`,
 )
+@Check(
+  'CHK_omniIncomingReceipt_application_result',
+  `"applicationResult" IS NULL OR ((state='applied' AND "resultId" IS NOT NULL
+   AND jsonb_typeof("applicationResult")='object'
+   AND "applicationResult"->'schemaVersion'='1'::jsonb
+   AND "applicationResult"->>'kind'='incoming_text_revision'
+   AND "applicationResult"->>'disposition' IN ('created','advanced','duplicate','stale')) IS TRUE)`,
+)
 export class OmniIncomingReceiptEntity extends OmniWorkspaceRow {
   @Column({ type: 'uuid', nullable: false, update: false })
   bindingId: string;
@@ -128,6 +136,9 @@ export class OmniIncomingReceiptEntity extends OmniWorkspaceRow {
 
   @Column({ type: 'uuid', nullable: true })
   resultId: string | null;
+
+  @Column({ type: 'jsonb', nullable: true, update: false })
+  applicationResult: Record<string, unknown> | null;
 
   @Column({ type: 'text', nullable: true })
   errorCode: string | null;

@@ -76,11 +76,13 @@ it('preserves populated prefix seven without guessing a head, replays, and suppo
   );
   const beforeRevisions = await core('omniMessageRevision');
   await fixture.owner.transaction(async (manager) => {
-    await migration.command.down(manager.queryRunner!);
-    await manager.query(
-      'DELETE FROM core."forkMigrationLedger" WHERE "migrationId"=$1',
-      [migration.migrationId],
-    );
+    for (const later of [...FORK_MIGRATIONS.slice(7)].reverse()) {
+      await later.command.down(manager.queryRunner!);
+      await manager.query(
+        'DELETE FROM core."forkMigrationLedger" WHERE "migrationId"=$1',
+        [later.migrationId],
+      );
+    }
   });
   await new ForkSchemaVerifier(
     fixture.owner,
@@ -91,7 +93,7 @@ it('preserves populated prefix seven without guessing a head, replays, and suppo
   ).rejects.toThrow('Pending fork migrations');
   expect(
     await new ForkMigrationRunner(fixture.owner, FORK_MIGRATIONS).apply(),
-  ).toEqual([migration.migrationId]);
+  ).toEqual(FORK_MIGRATIONS.slice(7).map((entry) => entry.migrationId));
   expect(await core('omniMessageLink')).toEqual(
     beforeLinks.map((row: Record<string, unknown>) => ({
       ...row,

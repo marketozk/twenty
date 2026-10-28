@@ -94,6 +94,7 @@ const CATALOG: Record<
       'validatedEnvelope',
       'leaseOwner',
       'trustedCaptureContext',
+      'applicationResult',
     ],
   },
   omniMessage: {

@@ -127,6 +127,45 @@ afterAll(async () => {
 });
 
 describe('transactional CRM audit', () => {
+  it('records application result changes without retaining provider revision evidence', async () => {
+    await transaction(async (runner) => {
+      const context = new CrmAuditTransactionContext(runner, operation);
+      context.record({
+        resourceKind: 'omniIncomingReceipt',
+        resourceId,
+        action: 'update',
+        before: { state: 'processing', applicationResult: null },
+        after: {
+          state: 'applied',
+          applicationResult: {
+            schemaVersion: 1,
+            kind: 'incoming_text_revision',
+            disposition: 'stale',
+            candidateSourceRevisionKey: 'private-provider-revision',
+            candidateContentHash: 'a'.repeat(64),
+            selectedRevisionId: randomUUID(),
+            observedHeadRevisionId: randomUUID(),
+          },
+        },
+        securityDescriptor: {
+          resourceKind: 'omniIncomingReceipt',
+          resourceId,
+          bindingId: randomUUID(),
+        },
+      });
+      await context.flush();
+    });
+    const rows = await dataSource.query(
+      'SELECT * FROM crm_audit."crmAuditEntry"',
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].redactedDiff).toEqual({
+      changedFields: ['applicationResult', 'state'],
+      values: { state: { before: 'processing', after: 'applied' } },
+    });
+    expect(JSON.stringify(rows)).not.toContain('private-provider-revision');
+    expect(JSON.stringify(rows)).not.toContain('a'.repeat(64));
+  });
   it('aggregates first before and final after before commit without sensitive values', async () => {
     await transaction(async (runner) => {
       const context = new CrmAuditTransactionContext(runner, operation);
