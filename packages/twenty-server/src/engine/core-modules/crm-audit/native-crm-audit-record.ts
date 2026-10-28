@@ -24,7 +24,7 @@ type WorkspaceTableShape = {
   >;
 };
 
-const SCALAR_TYPES = new Set([
+const VALUE_TYPES = new Set([
   'TEXT',
   'NUMBER',
   'POSITION',
@@ -34,7 +34,77 @@ const SCALAR_TYPES = new Set([
   'RATING',
   'DATE',
   'DATE_TIME',
+  'UUID',
+  'ARRAY',
+  'MULTI_SELECT',
+  'RAW_JSON',
+  'RELATION',
+  'MORPH_RELATION',
 ]);
+
+const AUDITED_OBJECTS: Record<string, string> = {
+  company: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.company,
+  person: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.person,
+  opportunity: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.opportunity,
+};
+
+const coverageError = () =>
+  new Error(
+    'Native audit non-file update coverage does not include this value or field',
+  );
+
+const captureInputValue = (
+  value: unknown,
+  ancestors = new WeakSet<object>(),
+): unknown => {
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value === 'string' ||
+    typeof value === 'boolean'
+  )
+    return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (
+    value instanceof Date &&
+    Number.isFinite(Date.prototype.getTime.call(value))
+  )
+    return new Date(Date.prototype.getTime.call(value));
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    ancestors.has(value) ||
+    (!Array.isArray(value) &&
+      Object.getPrototypeOf(value) !== Object.prototype &&
+      Object.getPrototypeOf(value) !== null)
+  )
+    throw coverageError();
+  ancestors.add(value);
+  const captured = Array.isArray(value) ? [] : {};
+  for (const [key, descriptor] of Object.entries(
+    Object.getOwnPropertyDescriptors(value),
+  )) {
+    if ('get' in descriptor || 'set' in descriptor) throw coverageError();
+    const item = captureInputValue(descriptor.value, ancestors);
+    if (descriptor.enumerable)
+      Object.defineProperty(captured, key, {
+        value: item,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
+    else if (Array.isArray(captured) && key === 'length')
+      captured.length = item as number;
+  }
+  ancestors.delete(value);
+  return captured;
+};
+
+export const captureNativeCrmAuditWriteData = (
+  data: Record<string, unknown>,
+): Record<string, unknown> => {
+  return captureInputValue(data) as Record<string, unknown>;
+};
 
 export const assertNativeCrmAuditWriteSupported = (
   executor: QueryExecutor,
@@ -46,27 +116,48 @@ export const assertNativeCrmAuditWriteSupported = (
   if (!getNativeCrmAuditContext(executor)) return;
   if (
     kind !== 'update' ||
-    shape.nameSingular !== 'company' ||
-    universalIdentifier !== STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.company
+    !Object.hasOwn(AUDITED_OBJECTS, shape.nameSingular) ||
+    universalIdentifier !== AUDITED_OBJECTS[shape.nameSingular]
   )
     throw new Error(
-      'Native audit currently supports only standard Company scalar updates',
+      'Native audit currently supports only standard Company, Person and Opportunity updates',
     );
   for (const [name, value] of Object.entries(data)) {
-    if (name === 'id') continue; // The update kernels exclude id from SET.
+    if (name === 'id' || value === undefined) continue;
+    if (['createdAt', 'updatedAt', 'deletedAt'].includes(name))
+      throw coverageError();
     const column = shape.columnShapeByColumnName[name];
-    if (
+    const compositeColumns = Object.values(
+      shape.columnShapeByColumnName,
+    ).filter((item) => item.compositeParentFieldName === name);
+    if (compositeColumns.length) {
+      if (
+        value !== null &&
+        (typeof value !== 'object' ||
+          Array.isArray(value) ||
+          Object.getPrototypeOf(value) !== Object.prototype)
+      )
+        throw coverageError();
+      for (const [property, item] of Object.entries(value ?? {})) {
+        if (item === undefined) continue;
+        const propertyColumn = compositeColumns.find(
+          (candidate) =>
+            candidate.columnName ===
+            name + property.charAt(0).toUpperCase() + property.slice(1),
+        );
+        if (
+          !propertyColumn ||
+          !VALUE_TYPES.has(propertyColumn.fieldMetadataType)
+        )
+          throw coverageError();
+      }
+    } else if (
       !column ||
       column.compositeParentFieldName ||
-      !SCALAR_TYPES.has(column.fieldMetadataType) ||
-      ['createdAt', 'updatedAt', 'deletedAt'].includes(name) ||
-      (value !== null &&
-        !['string', 'number', 'boolean'].includes(typeof value)) ||
-      (typeof value === 'number' && !Number.isFinite(value))
-    )
-      throw new Error(
-        'Native audit scalar coverage does not include this field write',
-      );
+      !VALUE_TYPES.has(column.fieldMetadataType)
+    ) {
+      throw coverageError();
+    }
   }
 };
 

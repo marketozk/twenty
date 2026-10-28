@@ -3015,3 +3015,18 @@ Read-only review блокеров не обнаружило. CREATE INDEX тре
 ROB765 In Progress; далее продолжаем native coverage и реальные writer entry points.
 
 LOG090 publication: `cc44b9fc89de2da9ea24c14ef2343e30d25dbc8a` pushed/API verified. ROB765 description and comment `c01295fc-f893-4965-9599-9e6fbb4d9faf` independently read back; all11 states match. ROB765 remains In Progress; implementation continues.
+
+
+## LOG-091 — non-file updates трёх native CRM objects
+
+Company/Person/Opportunity update/updateMany используют существующий native owner.
+Metadata-driven composite/JSON/array/Date/FK покрытие; all-values-redacted audit.
+Вход захвачен до await и coverage; найденный ревью accessor bypass закрыт descriptor
+snapshot без вызова getters. FILES/create/delete/merge и public entry points впереди.
+
+606 tests/24 suites PASS,27 новых PG cases;55 targeted;26 guard/checksum PASS,
+10 migration sources неизменны. Types329/330 roots,189/189 diagnostics,0 новых/changed.
+Five uploaded/local hashes совпадают. Первичные fixture и clone realm failures
+исправлены; независимый повторный review без блокеров. [Evidence](implementation/log091/README.md).
+ROB765 In Progress. Далее FilesFieldSync same-executor и authoritative batch owner,
+затем подключение реальных native writers. Демо не менялось, Actions не использовался.

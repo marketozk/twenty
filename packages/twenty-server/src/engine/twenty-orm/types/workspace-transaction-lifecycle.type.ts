@@ -7,7 +7,7 @@ export type NativeCrmAuditOptions = {
 };
 
 export type WorkspaceTransactionOptions = {
-  // Opt-in internal native CRM audit owner; current coverage is scalar Company updates.
+  // Opt-in internal native CRM audit owner; current coverage is non-file Company/Person/Opportunity updates.
   nativeAudit?: NativeCrmAuditOptions;
   commitOutcome?: 'strict' | 'legacy';
   // Coordination only; this does not grant native domain write authority.

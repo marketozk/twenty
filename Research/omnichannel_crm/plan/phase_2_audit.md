@@ -57,3 +57,10 @@ LOG087 adds bounded parent delete audit and retained current-administrative dele
 Первый срез ROB-765 реализован в [LOG089](../implementation/log089/README.md): внутренний `nativeAudit` owner для Company scalar update/updateMany, server-derived actor, row locks и точные snapshots независимо от emission flags; crmRecord — 24-й вид ресурса. Успех и audit атомарны, перехваченная ошибка mutation отравляет transaction. Повтор уже committed operationId отказывается до callback, это не command replay. Значения native полей редактируются полностью; NUMERIC сохраняет точность при сравнении.
 
 **Остаётся до Done:** автоматическое подключение native entry points и общий CRM CRUD/merge/bulk, файловый executor, metadata/role/session owners, отрицательные события после подтверждённого rollback, health/alert, доказательства API/AI/workflow. Индекс audit(workspaceId, operationId) подготовлен и проверен в [LOG090](../implementation/log090/README.md), десятая fork migration; при выкате writers должны быть остановлены на время построения. Вызовы без opt-in пока сохраняют прежнее поведение; их изменения не объявляются аудированными. Просмотр/экспорт — ROB767 после ROB766. [Текущая приёмка ROB765](../implementation/rob765-progress.md).
+
+
+[LOG091](../implementation/log091/README.md) расширяет внутренний opt-in на non-file
+updates Company/Person/Opportunity, включая composite/JSON/arrays/Date/resolved FK.
+606 tests/24 suites и26 guards PASS;27 новых PG cases. Snapshot-before-coverage
+закрывает mutable input/accessor bypass. FILES по-прежнему отказаны; public writers
+не подключены. Общие критерии Done не выполнены.

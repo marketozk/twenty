@@ -211,13 +211,13 @@ it('poisons the transaction even if its caller catches an unsupported write', as
       await repo(scope).update(id, { position: 9 });
       try {
         await repo(scope).update(id, {
-          domainName: { primaryLinkUrl: 'secret' },
+          attachments: [],
         });
       } catch {
         /* caller cannot erase the failure */
       }
     }),
-  ).rejects.toThrow('scalar coverage');
+  ).rejects.toThrow('coverage');
   expect((await readCompany()).find((row) => row.id === id)?.position).toBe(1);
   expect(await audit()).toEqual([]);
 });
@@ -228,7 +228,7 @@ it.each([
   ['system timestamp', { deletedAt: '2026-10-28' }],
 ])('refuses unsupported %s writes before persistence', async (_label, data) => {
   await expect(run((scope) => repo(scope).update(id, data))).rejects.toThrow(
-    'scalar coverage',
+    'coverage',
   );
   expect(await audit()).toEqual([]);
 });
@@ -239,7 +239,7 @@ it('refuses unaudited create/delete and other-object writes inside the bounded o
     (scope: WorkspaceTransactionScope) => repo(scope).delete(id),
     (scope: WorkspaceTransactionScope) =>
       scope
-        .getRepository('person', permissions)
+        .getRepository('task', permissions)
         .update(randomUUID(), { name: 'x' }),
   ])
     await expect(run<unknown>(work)).rejects.toThrow('only standard Company');

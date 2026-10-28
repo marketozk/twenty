@@ -4,6 +4,7 @@ import {
 } from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
 import {
   assertNativeCrmAuditWriteSupported,
+  captureNativeCrmAuditWriteData,
   readNativeCrmAuditRows,
   recordNativeCrmUpdates,
 } from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
@@ -1209,6 +1210,19 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     raw: ObjectRecord[];
   }> {
     return runNativeCrmAuditWrite(this.options.executor, async () => {
+      if (
+        this.isOmniNativeRepository ||
+        getNativeCrmAuditContext(this.options.executor)
+      )
+        args = {
+          ...args,
+          inputs: args.inputs.map((input) => ({
+            id: input.id,
+            data: getNativeCrmAuditContext(this.options.executor)
+              ? captureNativeCrmAuditWriteData(input.data)
+              : { ...input.data },
+          })),
+        };
       if (getNativeCrmAuditContext(this.options.executor)) {
         for (const input of args.inputs)
           assertNativeCrmAuditWriteSupported(
@@ -1219,17 +1233,6 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
             input.data,
           );
       }
-      if (
-        this.isOmniNativeRepository ||
-        getNativeCrmAuditContext(this.options.executor)
-      )
-        args = {
-          ...args,
-          inputs: args.inputs.map((input) => ({
-            id: input.id,
-            data: { ...input.data },
-          })),
-        };
       return this.runWithValidationRules({
         inputRecordIds: args.inputs.map((input) => input.id),
         write: (repository, validateWrittenRecords) =>
@@ -1755,6 +1758,18 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     data?: Partial<ObjectRecord>;
   }): Promise<ObjectRecord[]> {
     return runNativeCrmAuditWrite(this.options.executor, async () => {
+      if (
+        this.isOmniNativeRepository ||
+        getNativeCrmAuditContext(this.options.executor)
+      )
+        args = {
+          ...args,
+          data: args.data
+            ? getNativeCrmAuditContext(this.options.executor)
+              ? captureNativeCrmAuditWriteData(args.data)
+              : { ...args.data }
+            : undefined,
+        };
       assertNativeCrmAuditWriteSupported(
         this.options.executor,
         this.options.tableShape,
@@ -1762,11 +1777,6 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
         args.kind,
         args.data,
       );
-      if (
-        this.isOmniNativeRepository ||
-        getNativeCrmAuditContext(this.options.executor)
-      )
-        args = { ...args, data: args.data ? { ...args.data } : undefined };
       if (args.kind !== 'update') {
         return this.isOmniNativeRepository || args.kind === 'delete'
           ? this.runAtomically((repository) =>
