@@ -3383,3 +3383,5 @@ Read-only review нашёл BEFORE UPDATE NEW-key rewrite; добавлен ко
 covered ON DELETE CASCADE с retained child guards. Демо/образ/Actions/сообщения не тронуты.
 
 978 tests/33 suites PASS (191.233s); 166 targeted/4 suites PASS. 24 новых PostgreSQL cases. 26 guards PASS; 10 migration checksums неизменны. Types 347/349 roots, 189/189 прежних диагностик, 0 новых/changed-code. 6 local/remote source hashes совпадают.
+
+LOG107 publication: 463cfc731d25ce3b58e4f05f4f53bbc22b27a301 pushed/API verified. ROB765 description and comment 0f1a4549-49fb-49cc-89d2-844fdc67a400 independently read back; all 11 issue states match. Implementation continues.
