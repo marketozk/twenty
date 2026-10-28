@@ -2971,3 +2971,5 @@ CRM-записи и upstream ledger сохранены по контрольны
 Фактический runtime: server health200 и27 worker queues до/после restart в обеих БД, все exit0/no OOM. Неполный ledger, schema drift и owner role отказаны до запуска; восстановленная схема проходит gate. Full committed image ec91306f8b6f3648f6bfdf93cf9acf4e5a2d6091b309d0612fdd48450b187ae4; архив и4 source hashes сверены. Full regression886.901s/exit0. Тесты не выполнялись через GitHub Actions.
 
 Read-only acceptance review новых собственных gaps не нашёл; исправлены устаревшие pending формулировки. ROB765 reuse research выявило отсутствие гарантированной транзакции у обычного Company update и зависимость snapshots от event flag; следующий patch исправляет это для первого audited native среза. Existing omni audit protocol сохраняется.
+
+LOG-088 final publication: acceptance commit `043e5e0fd02cf41947b0718854d0dd2619b685fe` pushed/API verified. ROB764 Done and ROB765 In Progress descriptions, completion comment `48fb3320-1879-4ec1-aa48-db15de601041` and all11 project states independently read back. New phase work continues.

@@ -1,0 +1,17 @@
+{
+  "codeCommit": "8855d9e4ecc07e2502a63de1d3971847d883ff36",
+  "acceptanceCommit": "043e5e0fd02cf41947b0718854d0dd2619b685fe",
+  "githubRefApiVerified": true,
+  "descriptionsReadbackVerified": [
+    "ROB-764",
+    "ROB-765"
+  ],
+  "commentId": "48fb3320-1879-4ec1-aa48-db15de601041",
+  "commentReadbackVerified": true,
+  "rob765StartComment": "75c302a4-f975-4f03-bddb-55fc27b20f8c",
+  "projectStatesReadbackVerified": 11,
+  "ROB-764": "Done",
+  "ROB-765": "In Progress",
+  "ROB-766-771": "Backlog",
+  "githubActionsUsed": false
+}
