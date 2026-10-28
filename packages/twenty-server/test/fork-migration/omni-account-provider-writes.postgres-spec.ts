@@ -745,23 +745,29 @@ describe('app OAuth reconnect persistence', () => {
 
 describe('full Google/Microsoft reconnect callers', () => {
   it.each([
-    [ConnectedAccountProvider.GOOGLE, false, 'none'],
-    [ConnectedAccountProvider.MICROSOFT, false, 'none'],
-    [ConnectedAccountProvider.GOOGLE, true, 'none'],
-    [ConnectedAccountProvider.MICROSOFT, true, 'none'],
-    [ConnectedAccountProvider.GOOGLE, false, 'unknown'],
-    [ConnectedAccountProvider.MICROSOFT, false, 'unknown'],
-    [ConnectedAccountProvider.GOOGLE, false, 'rollback'],
-    [ConnectedAccountProvider.MICROSOFT, false, 'rollback'],
+    [ConnectedAccountProvider.GOOGLE, false, 'none', undefined],
+    [ConnectedAccountProvider.MICROSOFT, false, 'none', undefined],
+    [ConnectedAccountProvider.GOOGLE, true, 'none', undefined],
+    [ConnectedAccountProvider.MICROSOFT, true, 'none', undefined],
+    [ConnectedAccountProvider.GOOGLE, false, 'unknown', undefined],
+    [ConnectedAccountProvider.MICROSOFT, false, 'unknown', undefined],
+    [ConnectedAccountProvider.GOOGLE, false, 'rollback', undefined],
+    [ConnectedAccountProvider.MICROSOFT, false, 'rollback', undefined],
+    [ConnectedAccountProvider.GOOGLE, false, 'none', 'ready'],
+    [ConnectedAccountProvider.MICROSOFT, false, 'none', 'ready'],
+    [ConnectedAccountProvider.GOOGLE, false, 'none', 'rejected'],
+    [ConnectedAccountProvider.MICROSOFT, false, 'none', 'rejected'],
   ] as const)(
     'reconnect %s existing mailbox/calendar stale=%s failure=%s',
-    async (provider, stale, failure) => {
+    async (provider, stale, failure, admission) => {
       await repository().update(accountId, {
         provider,
         archivedAt: new Date(),
       });
       await runtime.getRepository(MessageChannelEntity).update(channelId, {
-        syncStage: MessageChannelSyncStage.PENDING_CONFIGURATION,
+        syncStage: admission
+          ? MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING
+          : MessageChannelSyncStage.PENDING_CONFIGURATION,
       });
       const calendarId = randomUUID();
       await runtime.getRepository(CalendarChannelEntity).insert({
@@ -769,7 +775,9 @@ describe('full Google/Microsoft reconnect callers', () => {
         workspaceId: fixture.workspaceId,
         connectedAccountId: accountId,
         isSyncEnabled: false,
-        syncStage: CalendarChannelSyncStage.PENDING_CONFIGURATION,
+        syncStage: admission
+          ? CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING
+          : CalendarChannelSyncStage.PENDING_CONFIGURATION,
       });
       const repo = repository(),
         find = repo.findOne.bind(repo);
@@ -788,6 +796,7 @@ describe('full Google/Microsoft reconnect callers', () => {
               .findOneByOrFail({ id: channelId })
           ).isSyncEnabled,
         ).toBe(true);
+        return admission === 'ready' ? [channelId] : [];
       });
       const resetCalendar = jest.fn(async () => {
         expect((await read()).archivedAt).toBeNull();
@@ -798,6 +807,7 @@ describe('full Google/Microsoft reconnect callers', () => {
               .findOneByOrFail({ id: calendarId })
           ).isSyncEnabled,
         ).toBe(true);
+        return admission === 'ready' ? [calendarId] : [];
       });
       const dependencies = {
         workspaceOrmManager: workspaceOrm,
@@ -820,10 +830,10 @@ describe('full Google/Microsoft reconnect callers', () => {
         },
         accountsToReconnectService: { removeAccountToReconnect: sideEffect },
         messagingChannelSyncStatusService: {
-          resetAndMarkAsMessagesListFetchPending: resetMessages,
+          resetAndScheduleMessagesListFetch: resetMessages,
         },
         calendarChannelSyncStatusService: {
-          resetAndMarkAsCalendarEventListFetchPending: resetCalendar,
+          resetAndScheduleCalendarEventListFetch: resetCalendar,
         },
         emailAliasManagerService: { refreshHandleAliases: sideEffect },
         messageQueueService: { add: sideEffect },
@@ -897,15 +907,28 @@ describe('full Google/Microsoft reconnect callers', () => {
         expect(resetCalendar).not.toHaveBeenCalled();
       } else {
         await expect(work).resolves.toBe(accountId);
-        if (provider === ConnectedAccountProvider.MICROSOFT) {
+        if (admission) {
           expect(resetMessages).toHaveBeenCalledWith(
             [channelId],
             fixture.workspaceId,
+            accountId,
           );
           expect(resetCalendar).toHaveBeenCalledWith(
             [calendarId],
             fixture.workspaceId,
+            accountId,
           );
+          const queueCalls = sideEffect.mock.calls.filter(
+            (call) =>
+              typeof call[1] === 'object' &&
+              ('messageChannelId' in call[1] || 'calendarChannelId' in call[1]),
+          );
+          expect(queueCalls).toHaveLength(admission === 'ready' ? 2 : 0);
+          for (const call of queueCalls)
+            expect(call[1].expectedConnectedAccountId).toBe(accountId);
+        } else {
+          expect(resetMessages).not.toHaveBeenCalled();
+          expect(resetCalendar).not.toHaveBeenCalled();
         }
         expect((await read()).archivedAt).toBeNull();
       }
@@ -1491,3 +1514,72 @@ describe('retained bindings from pre-invariant snapshots', () => {
     }
   });
 });
+
+it.each([true, false])(
+  'IMAP reconnect queues only accepted channels: %s',
+  async (accepted) => {
+    await repository().update(accountId, {
+      provider: ConnectedAccountProvider.IMAP_SMTP_CALDAV,
+    });
+    await runtime
+      .getRepository(MessageChannelEntity)
+      .update(channelId, {
+        syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
+      });
+    const calendarId = randomUUID();
+    await runtime
+      .getRepository(CalendarChannelEntity)
+      .insert({
+        id: calendarId,
+        workspaceId: fixture.workspaceId,
+        connectedAccountId: accountId,
+        isSyncEnabled: true,
+        syncStage: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING,
+      });
+    const resetMessage = jest.fn(async () => (accepted ? [channelId] : [])),
+      resetCalendar = jest.fn(async () => (accepted ? [calendarId] : []));
+    const messageQueue = jest.fn(),
+      calendarQueue = jest.fn();
+    const service = makeService(ImapSmtpCalDavApiService.prototype, {
+      connectedAccountRepository: repository(),
+      userWorkspaceRepository,
+      messageChannelRepository: runtime.getRepository(MessageChannelEntity),
+      calendarChannelRepository: runtime.getRepository(CalendarChannelEntity),
+      connectedAccountTokenEncryptionService: encryption,
+      accountsToReconnectService: { removeAccountToReconnect: jest.fn() },
+      messagingChannelSyncStatusService: {
+        resetAndScheduleMessagesListFetch: resetMessage,
+      },
+      calendarChannelSyncStatusService: {
+        resetAndScheduleCalendarEventListFetch: resetCalendar,
+      },
+      messageQueueService: { add: messageQueue },
+      calendarQueueService: { add: calendarQueue },
+    });
+    await service.upsertConnectedAccount({
+      workspaceId: fixture.workspaceId,
+      userWorkspaceId: memberId,
+      handle: 'ordinary',
+      existingAccount: await read(),
+      connectionParameters: { IMAP: {}, CALDAV: {} } as never,
+    });
+    expect(resetMessage).toHaveBeenCalledWith(
+      [channelId],
+      fixture.workspaceId,
+      accountId,
+    );
+    expect(resetCalendar).toHaveBeenCalledWith(
+      [calendarId],
+      fixture.workspaceId,
+      accountId,
+    );
+    for (const queue of [messageQueue, calendarQueue]) {
+      expect(queue).toHaveBeenCalledTimes(accepted ? 1 : 0);
+      if (accepted)
+        expect(queue.mock.calls[0][1]).toMatchObject({
+          workspaceId: fixture.workspaceId,
+          expectedConnectedAccountId: accountId,
+        });
+    }
+  },
+);

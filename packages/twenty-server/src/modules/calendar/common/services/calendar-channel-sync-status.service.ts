@@ -128,25 +128,58 @@ export class CalendarChannelSyncStatusService {
     });
   }
 
+  public async resetAndScheduleCalendarEventListFetch(
+    calendarChannelIds: string[],
+    workspaceId: string,
+    expectedConnectedAccountId: string,
+  ): Promise<string[]> {
+    return this.resetCalendarChannels(
+      calendarChannelIds,
+      workspaceId,
+      expectedConnectedAccountId,
+      true,
+    );
+  }
+
   public async resetAndMarkAsCalendarEventListFetchPending(
     calendarChannelIds: string[],
     workspaceId: string,
-  ) {
-    if (!calendarChannelIds.length) {
-      return;
-    }
+    expectedConnectedAccountId?: string,
+  ): Promise<string[]> {
+    return this.resetCalendarChannels(
+      calendarChannelIds,
+      workspaceId,
+      expectedConnectedAccountId,
+      false,
+    );
+  }
+
+  private async resetCalendarChannels(
+    calendarChannelIds: string[],
+    workspaceId: string,
+    expectedConnectedAccountId: string | undefined,
+    schedule: boolean,
+  ): Promise<string[]> {
+    if (!calendarChannelIds.length) return [];
 
     const updated = await this.mutateCalendarChannels(
       calendarChannelIds,
       workspaceId,
       {
         syncCursor: '',
-        syncStageStartedAt: null,
+        syncStageStartedAt: schedule ? new Date().toISOString() : null,
         throttleFailureCount: 0,
-        syncStage: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING,
+        syncStage: schedule
+          ? CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED
+          : CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING,
+        ...(schedule ? { syncStatus: CalendarChannelSyncStatus.ONGOING } : {}),
       },
+      false,
+      expectedConnectedAccountId,
+      schedule,
     );
     await this.flushImportCache(updated, workspaceId);
+    return updated.map(({ id }) => id);
   }
 
   public async resetSyncStageStartedAt(
@@ -276,6 +309,7 @@ export class CalendarChannelSyncStatusService {
     values: QueryDeepPartialEntity<CalendarChannelEntity>,
     authFailed = false,
     expectedConnectedAccountId?: string,
+    reconnect = false,
   ): Promise<OrdinaryMetadataChannel[]> {
     const requestedIds = [...ids];
     return this.workspaceOrmManager.executeInWorkspaceContext(
@@ -293,6 +327,15 @@ export class CalendarChannelSyncStatusService {
               .update()
               .set(values)
               .where({ id: In(channels.map(({ id }) => id)), workspaceId })
+              .andWhere(
+                reconnect
+                  ? '"isSyncEnabled" = true AND "syncStage" IS DISTINCT FROM :pendingConfiguration'
+                  : 'TRUE',
+                {
+                  pendingConfiguration:
+                    CalendarChannelSyncStage.PENDING_CONFIGURATION,
+                },
+              )
               .returning('id')
               .execute();
             const updated = (result.raw as { id: string }[]).map(({ id }) => {

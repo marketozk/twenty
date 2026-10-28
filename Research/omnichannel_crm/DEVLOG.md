@@ -1845,3 +1845,37 @@ unchanged, GitHub Actions unused. Applied ai-dev-workflow, behavioral-guardrails
 server-schrodinger and scoped read-only review.
 
 LOG063 publication: code 466051dfe02277e2934fbb7a0c0f1049ab09b011 pushed and GitHub API ref verified; Linear comment 83ae5013-808e-4de1-aacc-d79a833d0891, description/comment and all11 project states independently read back. ROB764 remains In Progress.
+
+
+## LOG-064 — reconnect scheduling and queued parent admission (28.10.2026)
+
+Reconnect formerly reset to PENDING then enqueued jobs requiring SCHEDULED. New
+resetAndSchedule methods atomically reset cursors/folders and set SCHEDULED/ONGOING
+under the existing ordinary owner, with captured parent and fresh enabled/non-
+PENDING_CONFIGURATION predicates. Existing reset-to-pending callers retain their
+default behavior; optional expected-parent and returned accepted IDs are additive.
+Google/MS/IMAP enqueue only accepted IDs with expectedConnectedAccountId. MS no
+longer unconditionally resets old snapshots, including channels awaiting setup.
+Both list-fetch jobs reread channel/account under full ordinary ownership with
+expected parent and enabled predicate. Legacy payloads remain accepted but receive
+the same current ownership check. Provider network stays outside DB transactions.
+Unknown reset/admission commit prevents success IDs, cache/broadcast/provider calls.
+
+372 targeted Jest/6 suites +26 guards=398 PASS;
+30 new PG cases:24 reset/job admission (parent/disabled/configuration/owned, mixed
+IDs, ordinary flow, unknown ACK) and6 actual Google/MS/IMAP caller routing checks.
+Typecheck 269 roots:190/190,0 new/changed-code.7 migration sources unchanged.
+Scoped read-only review found no substantive blockers; reviewer did not run tests.
+Initial test harness issues fixed: CalDAV ESM loading excluded at provider boundary,
+existing list-job class mock removed, native bootstrap fixture given APP provider,
+uniform it.each tuple arity prevents done-callback timeouts, enum union fixed.
+
+The current parent read is an admission snapshot, not a lock across provider/cache
+work. Current channel-only Redis keys still need account provenance to protect a
+reparent after SQL commit. Source inventory also found direct import-cron scheduling;
+it joins downstream list-fetch/import/cache work next. Webhook/onboarding callbacks
+keep their own lifecycle contracts; no claim of whole reconnect cross-store atomicity.
+Last full fork LOG0561881/71; no full fork/full server typecheck/full Claude pass or
+ROB764 acceptance claimed. [Evidence](implementation/log064/README.md).
+Demo/transport unchanged; GitHub Actions unused. Applied ai-dev-workflow,
+behavioral-guardrails, server-schrodinger and scoped read-only research/review.

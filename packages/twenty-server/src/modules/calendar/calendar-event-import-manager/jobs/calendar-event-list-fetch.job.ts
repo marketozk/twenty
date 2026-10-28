@@ -1,3 +1,4 @@
+import { withOrdinaryMetadataChannels } from 'src/modules/omnichannel/services/with-ordinary-metadata-channels';
 import { Scope } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -15,6 +16,7 @@ import { CalendarChannelEntity } from 'src/engine/metadata-modules/calendar-chan
 export type CalendarEventListFetchJobData = {
   calendarChannelId: string;
   workspaceId: string;
+  expectedConnectedAccountId?: string;
 };
 
 @Processor({
@@ -31,20 +33,31 @@ export class CalendarEventListFetchJob {
 
   @Process(CalendarEventListFetchJob.name)
   async handle(data: CalendarEventListFetchJobData): Promise<void> {
-    const { workspaceId, calendarChannelId } = data;
+    const { workspaceId, calendarChannelId, expectedConnectedAccountId } = data;
 
     const authContext = buildSystemAuthContext(workspaceId);
 
     await this.workspaceOrmManager.executeInWorkspaceContext(
       async () => {
-        const calendarChannel = await this.calendarChannelRepository.findOne({
-          where: {
-            id: calendarChannelId,
-            isSyncEnabled: true,
-            workspaceId,
+        const calendarChannel = await withOrdinaryMetadataChannels(
+          this.calendarChannelRepository.manager,
+          workspaceId,
+          [calendarChannelId],
+          'calendar',
+          async (manager, channels) => {
+            if (!channels.length) return null;
+            return manager.getRepository(CalendarChannelEntity).findOne({
+              where: {
+                id: calendarChannelId,
+                isSyncEnabled: true,
+                workspaceId,
+              },
+              relations: ['connectedAccount'],
+            });
           },
-          relations: ['connectedAccount'],
-        });
+          'read',
+          expectedConnectedAccountId,
+        );
 
         if (!calendarChannel) {
           return;

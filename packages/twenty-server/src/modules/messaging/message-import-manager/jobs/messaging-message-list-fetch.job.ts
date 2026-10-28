@@ -1,3 +1,4 @@
+import { withOrdinaryMetadataChannels } from 'src/modules/omnichannel/services/with-ordinary-metadata-channels';
 import { Scope } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -20,6 +21,7 @@ import { MessageChannelEntity } from 'src/engine/metadata-modules/message-channe
 export type MessagingMessageListFetchJobData = {
   messageChannelId: string;
   workspaceId: string;
+  expectedConnectedAccountId?: string;
 };
 
 @Processor({
@@ -38,7 +40,7 @@ export class MessagingMessageListFetchJob {
 
   @Process(MessagingMessageListFetchJob.name)
   async handle(data: MessagingMessageListFetchJobData): Promise<void> {
-    const { messageChannelId, workspaceId } = data;
+    const { messageChannelId, workspaceId, expectedConnectedAccountId } = data;
 
     await this.messagingMonitoringService.track({
       eventName: 'message_list_fetch_job.triggered',
@@ -50,13 +52,25 @@ export class MessagingMessageListFetchJob {
 
     await this.workspaceOrmManager.executeInWorkspaceContext(
       async () => {
-        const messageChannel = await this.messageChannelRepository.findOne({
-          where: {
-            id: messageChannelId,
-            workspaceId,
+        const messageChannel = await withOrdinaryMetadataChannels(
+          this.messageChannelRepository.manager,
+          workspaceId,
+          [messageChannelId],
+          'message',
+          async (manager, channels) => {
+            if (!channels.length) return null;
+            return manager.getRepository(MessageChannelEntity).findOne({
+              where: {
+                id: messageChannelId,
+                isSyncEnabled: true,
+                workspaceId,
+              },
+              relations: { connectedAccount: true, messageFolders: true },
+            });
           },
-          relations: { connectedAccount: true, messageFolders: true },
-        });
+          'read',
+          expectedConnectedAccountId,
+        );
 
         if (!messageChannel) {
           await this.messagingMonitoringService.track({

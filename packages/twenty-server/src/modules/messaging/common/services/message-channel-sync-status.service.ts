@@ -175,26 +175,55 @@ export class MessageChannelSyncStatusService {
     });
   }
 
+  public async resetAndScheduleMessagesListFetch(
+    messageChannelIds: string[],
+    workspaceId: string,
+    expectedConnectedAccountId: string,
+  ): Promise<string[]> {
+    return this.resetMessageChannels(
+      messageChannelIds,
+      workspaceId,
+      expectedConnectedAccountId,
+      true,
+    );
+  }
+
   public async resetAndMarkAsMessagesListFetchPending(
     messageChannelIds: string[],
     workspaceId: string,
-  ) {
-    if (!messageChannelIds.length) {
-      return;
-    }
+    expectedConnectedAccountId?: string,
+  ): Promise<string[]> {
+    return this.resetMessageChannels(
+      messageChannelIds,
+      workspaceId,
+      expectedConnectedAccountId,
+      false,
+    );
+  }
+
+  private async resetMessageChannels(
+    messageChannelIds: string[],
+    workspaceId: string,
+    expectedConnectedAccountId: string | undefined,
+    schedule: boolean,
+  ): Promise<string[]> {
+    if (!messageChannelIds.length) return [];
 
     const updated = await this.mutateMessageChannels(
       messageChannelIds,
       workspaceId,
       {
         syncCursor: '',
-        syncStageStartedAt: null,
+        syncStageStartedAt: schedule ? new Date().toISOString() : null,
         throttleFailureCount: 0,
         throttleRetryAfter: null,
         pendingGroupEmailsAction: MessageChannelPendingGroupEmailsAction.NONE,
-        syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
+        syncStage: schedule
+          ? MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED
+          : MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
+        ...(schedule ? { syncStatus: MessageChannelSyncStatus.ONGOING } : {}),
       },
-      { resetFolders: true },
+      { resetFolders: true, expectedConnectedAccountId, reconnect: schedule },
     );
     for (const { id } of updated) {
       await this.cacheStorage.mdel([
@@ -204,6 +233,7 @@ export class MessageChannelSyncStatusService {
       ]);
     }
     await this.broadcastMessageChannelsUpdated(updated, workspaceId);
+    return updated.map(({ id }) => id);
   }
 
   public async resetSyncStageStartedAt(
@@ -439,6 +469,7 @@ export class MessageChannelSyncStatusService {
     values: QueryDeepPartialEntity<MessageChannelEntity>,
     options: {
       resetFolders?: boolean;
+      reconnect?: boolean;
       expectedConnectedAccountId?: string;
       authFailure?: { reason: string | null };
     } = {},
@@ -462,6 +493,15 @@ export class MessageChannelSyncStatusService {
               .update()
               .set(values)
               .where({ id: In(ids), workspaceId })
+              .andWhere(
+                options.reconnect
+                  ? '"isSyncEnabled" = true AND "syncStage" IS DISTINCT FROM :pendingConfiguration'
+                  : 'TRUE',
+                {
+                  pendingConfiguration:
+                    MessageChannelSyncStage.PENDING_CONFIGURATION,
+                },
+              )
               .returning('id, "syncStatus", "syncStage"')
               .execute();
             const updated = (

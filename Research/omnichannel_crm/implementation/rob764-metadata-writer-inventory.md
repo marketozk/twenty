@@ -38,13 +38,16 @@ Canonical lifecycle requirements remain in the implementation specification.
 
 - LOG063: seven provider writers use complete derived ownership under shared fence/account write lock; Google/MS/IMAP strict outer owners, same-manager app readback, fresh SSO scopes and unknown commit propagation. IMAP archived re-enable pins child parent. Postcommit reset/enqueue remains below.
 
+- LOG064: reconnect reset/schedule atomically checks captured parent and current eligibility; accepted IDs only, queued expected-parent and guarded current read. Postcommit cache provenance remains below.
+
 ## Remaining owners, in implementation order
 
 Paths below are relative to `packages/twenty-server/src`.
 
 | Owner | Observed gap / required check |
 |---|---|
-| Reconnect reset/enqueue callbacks | MS/IMAP retain pre-transaction channel IDs; reset APIs lack expected-parent parameters and accepted-ID returns. Queue scheduling must use current accepted IDs, with jobs' SCHEDULED admission respected. |
+| Import cron scheduling | `messaging-messages-import.cron.job.ts` still has direct status UPDATE; reuse guarded scheduling and enqueue accepted current channels. |
+| Message import cache provenance | Five owners: list-fetch, importer, sync-status, onboarding and clean-cache job. Account namespace and safe legacy backlog refetch required; no dual-read unknown-origin legacy queue. |
 | Legacy list-fetch downstream cache/cleanup callbacks | Final completion is parent-pinned (LOG058); intermediate cache mutations and cleanup are separate. Review with group/folder scope before claiming complete callback lifecycle protection. |
 
 ## Required evidence

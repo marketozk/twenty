@@ -1,3 +1,9 @@
+import { MessagingMessageListFetchJob } from 'src/modules/messaging/message-import-manager/jobs/messaging-message-list-fetch.job';
+import { CalendarEventListFetchJob } from 'src/modules/calendar/calendar-event-import-manager/jobs/calendar-event-list-fetch.job';
+jest.mock(
+  'src/modules/calendar/calendar-event-import-manager/services/calendar-fetch-events.service',
+  () => ({ CalendarFetchEventsService: class {} }),
+);
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { MessagingMessageListFetchService } from 'src/modules/messaging/message-import-manager/services/messaging-message-list-fetch.service';
 import { MessagingRelaunchFailedMessageChannelJob } from 'src/modules/messaging/message-import-manager/jobs/messaging-relaunch-failed-message-channel.job';
@@ -126,6 +132,18 @@ const messageSchema = new EntitySchema<MessageChannelEntity>({
   target: MessageChannelEntity,
   schema: 'core',
   tableName: 'messageChannel',
+  relations: {
+    connectedAccount: {
+      type: 'many-to-one',
+      target: () => ConnectedAccountEntity,
+      joinColumn: { name: 'connectedAccountId' },
+    },
+    messageFolders: {
+      type: 'one-to-many',
+      target: () => MessageFolderEntity,
+      inverseSide: 'messageChannel',
+    },
+  },
   columns: {
     ...common,
     type: { type: 'text' },
@@ -138,6 +156,13 @@ const calendarSchema = new EntitySchema<CalendarChannelEntity>({
   target: CalendarChannelEntity,
   schema: 'core',
   tableName: 'calendarChannel',
+  relations: {
+    connectedAccount: {
+      type: 'many-to-one',
+      target: () => ConnectedAccountEntity,
+      joinColumn: { name: 'connectedAccountId' },
+    },
+  },
   columns: common,
 });
 const folderSchema = new EntitySchema<MessageFolderEntity>({
@@ -145,6 +170,14 @@ const folderSchema = new EntitySchema<MessageFolderEntity>({
   target: MessageFolderEntity,
   schema: 'core',
   tableName: 'messageFolder',
+  relations: {
+    messageChannel: {
+      type: 'many-to-one',
+      target: () => MessageChannelEntity,
+      joinColumn: { name: 'messageChannelId' },
+      inverseSide: 'messageFolders',
+    },
+  },
   columns: {
     id: { type: 'uuid', primary: true },
     workspaceId: { type: 'uuid' },
@@ -1026,12 +1059,6 @@ for (const kind of ['message', 'calendar'] as const) {
 }
 
 jest.mock(
-  'src/modules/messaging/message-import-manager/jobs/messaging-message-list-fetch.job',
-  () => ({
-    MessagingMessageListFetchJob: class MessagingMessageListFetchJob {},
-  }),
-);
-jest.mock(
   'src/engine/core-modules/message-queue/services/message-queue.service',
   () => ({ MessageQueueService: class {} }),
 );
@@ -1494,4 +1521,207 @@ it('stale group work aborts list fetch before folder/status/cache side effects',
   expect(
     await repo('message').findOneByOrFail({ id: ordinary.message }),
   ).toEqual(before);
+});
+
+describe('reconnect scheduling and queued parent admission', () => {
+  for (const kind of ['message', 'calendar'] as const) {
+    const reset = (ids: string[], account = ordinary.account) =>
+      kind === 'message'
+        ? messaging.resetAndScheduleMessagesListFetch(
+            ids,
+            fixture.workspaceId,
+            account,
+          )
+        : calendar.resetAndScheduleCalendarEventListFetch(
+            ids,
+            fixture.workspaceId,
+            account,
+          );
+    const scheduled =
+      kind === 'message'
+        ? MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED
+        : CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED;
+    const pendingConfiguration =
+      kind === 'message'
+        ? MessageChannelSyncStage.PENDING_CONFIGURATION
+        : CalendarChannelSyncStage.PENDING_CONFIGURATION;
+    const job = (work: jest.Mock) => {
+      const commonDependencies = {
+        workspaceOrmManager: {
+          executeInWorkspaceContext: async (callback: () => Promise<void>) =>
+            callback(),
+        },
+        messageChannelRepository: runtime.getRepository(MessageChannelEntity),
+        calendarChannelRepository: runtime.getRepository(CalendarChannelEntity),
+      };
+      return kind === 'message'
+        ? makeService(MessagingMessageListFetchJob.prototype, {
+            ...commonDependencies,
+            messagingMessageListFetchService: { processMessageListFetch: work },
+            messagingMonitoringService: { track: jest.fn() },
+            messageImportErrorHandlerService: {
+              handleDriverException: jest.fn(async (error) => {
+                throw error;
+              }),
+            },
+          })
+        : makeService(CalendarEventListFetchJob.prototype, {
+            ...commonDependencies,
+            calendarFetchEventsService: { fetchCalendarEvents: work },
+          });
+    };
+    const run = (work: jest.Mock, account = ordinary.account) =>
+      job(work).handle({
+        workspaceId: fixture.workspaceId,
+        messageChannelId: ordinary.message,
+        calendarChannelId: ordinary.calendar,
+        expectedConnectedAccountId: account,
+      });
+    it(
+      kind +
+        ' commits reset and scheduled together then job accepts same parent',
+      async () => {
+        expect(await reset([ordinary[kind]])).toEqual([ordinary[kind]]);
+        expect(
+          await repo(kind).findOneByOrFail({ id: ordinary[kind] }),
+        ).toMatchObject({
+          syncCursor: '',
+          syncStage: scheduled,
+          syncStatus: 'ONGOING',
+          throttleFailureCount: 0,
+        });
+        const work = jest.fn();
+        await run(work);
+        expect(work).toHaveBeenCalledTimes(1);
+        expect(work.mock.calls[0][0].connectedAccountId).toBe(ordinary.account);
+      },
+    );
+    it.each(['parent', 'disabled', 'configuration', 'owned'] as const)(
+      kind + ' refuses %s before reset without effects',
+      async (mutation) => {
+        if (mutation === 'parent')
+          await repo(kind).update(ordinary[kind], {
+            connectedAccountId: (await seed()).account,
+          });
+        if (mutation === 'disabled')
+          await repo(kind).update(ordinary[kind], { isSyncEnabled: false });
+        if (mutation === 'configuration')
+          await runtime.query(
+            `UPDATE core."${kind}Channel" SET "syncStage"=$2 WHERE id=$1`,
+            [ordinary[kind], pendingConfiguration],
+          );
+        if (mutation === 'owned') {
+          await runtime
+            .getRepository(ConnectedAccountEntity)
+            .update(ordinary.account, {
+              provider: ConnectedAccountProvider.APP,
+            });
+          await bootstrap(ordinary);
+          await runtime
+            .getRepository(ConnectedAccountEntity)
+            .update(ordinary.account, {
+              provider: ConnectedAccountProvider.GOOGLE,
+            });
+        }
+        const before = await repo(kind).findOneByOrFail({ id: ordinary[kind] });
+        expect(await reset([ordinary[kind]])).toEqual([]);
+        expect(
+          await repo(kind).findOneByOrFail({ id: ordinary[kind] }),
+        ).toEqual(before);
+        expect(cache.mdel).not.toHaveBeenCalled();
+        expect(cache.del).not.toHaveBeenCalled();
+        expect(broadcast.broadcast).not.toHaveBeenCalled();
+      },
+    );
+    it(kind + ' returns only accepted IDs in a mixed batch', async () => {
+      const other = await seed();
+      expect(
+        await reset([
+          other[kind],
+          protectedIds[kind],
+          ordinary[kind],
+          ordinary[kind],
+          randomUUID(),
+        ]),
+      ).toEqual([ordinary[kind]]);
+      expect(
+        (await repo(kind).findOneByOrFail({ id: other[kind] })).syncCursor,
+      ).toBe('old-cursor');
+    });
+    it.each(['parent', 'disabled', 'configuration', 'owned'] as const)(
+      kind + ' rejects queued job after %s changes',
+      async (mutation) => {
+        await reset([ordinary[kind]]);
+        if (mutation === 'parent')
+          await repo(kind).update(ordinary[kind], {
+            connectedAccountId: (await seed()).account,
+          });
+        if (mutation === 'disabled')
+          await repo(kind).update(ordinary[kind], { isSyncEnabled: false });
+        if (mutation === 'configuration')
+          await runtime.query(
+            `UPDATE core."${kind}Channel" SET "syncStage"=$2 WHERE id=$1`,
+            [ordinary[kind], pendingConfiguration],
+          );
+        if (mutation === 'owned') {
+          await runtime
+            .getRepository(ConnectedAccountEntity)
+            .update(ordinary.account, {
+              provider: ConnectedAccountProvider.APP,
+            });
+          await bootstrap(ordinary);
+          await runtime
+            .getRepository(ConnectedAccountEntity)
+            .update(ordinary.account, {
+              provider: ConnectedAccountProvider.GOOGLE,
+            });
+        }
+        const work = jest.fn();
+        await run(work);
+        expect(work).not.toHaveBeenCalled();
+      },
+    );
+    it(
+      kind + ' unknown reset commit emits no cache/broadcast/accepted IDs',
+      async () => {
+        const original = runtime.createQueryRunner.bind(runtime);
+        jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+          const runner = original(),
+            commit = runner.commitTransaction.bind(runner);
+          runner.commitTransaction = async () => {
+            await commit();
+            throw new Error('reset ACK lost');
+          };
+          return runner;
+        });
+        await expect(reset([ordinary[kind]])).rejects.toThrow(
+          'OMNI_CORE_TRANSACTION_OUTCOME_UNKNOWN',
+        );
+        expect(cache.mdel).not.toHaveBeenCalled();
+        expect(cache.del).not.toHaveBeenCalled();
+        expect(broadcast.broadcast).not.toHaveBeenCalled();
+      },
+    );
+    it(
+      kind + ' unknown job admission commit prevents provider work',
+      async () => {
+        await reset([ordinary[kind]]);
+        const original = runtime.createQueryRunner.bind(runtime);
+        jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+          const runner = original(),
+            commit = runner.commitTransaction.bind(runner);
+          runner.commitTransaction = async () => {
+            await commit();
+            throw new Error('admission ACK lost');
+          };
+          return runner;
+        });
+        const work = jest.fn();
+        await expect(run(work)).rejects.toThrow(
+          'OMNI_CORE_TRANSACTION_OUTCOME_UNKNOWN',
+        );
+        expect(work).not.toHaveBeenCalled();
+      },
+    );
+  }
 });

@@ -1,0 +1,16 @@
+{
+  "baseCommit": "ab44d650009de67b6e13e70f76a398ac793a7ce7",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/auth/services/google-apis.service.ts": "58c8453fec565ca6fd8e1e7a2a8a4d2c1490a7a33d2b788dc7f977c72214646b",
+    "packages/twenty-server/src/engine/core-modules/auth/services/microsoft-apis.service.ts": "78f4622a69fb66b5f916eaca3af123a74fb00a3d1a6e1f1f45f7012fbefefe3a",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/jobs/calendar-event-list-fetch.job.ts": "7c912bf4d86e5a420be718a15d4556b1d1d23e61d67db7ea4f3cc91db3b93771",
+    "packages/twenty-server/src/modules/calendar/common/services/calendar-channel-sync-status.service.ts": "9b4b939c5ac4393152ad65080fa697f1c7daa49986277e5c14b519f834aa8c9e",
+    "packages/twenty-server/src/modules/connected-account/services/imap-smtp-caldav-apis.service.ts": "4a3a7219d1168b95e3ac692ee5e9e024c09d983ae167727990fe69197c7f6a6d",
+    "packages/twenty-server/src/modules/messaging/common/services/message-channel-sync-status.service.ts": "3f1e519b014a5ba3ee3fc186a8baff0e80f14da738d8c0fd69b2366095bfa11e",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/jobs/messaging-message-list-fetch.job.ts": "598f607c58a7bddca85d6c10c585efdb5a11f15eb0b354447f9afe4b78ff4ace",
+    "packages/twenty-server/test/fork-migration/omni-account-provider-writes.postgres-spec.ts": "978a39c925ecfc96b6f44521fb809731b5b05bc7db5268760f2c2a5f956d36f9",
+    "packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts": "08c0f25c5ee32e0ade77d1d686b9bf3a12d6051bbe102997eaf2e3c925c91975"
+  }
+}

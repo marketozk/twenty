@@ -351,13 +351,20 @@ export class GoogleAPIsService {
               messageChannel.syncStage !==
               MessageChannelSyncStage.PENDING_CONFIGURATION
             ) {
-              await this.messagingChannelSyncStatusService.resetAndMarkAsMessagesListFetchPending(
-                [messageChannel.id],
-                workspaceId,
-              );
+              const acceptedIds =
+                await this.messagingChannelSyncStatusService.resetAndScheduleMessagesListFetch(
+                  [messageChannel.id],
+                  workspaceId,
+                  newOrExistingConnectedAccountId,
+                );
+              if (!acceptedIds.includes(messageChannel.id)) continue;
               await this.messageQueueService.add<MessagingMessageListFetchJobData>(
                 MessagingMessageListFetchJob.name,
-                { workspaceId, messageChannelId: messageChannel.id },
+                {
+                  workspaceId,
+                  messageChannelId: messageChannel.id,
+                  expectedConnectedAccountId: newOrExistingConnectedAccountId,
+                },
               );
               await this.enqueueWebhookSubscriptionCreation({
                 channelType: WebhookSubscriptionChannelType.MESSAGING,
@@ -397,13 +404,20 @@ export class GoogleAPIsService {
               calendarChannel.syncStage !==
               CalendarChannelSyncStage.PENDING_CONFIGURATION
             ) {
-              await this.calendarChannelSyncStatusService.resetAndMarkAsCalendarEventListFetchPending(
-                [calendarChannel.id],
-                workspaceId,
-              );
+              const acceptedIds =
+                await this.calendarChannelSyncStatusService.resetAndScheduleCalendarEventListFetch(
+                  [calendarChannel.id],
+                  workspaceId,
+                  newOrExistingConnectedAccountId,
+                );
+              if (!acceptedIds.includes(calendarChannel.id)) continue;
               await this.calendarQueueService.add<CalendarEventListFetchJobData>(
                 CalendarEventListFetchJob.name,
-                { workspaceId, calendarChannelId: calendarChannel.id },
+                {
+                  workspaceId,
+                  calendarChannelId: calendarChannel.id,
+                  expectedConnectedAccountId: newOrExistingConnectedAccountId,
+                },
               );
               await this.enqueueWebhookSubscriptionCreation({
                 channelType: WebhookSubscriptionChannelType.CALENDAR,

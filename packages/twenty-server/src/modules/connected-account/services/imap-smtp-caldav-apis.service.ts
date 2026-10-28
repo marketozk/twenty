@@ -264,15 +264,22 @@ export class ImapSmtpCalDavApiService {
       existingMessageChannel.syncStage !==
         MessageChannelSyncStage.PENDING_CONFIGURATION
     ) {
-      await this.messagingChannelSyncStatusService.resetAndMarkAsMessagesListFetchPending(
-        [existingMessageChannel.id],
-        workspaceId,
-      );
+      const acceptedIds =
+        await this.messagingChannelSyncStatusService.resetAndScheduleMessagesListFetch(
+          [existingMessageChannel.id],
+          workspaceId,
+          newOrExistingAccountId,
+        );
 
-      await this.messageQueueService.add<MessagingMessageListFetchJobData>(
-        MessagingMessageListFetchJob.name,
-        { workspaceId, messageChannelId: existingMessageChannel.id },
-      );
+      for (const channelId of acceptedIds)
+        await this.messageQueueService.add<MessagingMessageListFetchJobData>(
+          MessagingMessageListFetchJob.name,
+          {
+            workspaceId,
+            messageChannelId: channelId,
+            expectedConnectedAccountId: newOrExistingAccountId,
+          },
+        );
     }
 
     if (
@@ -281,15 +288,22 @@ export class ImapSmtpCalDavApiService {
       existingCalendarChannel.syncStage !==
         CalendarChannelSyncStage.PENDING_CONFIGURATION
     ) {
-      await this.calendarChannelSyncStatusService.resetAndMarkAsCalendarEventListFetchPending(
-        [existingCalendarChannel.id],
-        workspaceId,
-      );
+      const acceptedIds =
+        await this.calendarChannelSyncStatusService.resetAndScheduleCalendarEventListFetch(
+          [existingCalendarChannel.id],
+          workspaceId,
+          newOrExistingAccountId,
+        );
 
-      await this.calendarQueueService.add<CalendarEventListFetchJobData>(
-        CalendarEventListFetchJob.name,
-        { workspaceId, calendarChannelId: existingCalendarChannel.id },
-      );
+      for (const channelId of acceptedIds)
+        await this.calendarQueueService.add<CalendarEventListFetchJobData>(
+          CalendarEventListFetchJob.name,
+          {
+            workspaceId,
+            calendarChannelId: channelId,
+            expectedConnectedAccountId: newOrExistingAccountId,
+          },
+        );
     }
 
     return newOrExistingAccountId;

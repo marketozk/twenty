@@ -249,16 +249,6 @@ export class MicrosoftAPIsService {
           workspaceId,
           newOrExistingConnectedAccountId,
         );
-
-        await this.messagingChannelSyncStatusService.resetAndMarkAsMessagesListFetchPending(
-          existingMessageChannels.map(({ id }) => id),
-          workspaceId,
-        );
-
-        await this.calendarChannelSyncStatusService.resetAndMarkAsCalendarEventListFetchPending(
-          existingCalendarChannels.map(({ id }) => id),
-          workspaceId,
-        );
       }
 
       if (
@@ -312,11 +302,19 @@ export class MicrosoftAPIsService {
             messageChannel.syncStage !==
             MessageChannelSyncStage.PENDING_CONFIGURATION
           ) {
+            const acceptedIds =
+              await this.messagingChannelSyncStatusService.resetAndScheduleMessagesListFetch(
+                [messageChannel.id],
+                workspaceId,
+                newOrExistingConnectedAccountId,
+              );
+            if (!acceptedIds.includes(messageChannel.id)) continue;
             await this.messageQueueService.add<MessagingMessageListFetchJobData>(
               MessagingMessageListFetchJob.name,
               {
                 workspaceId,
                 messageChannelId: messageChannel.id,
+                expectedConnectedAccountId: newOrExistingConnectedAccountId,
               },
             );
             await this.enqueueWebhookSubscriptionCreation({
@@ -350,10 +348,18 @@ export class MicrosoftAPIsService {
         );
 
         for (const calendarChannel of syncableCalendarChannels) {
+          const acceptedIds =
+            await this.calendarChannelSyncStatusService.resetAndScheduleCalendarEventListFetch(
+              [calendarChannel.id],
+              workspaceId,
+              newOrExistingConnectedAccountId,
+            );
+          if (!acceptedIds.includes(calendarChannel.id)) continue;
           await this.calendarQueueService.add<CalendarEventListFetchJobData>(
             CalendarEventListFetchJob.name,
             {
               calendarChannelId: calendarChannel.id,
+              expectedConnectedAccountId: newOrExistingConnectedAccountId,
               workspaceId,
             },
           );
