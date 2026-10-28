@@ -1250,3 +1250,39 @@ lifecycle calls need event parent/subscription pins independently of trigger pin
 The current change only protects scheduling/dispatch/orchestration. No full server
 typecheck/full Claude review/ROB764 Done. Demo/SaleBot unchanged; no Actions.
 Skills ai-dev-workflow, behavioral-guardrails, server-schrodinger, scoped read-only review.
+
+
+## LOG-069 — account-scoped calendar cache and legacy refetch (28.10.2026)
+
+All four calendar cache owners now use one UUID-validated normalized v2 key:
+fetch producer, batch consumer, webhook count and status/reset flush. Fetch/import
+copy caller identity and capture key before awaits; mismatched channel/account
+fails before cache/provider. Postcommit flush uses accepted account descriptors.
+Calendar retained legacy set causes guarded cursor reset/list-refetch before either
+fetch or import. Recovery skips stale parent/disabled/setup/native/protected channels;
+stop even on declined reset, and delete legacy only after known reset + v2 flush.
+No legacy contents are adopted as belonging to the current account. Already lost
+legacy backlog cannot be discovered. Existing cache TTL behavior is unchanged.
+Cursor-error/notfound/unknown failure branches now carry snapshot parent into reset/
+flush, completing account pin for these error paths alongside credentials/temporary.
+This does not supply stage/run guards for successful provider callbacks/native apply.
+
+587 targeted Jest/7 suites +26 guards=613 PASS.
+19 new cases:18 PostgreSQL/caller boundaries and1 pure-key case. Includes retained
+backlog/unknown outcomes, actual early-stop services, delayed producer after reparent,
+postcommit clear after reparent, mutable caller identity, ordinary/stale-parent error
+branches. Provider/cache doubles explicitly isolate their boundaries; no real Redis
+atomicity or provider integration claim. Initial2 failures were Jest ESM loading of
+CalDAV digest-fetch while loading actual fetch orchestration. Explicit provider-layer
+mock matches the intended test boundary; actual fetch method and SQL owners remain
+executed. Rerun passed. Typecheck 291 roots:189/188,0 new/changed-code;
+7 migration sources unchanged, source LF hashes matched; guard baseline unchanged.
+Scoped read-only review no blockers, reviewer did not run tests. [Evidence](log069/README.md).
+
+Next: Microsoft lifecycle notification account/subscription/clientState pins across
+renew/recreate/recovery; direct importer/onboarding admission, same-account run tokens,
+provider status/cursor and native writes. Calendar list-fetch direct cursor and native
+cleanup are still separate unchecked response boundaries. Last full fork LOG0672205/75;
+no new full fork/full server typecheck/full Claude review/ROB764 Done. Demo/SaleBot
+unchanged; no Actions. Skills ai-dev-workflow, behavioral-guardrails, server-schrodinger,
+scoped read-only review/research.

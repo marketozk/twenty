@@ -1,15 +1,15 @@
 # Дорожная карта проекта
 
-LOG-068 / ROB-764 In Progress: все восемь notification trigger calls передают
-captured account; очередь разделяет dedup по аккаунту с сохранением legacy payload/key.
-Первое scheduling проверяет expected parent до UPDATE. Calendar webhook делает
-fresh scheduled read и после fetch допускает inline import только из current
-IMPORT_PENDING того же account, затем повторяет guarded read.
-Проверено 568 targeted Jest/7 suites +26 guards =594 PASS,
-21 новый case (17 PostgreSQL,4 queue dispatch). Typecheck 290 roots:189/189,0 new/changed-code.
-7 migrations неизменны. [Доказательства](../implementation/log068/README.md). Scoped review без blockers.
-Последний full fork LOG067:2205/75. Далее calendar cache/provider callbacks,
-MS notification lifecycle и direct importer/onboarding/native apply.
+LOG-069 / ROB-764 In Progress: все четыре calendar cache owners используют
+v2 workspace/channel/account key. Producer/consumer фиксируют identity до await;
+postcommit clear использует принятый account. Retained legacy backlog запускает
+guarded reset/refetch до fetch/import, удаляется только после известного commit.
+Cursor/notfound/unknown error reset/flush теперь проверяет captured parent.
+Проверено 587 targeted Jest/7 suites +26 guards =613 PASS,
+19 новых cases. Typecheck 291 roots:189/188,0 new/changed-code.
+7 migrations неизменны. [Доказательства](../implementation/log069/README.md). Scoped review без blockers.
+Последний full fork LOG067:2205/75. Далее MS notification lifecycle,
+direct importer/onboarding и provider stage/cursor/native apply.
 Демо прежнее, GitHub Actions не используется.
 
 Полный объём описан в [requirements.md](../requirements.md). Переход к следующей фазе подтверждается результатом предыдущей. Даты и трудозатраты появятся после исследования; сейчас их нельзя обоснованно назначить.

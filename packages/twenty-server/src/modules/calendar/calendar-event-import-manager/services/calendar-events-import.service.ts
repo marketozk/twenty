@@ -1,3 +1,4 @@
+import { calendarImportCacheKey } from 'src/modules/calendar/common/utils/calendar-import-cache-key';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -53,6 +54,24 @@ export class CalendarEventsImportService {
     connectedAccount: ConnectedAccountEntity,
     workspaceId: string,
   ): Promise<void> {
+    calendarChannel = { ...calendarChannel };
+    connectedAccount = { ...connectedAccount };
+    if (calendarChannel.connectedAccountId !== connectedAccount.id)
+      throw new Error('CALENDAR_IMPORT_ACCOUNT_MISMATCH');
+    const importKey = calendarImportCacheKey({
+      workspaceId,
+      calendarChannelId: calendarChannel.id,
+      connectedAccountId: connectedAccount.id,
+    });
+    if (
+      await this.calendarChannelSyncStatusService.recoverLegacyCalendarImport(
+        calendarChannel.id,
+        workspaceId,
+        connectedAccount.id,
+      )
+    )
+      return;
+
     await this.calendarChannelSyncStatusService.markAsCalendarEventsImportOngoing(
       [calendarChannel.id],
       workspaceId,
@@ -64,7 +83,7 @@ export class CalendarEventsImportService {
       async () => {
         try {
           const eventIdsToFetch: string[] = await this.cacheStorage.setPop(
-            `calendar-events-to-import:${workspaceId}:${calendarChannel.id}`,
+            importKey,
             CALENDAR_EVENT_IMPORT_BATCH_SIZE,
           );
 

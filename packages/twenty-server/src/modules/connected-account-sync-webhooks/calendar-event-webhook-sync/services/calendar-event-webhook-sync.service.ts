@@ -1,3 +1,4 @@
+import { calendarImportCacheKey } from 'src/modules/calendar/common/utils/calendar-import-cache-key';
 import { scheduleOrdinaryMetadataChannels } from 'src/modules/omnichannel/services/schedule-ordinary-metadata-channels';
 import { withOrdinaryMetadataChannels } from 'src/modules/omnichannel/services/with-ordinary-metadata-channels';
 import { Injectable, Logger } from '@nestjs/common';
@@ -124,7 +125,11 @@ export class CalendarEventWebhookSyncService {
     expectedConnectedAccountId: string;
   }): Promise<void> {
     const calendarEventsToImportCount = await this.cacheStorage.getSetLength(
-      `calendar-events-to-import:${workspaceId}:${calendarChannelId}`,
+      calendarImportCacheKey({
+        workspaceId,
+        calendarChannelId,
+        connectedAccountId: expectedConnectedAccountId,
+      }),
     );
 
     if (calendarEventsToImportCount === 0) {

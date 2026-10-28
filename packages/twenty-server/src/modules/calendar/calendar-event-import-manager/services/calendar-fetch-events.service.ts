@@ -1,3 +1,4 @@
+import { calendarImportCacheKey } from 'src/modules/calendar/common/utils/calendar-import-cache-key';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -39,6 +40,24 @@ export class CalendarFetchEventsService {
     connectedAccount: ConnectedAccountEntity,
     workspaceId: string,
   ): Promise<void> {
+    calendarChannel = { ...calendarChannel };
+    connectedAccount = { ...connectedAccount };
+    if (calendarChannel.connectedAccountId !== connectedAccount.id)
+      throw new Error('CALENDAR_IMPORT_ACCOUNT_MISMATCH');
+    const importKey = calendarImportCacheKey({
+      workspaceId,
+      calendarChannelId: calendarChannel.id,
+      connectedAccountId: connectedAccount.id,
+    });
+    if (
+      await this.calendarChannelSyncStatusService.recoverLegacyCalendarImport(
+        calendarChannel.id,
+        workspaceId,
+        connectedAccount.id,
+      )
+    )
+      return;
+
     this.logger.log(
       `WorkspaceId: ${workspaceId}, CalendarChannelId: ${calendarChannel.id} - Fetching calendar events`,
     );
@@ -91,10 +110,7 @@ export class CalendarFetchEventsService {
           }
 
           if (calendarEventIds.length > 0) {
-            await this.cacheStorage.setAdd(
-              `calendar-events-to-import:${workspaceId}:${calendarChannel.id}`,
-              calendarEventIds,
-            );
+            await this.cacheStorage.setAdd(importKey, calendarEventIds);
 
             await this.calendarChannelSyncStatusService.markAsCalendarEventsImportPending(
               [calendarChannel.id],
@@ -115,7 +131,7 @@ export class CalendarFetchEventsService {
           );
         } catch (error) {
           this.logger.error(
-            `WorkspaceId: ${workspaceId}, CalendarChannelId: ${calendarChannel.id} - Calendar event fetch error: ${error.message}`,
+            `WorkspaceId: ${workspaceId}, CalendarChannelId: ${calendarChannel.id} - Calendar event fetch error: ${error instanceof Error ? error.message : String(error)}`,
           );
           await this.calendarEventImportErrorHandlerService.handleDriverException(
             error,

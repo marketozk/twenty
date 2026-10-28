@@ -48,6 +48,8 @@ Canonical lifecycle requirements remain in the implementation specification.
 
 - LOG068: notification account pin before scheduling, qualified queue dedup with legacy compatibility, calendar current scheduled read and pinned IMPORT_PENDING inline gate. Provider internals and Microsoft subscription lifecycle remain below.
 
+- LOG069: all four calendar cache owners use captured account v2 key; retained legacy reset/refetch before fetch/import, known-commit deletion only. Cursor/notfound/unknown error reset/flush parent-pinned. Successful callback/native lifecycle remains below.
+
 ## Remaining owners, in implementation order
 
 Paths below are relative to `packages/twenty-server/src`.
@@ -55,7 +57,8 @@ Paths below are relative to `packages/twenty-server/src`.
 | Owner | Observed gap / required check |
 |---|---|
 | Import/onboarding admission | Importer and recent-import caller require fresh expected-parent/stage admission; unknown outcomes must propagate. Account-scoped cache alone does not guard SQL callbacks. |
-| Notification lifecycle and calendar cache | Microsoft renew/recreate lack event account/subscription pins. Calendar cache still uses workspace/channel only, and fetch writes cursor/status after provider. Scheduling/dispatch is covered by LOG068. |
+| Notification lifecycle | Microsoft renew/recreate lack event account/subscription/clientState pins, including create after clear/recovery. Scheduling/dispatch is covered by LOG068. |
+| Calendar provider callbacks | CalendarFetchEventsService still writes stage/cursor and association/orphan cleanup after provider without complete run snapshot; cache provenance is covered by LOG069. |
 | Native provider-result writes | Message save aggregate/calendar save aggregate must check parent/run under their existing native transaction; calendar association/orphan cleanup also needs same-owner admission. External SELECT is insufficient. |
 | Legacy list-fetch downstream cache/cleanup callbacks | Final completion is parent-pinned (LOG058); intermediate cache mutations and cleanup are separate. Review with group/folder scope before claiming complete callback lifecycle protection. |
 

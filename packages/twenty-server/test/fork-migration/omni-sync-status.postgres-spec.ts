@@ -1,3 +1,12 @@
+// Provider network behavior is supplied explicitly by each calendar fetch test.
+jest.mock(
+  'src/modules/calendar/calendar-event-import-manager/services/calendar-get-events.service',
+  () => ({ CalendarGetCalendarEventsService: class {} }),
+);
+import {
+  calendarImportCacheKey,
+  legacyCalendarImportCacheKey,
+} from 'src/modules/calendar/common/utils/calendar-import-cache-key';
 import { CalendarEventWebhookSyncService } from 'src/modules/connected-account-sync-webhooks/calendar-event-webhook-sync/services/calendar-event-webhook-sync.service';
 import { WebhookSyncTriggerService } from 'src/modules/connected-account/webhook-subscription-manager/services/webhook-sync-trigger.service';
 import { BlocklistReimportMessagesJob } from 'src/modules/messaging/blocklist-manager/jobs/messaging-blocklist-reimport-messages.job';
@@ -2986,4 +2995,320 @@ for (const kind of ['message', 'calendar'] as const) {
     await trigger(ordinary[kind], fixture.workspaceId, ordinary.account);
     expect(add).not.toHaveBeenCalled();
   });
+}
+
+it('calendar cache scope validates UUIDs and separates account and legacy namespaces', () => {
+  const key = calendarImportCacheKey({
+    workspaceId: fixture.workspaceId,
+    calendarChannelId: ordinary.calendar,
+    connectedAccountId: ordinary.account,
+  });
+  expect(
+    calendarImportCacheKey({
+      workspaceId: fixture.workspaceId.toUpperCase(),
+      calendarChannelId: ordinary.calendar.toUpperCase(),
+      connectedAccountId: ordinary.account.toUpperCase(),
+    }),
+  ).toBe(key);
+  expect(
+    calendarImportCacheKey({
+      workspaceId: fixture.workspaceId,
+      calendarChannelId: ordinary.calendar,
+      connectedAccountId: protectedIds.account,
+    }),
+  ).not.toBe(key);
+  expect(
+    legacyCalendarImportCacheKey(fixture.workspaceId, ordinary.calendar),
+  ).not.toBe(key);
+  expect(() =>
+    calendarImportCacheKey({
+      workspaceId: fixture.workspaceId,
+      calendarChannelId: ordinary.calendar,
+      connectedAccountId: 'not-a-uuid',
+    }),
+  ).toThrow('INVALID_CALENDAR_IMPORT_CACHE_SCOPE');
+  expect(() => legacyCalendarImportCacheKey('', ordinary.calendar)).toThrow(
+    'INVALID_CALENDAR_IMPORT_CACHE_SCOPE',
+  );
+});
+it.each([
+  'ordinary',
+  'parent',
+  'disabled',
+  'setup',
+  'protected',
+  'unknown',
+  'absent',
+])(
+  'calendar legacy backlog refetch preserves outcome boundaries: %s',
+  async (mutation) => {
+    const ids = mutation === 'protected' ? protectedIds : ordinary;
+    const repository = runtime.getRepository(CalendarChannelEntity);
+    cache.getSetLength.mockResolvedValue(mutation === 'absent' ? 0 : 3);
+    if (mutation === 'parent')
+      await repository.update(ids.calendar, {
+        connectedAccountId: (await seed()).account,
+      });
+    if (mutation === 'disabled')
+      await repository.update(ids.calendar, { isSyncEnabled: false });
+    if (mutation === 'setup')
+      await repository.update(ids.calendar, {
+        syncStage: CalendarChannelSyncStage.PENDING_CONFIGURATION,
+      });
+    const before = await repository.findOneByOrFail({ id: ids.calendar });
+    if (mutation === 'unknown') {
+      const create = runtime.createQueryRunner.bind(runtime);
+      jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+        const runner = create(),
+          commit = runner.commitTransaction.bind(runner);
+        runner.commitTransaction = async () => {
+          await commit();
+          throw new Error('legacy calendar ACK lost');
+        };
+        return runner;
+      });
+    }
+    const action = calendar.recoverLegacyCalendarImport(
+      ids.calendar,
+      fixture.workspaceId,
+      ids.account,
+    );
+    if (mutation === 'unknown')
+      await expect(action).rejects.toThrow(
+        'OMNI_CORE_TRANSACTION_OUTCOME_UNKNOWN',
+      );
+    else expect(await action).toBe(mutation !== 'absent');
+    if (mutation === 'ordinary') {
+      expect(
+        await repository.findOneByOrFail({ id: ids.calendar }),
+      ).toMatchObject({
+        syncCursor: '',
+        syncStage: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING,
+      });
+      expect(cache.del.mock.calls.map((call) => call[0])).toEqual([
+        calendarImportCacheKey({
+          workspaceId: fixture.workspaceId,
+          calendarChannelId: ids.calendar,
+          connectedAccountId: ids.account,
+        }),
+        legacyCalendarImportCacheKey(fixture.workspaceId, ids.calendar),
+      ]);
+    } else {
+      expect(cache.del).not.toHaveBeenCalled();
+      if (mutation !== 'unknown')
+        expect(await repository.findOneByOrFail({ id: ids.calendar })).toEqual(
+          before,
+        );
+    }
+  },
+);
+for (const kind of ['fetch', 'import'] as const) {
+  it(
+    'actual calendar ' + kind + ' stops before provider/pop on legacy backlog',
+    async () => {
+      cache.getSetLength.mockResolvedValue(1);
+      const channel = await runtime
+        .getRepository(CalendarChannelEntity)
+        .findOneByOrFail({ id: ordinary.calendar });
+      const account = await runtime
+        .getRepository(ConnectedAccountEntity)
+        .findOneByOrFail({ id: ordinary.account });
+      const setPop = jest.fn(),
+        getCalendarEvents = jest.fn();
+      const deps = {
+        cacheStorage: { ...cache, setPop },
+        calendarChannelSyncStatusService: calendar,
+        getCalendarEventsService: { getCalendarEvents },
+        calendarImportEventsService: { getCalendarEvents },
+      };
+      if (kind === 'fetch') {
+        const actual = jest.requireActual<
+          typeof import('src/modules/calendar/calendar-event-import-manager/services/calendar-fetch-events.service')
+        >(
+          'src/modules/calendar/calendar-event-import-manager/services/calendar-fetch-events.service',
+        );
+        await makeService(
+          actual.CalendarFetchEventsService.prototype,
+          deps,
+        ).fetchCalendarEvents(channel, account, fixture.workspaceId);
+      } else
+        await makeService(
+          CalendarEventsImportService.prototype,
+          deps,
+        ).processCalendarEventsImport(channel, account, fixture.workspaceId);
+      expect(setPop).not.toHaveBeenCalled();
+      expect(getCalendarEvents).not.toHaveBeenCalled();
+      expect(
+        (
+          await runtime
+            .getRepository(CalendarChannelEntity)
+            .findOneByOrFail({ id: ordinary.calendar })
+        ).syncCursor,
+      ).toBe('');
+    },
+  );
+}
+it('calendar delayed provider result uses captured account cache namespace', async () => {
+  const actual = jest.requireActual<
+    typeof import('src/modules/calendar/calendar-event-import-manager/services/calendar-fetch-events.service')
+  >(
+    'src/modules/calendar/calendar-event-import-manager/services/calendar-fetch-events.service',
+  );
+  const channel = await runtime
+    .getRepository(CalendarChannelEntity)
+    .findOneByOrFail({ id: ordinary.calendar });
+  const account = await runtime
+    .getRepository(ConnectedAccountEntity)
+    .findOneByOrFail({ id: ordinary.account });
+  const other = await seed(),
+    setAdd = jest.fn();
+  const fetch = makeService(actual.CalendarFetchEventsService.prototype, {
+    logger: { log: jest.fn(), error: jest.fn() },
+    cacheStorage: { setAdd },
+    calendarChannelSyncStatusService: {
+      recoverLegacyCalendarImport:
+        calendar.recoverLegacyCalendarImport.bind(calendar),
+      markAsCalendarEventListFetchOngoing: jest.fn(),
+      markAsCalendarEventsImportPending: jest.fn(),
+    },
+    calendarChannelRepository: { update: jest.fn() },
+    workspaceOrmManager: {
+      executeInWorkspaceContext: async (work: () => Promise<void>) => work(),
+    },
+    getCalendarEventsService: {
+      getCalendarEvents: async () => {
+        await runtime
+          .getRepository(CalendarChannelEntity)
+          .update(ordinary.calendar, { connectedAccountId: other.account });
+        channel.connectedAccountId = other.account;
+        account.id = other.account;
+        return {
+          calendarEventIds: ['old-event'],
+          calendarEventIdsToDelete: [],
+          nextSyncCursor: 'next',
+        };
+      },
+    },
+  });
+  await fetch.fetchCalendarEvents(channel, account, fixture.workspaceId);
+  expect(setAdd).toHaveBeenCalledWith(
+    calendarImportCacheKey({
+      workspaceId: fixture.workspaceId,
+      calendarChannelId: ordinary.calendar,
+      connectedAccountId: ordinary.account,
+    }),
+    ['old-event'],
+  );
+});
+it('calendar postcommit reset clears admitted account namespace after reparent', async () => {
+  const other = await seed();
+  const create = runtime.createQueryRunner.bind(runtime);
+  jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+    const runner = create(),
+      commit = runner.commitTransaction.bind(runner);
+    runner.commitTransaction = async () => {
+      await commit();
+      await runtime.query(
+        'UPDATE core."calendarChannel" SET "connectedAccountId"=$1 WHERE id=$2',
+        [other.account, ordinary.calendar],
+      );
+    };
+    return runner;
+  });
+  await calendar.resetAndMarkAsCalendarEventListFetchPending(
+    [ordinary.calendar],
+    fixture.workspaceId,
+    ordinary.account,
+  );
+  expect(cache.del).toHaveBeenCalledTimes(1);
+  expect(cache.del).toHaveBeenCalledWith(
+    calendarImportCacheKey({
+      workspaceId: fixture.workspaceId,
+      calendarChannelId: ordinary.calendar,
+      connectedAccountId: ordinary.account,
+    }),
+  );
+});
+it('calendar batch pop uses captured identity despite caller object mutation', async () => {
+  const channel = await runtime
+    .getRepository(CalendarChannelEntity)
+    .findOneByOrFail({ id: ordinary.calendar });
+  const account = await runtime
+    .getRepository(ConnectedAccountEntity)
+    .findOneByOrFail({ id: ordinary.account });
+  const setPop = jest.fn().mockImplementation(async () => {
+    channel.connectedAccountId = protectedIds.account;
+    account.id = protectedIds.account;
+    return [];
+  });
+  await makeService(CalendarEventsImportService.prototype, {
+    cacheStorage: { setPop },
+    calendarChannelSyncStatusService: calendar,
+    workspaceOrmManager: {
+      executeInWorkspaceContext: async (work: () => Promise<void>) => work(),
+    },
+  }).processCalendarEventsImport(channel, account, fixture.workspaceId);
+  expect(setPop).toHaveBeenCalledWith(
+    calendarImportCacheKey({
+      workspaceId: fixture.workspaceId,
+      calendarChannelId: ordinary.calendar,
+      connectedAccountId: ordinary.account,
+    }),
+    100,
+  );
+});
+for (const code of [
+  CalendarEventImportDriverExceptionCode.SYNC_CURSOR_ERROR,
+  CalendarEventImportDriverExceptionCode.NOT_FOUND,
+  CalendarEventImportDriverExceptionCode.UNKNOWN,
+]) {
+  it.each(['ordinary', 'parent'])(
+    'calendar error ' + code + ' flush/reset retains parent: %s',
+    async (mutation) => {
+      const repository = runtime.getRepository(CalendarChannelEntity);
+      const snapshot = await repository.findOneByOrFail({
+        id: ordinary.calendar,
+      });
+      if (mutation === 'parent')
+        await repository.update(ordinary.calendar, {
+          connectedAccountId: (await seed()).account,
+        });
+      const before = await repository.findOneByOrFail({
+        id: ordinary.calendar,
+      });
+      const handler = makeService(
+        CalendarEventImportErrorHandlerService.prototype,
+        {
+          calendarChannelSyncStatusService: calendar,
+          exceptionHandlerService: { captureExceptions: jest.fn() },
+          logger: { debug: jest.fn(), error: jest.fn() },
+        },
+      );
+      const action = handler.handleDriverException(
+        new CalendarEventImportDriverException('fixture', code),
+        CalendarEventImportSyncStep.CALENDAR_EVENTS_IMPORT,
+        snapshot,
+        fixture.workspaceId,
+      );
+      if (code === CalendarEventImportDriverExceptionCode.UNKNOWN)
+        await expect(action).rejects.toThrow();
+      else await action;
+      if (mutation === 'parent') {
+        expect(
+          await repository.findOneByOrFail({ id: ordinary.calendar }),
+        ).toEqual(before);
+        expect(cache.del).not.toHaveBeenCalled();
+        expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
+      } else {
+        expect(cache.del).toHaveBeenCalledTimes(1);
+        expect(cache.del).toHaveBeenCalledWith(
+          calendarImportCacheKey({
+            workspaceId: fixture.workspaceId,
+            calendarChannelId: ordinary.calendar,
+            connectedAccountId: ordinary.account,
+          }),
+        );
+      }
+    },
+  );
 }

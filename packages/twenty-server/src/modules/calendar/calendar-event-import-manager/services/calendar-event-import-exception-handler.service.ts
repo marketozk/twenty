@@ -82,7 +82,7 @@ export class CalendarEventImportErrorHandlerService {
   }
 
   private async handleSyncCursorErrorException(
-    calendarChannel: Pick<CalendarChannelEntity, 'id'>,
+    calendarChannel: Pick<CalendarChannelEntity, 'id' | 'connectedAccountId'>,
     workspaceId: string,
   ): Promise<void> {
     this.logger.debug(
@@ -92,6 +92,7 @@ export class CalendarEventImportErrorHandlerService {
     await this.calendarChannelSyncStatusService.resetAndMarkAsCalendarEventListFetchPending(
       [calendarChannel.id],
       workspaceId,
+      calendarChannel.connectedAccountId,
     );
   }
 
@@ -149,12 +150,13 @@ export class CalendarEventImportErrorHandlerService {
 
   private async handleUnknownException(
     exception: { message: string },
-    calendarChannel: Pick<CalendarChannelEntity, 'id'>,
+    calendarChannel: Pick<CalendarChannelEntity, 'id' | 'connectedAccountId'>,
     workspaceId: string,
   ): Promise<void> {
     await this.calendarChannelSyncStatusService.markAsFailedUnknownAndFlushCalendarEventsToImport(
       [calendarChannel.id],
       workspaceId,
+      calendarChannel.connectedAccountId,
     );
 
     const calendarEventImportException = new CalendarEventImportException(
@@ -181,7 +183,7 @@ export class CalendarEventImportErrorHandlerService {
 
   private async handleNotFoundException(
     syncStep: CalendarEventImportSyncStep,
-    calendarChannel: Pick<CalendarChannelEntity, 'id'>,
+    calendarChannel: Pick<CalendarChannelEntity, 'id' | 'connectedAccountId'>,
     workspaceId: string,
   ): Promise<void> {
     if (syncStep === CalendarEventImportSyncStep.CALENDAR_EVENT_LIST_FETCH) {
@@ -191,6 +193,7 @@ export class CalendarEventImportErrorHandlerService {
     await this.calendarChannelSyncStatusService.resetAndMarkAsCalendarEventListFetchPending(
       [calendarChannel.id],
       workspaceId,
+      calendarChannel.connectedAccountId,
     );
   }
 }

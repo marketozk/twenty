@@ -1,0 +1,14 @@
+{
+  "baseCommit": "384b9f0355bd8bec4d57ec9aed791df65961cef3",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-event-import-exception-handler.service.ts": "22f6cbf0db3737c17800b67be37e52c3c1b6501f8371976ac9e7951c1b5a9efe",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-events-import.service.ts": "947bcf4ec69b3695948b9c1a1944a3a1d2330b43e01caeb1da35ed43db6ab8a8",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-fetch-events.service.ts": "1f371905dccbcdcb9e608aba0ff14aa5163318ef01c8e9043f62841b34264d82",
+    "packages/twenty-server/src/modules/calendar/common/services/calendar-channel-sync-status.service.ts": "c314884b0be292b5c6c4197e1acee6233b019f22e51aadb193fad8748c806180",
+    "packages/twenty-server/src/modules/connected-account-sync-webhooks/calendar-event-webhook-sync/services/calendar-event-webhook-sync.service.ts": "e42ae049667409803da19349cb57afa4593b58484df020e3103d233677384ec4",
+    "packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts": "aada27d19d9dc559bc06604524b41607baa3207b653b8d584bd2e6fc4aed800a",
+    "packages/twenty-server/src/modules/calendar/common/utils/calendar-import-cache-key.ts": "b70c14e478f7cabcae1741accb43077b0f1e6c918b5b0be0ad945dacc2b0da5c"
+  }
+}

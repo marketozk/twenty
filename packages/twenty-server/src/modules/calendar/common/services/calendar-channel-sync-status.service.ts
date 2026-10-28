@@ -1,3 +1,7 @@
+import {
+  calendarImportCacheKey,
+  legacyCalendarImportCacheKey,
+} from 'src/modules/calendar/common/utils/calendar-import-cache-key';
 import { isSyncStale } from 'src/modules/calendar/calendar-event-import-manager/utils/is-sync-stale.util';
 import { toIsoStringOrNull } from 'src/utils/date/toIsoStringOrNull';
 import { Injectable } from '@nestjs/common';
@@ -212,6 +216,7 @@ export class CalendarChannelSyncStatusService {
     expectedConnectedAccountId: string | undefined,
     schedule: boolean,
     expectedUserWorkspaceId?: string,
+    recovery = false,
   ): Promise<string[]> {
     if (!calendarChannelIds.length) return [];
 
@@ -229,7 +234,7 @@ export class CalendarChannelSyncStatusService {
       },
       false,
       expectedConnectedAccountId,
-      schedule,
+      schedule || recovery,
       expectedUserWorkspaceId,
     );
     await this.flushImportCache(updated, workspaceId);
@@ -308,6 +313,7 @@ export class CalendarChannelSyncStatusService {
   public async markAsFailedUnknownAndFlushCalendarEventsToImport(
     calendarChannelIds: string[],
     workspaceId: string,
+    expectedConnectedAccountId?: string,
   ) {
     if (!calendarChannelIds.length) {
       return;
@@ -320,6 +326,8 @@ export class CalendarChannelSyncStatusService {
         syncStatus: CalendarChannelSyncStatus.FAILED_UNKNOWN,
         syncStage: CalendarChannelSyncStage.FAILED,
       },
+      false,
+      expectedConnectedAccountId,
     );
     await this.flushImportCache(updated, workspaceId);
     if (updated.length)
@@ -430,13 +438,40 @@ export class CalendarChannelSyncStatusService {
     );
   }
 
+  public async recoverLegacyCalendarImport(
+    calendarChannelId: string,
+    workspaceId: string,
+    expectedConnectedAccountId: string,
+  ): Promise<boolean> {
+    const legacyKey = legacyCalendarImportCacheKey(
+      workspaceId,
+      calendarChannelId,
+    );
+    if (!(await this.cacheStorage.getSetLength(legacyKey))) return false;
+    const accepted = await this.resetCalendarChannels(
+      [calendarChannelId],
+      workspaceId,
+      expectedConnectedAccountId,
+      false,
+      undefined,
+      true,
+    );
+    if (accepted.includes(calendarChannelId))
+      await this.cacheStorage.del(legacyKey);
+    return true;
+  }
+
   private async flushImportCache(
     channels: OrdinaryMetadataChannel[],
     workspaceId: string,
   ) {
-    for (const { id } of channels)
+    for (const { id, connectedAccountId } of channels)
       await this.cacheStorage.del(
-        `calendar-events-to-import:${workspaceId}:${id}`,
+        calendarImportCacheKey({
+          workspaceId,
+          calendarChannelId: id,
+          connectedAccountId,
+        }),
       );
   }
 
