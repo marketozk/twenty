@@ -7,6 +7,10 @@ ROB765 In Progress: [LOG089](implementation/log089/README.md) добавил в�
 operationId reuse, permissions и unknown COMMIT. Новых ошибок типов нет;
 189 существующих диагностик остаются, full-server typecheck не чистый.
 
+[LOG090](implementation/log090/README.md): подготовлена десятая миграция с индексом
+по workspace/operation,72 tests/5 suites +26 guards PASS; данные prefix9 сохранены,
+EXPLAIN использует индекс. Проверка типов не добавила диагностик. Не выкатывалось.
+
 Это ещё не общий аудит UI/API: без opt-in обычный ORM работает как прежде.
 Продолжаем native CRUD/merge/files и подключение реальных writers, затем
 metadata/session и negative audit. [Приёмка ROB765](implementation/rob765-progress.md).

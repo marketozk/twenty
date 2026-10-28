@@ -1,0 +1,24 @@
+{
+  "generatedBy": "Twenty generate:instance-command --name crm-audit-operation-index --type fast",
+  "emptyBaselineConfirmed": true,
+  "preservedManifestPrefix": 9,
+  "newMigrationId": "omni-1793194359465-audit-operation-index",
+  "newMigrationChecksum": "3a78a5d28cb503a97a823657d868bc83a4ca2e23dc4a849b7955ca86270be7df",
+  "newTests": 9,
+  "regressionTests": 72,
+  "regressionSuites": 5,
+  "regressionSeconds": 59.227,
+  "guardTests": 26,
+  "typecheck": {
+    "baselineRoots": 326,
+    "currentRoots": 329,
+    "baselineDiagnostics": 189,
+    "currentDiagnostics": 189,
+    "newDiagnostics": 0,
+    "changedFileDiagnostics": 0,
+    "fullServerTypecheck": false
+  },
+  "newImageBuild": false,
+  "demoDeployment": false,
+  "githubActionsUsed": false
+}

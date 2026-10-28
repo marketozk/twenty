@@ -11,13 +11,14 @@ FORK_MIGRATION_TEST_URL='postgres://test_owner:password@localhost:5432/twenty_ro
 Create a fresh disposable PostgreSQL database with a random 16-character hex
 suffix first. The test owner must be able to create/drop roles and terminate its
 test connections. Never use a demo or customer database. The suite rejects
-database names outside this namespace **before connecting**, and drops only its
-own `core` fixture schema between cases. No `.env` files, application bootstrap,
+database names outside this namespace **before connecting**, and drops its own fixture `core`, `crm_audit` and generated workspace schemas
+between cases. No `.env` files, application bootstrap,
 normal integration setup or application database reset are loaded.
 The `.postgres-spec.ts` suffix also keeps these destructive isolated fixtures
 outside the normal unit and application integration test discovery patterns.
 
-The CI workflow creates an ephemeral PostgreSQL 17 service and unique database.
+Run these checks on isolated PostgreSQL 17 with a unique database. GitHub Actions
+is not used for this fork (owner decision); retained workflows are manual-only.
 The isolated Jest configuration intentionally does not use the application test
 setup: it tests the runner against real PostgreSQL, without unrelated jobs or
 seed data. TypeORM is the repository's patched version.
@@ -27,13 +28,13 @@ rollback, lost connection, checksum/schema mismatch, unknown ledger entries,
 unrecorded tables, and read-only readiness/role restrictions. The upstream cursor
 case is a **synthetic fixture**, not a full Twenty upgrade or application restart.
 
-This foundation has no production steps or CLI/startup registration yet. It does
-not create chat tables, certify all T33 cases, or enable omnichannel. Next: obtain
-the actual schema commands from Twenty's generator, pin source checksums in the
-fork manifest, add schema-specific verifiers, then integrate fail-fast migration
-and runtime readiness. The runtime verifier imports no command code. Generated
-`down` remains available in the command type but is deliberately not exposed as
-an automatic data rollback operation.
+The current manifest has ten fork migrations, explicit checksums/schema verifiers,
+native+fork migration orchestration and fail-fast server/worker readiness. LOG088
+also validated actual packaged image startup/restart and a populated upstream
+schema; the synthetic test above is not a substitute for that runtime evidence.
+The runtime verifier imports no command code. Generated `down` remains in the command
+type but is not exposed as an automatic data rollback. The audit operation index
+uses ordinary transactional CREATE INDEX: stop writers during its deployment.
 
 Ledger shape checks cover columns/types/nullability and the primary key; per-step
 verifiers must check their own schema invariants. They are not a general database

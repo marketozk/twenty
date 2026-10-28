@@ -68,11 +68,13 @@ it('upgrades populated prefix eight without inventing outcomes and supports null
     ({ applicationResult: _result, ...row }: Record<string, unknown>) => row,
   );
   await fixture.owner.transaction(async (manager) => {
-    await migration.command.down(manager.queryRunner!);
-    await manager.query(
-      'DELETE FROM core."forkMigrationLedger" WHERE "migrationId"=$1',
-      [migration.migrationId],
-    );
+    for (const later of [...FORK_MIGRATIONS.slice(8)].reverse()) {
+      await later.command.down(manager.queryRunner!);
+      await manager.query(
+        'DELETE FROM core."forkMigrationLedger" WHERE "migrationId"=$1',
+        [later.migrationId],
+      );
+    }
   });
   await new ForkSchemaVerifier(
     fixture.owner,
@@ -83,7 +85,7 @@ it('upgrades populated prefix eight without inventing outcomes and supports null
   ).rejects.toThrow('Pending fork migrations');
   expect(
     await new ForkMigrationRunner(fixture.owner, FORK_MIGRATIONS).apply(),
-  ).toEqual([migration.migrationId]);
+  ).toEqual(FORK_MIGRATIONS.slice(8).map((entry) => entry.migrationId));
   expect(await receipts()).toEqual(
     before.map((row: Record<string, unknown>) => ({
       ...row,

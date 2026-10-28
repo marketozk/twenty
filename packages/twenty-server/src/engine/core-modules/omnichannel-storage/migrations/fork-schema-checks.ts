@@ -1,3 +1,4 @@
+import { verifyAuditOperationIndex } from 'src/engine/core-modules/omnichannel-storage/migrations/audit-operation-index.check';
 import { verifyIncomingApplicationResult } from 'src/engine/core-modules/omnichannel-storage/migrations/incoming-application-result.check';
 import { verifyMessageCurrentRevision } from 'src/engine/core-modules/omnichannel-storage/migrations/message-current-revision.check';
 import { verifyAuditBootstrap } from 'src/engine/core-modules/omnichannel-storage/migrations/audit-bootstrap.check';
@@ -11,7 +12,7 @@ import { verifyMessagePersistence } from 'src/engine/core-modules/omnichannel-st
 import { verifyTrustedCapture } from 'src/engine/core-modules/omnichannel-storage/migrations/trusted-capture.check';
 
 if (
-  manifest.length !== 9 ||
+  manifest.length !== 10 ||
   manifest[0].migrationId !== 'omni-1793078228031-conversation-foundation' ||
   manifest[1].migrationId !== 'omni-1793091163781-audit-bootstrap' ||
   manifest[2].migrationId !== 'omni-1793094313685-message-persistence' ||
@@ -20,7 +21,9 @@ if (
   manifest[5].migrationId !== 'omni-1793116941052-binding-config-wakeup' ||
   manifest[6].migrationId !== 'omni-1793127619000-command-restore-context' ||
   manifest[7].migrationId !== 'omni-1793163618643-message-current-revision' ||
-  manifest[8].migrationId !== 'omni-1793165655229-incoming-application-result'
+  manifest[8].migrationId !==
+    'omni-1793165655229-incoming-application-result' ||
+  manifest[9].migrationId !== 'omni-1793194359465-audit-operation-index'
 ) {
   throw new Error('Fork schema manifest and explicit verifier registry differ');
 }
@@ -35,4 +38,5 @@ export const FORK_SCHEMA_CHECKS: readonly ForkMigrationCheck[] = [
   { ...manifest[6], verify: verifyCommandRestoreContext },
   { ...manifest[7], verify: verifyMessageCurrentRevision },
   { ...manifest[8], verify: verifyIncomingApplicationResult },
+  { ...manifest[9], verify: verifyAuditOperationIndex },
 ];

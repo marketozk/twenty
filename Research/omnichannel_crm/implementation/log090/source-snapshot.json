@@ -1,0 +1,16 @@
+{
+  "baseCommit": "9eaa78b32c369359c93662bc5f666e9fbac5c302",
+  "lfSha256": {
+    "packages/twenty-server/src/database/commands/fork-upgrade/fork-migrations.ts": "2b498bdf43df15f8c047d940c376d26af646ee1cca851e0144f04966d698b869",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/entities/crm-audit-entry.entity.ts": "566a677b36aacce43bc4ac945b2d697d7f937eb120a0ff896bf715cb2b9bbf54",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/audit-bootstrap.check.ts": "b760d8d9349ca47083e9eca90df06069fd645f4bd054add30b73dc91c7c0f560",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/fork-schema-checks.ts": "33d8a5bd64e25b3b92f1125ff2691c271d332d10ec86caaf2c00741156e7b38b",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/fork-schema-manifest.json": "4a72152d64b8a1f9e02a02f0aa2152779af12c965b294cfe3a52a099ee26ccb1",
+    "packages/twenty-server/test/fork-migration/omni-incoming-application-result.postgres-spec.ts": "ae0d5bdd3760ed70184937f03f61e30a102f3cdca1f06e91cdba65be07991d8e",
+    "packages/twenty-server/src/database/commands/fork-upgrade/steps/crm-audit-operation-index.migration.ts": "3a78a5d28cb503a97a823657d868bc83a4ca2e23dc4a849b7955ca86270be7df",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/audit-operation-index.check.ts": "c00c125bfc7f93276c56c59dd0f57e9c5d43c99b22e77c2f63cd1d424bd379ee",
+    "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/audit-operation-index.schema.json": "923d26ef148eb43a826ff6585d14ae6ebba049c536fe798c0c8628e7b79c0577",
+    "packages/twenty-server/test/fork-migration/crm-audit-operation-index.postgres-spec.ts": "a26f61e4d250e6d4bc12d8322bba846d8d38622f332ac7a7ad6fe49b49a082b3"
+  },
+  "uploadedSourceHashesVerified": true
+}

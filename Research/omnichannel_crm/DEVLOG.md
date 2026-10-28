@@ -2996,3 +2996,20 @@ actual writer wiring, metadata/session owners и negative audit. Демо не �
 GitHub Actions и внешние отправки не использовались.
 
 LOG089 publication: `fa83b6d7ea50f223e85b6174ba7a94ae9b027f26` pushed/API verified. Linear ROB765 description and comment `dbfcb89a-8067-4204-93c2-e2eb1b4513b0` independently read back; all11 project states match. ROB765 remains In Progress; implementation continues.
+
+
+## LOG-090 — индекс поиска audit operation
+
+Официальный генератор после пустого baseline выдал один nonunique index
+(workspaceId,operationId). Первые9 миграций неизменны, manifest дополняет10-я.
+Snapshot снят из PostgreSQL; bootstrap verifier выбирает его только по ledger prefix.
+Initial generation обнаружила старый isolated DB prefix5; штатно доведён до9,
+посторонний diff не включён. Новый DDL пока не выкатывался в demo/production.
+
+72 tests/5 suites (9 новых) +26 guard/checksum PASS.10 000 audit rows/CRM fixture
+сохранены; EXPLAIN выбирает индекс, SQL fault откатывает DDL+ledger, altered/missing
+index отклоняется, down/up не меняет аудит. Typecheck326/329 roots,189/189 diagnostics,
+0 новых/changed.10 uploaded/local hashes совпадают, первые9 manifest entries сохранены.
+Read-only review блокеров не обнаружило. CREATE INDEX требует остановленных writers
+при будущем выкате; не CONCURRENTLY. [Evidence](implementation/log090/README.md).
+ROB765 In Progress; далее продолжаем native coverage и реальные writer entry points.

@@ -13,8 +13,9 @@
 | Metadata/role/session lifecycle | Предстоит, каждый через реального transaction owner |
 | Denied/failed audit и health | Omni уже имеет отдельные attempts; general native post-rollback/alert предстоит |
 | AI/workflow/connector события | Дополняются ROB768/769, текущий срез их не подключает |
-| Production rollout | Не выполнялся; перед включением нужен audit(workspaceId,operationId) index и полная native coverage |
+| Operation lookup index | LOG090: generated migration10, populated prefix upgrade/replay/down, real EXPLAIN, drift refusal; не выкатывалось |
+| Production rollout | Не выполнялся; нужны полная native coverage и согласованный выкат с остановленными writers при построении индекса |
 
-Подробные результаты и воспроизведение: [LOG089](log089/README.md).
+Подробные результаты: [LOG089 native owner](log089/README.md), [LOG090 operation index](log090/README.md).
 Следом завершаем native transaction boundary и покрытие writers, затем core/metadata/session.
 Просмотр и экспорт относятся к ROB767, свои права — ROB766; обе задачи пока Backlog.

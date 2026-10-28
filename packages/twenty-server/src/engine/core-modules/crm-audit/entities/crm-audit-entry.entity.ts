@@ -3,6 +3,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   Unique,
   UpdateDateColumn,
@@ -10,6 +11,7 @@ import {
 
 @Entity({ name: 'crmAuditEntry', schema: 'crm_audit' })
 @Unique('UQ_crmAuditEntry_workspace_event', ['workspaceId', 'eventKey'])
+@Index('IDX_crmAuditEntry_workspace_operation', ['workspaceId', 'operationId'])
 @Check('CHK_crmAuditEntry_hash', `"payloadHash" ~ '^[a-f0-9]{64}$'`)
 @Check('CHK_crmAuditEntry_version', '"schemaVersion" > 0')
 @Check(
