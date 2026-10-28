@@ -3070,3 +3070,7 @@ Jest marked ESM transform; production dependencies/validators не подмен�
 8 source hashes совпадают. Read-only review без блокеров. [Evidence](implementation/log093/README.md).
 ROB765 In Progress. Далее automatic public UPDATE owner, inherited proof и scoped
 nested reads с прежними postcommit hook errors. Демо/Actions не затронуты.
+
+LOG093 publication: `f66197d44ce2f7467a542bd90f4b1f8c797a7bb1` pushed/API verified.
+ROB765 description and comment `4c20eb15-a640-47f7-b388-46d36bb1be35` independently
+read back; all11 states match. ROB765 remains In Progress; implementation continues.
