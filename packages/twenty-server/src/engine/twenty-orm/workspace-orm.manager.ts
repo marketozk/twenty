@@ -1,3 +1,4 @@
+import { STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS } from 'twenty-shared/metadata/constants/standard-object-universal-identifiers.constant';
 import {
   PermissionsException,
   PermissionsExceptionCode,
@@ -39,6 +40,21 @@ export class WorkspaceOrmManager {
     private readonly enterprisePlanService: EnterprisePlanService,
     private readonly twentyConfigService: TwentyConfigService,
   ) {}
+
+  getStandardPersonMetadata() {
+    const object =
+      getWorkspaceContext().flatObjectMetadataMaps.byUniversalIdentifier[
+        STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.person
+      ];
+    return (
+      object &&
+      Object.freeze({
+        id: object.id,
+        workspaceId: object.workspaceId,
+        isActive: object.isActive,
+      })
+    );
+  }
 
   getWorkspaceId(): string {
     return getWorkspaceContext().authContext.workspace.id;

@@ -30,6 +30,28 @@ const CATALOG: Record<
     values: ['bindingId', 'personId', 'revision'],
     redacted: ['providerPeerId', 'verificationSource'],
   },
+  omniConversationTarget: {
+    values: [
+      'conversationId',
+      'objectMetadataId',
+      'recordId',
+      'active',
+      'revision',
+      'projectionId',
+    ],
+    redacted: [],
+  },
+  omniMessageThreadTarget: {
+    values: [
+      'messageThreadId',
+      'targetPersonId',
+      'targetCompanyId',
+      'targetOpportunityId',
+      'isManuallyAssigned',
+      'isAutomaticallyAssigned',
+    ],
+    redacted: [],
+  },
   omniAccountBinding: {
     values: [
       'platform',

@@ -7,8 +7,8 @@
 Спецификация: [design/08-audit.md](../design/08-audit.md). Статус: не выполнен. 2a зависит от 1; 2b зависит от собственной политики этапа 3. Остальные этапы дополняют аудит своими событиями.
 
 Основа уже реализована в ROB-764 / LOG-022: CrmAuditEntry, транзакционный context,
-append-only writer, безопасный diff и проверка DB privileges. Текущий каталог охватывает 19 видов ресурсов; собственные omni operations, native Message
-composition, receipts/outbox/revisions используют общий atomic audit context (LOG028–081).
+append-only writer, безопасный diff и проверка DB privileges. Текущий каталог охватывает 21 вид ресурсов; собственные omni operations, native Message
+composition, receipts/outbox/revisions используют общий atomic audit context (LOG028–082).
 ROB-765 расширяет этот механизм на CRM/ORM/merge/bulk/session/metadata; ROB-767
 добавляет просмотр и экспорт после собственных прав. Обе задачи остаются Backlog.
 [Результат и границы LOG-022](../implementation/log022/README.md).

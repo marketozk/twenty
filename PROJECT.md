@@ -54,12 +54,13 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-081 / ROB-764 In Progress: внутренний writer регистрирует qualified ExternalIdentity
-без Person. Actor-scoped receipt, identity и policy epoch сохраняются с audit одной
-транзакцией; replay проходит текущую авторизацию и проверяет исходный success audit. 183 tests/11 suites +26 guards =209 PASS; 27 new PG cases. Differential typecheck 310 roots:187 baseline/187 current,0 new/changed-code. All nine migration sources unchanged.
-[Доказательства](Research/omnichannel_crm/implementation/log081/README.md). Предыдущий полный fork regression: LOG079,2598 tests/80 suites.
-Далее explicit identity link/unlink/rebind и target projection; transport discovery
-ещё не подключён, полный ACL/API остаётся ROB-766.
+LOG-082 / ROB-764 In Progress: внутренний writer связывает ExternalIdentity с Person,
+меняет или снимает связь. Участники штатной переписки обновляются атомарно с identity,
+policy epoch, audit и receipt; прежний автор сообщения остаётся неизменным.
+Старая явная связь с Person и её native projection инвалидируются при rebind/unlink.
+2661 tests/83 suites +26 guards =2687 PASS;21 new PG cases. Differential typecheck 313 roots:187 baseline/187 current,0 new/changed-code. All nine migration sources unchanged. [Доказательства](Research/omnichannel_crm/implementation/log082/README.md). Полный fork regression выполнен на текущем исходнике.
+Далее explicit ConversationTarget link/unlink/projector и оставшиеся phase1 criteria;
+transport discovery и полный ACL/API ещё не подключены.
 Демо прежнее, GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы минимальный аудит и атомарное создание

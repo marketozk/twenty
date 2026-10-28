@@ -18,6 +18,14 @@ import {
 } from 'src/modules/omnichannel/services/cancel-omni-local-human-command';
 import { appendOmniLocalCommandCancellationFailure } from 'src/modules/omnichannel/services/append-omni-local-command-cancellation-failure';
 import { randomUUID } from 'node:crypto';
+import {
+  setOmniIdentityPerson,
+  snapshotOmniIdentityPersonRequest,
+  appendOmniIdentityPersonFailure,
+  type OmniIdentityPersonPrincipal,
+  type OmniIdentityPersonCommand,
+  type OmniIdentityPersonAuthorizer,
+} from 'src/modules/omnichannel/services/set-omni-identity-person';
 
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
@@ -188,6 +196,108 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     @InjectDataSource()
     private readonly dataSource: DataSource,
   ) {}
+
+  async setOmniIdentityPerson(
+    principal: OmniIdentityPersonPrincipal,
+    command: OmniIdentityPersonCommand,
+    authorize: OmniIdentityPersonAuthorizer,
+  ) {
+    const request = snapshotOmniIdentityPersonRequest(
+      principal,
+      command,
+      authorize,
+    );
+    const operationId = randomUUID();
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        const person = this.workspaceOrmManager.getStandardPersonMetadata();
+        if (
+          !person ||
+          person.workspaceId !== request.principal.workspaceId ||
+          !person.isActive
+        )
+          throw new Error('OMNI_IDENTITY_PERSON_METADATA_SCOPE');
+        const personObjectMetadataId = person.id;
+        let entered = false;
+        let denied = false;
+        try {
+          return await this.workspaceOrmManager.runInWorkspaceTransaction(
+            async (scope) => {
+              entered = true;
+              return setOmniIdentityPerson(
+                scope,
+                {
+                  ...request,
+                  authorize: async (...args) => {
+                    try {
+                      await request.authorize(...args);
+                    } catch (error) {
+                      denied = true;
+                      throw error;
+                    }
+                  },
+                },
+                personObjectMetadataId,
+                operationId,
+                {
+                  updateParticipantPerson: async (id, personId) => {
+                    const result = await withOmniRepositoryOptions(scope)
+                      .getRepository<{
+                        id: string;
+                        personId: string | null;
+                      }>('messageParticipant', {
+                        shouldBypassPermissionChecks: true,
+                      })
+                      .update({ id }, { personId });
+                    if (result.affected !== 1)
+                      throw new Error('OMNI_IDENTITY_PARTICIPANT_UPDATE');
+                  },
+                  deleteProjection: async (id) => {
+                    const result = await withOmniRepositoryOptions(scope)
+                      .getRepository<{
+                        id: string;
+                      }>('messageThreadTarget', {
+                        shouldBypassPermissionChecks: true,
+                      })
+                      .delete({ id });
+                    if (result.affected !== 1)
+                      throw new Error('OMNI_IDENTITY_PROJECTION_DELETE');
+                  },
+                },
+              );
+            },
+            { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
+          );
+        } catch (error) {
+          if (
+            entered &&
+            !(error instanceof NativeTransactionOutcomeUnknownError)
+          ) {
+            try {
+              await this.workspaceOrmManager.runInWorkspaceTransaction(
+                (scope) =>
+                  appendOmniIdentityPersonFailure(
+                    scope,
+                    request,
+                    operationId,
+                    denied,
+                  ),
+                { commitOutcome: 'strict' },
+              );
+            } catch (auditError) {
+              throw new AggregateError(
+                [error, auditError],
+                'OMNI_IDENTITY_PERSON_FAILURE_AUDIT_UNCONFIRMED',
+              );
+            }
+          }
+          throw error;
+        }
+      },
+      buildSystemAuthContext(request.principal.workspaceId),
+      { lite: true },
+    );
+  }
 
   async deferOmniHumanCommandReconciliation(
     principal: OmniHumanCommandRecoveryPrincipal,

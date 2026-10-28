@@ -39,6 +39,7 @@ import {
   type OmniIncomingRevisionChain,
 } from 'src/modules/omnichannel/services/load-omni-incoming-revision-chain';
 import { createOmniIncomingRevisionConflict } from 'src/modules/omnichannel/services/omni-incoming-revision-conflict.error';
+import { loadOmniIdentityBindingHistory } from 'src/modules/omnichannel/services/load-omni-identity-binding-history';
 
 const uuid = z.uuid().transform((value) => value.toLowerCase());
 const positiveBigint = z
@@ -1094,17 +1095,25 @@ const applyIncomingReceipt = async (
       });
     }
   };
+  let identityBindingHistory:
+    | Awaited<ReturnType<typeof loadOmniIdentityBindingHistory>>
+    | undefined;
   const verifyChainNative = async (chain: OmniIncomingRevisionChain) => {
     await verifyRetainedRevisionEvent(chain.head, chain.link.messageId);
     if (chain.initial.revision.id !== chain.head.revision.id)
       await verifyRetainedRevisionEvent(chain.initial, chain.link.messageId);
     if (
       chain.author.externalIdentityId !== identity.id ||
-      chain.author.personId !== identity.personId ||
       chain.author.providerPeerId !== identity.providerPeerId ||
       chain.link.authorVerification !== identity.verificationSource
     )
       return fail('REPLAY_AUTHOR_INTEGRITY');
+    identityBindingHistory ??= await loadOmniIdentityBindingHistory(
+      scope,
+      workspaceId,
+      { ...identity, bindingId: binding.id },
+    );
+    identityBindingHistory.assertBirth(chain.author);
     const participant = requireOne(
       z.object({ id: uuid }),
       await query(
@@ -1128,7 +1137,7 @@ const applyIncomingReceipt = async (
       {
         text: chain.head.content.text,
         receivedAt: chain.link.displayOccurredAt,
-        personId: chain.author.personId,
+        personId: identity.personId,
         handle: chain.author.providerPeerId,
         displayName: chain.author.sourceDisplayName ?? '',
       },
@@ -1284,7 +1293,7 @@ const applyIncomingReceipt = async (
         {
           text: candidateContent.text,
           receivedAt: link.displayOccurredAt,
-          personId: chain.author.personId,
+          personId: identity.personId,
           handle: chain.author.providerPeerId,
           displayName: chain.author.sourceDisplayName ?? '',
         },
@@ -1504,7 +1513,15 @@ const applyIncomingReceipt = async (
       link.displayTimeSource !==
         (envelope.occurredAt === null ? 'capture' : 'source') ||
       canonicalAuditJson(link.immutableAuthorSnapshot) !==
-        canonicalAuditJson(authorSnapshot) ||
+        canonicalAuditJson({
+          ...authorSnapshot,
+          ...z
+            .object({
+              identityRevision: positiveBigint,
+              personId: uuid.nullable(),
+            })
+            .parse(link.immutableAuthorSnapshot),
+        }) ||
       link.sourceAuthorId !== envelope.payload.sourceAuthorId ||
       link.sourceDisplayName !== envelope.payload.sourceDisplayName ||
       link.authorVerification !== identity.verificationSource

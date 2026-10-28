@@ -1,3 +1,4 @@
+import { STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS } from 'twenty-shared/metadata';
 import { randomUUID } from 'node:crypto';
 
 import { DataSource } from 'typeorm';
@@ -45,6 +46,10 @@ export const createOmniHistoryApplyFixture = (
     extra: { max: 3, statement_timeout: 10000 },
   });
   const manager = {
+    getStandardPersonMetadata: () =>
+      getWorkspaceContext().flatObjectMetadataMaps.byUniversalIdentifier[
+        STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.person
+      ],
     getWorkspaceId: () => getWorkspaceContext().authContext.workspace.id,
     executeInWorkspaceContext: async <T>(work: () => Promise<T>): Promise<T> =>
       native.withContext(work),
