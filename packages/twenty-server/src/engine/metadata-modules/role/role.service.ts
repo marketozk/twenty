@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   withRoleUpdateAudit,
+  withRoleCreateAudit,
   type RoleUpdateAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { captureNativeCrmAuditWriteData } from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
@@ -194,6 +195,35 @@ export class RoleService {
       flatApplication: ownerFlatApplication,
     });
 
+    return this.createRoleFromFlat(flatRoleToCreate);
+  }
+
+  public async createAuditedRole({
+    input,
+    workspaceId,
+    ownerFlatApplication,
+    auditIdentity,
+  }: {
+    input: CreateRoleInput;
+    workspaceId: string;
+    ownerFlatApplication: FlatApplication;
+    auditIdentity: RoleUpdateAuditIdentity;
+  }): Promise<RoleDTO> {
+    const flatRoleToCreate = fromCreateRoleInputToFlatRoleToCreate({
+      createRoleInput: input,
+      workspaceId,
+      flatApplication: ownerFlatApplication,
+    });
+    return withRoleCreateAudit(flatRoleToCreate, auditIdentity, () =>
+      this.createRoleFromFlat(flatRoleToCreate),
+    );
+  }
+
+  private async createRoleFromFlat(
+    flatRoleToCreate: FlatRole,
+  ): Promise<RoleDTO> {
+    const workspaceId = flatRoleToCreate.workspaceId;
+
     const validateAndBuildResult =
       await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
         {
@@ -207,7 +237,7 @@ export class RoleService {
           workspaceId,
           isSystemBuild: false,
           applicationUniversalIdentifier:
-            ownerFlatApplication.universalIdentifier,
+            flatRoleToCreate.applicationUniversalIdentifier,
         },
       );
 

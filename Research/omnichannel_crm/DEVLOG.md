@@ -3466,3 +3466,18 @@ actual insert snapshot и defaults. Bootstrap/member/guest/seeder сохраня
 прежний путь; не приписываем системную инициализацию несуществующему пользователю.
 
 LOG111 publication: 56ca363c59304a702016adbe14c6cde2663e7a72 pushed/API verified. ROB765 description and comment 90d2c05a-1360-4a76-b6fb-0a36c1077e29 independently read back; all 11 issue states match. Implementation continues.
+
+## LOG-112 — public/AI role CREATE audit
+
+Существующий metadata owner расширен на создание роли: нормализация и handler
+переиспользованы, final enriched ID/application/workspace и actual INSERT проверяются
+в одном commit с audit. Bootstrap остаётся отдельным явным legacy путём.
+Read-only review нашёл потерю microseconds и late identity capture; оба дефекта
+исправлены и покрыты PG regressions. Existing tool unit fixtures актуализированы.
+
+1108 tests/35 suites PASS (198.532s); 54 targeted PG/descriptor + 11 existing role-tool unit tests PASS. 22 новых PG cases. 26 guards PASS; 10 migration checksums неизменны. Types 352/352 roots, 218/218 прежних диагностик, 0 новых/changed-code. 8 local/remote source hashes совпадают.
+
+[Доказательства](implementation/log112/README.md). ROB765 In Progress; полный HTTP/
+metadata builder не проверен. Демо/образ/сообщения/Actions не менялись. Следом —
+публичное назначение роли сотруднику: fresh membership/assignment, serial last-admin
+check, existing roleTarget handlers и общий strict owner.

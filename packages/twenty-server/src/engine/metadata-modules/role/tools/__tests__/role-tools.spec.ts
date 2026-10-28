@@ -33,7 +33,7 @@ const predicateGroupId = '6f7a8b9c-0d1e-4f2a-9b4c-5d6e7f8091a2';
 const buildServices = () => ({
   roleService: {
     getWorkspaceRoles: jest.fn().mockResolvedValue([]),
-    createRole: jest.fn(),
+    createAuditedRole: jest.fn(),
     updateRole: jest.fn(),
     deleteRole: jest.fn(),
   },
@@ -80,6 +80,11 @@ const buildListRolesTool = (services: ReturnType<typeof buildServices>) =>
 
 const context: ToolProviderContext = {
   workspaceId,
+  authContext: {
+    type: 'user',
+    workspace: { id: workspaceId },
+    workspaceMemberId: 'caller-workspace-member-id',
+  } as ToolProviderContext['authContext'],
   rolePermissionConfig: {
     intersectionOf: { userWorkspaceRoleId: callerRoleId },
   },
@@ -189,7 +194,7 @@ describe('Role tools', () => {
     it('creates a role through the role service', async () => {
       const services = buildServices();
 
-      services.roleService.createRole.mockResolvedValue({
+      services.roleService.createAuditedRole.mockResolvedValue({
         id: 'new-role-id',
         label: 'Sales',
       });
@@ -203,9 +208,10 @@ describe('Role tools', () => {
       });
 
       expect(output.success).toBe(true);
-      expect(services.roleService.createRole).toHaveBeenCalledWith(
+      expect(services.roleService.createAuditedRole).toHaveBeenCalledWith(
         expect.objectContaining({
           workspaceId,
+          auditIdentity: expect.objectContaining({ auth: context.authContext }),
           input: expect.objectContaining({
             label: 'Sales',
             canReadAllObjectRecords: true,
@@ -242,6 +248,7 @@ describe('Role tools', () => {
           update: { canUpdateAllSettings: false, label: 'Support L1' },
         },
         actingRoleIds: [callerRoleId],
+        auditIdentity: { auth: context.authContext, agentId: undefined },
       });
     });
 

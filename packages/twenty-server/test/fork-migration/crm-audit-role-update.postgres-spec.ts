@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { DataSource, EntitySchema, type QueryRunner } from 'typeorm';
 import {
-  getRoleUpdateAudit,
+  getRoleMutationAudit,
   roleAuditIdentityFromRequest,
-  runAuditedRoleUpdate,
+  runAuditedRoleMutation,
+  withRoleCreateAudit,
   withRoleUpdateAudit,
   type RoleUpdateAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/role-update-audit';
@@ -12,6 +13,8 @@ import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/erro
 import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
 import { type CrmAuditMutation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { compareTwoFlatEntity } from 'src/engine/workspace-manager/workspace-migration/universal-flat-entity/utils/compare-two-universal-flat-entity.util';
+import { flatEntityToScalarFlatEntity } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/utils/flat-entity-to-scalar-flat-entity.util';
+import { fromCreateRoleInputToFlatRoleToCreate } from 'src/engine/metadata-modules/flat-role/utils/from-create-role-input-to-flat-role-to-create.util';
 
 jest.mock('twenty-shared/ai', () => ({ ToolCategory: { ROLE: 'ROLE' } }));
 
@@ -55,7 +58,29 @@ for (const [path, name] of [
   jest.doMock('src/engine/' + path, () => ({ [name]: class {} }));
 jest.mock(
   'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/interfaces/workspace-migration-runner-action-handler-service.interface',
-  () => ({ WorkspaceMigrationRunnerActionHandler: () => class {} }),
+  () => ({
+    WorkspaceMigrationRunnerActionHandler: () =>
+      class {
+        async insertFlatEntitiesInRepository({
+          queryRunner,
+          flatEntities,
+        }: {
+          queryRunner: QueryRunner;
+          flatEntities: ReturnType<
+            typeof fromCreateRoleInputToFlatRoleToCreate
+          >[];
+        }) {
+          await queryRunner.manager.getRepository(RoleEntity).insert(
+            flatEntities.map((flatEntity) =>
+              flatEntityToScalarFlatEntity({
+                metadataName: 'role',
+                flatEntity,
+              }),
+            ),
+          );
+        }
+      },
+  }),
 );
 jest.mock('src/engine/metadata-modules/role/role.entity', () => ({
   RoleEntity: class RoleEntity {},
@@ -76,6 +101,10 @@ const { RoleService } =
   require('src/engine/metadata-modules/role/role.service') as typeof import('src/engine/metadata-modules/role/role.service');
 const { UpdateRoleTool } =
   require('src/engine/metadata-modules/role/tools/update-role.tool') as typeof import('src/engine/metadata-modules/role/tools/update-role.tool');
+const { CreateRoleActionHandlerService } =
+  require('src/engine/workspace-manager/workspace-migration/workspace-migration-runner/action-handlers/role/services/create-role-action-handler.service') as typeof import('src/engine/workspace-manager/workspace-migration/workspace-migration-runner/action-handlers/role/services/create-role-action-handler.service');
+const { CreateRoleTool } =
+  require('src/engine/metadata-modules/role/tools/create-role.tool') as typeof import('src/engine/metadata-modules/role/tools/create-role.tool');
 
 const databaseUrl = process.env.FORK_MIGRATION_TEST_URL;
 if (
@@ -167,6 +196,7 @@ const services = (
     mappedId?: string;
     deferred?: boolean;
     fail?: boolean;
+    applicationId?: string;
   } = {},
 ) => {
   const flatRole = {
@@ -181,9 +211,12 @@ const services = (
       universalIdentifierById: { [flatRole.id]: universalIdentifier },
     },
   };
-  const handler = new UpdateRoleActionHandlerService();
+  const updateHandler = new UpdateRoleActionHandlerService();
+  const createHandler = new CreateRoleActionHandlerService();
   const registry = {
     executeActionHandler: jest.fn(async ({ context }) => {
+      const handler =
+        context.action.type === 'create' ? createHandler : updateHandler;
       const flatAction =
         await handler.transpileUniversalActionToFlatAction(context);
       await handler.executeForMetadata({ ...context, flatAction });
@@ -204,7 +237,7 @@ const services = (
         },
         byId: {
           [applicationId]: {
-            id: applicationId,
+            id: options.applicationId ?? applicationId,
             universalIdentifier: applicationUniversalIdentifier,
           },
         },
@@ -260,13 +293,13 @@ beforeAll(async () => {
   );
   await owner.query(`CREATE ROLE "${databaseRole}" LOGIN PASSWORD 'isolated-role-fixture' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
     GRANT USAGE ON SCHEMA core,crm_audit TO "${databaseRole}"; GRANT SELECT ON ALL TABLES IN SCHEMA core TO "${databaseRole}";
-    GRANT UPDATE ON core.role TO "${databaseRole}"; GRANT SELECT,INSERT ON crm_audit."crmAuditEntry" TO "${databaseRole}"`);
+    GRANT INSERT,UPDATE ON core.role TO "${databaseRole}"; GRANT SELECT,INSERT ON crm_audit."crmAuditEntry" TO "${databaseRole}"`);
   await runtime.initialize();
 });
 beforeEach(async () => {
   jest.restoreAllMocks();
   await owner.query(
-    'DROP TRIGGER IF EXISTS corrupt_audit ON crm_audit."crmAuditEntry"; DROP FUNCTION IF EXISTS crm_audit.corrupt_audit(); TRUNCATE core.role,core."userWorkspace",crm_audit."crmAuditEntry"',
+    'DROP TRIGGER IF EXISTS corrupt_audit ON crm_audit."crmAuditEntry"; DROP FUNCTION IF EXISTS crm_audit.corrupt_audit(); DROP TRIGGER IF EXISTS corrupt_role ON core.role; DROP FUNCTION IF EXISTS core.corrupt_role(); TRUNCATE core.role,core."userWorkspace",crm_audit."crmAuditEntry"',
   );
   await owner.getRepository(RoleEntity).insert({
     id: roleId,
@@ -467,9 +500,9 @@ it.each(['create', 'foreign-object', 'multiple', 'bad-field'])(
     const work = jest.fn(async () => {});
     await expect(
       withRoleUpdateAudit(workspaceId, roleId, identity(), () =>
-        runAuditedRoleUpdate(
+        runAuditedRoleMutation(
           runtime,
-          getRoleUpdateAudit(workspaceId)!,
+          getRoleMutationAudit(workspaceId)!,
           actions,
           work,
         ),
@@ -483,23 +516,23 @@ it.each(['create', 'foreign-object', 'multiple', 'bad-field'])(
 it('rejects operation reuse and a detached inactive async scope', async () => {
   let detached: (() => Promise<void>) | undefined;
   await withRoleUpdateAudit(workspaceId, roleId, identity(), async () => {
-    const request = getRoleUpdateAudit(workspaceId)!;
+    const request = getRoleMutationAudit(workspaceId)!;
     const work = async (runner: QueryRunner) => {
       await runner.query('UPDATE core.role SET label=$1 WHERE id=$2', [
         'first',
         roleId,
       ]);
     };
-    await runAuditedRoleUpdate(
+    await runAuditedRoleMutation(
       runtime,
       request,
       [action({ label: 'first' })],
       work,
     );
     await expect(
-      runAuditedRoleUpdate(runtime, request, [action()], work),
+      runAuditedRoleMutation(runtime, request, [action()], work),
     ).rejects.toThrow('consumed');
-    detached = () => runAuditedRoleUpdate(runtime, request, [action()], work);
+    detached = () => runAuditedRoleMutation(runtime, request, [action()], work);
   });
   await expect(detached!()).rejects.toThrow('not active');
 });
@@ -707,4 +740,349 @@ it('does not mask commit outcome when cache invalidation itself fails', async ()
     expect.stringContaining('cache unavailable'),
     'Runner',
   );
+});
+
+const application = {
+  id: applicationId,
+  universalIdentifier: applicationUniversalIdentifier,
+};
+const createFlatRole = (
+  input: { label: string; id?: string } = { label: 'created private role' },
+) =>
+  fromCreateRoleInputToFlatRoleToCreate({
+    createRoleInput: input,
+    workspaceId,
+    flatApplication: application as never,
+  });
+const createAction = (flatRole: ReturnType<typeof createFlatRole>) => ({
+  type: 'create' as const,
+  metadataName: 'role' as const,
+  id: flatRole.id,
+  flatEntity: Object.fromEntries(
+    Object.entries(flatRole).filter(
+      ([key]) =>
+        key !== 'id' &&
+        key !== 'workspaceId' &&
+        key !== 'applicationId' &&
+        !key.endsWith('Ids'),
+    ),
+  ),
+});
+const runCreate = (
+  flatRole = createFlatRole(),
+  migration = services(),
+  actions = [createAction(flatRole)],
+) =>
+  withRoleCreateAudit(flatRole, identity(), () =>
+    migration.service.run({
+      workspaceId,
+      workspaceMigration: { applicationUniversalIdentifier, actions } as never,
+    }),
+  );
+
+const createRoleServiceFixture = (wait = async () => {}) => {
+  const migration = services();
+  const builder = {
+    validateBuildAndRunWorkspaceMigration: jest.fn(async (args) => {
+      await wait();
+      const flatRole =
+        args.allFlatEntityOperationByMetadataName.role.flatEntityToCreate[0];
+      await migration.service.run({
+        workspaceId,
+        workspaceMigration: {
+          applicationUniversalIdentifier,
+          actions: [createAction(flatRole)],
+        } as never,
+      });
+      return { status: 'success' };
+    }),
+  };
+  const service = new RoleService(
+    builder as never,
+    {
+      getOrRecomputeManyOrAllFlatEntityMaps: async () => {
+        const records = await rows();
+        return {
+          flatRoleMaps: {
+            byUniversalIdentifier: Object.fromEntries(
+              records.map((row: Record<string, unknown>) => [
+                row.universalIdentifier,
+                row,
+              ]),
+            ),
+            universalIdentifierById: Object.fromEntries(
+              records.map((row: Record<string, unknown>) => [
+                row.id,
+                row.universalIdentifier,
+              ]),
+            ),
+          },
+        };
+      },
+    } as never,
+    {} as never,
+    {} as never,
+    {} as never,
+  );
+  return { service, builder, migration };
+};
+
+it.each([false, true])(
+  'creates a normalized role through the real service (explicit ID=%s)',
+  async (explicitId) => {
+    const { service } = createRoleServiceFixture();
+    const id = randomUUID();
+    const result = await service.createAuditedRole({
+      workspaceId,
+      input: {
+        ...(explicitId ? { id } : {}),
+        label: '  private   role  ',
+        description: ' private   description ',
+      },
+      ownerFlatApplication: application as never,
+      auditIdentity: identity(),
+    });
+    if (explicitId) expect(result.id).toBe(id);
+    const row = (await rows()).find(
+      (entry: Record<string, unknown>) => entry.id === result.id,
+    );
+    expect(row).toMatchObject({
+      label: 'private role',
+      description: 'private description',
+      icon: null,
+      canReadAllObjectRecords: false,
+      canBeAssignedToUsers: true,
+      canBeAssignedToAgents: true,
+      canBeAssignedToApiKeys: true,
+    });
+    const entries = await audits();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      action: 'create',
+      resourceId: result.id,
+      actor: { kind: 'workspaceMember', id: actorId },
+    });
+    expect(JSON.stringify(entries)).not.toContain('private role');
+    expect(JSON.stringify(entries)).not.toContain('private description');
+  },
+);
+
+it('captures create service input and identity before builder suspension', async () => {
+  let unblock!: () => void;
+  const barrier = new Promise<void>((resolve) => {
+    unblock = resolve;
+  });
+  const { service } = createRoleServiceFixture(() => barrier);
+  const input = { id: randomUUID(), label: 'captured role' },
+    auditIdentity = identity();
+  const expectedId = input.id;
+  const result = service.createAuditedRole({
+    workspaceId,
+    input,
+    ownerFlatApplication: application as never,
+    auditIdentity,
+  });
+  input.id = randomUUID();
+  input.label = 'changed';
+  auditIdentity.auth.workspace.id = randomUUID();
+  unblock();
+  expect((await result).id).toBe(expectedId);
+  expect(
+    (await rows()).find((row: Record<string, unknown>) => row.id === expectedId)
+      .label,
+  ).toBe('captured role');
+  expect((await audits())[0].workspaceId).toBe(workspaceId);
+});
+
+it('captures real create tool input and agent before application lookup', async () => {
+  let unblock!: () => void;
+  const barrier = new Promise<void>((resolve) => {
+    unblock = resolve;
+  });
+  const { service } = createRoleServiceFixture();
+  const tool = new CreateRoleTool(service, {
+    findWorkspaceTwentyStandardAndCustomApplicationOrThrow: async () => {
+      await barrier;
+      return { workspaceCustomFlatApplication: application };
+    },
+  } as never);
+  const agentId = randomUUID();
+  const context = { workspaceId, authContext: identity().auth, agentId };
+  const input = { label: 'original tool role' };
+  const result = tool.execute({ input, context } as never);
+  input.label = 'changed tool role';
+  context.agentId = randomUUID();
+  context.authContext.workspace.id = randomUUID();
+  unblock();
+  expect((await result).success).toBe(true);
+  const [entry] = await audits();
+  expect(entry.actor).toEqual({ kind: 'agent', id: agentId });
+  expect(entry.initiator).toEqual({ kind: 'workspaceMember', id: actorId });
+  expect(
+    (await rows()).find(
+      (row: Record<string, unknown>) => row.id === entry.resourceId,
+    ).label,
+  ).toBe('original tool role');
+});
+
+it('refuses unauthenticated create tool before application lookup', async () => {
+  const { service } = createRoleServiceFixture();
+  const lookup = jest.fn();
+  const tool = new CreateRoleTool(service, {
+    findWorkspaceTwentyStandardAndCustomApplicationOrThrow: lookup,
+  } as never);
+  await expect(
+    tool.execute({
+      input: { label: 'no identity' },
+      context: { workspaceId },
+    } as never),
+  ).rejects.toThrow('authenticated audit identity');
+  expect(lookup).not.toHaveBeenCalled();
+  expect(await audits()).toEqual([]);
+});
+
+it('keeps internal bootstrap creation without falsely attributing a user', async () => {
+  const { service } = createRoleServiceFixture();
+  await service.createRole({
+    workspaceId,
+    input: { label: 'bootstrap role' },
+    ownerFlatApplication: application as never,
+  });
+  expect(await rows()).toHaveLength(2);
+  expect(await audits()).toEqual([]);
+});
+
+it('rejects an existing role ID without changing its row', async () => {
+  const before = await rows();
+  await expect(
+    runCreate(createFlatRole({ id: roleId, label: 'collision' })),
+  ).rejects.toThrow('already exists');
+  expect(await rows()).toEqual(before);
+  expect(await audits()).toEqual([]);
+});
+
+it.each([
+  'id',
+  'missing-id',
+  'label',
+  'applicationUniversalIdentifier',
+  'applicationId',
+  'multiple',
+  'workspaceId',
+])('rejects substituted create %s', async (field) => {
+  const flat = createFlatRole(),
+    change = createAction(flat);
+  const migration = services(
+    field === 'applicationId' ? { applicationId: randomUUID() } : {},
+  );
+  if (field === 'id') change.id = randomUUID();
+  if (field === 'missing-id') delete (change as { id?: string }).id;
+  if (field === 'label' || field === 'applicationUniversalIdentifier')
+    change.flatEntity[field] = randomUUID();
+  const before = await rows();
+  await expect(
+    withRoleCreateAudit(flat, identity(), () =>
+      migration.service.run({
+        workspaceId: field === 'workspaceId' ? randomUUID() : workspaceId,
+        workspaceMigration: {
+          applicationUniversalIdentifier,
+          actions: field === 'multiple' ? [change, change] : [change],
+        } as never,
+      }),
+    ),
+  ).rejects.toThrow();
+  expect(await rows()).toEqual(before);
+  expect(await audits()).toEqual([]);
+  expect(migration.registry.executeActionHandler).not.toHaveBeenCalled();
+});
+
+it.each(['audit', 'handler', 'sql', 'deferred'])(
+  'rolls back created role on %s failure',
+  async (failure) => {
+    const before = await rows();
+    const migration = services({
+      fail: failure === 'handler',
+      deferred: failure === 'deferred',
+    });
+    if (failure === 'audit')
+      await owner.query(
+        `REVOKE INSERT ON crm_audit."crmAuditEntry" FROM "${databaseRole}"`,
+      );
+    if (failure === 'sql')
+      await owner.query(`REVOKE INSERT ON core.role FROM "${databaseRole}"`);
+    try {
+      await expect(runCreate(createFlatRole(), migration)).rejects.toThrow();
+    } finally {
+      await owner.query(
+        `GRANT INSERT ON core.role,crm_audit."crmAuditEntry" TO "${databaseRole}"`,
+      );
+    }
+    expect(await rows()).toEqual(before);
+    expect(await audits()).toEqual([]);
+    expect(
+      migration.registry.executeActionRollbackHandler,
+    ).not.toHaveBeenCalled();
+  },
+);
+
+it('rolls back create corrupted after audit flush', async () => {
+  const before = await rows();
+  await owner.query(
+    'CREATE FUNCTION crm_audit.corrupt_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN UPDATE core.role SET "isEditable"=false WHERE id=NEW."resourceId"::uuid; RETURN NEW; END $$; CREATE TRIGGER corrupt_audit AFTER INSERT ON crm_audit."crmAuditEntry" FOR EACH ROW EXECUTE FUNCTION crm_audit.corrupt_audit()',
+  );
+  await expect(runCreate()).rejects.toThrow('snapshot changed');
+  expect(await rows()).toEqual(before);
+  expect(await audits()).toEqual([]);
+});
+
+it.each(['create', 'update'])(
+  'detects microsecond corruption on role %s',
+  async (kind) => {
+    const before = await rows();
+    await owner.query(
+      `CREATE FUNCTION core.corrupt_role() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW."createdAt"=NEW."createdAt" + interval '1 microsecond'; RETURN NEW; END $$; CREATE TRIGGER corrupt_role BEFORE ${kind === 'create' ? 'INSERT' : 'UPDATE'} ON core.role FOR EACH ROW EXECUTE FUNCTION core.corrupt_role()`,
+    );
+    await expect(kind === 'create' ? runCreate() : run()).rejects.toThrow();
+    expect(await rows()).toEqual(before);
+    expect(await audits()).toEqual([]);
+  },
+);
+
+it('preserves a committed role and audit after lost create COMMIT acknowledgement', async () => {
+  const create = runtime.createQueryRunner.bind(runtime),
+    statements: string[] = [],
+    clients = new WeakSet<object>();
+  jest.spyOn(runtime, 'createQueryRunner').mockImplementation((mode) => {
+    const runner = create(mode),
+      connect = runner.connect.bind(runner);
+    jest.spyOn(runner, 'connect').mockImplementation(async () => {
+      const client = await connect();
+      if (!clients.has(client)) {
+        clients.add(client);
+        const query = client.query.bind(client);
+        client.query = async (sql: string, ...args: unknown[]) => {
+          statements.push(sql);
+          const result = await query(sql, ...args);
+          if (sql === 'COMMIT') throw new Error('lost create ACK');
+          return result;
+        };
+      }
+      return client;
+    });
+    return runner;
+  });
+  const flat = createFlatRole(),
+    migration = services();
+  await expect(runCreate(flat, migration)).rejects.toBeInstanceOf(
+    NativeTransactionOutcomeUnknownError,
+  );
+  expect(statements).not.toContain('ROLLBACK');
+  expect(
+    (await rows()).find((row: Record<string, unknown>) => row.id === flat.id),
+  ).toBeDefined();
+  expect(await audits()).toHaveLength(1);
+  expect(
+    migration.registry.executeActionRollbackHandler,
+  ).not.toHaveBeenCalled();
+  expect(migration.cache.invalidateAndRecompute).toHaveBeenCalledTimes(1);
 });

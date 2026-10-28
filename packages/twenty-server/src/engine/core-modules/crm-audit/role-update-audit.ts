@@ -15,6 +15,34 @@ export type RoleUpdateAuditIdentity = {
   impersonatorUserWorkspaceId?: string;
 };
 
+export const captureRoleAuditIdentity = (
+  identity: RoleUpdateAuditIdentity,
+): RoleUpdateAuditIdentity => {
+  if (!identity?.auth)
+    throw new Error('Role mutation requires authenticated audit identity');
+  const auth = identity.auth;
+  const base = { workspace: { id: auth.workspace.id } };
+  return {
+    auth:
+      auth.type === 'user'
+        ? { ...base, type: 'user', workspaceMemberId: auth.workspaceMemberId }
+        : auth.type === 'apiKey'
+          ? { ...base, type: 'apiKey', apiKey: { id: auth.apiKey.id } }
+          : auth.type === 'application'
+            ? {
+                ...base,
+                type: 'application',
+                application: { id: auth.application.id },
+                ...(auth.actingAgent
+                  ? { actingAgent: { id: auth.actingAgent.id } }
+                  : {}),
+              }
+            : { ...base, type: auth.type },
+    agentId: identity.agentId,
+    impersonatorUserWorkspaceId: identity.impersonatorUserWorkspaceId,
+  };
+};
+
 // Only authenticated request fields are projected; metadata audit must not import
 // the complete authorization graph (which includes Enterprise-only modules).
 export const roleAuditIdentityFromRequest = (request: {
@@ -47,15 +75,20 @@ export const roleAuditIdentityFromRequest = (request: {
   };
 };
 
-type RoleUpdateAuditRequest = Readonly<{
-  operation: CrmAuditOperation;
-  roleId: string;
-  impersonatorUserWorkspaceId?: string;
-}>;
+type RoleAuditRequest = Readonly<
+  {
+    operation: CrmAuditOperation;
+    roleId: string;
+    impersonatorUserWorkspaceId?: string;
+  } & (
+    | { action: 'update' }
+    | { action: 'create'; expected: Readonly<Record<string, unknown>> }
+  )
+>;
 
-const storage = new AsyncLocalStorage<RoleUpdateAuditRequest>();
-const active = new WeakSet<RoleUpdateAuditRequest>();
-const consumed = new WeakSet<RoleUpdateAuditRequest>();
+const storage = new AsyncLocalStorage<RoleAuditRequest>();
+const active = new WeakSet<RoleAuditRequest>();
+const consumed = new WeakSet<RoleAuditRequest>();
 const uuid = (value: string) => {
   if (!isUUID(value)) throw new Error('Role audit identity is invalid');
   return value.toLowerCase();
@@ -65,6 +98,77 @@ export const withRoleUpdateAudit = async <T>(
   workspaceId: string,
   roleId: string,
   identity: RoleUpdateAuditIdentity,
+  work: () => Promise<T>,
+): Promise<T> => {
+  return withRoleAudit(
+    workspaceId,
+    roleId,
+    identity,
+    { action: 'update' },
+    work,
+  );
+};
+
+export const withRoleCreateAudit = async <T>(
+  flatRole: { id: string; workspaceId: string } & object,
+  identity: RoleUpdateAuditIdentity,
+  work: () => Promise<T>,
+): Promise<T> => {
+  const fields = flatRole as Record<string, unknown>;
+  const expected = Object.fromEntries(
+    [
+      'id',
+      'workspaceId',
+      'universalIdentifier',
+      'applicationId',
+      'applicationUniversalIdentifier',
+      'isEditable',
+      'createdAt',
+      'updatedAt',
+      ...BOOLEAN_FIELDS,
+      ...TEXT_FIELDS,
+    ].map((key) => [key, fields[key]]),
+  );
+  for (const key of [
+    'id',
+    'workspaceId',
+    'universalIdentifier',
+    'applicationId',
+    'applicationUniversalIdentifier',
+  ])
+    expected[key] = uuid(expected[key] as string);
+  if (
+    expected.isEditable !== true ||
+    BOOLEAN_FIELDS.some((key) => typeof expected[key] !== 'boolean') ||
+    typeof expected.label !== 'string' ||
+    ['description', 'icon'].some(
+      (key) => expected[key] !== null && typeof expected[key] !== 'string',
+    )
+  )
+    throw new Error('Role create audit requires normalized scalar fields');
+  for (const key of ['createdAt', 'updatedAt']) {
+    if (
+      typeof expected[key] !== 'string' ||
+      !Number.isFinite(Date.parse(expected[key]))
+    )
+      throw new Error('Role create audit requires normalized timestamps');
+  }
+  return withRoleAudit(
+    flatRole.workspaceId,
+    flatRole.id,
+    identity,
+    { action: 'create', expected: Object.freeze(expected) },
+    work,
+  );
+};
+
+const withRoleAudit = async <T>(
+  workspaceId: string,
+  roleId: string,
+  identity: RoleUpdateAuditIdentity,
+  mutation:
+    | { action: 'update' }
+    | { action: 'create'; expected: Readonly<Record<string, unknown>> },
   work: () => Promise<T>,
 ): Promise<T> => {
   if (storage.getStore()) throw new Error('Nested role audit is unsupported');
@@ -86,6 +190,7 @@ export const withRoleUpdateAudit = async <T>(
       })
     : captured;
   const request = Object.freeze({
+    ...mutation,
     operation,
     roleId: uuid(roleId),
     ...(identity.impersonatorUserWorkspaceId
@@ -104,7 +209,7 @@ export const withRoleUpdateAudit = async <T>(
   }
 };
 
-export const getRoleUpdateAudit = (workspaceId: string) => {
+export const getRoleMutationAudit = (workspaceId: string) => {
   const request = storage.getStore();
   if (!request) return undefined;
   if (
@@ -136,16 +241,18 @@ type RoleUpdateAction = {
   metadataName: string;
   universalIdentifier?: string;
   update?: object;
+  id?: string;
+  flatEntity?: object;
 };
 
-export const runAuditedRoleUpdate = async <T>(
+export const runAuditedRoleMutation = async <T>(
   dataSource: DataSource,
-  request: RoleUpdateAuditRequest,
+  request: RoleAuditRequest,
   actions: RoleUpdateAction[],
   work: (runner: QueryRunner) => Promise<T>,
 ): Promise<T> => {
   if (
-    getRoleUpdateAudit(request.operation.workspaceId) !== request ||
+    getRoleMutationAudit(request.operation.workspaceId) !== request ||
     consumed.has(request)
   )
     throw new Error(
@@ -153,12 +260,26 @@ export const runAuditedRoleUpdate = async <T>(
     );
   if (
     actions.length !== 1 ||
-    actions[0].type !== 'update' ||
+    actions[0].type !== request.action ||
     actions[0].metadataName !== 'role'
   )
-    throw new Error('Role audit requires exactly one role update action');
+    throw new Error('Role audit requires exactly one matching role action');
   const action = actions[0];
-  const universalIdentifier = uuid(action.universalIdentifier!);
+  const universalIdentifier =
+    request.action === 'update'
+      ? uuid(action.universalIdentifier!)
+      : request.expected.universalIdentifier;
+  if (request.action === 'create') {
+    const input = action.flatEntity as Record<string, unknown> | undefined;
+    if (!input || action.id !== request.roleId)
+      throw new Error('Role create audit requires its exact enriched ID');
+    for (const [key, value] of Object.entries(request.expected)) {
+      if (key === 'id' || key === 'applicationId' || key === 'workspaceId')
+        continue;
+      if (canonicalAuditJson(input[key]) !== canonicalAuditJson(value))
+        throw new Error('Role create audit final fields changed');
+    }
+  }
   const update: Record<string, unknown> = {};
   for (const [key, descriptor] of Object.entries(
     Object.getOwnPropertyDescriptors(action.update ?? {}),
@@ -189,12 +310,21 @@ export const runAuditedRoleUpdate = async <T>(
         throw new Error('Role audit persisted role unavailable');
       return rows[0].row;
     };
-    const before = await read(true);
+    const before = request.action === 'update' ? await read(true) : null;
     if (
-      before.universalIdentifier !== universalIdentifier ||
-      before.isEditable !== true
+      before &&
+      (before.universalIdentifier !== universalIdentifier ||
+        before.isEditable !== true)
     )
       throw new Error('Role audit persisted identity or editability changed');
+    if (request.action === 'create') {
+      const existing = await runner.query(
+        'SELECT id FROM core.role WHERE id=$1',
+        [request.roleId],
+      );
+      if (existing.length)
+        throw new Error('Role create audit ID already exists');
+    }
     let operation = request.operation;
     if (request.impersonatorUserWorkspaceId) {
       const rows = await runner.query(
@@ -211,8 +341,40 @@ export const runAuditedRoleUpdate = async <T>(
     const audit = new CrmAuditTransactionContext(runner, operation);
     const result = await work(runner);
     const after = await read();
-    const expected = { ...before, ...update, updatedAt: after.updatedAt };
-    if (canonicalAuditJson(expected) !== canonicalAuditJson(after))
+    const expected =
+      request.action === 'update'
+        ? { ...before, ...update, updatedAt: after.updatedAt }
+        : Object.fromEntries(
+            Object.entries(request.expected).filter(
+              ([key]) => key !== 'applicationUniversalIdentifier',
+            ),
+          );
+    const comparable = (snapshot: Record<string, unknown>) =>
+      request.action === 'create'
+        ? Object.fromEntries(
+            Object.entries(snapshot).filter(
+              ([key]) => key !== 'createdAt' && key !== 'updatedAt',
+            ),
+          )
+        : snapshot;
+    if (request.action === 'create') {
+      // PostgreSQL compares all microseconds; JavaScript Date would truncate them.
+      const [timestamps] = await runner.query(
+        'SELECT "createdAt"=$3::timestamptz AND "updatedAt"=$4::timestamptz AS matches FROM core.role WHERE id=$1 AND "workspaceId"=$2',
+        [
+          request.roleId,
+          operation.workspaceId,
+          expected.createdAt,
+          expected.updatedAt,
+        ],
+      );
+      if (timestamps?.matches !== true)
+        throw new Error('Role create audit persisted timestamps changed');
+    }
+    if (
+      canonicalAuditJson(comparable(expected)) !==
+      canonicalAuditJson(comparable(after))
+    )
       throw new Error(
         'Role audit persisted mutation differs from requested update',
       );
@@ -223,8 +385,8 @@ export const runAuditedRoleUpdate = async <T>(
     audit.record({
       resourceKind: 'role',
       resourceId: request.roleId,
-      action: 'update',
-      before: project(before),
+      action: request.action,
+      before: before ? project(before) : null,
       after: project(after),
       securityDescriptor: {
         resourceKind: 'role',

@@ -3,6 +3,7 @@ import { PermissionFlagType } from 'twenty-shared/constants';
 import { z } from 'zod';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
+import { captureRoleAuditIdentity } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { DefineTool } from 'src/engine/core-modules/tool-provider/decorators/define-tool.decorator';
 import { BaseTool } from 'src/engine/core-modules/tool-provider/interfaces/base-tool.interface';
 import { type ToolExecuteArgs } from 'src/engine/core-modules/tool-provider/types/tool-execute-args.type';
@@ -42,17 +43,24 @@ export class CreateRoleTool extends BaseTool<typeof createRoleInputSchema> {
 
   async execute({
     input,
-    context: { workspaceId },
+    context,
   }: ToolExecuteArgs<typeof createRoleInputSchema>): Promise<ToolOutput> {
+    const { workspaceId } = context;
+    const capturedInput = { ...input };
+    const auditIdentity = captureRoleAuditIdentity({
+      auth: context.authContext!,
+      agentId: context.agentId,
+    });
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         { workspaceId },
       );
 
-    const role = await this.roleService.createRole({
+    const role = await this.roleService.createAuditedRole({
       workspaceId,
-      input,
+      input: capturedInput,
       ownerFlatApplication: workspaceCustomFlatApplication,
+      auditIdentity,
     });
 
     return {

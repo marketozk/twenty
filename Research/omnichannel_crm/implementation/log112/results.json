@@ -1,0 +1,33 @@
+{
+  "status": "pass-scoped-not-phase-complete",
+  "issue": "ROB-765",
+  "newPostgresTests": 22,
+  "targetedTests": 54,
+  "targetedSuites": 1,
+  "existingToolUnitTests": 11,
+  "existingToolUnitSuites": 1,
+  "regressionTests": 1108,
+  "regressionSuites": 35,
+  "regressionSeconds": 198.532,
+  "guardUnitTests": 20,
+  "checksumUnitTests": 6,
+  "unchangedMigrations": 10,
+  "typecheck": {
+    "baselineRoots": 352,
+    "currentRoots": 352,
+    "baselineDiagnostics": 218,
+    "currentDiagnostics": 218,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0,
+    "fullServerTypecheck": false
+  },
+  "uploadedSourceHashesVerified": 8,
+  "publicAndToolRoleCreateAudited": true,
+  "timestampMicrosecondsPreserved": true,
+  "realServiceToolRunnerHandlerTested": true,
+  "fullMetadataBuilderAndHttpTested": false,
+  "allMetadataWritersAudited": false,
+  "ownAccessFencesImplemented": false,
+  "productionDeployment": false,
+  "githubActionsUsed": false
+}

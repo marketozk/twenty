@@ -915,3 +915,10 @@ cache invalidation выполняется в finally, без подмены ис
 имеет update + exact metadataAccess=currentWorkspaceAdministration; permissions
 allowlisted, display text redacted. Выполненный no-op имеет empty diff; builder no-op
 без SQL не создаёт audit. Остальные role/metadata owners и ROB766 fences открыты.
+
+LOG112: public/AI role CREATE использует тот же strict metadata audit owner. Captured
+normalized scalar snapshot и final enriched ID/application/workspace должны совпасть
+с фактическим INSERT; timestamps проверяются PostgreSQL без потери microseconds.
+Input/identity фиксируются до первого await; post-flush row неизменна. Catalog role
+разрешает create/update с тем же administrative descriptor. Internal bootstrap path
+не приписывается user actor. Role DELETE/assignments и прочие metadata owners открыты.

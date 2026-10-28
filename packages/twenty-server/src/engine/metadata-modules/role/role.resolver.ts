@@ -194,8 +194,11 @@ export class RoleResolver {
   async createOneRole(
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Args('createRoleInput') createRoleInput: CreateRoleInput,
+    @Context() context: { req: Request },
   ): Promise<RoleDTO> {
     const { id: workspaceId } = workspace;
+    const input = { ...createRoleInput };
+    const auditIdentity = roleAuditIdentityFromRequest(context.req);
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         {
@@ -203,10 +206,11 @@ export class RoleResolver {
         },
       );
 
-    return await this.roleService.createRole({
+    return await this.roleService.createAuditedRole({
       workspaceId,
-      input: createRoleInput,
+      input,
       ownerFlatApplication: workspaceCustomFlatApplication,
+      auditIdentity,
     });
   }
 

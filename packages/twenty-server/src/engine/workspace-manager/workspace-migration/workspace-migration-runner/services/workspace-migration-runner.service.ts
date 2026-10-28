@@ -6,8 +6,8 @@ import { FeatureFlagKey, FieldMetadataType } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 import { DataSource } from 'typeorm';
 import {
-  getRoleUpdateAudit,
-  runAuditedRoleUpdate,
+  getRoleMutationAudit,
+  runAuditedRoleMutation,
 } from 'src/engine/core-modules/crm-audit/role-update-audit';
 
 import { FeatureFlagService } from 'src/engine/core-modules/feature-flag/services/feature-flag.service';
@@ -374,10 +374,10 @@ export class WorkspaceMigrationRunnerService {
 
     this.logger.perfTime('Runner', 'Transaction execution');
 
-    const roleAudit = getRoleUpdateAudit(workspaceId);
+    const roleAudit = getRoleMutationAudit(workspaceId);
     if (roleAudit) {
       try {
-        return await runAuditedRoleUpdate(
+        return await runAuditedRoleMutation(
           this.coreDataSource,
           roleAudit,
           actions,
@@ -385,14 +385,20 @@ export class WorkspaceMigrationRunnerService {
             const metadataEvents: MetadataEvent[] = [];
             for (const action of actions) {
               if (
-                action.type !== 'update' ||
                 action.metadataName !== 'role' ||
-                allFlatEntityMaps.flatRoleMaps?.byUniversalIdentifier[
-                  action.universalIdentifier
-                ]?.id !== roleAudit.roleId
+                (action.type === 'update'
+                  ? allFlatEntityMaps.flatRoleMaps?.byUniversalIdentifier[
+                      action.universalIdentifier
+                    ]?.id !== roleAudit.roleId
+                  : action.type !== 'create' ||
+                    action.id !== roleAudit.roleId ||
+                    roleAudit.action !== 'create' ||
+                    flatApplication.id !== roleAudit.expected.applicationId ||
+                    flatApplication.universalIdentifier !==
+                      roleAudit.expected.applicationUniversalIdentifier)
               )
                 throw new Error(
-                  'Audited role update resolved a different record',
+                  'Audited role mutation resolved a different record or application',
                 );
               const executed =
                 await this.workspaceMigrationRunnerActionHandlerRegistry.executeActionHandler(
@@ -412,7 +418,7 @@ export class WorkspaceMigrationRunnerService {
                 );
               if (executed.deferredActions.length)
                 throw new Error(
-                  'Audited role update cannot dispatch deferred actions',
+                  'Audited role mutation cannot dispatch deferred actions',
                 );
               allFlatEntityMaps = {
                 ...allFlatEntityMaps,
@@ -437,7 +443,7 @@ export class WorkspaceMigrationRunnerService {
           });
         } catch (cacheError) {
           this.logger.error(
-            `Cache invalidation failed after audited role update: ${cacheError}`,
+            `Cache invalidation failed after audited role mutation: ${cacheError}`,
             'Runner',
           );
         }

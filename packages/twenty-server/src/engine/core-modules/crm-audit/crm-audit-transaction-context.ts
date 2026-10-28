@@ -354,7 +354,7 @@ const descriptor = (
   if (mutation.resourceKind === 'role' || source.metadataAccess !== undefined) {
     if (
       mutation.resourceKind !== 'role' ||
-      mutation.action !== 'update' ||
+      !['create', 'update'].includes(mutation.action) ||
       source.metadataAccess !== 'currentWorkspaceAdministration' ||
       Object.keys(source).sort().join(',') !==
         'metadataAccess,resourceId,resourceKind'
