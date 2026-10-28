@@ -204,20 +204,6 @@ export class MessagingMessageListFetchService {
             }
           }
 
-          for (const messageList of messageLists) {
-            const { nextSyncCursor, folderId } = messageList;
-
-            const cursorAccepted =
-              await this.messagingCursorService.updateCursor(
-                freshMessageChannel,
-                nextSyncCursor,
-                workspaceId,
-                folderId,
-                expectedRun,
-              );
-            if (!cursorAccepted) return;
-          }
-
           const fullSyncMessageChannelMessageAssociationsToDelete = isFullSync
             ? await this.computeFullSyncMessageChannelMessageAssociationsToDelete(
                 freshMessageChannel,
@@ -249,14 +235,31 @@ export class MessagingMessageListFetchService {
                 `messageChannelId: ${freshMessageChannel.id} Deleting ${toDeleteChunk.length} message channel message associations in batch ${index + 1}`,
               );
 
-              await this.messagingMessageCleanerService.deleteMessagesChannelMessageAssociationsAndRelatedOrphans(
-                {
-                  workspaceId,
-                  messageExternalIds: toDeleteChunk,
-                  messageChannelId: freshMessageChannel.id,
-                },
-              );
+              const cleaned =
+                await this.messagingMessageCleanerService.deleteMessagesChannelMessageAssociationsAndRelatedOrphans(
+                  {
+                    workspaceId,
+                    messageExternalIds: toDeleteChunk,
+                    messageChannelId: freshMessageChannel.id,
+                    expectedRun,
+                  },
+                );
+              if (!cleaned) return;
             }
+          }
+
+          for (const messageList of messageLists) {
+            const { nextSyncCursor, folderId } = messageList;
+
+            const cursorAccepted =
+              await this.messagingCursorService.updateCursor(
+                freshMessageChannel,
+                nextSyncCursor,
+                workspaceId,
+                folderId,
+                expectedRun,
+              );
+            if (!cursorAccepted) return;
           }
 
           this.logger.log(

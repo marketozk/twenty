@@ -206,7 +206,7 @@ const calendarSchema = new EntitySchema<CalendarChannelEntity>({
       joinColumn: { name: 'connectedAccountId' },
     },
   },
-  columns: common,
+  columns: { ...common, handle: { type: 'text', nullable: true } },
 });
 const folderSchema = new EntitySchema<MessageFolderEntity>({
   name: 'SyncFolderFixture',
@@ -373,7 +373,7 @@ beforeAll(async () => {
     'ALTER TABLE core."messageChannel" ADD "connectedAccountId" uuid REFERENCES core."connectedAccount"(id),ADD "throttleRetryAfter" timestamptz,ADD "pendingGroupEmailsAction" text,ADD handle text,ADD "updatedAt" timestamptz DEFAULT now()',
   );
   await fixture.owner.query(
-    'CREATE TABLE core."calendarChannel" (id uuid PRIMARY KEY,"workspaceId" uuid,"connectedAccountId" uuid REFERENCES core."connectedAccount"(id),"updatedAt" timestamptz DEFAULT now())',
+    'CREATE TABLE core."calendarChannel" (id uuid PRIMARY KEY,handle text,"workspaceId" uuid,"connectedAccountId" uuid REFERENCES core."connectedAccount"(id),"updatedAt" timestamptz DEFAULT now())',
   );
   for (const table of ['messageChannel', 'calendarChannel'])
     await fixture.owner.query(
@@ -3197,11 +3197,9 @@ for (const kind of ['fetch', 'import'] as const) {
   );
 }
 it('calendar delayed provider result uses captured account cache namespace', async () => {
-  await runtime
-    .getRepository(CalendarChannelEntity)
-    .update(ordinary.calendar, {
-      syncStage: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED,
-    });
+  await runtime.getRepository(CalendarChannelEntity).update(ordinary.calendar, {
+    syncStage: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED,
+  });
   const actual = jest.requireActual<
     typeof import('src/modules/calendar/calendar-event-import-manager/services/calendar-fetch-events.service')
   >(
@@ -4248,11 +4246,9 @@ describe('calendar list fetch run admission and atomic cursor finalization', () 
       .getRepository(CalendarChannelEntity)
       .findOneByOrFail({ id: ordinary.calendar });
   const schedule = () =>
-    runtime
-      .getRepository(CalendarChannelEntity)
-      .update(ordinary.calendar, {
-        syncStage: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED,
-      });
+    runtime.getRepository(CalendarChannelEntity).update(ordinary.calendar, {
+      syncStage: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED,
+    });
   const begin = () =>
     calendar.beginCalendarListFetch(
       ordinary.calendar,
@@ -4507,6 +4503,53 @@ describe('calendar list fetch run admission and atomic cursor finalization', () 
     expect(await invoke(makeFetch(provider))).toBe(false);
     expect(await current()).toEqual(before);
   });
+  it.each(['declined', 'unknown'] as const)(
+    'calendar cleanup %s stops cache publication and cursor/status finalization',
+    async (outcome) => {
+      await schedule();
+      const error = new NativeTransactionOutcomeUnknownError(
+        'commit',
+        new Error('cleanup ACK lost'),
+      );
+      const cleanup = jest.fn().mockImplementation(async () => {
+        if (outcome === 'unknown') throw error;
+        return false;
+      });
+      const setAdd = jest.fn();
+      const owner = makeFetch(
+        jest.fn().mockResolvedValue({
+          ...response(1),
+          calendarEventIdsToDelete: ['deleted'],
+        }),
+        {
+          calendarEventCleanerService: {
+            deleteCalendarChannelEventAssociationsAndRelatedOrphans: cleanup,
+          },
+          cacheStorage: { ...cache, setAdd },
+        },
+      );
+      const execution = invoke(owner);
+      if (outcome === 'unknown') await expect(execution).rejects.toBe(error);
+      else expect(await execution).toBe(false);
+      expect(cleanup).toHaveBeenCalledTimes(1);
+      expect(cleanup.mock.calls[0][0]).toMatchObject({
+        calendarChannelId: ordinary.calendar,
+        eventExternalIds: ['deleted'],
+        expectedRun: {
+          connectedAccountId: ordinary.account,
+          kind: 'calendar',
+          stage: 'CALENDAR_EVENT_LIST_FETCH_ONGOING',
+        },
+      });
+      expect(setAdd).not.toHaveBeenCalled();
+      expect(await current()).toMatchObject({
+        syncCursor: 'old-cursor',
+        syncStage: 'CALENDAR_EVENT_LIST_FETCH_ONGOING',
+        syncStatus: 'ONGOING',
+      });
+      expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
+    },
+  );
   it('declined fetch result prevents webhook inline import of another run pending queue', async () => {
     const fetchCalendarEvents = jest.fn().mockImplementation(async () => {
       await runtime
@@ -4534,3 +4577,174 @@ describe('calendar list fetch run admission and atomic cursor finalization', () 
     expect(processCalendarEventsImport).not.toHaveBeenCalled();
   });
 });
+
+it.each(['declined', 'unknown', 'second-chunk'] as const)(
+  'message cleanup %s stops before cursor/final state and preserves bounded chunks',
+  async (outcome) => {
+    await runtime.getRepository(MessageChannelEntity).update(ordinary.message, {
+      syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,
+      syncCursor: 'old-cursor',
+    });
+    await runtime.getRepository(MessageFolderEntity).update(ordinary.folder, {
+      pendingSyncAction: MessageFolderPendingSyncAction.NONE,
+    });
+    const error = new NativeTransactionOutcomeUnknownError(
+      'commit',
+      new Error('cleanup ACK lost'),
+    );
+    const ids = Array.from(
+      { length: outcome === 'second-chunk' ? 201 : 1 },
+      (_, index) => 'deleted-' + index,
+    );
+    let cleanupCalls = 0;
+    const cleanup = jest.fn().mockImplementation(async () => {
+      cleanupCalls += 1;
+      if (outcome === 'unknown') throw error;
+      return outcome === 'second-chunk' && cleanupCalls === 1;
+    });
+    const updateCursor = jest.fn().mockResolvedValue(true);
+    const owner = makeService(MessagingMessageListFetchService.prototype, {
+      cacheStorage: cache,
+      messageChannelSyncStatusService: messaging,
+      workspaceOrmManager: {
+        executeInWorkspaceContext: async (work: () => Promise<unknown>) =>
+          work(),
+        getRepository: () => ({}),
+      },
+      syncMessageFoldersService: { syncMessageFolders: async () => [] },
+      messagingGetMessageListService: {
+        getMessageLists: async () => [
+          {
+            messageExternalIds: [],
+            messageExternalIdsToDelete: ids,
+            previousSyncCursor: 'old',
+            nextSyncCursor: 'new',
+          },
+        ],
+      },
+      messagingMessageCleanerService: {
+        deleteMessagesChannelMessageAssociationsAndRelatedOrphans: cleanup,
+      },
+      messagingCursorService: { updateCursor },
+      messageImportErrorHandlerService: {
+        handleDriverException: async (error: unknown) => {
+          throw error;
+        },
+      },
+      logger: { log: jest.fn(), debug: jest.fn(), error: jest.fn() },
+    });
+    const execution = owner.processMessageListFetch(
+      await runtime
+        .getRepository(MessageChannelEntity)
+        .findOneByOrFail({ id: ordinary.message }),
+      fixture.workspaceId,
+    );
+    if (outcome === 'unknown') await expect(execution).rejects.toBe(error);
+    else await execution;
+    expect(cleanup).toHaveBeenCalledTimes(outcome === 'second-chunk' ? 2 : 1);
+    expect(cleanup.mock.calls[0][0]).toMatchObject({
+      messageChannelId: ordinary.message,
+      expectedRun: {
+        connectedAccountId: ordinary.account,
+        kind: 'message',
+        stage: 'MESSAGE_LIST_FETCH_ONGOING',
+      },
+    });
+    if (outcome === 'second-chunk')
+      expect(
+        cleanup.mock.calls.map(([input]) => input.messageExternalIds.length),
+      ).toEqual([200, 1]);
+    expect(updateCursor).not.toHaveBeenCalled();
+    expect(
+      await runtime
+        .getRepository(MessageChannelEntity)
+        .findOneByOrFail({ id: ordinary.message }),
+    ).toMatchObject({
+      syncCursor: 'old-cursor',
+      syncStage: 'MESSAGE_LIST_FETCH_ONGOING',
+      syncStatus: 'ONGOING',
+    });
+    expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
+  },
+);
+
+it.each(['declined', 'unknown'] as const)(
+  'calendar importer cleanup %s prevents completion',
+  async (outcome) => {
+    await scheduleImport('calendar');
+    await runtime
+      .getRepository(CalendarChannelEntity)
+      .update(ordinary.calendar, { handle: 'operator@example.test' });
+    await runtime
+      .getRepository(ConnectedAccountEntity)
+      .update(ordinary.account, { handleAliases: [] });
+    const error = new NativeTransactionOutcomeUnknownError(
+      'commit',
+      new Error('cleanup ACK lost'),
+    );
+    const cleanup = jest.fn().mockImplementation(async () => {
+      if (outcome === 'unknown') throw error;
+      return false;
+    });
+    const owner = makeService(CalendarEventsImportService.prototype, {
+      calendarChannelSyncStatusService: calendar,
+      cacheStorage: {
+        ...cache,
+        setPop: jest.fn().mockResolvedValue(['removed']),
+      },
+      workspaceOrmManager: {
+        executeInWorkspaceContext: async (work: () => Promise<unknown>) =>
+          work(),
+        getRepository: () => ({ findOne: async () => null }),
+      },
+      userWorkspaceRepository: { findOne: async () => null },
+      blocklistRepository: {
+        getEntriesApplicableToWorkspaceMember: async () => [],
+      },
+      calendarImportEventsService: {
+        getCalendarEvents: async () => [
+          { id: 'removed', isCanceled: true, participants: [] },
+        ],
+      },
+      calendarEventCleanerService: {
+        deleteCalendarChannelEventAssociationsAndRelatedOrphans: cleanup,
+      },
+      calendarEventImportErrorHandlerService: makeService(
+        CalendarEventImportErrorHandlerService.prototype,
+        {
+          calendarChannelSyncStatusService: calendar,
+          exceptionHandlerService: { captureExceptions: jest.fn() },
+          logger: { debug: jest.fn(), error: jest.fn() },
+        },
+      ),
+    });
+    const execution = owner.processCalendarEventsImport(
+      await runtime
+        .getRepository(CalendarChannelEntity)
+        .findOneByOrFail({ id: ordinary.calendar }),
+      await runtime
+        .getRepository(ConnectedAccountEntity)
+        .findOneByOrFail({ id: ordinary.account }),
+      fixture.workspaceId,
+    );
+    if (outcome === 'unknown') await expect(execution).rejects.toBe(error);
+    else await execution;
+    expect(cleanup).toHaveBeenCalledTimes(1);
+    expect(cleanup.mock.calls[0][0]).toMatchObject({
+      eventExternalIds: ['removed'],
+      expectedRun: {
+        kind: 'calendar',
+        stage: 'CALENDAR_EVENTS_IMPORT_ONGOING',
+      },
+    });
+    expect(
+      await runtime
+        .getRepository(CalendarChannelEntity)
+        .findOneByOrFail({ id: ordinary.calendar }),
+    ).toMatchObject({
+      syncStage: 'CALENDAR_EVENTS_IMPORT_ONGOING',
+      syncStatus: 'ONGOING',
+    });
+    expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
+  },
+);

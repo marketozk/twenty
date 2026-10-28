@@ -1,0 +1,15 @@
+{
+  "baseCommit": "536baa41bec6e6a32c1847915afb3b008cd15d05",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/calendar/calendar-event-cleaner/services/calendar-event-cleaner.service.ts": "71b194fd32364ca4e06ecaae93ffa0d69524cdb6b51c2ff0e79487249ef8808f",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-events-import.service.ts": "efb7fc3d84d646933091491fa2fb6bc718007b26656234fdfcdcb5f6d45d4de3",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-fetch-events.service.ts": "ba4feb8929a5adc5ada46870b4dee5676c5aff22e4f98fdf973afd08ced1ca0b",
+    "packages/twenty-server/src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service.ts": "3cdb04a994000915ce5dbd2cdfb6fe5b7cca96e7c67fa126165168fbcc9317cc",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-message-list-fetch.service.ts": "5574ec95bcff51743bf7d89b4c0875be54ef66fc41ba8d5cdf9024faac0d0364",
+    "packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts": "64b78785fbba8eb4cb45dcf071c5fca5a4df57c469f02a38cd87b6b5c92fd86f",
+    "packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts": "8ff0f2a7abbe1519e5fe2161e71f175e3b7c8f0cbca193cd708e002ffb8de6cf",
+    "packages/twenty-server/src/modules/omnichannel/services/lock-native-cleanup-candidates.ts": "0ee8e2566435713b226603c6751c7d049ddc4fac7db8e85c219353a99d31beb6"
+  }
+}

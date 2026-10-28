@@ -60,17 +60,27 @@ Canonical lifecycle requirements remain in the implementation specification.
 
 - LOG074: native message/calendar aggregate locks exact current run within existing strict native transaction; calendar reads/build/writes use that owner. Decline stops completion and postcommit jobs; accepted postcommit effects still have no run proof. Full fork regression refreshed.
 
-## Remaining owners, in implementation order
+- LOG075: provider association/orphan cleanup uses exact run in native scope. Parent and child row locks protect candidate reread; cursor follows accepted cleanup. Concurrent INSERT/reassignment and actual caller decline/unknown tested.
 
-Paths below are relative to `packages/twenty-server/src`.
+## Remaining acceptance boundaries
 
-| Owner | Observed gap / required check |
+| Boundary | Required evidence / retained semantics |
 |---|---|
-| Message run side effects | Admission, recent/full distinction and cursor/scheduling metadata callbacks covered by LOG071–072. Native save is covered by LOG074. Account-scoped Redis publication/requeue/monitoring, native cleanup and accepted postcommit effects still need final contract coverage. |
+| Delayed ordinary cache callback after ownership change | Exercise actual callback and final guards: zero protected native/core mutations and zero raw omni events. Nine legacy cache owners retain ordinary delivery semantics. |
+| Delayed postcommit matching/contact job | Existing ownership filters and final native guard protect omni rows; integration acceptance must delay until ownership introduced. Ordinary contact creation/enrichment remains permitted legacy behavior. |
+| Domain revision operation | Initial revision persistence exists; §15.10 requires metadata-only domain operation, with trusted source ordering and replay against retained revision/head. Placeholder/edit/delete native apply still pending. |
+| Exact T01 and final acceptance | 20 concurrent identical deliveries, one receipt/message/link; final full fork and guard run after changes. |
 
-| Calendar provider native side effects | Metadata stage/cursor/run callbacks covered by LOG071/073. CalendarFetchEventsService association deletion/orphan cleanup still require run guard inside their native transaction; Redis publication remains outside SQL. |
-| Native provider cleanup and postcommit effects | Aggregate run guard covered by LOG074. Message/calendar association + orphan cleanup require proof inside their native owner. Accepted contact creation/rematch postcommit effects currently have no run proof. |
-| Legacy list-fetch downstream cache/cleanup callbacks | Final completion is parent-pinned (LOG058); intermediate cache mutations and cleanup are separate. Review with group/folder scope before claiming complete callback lifecycle protection. |
+### Ordinary cache scope
+
+Five message owners: list fetch, batch import, onboarding, sync status, clean-cache job.
+Four calendar owners: fetch, import, sync status, webhook. Keys retain workspace/channel/
+account namespace. They are not used by typed omni receipt/outbox services. Current
+run timestamps rotate across list/import/recent transitions, so appending a timestamp
+to the old key is not a correct batch lineage. A new durable ordinary email cache
+protocol is outside phase1 step3's preserved email behavior and spec §15.18. Stale
+same-account cache/progress and postcommit CRM contact effects remain an explicit
+legacy limitation, not evidence that protected omni writes are allowed.
 
 ## Required evidence
 

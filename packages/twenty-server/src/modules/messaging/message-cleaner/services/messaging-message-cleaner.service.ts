@@ -1,3 +1,6 @@
+import { lockNativeCleanupCandidates } from 'src/modules/omnichannel/services/lock-native-cleanup-candidates';
+import { lockOrdinaryNativeSyncRun } from 'src/modules/omnichannel/services/lock-ordinary-native-sync-run';
+import { type OrdinaryMetadataSyncRun } from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
 import {
   lockCurrentGroupEmailAction,
   type OrdinaryGroupEmailAction,
@@ -39,12 +42,15 @@ export class MessagingMessageCleanerService {
     messageExternalIds,
     messageChannelId,
     groupEmailAction,
+    expectedRun,
   }: {
     workspaceId: string;
     messageExternalIds: string[];
     messageChannelId: string;
     groupEmailAction?: OrdinaryGroupEmailAction;
+    expectedRun?: OrdinaryMetadataSyncRun;
   }): Promise<boolean> {
+    expectedRun = expectedRun ? { ...expectedRun } : undefined;
     const expected = groupEmailAction ? { ...groupEmailAction } : undefined;
     const externalIds = [...messageExternalIds];
     if (
@@ -54,6 +60,15 @@ export class MessagingMessageCleanerService {
         expected.action !== 'GROUP_EMAILS_DELETION')
     )
       throw new Error('OMNI_INVALID_GROUP_ACTION_SCOPE');
+    if (
+      expectedRun &&
+      (expectedRun.workspaceId !== workspaceId ||
+        expectedRun.channelId !== messageChannelId ||
+        expectedRun.kind !== 'message' ||
+        (expected &&
+          expected.connectedAccountId !== expectedRun.connectedAccountId))
+    )
+      throw new Error('ORDINARY_SYNC_CLEANUP_INVALID_SCOPE');
     const authContext = buildSystemAuthContext(workspaceId);
 
     return this.workspaceOrmManager.executeInWorkspaceContext(
@@ -76,6 +91,11 @@ export class MessagingMessageCleanerService {
               )
                 return false;
             }
+            if (
+              expectedRun &&
+              !(await lockOrdinaryNativeSyncRun(transactionScope, expectedRun))
+            )
+              return false;
             await this.cleanMessageAssociationsInScope(
               transactionScope,
               workspaceId,
@@ -84,7 +104,7 @@ export class MessagingMessageCleanerService {
             );
             return true;
           },
-          expected ? { commitOutcome: 'strict' } : undefined,
+          expected || expectedRun ? { commitOutcome: 'strict' } : undefined,
         );
       },
       authContext,
@@ -151,7 +171,7 @@ export class MessagingMessageCleanerService {
         workspaceId,
         associations.map(({ messageId }) => messageId),
       );
-      const associationsToDelete = associations.filter(
+      let associationsToDelete = associations.filter(
         ({ messageId }) => !ownedMessageIds.has(messageId.toLowerCase()),
       );
 
@@ -159,6 +179,61 @@ export class MessagingMessageCleanerService {
         continue;
       }
 
+      const discoveredMessages = await messageRepository.find({
+        where: {
+          id: In(associationsToDelete.map(({ messageId }) => messageId)),
+        },
+      });
+      const parents = new Map(
+        discoveredMessages.map(({ id, messageThreadId }) => [
+          id,
+          messageThreadId,
+        ]),
+      );
+      await lockNativeCleanupCandidates(
+        transactionScope,
+        'messageThread',
+        discoveredMessages
+          .map(({ messageThreadId }) => messageThreadId)
+          .filter(isDefined),
+      );
+      await lockNativeCleanupCandidates(
+        transactionScope,
+        'message',
+        discoveredMessages.map(({ id }) => id),
+      );
+      const currentMessages = await messageRepository.find({
+        where: { id: In(discoveredMessages.map(({ id }) => id)) },
+      });
+      if (
+        currentMessages.some(
+          ({ id, messageThreadId }) => parents.get(id) !== messageThreadId,
+        )
+      )
+        throw new Error('NATIVE_CLEANUP_REFERENCE_CHANGED');
+      const expected = new Map(
+        associationsToDelete.map(({ id, messageId }) => [id, messageId]),
+      );
+      await lockNativeCleanupCandidates(
+        transactionScope,
+        'messageChannelMessageAssociation',
+        associationsToDelete.map(({ id }) => id),
+      );
+      associationsToDelete =
+        await messageChannelMessageAssociationRepository.find({
+          where: {
+            id: In(associationsToDelete.map(({ id }) => id)),
+            messageChannelId,
+            messageExternalId: In(messageExternalIdsChunk),
+          },
+        });
+      if (
+        associationsToDelete.some(
+          ({ id, messageId }) => expected.get(id) !== messageId,
+        )
+      )
+        throw new Error('NATIVE_CLEANUP_REFERENCE_CHANGED');
+      if (!associationsToDelete.length) continue;
       await messageChannelMessageAssociationRepository.delete(
         associationsToDelete.map(({ id }) => id),
       );

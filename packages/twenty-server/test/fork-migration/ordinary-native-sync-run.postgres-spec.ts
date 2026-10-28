@@ -1,3 +1,5 @@
+import { MessagingMessageCleanerService } from 'src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service';
+import { CalendarEventCleanerService } from 'src/modules/calendar/calendar-event-cleaner/services/calendar-event-cleaner.service';
 import { DataSource } from 'typeorm';
 import { randomUUID } from 'node:crypto';
 import {
@@ -59,6 +61,7 @@ jest.mock(
 );
 
 const fixture = createOmniNativeMessageFixture({
+  useStandardForeignKeyActions: true,
   additionalTables: [
     'calendarEvent',
     'calendarEventParticipant',
@@ -72,6 +75,7 @@ const metadata = new DataSource({
   extra: { max: 2, statement_timeout: 10000 },
 });
 const manager = {
+  getWorkspaceId: () => fixture.workspaceId,
   executeInWorkspaceContext: async <T>(work: () => Promise<T>) =>
     fixture.withContext(work),
   runInWorkspaceTransaction: async <T>(
@@ -184,6 +188,58 @@ const snapshot = async () => ({
 });
 const table = (kind: 'message' | 'calendar') =>
   kind === 'message' ? 'messageChannel' : 'calendarChannel';
+const mutateRun = async (kind: 'message' | 'calendar', mutation: string) => {
+  if (mutation === 'parent')
+    await fixture.owner.query(
+      `UPDATE core."${table(kind)}" SET "connectedAccountId"=$1 WHERE id=$2`,
+      [randomUUID(), run(kind).channelId],
+    );
+  if (mutation === 'new-run')
+    await fixture.owner.query(
+      `UPDATE core."${table(kind)}" SET "syncStageStartedAt"="syncStageStartedAt"+interval '1 microsecond' WHERE id=$1`,
+      [run(kind).channelId],
+    );
+  if (mutation === 'disabled')
+    await fixture.owner.query(
+      `UPDATE core."${table(kind)}" SET "isSyncEnabled"=false WHERE id=$1`,
+      [run(kind).channelId],
+    );
+  if (mutation === 'stage')
+    await fixture.owner.query(
+      `UPDATE core."${table(kind)}" SET "syncStage"='FAILED' WHERE id=$1`,
+      [run(kind).channelId],
+    );
+  if (mutation === 'native' || mutation === 'derived-owned')
+    await fixture.owner.query(
+      'UPDATE core."connectedAccount" SET provider=$1 WHERE id=$2',
+      [ConnectedAccountProvider.APP, account.id],
+    );
+  if (mutation === 'derived-owned') {
+    await fixture.owner.query(
+      'UPDATE core."messageChannel" SET type=$1 WHERE id=$2',
+      [MessageChannelType.APP, messageChannel.id],
+    );
+    await bootstrapOmniAccountBinding(
+      metadata,
+      { kind: 'system', id: 'native-apply-fixture' },
+      {
+        workspaceId: fixture.workspaceId,
+        platform: 'telegram',
+        connectorInstanceId: 'fixture',
+        accountId: account.id,
+        connectedAccountId: account.id,
+        messageChannelId: messageChannel.id,
+        idempotencyKey: randomUUID(),
+        expectedRevision: '0',
+      },
+      async () => undefined,
+    );
+    await fixture.owner.query(
+      'UPDATE core."connectedAccount" SET provider=$1 WHERE id=$2',
+      [ConnectedAccountProvider.GOOGLE, account.id],
+    );
+  }
+};
 beforeAll(async () => {
   await fixture.initialize();
   await fixture.owner.query(
@@ -343,56 +399,7 @@ for (const kind of ['message', 'calendar'] as const)
     ] as const)(
       'rejects %s before native reads/writes and postcommit jobs',
       async (mutation) => {
-        if (mutation === 'parent')
-          await fixture.owner.query(
-            `UPDATE core."${table(kind)}" SET "connectedAccountId"=$1 WHERE id=$2`,
-            [randomUUID(), run(kind).channelId],
-          );
-        if (mutation === 'new-run')
-          await fixture.owner.query(
-            `UPDATE core."${table(kind)}" SET "syncStageStartedAt"="syncStageStartedAt"+interval '1 microsecond' WHERE id=$1`,
-            [run(kind).channelId],
-          );
-        if (mutation === 'disabled')
-          await fixture.owner.query(
-            `UPDATE core."${table(kind)}" SET "isSyncEnabled"=false WHERE id=$1`,
-            [run(kind).channelId],
-          );
-        if (mutation === 'stage')
-          await fixture.owner.query(
-            `UPDATE core."${table(kind)}" SET "syncStage"='FAILED' WHERE id=$1`,
-            [run(kind).channelId],
-          );
-        if (mutation === 'native' || mutation === 'derived-owned')
-          await fixture.owner.query(
-            'UPDATE core."connectedAccount" SET provider=$1 WHERE id=$2',
-            [ConnectedAccountProvider.APP, account.id],
-          );
-        if (mutation === 'derived-owned') {
-          await fixture.owner.query(
-            'UPDATE core."messageChannel" SET type=$1 WHERE id=$2',
-            [MessageChannelType.APP, messageChannel.id],
-          );
-          await bootstrapOmniAccountBinding(
-            metadata,
-            { kind: 'system', id: 'native-apply-fixture' },
-            {
-              workspaceId: fixture.workspaceId,
-              platform: 'telegram',
-              connectorInstanceId: 'fixture',
-              accountId: account.id,
-              connectedAccountId: account.id,
-              messageChannelId: messageChannel.id,
-              idempotencyKey: randomUUID(),
-              expectedRevision: '0',
-            },
-            async () => undefined,
-          );
-          await fixture.owner.query(
-            'UPDATE core."connectedAccount" SET provider=$1 WHERE id=$2',
-            [ConnectedAccountProvider.GOOGLE, account.id],
-          );
-        }
+        await mutateRun(kind, mutation);
         const before = await snapshot();
         const result = await save(kind);
         expect(
@@ -689,3 +696,411 @@ for (const kind of ['message', 'calendar'] as const)
       expect(await snapshot()).toEqual(before);
     },
   );
+
+const cleanup = (kind: 'message' | 'calendar', proof = run(kind)) => {
+  if (kind === 'message')
+    return makeService(MessagingMessageCleanerService.prototype, {
+      workspaceOrmManager: manager,
+      participantTargetReconciliationService: {
+        reconcileMessageThreadTargets: jest.fn(),
+      },
+      logger: { log: jest.fn() },
+    }).deleteMessagesChannelMessageAssociationsAndRelatedOrphans({
+      workspaceId: fixture.workspaceId,
+      messageChannelId: messageChannel.id,
+      messageExternalIds: [email().externalId],
+      expectedRun: proof,
+    });
+  return new CalendarEventCleanerService(
+    manager,
+  ).deleteCalendarChannelEventAssociationsAndRelatedOrphans({
+    workspaceId: fixture.workspaceId,
+    calendarChannelId: calendarChannel.id,
+    eventExternalIds: [event().id],
+    expectedRun: proof,
+  });
+};
+describe.each(['message', 'calendar'] as const)(
+  'native run cleanup %s',
+  (kind) => {
+    const graphTable = kind === 'message' ? 'message' : 'calendarEvent';
+    const associationTable =
+      kind === 'message'
+        ? 'messageChannelMessageAssociation'
+        : 'calendarChannelEventAssociation';
+    it('accepted cleanup removes association and orphan graph atomically', async () => {
+      await save(kind);
+      expect(await cleanup(kind)).toBe(true);
+      expect(await fixture.read(graphTable)).toEqual([]);
+      expect(await fixture.read(associationTable)).toEqual([]);
+      expect(
+        await fixture.read(
+          kind === 'message'
+            ? 'messageParticipant'
+            : 'calendarEventParticipant',
+        ),
+      ).toEqual([]);
+      if (kind === 'message') {
+        expect(await fixture.read('messageThread')).toEqual([]);
+        expect(
+          await fixture.read('messageChannelMessageAssociationMessageFolder'),
+        ).toEqual([]);
+      }
+    });
+    it.each([
+      'parent',
+      'new-run',
+      'disabled',
+      'native',
+      'derived-owned',
+      'stage',
+    ])(
+      'declines %s before deleting native graph or publishing events',
+      async (mutation) => {
+        await save(kind);
+        await mutateRun(kind, mutation);
+        const before = await snapshot();
+        fixture.eventEmitter.mockClear();
+        expect(await cleanup(kind)).toBe(false);
+        expect(await snapshot()).toEqual(before);
+        expect(fixture.eventEmitter).not.toHaveBeenCalled();
+      },
+    );
+    it('failure after association delete rolls back association and orphan graph', async () => {
+      await save(kind);
+      const before = await snapshot();
+      await fixture.owner.query(
+        `CREATE FUNCTION "${fixture.schemaName}".refuse_cleanup() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'fixture cleanup refusal'; END $$`,
+      );
+      await fixture.owner.query(
+        `CREATE TRIGGER refuse_cleanup BEFORE DELETE ON "${fixture.schemaName}"."${graphTable}" FOR EACH ROW EXECUTE FUNCTION "${fixture.schemaName}".refuse_cleanup()`,
+      );
+      fixture.eventEmitter.mockClear();
+      try {
+        await expect(cleanup(kind)).rejects.toThrow('Data validation error.');
+        expect(await snapshot()).toEqual(before);
+        expect(fixture.eventEmitter).not.toHaveBeenCalled();
+      } finally {
+        await fixture.owner.query(
+          `DROP TRIGGER refuse_cleanup ON "${fixture.schemaName}"."${graphTable}"`,
+        );
+        await fixture.owner.query(
+          `DROP FUNCTION "${fixture.schemaName}".refuse_cleanup()`,
+        );
+      }
+    });
+    it('lost COMMIT acknowledgement is unknown rather than a declined cleanup', async () => {
+      await save(kind);
+      const client = await fixture.pool.connect(),
+        query = client.query.bind(client);
+      jest.spyOn(client, 'query').mockImplementation((async (
+        sql: string,
+        values?: unknown[],
+      ) => {
+        const result = await query(sql, values);
+        if (sql === 'COMMIT') throw new Error('cleanup commit ACK lost');
+        return result;
+      }) as typeof client.query);
+      jest
+        .spyOn(fixture.pool, 'connect')
+        .mockImplementationOnce(() => Promise.resolve(client));
+      await expect(cleanup(kind)).rejects.toBeInstanceOf(
+        NativeTransactionOutcomeUnknownError,
+      );
+      expect(await fixture.read(graphTable)).toEqual([]);
+      expect(await fixture.read(associationTable)).toEqual([]);
+    });
+    it('retains native record referenced by another channel', async () => {
+      await save(kind);
+      const association = (await fixture.read(associationTable))[0];
+      const otherChannel = randomUUID();
+      if (kind === 'message') {
+        await fixture.owner.query(
+          `INSERT INTO "${fixture.schemaName}"."messageChannelMessageAssociation"(id,"messageChannelId","messageId","messageExternalId","messageThreadExternalId",direction) VALUES ($1,$2,$3,$4,$5,$6)`,
+          [
+            randomUUID(),
+            otherChannel,
+            association.messageId,
+            'other-external',
+            'other-thread',
+            MessageDirection.INCOMING,
+          ],
+        );
+      } else {
+        await fixture.owner.query(
+          `INSERT INTO "${fixture.schemaName}"."calendarChannelEventAssociation"(id,"calendarChannelId","calendarEventId","eventExternalId","recurringEventExternalId") VALUES ($1,$2,$3,$4,$5)`,
+          [
+            randomUUID(),
+            otherChannel,
+            association.calendarEventId,
+            'other-external',
+            '',
+          ],
+        );
+      }
+      expect(await cleanup(kind)).toBe(true);
+      expect(await fixture.read(graphTable)).toHaveLength(1);
+      expect(await fixture.read(associationTable)).toEqual([
+        expect.objectContaining(
+          kind === 'message'
+            ? { messageChannelId: otherChannel }
+            : { calendarChannelId: otherChannel },
+        ),
+      ]);
+      expect(
+        await fixture.read(
+          kind === 'message'
+            ? 'messageParticipant'
+            : 'calendarEventParticipant',
+        ),
+      ).toHaveLength(1);
+    });
+    it('rejects mismatched channel proof without changing graph', async () => {
+      await save(kind);
+      const before = await snapshot();
+      await expect(
+        cleanup(kind, { ...run(kind), channelId: randomUUID() }),
+      ).rejects.toThrow('ORDINARY_SYNC_CLEANUP_INVALID_SCOPE');
+      expect(await snapshot()).toEqual(before);
+    });
+  },
+);
+
+const waitForCleanupLock = async (needle: string) => {
+  const deadline = Date.now() + 3000;
+  while (Date.now() < deadline) {
+    const rows = await fixture.owner.query(
+      "SELECT pid FROM pg_stat_activity WHERE wait_event_type='Lock' AND query LIKE $1",
+      ['%' + needle + '%'],
+    );
+    if (rows.length) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error('expected database lock wait');
+};
+for (const kind of ['message', 'calendar'] as const) {
+  const graphTable = kind === 'message' ? 'message' : 'calendarEvent';
+  const associationTable =
+    kind === 'message'
+      ? 'messageChannelMessageAssociation'
+      : 'calendarChannelEventAssociation';
+  const insertOther = async (
+    query: (sql: string, args: unknown[]) => Promise<unknown>,
+    recordId: string,
+  ) => {
+    if (kind === 'message')
+      return query(
+        `INSERT INTO "${fixture.schemaName}"."messageChannelMessageAssociation"(id,"messageChannelId","messageId","messageExternalId","messageThreadExternalId",direction) VALUES ($1,$2,$3,$4,$5,$6)`,
+        [
+          randomUUID(),
+          randomUUID(),
+          recordId,
+          'concurrent-other',
+          'other-thread',
+          MessageDirection.INCOMING,
+        ],
+      );
+    return query(
+      `INSERT INTO "${fixture.schemaName}"."calendarChannelEventAssociation"(id,"calendarChannelId","calendarEventId","eventExternalId","recurringEventExternalId") VALUES ($1,$2,$3,$4,$5)`,
+      [randomUUID(), randomUUID(), recordId, 'concurrent-other', ''],
+    );
+  };
+  it(
+    kind +
+      ' cleanup waits for concurrent foreign-key reference and retains parent',
+    async () => {
+      await save(kind);
+      const recordId = (await fixture.read(graphTable))[0].id;
+      const writer = fixture.owner.createQueryRunner();
+      await writer.connect();
+      await writer.startTransaction();
+      let cleaning: Promise<boolean> | undefined;
+      try {
+        await insertOther((sql, args) => writer.query(sql, args), recordId);
+        cleaning = cleanup(kind);
+        await waitForCleanupLock(
+          `SELECT id FROM "${fixture.schemaName}"."${graphTable}"`,
+        );
+        await writer.commitTransaction();
+        expect(await cleaning).toBe(true);
+        expect(await fixture.read(graphTable)).toHaveLength(1);
+        expect(await fixture.read(associationTable)).toHaveLength(1);
+      } finally {
+        if (writer.isTransactionActive) await writer.rollbackTransaction();
+        await writer.release();
+        if (cleaning) await Promise.allSettled([cleaning]);
+      }
+    },
+  );
+  it(
+    kind +
+      ' reference arriving after parent lock waits and cannot recreate deleted association',
+    async () => {
+      await save(kind);
+      const recordId = (await fixture.read(graphTable))[0].id;
+      let entered!: () => void, release!: () => void;
+      const enteredPromise = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      const releasePromise = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let held = false;
+      jest
+        .spyOn(manager, 'runInWorkspaceTransaction')
+        .mockImplementation((async (
+          work: (scope: WorkspaceTransactionScope) => Promise<unknown>,
+          options?: WorkspaceTransactionOptions,
+        ) =>
+          fixture.dataSource.transaction(async (scope) => {
+            const query = scope.executeRawQuery.bind(scope);
+            scope.executeRawQuery = async (sql, args) => {
+              const result = await query(sql, args);
+              if (
+                !held &&
+                sql.startsWith(
+                  `SELECT id FROM "${fixture.schemaName}"."${graphTable}"`,
+                )
+              ) {
+                held = true;
+                entered();
+                await releasePromise;
+              }
+              return result;
+            };
+            return work(scope);
+          }, options)) as typeof manager.runInWorkspaceTransaction);
+      const cleaning = cleanup(kind);
+      await enteredPromise;
+      const writer = fixture.owner.createQueryRunner();
+      await writer.connect();
+      await writer.startTransaction();
+      const inserting = insertOther(
+        (sql, args) => writer.query(sql, args),
+        recordId,
+      ).then(
+        () => null,
+        (error) => error,
+      );
+      try {
+        await waitForCleanupLock(
+          `INSERT INTO "${fixture.schemaName}"."${associationTable}"`,
+        );
+      } finally {
+        release();
+      }
+      try {
+        expect(await cleaning).toBe(true);
+        const rejected = await inserting;
+        expect(rejected).toMatchObject({ code: '23503' });
+        expect(await fixture.read(graphTable)).toEqual([]);
+        expect(await fixture.read(associationTable)).toEqual([]);
+      } finally {
+        if (writer.isTransactionActive) await writer.rollbackTransaction();
+        await writer.release();
+      }
+    },
+  );
+}
+
+for (const kind of ['message', 'calendar'] as const)
+  for (const timing of ['before-child-lock', 'after-child-lock'] as const)
+    for (const field of ['channel', 'external-id'] as const)
+      it(
+        kind +
+          ' ' +
+          field +
+          ' reassignment ' +
+          timing +
+          ' is serialized with cleanup',
+        async () => {
+          await save(kind);
+          const associationTable =
+            kind === 'message'
+              ? 'messageChannelMessageAssociation'
+              : 'calendarChannelEventAssociation';
+          const channelColumn =
+            field === 'channel'
+              ? kind === 'message'
+                ? 'messageChannelId'
+                : 'calendarChannelId'
+              : kind === 'message'
+                ? 'messageExternalId'
+                : 'eventExternalId';
+          const association = (await fixture.read(associationTable))[0];
+          const newChannel = randomUUID();
+          let entered!: () => void,
+            release!: () => void,
+            held = false;
+          const enteredPromise = new Promise<void>((resolve) => {
+            entered = resolve;
+          });
+          const releasePromise = new Promise<void>((resolve) => {
+            release = resolve;
+          });
+          jest
+            .spyOn(manager, 'runInWorkspaceTransaction')
+            .mockImplementation((async (
+              work: (scope: WorkspaceTransactionScope) => Promise<unknown>,
+              options?: WorkspaceTransactionOptions,
+            ) =>
+              fixture.dataSource.transaction(async (scope) => {
+                const query = scope.executeRawQuery.bind(scope);
+                scope.executeRawQuery = async (sql, args) => {
+                  const matches =
+                    !held &&
+                    sql.startsWith(
+                      `SELECT id FROM "${fixture.schemaName}"."${associationTable}"`,
+                    );
+                  if (matches && timing === 'before-child-lock') {
+                    held = true;
+                    entered();
+                    await releasePromise;
+                  }
+                  const result = await query(sql, args);
+                  if (matches && timing === 'after-child-lock') {
+                    held = true;
+                    entered();
+                    await releasePromise;
+                  }
+                  return result;
+                };
+                return work(scope);
+              }, options)) as typeof manager.runInWorkspaceTransaction);
+          const cleaning = cleanup(kind);
+          await enteredPromise;
+          const sql = `UPDATE "${fixture.schemaName}"."${associationTable}" SET "${channelColumn}"=$1 WHERE id=$2 RETURNING id`;
+          const changing = fixture.owner.query(sql, [
+            newChannel,
+            association.id,
+          ]);
+          try {
+            if (timing === 'before-child-lock')
+              expect(await changing).toHaveLength(2);
+            else
+              await waitForCleanupLock(
+                `UPDATE "${fixture.schemaName}"."${associationTable}"`,
+              );
+          } finally {
+            release();
+          }
+          expect(await cleaning).toBe(true);
+          const changed = await changing;
+          if (timing === 'before-child-lock') {
+            expect(await fixture.read(associationTable)).toEqual([
+              expect.objectContaining({
+                id: association.id,
+                [channelColumn]: newChannel,
+              }),
+            ]);
+            expect(
+              await fixture.read(
+                kind === 'message' ? 'message' : 'calendarEvent',
+              ),
+            ).toHaveLength(1);
+          } else {
+            expect(changed[1]).toBe(0);
+            expect(await fixture.read(associationTable)).toEqual([]);
+          }
+        },
+      );

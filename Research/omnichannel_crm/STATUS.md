@@ -1,12 +1,13 @@
 # Текущее состояние Twenty CRM
 
-LOG-074 / ROB-764 In Progress: native сохранение сообщений/событий проверяет
-текущий account/enabled/stage и точный run token внутри той же strict transaction.
-Calendar read/build/write выполняются одним transaction owner; declined результат
-останавливает завершение import. Native nullable participants сохранены без подмены.
-Full fork 2443 Jest/76 suites +26 guards=2469 PASS; 29 new PostgreSQL cases. Typecheck 294 roots:188/187,0 new/changed-code. Seven migrations unchanged.
-[Доказательства](implementation/log074/README.md). Scoped read-only review без находок.
-Далее native cleanup и проверка защищённых границ Redis/postcommit effects.
+LOG-075 / ROB-764 In Progress: provider cleanup проверяет текущий run внутри
+native transaction. Calendar association/orphan cleanup атомарны; message cursor
+продвигается после принятых cleanup chunks. Parent/association locks и повторное
+чтение защищают конкурентные ссылки и перенос ассоциаций.
+496 targeted Jest/5 suites +26 guards=522 PASS; 41 new PG/caller cases. Typecheck 295 roots:187/187,0 new/changed-code. Seven migrations unchanged.
+[Доказательства](implementation/log075/README.md). Review races исправлены и проверены двумя соединениями.
+Последний full fork LOG074:2443/76. Далее final ownership acceptance, 20-way T01
+и минимальный domain revision writer по §15.10; ROB-764 ещё не Done.
 Демо прежнее, GitHub Actions не используется.
 
 ## Предыдущая порция — LOG-022
