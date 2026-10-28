@@ -2075,3 +2075,5 @@ cleanup are still separate unchecked response boundaries. Last full fork LOG0672
 no new full fork/full server typecheck/full Claude review/ROB764 Done. Demo/SaleBot
 unchanged; no Actions. Skills ai-dev-workflow, behavioral-guardrails, server-schrodinger,
 scoped read-only review/research.
+
+LOG-069 publication: code `36f747cf239c0f2462b0574971f6fa578eb1096c` pushed; GitHub ref verified by API. Linear description/comment `8423b44f-d45f-4afe-94bd-bcdc689f024e` independently read back; all11 project states match. ROB-764 remains In Progress.
