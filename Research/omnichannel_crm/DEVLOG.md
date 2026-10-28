@@ -3441,3 +3441,5 @@ Family revoke, standalone sign-in fencing и stateless application JWT откр�
 Демо, образ, сообщения и Actions не затронуты.
 
 1054 tests/34 suites PASS (201.141s); 129 targeted/3 suites PASS. 26 новых PostgreSQL cases. 26 guards PASS; 10 migration checksums неизменны. Types 347/347 roots, 189/189 прежних диагностик, 0 новых/changed-code. 4 local/remote source hashes совпадают.
+
+LOG110 publication: 957d45086d8796451cac38197e00c04d03343505 pushed/API verified. ROB765 description and comment 2eb3d69b-63d6-4fc1-9b63-40a2796d8c75 independently read back; all 11 issue states match. Implementation continues.
