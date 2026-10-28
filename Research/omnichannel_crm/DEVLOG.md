@@ -3030,3 +3030,7 @@ Five uploaded/local hashes совпадают. Первичные fixture и clo
 исправлены; независимый повторный review без блокеров. [Evidence](implementation/log091/README.md).
 ROB765 In Progress. Далее FilesFieldSync same-executor и authoritative batch owner,
 затем подключение реальных native writers. Демо не менялось, Actions не использовался.
+
+LOG091 publication: `a51ca162af0ca34d7639ebb69e7b6767a9f766e6` pushed/API verified.
+ROB765 description and comment `23e2d47a-826d-45e7-9ca7-ff9ed7f5caed` independently
+read back; all11 states match. ROB765 remains In Progress; implementation continues.
