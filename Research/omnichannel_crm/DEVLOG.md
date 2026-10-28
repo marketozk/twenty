@@ -1879,3 +1879,5 @@ Last full fork LOG0561881/71; no full fork/full server typecheck/full Claude pas
 ROB764 acceptance claimed. [Evidence](implementation/log064/README.md).
 Demo/transport unchanged; GitHub Actions unused. Applied ai-dev-workflow,
 behavioral-guardrails, server-schrodinger and scoped read-only research/review.
+
+LOG064 publication: code a97e94ed0dc5f8b8411e711f3eb316938e871d23 pushed and GitHub API ref verified; Linear comment acff0f76-80d4-4fd3-899b-2cc5d19486c0, description/comment and all11 project states independently read back. ROB764 remains In Progress.
