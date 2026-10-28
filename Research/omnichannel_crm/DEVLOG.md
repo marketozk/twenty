@@ -2342,3 +2342,5 @@ ROB-764 remains In Progress until that required writer and fresh final acceptanc
 Skills: ai-dev-workflow, behavioral-guardrails, server-schrodinger; scoped read-only review.
 
 [Evidence](implementation/log076/README.md).
+
+LOG-076 publication: code `6e9e03819d21a69b361f36302ea21c230da2f376` pushed; GitHub ref verified by API. Linear description/comment `6ba8d532-cfb2-4082-bca8-72952daba730` independently read back; all11 project states match. ROB-764 remains In Progress.
