@@ -1,3 +1,4 @@
+import { type OrdinaryMetadataSyncRun } from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { messageImportCacheKeys } from 'src/modules/messaging/common/utils/message-import-cache-keys';
 import { MESSAGE_IMPORT_CACHE_TTL_MS } from 'src/modules/messaging/common/constants/message-import-cache-ttl-ms.constant';
@@ -69,11 +70,6 @@ export class MessagingMessagesImportService {
     connectedAccount = { ...connectedAccount };
     if (messageChannel.connectedAccountId !== connectedAccount.id)
       throw new Error('MESSAGE_IMPORT_ACCOUNT_MISMATCH');
-    const importKeys = messageImportCacheKeys({
-      workspaceId,
-      messageChannelId: messageChannel.id,
-      connectedAccountId: connectedAccount.id,
-    });
     const admitted =
       await this.messageChannelSyncStatusService.beginMessagesImport(
         messageChannel.id,
@@ -81,9 +77,63 @@ export class MessagingMessagesImportService {
         connectedAccount.id,
       );
     if (!admitted) return;
-    messageChannel = admitted.channel;
-    connectedAccount = admitted.channel.connectedAccount;
-    const expectedRun = admitted.run;
+    await this.processAdmittedBatch(
+      admitted.channel,
+      admitted.channel.connectedAccount,
+      workspaceId,
+      batchSize,
+      admitted.run,
+      false,
+    );
+  }
+
+  public async processRecentMessageBatchImport(
+    reservation: OrdinaryMetadataSyncRun,
+    batchSize: number,
+  ) {
+    const admitted =
+      await this.messageChannelSyncStatusService.handoffRecentMessagesImport(
+        reservation,
+      );
+    if (!admitted) return false;
+    return this.processAdmittedBatch(
+      admitted.channel,
+      admitted.channel.connectedAccount,
+      admitted.run.workspaceId,
+      batchSize,
+      admitted.run,
+      true,
+    );
+  }
+
+  public handleRecentMessagesImportFailure(
+    error: unknown,
+    channel: MessageChannelEntity,
+    workspaceId: string,
+    run: OrdinaryMetadataSyncRun,
+  ) {
+    return this.messageImportErrorHandlerService.handleDriverException(
+      error,
+      MessageImportSyncStep.RECENT_MESSAGES_IMPORT,
+      channel,
+      workspaceId,
+      run,
+    );
+  }
+
+  private async processAdmittedBatch(
+    messageChannel: MessageChannelEntity,
+    connectedAccount: ConnectedAccountEntity,
+    workspaceId: string,
+    batchSize: number | undefined,
+    expectedRun: OrdinaryMetadataSyncRun,
+    recent: boolean,
+  ) {
+    const importKeys = messageImportCacheKeys({
+      workspaceId,
+      messageChannelId: messageChannel.id,
+      connectedAccountId: connectedAccount.id,
+    });
     let messageIdsToFetch: string[] = [];
 
     const messagesGetBatchSize =
@@ -92,7 +142,7 @@ export class MessagingMessagesImportService {
 
     const authContext = buildSystemAuthContext(workspaceId);
 
-    await this.workspaceOrmManager.executeInWorkspaceContext(
+    return await this.workspaceOrmManager.executeInWorkspaceContext(
       async () => {
         try {
           if (
@@ -126,19 +176,20 @@ export class MessagingMessagesImportService {
           );
 
           if (!messageIdsToFetch?.length) {
-            const accepted =
-              await this.messageChannelSyncStatusService.markAsMessageSyncCompleted(
-                [messageChannel.id],
-                workspaceId,
-                messageChannel.connectedAccountId,
-                expectedRun,
-              );
+            const accepted = recent
+              ? await this.messageChannelSyncStatusService.finishRecentMessagesImport(
+                  expectedRun,
+                )
+              : await this.messageChannelSyncStatusService.markAsMessageSyncCompleted(
+                  [messageChannel.id],
+                  workspaceId,
+                  messageChannel.connectedAccountId,
+                  expectedRun,
+                );
             if (!accepted) return;
 
-            return await this.trackMessageImportCompleted(
-              messageChannel,
-              workspaceId,
-            );
+            await this.trackMessageImportCompleted(messageChannel, workspaceId);
+            return true;
           }
 
           const allMessages =
@@ -234,21 +285,26 @@ export class MessagingMessagesImportService {
             );
           }
 
-          const isLastBatch = messageIdsToFetch.length < messagesGetBatchSize;
+          const isLastBatch =
+            recent || messageIdsToFetch.length < messagesGetBatchSize;
 
-          const accepted = isLastBatch
-            ? await this.messageChannelSyncStatusService.markAsMessageSyncCompleted(
-                [messageChannel.id],
-                workspaceId,
-                messageChannel.connectedAccountId,
+          const accepted = recent
+            ? await this.messageChannelSyncStatusService.finishRecentMessagesImport(
                 expectedRun,
               )
-            : await this.messageChannelSyncStatusService.markAsMessageBatchImported(
-                messageChannel.id,
-                messageChannel.connectedAccountId,
-                workspaceId,
-                expectedRun,
-              );
+            : isLastBatch
+              ? await this.messageChannelSyncStatusService.markAsMessageSyncCompleted(
+                  [messageChannel.id],
+                  workspaceId,
+                  messageChannel.connectedAccountId,
+                  expectedRun,
+                )
+              : await this.messageChannelSyncStatusService.markAsMessageBatchImported(
+                  messageChannel.id,
+                  messageChannel.connectedAccountId,
+                  workspaceId,
+                  expectedRun,
+                );
           if (!accepted) return;
 
           if (!isLastBatch) {
@@ -262,10 +318,8 @@ export class MessagingMessagesImportService {
             );
           }
 
-          return await this.trackMessageImportCompleted(
-            messageChannel,
-            workspaceId,
-          );
+          await this.trackMessageImportCompleted(messageChannel, workspaceId);
+          return true;
         } catch (error) {
           if (
             error instanceof OmniCoreTransactionOutcomeUnknownError ||
@@ -289,16 +343,16 @@ export class MessagingMessagesImportService {
 
           await this.messageImportErrorHandlerService.handleDriverException(
             error,
-            MessageImportSyncStep.MESSAGES_IMPORT_ONGOING,
+            recent
+              ? MessageImportSyncStep.RECENT_MESSAGES_IMPORT
+              : MessageImportSyncStep.MESSAGES_IMPORT_ONGOING,
             messageChannel,
             workspaceId,
             expectedRun,
           );
 
-          return await this.trackMessageImportCompleted(
-            messageChannel,
-            workspaceId,
-          );
+          await this.trackMessageImportCompleted(messageChannel, workspaceId);
+          return false;
         }
       },
       authContext,

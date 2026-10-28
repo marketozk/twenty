@@ -1,3 +1,4 @@
+import { MessagingCursorService } from 'src/modules/messaging/message-import-manager/services/messaging-cursor.service';
 import { type OrdinaryMetadataSyncRun } from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
 // Provider network behavior is supplied explicitly by each calendar fetch test.
 jest.mock(
@@ -188,6 +189,7 @@ const messageSchema = new EntitySchema<MessageChannelEntity>({
   columns: {
     ...common,
     type: { type: 'text' },
+    handle: { type: 'text', nullable: true },
     throttleRetryAfter: { type: 'timestamptz', nullable: true },
     pendingGroupEmailsAction: { type: 'text', nullable: true },
   },
@@ -368,7 +370,7 @@ beforeAll(async () => {
     'ALTER TABLE core."connectedAccount" ADD "workspaceId" uuid,ADD provider text,ADD "applicationId" uuid,ADD "connectionProviderId" uuid,ADD "userWorkspaceId" uuid,ADD "authFailedAt" timestamptz,ADD "authFailedReason" text,ADD "archivedAt" timestamptz,ADD "handleAliases" jsonb',
   );
   await fixture.owner.query(
-    'ALTER TABLE core."messageChannel" ADD "connectedAccountId" uuid REFERENCES core."connectedAccount"(id),ADD "throttleRetryAfter" timestamptz,ADD "pendingGroupEmailsAction" text,ADD "updatedAt" timestamptz DEFAULT now()',
+    'ALTER TABLE core."messageChannel" ADD "connectedAccountId" uuid REFERENCES core."connectedAccount"(id),ADD "throttleRetryAfter" timestamptz,ADD "pendingGroupEmailsAction" text,ADD handle text,ADD "updatedAt" timestamptz DEFAULT now()',
   );
   await fixture.owner.query(
     'CREATE TABLE core."calendarChannel" (id uuid PRIMARY KEY,"workspaceId" uuid,"connectedAccountId" uuid REFERENCES core."connectedAccount"(id),"updatedAt" timestamptz DEFAULT now())',
@@ -1436,12 +1438,13 @@ jest.mock(
   () => ({ MessagingProcessFolderActionsService: class {} }),
 );
 
-jest.mock(
-  'src/modules/messaging/message-import-manager/services/messaging-cursor.service',
-  () => ({ MessagingCursorService: class {} }),
-);
-
 it('actual zero-message list fetch cannot complete the replacement ordinary parent', async () => {
+  await runtime.getRepository(MessageChannelEntity).update(ordinary.message, {
+    syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,
+  });
+  await runtime.getRepository(MessageFolderEntity).update(ordinary.folder, {
+    pendingSyncAction: MessageFolderPendingSyncAction.NONE,
+  });
   const snapshot = await runtime
     .getRepository(MessageChannelEntity)
     .findOneByOrFail({ id: ordinary.message });
@@ -1517,16 +1520,19 @@ it('native cleanup unknown outcome bypasses import failure classification', asyn
   expect(broadcast.broadcast).not.toHaveBeenCalled();
 });
 it('stale folder discovery stops downstream fetch/cache/completion', async () => {
+  await runtime.getRepository(MessageChannelEntity).update(ordinary.message, {
+    syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,
+  });
+  await runtime.getRepository(MessageFolderEntity).update(ordinary.folder, {
+    pendingSyncAction: MessageFolderPendingSyncAction.NONE,
+  });
   const fetch = jest.fn(),
-    completed = jest.fn();
+    completed = jest.spyOn(messaging, 'markAsMessageSyncCompleted');
   const service = makeService(MessagingMessageListFetchService.prototype, {
     workspaceOrmManager: {
       executeInWorkspaceContext: async (work: () => Promise<unknown>) => work(),
     },
-    messageChannelSyncStatusService: {
-      markAsMessagesListFetchOngoing: jest.fn(),
-      markAsMessageSyncCompleted: completed,
-    },
+    messageChannelSyncStatusService: messaging,
     syncMessageFoldersService: { syncMessageFolders: async () => null },
     messagingGetMessageListService: { getMessageLists: fetch },
     cacheStorage: cache,
@@ -1552,7 +1558,11 @@ it('stale folder discovery stops downstream fetch/cache/completion', async () =>
   expect(completed).not.toHaveBeenCalled();
   expect(cache.mdel).not.toHaveBeenCalled();
 });
-it('stale group work aborts list fetch before folder/status/cache side effects', async () => {
+it('stale group work aborts admitted list fetch before folder/cache/completion side effects', async () => {
+  await runtime.getRepository(MessageChannelEntity).update(ordinary.message, {
+    syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,
+    pendingGroupEmailsAction: 'GROUP_EMAILS_DELETION' as never,
+  });
   const folders = { processFolderActions: jest.fn() },
     groups = { processGroupEmailActions: jest.fn().mockResolvedValue(false) };
   const service = makeService(MessagingMessageListFetchService.prototype, {
@@ -1586,7 +1596,10 @@ it('stale group work aborts list fetch before folder/status/cache side effects',
   expect(cache.mdel).not.toHaveBeenCalled();
   expect(
     await repo('message').findOneByOrFail({ id: ordinary.message }),
-  ).toEqual(before);
+  ).toMatchObject({
+    syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_ONGOING,
+    syncedAt: null,
+  });
 });
 
 describe('reconnect scheduling and queued parent admission', () => {
@@ -2125,6 +2138,11 @@ for (const producer of ['list-fetch', 'onboarding'] as const) {
   it(
     producer + ' caches delayed provider IDs only under captured account',
     async () => {
+      await runtime
+        .getRepository(MessageChannelEntity)
+        .update(ordinary.message, {
+          syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,
+        });
       const other = await seed();
       const channel = await runtime
         .getRepository(MessageChannelEntity)
@@ -2155,11 +2173,7 @@ for (const producer of ['list-fetch', 'onboarding'] as const) {
         });
         return ['from-original-account'];
       };
-      const status = {
-        markAsMessagesListFetchOngoing: jest.fn(),
-        markAsMessagesImportScheduled: jest.fn(),
-        markAsMessagesListFetchPending: jest.fn(),
-      };
+      const status = messaging;
       const importBatch = jest.fn();
       const dependencies = {
         cacheStorage: testCache,
@@ -2172,6 +2186,9 @@ for (const producer of ['list-fetch', 'onboarding'] as const) {
         messageChannelSyncStatusService: status,
         messagingMessagesImportService: {
           processMessageBatchImport: importBatch,
+          processRecentMessageBatchImport: async (
+            run: OrdinaryMetadataSyncRun,
+          ) => Boolean(await messaging.handoffRecentMessagesImport(run)),
         },
         logger: {
           log: jest.fn(),
@@ -2198,7 +2215,9 @@ for (const producer of ['list-fetch', 'onboarding'] as const) {
                 },
               ],
             },
-            messagingCursorService: { updateCursor: jest.fn() },
+            messagingCursorService: {
+              updateCursor: jest.fn().mockResolvedValue(true),
+            },
             messageImportErrorHandlerService: {
               handleDriverException: async (error: unknown) => {
                 throw error;
@@ -3817,3 +3836,395 @@ describe.each(['message', 'calendar'] as const)(
     });
   },
 );
+
+describe('recent onboarding reservation and full-fetch recovery', () => {
+  const current = () =>
+    runtime
+      .getRepository(MessageChannelEntity)
+      .findOneByOrFail({ id: ordinary.message });
+  const reserve = () =>
+    messaging.beginMessagesListFetch(
+      ordinary.message,
+      fixture.workspaceId,
+      ordinary.account,
+      true,
+    );
+  const full = () =>
+    messaging.beginMessagesListFetch(
+      ordinary.message,
+      fixture.workspaceId,
+      ordinary.account,
+    );
+  const scheduled = () =>
+    runtime.getRepository(MessageChannelEntity).update(ordinary.message, {
+      syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,
+    });
+  const handler = () =>
+    makeService(MessageImportExceptionHandlerService.prototype, {
+      messageChannelSyncStatusService: messaging,
+      exceptionHandlerService: { captureExceptions: jest.fn() },
+      messagingMonitoringService: { track: jest.fn() },
+    });
+  const logger = () => ({
+    log: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+  });
+  const onboarding = (
+    getExternalIds: jest.Mock,
+    processRecentMessageBatchImport: jest.Mock = jest.fn(),
+    extra = {},
+  ) =>
+    makeService(OnboardingRecentMessagesImportService.prototype, {
+      cacheStorage: { ...cache, setAdd: jest.fn() },
+      messageChannelRepository: runtime.getRepository(MessageChannelEntity),
+      workspaceOrmManager: {
+        executeInWorkspaceContext: async (work: () => Promise<unknown>) =>
+          work(),
+      },
+      messageChannelSyncStatusService: messaging,
+      messagingMessagesImportService: {
+        processRecentMessageBatchImport,
+        handleRecentMessagesImportFailure: (
+          error: unknown,
+          channel: MessageChannelEntity,
+          workspaceId: string,
+          run: OrdinaryMetadataSyncRun,
+        ) =>
+          handler().handleDriverException(
+            error,
+            MessageImportSyncStep.RECENT_MESSAGES_IMPORT,
+            channel,
+            workspaceId,
+            run,
+          ),
+      },
+      recentMessagesService: { getExternalIds },
+      messageImportErrorHandlerService: handler(),
+      logger: logger(),
+      ...extra,
+    });
+  const startRecent = (owner: OnboardingRecentMessagesImportService) =>
+    owner.importRecentMessages({
+      messageChannelId: ordinary.message,
+      workspaceId: fixture.workspaceId,
+      expectedConnectedAccountId: ordinary.account,
+    });
+  const importer = (
+    ids: string[],
+    getMessages = jest.fn().mockResolvedValue([]),
+  ) =>
+    makeService(MessagingMessagesImportService.prototype, {
+      messageChannelSyncStatusService: messaging,
+      cacheStorage: {
+        ...cache,
+        setPop: jest.fn().mockResolvedValue(ids),
+        setAdd: jest.fn(),
+      },
+      workspaceOrmManager: {
+        executeInWorkspaceContext: async (work: () => Promise<unknown>) =>
+          work(),
+        getRepository: () => ({ findOne: async () => null }),
+      },
+      messagingGetMessagesService: { getMessages },
+      messagingMonitoringService: { track: jest.fn() },
+      userWorkspaceRepository: runtime.getRepository(UserWorkspaceEntity),
+      workspaceRepository: {
+        findOne: async () => ({ isInternalMessagesImportEnabled: false }),
+      },
+      blocklistRepository: {
+        getEntriesApplicableToWorkspaceMember: async () => [],
+      },
+      messageImportErrorHandlerService: handler(),
+      logger: logger(),
+    });
+  it('concurrent recent and ordinary full-fetch reservations have one winner', async () => {
+    await scheduled();
+    const attempts = await Promise.all([reserve(), full(), reserve(), full()]);
+    expect(attempts.filter(Boolean)).toHaveLength(1);
+    expect(await current()).toMatchObject({
+      syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_ONGOING,
+      syncedAt: null,
+    });
+  });
+  it.each(['recent', 'full'] as const)(
+    '%s reservation refuses the other delayed caller snapshot before provider work',
+    async (winner) => {
+      await scheduled();
+      const snapshot = await current();
+      const admitted = winner === 'recent' ? await reserve() : await full();
+      expect(admitted).not.toBeNull();
+      const provider = jest.fn();
+      if (winner === 'full') await startRecent(onboarding(provider));
+      else
+        await makeService(MessagingMessageListFetchService.prototype, {
+          messageChannelSyncStatusService: messaging,
+          workspaceOrmManager: { executeInWorkspaceContext: provider },
+        }).processMessageListFetch(snapshot, fixture.workspaceId);
+      expect(provider).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    'synced',
+    'disabled',
+    'protected',
+    'reparented',
+    'import-running',
+  ] as const)(
+    'recent reservation refuses %s before provider/cache',
+    async (reason) => {
+      const provider = jest.fn(),
+        setAdd = jest.fn();
+      if (reason === 'synced')
+        await runtime
+          .getRepository(MessageChannelEntity)
+          .update(ordinary.message, { syncedAt: new Date() });
+      if (reason === 'disabled')
+        await runtime
+          .getRepository(MessageChannelEntity)
+          .update(ordinary.message, { isSyncEnabled: false });
+      if (reason === 'protected') ordinary = protectedIds;
+      if (reason === 'reparented')
+        await runtime
+          .getRepository(MessageChannelEntity)
+          .update(ordinary.message, {
+            connectedAccountId: (await seed()).account,
+          });
+      if (reason === 'import-running')
+        await runtime
+          .getRepository(MessageChannelEntity)
+          .update(ordinary.message, {
+            syncStage: MessageChannelSyncStage.MESSAGES_IMPORT_ONGOING,
+          });
+      const before = await current();
+      await startRecent(
+        onboarding(provider, jest.fn(), { cacheStorage: { setAdd } }),
+      );
+      expect(provider).not.toHaveBeenCalled();
+      expect(setAdd).not.toHaveBeenCalled();
+      expect(await current()).toEqual(before);
+    },
+  );
+  it('empty recent provider returns to full-fetch pending without marking history synced', async () => {
+    const batch = jest.fn();
+    await startRecent(onboarding(jest.fn().mockResolvedValue([]), batch));
+    expect(batch).not.toHaveBeenCalled();
+    expect(await current()).toMatchObject({
+      syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
+      syncedAt: null,
+      syncStageStartedAt: null,
+    });
+    expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
+  });
+  it('handoff consumes a reservation once and keeps list-fetch crash recovery', async () => {
+    const admitted = await reserve();
+    if (!admitted) throw new Error('reservation missing');
+    const results = await Promise.all([
+      messaging.handoffRecentMessagesImport(admitted.run),
+      messaging.handoffRecentMessagesImport(admitted.run),
+    ]);
+    const winner = results.find(Boolean);
+    expect(results.filter(Boolean)).toHaveLength(1);
+    expect(winner?.run.startedAt).not.toEqual(admitted.run.startedAt);
+    expect(winner?.run.stage).toBe(
+      MessageChannelSyncStage.MESSAGE_LIST_FETCH_ONGOING,
+    );
+    expect(await messaging.finishRecentMessagesImport(admitted.run)).toBe(
+      false,
+    );
+    expect((await current()).syncedAt).toBeNull();
+  });
+  it.each([0, 1])(
+    'actual recent batch with %i fetched IDs returns to full-fetch, including exact batch size',
+    async (count) => {
+      await runtime
+        .getRepository(MessageChannelEntity)
+        .update(ordinary.message, { handle: 'operator@gmail.com' });
+      const admitted = await reserve();
+      if (!admitted) throw new Error('reservation missing');
+      const provider = jest.fn().mockResolvedValue([]);
+      await expect(
+        importer(
+          count ? ['one-id'] : [],
+          provider,
+        ).processRecentMessageBatchImport(admitted.run, 1),
+      ).resolves.toBe(true);
+      expect(provider).toHaveBeenCalledTimes(count);
+      expect(await current()).toMatchObject({
+        syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
+        syncedAt: null,
+        syncStageStartedAt: null,
+      });
+      expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
+    },
+  );
+  it('crash after recent queue publication is recovered as full fetch, not ordinary import', async () => {
+    const crash = new NativeTransactionOutcomeUnknownError(
+      'release',
+      new Error('lost acknowledgement'),
+    );
+    const setAdd = jest.fn();
+    await expect(
+      startRecent(
+        onboarding(
+          jest.fn().mockResolvedValue(['recent-id']),
+          jest.fn().mockRejectedValue(crash),
+          { cacheStorage: { setAdd } },
+        ),
+      ),
+    ).rejects.toBe(crash);
+    expect(setAdd).toHaveBeenCalledTimes(1);
+    expect(
+      await messaging.beginMessagesImport(
+        ordinary.message,
+        fixture.workspaceId,
+        ordinary.account,
+      ),
+    ).toBeNull();
+    await runtime
+      .getRepository(MessageChannelEntity)
+      .update(ordinary.message, { syncStageStartedAt: new Date('2000-01-01') });
+    expect(
+      await messaging.requeueStaleChannels(
+        [ordinary.message],
+        fixture.workspaceId,
+      ),
+    ).toEqual([ordinary.message]);
+    expect(await current()).toMatchObject({
+      syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
+      syncedAt: null,
+    });
+  });
+  it.each(['provider', 'batch'] as const)(
+    'known temporary %s error retries full history',
+    async (boundary) => {
+      const error = new MessageImportDriverException(
+        'temporary',
+        MessageImportDriverExceptionCode.TEMPORARY_ERROR,
+      );
+      if (boundary === 'provider')
+        await startRecent(onboarding(jest.fn().mockRejectedValue(error)));
+      else {
+        const admitted = await reserve();
+        if (!admitted) throw new Error('reservation missing');
+        await importer(
+          ['one-id'],
+          jest.fn().mockRejectedValue(error),
+        ).processRecentMessageBatchImport(admitted.run, 1);
+      }
+      expect(await current()).toMatchObject({
+        syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
+        syncedAt: null,
+        throttleFailureCount: 3,
+      });
+    },
+  );
+  it('old provider error cannot reset a new full-fetch run', async () => {
+    let next: OrdinaryMetadataSyncRun | undefined;
+    await startRecent(
+      onboarding(
+        jest.fn().mockImplementation(async () => {
+          await scheduled();
+          const admitted = await full();
+          if (!admitted) throw new Error('next missing');
+          next = admitted.run;
+          throw new MessageImportDriverException(
+            'late',
+            MessageImportDriverExceptionCode.TEMPORARY_ERROR,
+          );
+        }),
+      ),
+    );
+    expect(next).toBeDefined();
+    expect(await messaging.readMessagesSyncRun(next!)).not.toBeNull();
+    expect((await current()).throttleFailureCount).toBe(2);
+  });
+  it.each(['commit', 'rollback', 'release'] as const)(
+    'unknown native %s outcome propagates without completion/failure mutation',
+    async (phase) => {
+      const error = new NativeTransactionOutcomeUnknownError(
+        phase,
+        new Error('unknown'),
+      );
+      const finish = jest.spyOn(messaging, 'finishRecentMessagesImport');
+      await expect(
+        startRecent(onboarding(jest.fn().mockRejectedValue(error))),
+      ).rejects.toBe(error);
+      expect(finish).not.toHaveBeenCalled();
+      expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
+      expect(await current()).toMatchObject({
+        syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_ONGOING,
+        throttleFailureCount: 2,
+        syncedAt: null,
+      });
+    },
+  );
+  it.each([false, true])(
+    'cursor write preserves run proof (folder=%s) and refuses stale callback',
+    async (folder) => {
+      const admitted = await reserve();
+      if (!admitted) throw new Error('reservation missing');
+      const cursor = makeService(MessagingCursorService.prototype, {
+        workspaceOrmManager: {
+          executeInWorkspaceContext: async (work: () => Promise<unknown>) =>
+            work(),
+        },
+        messageChannelRepository: runtime.getRepository(MessageChannelEntity),
+        messageFolderRepository: new WorkspaceScopedRepository(
+          runtime.getRepository(MessageFolderEntity),
+        ),
+      });
+      expect(
+        await cursor.updateCursor(
+          admitted.channel,
+          'next',
+          fixture.workspaceId,
+          folder ? ordinary.folder : undefined,
+          admitted.run,
+        ),
+      ).toBe(true);
+      expect(await messaging.readMessagesSyncRun(admitted.run)).not.toBeNull();
+      await scheduled();
+      const next = await full();
+      if (!next) throw new Error('next missing');
+      expect(
+        await cursor.updateCursor(
+          admitted.channel,
+          'stale',
+          fixture.workspaceId,
+          folder ? ordinary.folder : undefined,
+          admitted.run,
+        ),
+      ).toBe(false);
+      expect(await messaging.readMessagesSyncRun(next.run)).not.toBeNull();
+    },
+  );
+  it('job propagates unexpected failure without an unowned second error transition', async () => {
+    await scheduled();
+    const error = new Error('owner failed');
+    const fallback = jest.fn();
+    const job = makeService(MessagingMessageListFetchJob.prototype, {
+      messageChannelRepository: runtime.getRepository(MessageChannelEntity),
+      workspaceOrmManager: {
+        executeInWorkspaceContext: async (work: () => Promise<unknown>) =>
+          work(),
+      },
+      messagingMonitoringService: { track: jest.fn() },
+      messagingMessageListFetchService: {
+        processMessageListFetch: async () => {
+          throw error;
+        },
+      },
+      messageImportErrorHandlerService: { handleDriverException: fallback },
+    });
+    await expect(
+      job.handle({
+        workspaceId: fixture.workspaceId,
+        messageChannelId: ordinary.message,
+        expectedConnectedAccountId: ordinary.account,
+      }),
+    ).rejects.toBe(error);
+    expect(fallback).not.toHaveBeenCalled();
+  });
+});

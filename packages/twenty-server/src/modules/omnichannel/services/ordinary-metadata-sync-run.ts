@@ -16,13 +16,27 @@ export const beginOrdinaryMetadataSyncRun = async <T>(
   channelId: string,
   connectedAccountId: string,
   kind: 'message' | 'calendar',
-  stages: { scheduled: string; ongoing: string; syncStatus: string },
+  stages: {
+    scheduled: string | readonly string[];
+    ongoing: string;
+    syncStatus: string;
+  },
   load: (
     transaction: EntityManager,
     run: OrdinaryMetadataSyncRun,
   ) => Promise<T>,
+  options: {
+    requireUnsynced?: boolean;
+    expectedRun?: OrdinaryMetadataSyncRun;
+  } = {},
 ): Promise<T | null> => {
-  const { scheduled, ongoing, syncStatus } = stages;
+  const { ongoing, syncStatus } = stages;
+  const scheduled =
+    typeof stages.scheduled === 'string'
+      ? [stages.scheduled]
+      : [...stages.scheduled];
+  const requireUnsynced = options.requireUnsynced ?? false;
+  const expectedRun = options.expectedRun && { ...options.expectedRun };
   const table = kind === 'message' ? 'messageChannel' : 'calendarChannel';
   return withOrdinaryMetadataChannels(
     manager,
@@ -31,13 +45,31 @@ export const beginOrdinaryMetadataSyncRun = async <T>(
     kind,
     async (transaction, channels) => {
       if (!channels.length) return null;
+      if (
+        expectedRun &&
+        !(await matchesOrdinaryMetadataSyncRun(
+          transaction,
+          workspaceId,
+          channelId,
+          kind,
+          expectedRun,
+        ))
+      )
+        return null;
       const rows: { startedAt: string }[] = await transaction.query(
         `WITH started AS (UPDATE core."${table}" SET "syncStage"=$3,"syncStatus"=$4,
           "syncStageStartedAt"=greatest(clock_timestamp(),"syncStageStartedAt"+interval '1 microsecond'),"updatedAt"=now()
-          WHERE "workspaceId"=$1 AND id=$2 AND "isSyncEnabled"=true AND "syncStage"=$5
+          WHERE "workspaceId"=$1 AND id=$2 AND "isSyncEnabled"=true AND "syncStage"::text=ANY($5::text[]) AND (NOT $6::boolean OR "syncedAt" IS NULL)
           RETURNING "syncStageStartedAt")
          SELECT to_char("syncStageStartedAt" AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "startedAt" FROM started`,
-        [workspaceId, channelId, ongoing, syncStatus, scheduled],
+        [
+          workspaceId,
+          channelId,
+          ongoing,
+          syncStatus,
+          scheduled,
+          requireUnsynced,
+        ],
       );
       if (!rows.length) return null;
       return load(

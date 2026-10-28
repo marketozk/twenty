@@ -9,7 +9,6 @@ import { In, MoreThanOrEqual, Repository } from 'typeorm';
 
 import {
   MessageChannelPendingGroupEmailsAction,
-  MessageChannelSyncStage,
   MessageFolderPendingSyncAction,
 } from 'twenty-shared/types';
 import { InjectCacheStorage } from 'src/engine/core-modules/cache-storage/decorators/cache-storage.decorator';
@@ -62,6 +61,15 @@ export class MessagingMessageListFetchService {
     messageChannel: MessageChannelEntity,
     workspaceId: string,
   ) {
+    const admitted =
+      await this.messageChannelSyncStatusService.beginMessagesListFetch(
+        messageChannel.id,
+        workspaceId,
+        messageChannel.connectedAccountId,
+      );
+    if (!admitted) return;
+    messageChannel = admitted.channel;
+    const expectedRun = admitted.run;
     const authContext = buildSystemAuthContext(workspaceId);
 
     await this.workspaceOrmManager.executeInWorkspaceContext(
@@ -78,26 +86,14 @@ export class MessagingMessageListFetchService {
           const processedfolderActionsResult =
             await this.processPendingFolderActions(messageChannel, workspaceId);
 
-          await this.messageChannelSyncStatusService.markAsMessagesListFetchOngoing(
-            [messageChannel.id],
-            workspaceId,
-          );
-
           this.logger.log(
             `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannel.id} - Processing message list fetch`,
           );
 
           const freshMessageChannel =
-            pendingGroupEmailActionsProcessed ||
-            isDefined(processedfolderActionsResult)
-              ? await this.messageChannelRepository.findOne({
-                  where: {
-                    id: messageChannel.id,
-                    workspaceId,
-                  },
-                  relations: { connectedAccount: true, messageFolders: true },
-                })
-              : messageChannel;
+            await this.messageChannelSyncStatusService.readMessagesSyncRun(
+              expectedRun,
+            );
 
           if (!isDefined(freshMessageChannel)) {
             this.logger.error(
@@ -211,12 +207,15 @@ export class MessagingMessageListFetchService {
           for (const messageList of messageLists) {
             const { nextSyncCursor, folderId } = messageList;
 
-            await this.messagingCursorService.updateCursor(
-              freshMessageChannel,
-              nextSyncCursor,
-              workspaceId,
-              folderId,
-            );
+            const cursorAccepted =
+              await this.messagingCursorService.updateCursor(
+                freshMessageChannel,
+                nextSyncCursor,
+                workspaceId,
+                folderId,
+                expectedRun,
+              );
+            if (!cursorAccepted) return;
           }
 
           const fullSyncMessageChannelMessageAssociationsToDelete = isFullSync
@@ -269,6 +268,7 @@ export class MessagingMessageListFetchService {
               [freshMessageChannel.id],
               workspaceId,
               freshMessageChannel.connectedAccountId,
+              expectedRun,
             );
 
             return;
@@ -289,16 +289,16 @@ export class MessagingMessageListFetchService {
             `messageChannelId: ${freshMessageChannel.id} Scheduling direct messages import`,
           );
 
-          await this.messageChannelSyncStatusService.markAsMessagesImportScheduled(
-            [freshMessageChannel.id],
-            workspaceId,
-          );
+          const accepted =
+            await this.messageChannelSyncStatusService.markAsMessagesImportScheduled(
+              [freshMessageChannel.id],
+              workspaceId,
+              expectedRun,
+            );
+          if (!accepted) return;
 
           await this.messagingMessagesImportService.processMessageBatchImport(
-            {
-              ...freshMessageChannel,
-              syncStage: MessageChannelSyncStage.MESSAGES_IMPORT_SCHEDULED,
-            },
+            freshMessageChannel,
             freshMessageChannel.connectedAccount,
             workspaceId,
           );
@@ -308,6 +308,7 @@ export class MessagingMessageListFetchService {
             MessageImportSyncStep.MESSAGE_LIST_FETCH,
             messageChannel,
             workspaceId,
+            expectedRun,
           );
         }
       },

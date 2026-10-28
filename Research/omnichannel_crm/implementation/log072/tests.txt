@@ -1,0 +1,35 @@
+[32m[Nest] 1  - [39m10/28/2026, 3:37:40 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggering message list fetch for workspace 5ad306a0-49b8-499e-9300-abc3795b9ebe (all pending channels)[39m
+[32m[Nest] 1  - [39m10/28/2026, 3:37:40 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mFound 2 message channel(s) to process[39m
+[32m[Nest] 1  - [39m10/28/2026, 3:37:40 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggered fetch for message channel 87df836b-6158-4982-ab3d-b838ef1de3b4[39m
+[32m[Nest] 1  - [39m10/28/2026, 3:37:40 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mSuccessfully triggered 1 message list fetch job(s)[39m
+[32m[Nest] 1  - [39m10/28/2026, 3:37:41 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggering message list fetch for workspace 5ad306a0-49b8-499e-9300-abc3795b9ebe (all pending channels)[39m
+[32m[Nest] 1  - [39m10/28/2026, 3:37:41 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mFound 2 message channel(s) to process[39m
+[32m[Nest] 1  - [39m10/28/2026, 3:37:57 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel f2fe613b-207e-4a09-8f19-a8690567b96e, a sync is already in progress[39m
+[32m[Nest] 1  - [39m10/28/2026, 3:37:57 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel 550e4d97-7a56-4568-90b9-c1691cf2d241, a sync is already in progress[39m
+[32m[Nest] 1  - [39m10/28/2026, 3:37:58 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel e69c72e3-fb82-4e5a-ac72-f68b053fa22b, a sync is already in progress[39m
+[32m[Nest] 1  - [39m10/28/2026, 3:37:58 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel 8e866b75-4b70-470c-9793-252c6d3c8484, a sync is already in progress[39m
+[32m[Nest] 1  - [39m10/28/2026, 3:37:59 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mDeferring 100000 calendar events to the import cron for calendar channel 01279449-931b-43f3-a3f3-b334f76da15e[39m
+[32m[Nest] 1  - [39m10/28/2026, 3:37:59 AM [32m    LOG[39m [38;5;3m[MessagingMessageWebhookSyncService] [39m[32mSkipping webhook sync for message channel aa8ae677-badd-44a3-b8e2-0f7d8f21f16c, a sync is already in progress[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts (53.688 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-account-provider-writes.postgres-spec.ts (14.307 s)
+[32m[Nest] 1  - [39m10/28/2026, 3:38:35 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 11a4163f-af2c-4782-a49c-d944d026ae9c Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/28/2026, 3:38:36 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 11a4163f-af2c-4782-a49c-d944d026ae9c Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/28/2026, 3:38:36 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 11a4163f-af2c-4782-a49c-d944d026ae9c Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/28/2026, 3:38:36 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 11a4163f-af2c-4782-a49c-d944d026ae9c Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/28/2026, 3:38:37 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 11a4163f-af2c-4782-a49c-d944d026ae9c Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/28/2026, 3:38:38 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 11a4163f-af2c-4782-a49c-d944d026ae9c Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/28/2026, 3:38:38 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 11a4163f-af2c-4782-a49c-d944d026ae9c Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/28/2026, 3:38:38 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 11a4163f-af2c-4782-a49c-d944d026ae9c Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-metadata-transaction.postgres-spec.ts (10.5 s)
+[32m[Nest] 1  - [39m10/28/2026, 3:38:38 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 11a4163f-af2c-4782-a49c-d944d026ae9c Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-webhook-status.postgres-spec.ts (20.238 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-metadata-mutation-guard.spec.ts
+[32m[Nest] 1  - [39m10/28/2026, 3:38:59 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 2f76896e-62fb-4d12-8c20-44556976baa7 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-folder-discovery.postgres-spec.ts (9.332 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-metadata-ownership.postgres-spec.ts (5.691 s)
+
+Test Suites: 7 passed, 7 total
+Tests:       739 passed, 739 total
+Snapshots:   0 total
+Time:        114.328 s
+Ran all test suites matching /omni-account-provider-writes|omni-folder-discovery|omni-sync-status|omni-metadata|omni-webhook-status/i.

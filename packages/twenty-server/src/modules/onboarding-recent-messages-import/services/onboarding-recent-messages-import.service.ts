@@ -2,8 +2,6 @@ import { messageImportCacheKeys } from 'src/modules/messaging/common/utils/messa
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { MessageChannelSyncStage } from 'twenty-shared/types';
-import { isDefined } from 'twenty-shared/utils';
 import { Repository } from 'typeorm';
 
 import { InjectCacheStorage } from 'src/engine/core-modules/cache-storage/decorators/cache-storage.decorator';
@@ -37,82 +35,72 @@ export class OnboardingRecentMessagesImportService {
   async importRecentMessages({
     messageChannelId,
     workspaceId,
+    expectedConnectedAccountId,
   }: {
     messageChannelId: string;
     workspaceId: string;
+    expectedConnectedAccountId?: string;
   }): Promise<void> {
-    const authContext = buildSystemAuthContext(workspaceId);
-
-    try {
-      await this.workspaceOrmManager.executeInWorkspaceContext(
-        async () => {
-          const messageChannel = await this.messageChannelRepository.findOne({
-            where: { id: messageChannelId, workspaceId },
-            relations: { connectedAccount: true, messageFolders: true },
-          });
-
-          if (!isDefined(messageChannel) || !messageChannel.isSyncEnabled) {
-            return;
-          }
-
-          const hasAlreadyCompletedASync = isDefined(messageChannel.syncedAt);
-
-          if (hasAlreadyCompletedASync) {
-            return;
-          }
-
-          const importKeys = messageImportCacheKeys({
+    await this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        const candidate = await this.messageChannelRepository.findOneBy({
+          id: messageChannelId,
+          workspaceId,
+        });
+        if (!candidate) return;
+        const admitted =
+          await this.messageChannelSyncStatusService.beginMessagesListFetch(
+            messageChannelId,
             workspaceId,
-            messageChannelId: messageChannel.id,
-            connectedAccountId: messageChannel.connectedAccountId,
-          });
+            expectedConnectedAccountId ?? candidate.connectedAccountId,
+            true,
+          );
+        if (!admitted) return;
+        const { channel, run } = admitted;
+        try {
           const messageExternalIds =
             await this.recentMessagesService.getExternalIds({
-              connectedAccount: messageChannel.connectedAccount,
-              messageFolders: messageChannel.messageFolders ?? [],
+              connectedAccount: channel.connectedAccount,
+              messageFolders: channel.messageFolders ?? [],
             });
-
-          if (messageExternalIds.length === 0) {
+          if (!messageExternalIds.length) {
+            await this.messageChannelSyncStatusService.finishRecentMessagesImport(
+              run,
+            );
             return;
           }
-
+          const importKeys = messageImportCacheKeys({
+            workspaceId,
+            messageChannelId,
+            connectedAccountId: run.connectedAccountId,
+          });
           await this.cacheStorage.setAdd(
             importKeys.pending,
             messageExternalIds,
             RECENT_MESSAGES_IMPORT_CACHE_TTL_MS,
           );
-
-          await this.messageChannelSyncStatusService.markAsMessagesImportScheduled(
-            [messageChannel.id],
+          // Keep LIST_FETCH_ONGOING until completion: a crashed recent import must
+          // recover through full list fetch, never mark this partial history synced.
+          const accepted =
+            await this.messagingMessagesImportService.processRecentMessageBatchImport(
+              run,
+              messageExternalIds.length,
+            );
+          if (accepted)
+            this.logger.log(
+              `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannelId} - Completed recent messages import; full sync pending`,
+            );
+        } catch (error) {
+          await this.messagingMessagesImportService.handleRecentMessagesImportFailure(
+            error,
+            channel,
             workspaceId,
+            run,
           );
-
-          await this.messagingMessagesImportService.processMessageBatchImport(
-            {
-              ...messageChannel,
-              syncStage: MessageChannelSyncStage.MESSAGES_IMPORT_SCHEDULED,
-            },
-            messageChannel.connectedAccount,
-            workspaceId,
-            messageExternalIds.length,
-          );
-
-          await this.messageChannelSyncStatusService.markAsMessagesListFetchPending(
-            [messageChannel.id],
-            workspaceId,
-          );
-
-          this.logger.log(
-            `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannel.id} - Imported ${messageExternalIds.length} recent messages`,
-          );
-        },
-        authContext,
-        { lite: true },
-      );
-    } catch (error) {
-      this.logger.warn(
-        `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannelId} - Could not import recent messages: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
+        }
+      },
+      buildSystemAuthContext(workspaceId),
+      { lite: true },
+    );
   }
 }

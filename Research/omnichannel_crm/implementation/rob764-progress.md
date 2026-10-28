@@ -1363,3 +1363,41 @@ separate work. No full server typecheck/full fork/ROB764 Done claim. Last full f
 LOG0672205/75. Next: onboarding/list-fetch scheduling/run proof, then native apply.
 Demo/SaleBot unchanged, no Actions. Skills ai-dev-workflow, behavioral-guardrails,
 server-schrodinger and scoped read-only review/research.
+
+## LOG-072 — recent onboarding and ordinary message list-fetch admission (28.10.2026)
+
+Recent onboarding now claims enabled, ordinary, expected-account, never-synced
+LIST_FETCH_PENDING/SCHEDULED under the existing owner. Full list-fetch claims only
+SCHEDULED before group/folder/provider work. Fresh entities replace caller snapshots.
+Recent batch handoff consumes the reservation once and rotates its exact DB token
+while retaining LIST_FETCH_ONGOING. Success, empty IDs and transient errors return
+to full list fetch without setting syncedAt; stale watchdog therefore recovers a
+crashed recent import as full fetch. This preserves the recent/full-history distinction
+without a new queue or persistent recent-import flag. OAuth callers pin the account
+and log rejected background work; existing importer owns error classification.
+
+Normal list-fetch reads current run after group/folder actions, passes proof into
+cursor/schedule/completion/errors; cursor keeps startedAt until final transition.
+Job no longer performs an unowned second error mutation. Known declined callbacks
+stop direct import. Unknown core/native outcomes remain visible without fallback.
+
+739 targeted Jest/7 suites +26 guards=765 PASS;
+22 new PostgreSQL/caller cases. Typecheck 292 roots:
+188/188,0 new/changed-code diagnostics.
+Seven migrations unchanged, uploaded LF source hashes verified. Initial tests found
+one fixture bootstrap mismatch, corrected to use an actual protected account.
+Initial typecheck also caught a changed ordinary importer return contract and four
+fixture union-repository errors; retained Promise<void> and explicit typed repositories.
+Dependency guard rejected a new onboarding-to-handler edge; removed it and reused
+the existing import owner's error path, baseline unchanged. Scoped independent
+read-only review found no defect; reviewer ran no tests. [Evidence](log072/README.md).
+
+Limits: provider/native aggregate save and association cleanup still need run proof
+inside their native transaction. Redis publication/requeue/cleanup is account scoped,
+not SQL-atomic or same-account-run isolated; stale failure monitoring remains.
+Exact-size test supplies an empty provider result to exercise completion; it does not
+prove recent/full native deduplication or live provider integration. Full server
+check and ROB764 acceptance are not complete. Last full fork LOG067:2205/75.
+Next: calendar list-fetch admission/cursor finalization, native apply, final regression.
+Demo/SaleBot unchanged; no Actions. Skills: ai-dev-workflow, behavioral-guardrails,
+server-schrodinger; scoped read-only review/research.

@@ -54,13 +54,15 @@ Canonical lifecycle requirements remain in the implementation specification.
 
 - LOG071: direct message/calendar import admission is atomic, current entities are loaded under lock; exact DB run token guards completion/failure/retry/reset. Legacy recovery token copied before cache awaits. Redis side effects, scheduling producers and native apply remain separate below.
 
+- LOG072: message list-fetch/recent onboarding claim current account/stage atomically. Recent handoff rotates proof once, finishes or recovers through full fetch without syncedAt. Cursor and scheduling callbacks carry proof; job no longer retries errors without owner. Redis/native apply remains below.
+
 ## Remaining owners, in implementation order
 
 Paths below are relative to `packages/twenty-server/src`.
 
 | Owner | Observed gap / required check |
 |---|---|
-| Scheduling producers/onboarding | Direct import admission and run SQL callbacks covered by LOG071. Recent-import/list-fetch callers still need conditional scheduling with captured run/account; remove unconditional recent-import final reset. Account-scoped Redis requeue/monitoring effects remain outside SQL run CAS. |
+| Message run side effects | Admission, recent/full distinction and cursor/scheduling metadata callbacks covered by LOG071–072. Account-scoped Redis publication/requeue/monitoring and native save/cleanup still need final contract coverage. |
 
 | Calendar provider callbacks | CalendarFetchEventsService still writes stage/cursor and association/orphan cleanup after provider without complete run snapshot; cache provenance is covered by LOG069. |
 | Native provider-result writes | Message save aggregate/calendar save aggregate must check parent/run under their existing native transaction; calendar association/orphan cleanup also needs same-owner admission. External SELECT is insufficient. |

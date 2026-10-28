@@ -223,15 +223,26 @@ export class MessageChannelSyncStatusService {
     messageChannelIds: string[],
     workspaceId: string,
     preserveSyncStageStartedAt: boolean = false,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ) {
     if (!messageChannelIds.length) {
       return;
     }
 
-    await this.updateMessageChannels(messageChannelIds, workspaceId, {
-      syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
-      ...(!preserveSyncStageStartedAt ? { syncStageStartedAt: null } : {}),
-    });
+    const updated = await this.mutateMessageChannels(
+      messageChannelIds,
+      workspaceId,
+      {
+        syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
+        ...(!preserveSyncStageStartedAt ? { syncStageStartedAt: null } : {}),
+      },
+      {
+        expectedRun,
+        expectedConnectedAccountId: expectedRun?.connectedAccountId,
+      },
+    );
+    await this.broadcastMessageChannelsUpdated(updated, workspaceId);
+    return updated.length > 0;
   }
 
   public async markAsMessagesImportPending(
@@ -460,14 +471,159 @@ export class MessageChannelSyncStatusService {
   public async markAsMessagesImportScheduled(
     messageChannelIds: string[],
     workspaceId: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ) {
     if (!messageChannelIds.length) {
       return;
     }
 
-    await this.updateMessageChannels(messageChannelIds, workspaceId, {
-      syncStage: MessageChannelSyncStage.MESSAGES_IMPORT_SCHEDULED,
-    });
+    const updated = await this.mutateMessageChannels(
+      messageChannelIds,
+      workspaceId,
+      {
+        syncStage: MessageChannelSyncStage.MESSAGES_IMPORT_SCHEDULED,
+      },
+      {
+        expectedRun,
+        expectedConnectedAccountId: expectedRun?.connectedAccountId,
+      },
+    );
+    await this.broadcastMessageChannelsUpdated(updated, workspaceId);
+    return updated.length > 0;
+  }
+
+  public async beginMessagesListFetch(
+    channelId: string,
+    workspaceId: string,
+    expectedConnectedAccountId: string,
+    recent = false,
+  ) {
+    const admitted = await beginOrdinaryMetadataSyncRun(
+      this.messageChannelRepository.manager,
+      workspaceId,
+      channelId,
+      expectedConnectedAccountId,
+      'message',
+      {
+        scheduled: recent
+          ? [
+              MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
+              MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,
+            ]
+          : MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,
+        ongoing: MessageChannelSyncStage.MESSAGE_LIST_FETCH_ONGOING,
+        syncStatus: MessageChannelSyncStatus.ONGOING,
+      },
+      async (manager, run) => {
+        const channel = await manager
+          .getRepository(MessageChannelEntity)
+          .findOneOrFail({
+            where: { id: channelId, workspaceId },
+            relations: ['connectedAccount', 'messageFolders'],
+          });
+        return { channel, run };
+      },
+      { requireUnsynced: recent },
+    );
+    if (admitted)
+      await this.broadcastMessageChannelsUpdated(
+        [
+          {
+            ...admitted.channel,
+            userWorkspaceId: admitted.channel.connectedAccount.userWorkspaceId,
+          },
+        ],
+        workspaceId,
+      );
+    return admitted;
+  }
+
+  public async readMessagesSyncRun(run: OrdinaryMetadataSyncRun) {
+    run = { ...run };
+    return withOrdinaryMetadataChannels(
+      this.messageChannelRepository.manager,
+      run.workspaceId,
+      [run.channelId],
+      'message',
+      async (manager, channels) => {
+        if (
+          !channels.length ||
+          !(await matchesOrdinaryMetadataSyncRun(
+            manager,
+            run.workspaceId,
+            run.channelId,
+            'message',
+            run,
+          ))
+        )
+          return null;
+        return manager.getRepository(MessageChannelEntity).findOneOrFail({
+          where: { id: run.channelId, workspaceId: run.workspaceId },
+          relations: ['connectedAccount', 'messageFolders'],
+        });
+      },
+      'read',
+      run.connectedAccountId,
+    );
+  }
+
+  public async handoffRecentMessagesImport(
+    reservation: OrdinaryMetadataSyncRun,
+  ) {
+    reservation = { ...reservation };
+    if (
+      reservation.kind !== 'message' ||
+      reservation.stage !== MessageChannelSyncStage.MESSAGE_LIST_FETCH_ONGOING
+    )
+      return null;
+    return beginOrdinaryMetadataSyncRun(
+      this.messageChannelRepository.manager,
+      reservation.workspaceId,
+      reservation.channelId,
+      reservation.connectedAccountId,
+      'message',
+      {
+        scheduled: MessageChannelSyncStage.MESSAGE_LIST_FETCH_ONGOING,
+        ongoing: MessageChannelSyncStage.MESSAGE_LIST_FETCH_ONGOING,
+        syncStatus: MessageChannelSyncStatus.ONGOING,
+      },
+      async (manager, run) => {
+        const channel = await manager
+          .getRepository(MessageChannelEntity)
+          .findOneOrFail({
+            where: { id: run.channelId, workspaceId: run.workspaceId },
+            relations: ['connectedAccount', 'messageFolders'],
+          });
+        return { channel, run };
+      },
+      { requireUnsynced: true, expectedRun: reservation },
+    );
+  }
+
+  public async finishRecentMessagesImport(
+    run: OrdinaryMetadataSyncRun,
+  ): Promise<boolean> {
+    run = { ...run };
+    if (
+      run.kind !== 'message' ||
+      run.stage !== MessageChannelSyncStage.MESSAGE_LIST_FETCH_ONGOING
+    )
+      return false;
+    const updated = await this.mutateMessageChannels(
+      [run.channelId],
+      run.workspaceId,
+      {
+        syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
+        syncStageStartedAt: null,
+        throttleFailureCount: 0,
+        throttleRetryAfter: null,
+      },
+      { expectedConnectedAccountId: run.connectedAccountId, expectedRun: run },
+    );
+    if (!updated.length) return false;
+    await this.clearImportProgress(updated, run.workspaceId);
+    await this.broadcastMessageChannelsUpdated(updated, run.workspaceId);
+    return true;
   }
 
   public async beginMessagesImport(

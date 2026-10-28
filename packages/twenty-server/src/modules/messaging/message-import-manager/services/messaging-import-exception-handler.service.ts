@@ -22,6 +22,7 @@ import { MessagingMonitoringService } from 'src/modules/messaging/monitoring/ser
 
 export enum MessageImportSyncStep {
   MESSAGE_LIST_FETCH = 'MESSAGE_LIST_FETCH',
+  RECENT_MESSAGES_IMPORT = 'RECENT_MESSAGES_IMPORT',
   MESSAGES_IMPORT_PENDING = 'MESSAGES_IMPORT_PENDING',
   MESSAGES_IMPORT_ONGOING = 'MESSAGES_IMPORT_ONGOING',
 }
@@ -191,7 +192,8 @@ export class MessageImportExceptionHandlerService {
         messageChannel.id,
         messageChannel.connectedAccountId,
         workspaceId,
-        syncStep === MessageImportSyncStep.MESSAGE_LIST_FETCH,
+        syncStep === MessageImportSyncStep.MESSAGE_LIST_FETCH ||
+          syncStep === MessageImportSyncStep.RECENT_MESSAGES_IMPORT,
         MESSAGING_THROTTLE_MAX_ATTEMPTS,
         isDefined(retryAfter) ? retryAfter.toISOString() : null,
         expectedRun,

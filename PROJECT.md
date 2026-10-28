@@ -54,17 +54,16 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-071 / ROB-764 In Progress: message/calendar importer получают атомарный
-допуск SCHEDULED→ONGOING и свежие channel/account/folders. Токен сохраняет
-микросекунды PostgreSQL. Completion, retry, failure и legacy reset проверяют
-account/stage/token под существующей блокировкой. Unknown native/core outcome
-останавливает fallback; token копируется до ожиданий, actual run заморожен.
-Проверено 717 targeted Jest/7 suites +26 guards =743 PASS,
-58 новых PostgreSQL/caller cases. Typecheck 292 roots:188/188,0 new/changed-code.
-7 migrations неизменны. [Доказательства](Research/omnichannel_crm/implementation/log071/README.md). Находка ревью исправлена и перепроверена.
-Последний full fork LOG067:2205/75. Далее scheduling producers/onboarding,
-provider cursors и native apply. Redis/run atomicity ещё не обеспечена.
-Демо прежнее, GitHub Actions не используется.
+LOG-072 / ROB-764 In Progress: recent onboarding и ordinary message list-fetch
+получают атомарный допуск с текущим account/stage. Recent handoff одноразовый,
+с новым точным token; completion/temporary error/crash recovery ведут к full fetch,
+не устанавливая syncedAt для неполной истории. Message cursor сохраняет run token;
+completion/scheduling/error callbacks проверяют его. OAuth передаёт parent и наблюдает ошибки.
+Проверено 739 targeted Jest/7 suites +26 guards =765 PASS,
+22 новых PostgreSQL/caller cases. Typecheck 292 roots:188/188,0 new/changed-code.
+7 migrations неизменны. [Доказательства](Research/omnichannel_crm/implementation/log072/README.md). Scoped read-only review без находок.
+Последний full fork LOG067:2205/75. Далее calendar list-fetch и native apply.
+Redis/run atomicity ещё не обеспечена. Демо прежнее, GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы минимальный аудит и атомарное создание
 inactive binding/disabled policy v0 с receipt, текущей проверкой прав через

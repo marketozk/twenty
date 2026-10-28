@@ -1,0 +1,18 @@
+{
+  "baseCommit": "281d8fbdbe0d0dc27a941d46b4b8004adf75698f",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/auth/services/google-apis.service.ts": "07a152072c56ebc3b25edcdecac36c0abd954d21db91ded984e766b59fbdcce8",
+    "packages/twenty-server/src/engine/core-modules/auth/services/microsoft-apis.service.ts": "ae8afe729ba4559826fd0ff755dff57aa7cf702279889165335a4cb458207613",
+    "packages/twenty-server/src/modules/messaging/common/services/message-channel-sync-status.service.ts": "a21591a24246f74d620262e13ba6aafd805279453f32016ad9b343dd3717ea6f",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/jobs/messaging-message-list-fetch.job.ts": "de4dcc3ca9103b6dbf4c9fc876acdc253df90d1b50bc251dd88931b8a44ecc40",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-cursor.service.ts": "dff2e4877feecdd33bd9e96b572b11d72b543cbffc67786af2474b95b4db234a",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-import-exception-handler.service.ts": "e246b3f0b3a4e2d151490660c7ef9231515354884ed1f592306912be600f3376",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-message-list-fetch.service.ts": "07a01ad2ba15649c327370dc9f42000c442b8db0760dd7aa428b988ec449d666",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-messages-import.service.ts": "e9aae2165fdd6bfb3dab05d38ea3b0e133263e2314f8702f4a0dec88b0ca9005",
+    "packages/twenty-server/src/modules/omnichannel/services/ordinary-metadata-sync-run.ts": "e524c4a9fa1b8dce3232032e810d2428f9307b167e7f527509ea86f3f93ab505",
+    "packages/twenty-server/src/modules/onboarding-recent-messages-import/services/onboarding-recent-messages-import.service.ts": "7bb225ac1eeafb81705d2b165fded45d1f5a6b84bbffcdfa8a558550ede31836",
+    "packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts": "a3983f77ab1aacb18b208fde7bdf3ba9e9456ea099927ea7a5584ef8b4d1bec5"
+  }
+}

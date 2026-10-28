@@ -1,3 +1,7 @@
+import {
+  matchesOrdinaryMetadataSyncRun,
+  type OrdinaryMetadataSyncRun,
+} from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -29,12 +33,14 @@ export class MessagingCursorService {
     nextSyncCursor: string,
     workspaceId: string,
     folderId?: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ) {
+    expectedRun = expectedRun && { ...expectedRun };
     const channelId = messageChannel.id;
     const expectedAccountId = messageChannel.connectedAccountId;
     const cursor = nextSyncCursor;
     const targetFolderId = folderId;
-    await this.workspaceOrmManager.executeInWorkspaceContext(
+    return this.workspaceOrmManager.executeInWorkspaceContext(
       () =>
         withOrdinaryMetadataChannel(
           this.messageChannelRepository.manager,
@@ -42,6 +48,17 @@ export class MessagingCursorService {
           channelId,
           'message',
           async (manager) => {
+            if (
+              expectedRun &&
+              !(await matchesOrdinaryMetadataSyncRun(
+                manager,
+                workspaceId,
+                channelId,
+                'message',
+                expectedRun,
+              ))
+            )
+              return false;
             const channels = manager.getRepository(MessageChannelEntity);
             const current = await channels.findOneByOrFail({
               id: channelId,
@@ -50,7 +67,8 @@ export class MessagingCursorService {
             const reset = {
               throttleFailureCount: 0,
               throttleRetryAfter: null,
-              syncStageStartedAt: null,
+              // Keep the admission token until this run hands off or completes.
+              ...(!expectedRun ? { syncStageStartedAt: null } : {}),
             };
             if (!targetFolderId) {
               await channels.update(

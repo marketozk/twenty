@@ -10,10 +10,7 @@ import { Processor } from 'src/engine/core-modules/message-queue/decorators/proc
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
-import {
-  MessageImportExceptionHandlerService,
-  MessageImportSyncStep,
-} from 'src/modules/messaging/message-import-manager/services/messaging-import-exception-handler.service';
+
 import { MessagingMessageListFetchService } from 'src/modules/messaging/message-import-manager/services/messaging-message-list-fetch.service';
 import { MessagingMonitoringService } from 'src/modules/messaging/monitoring/services/messaging-monitoring.service';
 import { MessageChannelEntity } from 'src/engine/metadata-modules/message-channel/entities/message-channel.entity';
@@ -35,7 +32,6 @@ export class MessagingMessageListFetchJob {
     private readonly workspaceOrmManager: WorkspaceOrmManager,
     @InjectRepository(MessageChannelEntity)
     private readonly messageChannelRepository: Repository<MessageChannelEntity>,
-    private readonly messageImportErrorHandlerService: MessageImportExceptionHandlerService,
   ) {}
 
   @Process(MessagingMessageListFetchJob.name)
@@ -89,33 +85,24 @@ export class MessagingMessageListFetchJob {
           return;
         }
 
-        try {
-          await this.messagingMonitoringService.track({
-            eventName: 'message_list_fetch.started',
-            workspaceId,
-            connectedAccountId: messageChannel.connectedAccount.id,
-            messageChannelId: messageChannel.id,
-          });
+        await this.messagingMonitoringService.track({
+          eventName: 'message_list_fetch.started',
+          workspaceId,
+          connectedAccountId: messageChannel.connectedAccount.id,
+          messageChannelId: messageChannel.id,
+        });
 
-          await this.messagingMessageListFetchService.processMessageListFetch(
-            messageChannel,
-            workspaceId,
-          );
+        await this.messagingMessageListFetchService.processMessageListFetch(
+          messageChannel,
+          workspaceId,
+        );
 
-          await this.messagingMonitoringService.track({
-            eventName: 'message_list_fetch.completed',
-            workspaceId,
-            connectedAccountId: messageChannel.connectedAccount.id,
-            messageChannelId: messageChannel.id,
-          });
-        } catch (error) {
-          await this.messageImportErrorHandlerService.handleDriverException(
-            error,
-            MessageImportSyncStep.MESSAGE_LIST_FETCH,
-            messageChannel,
-            workspaceId,
-          );
-        }
+        await this.messagingMonitoringService.track({
+          eventName: 'message_list_fetch.completed',
+          workspaceId,
+          connectedAccountId: messageChannel.connectedAccount.id,
+          messageChannelId: messageChannel.id,
+        });
       },
       authContext,
       { lite: true },

@@ -327,8 +327,14 @@ export class MicrosoftAPIsService {
               .importRecentMessages({
                 messageChannelId: messageChannel.id,
                 workspaceId,
+                expectedConnectedAccountId: newOrExistingConnectedAccountId,
               })
-              .catch(() => undefined);
+              .catch((error: unknown) =>
+                this.logger.warn(
+                  `Recent messages import failed for channel ${messageChannel.id}`,
+                  error,
+                ),
+              );
           }
         }
       }
