@@ -2037,3 +2037,5 @@ lifecycle calls need event parent/subscription pins independently of trigger pin
 The current change only protects scheduling/dispatch/orchestration. No full server
 typecheck/full Claude review/ROB764 Done. Demo/SaleBot unchanged; no Actions.
 Skills ai-dev-workflow, behavioral-guardrails, server-schrodinger, scoped read-only review.
+
+LOG068 publication: code 5f7ff774081769c23afacd980bcc6ffb8843d7dc pushed; GitHub API ref verified. Linear comment 01ef640c-1405-4d13-b169-e439659133aa, description/comment and all11 project states independently verified. ROB764 In Progress.
