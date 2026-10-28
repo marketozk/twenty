@@ -2994,3 +2994,5 @@ TypeScript diagnostics исправлены; финальные результа
 не public native coverage. Далее native CRUD/merge/files, operation lookup index,
 actual writer wiring, metadata/session owners и negative audit. Демо не менялось,
 GitHub Actions и внешние отправки не использовались.
+
+LOG089 publication: `fa83b6d7ea50f223e85b6174ba7a94ae9b027f26` pushed/API verified. Linear ROB765 description and comment `dbfcb89a-8067-4204-93c2-e2eb1b4513b0` independently read back; all11 project states match. ROB765 remains In Progress; implementation continues.
