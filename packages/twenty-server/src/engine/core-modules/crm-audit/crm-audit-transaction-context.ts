@@ -11,6 +11,7 @@ import {
 } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
 import {
   type CrmAuditMutation,
+  type CrmAuditAction,
   type CrmAuditOperation,
   type CrmAuditPrincipal,
   type CrmAuditResourceKind,
@@ -26,6 +27,34 @@ const CATALOG: Record<
   CrmAuditResourceKind,
   { values: string[]; redacted: string[] }
 > = {
+  userWorkspace: { values: ['userId'], redacted: ['deletedAt'] },
+  applicationAuthorization: {
+    values: ['userId', 'userWorkspaceId', 'applicationId'],
+    redacted: ['scopes', 'revokedAt', 'lastAuthorizedAt', 'lastUsedAt'],
+  },
+  userApplicationVariableValue: {
+    values: ['userWorkspaceId', 'applicationVariableId', 'scope'],
+    redacted: [],
+  },
+  twoFactorAuthenticationMethod: {
+    values: ['userWorkspaceId', 'strategy', 'status'],
+    redacted: ['deletedAt'],
+  },
+  navigationMenuItem: {
+    values: [
+      'userWorkspaceId',
+      'folderId',
+      'type',
+      'viewId',
+      'targetObjectMetadataId',
+      'targetRecordId',
+      'pageLayoutId',
+      'agentChatChannelId',
+    ],
+    redacted: ['name', 'link', 'icon', 'color', 'position'],
+  },
+  coreWorkflow: { values: ['createdByUserWorkspaceId'], redacted: [] },
+  coreView: { values: ['createdByUserWorkspaceId'], redacted: [] },
   roleTarget: { values: ['roleId', 'userWorkspaceId'], redacted: [] },
   role: {
     values: [
@@ -342,6 +371,20 @@ const principal = (value: CrmAuditPrincipal): CrmAuditPrincipal => {
   };
 };
 
+const ADMINISTRATIVE_ACTIONS: Partial<
+  Record<CrmAuditResourceKind, readonly CrmAuditAction[]>
+> = {
+  role: ['create', 'update'],
+  roleTarget: ['create', 'delete'],
+  userWorkspace: ['update', 'delete'],
+  applicationAuthorization: ['delete'],
+  userApplicationVariableValue: ['delete'],
+  twoFactorAuthenticationMethod: ['delete'],
+  navigationMenuItem: ['delete'],
+  coreWorkflow: ['update'],
+  coreView: ['update'],
+};
+
 const descriptor = (
   mutation: Pick<
     CrmAuditMutation,
@@ -353,16 +396,13 @@ const descriptor = (
   const nativeRecord = mutation.resourceKind === 'crmRecord';
   const nativeFile = mutation.resourceKind === 'crmFile';
   if (
-    ['role', 'roleTarget'].includes(mutation.resourceKind) ||
+    ADMINISTRATIVE_ACTIONS[mutation.resourceKind] !== undefined ||
     source.metadataAccess !== undefined
   ) {
     if (
-      !['role', 'roleTarget'].includes(mutation.resourceKind) ||
-      !(
-        mutation.resourceKind === 'role'
-          ? ['create', 'update']
-          : ['create', 'delete']
-      ).includes(mutation.action) ||
+      !ADMINISTRATIVE_ACTIONS[mutation.resourceKind]?.includes(
+        mutation.action,
+      ) ||
       source.metadataAccess !== 'currentWorkspaceAdministration' ||
       Object.keys(source).sort().join(',') !==
         'metadataAccess,resourceId,resourceKind'
@@ -424,7 +464,7 @@ const descriptor = (
     const owner = source.sessionOwner;
     if (
       mutation.resourceKind !== 'userSession' ||
-      !['create', 'update'].includes(mutation.action) ||
+      !['create', 'update', 'delete'].includes(mutation.action) ||
       !owner ||
       Object.keys(owner).sort().join(',') !== 'access,userId,userWorkspaceId' ||
       owner.access !== 'currentWorkspaceAdministration' ||

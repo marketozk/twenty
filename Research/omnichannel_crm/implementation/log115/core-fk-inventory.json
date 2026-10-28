@@ -1,0 +1,152 @@
+[
+  {
+    "parent": "navigationMenuItem",
+    "schema": "core",
+    "child": "navigationMenuItem",
+    "conname": "FK_175fc64110c36793eaf9765d1c6",
+    "confdeltype": "c",
+    "confupdtype": "a",
+    "columns": "{folderId}",
+    "parentcolumns": "{id}"
+  },
+  {
+    "parent": "userWorkspace",
+    "schema": "core",
+    "child": "applicationAuthorization",
+    "conname": "FK_APPLICATION_AUTHORIZATION_USER_WORKSPACE_ID",
+    "confdeltype": "c",
+    "confupdtype": "a",
+    "columns": "{userWorkspaceId}",
+    "parentcolumns": "{id}"
+  },
+  {
+    "parent": "userWorkspace",
+    "schema": "core",
+    "child": "navigationMenuItem",
+    "conname": "FK_b2e02050a5faa58ed3e08624659",
+    "confdeltype": "c",
+    "confupdtype": "a",
+    "columns": "{userWorkspaceId}",
+    "parentcolumns": "{id}"
+  },
+  {
+    "parent": "userWorkspace",
+    "schema": "core",
+    "child": "twoFactorAuthenticationMethod",
+    "conname": "FK_b0f44ffd7c794beb48cb1e1b1a9",
+    "confdeltype": "c",
+    "confupdtype": "a",
+    "columns": "{userWorkspaceId}",
+    "parentcolumns": "{id}"
+  },
+  {
+    "parent": "userWorkspace",
+    "schema": "core",
+    "child": "userApplicationVariableValue",
+    "conname": "FK_5b5a27417740e6bb8f1cb4b8fce",
+    "confdeltype": "c",
+    "confupdtype": "a",
+    "columns": "{userWorkspaceId}",
+    "parentcolumns": "{id}"
+  },
+  {
+    "parent": "userWorkspace",
+    "schema": "core",
+    "child": "userSession",
+    "conname": "FK_USER_SESSION_USER_WORKSPACE_ID",
+    "confdeltype": "c",
+    "confupdtype": "a",
+    "columns": "{userWorkspaceId}",
+    "parentcolumns": "{id}"
+  },
+  {
+    "parent": "userWorkspace",
+    "schema": "core",
+    "child": "view",
+    "conname": "FK_394132f681ecbffa8ac912d1e5f",
+    "confdeltype": "n",
+    "confupdtype": "a",
+    "columns": "{createdByUserWorkspaceId}",
+    "parentcolumns": "{id}"
+  },
+  {
+    "parent": "userWorkspace",
+    "schema": "core",
+    "child": "workflow",
+    "conname": "FK_WORKFLOW_CREATED_BY_USER_WORKSPACE",
+    "confdeltype": "n",
+    "confupdtype": "a",
+    "columns": "{createdByUserWorkspaceId}",
+    "parentcolumns": "{id}"
+  },
+  {
+    "parent": "view",
+    "schema": "core",
+    "child": "navigationMenuItem",
+    "conname": "FK_9ec9d8bc9bb4197be12d4efcaf3",
+    "confdeltype": "c",
+    "confupdtype": "a",
+    "columns": "{viewId}",
+    "parentcolumns": "{id}"
+  },
+  {
+    "parent": "view",
+    "schema": "core",
+    "child": "viewField",
+    "conname": "FK_c5ab40cd4debb51d588752a4857",
+    "confdeltype": "c",
+    "confupdtype": "a",
+    "columns": "{viewId}",
+    "parentcolumns": "{id}"
+  },
+  {
+    "parent": "view",
+    "schema": "core",
+    "child": "viewFieldGroup",
+    "conname": "FK_15c7197294c08e6e780d9734c99",
+    "confdeltype": "c",
+    "confupdtype": "a",
+    "columns": "{viewId}",
+    "parentcolumns": "{id}"
+  },
+  {
+    "parent": "view",
+    "schema": "core",
+    "child": "viewFilter",
+    "conname": "FK_06858adf0fb54ec88fa602198ca",
+    "confdeltype": "c",
+    "confupdtype": "a",
+    "columns": "{viewId}",
+    "parentcolumns": "{id}"
+  },
+  {
+    "parent": "view",
+    "schema": "core",
+    "child": "viewFilterGroup",
+    "conname": "FK_8919a390f4022ab1e40182a5ac3",
+    "confdeltype": "c",
+    "confupdtype": "a",
+    "columns": "{viewId}",
+    "parentcolumns": "{id}"
+  },
+  {
+    "parent": "view",
+    "schema": "core",
+    "child": "viewGroup",
+    "conname": "FK_2d7cfc4748058a0ca648835d046",
+    "confdeltype": "c",
+    "confupdtype": "a",
+    "columns": "{viewId}",
+    "parentcolumns": "{id}"
+  },
+  {
+    "parent": "view",
+    "schema": "core",
+    "child": "viewSort",
+    "conname": "FK_2b36c6adea4542b4844d9fb1806",
+    "confdeltype": "c",
+    "confupdtype": "a",
+    "columns": "{viewId}",
+    "parentcolumns": "{id}"
+  }
+]

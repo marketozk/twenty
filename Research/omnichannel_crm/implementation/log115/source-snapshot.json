@@ -1,0 +1,11 @@
+{
+  "baseCommit": "98a5024e69bf9d97be083b806cf71bd2bcf44817",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "c43760d0e8f2884cae7512adf041a501889460506161f1dc785e1117ad605422",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "2f776682550cce039aa5bb56cadd14579edfe252c37feccd5b055228cc6d4926",
+    "packages/twenty-server/src/engine/core-modules/user-workspace/delete-user-workspace-transaction.ts": "f1d91adc9c6d8a928761a176efea9b1beefdabe259147b9220558599800aa48a",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/membership-cleanup-audit.ts": "2b980995d089ecd5653aedc04d7b8f9917f5e66b27dfe8c756443d6d8279869d",
+    "packages/twenty-server/test/fork-migration/crm-audit-membership-owner.postgres-spec.ts": "1f246627f876ed2c9081d0134b202b5920449a20d7e4f2feaeddce408fc5ecfc"
+  },
+  "uploadedSourceHashesVerified": true
+}

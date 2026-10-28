@@ -16,8 +16,8 @@
 | Operation lookup index | LOG090: generated migration10, populated prefix upgrade/replay/down, real EXPLAIN, drift refusal; не выкатывалось |
 | Production rollout | Не выполнялся; нужны полная native coverage и согласованный выкат с остановленными writers при построении индекса |
 
-Последние проверки: 1191 tests/37 suites PASS (203.747s); 78 targeted/2 suites PASS, 39 новых cases. 26 guards PASS; 10 migration checksums неизменны. Types 355/360 roots, 188/188 прежних диагностик, 0 новых/changed-code. 12 local/remote source hashes совпадают.
-Это не чистый full-server typecheck. [LOG114 results](log114/results.json).
+Последние проверки: 1216 tests/38 suites PASS (205.942s); 103 targeted/3 suites PASS, 25 новых cases. 26 guards PASS; 10 migration checksums неизменны. Types 351/353 roots, 188/188 прежних диагностик, 0 новых/changed-code. 5 local/remote source hashes совпадают.
+Это не чистый full-server typecheck. [LOG115 results](log115/results.json).
 
 [Индекс реализованных участков](../plan/phase_2_audit.md), [текущие ограничения](log113/README.md),
 [полная хронология](../DEVLOG.md). Исторические заявления «ещё не включено» внутри
@@ -39,5 +39,8 @@ session/core writers для завершения критериев таблиц
 LOG114 добавляет core membership cleanup под общим с LOG113 workspace fence: targets
 и membership удаляются вместе, workflow-share recovery intent сохраняется до потери
 creator FK. Полный public removal включает native member и transfers до этого owner.
-Membership/FK audit, общая last-admin защита и real native share integration остаются
-открытыми. [Граница и проверки](log114/README.md).
+LOG115 добавляет membership/FK audit primitive с явной operation и security-first
+savepoint. Известные scope/effect checks сохраняются при отказе journal coverage.
+Автоматическая attribution API/jobs, общая last-admin защита и real native share
+integration остаются открытыми. Source-review выявил отдельный soft-delete/JWT stale
+cache gap, его исправление и проверки идут следующим шагом. [Граница](log115/next-boundary.md).

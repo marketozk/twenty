@@ -1,0 +1,8 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts 328ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts 11ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/user-workspace/delete-user-workspace-transaction.ts 71ms
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/membership-cleanup-audit.ts 35ms
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-owner.postgres-spec.ts 94ms
+
+{"formattedFiles": 5, "singleSshSession": true}

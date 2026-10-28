@@ -11,6 +11,13 @@ export type CrmAuditPrincipal = {
 };
 
 export type CrmAuditResourceKind =
+  | 'userWorkspace'
+  | 'applicationAuthorization'
+  | 'userApplicationVariableValue'
+  | 'twoFactorAuthenticationMethod'
+  | 'navigationMenuItem'
+  | 'coreWorkflow'
+  | 'coreView'
   | 'role'
   | 'roleTarget'
   | 'userSession'

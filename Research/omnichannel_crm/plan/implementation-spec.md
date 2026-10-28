@@ -942,4 +942,13 @@ Worker пересчитывает актуальные shares, не восста
 workspace не создаёт новых intents; handler пропускает удалённые workspace/workflow.
 Unknown COMMIT не повторяет mutation, caches инвалидируются, durable intent остаётся
 для recovery. Это prerequisite аудита: полный public removal (transfers/native member),
-membership/FK audit, общая last-admin защита и real native share acceptance открыты.
+автоматическое membership/FK audit wiring, общая last-admin защита и real native share acceptance открыты.
+
+LOG115: explicit-operation membership cleanup primitive фиксирует locked snapshots
+покрытых core CASCADE/SET NULL, включая recursive navigation с final reachable set.
+Scope/actual-effect verification обязательны независимо от доступности журнала.
+Сбой audit INSERT/coverage откатывает только audit savepoint и сигнализируется;
+cleanup/reconciliation intent сохраняются вместе. Первый verified post-cleanup snapshot
+фиксирован, включая microsecond timestamps. Автоматические request/job entrypoints
+ещё не подключены. Soft-delete JWT stale-cache gap требует прямого active membership
+recheck; [следующий шаг](../implementation/log115/next-boundary.md).

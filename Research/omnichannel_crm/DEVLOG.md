@@ -3512,3 +3512,25 @@ Targets/membership удаляются под общим workspace fence; soft/ha
 Далее — [аудит core membership/FK effects](implementation/log114/next-boundary.md) с trusted actor capture и security-first audit failure по утверждённому контракту. ROB765 остаётся In Progress.
 
 LOG114 publication: be0a504eb17c178e827d2803b50bb6bdd7a34fe7 pushed/API verified. ROB765 description and comment 9a714a2a-8e26-4494-bade-80521595df24 independently read back; all 11 issue states match. Implementation continues.
+
+## LOG-115 — аудит core membership и фактических каскадных изменений
+
+В LOG114 owner добавлен explicit-operation audit primitive: trusted identity копируется
+до await; фиксированные FK effects и рекурсивное меню захватываются под locks;
+фактический cleanup проверяется до/после audit savepoint. Журнал не хранит OTP,
+application values, token hashes или клиентский контент. Journal failure сохраняет
+DB-отзыв и recovery intent с явным AUDIT_UNAVAILABLE; foreign scope отменяет cleanup.
+
+1216 tests/38 suites PASS (205.942s); 103 targeted/3 suites PASS, 25 новых cases.
+26 guards PASS; 10 migration checksums неизменны. Types 351/353 roots, 188/188 прежних
+диагностик, 0 новых/changed-code. 5 local/remote source hashes совпадают.
+
+Независимое readonly ревью нашло два дефекта и проверило исправления: soft timestamps
+теперь привязаны к первому verified after, known scope checks не обходятся fallback
+журнала. Обе ситуации и scope-read failure проверены отрицательными PG tests.
+[Результаты](implementation/log115/results.json), [ревью](implementation/log115/review.md).
+
+Автоматическое API/job wiring ещё не включено; synthetic core fixture не заменяет
+full HTTP/native-share приёмку. Найден soft-delete/JWT stale-cache gap: добавим DB
+recheck существующим repository. [Следующий шаг](implementation/log115/next-boundary.md).
+ROB765 In Progress; демо, образ, клиентские сообщения и Actions не менялись.
