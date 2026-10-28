@@ -1,3 +1,12 @@
+import { withOmniDetachedParentDelete } from 'src/engine/twenty-orm/repository/omni-native-write-capability';
+import {
+  destroyOmniCrmParent,
+  snapshotOmniParentDestroyRequest,
+  appendOmniParentDestroyFailure,
+  type OmniParentDestroyPrincipal,
+  type OmniParentDestroyCommand,
+  type OmniParentDestroyAuthorizer,
+} from 'src/modules/omnichannel/services/destroy-omni-crm-parent';
 import {
   setOmniConversationTarget,
   snapshotOmniConversationTargetRequest,
@@ -210,6 +219,123 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     @InjectDataSource()
     private readonly dataSource: DataSource,
   ) {}
+
+  async destroyOmniCrmParent(
+    principal: OmniParentDestroyPrincipal,
+    command: OmniParentDestroyCommand,
+    authorize: OmniParentDestroyAuthorizer,
+  ) {
+    const request = snapshotOmniParentDestroyRequest(
+      principal,
+      command,
+      authorize,
+    );
+    const operationId = randomUUID();
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        const metadata =
+          this.workspaceOrmManager.getOmniConversationTargetMetadata(
+            request.command.objectMetadataId,
+          );
+        if (
+          !metadata ||
+          metadata.workspaceId !== request.principal.workspaceId ||
+          !metadata.isActive ||
+          metadata.isSystem ||
+          !['targetPersonId', 'targetCompanyId'].includes(
+            metadata.projectionField ?? '',
+          )
+        )
+          throw new Error('OMNI_PARENT_DESTROY_METADATA_SCOPE');
+        const name =
+          metadata.projectionField === 'targetPersonId' ? 'person' : 'company';
+        let entered = false,
+          denied = false;
+        try {
+          return await this.workspaceOrmManager.runInWorkspaceTransaction(
+            async (scope) => {
+              entered = true;
+              const identity = this.identityPersonNativePort(scope);
+              return destroyOmniCrmParent(
+                scope,
+                {
+                  ...request,
+                  authorize: async (...args) => {
+                    try {
+                      await request.authorize(...args);
+                    } catch (error) {
+                      denied = true;
+                      throw error;
+                    }
+                  },
+                },
+                { ...metadata, isActive: true, isSystem: false },
+                operationId,
+                {
+                  identity,
+                  target: {
+                    insertProjection: async () => {
+                      throw new Error(
+                        'OMNI_PARENT_DESTROY_CANNOT_INSERT_TARGET',
+                      );
+                    },
+                    deleteProjection: identity.deleteProjection,
+                  },
+                  deleteParent: async (manifest) => {
+                    const repository = scope.getRepository(
+                      name,
+                      { shouldBypassPermissionChecks: true },
+                      { shouldSkipEventEmission: true },
+                    );
+                    await withOmniDetachedParentDelete(
+                      scope,
+                      repository,
+                      manifest,
+                      async () => {
+                        const result = await repository.delete({
+                          id: manifest.recordId,
+                        });
+                        if (result.affected !== 1)
+                          throw new Error('OMNI_PARENT_DESTROY_NATIVE_DELETE');
+                      },
+                    );
+                  },
+                },
+              );
+            },
+            { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
+          );
+        } catch (error) {
+          if (
+            entered &&
+            !(error instanceof NativeTransactionOutcomeUnknownError)
+          ) {
+            try {
+              await this.workspaceOrmManager.runInWorkspaceTransaction(
+                (scope) =>
+                  appendOmniParentDestroyFailure(
+                    scope,
+                    request,
+                    name,
+                    operationId,
+                    denied,
+                  ),
+                { commitOutcome: 'strict' },
+              );
+            } catch (auditError) {
+              throw new AggregateError(
+                [error, auditError],
+                'OMNI_PARENT_DESTROY_FAILURE_AUDIT_UNCONFIRMED',
+              );
+            }
+          }
+          throw error;
+        }
+      },
+      buildSystemAuthContext(request.principal.workspaceId),
+      { lite: true },
+    );
+  }
 
   async setOmniConversationTarget(
     principal: OmniConversationTargetPrincipal,

@@ -28,10 +28,10 @@ T14/T16 в спецификации и [этапу 5](../plan/phase_5_ai_workflo
 Закрытие всей CRM дополнительно требует критериев остальных этапов и реальной
 приёмки, а не только прохождения серверных тестов.
 
-## Outstanding final phase1 checks after LOG085
+## Outstanding final phase1 checks after LOG087
 
-- Implement permitted Person/Company destroy through the same transaction owner, unlink identity/targets without deleting conversation history, audit and rollback per spec15.21. Current generic hard-delete refusal remains required, but is not the completed permitted adapter.
+- LOG087 verifies bounded internal Person/Company destroy with same-executor unlink, root audit/receipt, rollback and history preservation. Unsupported native/custom FK references explicitly refuse with full rollback. Public UI/API routing and general native lifecycle coverage remain later-phase work. Generic protected hard-delete refusal remains required.
 - Run current isolated startup/restart smoke with all nine migrations on empty and previously upgraded databases, including incomplete-ledger refusal (T33). LOG021 historical startup and current Jest migration tests alone do not establish this current runtime check.
 - Run final full fork regression and reconcile T01/T04/T06/T10/T12/T16/T22/T33 boundaries. Real provider evidence is ROB-768, actual governed automation is ROB-769/770, public ACL is ROB-766.
 
-LOG086 establishes the transaction-bound exact-record detached-parent deletion prerequisite (28 new PostgreSQL cases). Generic protected deletion remains refused. It does not complete the permitted domain destroy adapter, atomic destroy audit/receipt or current runtime startup acceptance. [Evidence](log086/README.md).
+LOG086 establishes the transaction-bound exact-record detached-parent deletion prerequisite (28 new PostgreSQL cases). Generic protected deletion remains refused. The bounded domain adapter/audit/receipt follows in LOG087; current runtime startup acceptance is still pending. [Evidence](log086/README.md).

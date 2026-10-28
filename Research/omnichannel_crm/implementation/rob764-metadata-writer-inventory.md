@@ -95,4 +95,6 @@ legacy limitation, not evidence that protected omni writes are allowed.
 Known current limits are retained until their code and tests pass. Nothing here
 enables the public API, own ACL, transport, automation or a domain purge operation.
 
-LOG086 establishes the transaction-bound exact-record detached-parent deletion prerequisite (28 new PostgreSQL cases). Generic protected deletion remains refused. It does not complete the permitted domain destroy adapter, atomic destroy audit/receipt or current runtime startup acceptance. [Evidence](log086/README.md).
+LOG086 establishes the transaction-bound exact-record detached-parent deletion prerequisite (28 new PostgreSQL cases). Generic protected deletion remains refused. The bounded domain adapter/audit/receipt follows in LOG087; current runtime startup acceptance is still pending. [Evidence](log086/README.md).
+
+LOG087 `destroyOmniCrmParent`: explicit current-admin transaction owner; same-scope identity/target leaves; exact native parent delete/audit/receipt. Actual remaining FK references (including custom/composite and deleted child rows) refuse atomically. No implicit generic/trash routing, cascade permission or governed producer activation. [Evidence](log087/README.md).

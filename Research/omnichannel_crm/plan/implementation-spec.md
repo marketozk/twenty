@@ -638,7 +638,7 @@ G12/§15.4: restore стартует в maintenance, с внешним fence UI/
 
 TrashCleanup.deleteSoftDeletedRecords включён в lifecycle/writer/audit inventory: нельзя generic bypass hard-delete omni Message/Thread/Participant/owned associations. Destroy Person/Company с omni references проходит domain lifecycle adapter: до SQL delete unbind ExternalIdentity и безопасно очистить links без удаления истории/author snapshots, audit destroy и mutation в одном executor. DB SET NULL не заменяет этот adapter. Ordinary cleanup сохраняет свой путь; T22 включает mixed email/omni, dangling identity, destroy rollback и 0 raw omni events.
 
-До готовности такого adapter hard destroy связанных родителей отклоняется.
+LOG087 реализует внутренний административный adapter `destroyOmniCrmParent`: полный fingerprint родителя, exact identity/target revision manifests и actor-key receipt; same-executor unlink/delete/audit, current-admin replay после удаления. Оставшиеся native/custom FK references отклоняются с полным rollback до появления их scoped audit writers. Generic hard destroy связанных родителей по-прежнему отклоняется; публичный routing/ACL и governed events вводятся следующими этапами.
 TrashCleanup пропускает protected native/parent records теми же ownership helpers,
 двигает keyset по (deletedAt,id) включая полностью protected страницы и считает
 фактически удалённые строки. Timestamp cursor сохраняет точность PostgreSQL;

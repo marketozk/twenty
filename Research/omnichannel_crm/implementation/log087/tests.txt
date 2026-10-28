@@ -1,0 +1,38 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-parent-destroy.postgres-spec.ts (20.26 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-conversation-target.postgres-spec.ts (11.249 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-auto-create-person.postgres-spec.ts (13.289 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-detached-parent-delete.postgres-spec.ts (11.391 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-identity-person.postgres-spec.ts (9.205 s)
+[Nest] 1  - 10/28/2026, 10:27:47 AM   ERROR [WorkspaceDataSource] After-commit callback failed for workspace 21efb225-756c-43f1-95af-8187fb1aac7e
+[Nest] 1  - 10/28/2026, 10:27:47 AM   ERROR [WorkspaceDataSource] Error: STOCK_CALLBACK_FAILURE
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-identity-create-person.postgres-spec.ts:176:7)
+    at Promise.then.completed (/tools/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (/tools/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (/tools/node_modules/jest-circus/build/run.js:316:40)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at _runTest (/tools/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/tools/node_modules/jest-circus/build/run.js:126:9)
+    at _runTestsForDescribeBlock (/tools/node_modules/jest-circus/build/run.js:121:9)
+    at run (/tools/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/tools/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/tools/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/tools/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/tools/node_modules/jest-runner/build/runTest.js:444:34)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-identity-create-person.postgres-spec.ts (8.701 s)
+[32m[Nest] 1  - [39m10/28/2026, 10:27:58 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 1 record(s) from person in workspace 5e8eedb2-5101-43dd-8999-029e3a19512e[39m
+[32m[Nest] 1  - [39m10/28/2026, 10:27:58 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 1 record(s) from workspace 5e8eedb2-5101-43dd-8999-029e3a19512e[39m
+[32m[Nest] 1  - [39m10/28/2026, 10:27:59 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 1 record(s) from messageParticipant in workspace 5e8eedb2-5101-43dd-8999-029e3a19512e[39m
+[32m[Nest] 1  - [39m10/28/2026, 10:27:59 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 1 record(s) from workspace 5e8eedb2-5101-43dd-8999-029e3a19512e[39m
+[32m[Nest] 1  - [39m10/28/2026, 10:27:59 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 1 record(s) from person in workspace 5e8eedb2-5101-43dd-8999-029e3a19512e[39m
+[32m[Nest] 1  - [39m10/28/2026, 10:27:59 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 1 record(s) from workspace 5e8eedb2-5101-43dd-8999-029e3a19512e[39m
+[32m[Nest] 1  - [39m10/28/2026, 10:27:59 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 0 record(s) from workspace 5e8eedb2-5101-43dd-8999-029e3a19512e[39m
+[32m[Nest] 1  - [39m10/28/2026, 10:27:59 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 0 record(s) from workspace 5e8eedb2-5101-43dd-8999-029e3a19512e[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-parent-lifecycle.postgres-spec.ts (7.999 s)
+
+Test Suites: 8 passed, 8 total
+Tests:       209 passed, 209 total
+Snapshots:   0 total
+Time:        83.314 s
+Ran all test suites matching /omni-parent-destroy|omni-detached-parent-delete|omni-parent-lifecycle|omni-conversation-target|omni-identity-person|omni-identity-create-person|omni-auto-create-person|crm-audit.postgres/i.

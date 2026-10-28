@@ -1,0 +1,13 @@
+{
+  "baseCommit": "cbb692cf70ebf8b95b8160f8358fac2584d15763",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "296abe3b2fb52ac3700b4574458439f53777801fc2ced84015339c8ce2d8354a",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "8b3e79dc7d5a033d864724c69fe7c329b83494a5774e3280840f545502854085",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts": "70672ac90c4de303c527e02c29d2e6c771cbe90bbf6880d3d0ba84676a37a8e3",
+    "packages/twenty-server/src/modules/omnichannel/services/assert-no-unhandled-parent-references.ts": "789c76258a939ebf8ae0c2380f7cd524f98bbbef4b16f6ef18b748fd0c8d039a",
+    "packages/twenty-server/src/modules/omnichannel/services/destroy-omni-crm-parent.ts": "83c6c4d395f68009cb787b3eba0ec7b768145b3ffdbc3d60037bb01de89d55b7",
+    "packages/twenty-server/test/fork-migration/omni-parent-destroy.postgres-spec.ts": "b26a54185d36ff65d84eab7ee729463c15d4b246f90297e606c72817d507c503"
+  }
+}

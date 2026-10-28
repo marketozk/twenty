@@ -6,6 +6,7 @@ export type CrmAuditPrincipal = {
 export type CrmAuditResourceKind =
   | 'omniAccountBinding'
   | 'omniPerson'
+  | 'omniCompany'
   | 'omniExternalIdentity'
   | 'omniConversationTarget'
   | 'omniMessageThreadTarget'
@@ -35,6 +36,11 @@ export type CrmAuditSecurityDescriptor = {
   bindingId?: string;
   conversationId?: string;
   queueId?: string;
+  deletedParent?: {
+    objectMetadataId: string;
+    name: 'person' | 'company';
+    access: 'currentWorkspaceAdministration';
+  };
 };
 
 export type CrmAuditOperation = {

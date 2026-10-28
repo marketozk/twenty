@@ -26,7 +26,8 @@ const CATALOG: Record<
   CrmAuditResourceKind,
   { values: string[]; redacted: string[] }
 > = {
-  omniPerson: { values: [], redacted: ['name'] },
+  omniPerson: { values: ['destroyScopeHash'], redacted: ['name'] },
+  omniCompany: { values: ['destroyScopeHash'], redacted: ['name'] },
   omniExternalIdentity: {
     values: ['bindingId', 'personId', 'revision'],
     redacted: ['providerPeerId', 'verificationSource'],
@@ -306,11 +307,38 @@ const principal = (value: CrmAuditPrincipal): CrmAuditPrincipal => {
 const descriptor = (
   mutation: Pick<
     CrmAuditMutation,
-    'resourceKind' | 'resourceId' | 'securityDescriptor'
+    'resourceKind' | 'resourceId' | 'action' | 'securityDescriptor'
   >,
   bindingConfigEvent?: OmniBindingConfigChangedEvent,
 ): CrmAuditSecurityDescriptor => {
   const source = mutation.securityDescriptor;
+  const parentDelete =
+    mutation.action === 'delete' &&
+    ['omniPerson', 'omniCompany'].includes(mutation.resourceKind);
+  let deletedParent: CrmAuditSecurityDescriptor['deletedParent'];
+  if (parentDelete || source.deletedParent !== undefined) {
+    const candidate = source.deletedParent;
+    if (
+      !parentDelete ||
+      !candidate ||
+      Object.keys(candidate).sort().join(',') !==
+        'access,name,objectMetadataId' ||
+      candidate.access !== 'currentWorkspaceAdministration' ||
+      candidate.name !==
+        (mutation.resourceKind === 'omniPerson' ? 'person' : 'company') ||
+      source.bindingId !== undefined ||
+      source.conversationId !== undefined ||
+      source.queueId !== undefined
+    )
+      throw new Error(
+        'Parent destroy audit requires deleted-object administrative scope',
+      );
+    deletedParent = {
+      objectMetadataId: requireUuid(candidate.objectMetadataId),
+      name: candidate.name,
+      access: 'currentWorkspaceAdministration',
+    };
+  }
 
   if (
     mutation.resourceKind === 'omniBindingConfigWakeup' &&
@@ -364,6 +392,7 @@ const descriptor = (
   return {
     resourceKind: mutation.resourceKind,
     resourceId: requireUuid(mutation.resourceId),
+    ...(deletedParent === undefined ? {} : { deletedParent }),
     ...(source.bindingId === undefined
       ? {}
       : { bindingId: requireUuid(source.bindingId) }),

@@ -1,13 +1,13 @@
 # Технический план реализации CRM — v1
 
-LOG-086 / ROB-764 In Progress: добавлена транзакционная граница удаления одной
-Person/Company после доказанного снятия omni-связей. Сохраняются история, author
-snapshots и tombstones; generic delete защищённых записей по-прежнему запрещён.
-231 tests/6 suites (105/4 +126/2) +26 guards =257 PASS;28 new PG cases. Differential typecheck 320 roots:187 baseline/187 current,0 new/changed-code. All nine migration sources unchanged.
-[Доказательства](../implementation/log086/README.md). Последний полный fork regression: LOG082,2661 tests/83 suites.
-Это подготовка: доменный destroy writer с общим audit/receipt ещё не реализован.
-Далее этот writer, актуальный startup/restart девяти миграций и полная приёмка ROB-764.
-Governed events остаются ROB-769, публичный ACL/API — ROB-766.
+LOG-087 / ROB-764 In Progress: внутренний Person/Company destroy атомарно снимает
+identity/target связи, сохраняет историю, пишет административный audit и receipt.
+Повтор после удаления и потери COMMIT ACK проверяет актуальные права и прежний результат.
+209 tests/8 suites +26 guards =235 PASS;37 new PG cases. Differential typecheck 323 roots:187 baseline/187 current,0 new/changed-code. All nine migration sources unchanged.
+[Доказательства](../implementation/log087/README.md). Последний полный fork regression: LOG082,2661 tests/83 suites.
+Необработанные native/custom FK приводят к полному отказу; generic delete не открыт.
+Далее актуальный startup/restart девяти миграций и полный fork regression для ROB-764.
+Полный native audit остаётся ROB-765, ACL/API — ROB-766, governed events — ROB-769.
 Демо прежнее, GitHub Actions не используется.
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.

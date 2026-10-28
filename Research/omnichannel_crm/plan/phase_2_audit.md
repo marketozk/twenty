@@ -7,8 +7,8 @@
 Спецификация: [design/08-audit.md](../design/08-audit.md). Статус: не выполнен. 2a зависит от 1; 2b зависит от собственной политики этапа 3. Остальные этапы дополняют аудит своими событиями.
 
 Основа уже реализована в ROB-764 / LOG-022: CrmAuditEntry, транзакционный context,
-append-only writer, безопасный diff и проверка DB privileges. Текущий каталог охватывает 22 вида ресурсов; собственные omni operations, native Message
-composition, receipts/outbox/revisions используют общий atomic audit context (LOG028–085).
+append-only writer, безопасный diff и проверка DB privileges. Текущий каталог охватывает 23 вида ресурсов; собственные omni operations, native Message
+composition, receipts/outbox/revisions используют общий atomic audit context (LOG028–087).
 ROB-765 расширяет этот механизм на CRM/ORM/merge/bulk/session/metadata; ROB-767
 добавляет просмотр и экспорт после собственных прав. Обе задачи остаются Backlog.
 [Результат и границы LOG-022](../implementation/log022/README.md).
@@ -51,3 +51,5 @@ ROB-764 уже вводит минимальный audit transaction context д�
 **Done when:** карточка, сообщение, роль и workflow из тестовых сценариев имеют доказуемую цепочку автора и результата; журнал доступен без Enterprise key.
 
 **Rollback:** отключение UI не отключает сбор; исправление событий добавлением нового correction-event, не редактированием истории. Для schema rollback сначала резервная копия и проверка потери полей/событий.
+
+LOG087 adds bounded parent delete audit and retained current-administrative deletedParent scope, including multi-binding manifest hash. Native/custom FK effects without an audited writer refuse the operation. ROB765 must preserve this contract while broadening native ORM/lifecycle coverage; new destroy is not proof that generic native audit is complete.
