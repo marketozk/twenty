@@ -3093,3 +3093,7 @@ connect test исправлена на connect.where; production resolver не �
 ROB765 In Progress. Следующий шаг — native CREATE kernel с actual INSERT IDs,
 after snapshots и сохранением FILES/conflict/nested/shareWith контрактов. Общий CRUD,
 metadata/session/negative audit ещё не завершены. Демо и Actions не затронуты.
+
+LOG094 publication: `76820b097e7cc084fd6a0e4f84a6edad636b5c09` pushed/API verified.
+ROB765 description and comment `9e257135-8d82-4fae-b4be-936a09b11a3e` independently
+read back; all 11 states match. ROB765 remains In Progress; implementation continues.
