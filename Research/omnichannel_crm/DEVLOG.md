@@ -2306,3 +2306,5 @@ Skills: ai-dev-workflow, behavioral-guardrails, server-schrodinger; scoped read-
 research/review. Full fork last passed LOG074:2443/76; no new full-suite claim here.
 
 [Evidence](implementation/log075/README.md).
+
+LOG-075 publication: code `926f56119608c8ddeacaaaa676613f2ec81e5c35` pushed; GitHub ref verified by API. Linear description/comment `f9d888dd-6a99-445c-b3af-e83cca9f96c9` independently read back; all11 project states match. ROB-764 remains In Progress.
