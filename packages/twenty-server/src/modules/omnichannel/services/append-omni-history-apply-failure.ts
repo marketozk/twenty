@@ -1,3 +1,4 @@
+import { omniIncomingTextApplyOperationId } from 'src/modules/omnichannel/services/load-omni-incoming-revision-chain';
 import { randomUUID } from 'node:crypto';
 
 import { appendCrmAuditAttempt } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
@@ -14,6 +15,7 @@ export const appendOmniHistoryApplyFailure = async (
   principal: OmniHistoryApplyPrincipal,
   proof: OmniHistoryApplyProof,
   denied: boolean,
+  incomingText = false,
 ): Promise<void> => {
   const executor = createCrmAuditWorkspaceExecutor(scope);
   if (scope.workspaceId !== principal.workspaceId)
@@ -33,7 +35,9 @@ export const appendOmniHistoryApplyFailure = async (
     executor,
     {
       workspaceId: principal.workspaceId,
-      operationId: omniHistoryApplyOperationId(proof.receiptId),
+      operationId: incomingText
+        ? omniIncomingTextApplyOperationId(proof.receiptId)
+        : omniHistoryApplyOperationId(proof.receiptId),
       actor: principal.actor,
     },
     {
@@ -42,7 +46,13 @@ export const appendOmniHistoryApplyFailure = async (
       resourceId: proof.receiptId,
       action: 'update',
       outcome: denied ? 'denied' : 'failed',
-      reasonCode: denied ? 'history.apply.denied' : 'history.apply.failed',
+      reasonCode: incomingText
+        ? denied
+          ? 'incoming.text.apply.denied'
+          : 'incoming.text.apply.failed'
+        : denied
+          ? 'history.apply.denied'
+          : 'history.apply.failed',
       securityDescriptor: {
         resourceKind: 'omniIncomingReceipt',
         resourceId: proof.receiptId,

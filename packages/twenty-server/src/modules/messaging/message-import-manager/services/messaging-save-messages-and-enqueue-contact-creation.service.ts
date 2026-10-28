@@ -1,3 +1,8 @@
+import {
+  type OmniIncomingRevisionAdapter,
+  snapshotOmniIncomingRevisionAdapter,
+} from 'src/modules/omnichannel/contracts/omni-incoming-text-revision';
+import { isOmniIncomingRevisionConflict } from 'src/modules/omnichannel/services/omni-incoming-revision-conflict.error';
 import { lockOrdinaryNativeSyncRun } from 'src/modules/omnichannel/services/lock-ordinary-native-sync-run';
 import { type OrdinaryMetadataSyncRun } from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
 import {
@@ -48,6 +53,8 @@ import { isWorkEmail } from 'src/utils/is-work-email';
 import { MessageDirection } from 'src/modules/messaging/common/enums/message-direction.enum';
 import {
   applyOmniHistoryReceipt,
+  applyOmniIncomingTextReceipt,
+  type OmniIncomingTextApplyResult,
   snapshotOmniHistoryReceiptRequest,
   type OmniHistoryApplyAuthorizer,
   type OmniHistoryApplyPrincipal,
@@ -1146,6 +1153,93 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     proof: OmniHistoryApplyProof,
     authorize: OmniHistoryApplyAuthorizer,
   ): Promise<OmniHistoryApplyResult> {
+    return this.applyOmniIncomingReceiptWithinTransaction(
+      principal,
+      proof,
+      authorize,
+      null,
+    );
+  }
+
+  async applyOmniIncomingTextReceipt(
+    principal: OmniHistoryApplyPrincipal,
+    proof: OmniHistoryApplyProof,
+    authorize: OmniHistoryApplyAuthorizer,
+    adapter: OmniIncomingRevisionAdapter,
+  ): Promise<OmniIncomingTextApplyResult> {
+    const result = await this.applyOmniIncomingReceiptWithinTransaction(
+      principal,
+      proof,
+      authorize,
+      snapshotOmniIncomingRevisionAdapter(adapter),
+    );
+    if (!('applicationResult' in result) || !('replayed' in result))
+      throw new Error('OMNI_INCOMING_RESULT_POSTCONDITION');
+    return result;
+  }
+
+  async processOmniIncomingTextReceipt(
+    principal: OmniHistoryApplyPrincipal,
+    proof: OmniHistoryApplyProof,
+    authorize: OmniHistoryApplyAuthorizer,
+    adapter: OmniIncomingRevisionAdapter,
+    authorizeLease: OmniIncomingReceiptLeaseAuthorizer,
+  ) {
+    const request = snapshotOmniHistoryReceiptRequest(
+      principal,
+      proof,
+      authorize,
+    );
+    const revisionAdapter = snapshotOmniIncomingRevisionAdapter(adapter);
+    const leaseAuthorizer = authorizeLease;
+    if (typeof leaseAuthorizer !== 'function')
+      throw new Error('OMNI_INCOMING_LEASE_AUTHORIZER_REQUIRED');
+    let authorizationDenied = false;
+    try {
+      return await this.applyOmniIncomingTextReceipt(
+        request.principal,
+        request.proof,
+        async (scope, facts) => {
+          try {
+            await request.authorize(scope, facts);
+          } catch (error) {
+            authorizationDenied = true;
+            throw error;
+          }
+        },
+        revisionAdapter,
+      );
+    } catch (error) {
+      if (
+        authorizationDenied ||
+        (!isOmniIncomingRevisionConflict(error) &&
+          !isOmniHistoryMissingConfigurationError(error))
+      )
+        throw error;
+      const leaseProof = {
+        receiptId: request.proof.receiptId,
+        leaseOwner: request.proof.leaseOwner,
+        leaseToken: request.proof.leaseToken,
+        routeGeneration: request.proof.routeGeneration,
+      };
+      return deferOmniIncomingReceipt(
+        this.dataSource,
+        request.principal,
+        leaseProof,
+        isOmniIncomingRevisionConflict(error)
+          ? { state: 'quarantined', errorCode: 'inconsistent_source' }
+          : { state: 'blocked_config', errorCode: 'configuration_missing' },
+        leaseAuthorizer,
+      );
+    }
+  }
+
+  private async applyOmniIncomingReceiptWithinTransaction(
+    principal: OmniHistoryApplyPrincipal,
+    proof: OmniHistoryApplyProof,
+    authorize: OmniHistoryApplyAuthorizer,
+    adapter: OmniIncomingRevisionAdapter | null,
+  ): Promise<OmniHistoryApplyResult | OmniIncomingTextApplyResult> {
     const request = snapshotOmniHistoryReceiptRequest(
       principal,
       proof,
@@ -1162,7 +1256,24 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
               callbackEntered = true;
               const nativeScope = withOmniRepositoryOptions(transactionScope);
 
-              return applyOmniHistoryReceipt(
+              const apply = adapter
+                ? (
+                    scope: Parameters<typeof applyOmniHistoryReceipt>[0],
+                    principal: OmniHistoryApplyPrincipal,
+                    proof: OmniHistoryApplyProof,
+                    authorize: OmniHistoryApplyAuthorizer,
+                    nativePort: Parameters<typeof applyOmniHistoryReceipt>[4],
+                  ) =>
+                    applyOmniIncomingTextReceipt(
+                      scope,
+                      principal,
+                      proof,
+                      authorize,
+                      nativePort,
+                      adapter,
+                    )
+                : applyOmniHistoryReceipt;
+              return apply(
                 nativeScope,
                 request.principal,
                 request.proof,
@@ -1175,6 +1286,20 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
                   }
                 },
                 {
+                  updateMessageText: async (messageId, text) => {
+                    const repository = nativeScope.getRepository<{
+                      id: string;
+                      text: string | null;
+                    }>('message', { shouldBypassPermissionChecks: true });
+                    const updated = await repository.update(
+                      { id: messageId },
+                      { text },
+                    );
+                    if (updated.affected !== 1)
+                      throw new Error(
+                        'OMNI_INCOMING_NATIVE_UPDATE_POSTCONDITION',
+                      );
+                  },
                   createInitialMessage: async (input) => {
                     if (input.workspaceId !== nativeScope.workspaceId) {
                       throw new Error('OMNI_HISTORY_NATIVE_WORKSPACE_MISMATCH');
@@ -1286,6 +1411,7 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
                     request.principal,
                     request.proof,
                     authorizationDenied,
+                    adapter !== null,
                   ),
                 { commitOutcome: 'strict' },
               );

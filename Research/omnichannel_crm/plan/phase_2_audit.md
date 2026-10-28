@@ -7,8 +7,8 @@
 Спецификация: [design/08-audit.md](../design/08-audit.md). Статус: не выполнен. 2a зависит от 1; 2b зависит от собственной политики этапа 3. Остальные этапы дополняют аудит своими событиями.
 
 Основа уже реализована в ROB-764 / LOG-022: CrmAuditEntry, транзакционный context,
-append-only writer, безопасный diff и проверка DB privileges. Текущий каталог
-охватывает пять служебных сущностей, а call site — bootstrap подключения.
+append-only writer, безопасный diff и проверка DB privileges. Текущий каталог охватывает 18 видов ресурсов; собственные omni operations, native Message
+composition, receipts/outbox/revisions используют общий atomic audit context (LOG028–079).
 ROB-765 расширяет этот механизм на CRM/ORM/merge/bulk/session/metadata; ROB-767
 добавляет просмотр и экспорт после собственных прав. Обе задачи остаются Backlog.
 [Результат и границы LOG-022](../implementation/log022/README.md).
@@ -28,7 +28,7 @@ workspace CRUD object. Второй writer/redaction protocol не создаё�
 
 ## 2a. Сбор и достоверность
 
-Точные стыки — [integration-map](../implementation/integration-map.md) и [source audit](../implementation/transactions-audit-source.md). Audit entity в `crm_audit`; workspace writes должны использовать тот же pg executor через scope.executeRawQuery. Адаптер к workspace scope ещё предстоит; готовый context LOG-022 работает с QueryRunner. Metadata/roles — QueryRunner migration runner до commit; session create/revoke — core transaction owner. FilesFieldSync нельзя объявить частью workspace commit, пока отдельный core repository не заменён передачей executor. Не использовать afterCommit/EventEmitter как долговечный writer.
+Точные стыки — [integration-map](../implementation/integration-map.md) и [source audit](../implementation/transactions-audit-source.md). Audit entity в `crm_audit`; workspace writes должны использовать тот же pg executor через scope.executeRawQuery. Адаптер к workspace scope уже реализован в LOG028 и используется omni writers; автоматическое покрытие общих native ORM mutations ещё предстоит. Metadata/roles — QueryRunner migration runner до commit; session create/revoke — core transaction owner. FilesFieldSync нельзя объявить частью workspace commit, пока отдельный core repository не заменён передачей executor. Не использовать afterCommit/EventEmitter как долговечный writer.
 
 - Writer принимает server-derived actor/context и transaction scope. Успешные mutations пишут audit в том же commit; при невозможности аудита критичная операция не подтверждается.
 - Для session/core/metadata операций отдельно использовать их transaction owner; интерфейс writer не должен обещать атомарность через две connections. Отказ фиксировать после rollback, не терять событие вместе с отменённой mutation.

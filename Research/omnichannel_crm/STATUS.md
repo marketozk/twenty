@@ -1,12 +1,13 @@
 # Текущее состояние Twenty CRM
 
-LOG-078 / ROB-764 In Progress: IncomingReceipt.applicationResult хранит nullable
-versioned outcome для created/advanced/duplicate/stale. SQL ограничивает state/version/
-kind/disposition; строгий parser проверяет форму и согласованность UUID. Audit скрывает
-source evidence; down отказывается удалять сохранённые outcomes. 269 targeted Jest/10 suites +26 guards=295 PASS; 50 new cases. Typecheck 303 roots:187/187,0 new/changed-code. Nine migration sources verified; first eight unchanged.
-[Доказательства](implementation/log078/README.md). Это storage/contract, domain revision writer пока впереди.
-Далее placeholder/fill/edit/delete и replay с проверкой current head и сохранённого
-disposition. ROB-764 ещё не Done. Демо прежнее, GitHub Actions не используется.
+LOG-079 / ROB-764 In Progress: реализована metadata-only обработка входящих
+placeholder/fill/edit/delete с одним canonical Message. Current head, revision,
+receipt outcome и audit сохраняются атомарно; duplicate/stale не меняют текст,
+счётчики или events. Legacy replay после edits остаётся read-only. Full fork 2598 tests/80 suites +26 guards=2624 PASS; 38 new PG cases. Differential typecheck 307 roots:187/187,0 new/changed-code. Nine migration sources unchanged.
+[Доказательства](implementation/log079/README.md). Реальная квалификация Telegram/MAX и UI ещё впереди.
+Далее unbound identity и внутренние identity/target writers по ранним критериям ROB-764;
+полный ACL/API остаётся ROB-766.
+Демо прежнее, GitHub Actions не используется.
 
 ## Предыдущая порция — LOG-022
 

@@ -22,6 +22,24 @@ import {
 import { buildOmniNativeMessageReferences } from 'src/modules/omnichannel/services/build-omni-native-message-references';
 import { createOmniHistoryMissingConfigurationError } from 'src/modules/omnichannel/services/omni-history-missing-configuration.error';
 
+import {
+  snapshotOmniIncomingApplicationResult,
+  type OmniIncomingApplicationResult,
+} from 'src/modules/omnichannel/contracts/omni-incoming-application-result';
+import {
+  snapshotOmniIncomingRevisionAdapter,
+  qualifyOmniIncomingRevisionKey,
+  omniIncomingTextRevisionContent,
+  type OmniIncomingRevisionAdapter,
+} from 'src/modules/omnichannel/contracts/omni-incoming-text-revision';
+import {
+  loadOmniIncomingRevisionChain,
+  omniIncomingTextApplyOperationId,
+  omniIncomingTextRevisionId,
+  type OmniIncomingRevisionChain,
+} from 'src/modules/omnichannel/services/load-omni-incoming-revision-chain';
+import { createOmniIncomingRevisionConflict } from 'src/modules/omnichannel/services/omni-incoming-revision-conflict.error';
+
 const uuid = z.uuid().transform((value) => value.toLowerCase());
 const positiveBigint = z
   .string()
@@ -68,7 +86,7 @@ export type OmniHistoryApplyAuthorizer = (
   scope: OmniHistoryApplyScope,
   authorization: Readonly<
     OmniHistoryApplyPrincipal & {
-      action: 'history.apply';
+      action: 'history.apply' | 'incoming.text.apply';
       creatingConversation: boolean;
       bindingDefaultQueueId: string | null;
       bindingDefaultConversationMode: string;
@@ -93,13 +111,14 @@ export type OmniHistoryNativeMessageInput = Readonly<{
   messageExternalId: string;
   messageThreadExternalId: string;
   subject: null;
-  text: string;
+  text: string | null;
   receivedAt: string;
   personId: string;
   participantHandle: string;
   participantDisplayName: string;
 }>;
 export type OmniHistoryNativePort = {
+  updateMessageText?: (messageId: string, text: string | null) => Promise<void>;
   createInitialMessage: (input: OmniHistoryNativeMessageInput) => Promise<{
     messageId: string;
     participantId: string;
@@ -166,10 +185,12 @@ const receiptSchema = z.object({
   leaseToken: z.string(),
   leaseUntil: timestamp.nullable(),
   resultId: uuid.nullable(),
+  applicationResult: z.unknown(),
+  errorCode: z.string().nullable(),
   createdAt: timestamp,
 });
 const receiptColumns = `id, "bindingId", "eventId", kind, "schemaVersion", "routeGeneration", "canonicalPayloadHash", "validatedEnvelope",
-  "trustedCaptureContext", "trustedCaptureContextHash", state, "leaseOwner", "leaseToken", "leaseUntil", "resultId", "createdAt"`;
+  "trustedCaptureContext", "trustedCaptureContextHash", state, "leaseOwner", "leaseToken", "leaseUntil", "resultId", "applicationResult", "errorCode", "createdAt"`;
 const disabledSettings = {
   enabled: false,
   maxReplies: 0,
@@ -180,20 +201,66 @@ const disabledSettings = {
 export const omniHistoryApplyOperationId = (receiptId: string): string =>
   uuidV5('omni:history.apply:v1', uuid.parse(receiptId));
 
-// The caller owns commit/rollback; every SQL statement and the native adapter share this strict scope.
-export const applyOmniHistoryReceipt = async (
+export type OmniIncomingTextApplyResult = OmniHistoryApplyResult &
+  Readonly<{
+    applicationResult: OmniIncomingApplicationResult;
+    replayed: boolean;
+  }>;
+export const applyOmniHistoryReceipt = (
+  scope: OmniHistoryApplyScope,
+  principal: OmniHistoryApplyPrincipal,
+  proof: OmniHistoryApplyProof,
+  authorize: OmniHistoryApplyAuthorizer,
+  nativePort: OmniHistoryNativePort,
+): Promise<OmniHistoryApplyResult> =>
+  applyIncomingReceipt(scope, principal, proof, authorize, nativePort, null);
+export const applyOmniIncomingTextReceipt = async (
+  scope: OmniHistoryApplyScope,
+  principal: OmniHistoryApplyPrincipal,
+  proof: OmniHistoryApplyProof,
+  authorize: OmniHistoryApplyAuthorizer,
+  nativePort: OmniHistoryNativePort,
+  adapter: OmniIncomingRevisionAdapter,
+): Promise<OmniIncomingTextApplyResult> => {
+  const result = await applyIncomingReceipt(
+    scope,
+    principal,
+    proof,
+    authorize,
+    nativePort,
+    snapshotOmniIncomingRevisionAdapter(adapter),
+  );
+  if (!result.applicationResult || result.replayed === undefined)
+    throw new Error('OMNI_INCOMING_RESULT_POSTCONDITION');
+  return Object.freeze({
+    ...result,
+    applicationResult: result.applicationResult,
+    replayed: result.replayed,
+  });
+};
+// The caller owns commit/rollback; SQL and the native adapter share this strict scope.
+const applyIncomingReceipt = async (
   inputScope: OmniHistoryApplyScope,
   inputPrincipal: OmniHistoryApplyPrincipal,
   inputProof: OmniHistoryApplyProof,
   inputAuthorize: OmniHistoryApplyAuthorizer,
   nativePort: OmniHistoryNativePort,
-): Promise<OmniHistoryApplyResult> => {
+  adapter: OmniIncomingRevisionAdapter | null,
+): Promise<
+  OmniHistoryApplyResult & {
+    applicationResult?: OmniIncomingApplicationResult;
+    replayed?: boolean;
+  }
+> => {
   const { principal, proof, authorize } = snapshotOmniHistoryReceiptRequest(
     inputPrincipal,
     inputProof,
     inputAuthorize,
   );
   const createInitialMessage = nativePort?.createInitialMessage;
+  const updateMessageText = nativePort?.updateMessageText;
+  if (adapter && typeof updateMessageText !== 'function')
+    return fail('NATIVE_REVISION_PORT_REQUIRED');
   if (typeof createInitialMessage !== 'function')
     return fail('NATIVE_PORT_REQUIRED');
   const workspaceId = uuid.parse(inputScope.workspaceId);
@@ -209,31 +276,54 @@ export const applyOmniHistoryReceipt = async (
   const query = executor.query;
   // Twenty's physical workspace schema is the unsigned UUID integer encoded in base 36.
   const schema = `workspace_${BigInt(`0x${workspaceId.replaceAll('-', '')}`).toString(36)}`;
-  const operationId = omniHistoryApplyOperationId(proof.receiptId);
-  const eventId = uuidV5('omni:history.message.received:v1', proof.receiptId);
+  const operationId = adapter
+    ? omniIncomingTextApplyOperationId(proof.receiptId)
+    : omniHistoryApplyOperationId(proof.receiptId);
+  const eventId = uuidV5(
+    adapter
+      ? 'omni:incoming.text.event:v1'
+      : 'omni:history.message.received:v1',
+    proof.receiptId,
+  );
   const rootId = uuidV5(`domain_event:${eventId}`, workspaceId);
-  const rootRowId = uuidV5('omni:history.root:v1', proof.receiptId);
-  const dispatchId = uuidV5('omni:history.dispatch:v1', proof.receiptId);
-  const revisionId = uuidV5(
-    'omni:history.initial.revision:v1',
+  const rootRowId = uuidV5(
+    adapter ? 'omni:incoming.text.root:v1' : 'omni:history.root:v1',
     proof.receiptId,
   );
+  const dispatchId = uuidV5(
+    adapter ? 'omni:incoming.text.dispatch:v1' : 'omni:history.dispatch:v1',
+    proof.receiptId,
+  );
+  const revisionId = adapter
+    ? omniIncomingTextRevisionId(proof.receiptId)
+    : uuidV5('omni:history.initial.revision:v1', proof.receiptId);
   const creatorConversationId = uuidV5(
-    'omni:history.conversation:v1',
+    adapter
+      ? 'omni:incoming.text.conversation:v1'
+      : 'omni:history.conversation:v1',
     proof.receiptId,
   );
-  const creatorThreadId = uuidV5('omni:history.thread:v1', proof.receiptId);
+  const creatorThreadId = uuidV5(
+    adapter ? 'omni:incoming.text.thread:v1' : 'omni:history.thread:v1',
+    proof.receiptId,
+  );
   const creationEventId = uuidV5(
-    'omni:history.conversation.created:v1',
+    adapter
+      ? 'omni:incoming.text.conversation.created:v1'
+      : 'omni:history.conversation.created:v1',
     proof.receiptId,
   );
   const creationRootId = uuidV5(`domain_event:${creationEventId}`, workspaceId);
   const creationRootRowId = uuidV5(
-    'omni:history.conversation.root:v1',
+    adapter
+      ? 'omni:incoming.text.conversation.root:v1'
+      : 'omni:history.conversation.root:v1',
     proof.receiptId,
   );
   const creationDispatchId = uuidV5(
-    'omni:history.conversation.dispatch:v1',
+    adapter
+      ? 'omni:incoming.text.conversation.dispatch:v1'
+      : 'omni:history.conversation.dispatch:v1',
     proof.receiptId,
   );
   const audit = new CrmAuditTransactionContext(executor, {
@@ -309,11 +399,12 @@ export const applyOmniHistoryReceipt = async (
   )
     return fail('RECEIPT_INTEGRITY');
   if (
-    capture.context.origin !== 'history_import' ||
-    envelope.kind !== 'message.received' ||
-    envelope.direction !== 'incoming' ||
-    envelope.sourceVariant !== 'complete' ||
-    envelope.payload.text === null
+    !adapter &&
+    (capture.context.origin !== 'history_import' ||
+      envelope.kind !== 'message.received' ||
+      envelope.direction !== 'incoming' ||
+      envelope.sourceVariant !== 'complete' ||
+      envelope.payload.text === null)
   )
     return fail('UNSUPPORTED_VARIANT');
   const policy = requireOne(
@@ -411,6 +502,7 @@ export const applyOmniHistoryReceipt = async (
     ]);
   }
   const conversation = requireOne(conversationSchema, conversationRows);
+  let currentConversationSequence = conversation.conversationSequence;
   const receiptCreatedConversation = conversation.id === creatorConversationId;
   if (
     receiptCreatedConversation !==
@@ -518,7 +610,9 @@ export const applyOmniHistoryReceipt = async (
     scope,
     frozen({
       ...principal,
-      action: 'history.apply' as const,
+      action: adapter
+        ? ('incoming.text.apply' as const)
+        : ('history.apply' as const),
       creatingConversation,
       bindingDefaultQueueId: binding.defaultQueueId,
       bindingDefaultConversationMode: binding.defaultConversationMode,
@@ -534,6 +628,14 @@ export const applyOmniHistoryReceipt = async (
       captureContext: capture.context,
     }),
   );
+
+  const candidateFacts = frozen({ envelope, captureContext: capture.context });
+  const candidateContent = adapter
+    ? omniIncomingTextRevisionContent(candidateFacts)
+    : null;
+  const candidateRevisionKey = adapter
+    ? qualifyOmniIncomingRevisionKey(adapter, candidateFacts)
+    : null;
 
   const references = buildOmniNativeMessageReferences({
     bindingId: binding.id,
@@ -551,22 +653,26 @@ export const applyOmniHistoryReceipt = async (
     messageThreadId: thread.id,
     ...references,
     subject: null,
-    text: envelope.payload.text,
+    text: candidateContent ? candidateContent.text : envelope.payload.text,
     receivedAt,
     personId: identity.personId,
     participantHandle: identity.providerPeerId,
     participantDisplayName: envelope.payload.sourceDisplayName ?? '',
   });
-  const contentHash = auditPayloadHash({
-    direction: envelope.direction,
-    text: nativeInput.text,
-    receivedAt,
-    sourceAuthorId: envelope.payload.sourceAuthorId,
-    sourceDisplayName: envelope.payload.sourceDisplayName,
-    nativeMessageKey: capture.context.nativeMessageKey,
-    sourceVariant: envelope.sourceVariant,
-  });
-  const sourceRevisionKey = `initial:${auditPayloadHash({ eventId: envelope.eventId, captureHash: capture.hash })}`;
+  const contentHash =
+    candidateContent?.contentHash ??
+    auditPayloadHash({
+      direction: envelope.direction,
+      text: nativeInput.text,
+      receivedAt,
+      sourceAuthorId: envelope.payload.sourceAuthorId,
+      sourceDisplayName: envelope.payload.sourceDisplayName,
+      nativeMessageKey: capture.context.nativeMessageKey,
+      sourceVariant: envelope.sourceVariant,
+    });
+  const sourceRevisionKey =
+    candidateRevisionKey ??
+    `initial:${auditPayloadHash({ eventId: envelope.eventId, captureHash: capture.hash })}`;
   const authorSnapshot = {
     externalIdentityId: identity.id,
     identityRevision: identity.revision,
@@ -617,16 +723,21 @@ export const applyOmniHistoryReceipt = async (
     rootId: string;
     rootRowId: string;
     dispatchId: string;
-    kind: 'message.received' | 'conversation.created';
+    kind:
+      | 'message.received'
+      | 'message.edited'
+      | 'message.deleted'
+      | 'conversation.created';
     sequence: string;
     payload: Record<string, unknown>;
+    origin?: OmniIncomingCaptureContext['origin'];
   }) => {
     const root = {
       rootKind: 'domain_event',
       rootId: input.rootId,
       sourceKey: input.eventId,
       initialEventIds: [input.eventId],
-      origin: 'history_import',
+      origin: input.origin ?? capture.context.origin,
       scope: { ...scoped, workspaceId },
       coveredRoots: [],
       policyId: policy.id,
@@ -641,7 +752,7 @@ export const applyOmniHistoryReceipt = async (
       conversationId: conversation.id,
       conversationSequence: input.sequence,
       kind: input.kind,
-      origin: 'history_import',
+      origin: input.origin ?? capture.context.origin,
       rootExecutionId: input.rootRowId,
       payloadVersion: 1,
       payload: input.payload,
@@ -677,7 +788,7 @@ export const applyOmniHistoryReceipt = async (
   const persistStorageEvent = async (item: StorageEvent) => {
     await query(
       `INSERT INTO core."omniRootExecution" (id,"workspaceId","rootKind","rootId","sourceKey","initialEventIds",origin,scope,"coveredRoots","policyId","policyVersion","maxCrmEffects","maxHops",state)
-       VALUES ($1,$2,'domain_event',$3,$4,$5::uuid[],'history_import',$6::jsonb,'[]'::jsonb,$7,0,0,0,'suppressed')`,
+       VALUES ($1,$2,'domain_event',$3,$4,$5::uuid[],$8,$6::jsonb,'[]'::jsonb,$7,0,0,0,'suppressed')`,
       [
         item.rootRowId,
         workspaceId,
@@ -686,11 +797,12 @@ export const applyOmniHistoryReceipt = async (
         [item.eventId],
         canonicalAuditJson(item.root.scope),
         policy.id,
+        item.root.origin,
       ],
     );
     await query(
       `INSERT INTO core."omniDomainEvent" (id,"workspaceId","conversationId","conversationSequence",kind,origin,"rootExecutionId","payloadVersion",payload)
-       VALUES ($1,$2,$3,$4,$5,'history_import',$6,1,$7::jsonb)`,
+       VALUES ($1,$2,$3,$4,$5,$8,$6,1,$7::jsonb)`,
       [
         item.eventId,
         workspaceId,
@@ -699,6 +811,7 @@ export const applyOmniHistoryReceipt = async (
         item.kind,
         item.rootRowId,
         canonicalAuditJson(item.payload),
+        item.root.origin,
       ],
     );
     await query(
@@ -734,8 +847,13 @@ export const applyOmniHistoryReceipt = async (
       z.object({
         conversationId: uuid,
         conversationSequence: positiveBigint,
-        kind: z.enum(['message.received', 'conversation.created']),
-        origin: z.literal('history_import'),
+        kind: z.enum([
+          'message.received',
+          'message.edited',
+          'message.deleted',
+          'conversation.created',
+        ]),
+        origin: z.enum(['live', 'history_import', 'restore_replay']),
         rootExecutionId: uuid,
         payloadVersion: z.literal(1),
         payload: z.unknown(),
@@ -747,7 +865,7 @@ export const applyOmniHistoryReceipt = async (
     );
     if (
       BigInt(event.conversationSequence) >
-        BigInt(conversation.conversationSequence) ||
+        BigInt(currentConversationSequence) ||
       (input.sequence !== undefined &&
         event.conversationSequence !== input.sequence)
     )
@@ -764,7 +882,7 @@ export const applyOmniHistoryReceipt = async (
         rootId: uuid,
         sourceKey: z.string(),
         initialEventIds: z.array(uuid),
-        origin: z.literal('history_import'),
+        origin: z.enum(['live', 'history_import', 'restore_replay']),
         scope: z.unknown(),
         coveredRoots: z.array(z.unknown()),
         policyId: uuid,
@@ -804,11 +922,20 @@ export const applyOmniHistoryReceipt = async (
       return fail('REPLAY_DISPATCH_INTEGRITY');
   };
 
-  const verifyNative = async (ids: {
-    messageId: string;
-    participantId: string;
-    associationId: string;
-  }) => {
+  const verifyNative = async (
+    ids: {
+      messageId: string;
+      participantId: string;
+      associationId: string;
+    },
+    expected = {
+      text: nativeInput.text,
+      receivedAt,
+      personId: identity.personId,
+      handle: nativeInput.participantHandle,
+      displayName: nativeInput.participantDisplayName,
+    },
+  ) => {
     const messages = await query(
       `SELECT id,"messageThreadId","headerMessageId",subject,text,"receivedAt","isDraft","deletedAt" FROM "${schema}"."message" WHERE "headerMessageId"=$1 OR id=$2`,
       [references.headerMessageId, ids.messageId],
@@ -819,7 +946,7 @@ export const applyOmniHistoryReceipt = async (
         messageThreadId: uuid,
         headerMessageId: z.string(),
         subject: z.null(),
-        text: z.string(),
+        text: z.string().nullable(),
         receivedAt: timestamp,
         isDraft: z.literal(false),
         deletedAt: z.null(),
@@ -830,8 +957,8 @@ export const applyOmniHistoryReceipt = async (
       message.id !== ids.messageId ||
       message.messageThreadId !== thread.id ||
       message.headerMessageId !== references.headerMessageId ||
-      message.text !== nativeInput.text ||
-      message.receivedAt !== receivedAt
+      message.text !== expected.text ||
+      message.receivedAt !== expected.receivedAt
     )
       return fail('NATIVE_MESSAGE_POSTCONDITION');
     const association = requireOne(
@@ -876,9 +1003,9 @@ export const applyOmniHistoryReceipt = async (
     if (
       participant.id !== ids.participantId ||
       participant.messageId !== message.id ||
-      participant.personId !== identity.personId ||
-      participant.handle !== nativeInput.participantHandle ||
-      participant.displayName !== nativeInput.participantDisplayName
+      participant.personId !== expected.personId ||
+      participant.handle !== expected.handle ||
+      participant.displayName !== expected.displayName
     )
       return fail('NATIVE_PARTICIPANT_POSTCONDITION');
     const currentThread = requireOne(
@@ -902,7 +1029,452 @@ export const applyOmniHistoryReceipt = async (
       capture.context.nativeMessageKey,
     ],
   );
+  const loadChain = async (link: unknown) =>
+    loadOmniIncomingRevisionChain({
+      query,
+      workspaceId,
+      bindingId: binding.id,
+      conversationId: conversation.id,
+      providerChatId: envelope.providerChatId,
+      nativeMessageKey: capture.context.nativeMessageKey,
+      link,
+    });
+  const verifyRetainedRevisionEvent = async (
+    item: OmniIncomingRevisionChain['head'],
+    messageId: string,
+  ) => {
+    const legacy = item.outcome === null;
+    const receiptId = item.receipt.id;
+    const prefix = legacy ? 'omni:history' : 'omni:incoming.text';
+    const retainedEventId = uuidV5(
+      legacy
+        ? 'omni:history.message.received:v1'
+        : 'omni:incoming.text.event:v1',
+      receiptId,
+    );
+    const createdConversation =
+      conversation.id === uuidV5(`${prefix}.conversation:v1`, receiptId);
+    const events = [
+      {
+        eventId: retainedEventId,
+        rootId: uuidV5(`domain_event:${retainedEventId}`, workspaceId),
+        rootRowId: uuidV5(`${prefix}.root:v1`, receiptId),
+        dispatchId: uuidV5(`${prefix}.dispatch:v1`, receiptId),
+        kind: item.facts.envelope.kind,
+        origin: item.facts.captureContext.origin,
+        ...(createdConversation ? { sequence: '2' } : {}),
+        payload: {
+          messageLinkId: item.revision.messageLinkId,
+          messageId,
+          receiptId,
+          dispatchSuppressed: true,
+        },
+      },
+    ];
+    for (const item of events) await verifyStorageEvent(item);
+    if (createdConversation) {
+      const createdEventId = uuidV5(
+        `${prefix}.conversation.created:v1`,
+        receiptId,
+      );
+      await verifyStorageEvent({
+        eventId: createdEventId,
+        rootId: uuidV5(`domain_event:${createdEventId}`, workspaceId),
+        rootRowId: uuidV5(`${prefix}.conversation.root:v1`, receiptId),
+        dispatchId: uuidV5(`${prefix}.conversation.dispatch:v1`, receiptId),
+        kind: 'conversation.created',
+        origin: item.facts.captureContext.origin,
+        sequence: '1',
+        payload: {
+          messageThreadId: uuidV5(`${prefix}.thread:v1`, receiptId),
+          receiptId,
+          dispatchSuppressed: true,
+        },
+      });
+    }
+  };
+  const verifyChainNative = async (chain: OmniIncomingRevisionChain) => {
+    await verifyRetainedRevisionEvent(chain.head, chain.link.messageId);
+    if (chain.initial.revision.id !== chain.head.revision.id)
+      await verifyRetainedRevisionEvent(chain.initial, chain.link.messageId);
+    if (
+      chain.author.externalIdentityId !== identity.id ||
+      chain.author.personId !== identity.personId ||
+      chain.author.providerPeerId !== identity.providerPeerId ||
+      chain.link.authorVerification !== identity.verificationSource
+    )
+      return fail('REPLAY_AUTHOR_INTEGRITY');
+    const participant = requireOne(
+      z.object({ id: uuid }),
+      await query(
+        `SELECT id FROM "${schema}"."messageParticipant" WHERE "messageId"=$1`,
+        [chain.link.messageId],
+      ),
+    );
+    const association = requireOne(
+      z.object({ id: uuid }),
+      await query(
+        `SELECT id FROM "${schema}"."messageChannelMessageAssociation" WHERE "messageId"=$1`,
+        [chain.link.messageId],
+      ),
+    );
+    return verifyNative(
+      {
+        messageId: chain.link.messageId,
+        participantId: participant.id,
+        associationId: association.id,
+      },
+      {
+        text: chain.head.content.text,
+        receivedAt: chain.link.displayOccurredAt,
+        personId: chain.author.personId,
+        handle: chain.author.providerPeerId,
+        displayName: chain.author.sourceDisplayName ?? '',
+      },
+    );
+  };
+  if (adapter && (links.length !== 0 || initialReceipt.state === 'applied')) {
+    if (links.length !== 1 || creatingConversation)
+      return fail('REPLAY_LINK_INTEGRITY');
+    const chain = await loadChain(links[0]);
+    const native = await verifyChainNative(chain);
+    const { link } = chain;
+    if (initialReceipt.state === 'applied') {
+      const outcome = snapshotOmniIncomingApplicationResult(
+        initialReceipt.applicationResult,
+      );
+      if (
+        initialReceipt.resultId !== link.id ||
+        outcome.candidateSourceRevisionKey !== sourceRevisionKey ||
+        outcome.candidateContentHash !== contentHash
+      )
+        return fail('REPLAY_RESULT_INTEGRITY');
+      const selected = chain.revisions.find(
+        (item) => item.revision.id === outcome.selectedRevisionId,
+      );
+      const observed = chain.revisions.find(
+        (item) => item.revision.id === outcome.observedHeadRevisionId,
+      );
+      if (!selected || (outcome.observedHeadRevisionId !== null && !observed))
+        return fail('REPLAY_RESULT_SCOPE');
+      if (
+        ['created', 'advanced'].includes(outcome.disposition) &&
+        (selected.receipt.id !== proof.receiptId ||
+          canonicalAuditJson(selected.outcome) !== canonicalAuditJson(outcome))
+      )
+        return fail('REPLAY_RESULT_INTEGRITY');
+      if (
+        outcome.disposition === 'duplicate' &&
+        (qualifyOmniIncomingRevisionKey(adapter, selected.facts) !==
+          sourceRevisionKey ||
+          selected.content.contentHash !== contentHash)
+      )
+        return fail('REPLAY_RESULT_INTEGRITY');
+      await verifyRetainedRevisionEvent(selected, link.messageId);
+      const successRows = z
+        .array(
+          z.object({
+            resourceKind: z.string(),
+            resourceId: uuid,
+            action: z.string(),
+          }),
+        )
+        .parse(
+          await query(
+            'SELECT "resourceKind","resourceId",action FROM crm_audit."crmAuditEntry" WHERE "workspaceId"=$1 AND "operationId"=$2 AND outcome=\'success\'',
+            [workspaceId, operationId],
+          ),
+        );
+      if (
+        !successRows.some(
+          (row) =>
+            row.resourceKind === 'omniIncomingReceipt' &&
+            row.resourceId === proof.receiptId &&
+            row.action === 'update',
+        ) ||
+        (['duplicate', 'stale'].includes(outcome.disposition) &&
+          successRows.length !== 1)
+      )
+        return fail('REPLAY_AUDIT_INTEGRITY');
+      const reread = requireOne(
+        receiptSchema,
+        await query(
+          `SELECT ${receiptColumns} FROM core."omniIncomingReceipt" WHERE "workspaceId"=$1 AND "bindingId"=$2 AND id=$3 FOR UPDATE`,
+          [workspaceId, binding.id, proof.receiptId],
+        ),
+      );
+      if (canonicalAuditJson(reread) !== canonicalAuditJson(initialReceipt))
+        return fail('RECEIPT_CHANGED');
+      return Object.freeze({
+        receiptId: proof.receiptId,
+        messageLinkId: link.id,
+        messageId: link.messageId,
+        conversationId: conversation.id,
+        created: false,
+        state: 'applied',
+        applicationResult: outcome,
+        replayed: true,
+      });
+    }
+    if (
+      initialReceipt.state !== 'processing' ||
+      initialReceipt.resultId !== null ||
+      initialReceipt.applicationResult !== null
+    )
+      return fail('RECEIPT_NOT_PROCESSING');
+    if (
+      initialReceipt.leaseOwner !== proof.leaseOwner ||
+      initialReceipt.leaseToken !== proof.leaseToken
+    )
+      return fail('LEASE_LOST');
+    const matching = chain.revisions.filter(
+      (item) =>
+        qualifyOmniIncomingRevisionKey(adapter, item.facts) ===
+        sourceRevisionKey,
+    );
+    if (matching.length > 1) throw createOmniIncomingRevisionConflict();
+    let disposition: 'advanced' | 'duplicate' | 'stale';
+    let selectedRevisionId: string;
+    if (matching.length === 1) {
+      if (matching[0].content.contentHash !== contentHash)
+        throw createOmniIncomingRevisionConflict();
+      disposition = 'duplicate';
+      selectedRevisionId = matching[0].revision.id;
+    } else {
+      const order = adapter.compare(candidateFacts, chain.head.facts);
+      if (order === 'older') {
+        disposition = 'stale';
+        selectedRevisionId = chain.head.revision.id;
+      } else if (
+        order === 'newer' &&
+        !chain.head.content.tombstone &&
+        !(
+          envelope.sourceVariant === 'placeholder' &&
+          chain.head.facts.envelope.sourceVariant === 'complete'
+        )
+      ) {
+        disposition = 'advanced';
+        selectedRevisionId = revisionId;
+      } else throw createOmniIncomingRevisionConflict();
+    }
+    const outcome = snapshotOmniIncomingApplicationResult({
+      schemaVersion: 1,
+      kind: 'incoming_text_revision',
+      disposition,
+      selectedRevisionId,
+      observedHeadRevisionId: chain.head.revision.id,
+      candidateSourceRevisionKey: sourceRevisionKey,
+      candidateContentHash: contentHash,
+    });
+    if (disposition === 'advanced') {
+      if (!candidateContent || !updateMessageText)
+        return fail('NATIVE_REVISION_PORT_REQUIRED');
+      await updateMessageText.call(
+        nativePort,
+        link.messageId,
+        candidateContent.text,
+      );
+      await verifyNative(
+        {
+          messageId: link.messageId,
+          participantId: native.participant.id,
+          associationId: native.association.id,
+        },
+        {
+          text: candidateContent.text,
+          receivedAt: link.displayOccurredAt,
+          personId: chain.author.personId,
+          handle: chain.author.providerPeerId,
+          displayName: chain.author.sourceDisplayName ?? '',
+        },
+      );
+      const revision = {
+        messageLinkId: link.id,
+        sourceRevisionKey,
+        sourceEventId: envelope.eventId,
+        contentHash,
+        tombstone: candidateContent.tombstone,
+        origin: capture.context.origin,
+      };
+      await query(
+        'INSERT INTO core."omniMessageRevision" (id,"workspaceId","messageLinkId","sourceRevisionKey","sourceEventId","contentHash",tombstone,origin) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+        [
+          revisionId,
+          workspaceId,
+          link.id,
+          sourceRevisionKey,
+          envelope.eventId,
+          contentHash,
+          revision.tombstone,
+          revision.origin,
+        ],
+      );
+      const updated = await query(
+        'UPDATE core."omniMessageLink" SET "currentRevisionId"=$3,"sourcePosition"=$4::jsonb WHERE "workspaceId"=$1 AND id=$2 AND "currentRevisionId" IS NOT DISTINCT FROM $5::uuid RETURNING id',
+        [
+          workspaceId,
+          link.id,
+          revisionId,
+          canonicalAuditJson(capture.context.sourcePosition),
+          link.currentRevisionId,
+        ],
+      );
+      if (updated.length !== 1) return fail('REVISION_HEAD_POSTCONDITION');
+      const advanced = requireOne(
+        z.object({
+          conversationSequence: positiveBigint,
+          replyRevision: positiveBigint,
+        }),
+        await query(
+          'UPDATE core."omniConversation" SET "conversationSequence"="conversationSequence"+1,"replyRevision"="replyRevision"+1,"updatedAt"=clock_timestamp() WHERE "workspaceId"=$1 AND id=$2 RETURNING "conversationSequence","replyRevision"',
+          [workspaceId, conversation.id],
+        ),
+      );
+      currentConversationSequence = advanced.conversationSequence;
+      const messageEvent = buildStorageEvent({
+        eventId,
+        rootId,
+        rootRowId,
+        dispatchId,
+        kind: envelope.kind,
+        sequence: advanced.conversationSequence,
+        payload: {
+          messageLinkId: link.id,
+          messageId: link.messageId,
+          receiptId: proof.receiptId,
+          dispatchSuppressed: true,
+        },
+      });
+      await persistStorageEvent(messageEvent);
+      record(
+        'omniMessage',
+        link.messageId,
+        'update',
+        { text: native.message.text },
+        { text: candidateContent.text },
+      );
+      record('omniMessageRevision', revisionId, 'create', null, revision);
+      record(
+        'omniMessageLink',
+        link.id,
+        'update',
+        {
+          currentRevisionId: link.currentRevisionId,
+          sourcePosition: link.sourcePosition,
+        },
+        {
+          currentRevisionId: revisionId,
+          sourcePosition: capture.context.sourcePosition,
+        },
+      );
+      record(
+        'omniConversation',
+        conversation.id,
+        'update',
+        {
+          bindingId: binding.id,
+          conversationSequence: conversation.conversationSequence,
+          replyRevision: conversation.replyRevision,
+        },
+        { bindingId: binding.id, ...advanced },
+      );
+      recordStorageEvent(messageEvent);
+    }
+    const lockedReceipt = requireOne(
+      receiptSchema,
+      await query(
+        `SELECT ${receiptColumns} FROM core."omniIncomingReceipt" WHERE "workspaceId"=$1 AND "bindingId"=$2 AND id=$3 FOR UPDATE`,
+        [workspaceId, binding.id, proof.receiptId],
+      ),
+    );
+    if (
+      canonicalAuditJson(lockedReceipt) !== canonicalAuditJson(initialReceipt)
+    )
+      return fail('RECEIPT_CHANGED');
+    record(
+      'omniIncomingReceipt',
+      proof.receiptId,
+      'update',
+      {
+        bindingId: binding.id,
+        state: 'processing',
+        resultId: null,
+        applicationResult: null,
+        leaseOwner: initialReceipt.leaseOwner,
+        leaseUntil: initialReceipt.leaseUntil,
+        leaseToken: initialReceipt.leaseToken,
+      },
+      {
+        bindingId: binding.id,
+        state: 'applied',
+        resultId: link.id,
+        applicationResult: outcome,
+        leaseOwner: null,
+        leaseUntil: null,
+        leaseToken: initialReceipt.leaseToken,
+      },
+    );
+    await audit.flush();
+    const applied = await query(
+      `UPDATE core."omniIncomingReceipt" SET state='applied',"resultId"=$7,"applicationResult"=$8::jsonb,"leaseOwner"=NULL,"leaseUntil"=NULL,"errorCode"=NULL,"updatedAt"=clock_timestamp() WHERE "workspaceId"=$1 AND "bindingId"=$2 AND id=$3 AND state='processing' AND "leaseOwner"=$4 AND "leaseToken"=$5 AND "routeGeneration"=$6 AND "leaseUntil">clock_timestamp() RETURNING id`,
+      [
+        workspaceId,
+        binding.id,
+        proof.receiptId,
+        proof.leaseOwner,
+        proof.leaseToken,
+        proof.routeGeneration,
+        link.id,
+        canonicalAuditJson(outcome),
+      ],
+    );
+    if (applied.length !== 1) return fail('LEASE_LOST');
+    const finalReceipt = requireOne(
+      receiptSchema,
+      await query(
+        `SELECT ${receiptColumns} FROM core."omniIncomingReceipt" WHERE "workspaceId"=$1 AND id=$2`,
+        [workspaceId, proof.receiptId],
+      ),
+    );
+    if (
+      finalReceipt.state !== 'applied' ||
+      finalReceipt.resultId !== link.id ||
+      finalReceipt.leaseOwner !== null ||
+      finalReceipt.leaseUntil !== null ||
+      finalReceipt.errorCode !== null ||
+      finalReceipt.leaseToken !== proof.leaseToken ||
+      canonicalAuditJson(immutableReceipt(finalReceipt)) !==
+        canonicalAuditJson(immutableReceipt(initialReceipt)) ||
+      canonicalAuditJson(finalReceipt.applicationResult) !==
+        canonicalAuditJson(outcome)
+    )
+      return fail('RECEIPT_POSTCONDITION');
+    const finalLinks = await query(
+      'SELECT * FROM core."omniMessageLink" WHERE "workspaceId"=$1 AND id=$2',
+      [workspaceId, link.id],
+    );
+    if (finalLinks.length !== 1) return fail('REVISION_HEAD_POSTCONDITION');
+    const finalChain = await loadChain(finalLinks[0]);
+    if (
+      finalChain.head.revision.id !==
+      (disposition === 'advanced' ? revisionId : chain.head.revision.id)
+    )
+      return fail('REVISION_HEAD_POSTCONDITION');
+    await verifyChainNative(finalChain);
+    return Object.freeze({
+      receiptId: proof.receiptId,
+      messageLinkId: link.id,
+      messageId: link.messageId,
+      conversationId: conversation.id,
+      created: false,
+      state: 'applied',
+      applicationResult: outcome,
+      replayed: false,
+    });
+  }
   if (initialReceipt.state === 'applied') {
+    if (initialReceipt.applicationResult !== null)
+      return fail('REPLAY_RESULT_INTEGRITY');
     const link = requireOne(
       z.object({
         id: uuid,
@@ -926,11 +1498,7 @@ export const applyOmniHistoryReceipt = async (
     );
     if (
       initialReceipt.resultId !== link.id ||
-      (link.currentRevisionId !== null &&
-        link.currentRevisionId !== revisionId) ||
       link.rawNativeMessageId !== envelope.providerMessageId ||
-      canonicalAuditJson(link.sourcePosition) !==
-        canonicalAuditJson(capture.context.sourcePosition) ||
       link.displayOccurredAt !== receivedAt ||
       link.displayTimeSource !==
         (envelope.occurredAt === null ? 'capture' : 'source') ||
@@ -955,11 +1523,8 @@ export const applyOmniHistoryReceipt = async (
         [link.messageId],
       ),
     );
-    await verifyNative({
-      messageId: link.messageId,
-      participantId: participant.id,
-      associationId: association.id,
-    });
+    const retainedChain = await loadChain(links[0]);
+    await verifyChainNative(retainedChain);
     const revision = requireOne(
       z.object({
         messageLinkId: uuid,
@@ -967,7 +1532,7 @@ export const applyOmniHistoryReceipt = async (
         sourceEventId: z.string(),
         contentHash: z.string(),
         tombstone: z.literal(false),
-        origin: z.literal('history_import'),
+        origin: z.enum(['live', 'history_import', 'restore_replay']),
         protectedPayloadRef: z.null(),
       }),
       await query(
@@ -990,7 +1555,10 @@ export const applyOmniHistoryReceipt = async (
           [workspaceId, link.id],
         ),
       );
-    if (revisions.length !== 1 || revisions[0].id !== revisionId)
+    if (
+      link.currentRevisionId === null &&
+      (revisions.length !== 1 || revisions[0].id !== revisionId)
+    )
       return fail('REPLAY_REVISION_HEAD_INTEGRITY');
     const replayEvents = [
       {
@@ -1129,7 +1697,11 @@ export const applyOmniHistoryReceipt = async (
       state: 'applied',
     });
   }
-  if (initialReceipt.state !== 'processing' || initialReceipt.resultId !== null)
+  if (
+    initialReceipt.applicationResult !== null ||
+    initialReceipt.state !== 'processing' ||
+    initialReceipt.resultId !== null
+  )
     return fail('RECEIPT_NOT_PROCESSING');
   if (
     initialReceipt.leaseOwner !== proof.leaseOwner ||
@@ -1206,11 +1778,11 @@ export const applyOmniHistoryReceipt = async (
     sourceRevisionKey,
     sourceEventId: envelope.eventId,
     contentHash,
-    tombstone: false,
-    origin: 'history_import',
+    tombstone: candidateContent?.tombstone ?? false,
+    origin: capture.context.origin,
   };
   await query(
-    `INSERT INTO core."omniMessageRevision" (id,"workspaceId","messageLinkId","sourceRevisionKey","sourceEventId","contentHash",tombstone,origin) VALUES ($1,$2,$3,$4,$5,$6,false,'history_import')`,
+    `INSERT INTO core."omniMessageRevision" (id,"workspaceId","messageLinkId","sourceRevisionKey","sourceEventId","contentHash",tombstone,origin) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
     [
       revisionId,
       workspaceId,
@@ -1218,6 +1790,8 @@ export const applyOmniHistoryReceipt = async (
       sourceRevisionKey,
       envelope.eventId,
       contentHash,
+      revision.tombstone,
+      revision.origin,
     ],
   );
   await query(
@@ -1247,6 +1821,7 @@ export const applyOmniHistoryReceipt = async (
     ),
   );
   const sequence = advanced.conversationSequence;
+  currentConversationSequence = sequence;
   if (
     creatingConversation &&
     (sequence !== '2' || advanced.replyRevision !== '2')
@@ -1257,7 +1832,7 @@ export const applyOmniHistoryReceipt = async (
     rootId,
     rootRowId,
     dispatchId,
-    kind: 'message.received',
+    kind: adapter ? envelope.kind : 'message.received',
     sequence,
     payload: {
       messageLinkId,
@@ -1336,6 +1911,17 @@ export const applyOmniHistoryReceipt = async (
       },
     );
   for (const item of newEvents) recordStorageEvent(item);
+  const applicationResult = adapter
+    ? snapshotOmniIncomingApplicationResult({
+        schemaVersion: 1,
+        kind: 'incoming_text_revision',
+        disposition: 'created',
+        selectedRevisionId: revisionId,
+        observedHeadRevisionId: null,
+        candidateSourceRevisionKey: sourceRevisionKey,
+        candidateContentHash: contentHash,
+      })
+    : null;
   record(
     'omniIncomingReceipt',
     proof.receiptId,
@@ -1343,6 +1929,7 @@ export const applyOmniHistoryReceipt = async (
     {
       bindingId: binding.id,
       state: initialReceipt.state,
+      ...(adapter ? { applicationResult: null } : {}),
       resultId: null,
       leaseToken: initialReceipt.leaseToken,
       leaseOwner: initialReceipt.leaseOwner,
@@ -1351,6 +1938,7 @@ export const applyOmniHistoryReceipt = async (
     {
       bindingId: binding.id,
       state: 'applied',
+      ...(adapter ? { applicationResult } : {}),
       resultId: messageLinkId,
       leaseToken: initialReceipt.leaseToken,
       leaseOwner: null,
@@ -1359,7 +1947,7 @@ export const applyOmniHistoryReceipt = async (
   );
   await audit.flush();
   const applied = await query(
-    `UPDATE core."omniIncomingReceipt" SET state='applied',"resultId"=$7,"leaseOwner"=NULL,"leaseUntil"=NULL,"errorCode"=NULL,"updatedAt"=clock_timestamp()
+    `UPDATE core."omniIncomingReceipt" SET state='applied',"resultId"=$7,"applicationResult"=$8::jsonb,"leaseOwner"=NULL,"leaseUntil"=NULL,"errorCode"=NULL,"updatedAt"=clock_timestamp()
     WHERE "workspaceId"=$1 AND "bindingId"=$2 AND id=$3 AND state='processing' AND "leaseOwner"=$4 AND "leaseToken"=$5 AND "routeGeneration"=$6 AND "leaseUntil">clock_timestamp() RETURNING id`,
     [
       workspaceId,
@@ -1369,16 +1957,47 @@ export const applyOmniHistoryReceipt = async (
       proof.leaseToken,
       proof.routeGeneration,
       messageLinkId,
+      applicationResult === null ? null : canonicalAuditJson(applicationResult),
     ],
   );
   if (applied.length !== 1) return fail('LEASE_LOST');
   await verifyHead();
+  await verifyNative(nativeIds);
+  const finalReceipt = requireOne(
+    receiptSchema,
+    await query(
+      `SELECT ${receiptColumns} FROM core."omniIncomingReceipt" WHERE "workspaceId"=$1 AND id=$2`,
+      [workspaceId, proof.receiptId],
+    ),
+  );
+  if (
+    finalReceipt.state !== 'applied' ||
+    finalReceipt.resultId !== messageLinkId ||
+    finalReceipt.leaseOwner !== null ||
+    finalReceipt.leaseUntil !== null ||
+    finalReceipt.errorCode !== null ||
+    finalReceipt.leaseToken !== proof.leaseToken ||
+    canonicalAuditJson(immutableReceipt(finalReceipt)) !==
+      canonicalAuditJson(immutableReceipt(initialReceipt)) ||
+    canonicalAuditJson(finalReceipt.applicationResult) !==
+      canonicalAuditJson(applicationResult)
+  )
+    return fail('RECEIPT_POSTCONDITION');
+  if (adapter) {
+    const finalLinks = await query(
+      'SELECT * FROM core."omniMessageLink" WHERE "workspaceId"=$1 AND id=$2',
+      [workspaceId, messageLinkId],
+    );
+    if (finalLinks.length !== 1) return fail('REVISION_HEAD_POSTCONDITION');
+    await verifyChainNative(await loadChain(finalLinks[0]));
+  }
   return Object.freeze({
     receiptId: proof.receiptId,
     messageLinkId,
     messageId: nativeIds.messageId,
     conversationId: conversation.id,
     created: true,
+    ...(applicationResult ? { applicationResult, replayed: false } : {}),
     state: 'applied',
   });
 };
