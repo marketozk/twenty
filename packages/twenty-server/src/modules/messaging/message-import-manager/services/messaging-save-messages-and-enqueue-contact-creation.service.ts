@@ -75,6 +75,8 @@ import {
   applyOmniHistoryReceipt,
   applyOmniIncomingTextReceipt,
   type OmniIncomingTextApplyResult,
+  type OmniIncomingAutoCreatePersonAuthorizer,
+  OMNI_AUTO_PERSON_ACTOR_ID,
   snapshotOmniHistoryReceiptRequest,
   type OmniHistoryApplyAuthorizer,
   type OmniHistoryApplyPrincipal,
@@ -335,6 +337,47 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     );
   }
 
+  private identityPersonNativePort(
+    scope: Parameters<
+      Parameters<WorkspaceOrmManager['runInWorkspaceTransaction']>[0]
+    >[0],
+  ): Parameters<typeof setOmniIdentityPerson>[4] {
+    return {
+      createPerson: async (id, fields) => {
+        await scope
+          .getRepository(
+            'person',
+            { shouldBypassPermissionChecks: true },
+            { shouldSkipEventEmission: true },
+          )
+          .insert({ id, name: { ...fields.name } });
+      },
+      updateParticipantPerson: async (id, personId) => {
+        const result = await withOmniRepositoryOptions(scope)
+          .getRepository<{
+            id: string;
+            personId: string | null;
+          }>('messageParticipant', {
+            shouldBypassPermissionChecks: true,
+          })
+          .update({ id }, { personId });
+        if (result.affected !== 1)
+          throw new Error('OMNI_IDENTITY_PARTICIPANT_UPDATE');
+      },
+      deleteProjection: async (id) => {
+        const result = await withOmniRepositoryOptions(scope)
+          .getRepository<{
+            id: string;
+          }>('messageThreadTarget', {
+            shouldBypassPermissionChecks: true,
+          })
+          .delete({ id });
+        if (result.affected !== 1)
+          throw new Error('OMNI_IDENTITY_PROJECTION_DELETE');
+      },
+    };
+  }
+
   private async executeOmniIdentityPersonRequest(
     request: OmniIdentityPersonRequest,
   ) {
@@ -386,40 +429,7 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
                     },
                 personObjectMetadataId,
                 operationId,
-                {
-                  createPerson: async (id, fields) => {
-                    await scope
-                      .getRepository(
-                        'person',
-                        { shouldBypassPermissionChecks: true },
-                        { shouldSkipEventEmission: true },
-                      )
-                      .insert({ id, name: { ...fields.name } });
-                  },
-                  updateParticipantPerson: async (id, personId) => {
-                    const result = await withOmniRepositoryOptions(scope)
-                      .getRepository<{
-                        id: string;
-                        personId: string | null;
-                      }>('messageParticipant', {
-                        shouldBypassPermissionChecks: true,
-                      })
-                      .update({ id }, { personId });
-                    if (result.affected !== 1)
-                      throw new Error('OMNI_IDENTITY_PARTICIPANT_UPDATE');
-                  },
-                  deleteProjection: async (id) => {
-                    const result = await withOmniRepositoryOptions(scope)
-                      .getRepository<{
-                        id: string;
-                      }>('messageThreadTarget', {
-                        shouldBypassPermissionChecks: true,
-                      })
-                      .delete({ id });
-                    if (result.affected !== 1)
-                      throw new Error('OMNI_IDENTITY_PROJECTION_DELETE');
-                  },
-                },
+                this.identityPersonNativePort(scope),
               );
             },
             { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
@@ -1432,12 +1442,14 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     proof: OmniHistoryApplyProof,
     authorize: OmniHistoryApplyAuthorizer,
     adapter: OmniIncomingRevisionAdapter,
+    authorizeAutoCreatePerson?: OmniIncomingAutoCreatePersonAuthorizer,
   ): Promise<OmniIncomingTextApplyResult> {
     const result = await this.applyOmniIncomingReceiptWithinTransaction(
       principal,
       proof,
       authorize,
       snapshotOmniIncomingRevisionAdapter(adapter),
+      authorizeAutoCreatePerson,
     );
     if (!('applicationResult' in result) || !('replayed' in result))
       throw new Error('OMNI_INCOMING_RESULT_POSTCONDITION');
@@ -1450,6 +1462,7 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     authorize: OmniHistoryApplyAuthorizer,
     adapter: OmniIncomingRevisionAdapter,
     authorizeLease: OmniIncomingReceiptLeaseAuthorizer,
+    authorizeAutoCreatePerson?: OmniIncomingAutoCreatePersonAuthorizer,
   ) {
     const request = snapshotOmniHistoryReceiptRequest(
       principal,
@@ -1474,6 +1487,7 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
           }
         },
         revisionAdapter,
+        authorizeAutoCreatePerson,
       );
     } catch (error) {
       if (
@@ -1505,6 +1519,7 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     proof: OmniHistoryApplyProof,
     authorize: OmniHistoryApplyAuthorizer,
     adapter: OmniIncomingRevisionAdapter | null,
+    authorizeAutoCreatePerson?: OmniIncomingAutoCreatePersonAuthorizer,
   ): Promise<OmniHistoryApplyResult | OmniIncomingTextApplyResult> {
     const request = snapshotOmniHistoryReceiptRequest(
       principal,
@@ -1512,6 +1527,12 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
       authorize,
     );
 
+    if (
+      authorizeAutoCreatePerson !== undefined &&
+      typeof authorizeAutoCreatePerson !== 'function'
+    )
+      throw new Error('OMNI_HISTORY_AUTO_PERSON_AUTHORIZER_REQUIRED');
+    const autoCreateAuthorizer = authorizeAutoCreatePerson;
     return this.workspaceOrmManager.executeInWorkspaceContext(
       async () => {
         let callbackEntered = false;
@@ -1552,6 +1573,51 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
                   }
                 },
                 {
+                  createPersonForIdentity: autoCreateAuthorizer
+                    ? async (input) => {
+                        const person =
+                          this.workspaceOrmManager.getStandardPersonMetadata();
+                        if (
+                          !person ||
+                          person.workspaceId !==
+                            request.principal.workspaceId ||
+                          !person.isActive
+                        )
+                          throw new Error(
+                            'OMNI_IDENTITY_PERSON_METADATA_SCOPE',
+                          );
+                        return setOmniIdentityPerson(
+                          transactionScope,
+                          snapshotOmniIdentityCreatePersonRequest(
+                            {
+                              workspaceId: request.principal.workspaceId,
+                              actor: {
+                                kind: 'system',
+                                id: OMNI_AUTO_PERSON_ACTOR_ID,
+                              },
+                            },
+                            input.command,
+                            async (scope, facts) => {
+                              try {
+                                await autoCreateAuthorizer(
+                                  scope,
+                                  Object.freeze({
+                                    ...facts,
+                                    incoming: input.incoming,
+                                  }),
+                                );
+                              } catch (error) {
+                                authorizationDenied = true;
+                                throw error;
+                              }
+                            },
+                          ),
+                          person.id,
+                          input.operationId,
+                          this.identityPersonNativePort(transactionScope),
+                        );
+                      }
+                    : undefined,
                   updateMessageText: async (messageId, text) => {
                     const repository = nativeScope.getRepository<{
                       id: string;

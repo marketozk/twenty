@@ -1,12 +1,13 @@
 # Дорожная карта проекта
 
-LOG-084 / ROB-764 In Progress: внутренняя createPersonForOmniIdentity создаёт штатный
-Person и связывает verified identity/прежних участников одной транзакцией с audit/receipt.
-Идентификатор назначает сервер, повтор после unlink/rebind не создаёт новый Person;
-разрешён только структурированный name, без guessing email/телефона. 129 tests/5 suites +26 guards =155 PASS;22 new PG cases. Differential typecheck 317 roots:187 baseline/187 current,0 new/changed-code. All nine migration sources unchanged.
-[Доказательства](../implementation/log084/README.md). Последний полный fork regression: LOG082,2661 tests/83 suites.
-Далее opt-in live autoCreatePerson и итоговая сверка phase1 criteria.
-Governed Person-created event/visibility явно остаётся в producer inventory ROB-769.
+LOG-085 / ROB-764 In Progress: opt-in live autoCreatePerson реализован внутренним
+same-transaction writer; default disabled, отдельный current create grant, безопасный
+import/live overlap и replay после unlink. Настройка изменяется через CAS/audit/event.
+170 tests/5 suites +26 guards =196 PASS;34 new PG cases. Differential typecheck 318 roots:187 baseline/187 current,0 new/changed-code. All nine migration sources unchanged.
+[Доказательства](../implementation/log085/README.md). Последний полный fork regression: LOG082,2661 tests/83 suites.
+Далее разрешённый Person/Company destroy с сохранением истории и актуальный
+startup/restart smoke девяти миграций; только затем итоговая приёмка ROB-764.
+Governed Person-created event/visibility остаётся ROB-769, публичный ACL/API — ROB-766.
 Демо прежнее, GitHub Actions не используется.
 
 Полный объём описан в [requirements.md](../requirements.md). Переход к следующей фазе подтверждается результатом предыдущей. Даты и трудозатраты появятся после исследования; сейчас их нельзя обоснованно назначить.

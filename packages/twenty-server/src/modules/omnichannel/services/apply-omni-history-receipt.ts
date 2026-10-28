@@ -1,4 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import {
+  type OmniIdentityCreatePersonCommand,
+  type OmniIdentityCreatePersonAuthorizer,
+} from 'src/modules/omnichannel/services/set-omni-identity-person';
 
 import { v5 as uuidV5 } from 'uuid';
 import { z } from 'zod';
@@ -104,6 +108,13 @@ export type OmniHistoryApplyAuthorizer = (
     }
   >,
 ) => Promise<void>;
+export type OmniIncomingAutoCreatePersonAuthorizer = (
+  scope: OmniHistoryApplyScope,
+  facts: Parameters<OmniIdentityCreatePersonAuthorizer>[1] & {
+    incoming: Parameters<OmniHistoryApplyAuthorizer>[1];
+  },
+) => Promise<void>;
+export const OMNI_AUTO_PERSON_ACTOR_ID = 'omnichannel.autoCreatePerson';
 export type OmniHistoryNativeMessageInput = Readonly<{
   workspaceId: string;
   messageChannelId: string;
@@ -119,6 +130,18 @@ export type OmniHistoryNativeMessageInput = Readonly<{
   participantDisplayName: string;
 }>;
 export type OmniHistoryNativePort = {
+  createPersonForIdentity?: (
+    input: Readonly<{
+      command: OmniIdentityCreatePersonCommand;
+      operationId: string;
+      incoming: Parameters<OmniHistoryApplyAuthorizer>[1];
+    }>,
+  ) => Promise<{
+    personId: string | null;
+    revision: string;
+    operationId: string;
+    replayed: boolean;
+  }>;
   updateMessageText?: (messageId: string, text: string | null) => Promise<void>;
   createInitialMessage: (input: OmniHistoryNativeMessageInput) => Promise<{
     messageId: string;
@@ -260,6 +283,7 @@ const applyIncomingReceipt = async (
   );
   const createInitialMessage = nativePort?.createInitialMessage;
   const updateMessageText = nativePort?.updateMessageText;
+  const createPersonForIdentity = nativePort?.createPersonForIdentity;
   if (adapter && typeof updateMessageText !== 'function')
     return fail('NATIVE_REVISION_PORT_REQUIRED');
   if (typeof createInitialMessage !== 'function')
@@ -336,7 +360,7 @@ const applyIncomingReceipt = async (
   requireOne(
     z.object({ id: uuid }),
     await query(
-      'SELECT id FROM core."omniWorkspacePolicyState" WHERE "workspaceId"=$1 FOR SHARE',
+      `SELECT id FROM core."omniWorkspacePolicyState" WHERE "workspaceId"=$1 FOR ${adapter ? 'UPDATE' : 'SHARE'}`,
       [workspaceId],
     ),
   );
@@ -349,9 +373,10 @@ const applyIncomingReceipt = async (
       routeGeneration: positiveBigint,
       defaultQueueId: uuid.nullable(),
       defaultConversationMode: z.string(),
+      autoCreatePersonEnabled: z.boolean(),
     }),
     await query(
-      'SELECT id,"messageChannelId","connectedAccountId",status,"routeGeneration","defaultQueueId","defaultConversationMode" FROM core."omniAccountBinding" WHERE "workspaceId"=$1 AND id=$2 FOR SHARE',
+      'SELECT id,"messageChannelId","connectedAccountId",status,"routeGeneration","defaultQueueId","defaultConversationMode","autoCreatePersonEnabled" FROM core."omniAccountBinding" WHERE "workspaceId"=$1 AND id=$2 FOR SHARE',
       [workspaceId, principal.bindingId],
     ),
   );
@@ -608,28 +633,26 @@ const applyIncomingReceipt = async (
     [workspaceId, thread.id, conversation.id],
   );
   if (otherOwners.length !== 0) return fail('FOREIGN_THREAD_OWNER');
-  await authorize(
-    scope,
-    frozen({
-      ...principal,
-      action: adapter
-        ? ('incoming.text.apply' as const)
-        : ('history.apply' as const),
-      creatingConversation,
-      bindingDefaultQueueId: binding.defaultQueueId,
-      bindingDefaultConversationMode: binding.defaultConversationMode,
-      receiptId: proof.receiptId,
-      conversationId: conversation.id,
-      queueId: conversation.queueId,
-      externalIdentityId: identity.id,
-      identityRevision: identity.revision,
-      providerPeerId: identity.providerPeerId,
-      verificationSource: identity.verificationSource,
-      personId: identity.personId,
-      envelope,
-      captureContext: capture.context,
-    }),
-  );
+  const incomingAuthorization = frozen({
+    ...principal,
+    action: adapter
+      ? ('incoming.text.apply' as const)
+      : ('history.apply' as const),
+    creatingConversation,
+    bindingDefaultQueueId: binding.defaultQueueId,
+    bindingDefaultConversationMode: binding.defaultConversationMode,
+    receiptId: proof.receiptId,
+    conversationId: conversation.id,
+    queueId: conversation.queueId,
+    externalIdentityId: identity.id,
+    identityRevision: identity.revision,
+    providerPeerId: identity.providerPeerId,
+    verificationSource: identity.verificationSource,
+    personId: identity.personId,
+    envelope,
+    captureContext: capture.context,
+  });
+  await authorize(scope, incomingAuthorization);
 
   const candidateFacts = frozen({ envelope, captureContext: capture.context });
   const candidateContent = adapter
@@ -649,23 +672,24 @@ const applyIncomingReceipt = async (
     envelope.occurredAt === null
       ? initialReceipt.createdAt
       : new Date(envelope.occurredAt).toISOString();
-  const nativeInput: OmniHistoryNativeMessageInput = Object.freeze({
-    workspaceId,
-    messageChannelId: binding.messageChannelId,
-    messageThreadId: thread.id,
-    ...references,
-    subject: null,
-    text: candidateContent ? candidateContent.text : envelope.payload.text,
-    receivedAt,
-    personId: identity.personId,
-    participantHandle: identity.providerPeerId,
-    participantDisplayName: envelope.payload.sourceDisplayName ?? '',
-  });
+  const nativeInput = (): OmniHistoryNativeMessageInput =>
+    Object.freeze({
+      workspaceId,
+      messageChannelId: binding.messageChannelId,
+      messageThreadId: thread.id,
+      ...references,
+      subject: null,
+      text: candidateContent ? candidateContent.text : envelope.payload.text,
+      receivedAt,
+      personId: identity.personId,
+      participantHandle: identity.providerPeerId,
+      participantDisplayName: envelope.payload.sourceDisplayName ?? '',
+    });
   const contentHash =
     candidateContent?.contentHash ??
     auditPayloadHash({
       direction: envelope.direction,
-      text: nativeInput.text,
+      text: nativeInput().text,
       receivedAt,
       sourceAuthorId: envelope.payload.sourceAuthorId,
       sourceDisplayName: envelope.payload.sourceDisplayName,
@@ -675,14 +699,14 @@ const applyIncomingReceipt = async (
   const sourceRevisionKey =
     candidateRevisionKey ??
     `initial:${auditPayloadHash({ eventId: envelope.eventId, captureHash: capture.hash })}`;
-  const authorSnapshot = {
+  const authorSnapshot = () => ({
     externalIdentityId: identity.id,
     identityRevision: identity.revision,
     providerPeerId: identity.providerPeerId,
     personId: identity.personId,
     sourceAuthorId: envelope.payload.sourceAuthorId,
     sourceDisplayName: envelope.payload.sourceDisplayName,
-  };
+  });
   const scoped = {
     bindingId: binding.id,
     conversationId: conversation.id,
@@ -931,11 +955,11 @@ const applyIncomingReceipt = async (
       associationId: string;
     },
     expected = {
-      text: nativeInput.text,
+      text: nativeInput().text,
       receivedAt,
       personId: identity.personId,
-      handle: nativeInput.participantHandle,
-      displayName: nativeInput.participantDisplayName,
+      handle: nativeInput().participantHandle,
+      displayName: nativeInput().participantDisplayName,
     },
   ) => {
     const messages = await query(
@@ -1143,6 +1167,142 @@ const applyIncomingReceipt = async (
       },
     );
   };
+  let freshAutoPerson: {
+    personId: string;
+    revision: string;
+    firstName: string;
+  } | null = null;
+  const verifyFreshAutoPerson = async () => {
+    if (!freshAutoPerson) return;
+    const current = requireOne(
+      z.object({
+        personId: uuid,
+        revision: positiveBigint,
+        nameFirstName: z.string(),
+        nameLastName: z.string(),
+        deletedAt: z.null(),
+      }),
+      await query(
+        `SELECT identity."personId",identity.revision,person."nameFirstName",person."nameLastName",person."deletedAt"
+       FROM core."omniExternalIdentity" identity JOIN "${schema}".person person ON person.id=identity."personId"
+       WHERE identity."workspaceId"=$1 AND identity."bindingId"=$2 AND identity.id=$3`,
+        [workspaceId, binding.id, identity.id],
+      ),
+    );
+    if (
+      current.personId !== freshAutoPerson.personId ||
+      current.revision !== freshAutoPerson.revision ||
+      current.nameFirstName !== freshAutoPerson.firstName ||
+      current.nameLastName !== ''
+    )
+      return fail('AUTO_PERSON_FINAL_POSTCONDITION');
+  };
+  const autoCreatePerson = async (allowCreation: boolean) => {
+    if (!adapter) return;
+    const childOperationId = uuidV5(
+      'omni:incoming.auto-person:v1',
+      proof.receiptId,
+    );
+    const idempotencyKey = `omni:auto-person:v1:${proof.receiptId}`;
+    const retained = await query(
+      `SELECT "operationId","resultPublic" FROM core."omniPolicyMutationReceipt" WHERE "workspaceId"=$1 AND "actorKind"='system' AND "actorId"=$2 AND "idempotencyKey"=$3`,
+      [workspaceId, OMNI_AUTO_PERSON_ACTOR_ID, idempotencyKey],
+    );
+    if (retained.length > 1) return fail('AUTO_PERSON_RECEIPT_INTEGRITY');
+    const childAudits = await query(
+      `SELECT id FROM crm_audit."crmAuditEntry" WHERE "workspaceId"=$1 AND "operationId"=$2 AND outcome='success' LIMIT 1`,
+      [workspaceId, childOperationId],
+    );
+    if (retained.length === 0 && childAudits.length !== 0)
+      return fail('AUTO_PERSON_RECEIPT_MISSING');
+    const qualified =
+      capture.context.origin === 'live' &&
+      envelope.direction === 'incoming' &&
+      envelope.kind === 'message.received' &&
+      envelope.sourceVariant === 'complete';
+    if (
+      retained.length !== 0 &&
+      (!qualified || initialReceipt.state !== 'applied')
+    )
+      return fail('AUTO_PERSON_RECEIPT_INTEGRITY');
+    if (
+      retained.length === 0 &&
+      !(
+        allowCreation &&
+        qualified &&
+        binding.autoCreatePersonEnabled &&
+        identity.personId === null
+      )
+    )
+      return;
+    if (!createPersonForIdentity)
+      return fail('AUTO_PERSON_AUTHORIZER_REQUIRED');
+    let expectedRevision = identity.revision;
+    if (retained.length !== 0) {
+      const previous = requireOne(
+        z.object({
+          operationId: z.literal(childOperationId),
+          resultPublic: z.object({ revision: positiveBigint, personId: uuid }),
+        }),
+        retained,
+      );
+      if (BigInt(previous.resultPublic.revision) < 2n)
+        return fail('AUTO_PERSON_RECEIPT_INTEGRITY');
+      expectedRevision = (
+        BigInt(previous.resultPublic.revision) - 1n
+      ).toString();
+    }
+    // Keep the supplied display label intact; never infer surname, email or phone.
+    const label = (value: string) =>
+      value
+        .replace(/[\u0000-\u001f\u007f\uD800-\uDFFF]/gu, ' ')
+        .trim()
+        .slice(0, 256)
+        .replace(/[\uD800-\uDFFF]/gu, '')
+        .trim();
+    const firstName =
+      label(envelope.payload.sourceDisplayName ?? '') ||
+      label(identity.providerPeerId);
+    const created = await createPersonForIdentity.call(
+      nativePort,
+      frozen({
+        operationId: childOperationId,
+        incoming: incomingAuthorization,
+        command: {
+          bindingId: binding.id,
+          externalIdentityId: identity.id,
+          expectedRevision,
+          idempotencyKey,
+          person: { name: { firstName, lastName: '' } },
+        },
+      }),
+    );
+    if (
+      created.operationId !== childOperationId ||
+      created.personId === null ||
+      created.replayed !== (retained.length !== 0) ||
+      created.revision !== (BigInt(expectedRevision) + 1n).toString()
+    )
+      return fail('AUTO_PERSON_RESULT_INTEGRITY');
+    if (retained.length === 0) {
+      const current = requireOne(
+        z.object({ personId: uuid, revision: positiveBigint }),
+        await query(
+          'SELECT "personId",revision FROM core."omniExternalIdentity" WHERE "workspaceId"=$1 AND "bindingId"=$2 AND id=$3',
+          [workspaceId, binding.id, identity.id],
+        ),
+      );
+      if (
+        current.personId !== created.personId ||
+        current.revision !== created.revision
+      )
+        return fail('AUTO_PERSON_IDENTITY_INTEGRITY');
+      freshAutoPerson = { ...current, firstName };
+      identity.personId = current.personId;
+      identity.revision = current.revision;
+      identityBindingHistory = undefined;
+    }
+  };
   if (adapter && (links.length !== 0 || initialReceipt.state === 'applied')) {
     if (links.length !== 1 || creatingConversation)
       return fail('REPLAY_LINK_INTEGRITY');
@@ -1215,6 +1375,7 @@ const applyIncomingReceipt = async (
       );
       if (canonicalAuditJson(reread) !== canonicalAuditJson(initialReceipt))
         return fail('RECEIPT_CHANGED');
+      await autoCreatePerson(false);
       return Object.freeze({
         receiptId: proof.receiptId,
         messageLinkId: link.id,
@@ -1267,6 +1428,8 @@ const applyIncomingReceipt = async (
         selectedRevisionId = revisionId;
       } else throw createOmniIncomingRevisionConflict();
     }
+    await autoCreatePerson(disposition !== 'stale');
+    await verifyChainNative(chain);
     const outcome = snapshotOmniIncomingApplicationResult({
       schemaVersion: 1,
       kind: 'incoming_text_revision',
@@ -1471,6 +1634,7 @@ const applyIncomingReceipt = async (
     )
       return fail('REVISION_HEAD_POSTCONDITION');
     await verifyChainNative(finalChain);
+    await verifyFreshAutoPerson();
     return Object.freeze({
       receiptId: proof.receiptId,
       messageLinkId: link.id,
@@ -1514,7 +1678,7 @@ const applyIncomingReceipt = async (
         (envelope.occurredAt === null ? 'capture' : 'source') ||
       canonicalAuditJson(link.immutableAuthorSnapshot) !==
         canonicalAuditJson({
-          ...authorSnapshot,
+          ...authorSnapshot(),
           ...z
             .object({
               identityRevision: positiveBigint,
@@ -1738,6 +1902,7 @@ const applyIncomingReceipt = async (
     ],
   );
   if (conflicts.length !== 0) return fail('FOREIGN_NATIVE_IDENTITY');
+  await autoCreatePerson(true);
   const nativeIds = z
     .object({
       messageId: uuid,
@@ -1745,7 +1910,7 @@ const applyIncomingReceipt = async (
       associationId: uuid,
       createdThread: z.boolean(),
     })
-    .parse(await createInitialMessage.call(nativePort, nativeInput));
+    .parse(await createInitialMessage.call(nativePort, nativeInput()));
   if (nativeIds.createdThread !== creatingConversation)
     return fail('NATIVE_THREAD_CREATION_POSTCONDITION');
   const native = await verifyNative(nativeIds);
@@ -1761,7 +1926,7 @@ const applyIncomingReceipt = async (
     sourcePosition: capture.context.sourcePosition,
     displayOccurredAt: receivedAt,
     displayTimeSource: envelope.occurredAt === null ? 'capture' : 'source',
-    immutableAuthorSnapshot: authorSnapshot,
+    immutableAuthorSnapshot: authorSnapshot(),
     sourceAuthorId: envelope.payload.sourceAuthorId,
     sourceDisplayName: envelope.payload.sourceDisplayName,
     authorVerification: identity.verificationSource,
@@ -1783,7 +1948,7 @@ const applyIncomingReceipt = async (
       canonicalAuditJson(link.sourcePosition),
       receivedAt,
       link.displayTimeSource,
-      canonicalAuditJson(authorSnapshot),
+      canonicalAuditJson(authorSnapshot()),
       link.sourceAuthorId,
       link.sourceDisplayName,
       link.authorVerification,
@@ -1891,8 +2056,8 @@ const applyIncomingReceipt = async (
     personId: identity.personId,
     workspaceMemberId: null,
     role: 'FROM',
-    handle: nativeInput.participantHandle,
-    displayName: nativeInput.participantDisplayName,
+    handle: nativeInput().participantHandle,
+    displayName: nativeInput().participantDisplayName,
   });
   record('omniMessageAssociation', nativeIds.associationId, 'create', null, {
     messageId: nativeIds.messageId,
@@ -2009,6 +2174,7 @@ const applyIncomingReceipt = async (
     if (finalLinks.length !== 1) return fail('REVISION_HEAD_POSTCONDITION');
     await verifyChainNative(await loadChain(finalLinks[0]));
   }
+  await verifyFreshAutoPerson();
   return Object.freeze({
     receiptId: proof.receiptId,
     messageLinkId,

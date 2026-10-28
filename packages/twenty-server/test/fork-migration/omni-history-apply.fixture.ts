@@ -289,7 +289,11 @@ export const createOmniHistoryApplyFixture = (
   const capture = async (
     context: Awaited<ReturnType<typeof reset>>,
     changes: Record<string, unknown> = {},
-    origin: 'history_import' | 'live' | null = 'history_import',
+    origin:
+      | 'history_import'
+      | 'live'
+      | 'restore_replay'
+      | null = 'history_import',
     deliveries = 1,
   ) => {
     const envelope = {

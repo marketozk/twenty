@@ -8,7 +8,7 @@
 
 Основа уже реализована в ROB-764 / LOG-022: CrmAuditEntry, транзакционный context,
 append-only writer, безопасный diff и проверка DB privileges. Текущий каталог охватывает 22 вида ресурсов; собственные omni operations, native Message
-composition, receipts/outbox/revisions используют общий atomic audit context (LOG028–084).
+composition, receipts/outbox/revisions используют общий atomic audit context (LOG028–085).
 ROB-765 расширяет этот механизм на CRM/ORM/merge/bulk/session/metadata; ROB-767
 добавляет просмотр и экспорт после собственных прав. Обе задачи остаются Backlog.
 [Результат и границы LOG-022](../implementation/log022/README.md).

@@ -37,6 +37,7 @@ export type OmniBindingConfigurationAuthorizer = (
       command: OmniBindingConfigurationCommand;
       resourceDescriptor: OmniBindingConfigurationResource;
       activatingQueue: boolean;
+      enablingAutoCreatePerson: boolean;
       replay: boolean;
     }
   >,
@@ -92,6 +93,7 @@ const bindingSchema = z.object({
   status: z.string(),
   defaultQueueId: uuid.nullable(),
   defaultConversationMode: z.string(),
+  autoCreatePersonEnabled: z.boolean(),
 });
 const queueSchema = z.object({
   id: uuid,
@@ -258,7 +260,7 @@ export const mutateOmniBindingConfiguration = async (
     const binding = one(
       bindingSchema,
       await runner.query(
-        'SELECT id,revision,status,"defaultQueueId","defaultConversationMode" FROM core."omniAccountBinding" WHERE "workspaceId"=$1 AND id=$2 FOR UPDATE',
+        'SELECT id,revision,status,"defaultQueueId","defaultConversationMode","autoCreatePersonEnabled" FROM core."omniAccountBinding" WHERE "workspaceId"=$1 AND id=$2 FOR UPDATE',
         [workspaceId, command.bindingId],
       ),
     );
@@ -303,6 +305,9 @@ export const mutateOmniBindingConfiguration = async (
             resourceDescriptor,
             activatingQueue:
               command.action === 'queue.update' && command.active === true,
+            enablingAutoCreatePerson:
+              command.action === 'binding.defaults.update' &&
+              command.autoCreatePersonEnabled === true,
             replay,
           }),
         );
@@ -468,9 +473,12 @@ export const mutateOmniBindingConfiguration = async (
           ),
         );
         if (!queue.active) return fail('DEFAULT_QUEUE_INACTIVE');
+        const autoCreatePersonEnabled =
+          command.autoCreatePersonEnabled ?? binding.autoCreatePersonEnabled;
         changed =
           binding.defaultQueueId !== queue.id ||
-          binding.defaultConversationMode !== 'human';
+          binding.defaultConversationMode !== 'human' ||
+          binding.autoCreatePersonEnabled !== autoCreatePersonEnabled;
         bindingRevision = changed
           ? nextCounter(binding.revision)
           : binding.revision;
@@ -479,9 +487,15 @@ export const mutateOmniBindingConfiguration = async (
           const after = one(
             bindingSchema,
             await runner.query(
-              `WITH updated AS (UPDATE core."omniAccountBinding" SET "defaultQueueId"=$3,"defaultConversationMode"='human',revision=revision+1,"updatedAt"=clock_timestamp()
-             WHERE "workspaceId"=$1 AND id=$2 AND revision=$4 RETURNING id,revision,status,"defaultQueueId","defaultConversationMode") SELECT * FROM updated`,
-              [workspaceId, binding.id, queue.id, command.expectedRevision],
+              `WITH updated AS (UPDATE core."omniAccountBinding" SET "defaultQueueId"=$3,"defaultConversationMode"='human',"autoCreatePersonEnabled"=$5,revision=revision+1,"updatedAt"=clock_timestamp()
+             WHERE "workspaceId"=$1 AND id=$2 AND revision=$4 RETURNING id,revision,status,"defaultQueueId","defaultConversationMode","autoCreatePersonEnabled") SELECT * FROM updated`,
+              [
+                workspaceId,
+                binding.id,
+                queue.id,
+                command.expectedRevision,
+                autoCreatePersonEnabled,
+              ],
             ),
           );
           if (
@@ -489,7 +503,8 @@ export const mutateOmniBindingConfiguration = async (
             after.revision !== bindingRevision ||
             after.status !== binding.status ||
             after.defaultQueueId !== queue.id ||
-            after.defaultConversationMode !== 'human'
+            after.defaultConversationMode !== 'human' ||
+            after.autoCreatePersonEnabled !== autoCreatePersonEnabled
           )
             return fail('BINDING_UPDATE_POSTCONDITION');
           audit.record({
@@ -500,11 +515,13 @@ export const mutateOmniBindingConfiguration = async (
               revision: binding.revision,
               defaultQueueId: binding.defaultQueueId,
               defaultConversationMode: binding.defaultConversationMode,
+              autoCreatePersonEnabled: binding.autoCreatePersonEnabled,
             },
             after: {
               revision: after.revision,
               defaultQueueId: after.defaultQueueId,
               defaultConversationMode: after.defaultConversationMode,
+              autoCreatePersonEnabled: after.autoCreatePersonEnabled,
             },
             securityDescriptor: requestedResource,
           });

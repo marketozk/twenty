@@ -921,3 +921,96 @@ describe('current authorized binding configuration mutations', () => {
     }
   });
 });
+
+describe('opt-in Person creation configuration', () => {
+  const autoCommand = async (enabled: boolean): Promise<Command> => ({
+    ...(await defaultsCommand(context.queueId)),
+    action: 'binding.defaults.update',
+    defaultQueueId: context.queueId,
+    defaultConversationMode: 'human',
+    autoCreatePersonEnabled: enabled,
+  });
+  it('enables and disables explicitly with CAS, epoch, event, wakeup and audit', async () => {
+    expect((await binding())?.autoCreatePersonEnabled).toBe(false);
+    const beforeEpoch = String(
+      (await core('omniWorkspacePolicyState'))[0].epoch,
+    );
+    const result = await mutate(
+      await autoCommand(true),
+      async (runner, facts) => {
+        await authorize(runner, facts);
+        expect(facts.enablingAutoCreatePerson).toBe(true);
+      },
+    );
+    expect(result.changed).toBe(true);
+    expect(result.policyEpoch).toBe((BigInt(beforeEpoch) + 1n).toString());
+    expect((await binding())?.autoCreatePersonEnabled).toBe(true);
+    expect(await core('omniBindingConfigWakeup')).toHaveLength(1);
+    expect(
+      (await audit()).find(
+        (x) =>
+          x.resourceKind === 'omniAccountBinding' && x.outcome === 'success',
+      )?.redactedDiff,
+    ).toMatchObject({
+      values: { autoCreatePersonEnabled: { before: false, after: true } },
+    });
+    const disabled = await mutate(await autoCommand(false));
+    expect(disabled.changed).toBe(true);
+    expect((await binding())?.autoCreatePersonEnabled).toBe(false);
+    await noAutomation();
+  });
+  it('preserves the setting when an older defaults command omits it', async () => {
+    const oldCommand = await defaultsCommand(context.queueId);
+    const oldResult = await mutate(oldCommand);
+    expect(oldResult.changed).toBe(false);
+    await mutate(await autoCommand(true));
+    expect(await mutate(oldCommand)).toEqual(oldResult);
+    const result = await mutate(await defaultsCommand(context.queueId));
+    expect(result.changed).toBe(false);
+    expect((await binding())?.autoCreatePersonEnabled).toBe(true);
+  });
+  it('rechecks the explicit enabling grant on retained replay', async () => {
+    const command = await autoCommand(true);
+    await mutate(command);
+    const before = await configuration();
+    await expect(
+      mutate(command, async (_runner, facts) => {
+        expect(facts.replay).toBe(true);
+        expect(facts.enablingAutoCreatePerson).toBe(true);
+        throw new Error('ADMIN_CREATE_REVOKED');
+      }),
+    ).rejects.toThrow('ADMIN_CREATE_REVOKED');
+    expect(await configuration()).toEqual(before);
+  });
+  it('does not enable when the administrator/create grant is denied', async () => {
+    const before = await configuration();
+    await expect(
+      mutate(await autoCommand(true), async () => {
+        throw new Error('ADMIN_CREATE_DENIED');
+      }),
+    ).rejects.toThrow('ADMIN_CREATE_DENIED');
+    expect(await configuration()).toEqual(before);
+  });
+  it('serializes competing toggles through the binding revision', async () => {
+    const first = await autoCommand(true);
+    const second = { ...first, idempotencyKey: randomUUID() };
+    const results = await Promise.allSettled([mutate(first), mutate(second)]);
+    expect(results.filter((x) => x.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter((x) => x.status === 'rejected')).toHaveLength(1);
+    expect(await core('omniDomainEvent')).toHaveLength(1);
+  });
+  it('rejects changed setting under the same idempotency key', async () => {
+    const command = await autoCommand(true);
+    await mutate(command);
+    await expect(
+      mutate({
+        ...command,
+        action: 'binding.defaults.update',
+        defaultQueueId: context.queueId,
+        defaultConversationMode: 'human',
+        autoCreatePersonEnabled: false,
+      }),
+    ).rejects.toThrow('IDEMPOTENCY_CONFLICT');
+    expect((await binding())?.autoCreatePersonEnabled).toBe(true);
+  });
+});

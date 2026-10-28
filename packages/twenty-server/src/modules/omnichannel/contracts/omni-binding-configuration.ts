@@ -56,6 +56,7 @@ export const omniBindingConfigurationCommandSchema = z.discriminatedUnion(
         expectedRevision: revision,
         defaultQueueId: uuid,
         defaultConversationMode: z.literal('human'),
+        autoCreatePersonEnabled: z.boolean().optional(),
       })
       .readonly(),
   ],

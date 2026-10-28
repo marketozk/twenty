@@ -1,0 +1,14 @@
+{
+  "baseCommit": "501cbd4b905ee091a1b331000f13af34a1644c99",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts": "24e7cd0a82c134f3ab35e0eef317f207bedbb0442c03ebcbbd67afe1aba69439",
+    "packages/twenty-server/src/modules/omnichannel/contracts/omni-binding-configuration.ts": "3b0be6702d9c5d331f0f000704f28a1c878d39ce8d49feedb7ed78a03e0aae94",
+    "packages/twenty-server/src/modules/omnichannel/services/apply-omni-history-receipt.ts": "b3f6bc57816156a4d2804e143a5d680ff9965ee3b33672c21dae93e761d55686",
+    "packages/twenty-server/src/modules/omnichannel/services/mutate-omni-binding-configuration.ts": "7b80563c81df8be2ef2b68574cf1a24deab7d528c3b2d871266d0a661bde7105",
+    "packages/twenty-server/test/fork-migration/omni-binding-configuration.postgres-spec.ts": "d9cd37325c42582c90aabef770a7fbb83fe36d5556ed988c5b9e170faaded130",
+    "packages/twenty-server/test/fork-migration/omni-history-apply.fixture.ts": "60c6f19fbc5f8c585cfd6f7a4d9153f4da1c31e6af754a4cf729951e87e1ce5b",
+    "packages/twenty-server/test/fork-migration/omni-auto-create-person.postgres-spec.ts": "dd1fca829a07f3c28d2bf7d95ead51a3a28adccb60c9b327eb1ecc05c66ff43d"
+  }
+}
