@@ -297,7 +297,7 @@ export const loadOmniIncomingRevisionChain = async (input: {
       externalIdentityId: uuid,
       identityRevision: z.string(),
       providerPeerId: z.string(),
-      personId: uuid,
+      personId: uuid.nullable(),
       sourceAuthorId: z.string().nullable(),
       sourceDisplayName: z.string().nullable(),
     })

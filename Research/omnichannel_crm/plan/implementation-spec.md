@@ -142,6 +142,7 @@ Renew/defer — отдельные receipt-only транзакции с теку
 Эти операции не переводят receipt в applied и не вызывают произвольный projection callback под receipt lock. Будущий Message apply берёт родительские locks до receipt по общему протоколу и завершает реальный Message/link/event/audit одной транзакцией; receipt claim lock туда не переносится. Порядок wake-up, очереди и config recovery остаётся в §15.27.
 
 Conversation upsert по binding/chat с последующим row lock. Unknown identity сохраняется unbound, без угадывания Person по имени; link/create Person — отдельная разрешённая команда. Fixture acceptance использует подтверждённую identity. Автосоздание контакта — отдельная настройка. Omni получает выделенный APP channel: прямой публичный ingestMessages в него запрещён, иначе upstream cache-lock path обойдёт links/receipts. Существующие обычные APP/email channels сохраняют контракт.
+Реализация LOG080 принимает существующую ExternalIdentity с personId=null без создания/угадывания Person; discovery/registration и explicit link/rebind writer пока не реализованы. Исторический author snapshot не должен переписываться будущей привязкой.
 
 Определение: [sending-ui — command-admission](contracts/sending-ui.md#command-admission).
 

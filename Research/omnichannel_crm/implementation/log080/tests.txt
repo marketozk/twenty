@@ -1,0 +1,10 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-incoming-text-revision.postgres-spec.ts (25.405 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-apply.postgres-spec.ts (14.487 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-first-conversation.postgres-spec.ts (10.175 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-unbound-incoming.postgres-spec.ts (7.917 s)
+
+Test Suites: 4 passed, 4 total
+Tests:       116 passed, 116 total
+Snapshots:   0 total
+Time:        58.104 s
+Ran all test suites matching /omni-unbound-incoming.postgres|omni-incoming-text-revision.postgres|omni-history-apply.postgres|omni-history-first-conversation/i.

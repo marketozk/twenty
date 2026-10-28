@@ -54,12 +54,12 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-079 / ROB-764 In Progress: реализована metadata-only обработка входящих
-placeholder/fill/edit/delete с одним canonical Message. Current head, revision,
-receipt outcome и audit сохраняются атомарно; duplicate/stale не меняют текст,
-счётчики или events. Legacy replay после edits остаётся read-only. Full fork 2598 tests/80 suites +26 guards=2624 PASS; 38 new PG cases. Differential typecheck 307 roots:187/187,0 new/changed-code. Nine migration sources unchanged.
-[Доказательства](Research/omnichannel_crm/implementation/log079/README.md). Реальная квалификация Telegram/MAX и UI ещё впереди.
-Далее unbound identity и внутренние identity/target writers по ранним критериям ROB-764;
+LOG-080 / ROB-764 In Progress: входящие сообщения принимаются от существующей
+ExternalIdentity без привязки к Person. Native participant и исторический автор
+сохраняют null; контакт не создаётся и не угадывается. Bound identity с отсутствующей
+Person по-прежнему отклоняется. 116 tests/4 suites +26 guards =142 PASS; 15 new PG cases. Differential typecheck 308 roots:187 baseline/187 current,0 new/changed-code. All nine migration sources unchanged.
+[Доказательства](Research/omnichannel_crm/implementation/log080/README.md). Предыдущий полный fork regression: LOG079,2598 tests/80 suites.
+Далее discovery/registration и явные identity/target writers с audit/rollback;
 полный ACL/API остаётся ROB-766.
 Демо прежнее, GitHub Actions не используется.
 

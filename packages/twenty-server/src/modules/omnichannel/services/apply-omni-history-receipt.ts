@@ -97,7 +97,7 @@ export type OmniHistoryApplyAuthorizer = (
       identityRevision: string;
       providerPeerId: string;
       verificationSource: string;
-      personId: string;
+      personId: string | null;
       envelope: Readonly<OmniIncomingEnvelope>;
       captureContext: OmniIncomingCaptureContext;
     }
@@ -113,7 +113,7 @@ export type OmniHistoryNativeMessageInput = Readonly<{
   subject: null;
   text: string | null;
   receivedAt: string;
-  personId: string;
+  personId: string | null;
   participantHandle: string;
   participantDisplayName: string;
 }>;
@@ -569,7 +569,7 @@ const applyIncomingReceipt = async (
     z.object({
       id: uuid,
       providerPeerId: z.string().min(1),
-      personId: uuid,
+      personId: uuid.nullable(),
       verificationSource: z.string().min(1),
       revision: positiveBigint,
     }),
@@ -578,13 +578,14 @@ const applyIncomingReceipt = async (
       [workspaceId, binding.id, proof.externalIdentityId],
     ),
   );
-  requireOne(
-    z.object({ id: uuid }),
-    await query(
-      `SELECT id FROM "${schema}"."person" WHERE id=$1 AND "deletedAt" IS NULL FOR SHARE`,
-      [identity.personId],
-    ),
-  );
+  if (identity.personId !== null)
+    requireOne(
+      z.object({ id: uuid }),
+      await query(
+        `SELECT id FROM "${schema}"."person" WHERE id=$1 AND "deletedAt" IS NULL FOR SHARE`,
+        [identity.personId],
+      ),
+    );
   const threadRows = await query(
     `SELECT id,subject,"deletedAt" FROM "${schema}"."messageThread" WHERE id=$1 FOR UPDATE`,
     [conversation.messageThreadId],
@@ -988,7 +989,7 @@ const applyIncomingReceipt = async (
       z.object({
         id: uuid,
         messageId: uuid,
-        personId: uuid,
+        personId: uuid.nullable(),
         workspaceMemberId: z.null(),
         role: z.literal('FROM'),
         handle: z.string(),
