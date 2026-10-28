@@ -762,5 +762,9 @@ LOG095 расширяет внутренний native owner на non-file CREATE
 нужен независимо от caller selection и не расширяет raw/generatedMaps полями.
 Mixed save/upsert захватывают вход до lookup, poisoned owner не коммитит частичный
 результат при перехваченной ошибке. Create→update остаются разными action events.
-FILES arrays пока отказаны; null/empty defaults допустимы, неожиданные attachments
-из trigger/default приводят к rollback. Public CREATE требует следующего покрытия.
+LOG096 добавляет FILES в тот же executor: parent UUID захватывается до enrichment,
+File lifecycle применяется только к actual INSERT IDs. Пропущенные planned File rows
+проверяются по полному DB snapshot и должны остаться неизменными. Проверяются все
+FILES поля after row, включая null/empty/omitted; неожиданные attachments или
+подмена parent из trigger/default приводят к rollback. Public CREATE требует
+следующего покрытия nested/shareWith/upsert; этот контракт пока внутренний.

@@ -91,5 +91,13 @@ COMMIT с прежним awaited error contract. 685 tests/26 suites PASS, 25 н
 Company/Person/Opportunity без вложений. Actual INSERT IDs и DB after snapshots,
 mixed save/upsert в том же owner, capture inputs до lookup, отдельные create/update
 action events. 716 tests/27 suites PASS, 31 новый PG case, 26 guard tests PASS.
-FILES arrays пока отказаны; nullable/default-empty состояние проверяется readback.
-Public CREATE ещё не включён; далее same-executor File sync и проверка skipped parents.
+В LOG095 FILES arrays были отказаны; LOG096 добавляет same-executor File sync,
+actual-created parent mapping и неизменность skipped File rows. Все FILES поля
+проверяются после writes, trigger/default mismatch откатывает транзакцию.
+Public CREATE ещё не включён; далее nested/shareWith/upsert compatibility.
+
+[LOG096](../implementation/log096/README.md): CREATE FILES и actual-written parents,
+полный skipped File readback, shared-file concurrency, mixed save/upsert и unknown
+COMMIT. 744 tests/27 suites PASS, 28 новых PG cases, 26 guards; 334/334 type roots,
+189/189 baseline diagnostics и 0 новых. Публичные CREATE и собственный shared access
+не объявляются готовыми; ROB765 In Progress.

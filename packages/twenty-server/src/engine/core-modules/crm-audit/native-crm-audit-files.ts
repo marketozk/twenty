@@ -15,6 +15,7 @@ type FileRow = {
   status: FileStatus;
   settingsSnapshot: string | null;
   deletedAtSnapshot: string | null;
+  rowSnapshot: string;
 };
 type FileDiff = Record<
   number,
@@ -48,9 +49,11 @@ export const createNativeCrmAuditFilesStore = (
   },
   diffs: FileDiff,
   recordIds: string[],
+  mode: 'update' | 'create' = 'update',
 ) => {
   const audit = getNativeCrmAuditContext(executor);
   if (!audit) return undefined;
+  const plannedRecordIds = new Set(recordIds);
   const owners = new Map<string, FileOwner>();
   for (const [index, fields] of Object.entries(diffs)) {
     const parentRecordId = recordIds[Number(index)];
@@ -81,7 +84,8 @@ export const createNativeCrmAuditFilesStore = (
   });
   const columns = `id, path, settings, status,
     settings::text AS "settingsSnapshot",
-    to_jsonb("deletedAt")::text AS "deletedAtSnapshot"`;
+    to_jsonb("deletedAt")::text AS "deletedAtSnapshot",
+    to_jsonb(file)::text AS "rowSnapshot"`;
   return {
     readFiles: async (
       ids: string[],
@@ -113,11 +117,25 @@ export const createNativeCrmAuditFilesStore = (
       applied = true;
       const written = new Set(writtenRecordIds);
       if (
+        mode === 'create' &&
+        writtenRecordIds.some((id) => !plannedRecordIds.has(id))
+      )
+        throw new Error('Native file insert returned an unplanned parent');
+      if (
+        mode === 'update' &&
         [...owners.values()].some((owner) => !written.has(owner.parentRecordId))
       )
         throw new Error('Native file parent was not updated');
-      for (const [id, owner] of [...owners.entries()].sort(([left], [right]) =>
-        left.localeCompare(right),
+      const writtenOwners =
+        mode === 'create'
+          ? new Map(
+              [...owners].filter(([, owner]) =>
+                written.has(owner.parentRecordId),
+              ),
+            )
+          : owners;
+      for (const [id, owner] of [...writtenOwners.entries()].sort(
+        ([left], [right]) => left.localeCompare(right),
       )) {
         if (owner.action === 'toUpdate') continue;
         const rows = (await executor.execute({
@@ -139,12 +157,18 @@ export const createNativeCrmAuditFilesStore = (
       })) as FileRow[];
       if (actual.length !== owners.size)
         throw new Error('Native file lost its workspace scope');
+      for (const row of actual)
+        if (
+          !writtenOwners.has(row.id) &&
+          row.rowSnapshot !== before.get(row.id)?.rowSnapshot
+        )
+          throw new Error('Native skipped insert changed a planned File');
       const quote = (name: string) => '"' + name.replaceAll('"', '""') + '"';
       const parentFields = new Map<
         string,
         { recordId: string; fieldName: string; ids: string[] }
       >();
-      for (const [id, owner] of owners) {
+      for (const [id, owner] of writtenOwners) {
         const key = owner.parentRecordId + ':' + owner.fieldMetadataId;
         const parent = parentFields.get(key) ?? {
           recordId: owner.parentRecordId,
@@ -172,7 +196,8 @@ export const createNativeCrmAuditFilesStore = (
           );
       }
       for (const row of actual) {
-        const owner = owners.get(row.id);
+        if (!writtenOwners.has(row.id)) continue;
+        const owner = writtenOwners.get(row.id);
         if (!owner) throw new Error('Native file changed its identity');
         if (owner.action === 'toUpdate') {
           if (

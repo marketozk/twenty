@@ -31,8 +31,13 @@ hook errors сохранены; unknown COMMIT не вызывает повто�
 
 [LOG095](implementation/log095/README.md): native CREATE kernel без вложений,
 actual INSERT IDs/defaults и mixed save/upsert. 716 tests/27 suites PASS, 31 новый PG
-case. FILES arrays пока отказаны внутри этого bounded owner. Далее CREATE FILES,
-затем публичные create/upsert/nested/shareWith контракты.
+case. Ограничение FILES arrays снято в [LOG096](implementation/log096/README.md):
+вложения меняются только для actual inserted parents, skipped файлы остаются
+неизменными, all-fields readback защищает от trigger/default подмены.
+Далее публичные create/upsert/nested/shareWith контракты.
+
+LOG096: 744 tests/27 suites PASS, 28 новых PostgreSQL cases; 26 guards PASS,
+10 migration checksums неизменны, 0 новых type diagnostics. Демо не менялось.
 
 Продолжаем native CRUD/merge и подключение реальных writers, затем
 metadata/session и negative audit. [Приёмка ROB765](implementation/rob765-progress.md).

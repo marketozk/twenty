@@ -371,14 +371,14 @@ it('keeps record stock denial before INSERT', async () => {
 });
 
 it.each([
-  { documents: [] },
-  { documents: [{ fileId: randomUUID(), label: 'private' }] },
+  { documents: 'invalid' },
+  { documents: [{ fileId: 'invalid', label: 'private' }] },
 ])(
-  'refuses unsupported create FILES payload before core writes: %j',
+  'refuses invalid create FILES payload before core writes: %j',
   async ({ documents }) => {
     await expect(
       run((scope) => repo(scope).insert({ id, documents })),
-    ).rejects.toThrow('does not yet support file attachments');
+    ).rejects.toThrow();
     expect(await f.read('company')).toHaveLength(0);
     expect(await audit()).toHaveLength(0);
   },
@@ -401,7 +401,7 @@ it('refuses a trigger-injected File attachment and rolls the row back', async ()
   );
   await expect(
     run((scope) => repo(scope).insert({ id, name: 'blocked' })),
-  ).rejects.toThrow('does not yet support file attachments');
+  ).rejects.toThrow('Native created file links do not match the captured plan');
   expect(await f.read('company')).toHaveLength(0);
   expect(await audit()).toHaveLength(0);
 });

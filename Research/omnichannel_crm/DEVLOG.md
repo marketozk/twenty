@@ -3118,3 +3118,22 @@ postconditions; затем public CREATE/nested/shareWith/upsert. Демо и Ac
 LOG095 publication: `69417619637f4a81795c58abb40f442a31a20449` pushed/API verified.
 ROB765 description and comment `560c6a19-a96f-4bf6-aebf-6d8ca3879d42` independently
 read back; all 11 states match. ROB765 remains In Progress; implementation continues.
+
+## LOG-096 — native CREATE FILES и фактически вставленные parents
+
+File enrichment и lifecycle выполняются в одном executor с INSERT и аудитом.
+Пропущенные parents не получают постоянных вложений или success audit; полный
+File snapshot подтверждает их неизменность после всех writes. Все FILES поля after
+row сверяются с captured input. Null ID не становится generated UUID; caller input
+не меняется. Mixed save/upsert, concurrent claim и unknown COMMIT сохраняют owner.
+
+744 tests/27 suites PASS, 28 новых PG cases, 98 targeted; 26 guards PASS, десять
+migration checksums неизменны. Types 334/334 roots, 189/189 baseline diagnostics,
+0 новых/changed. Пять source hashes совпадают. Review нашёл skipped-trigger gap и
+null-ID compatibility; оба исправлены с PG regressions, повторное review без блокеров.
+Первичные test fixture/type annotations исправлены, финальные проверки повторены.
+[Доказательства](implementation/log096/README.md).
+
+ROB765 In Progress. Далее связанные пользовательские records и public CREATE;
+Enterprise recordShare не включается в generic audit coverage. Демо, внешние
+сообщения и GitHub Actions не затронуты.

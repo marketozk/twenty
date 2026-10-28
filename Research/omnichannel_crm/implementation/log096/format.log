@@ -1,0 +1,8 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-files.ts 207ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-record.ts 85ms (unchanged)
+../../../source/packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts 495ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-create.postgres-spec.ts 102ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-files.postgres-spec.ts 193ms
+
+{"formattedFiles": 5, "singleSshSession": true}

@@ -1121,6 +1121,45 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
             'create',
             record,
           );
+      if (nativeAudit) {
+        const fileColumns = Object.values(
+          this.options.tableShape.columnShapeByColumnName,
+        )
+          .filter((column) => column.fieldMetadataType === 'FILES')
+          .map((column) => column.columnName);
+        const hasAttachments = args.records.some((record) =>
+          fileColumns.some(
+            (name) => Array.isArray(record[name]) && record[name].length > 0,
+          ),
+        );
+        if (hasAttachments) {
+          args.records = args.records.map((record) => {
+            const captured: Partial<ObjectRecord> = {
+              ...record,
+              id:
+                typeof record.id === 'string'
+                  ? record.id.toLowerCase()
+                  : record.id === undefined
+                    ? randomUUID()
+                    : record.id,
+            };
+            for (const name of fileColumns)
+              if (Array.isArray(captured[name]))
+                captured[name] = captured[name].map((file) => ({
+                  ...file,
+                  fileId: file.fileId.toLowerCase(),
+                }));
+            return captured;
+          });
+          if (
+            new Set(args.records.map((record) => record.id)).size !==
+            args.records.length
+          )
+            throw new Error(
+              'Native file insert requires unambiguous parent identities',
+            );
+        }
+      }
       return this.runWithValidationRules({
         inputRecordIds: args.records.map((record) => record.id),
         write: (repository, validateWrittenRecords) =>
@@ -1162,13 +1201,23 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
 
     let filesFieldFileIds = null;
     let recordsToInsert = records;
+    let nativeFilesStore: ReturnType<typeof createNativeCrmAuditFilesStore>;
 
     if (isDefined(filesFieldDiff)) {
+      nativeFilesStore = createNativeCrmAuditFilesStore(
+        this.options.executor,
+        this.options.internalContext.workspaceId,
+        this.options.tableShape,
+        filesFieldDiff,
+        records.map((record) => record.id as string),
+        'create',
+      );
       const enriched = await this.filesFieldSync.enrichFilesFields({
         entities: records,
         filesFieldDiffByEntityIndex: filesFieldDiff,
         workspaceId: this.options.internalContext.workspaceId,
         target: this.options.tableShape.nameSingular,
+        store: nativeFilesStore,
       });
 
       filesFieldFileIds = enriched.fileIds;
@@ -1222,18 +1271,24 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
         new Set(insertedIds).size !== insertedIds.length
       )
         throw new Error('Native audited insert returned invalid identities');
-      await recordNativeCrmCreates(
-        this.options.executor,
-        this.options.tableShape,
-        insertedIds,
-      );
     }
 
     await this.acquireRecordStock(rawRows.length);
 
     if (isDefined(filesFieldFileIds)) {
-      await this.filesFieldSync.updateFileEntityRecords(filesFieldFileIds);
+      await this.filesFieldSync.updateFileEntityRecords(
+        filesFieldFileIds,
+        nativeFilesStore,
+        insertedIds,
+      );
     }
+    if (nativeAudit)
+      await recordNativeCrmCreates(
+        this.options.executor,
+        this.options.tableShape,
+        insertedIds,
+        records,
+      );
 
     const returnedRows =
       nativeAudit && !columnsToReturn.includes('id')

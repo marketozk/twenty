@@ -34,5 +34,11 @@ inherited identity/workspace/actor proof и nested reads в том же executor
 
 LOG095: [native CREATE kernel](log095/README.md), 716 tests/27 suites PASS, 31 новый PG
 case. Actual inserted rows/defaults, mixed save/upsert и input capture до lookup;
-реальная FK ошибка откатывает все writes. FILES create arrays пока отказаны, null
-безопасен; public CREATE/другие объекты не включены. Далее File executor для CREATE.
+реальная FK ошибка откатывает все writes. FILES create arrays добавлены LOG096;
+public CREATE/другие объекты ещё не включены.
+
+LOG096: [CREATE FILES](log096/README.md), 744 tests/27 suites PASS, 28 новых PG cases.
+Actual-written parents и неизменность skipped File rows, full FILES-field readback,
+mixed save/upsert, concurrent claim, trigger/core/audit rollback и unknown COMMIT.
+Далее coverage связанных пользовательских записей и public CREATE; recordShare не
+добавляется в generic CRM allowlist, собственные права остаются ROB766.

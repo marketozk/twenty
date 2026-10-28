@@ -43,14 +43,20 @@ const repo = (scope: WorkspaceTransactionScope, name = 'company') =>
     { shouldBypassPermissionChecks: true },
     { shouldSkipEventEmission: true },
   );
-const payload = (label = 'private-label', id = fileId) => [
+const payload = (label = 'private-label', id: string = fileId) => [
   { fileId: id, label },
 ];
 const audits = () =>
   f.owner.query<CrmAuditEntryPayload[]>(
     'SELECT * FROM crm_audit."crmAuditEntry" ORDER BY "resourceKind",id',
   );
-const files = () => f.owner.query('SELECT * FROM core.file ORDER BY id');
+const files = (): Promise<
+  {
+    id: string;
+    settings: { isTemporaryFile: boolean };
+    [key: string]: unknown;
+  }[]
+> => f.owner.query('SELECT * FROM core.file ORDER BY id');
 const readCompanies = async (): Promise<
   { id: string; documents: ReturnType<typeof payload> | null }[]
 > => f.read('company');
@@ -145,6 +151,12 @@ beforeAll(async () => {
   await f.owner.query(`GRANT SELECT,UPDATE ON core.file TO "${f.roleName}"`);
 });
 beforeEach(async () => {
+  await f.owner.query(
+    `DROP TRIGGER IF EXISTS change_created_file_parent ON "${f.schemaName}".company`,
+  );
+  await f.owner.query(
+    'DROP FUNCTION IF EXISTS core.change_created_file_parent()',
+  );
   await f.owner.query(
     'DROP TRIGGER IF EXISTS fail_files_audit ON crm_audit."crmAuditEntry"',
   );
@@ -579,4 +591,348 @@ it('preserves public FILES JSON-array transformation before audited writes', asy
   await run((scope) => repo(scope).update(recordId, { documents }));
   expect((await record()).documents).toHaveLength(1);
   expect(await audits()).toHaveLength(2);
+});
+
+it.each(['company', 'person', 'opportunity'])(
+  'creates a %s with a generated parent ID and an atomic File attachment',
+  async (object) => {
+    await seed({}, object);
+    const input = { documents: payload() };
+    const result = await run((scope) => repo(scope, object).insert(input));
+    const createdId = result.identifiers[0].id;
+    expect(createdId).toEqual(expect.any(String));
+    expect(input).toEqual({ documents: payload() });
+    expect((await files())[0].settings).toEqual({
+      isTemporaryFile: false,
+      toDelete: false,
+    });
+    const entries = await audits();
+    expect(entries).toHaveLength(2);
+    expect(
+      entries.find((entry) => entry.resourceKind === 'crmRecord'),
+    ).toMatchObject({ action: 'create', resourceId: createdId });
+    expect(
+      entries.find((entry) => entry.resourceKind === 'crmFile')
+        ?.securityDescriptor,
+    ).toMatchObject({
+      fileParent: {
+        recordId: createdId,
+        objectMetadataId: fields[object].objectMetadataId,
+      },
+    });
+    expect(JSON.stringify(entries)).not.toContain('private');
+  },
+);
+
+it('normalizes captured UUIDs without changing the caller input', async () => {
+  await seed();
+  const id = randomUUID(),
+    input = {
+      id: id.toUpperCase(),
+      documents: payload('private', fileId.toUpperCase()),
+    };
+  await run((scope) => repo(scope).insert(input));
+  expect((await record(id)).documents?.[0].fileId).toBe(fileId);
+  expect(input.id).toBe(id.toUpperCase());
+  expect(input.documents[0].fileId).toBe(fileId.toUpperCase());
+  expect(await audits()).toHaveLength(2);
+});
+
+it.each([false, true])(
+  'leaves skipped insert attachments temporary; mixed batch=%s',
+  async (mixed) => {
+    await seed();
+    const nextFileId = randomUUID(),
+      id = randomUUID();
+    await f.owner.query(
+      'INSERT INTO core.file(id,"workspaceId",path,size,settings,status) SELECT $1,"workspaceId",path,size,settings,status FROM core.file WHERE id=$2',
+      [nextFileId, fileId],
+    );
+    const before = (await files()).find((file) => file.id === fileId);
+    const rows = [
+      { id: recordId, documents: payload() },
+      ...(mixed ? [{ id, documents: payload('private', nextFileId) }] : []),
+    ];
+    const result = await run((scope) =>
+      repo(scope).insert(rows, { onConflictDoNothing: true }),
+    );
+    expect(result.identifiers).toEqual(mixed ? [{ id }] : []);
+    expect((await files()).find((file) => file.id === fileId)).toEqual(before);
+    expect((await record()).documents).toBeNull();
+    expect(await audits()).toHaveLength(mixed ? 2 : 0);
+    if (mixed)
+      expect(
+        (await files()).find((file) => file.id === nextFileId)!.settings
+          .isTemporaryFile,
+      ).toBe(false);
+  },
+);
+
+it.each(['duplicate-parent', 'shared-file'])(
+  'rejects ambiguous create attachments: %s',
+  async (mode) => {
+    await seed();
+    const id = randomUUID();
+    await expect(
+      run((scope) =>
+        repo(scope).insert(
+          [
+            { id, documents: payload() },
+            {
+              id: mode === 'duplicate-parent' ? id.toUpperCase() : randomUUID(),
+              documents: payload(),
+            },
+          ],
+          { onConflictDoNothing: true },
+        ),
+      ),
+    ).rejects.toThrow('unambiguous');
+    expect(await readCompanies()).toHaveLength(2);
+    expect((await files())[0].settings.isTemporaryFile).toBe(true);
+    expect(await audits()).toHaveLength(0);
+  },
+);
+
+it('allows only one concurrent create to claim a temporary File', async () => {
+  await seed();
+  const results = await Promise.allSettled([
+    run((scope) => repo(scope).insert({ documents: payload() })),
+    run((scope) => repo(scope).insert({ documents: payload() })),
+  ]);
+  expect(
+    results.filter((result) => result.status === 'fulfilled'),
+  ).toHaveLength(1);
+  expect(
+    (await readCompanies()).filter((row) => row.documents?.length),
+  ).toHaveLength(1);
+  expect(await audits()).toHaveLength(2);
+});
+
+it.each(['audit', 'core', 'rollback'])(
+  'rolls back create and File state together on %s failure',
+  async (mode) => {
+    await seed();
+    const before = await files();
+    if (mode === 'audit') {
+      await f.owner.query(
+        `CREATE FUNCTION crm_audit.fail_files_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'CREATE_AUDIT_FAILURE'; END $$`,
+      );
+      await f.owner.query(
+        'CREATE TRIGGER fail_files_audit BEFORE INSERT ON crm_audit."crmAuditEntry" FOR EACH ROW EXECUTE FUNCTION crm_audit.fail_files_audit()',
+      );
+    }
+    if (mode === 'core') {
+      await f.owner.query(
+        `CREATE FUNCTION core.fail_file_update() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'CREATE_CORE_FAILURE'; END $$`,
+      );
+      await f.owner.query(
+        'CREATE TRIGGER fail_file_update BEFORE UPDATE ON core.file FOR EACH ROW EXECUTE FUNCTION core.fail_file_update()',
+      );
+    }
+    await expect(
+      run(async (scope) => {
+        await repo(scope).insert({ documents: payload() });
+        if (mode === 'rollback') throw new Error('CREATE_ROLLBACK');
+      }),
+    ).rejects.toThrow();
+    expect(await files()).toEqual(before);
+    expect(await readCompanies()).toHaveLength(2);
+    expect(await audits()).toHaveLength(0);
+  },
+);
+
+it.each(['identity', 'drop-link', 'add-link', 'skip'])(
+  'checks actual inserted parent after a %s trigger',
+  async (mode) => {
+    await seed();
+    const body =
+      mode === 'identity'
+        ? `NEW.id='${randomUUID()}'; RETURN NEW;`
+        : mode === 'drop-link'
+          ? `NEW.documents='[]'::jsonb; RETURN NEW;`
+          : mode === 'add-link'
+            ? `NEW.documents=NEW.documents || '[{"fileId":"${randomUUID()}","label":"extra"}]'::jsonb; RETURN NEW;`
+            : 'RETURN NULL;';
+    await f.owner.query(
+      `CREATE FUNCTION core.change_created_file_parent() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN ${body} END $$`,
+    );
+    await f.owner.query(
+      `CREATE TRIGGER change_created_file_parent BEFORE INSERT ON "${f.schemaName}".company FOR EACH ROW EXECUTE FUNCTION core.change_created_file_parent()`,
+    );
+    const before = await files();
+    const operation = run((scope) =>
+      repo(scope).insert({ documents: payload() }),
+    );
+    if (mode === 'skip') expect((await operation).identifiers).toEqual([]);
+    else await expect(operation).rejects.toThrow();
+    expect(await files()).toEqual(before);
+    expect(await readCompanies()).toHaveLength(2);
+    expect(await audits()).toHaveLength(0);
+  },
+);
+
+it.each(['settings', 'parent-link'])(
+  'rejects a core File trigger changing %s during create',
+  async (mode) => {
+    await seed();
+    const id = randomUUID(),
+      before = await files();
+    const body =
+      mode === 'settings'
+        ? 'NEW.settings=OLD.settings;'
+        : `UPDATE "${f.schemaName}".company SET documents='[]'::jsonb WHERE id='${id}';`;
+    await f.owner.query(
+      `CREATE FUNCTION core.fail_file_update() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN ${body} RETURN NEW; END $$`,
+    );
+    await f.owner.query(
+      'CREATE TRIGGER fail_file_update BEFORE UPDATE ON core.file FOR EACH ROW EXECUTE FUNCTION core.fail_file_update()',
+    );
+    await expect(
+      run((scope) => repo(scope).insert({ id, documents: payload() })),
+    ).rejects.toThrow();
+    expect(await files()).toEqual(before);
+    expect(await record(id)).toBeUndefined();
+    expect(await audits()).toHaveLength(0);
+  },
+);
+
+it.each(['empty', 'null', 'omitted'])(
+  'rejects trigger attachments outside the captured %s create field',
+  async (mode) => {
+    await seed();
+    await f.owner.query(
+      `CREATE FUNCTION core.change_created_file_parent() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.documents='[{"fileId":"${fileId}","label":"injected"}]'::jsonb; RETURN NEW; END $$`,
+    );
+    await f.owner.query(
+      `CREATE TRIGGER change_created_file_parent BEFORE INSERT ON "${f.schemaName}".company FOR EACH ROW EXECUTE FUNCTION core.change_created_file_parent()`,
+    );
+    const input =
+      mode === 'empty'
+        ? { documents: [] }
+        : mode === 'null'
+          ? { documents: null }
+          : { id: randomUUID() };
+    const before = await files();
+    await expect(run((scope) => repo(scope).insert(input))).rejects.toThrow(
+      'Native created file links do not match the captured plan',
+    );
+    expect(await files()).toEqual(before);
+    expect(await readCompanies()).toHaveLength(2);
+    expect(await audits()).toHaveLength(0);
+  },
+);
+
+it('preserves unknown COMMIT acknowledgement after atomic create with a File', async () => {
+  await seed();
+  const client = await f.pool.connect(),
+    query = client.query.bind(client),
+    statements: string[] = [];
+  jest.spyOn(client, 'query').mockImplementation((async (
+    statement: string | { text: string },
+    values?: unknown[],
+  ) => {
+    const text = typeof statement === 'string' ? statement : statement.text;
+    statements.push(text);
+    const result = await query(statement as string, values);
+    if (text === 'COMMIT') throw new Error('lost ack');
+    return result;
+  }) as typeof client.query);
+  jest
+    .spyOn(f.pool, 'connect')
+    .mockImplementationOnce(() => Promise.resolve(client));
+  const id = randomUUID();
+  await expect(
+    run((scope) => repo(scope).insert({ id, documents: payload() })),
+  ).rejects.toBeInstanceOf(NativeTransactionOutcomeUnknownError);
+  expect(statements.filter((text) => text === 'COMMIT')).toHaveLength(1);
+  expect(statements).not.toContain('ROLLBACK');
+  expect((await record(id)).documents).toHaveLength(1);
+  expect((await files())[0].settings.isTemporaryFile).toBe(false);
+  expect(await audits()).toHaveLength(2);
+});
+
+it.each(['save', 'upsert'] as const)(
+  'shares one audit owner across mixed %s with a new File',
+  async (method) => {
+    await seed();
+    const id = randomUUID();
+    await run(async (scope) => {
+      const repository = repo(scope),
+        data = [
+          { id: recordId, name: 'updated' },
+          { id, name: 'created', documents: payload() },
+        ];
+      if (method === 'save') await repository.save(data);
+      else await repository.upsert(data, ['id']);
+    });
+    expect((await record(id)).documents).toHaveLength(1);
+    const entries = await audits();
+    expect(entries).toHaveLength(3);
+    expect(new Set(entries.map((entry) => entry.operationId)).size).toBe(1);
+    expect(entries.find((entry) => entry.resourceId === recordId)?.action).toBe(
+      'update',
+    );
+    expect(entries.find((entry) => entry.resourceId === id)?.action).toBe(
+      'create',
+    );
+  },
+);
+
+it('creates an empty FILES field without mutating any core File', async () => {
+  await seed();
+  const before = await files(),
+    id = randomUUID();
+  await run((scope) => repo(scope).insert({ id, documents: [] }));
+  expect((await record(id)).documents).toEqual([]);
+  expect(await files()).toEqual(before);
+  expect(await audits()).toHaveLength(1);
+});
+
+it.each([false, true])(
+  'rolls back a trigger mutation of a skipped File; mixed batch=%s',
+  async (mixed) => {
+    await seed();
+    const id = randomUUID(),
+      nextFileId = randomUUID();
+    await f.owner.query(
+      'INSERT INTO core.file(id,"workspaceId",path,size,settings,status) SELECT $1,"workspaceId",path,size,settings,status FROM core.file WHERE id=$2',
+      [nextFileId, fileId],
+    );
+    await f.owner.query(
+      `CREATE FUNCTION core.change_created_file_parent() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.id='${id}' THEN UPDATE core.file SET size=999 WHERE id='${fileId}'; RETURN NULL; END IF; RETURN NEW; END $$`,
+    );
+    await f.owner.query(
+      `CREATE TRIGGER change_created_file_parent BEFORE INSERT ON "${f.schemaName}".company FOR EACH ROW EXECUTE FUNCTION core.change_created_file_parent()`,
+    );
+    const before = await files();
+    await expect(
+      run((scope) =>
+        repo(scope).insert([
+          { id, documents: payload() },
+          ...(mixed
+            ? [{ id: randomUUID(), documents: payload('private', nextFileId) }]
+            : []),
+        ]),
+      ),
+    ).rejects.toThrow('Native skipped insert changed a planned File');
+    expect(await files()).toEqual(before);
+    expect(await readCompanies()).toHaveLength(2);
+    expect(await audits()).toHaveLength(0);
+  },
+);
+
+it('does not replace an explicit null parent ID with a generated identity', async () => {
+  await seed();
+  const before = await files();
+  await expect(
+    run((scope) =>
+      repo(scope).insert({
+        id: null as unknown as string,
+        documents: payload(),
+      }),
+    ),
+  ).rejects.toThrow();
+  expect(await files()).toEqual(before);
+  expect(await readCompanies()).toHaveLength(2);
+  expect(await audits()).toHaveLength(0);
 });

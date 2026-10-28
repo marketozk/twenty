@@ -133,10 +133,6 @@ export const assertNativeCrmAuditWriteSupported = (
     const column = shape.columnShapeByColumnName[name];
     if (column?.fieldMetadataType === 'FILES') {
       if (value === null) continue;
-      if (kind === 'create')
-        throw new Error(
-          'Native audited create does not yet support file attachments',
-        );
       if (!Array.isArray(value)) throw coverageError();
       const ids = new Set<string>();
       for (const file of value) {
@@ -234,22 +230,39 @@ export const recordNativeCrmCreates = async (
   executor: QueryExecutor,
   shape: WorkspaceTableShape,
   actualIds: string[],
+  inputs: Record<string, unknown>[],
 ): Promise<void> => {
   const audit = getNativeCrmAuditContext(executor);
   if (!audit || !actualIds.length) return;
   const after = await readNativeCrmAuditRows(executor, shape, actualIds);
   if (after.length !== new Set(actualIds).size)
     throw new Error('Native audited row vanished after insert');
+  const inputsById = new Map(
+    inputs
+      .filter((input) => typeof input.id === 'string')
+      .map((input) => [String(input.id).toLowerCase(), input]),
+  );
   for (const row of after) {
-    // Defaults and triggers must not introduce an untracked core File attachment.
+    // Also check omitted/empty fields, which have no File sync plan to validate.
     for (const column of Object.values(shape.columnShapeByColumnName))
-      if (
-        column.fieldMetadataType === 'FILES' &&
-        !['null', '[]'].includes(String(row[column.columnName]))
-      )
-        throw new Error(
-          'Native audited create does not yet support file attachments',
-        );
+      if (column.fieldMetadataType === 'FILES') {
+        const expected = inputsById.get(row.id)?.[column.columnName];
+        const expectedIds = Array.isArray(expected)
+          ? expected.map((file) => String(file.fileId).toLowerCase()).sort()
+          : [];
+        const actual = JSON.parse(String(row[column.columnName]));
+        if (actual === null && !expectedIds.length) continue;
+        if (
+          !Array.isArray(actual) ||
+          actual.some((file) => !file || typeof file.fileId !== 'string') ||
+          JSON.stringify(
+            actual.map((file) => file.fileId.toLowerCase()).sort(),
+          ) !== JSON.stringify(expectedIds)
+        )
+          throw new Error(
+            'Native created file links do not match the captured plan',
+          );
+      }
     audit.record({
       resourceKind: 'crmRecord',
       resourceId: row.id,

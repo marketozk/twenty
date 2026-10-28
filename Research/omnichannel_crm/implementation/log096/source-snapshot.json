@@ -1,0 +1,11 @@
+{
+  "baseCommit": "695b424e60ac802fe9fe4440077905b8635251aa",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-files.ts": "0ff84e957c799cab19b0ae751b594ce12ace639bcffcfd0bf0e7f16341a8dab1",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-record.ts": "1c03bf0608c57b82e0494a50761106d90f9ff5a7c0e56975dcea5845d8d0001c",
+    "packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts": "1973663e77157c8153acedbf49883722a46c59e3347b71e687eff42087928c9d",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-create.postgres-spec.ts": "13bfbbf3dfe1f8be2e581601fea3620d798c7f7d4086214674a6846510fe8574",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-files.postgres-spec.ts": "ade22f3e48f7fec69dbf5d054f34047c65cb2e8096b6a4bccfb9c6bacee8be66"
+  },
+  "uploadedSourceHashesVerified": true
+}
