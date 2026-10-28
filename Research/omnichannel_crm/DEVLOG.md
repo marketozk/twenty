@@ -3097,3 +3097,20 @@ metadata/session/negative audit ещё не завершены. Демо и Acti
 LOG094 publication: `76820b097e7cc084fd6a0e4f84a6edad636b5c09` pushed/API verified.
 ROB765 description and comment `9e257135-8d82-4fae-b4be-936a09b11a3e` independently
 read back; all 11 states match. ROB765 remains In Progress; implementation continues.
+
+## LOG-095 — native CREATE kernel и mixed save/upsert
+
+Внутренний nativeAudit owner создаёт Company/Person/Opportunity без вложений с actual
+INSERT IDs и DB after snapshots. DO NOTHING не создаёт фиктивный audit. Captured input
+и poisoning охватывают save/upsert до existence lookup; create/update имеют разные
+action keys. FILES arrays пока отказаны; default/trigger attachment не обходит guard.
+
+716 tests/27 suites PASS, 31 новый PG case, 74 targeted; 26 guard tests PASS,
+10 migration checksums неизменны. Types 333/334 roots, 189/189 existing diagnostics,
+0 новых/changed. Пять source hashes совпадают. Независимый review без блокеров;
+добавлены реальные FK rollback и wrapper capture/poison checks. Первичные descriptor
+guard, Jest parameter table и test generic исправлены, проверки повторены.
+[Доказательства](implementation/log095/README.md).
+
+ROB765 In Progress. Далее native CREATE FILES с actual-written parent mapping и
+postconditions; затем public CREATE/nested/shareWith/upsert. Демо и Actions не затронуты.

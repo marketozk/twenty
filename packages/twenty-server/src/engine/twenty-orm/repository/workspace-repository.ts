@@ -6,6 +6,7 @@ import {
   assertNativeCrmAuditWriteSupported,
   captureNativeCrmAuditWriteData,
   readNativeCrmAuditRows,
+  recordNativeCrmCreates,
   recordNativeCrmUpdates,
 } from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
 import { randomUUID } from 'node:crypto';
@@ -896,76 +897,81 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
   async save(
     entityOrEntities: Partial<ObjectRecord> | Partial<ObjectRecord>[],
   ): Promise<TEntity[]> {
-    const entities = Array.isArray(entityOrEntities)
-      ? entityOrEntities
-      : [entityOrEntities];
+    return runNativeCrmAuditWrite(this.options.executor, async () => {
+      const inputs = Array.isArray(entityOrEntities)
+        ? entityOrEntities
+        : [entityOrEntities];
+      const entities = getNativeCrmAuditContext(this.options.executor)
+        ? inputs.map(captureNativeCrmAuditWriteData)
+        : inputs;
 
-    this.assertNoNestedRelationObjects(entities);
+      this.assertNoNestedRelationObjects(entities);
 
-    if (entities.length === 0) {
-      return [];
-    }
-
-    return this.runAtomically(async (repository) => {
-      const existingIds = await repository.findExistingIds(
-        entities.map((entity) => entity.id).filter(isNonEmptyString),
-      );
-
-      const { toUpdate, toInsert } = partitionEntitiesForSave(
-        entities,
-        existingIds,
-      );
-
-      if (toUpdate.length > 0) {
-        await repository.runBatchUpdate({
-          inputs: toUpdate.flatMap((entity) =>
-            isNonEmptyString(entity.id)
-              ? [{ id: entity.id, data: entity }]
-              : [],
-          ),
-          columnsToReturn: ['id'],
-        });
+      if (entities.length === 0) {
+        return [];
       }
 
-      const insertedIds =
-        toInsert.length > 0
-          ? (
-              await repository.runInsert({
-                records: toInsert,
-                columnsToReturn: ['id'],
-              })
-            ).identifiers.map((identifier) => identifier.id)
-          : [];
+      return this.runAtomically(async (repository) => {
+        const existingIds = await repository.findExistingIds(
+          entities.map((entity) => entity.id).filter(isNonEmptyString),
+        );
 
-      const savedIds = [
-        ...toUpdate.map((entity) => entity.id).filter(isNonEmptyString),
-        ...insertedIds.filter(isNonEmptyString),
-      ];
+        const { toUpdate, toInsert } = partitionEntitiesForSave(
+          entities,
+          existingIds,
+        );
 
-      const savedById = new Map(
-        savedIds.length > 0
-          ? (
-              await repository.find({
-                where: { id: In(savedIds) },
-                withDeleted: true,
-              })
-            ).map((record) => [record.id, record])
-          : [],
-      );
+        if (toUpdate.length > 0) {
+          await repository.runBatchUpdate({
+            inputs: toUpdate.flatMap((entity) =>
+              isNonEmptyString(entity.id)
+                ? [{ id: entity.id, data: entity }]
+                : [],
+            ),
+            columnsToReturn: ['id'],
+          });
+        }
 
-      let insertCursor = 0;
+        const insertedIds =
+          toInsert.length > 0
+            ? (
+                await repository.runInsert({
+                  records: toInsert,
+                  columnsToReturn: ['id'],
+                })
+              ).identifiers.map((identifier) => identifier.id)
+            : [];
 
-      return entities.flatMap((entity) => {
-        const savedId =
-          isNonEmptyString(entity.id) && existingIds.has(entity.id)
-            ? entity.id
-            : insertedIds[insertCursor++];
-        const record = isNonEmptyString(savedId)
-          ? savedById.get(savedId)
-          : undefined;
+        const savedIds = [
+          ...toUpdate.map((entity) => entity.id).filter(isNonEmptyString),
+          ...insertedIds.filter(isNonEmptyString),
+        ];
 
-        return isDefined(record) ? [record] : [];
-      }) as unknown as TEntity[];
+        const savedById = new Map(
+          savedIds.length > 0
+            ? (
+                await repository.find({
+                  where: { id: In(savedIds) },
+                  withDeleted: true,
+                })
+              ).map((record) => [record.id, record])
+            : [],
+        );
+
+        let insertCursor = 0;
+
+        return entities.flatMap((entity) => {
+          const savedId =
+            isNonEmptyString(entity.id) && existingIds.has(entity.id)
+              ? entity.id
+              : insertedIds[insertCursor++];
+          const record = isNonEmptyString(savedId)
+            ? savedById.get(savedId)
+            : undefined;
+
+          return isDefined(record) ? [record] : [];
+        }) as unknown as TEntity[];
+      });
     });
   }
 
@@ -973,81 +979,88 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     entityOrEntities: Partial<ObjectRecord> | Partial<ObjectRecord>[],
     conflictPathsOrOptions: string[] | { conflictPaths: string[] },
   ): Promise<InsertResult> {
-    const entities = Array.isArray(entityOrEntities)
-      ? entityOrEntities
-      : [entityOrEntities];
+    return runNativeCrmAuditWrite(this.options.executor, async () => {
+      const inputs = Array.isArray(entityOrEntities)
+        ? entityOrEntities
+        : [entityOrEntities];
+      const entities = getNativeCrmAuditContext(this.options.executor)
+        ? inputs.map(captureNativeCrmAuditWriteData)
+        : inputs;
 
-    this.assertNoNestedRelationObjects(entities);
+      this.assertNoNestedRelationObjects(entities);
 
-    const conflictPaths = Array.isArray(conflictPathsOrOptions)
-      ? conflictPathsOrOptions
-      : conflictPathsOrOptions.conflictPaths;
-
-    if (conflictPaths.length === 0) {
-      throw new TwentyOrmException(
-        'upsert requires at least one conflict path',
-        TwentyOrmExceptionCode.INVALID_PARAMETER,
-      );
-    }
-
-    if (entities.length === 0) {
-      return new InsertResult();
-    }
-
-    return this.runAtomically(async (repository) => {
-      const conflictWhere = entities.map((entity) =>
-        Object.fromEntries(
-          conflictPaths.map((path) => [path, entity[path] ?? null]),
-        ),
-      );
-
-      const existingRecords = await applyFindOptionsToQueryBuilder(
-        repository.buildBypassingEventSelectQueryBuilder(
-          repository.options.tableShape.nameSingular,
-        ),
-        { where: conflictWhere, withDeleted: true },
-      ).getMany<ObjectRecord>();
-
-      const { toUpdate, toInsert } = matchEntitiesForUpsert(
-        entities,
-        existingRecords,
-        conflictPaths,
-      );
-
-      const emptyOutcome = { identifiers: [], generatedMaps: [], raw: [] };
-
-      const updateOutcome =
-        toUpdate.length > 0
-          ? await repository.runBatchUpdate({
-              inputs: toUpdate.map((match) => ({
-                id: match.id,
-                data: match.entity,
-              })),
-              columnsToReturn: ['id'],
-            })
-          : emptyOutcome;
-
-      const insertOutcome =
-        toInsert.length > 0
-          ? await repository.runInsert({
-              records: toInsert,
-              columnsToReturn: ['id'],
-            })
-          : emptyOutcome;
-
-      const insertResult = new InsertResult();
-
-      insertResult.identifiers = [
-        ...updateOutcome.identifiers,
-        ...insertOutcome.identifiers,
+      const conflictPaths = [
+        ...(Array.isArray(conflictPathsOrOptions)
+          ? conflictPathsOrOptions
+          : conflictPathsOrOptions.conflictPaths),
       ];
-      insertResult.generatedMaps = [
-        ...updateOutcome.generatedMaps,
-        ...insertOutcome.generatedMaps,
-      ];
-      insertResult.raw = [...updateOutcome.raw, ...insertOutcome.raw];
 
-      return insertResult;
+      if (conflictPaths.length === 0) {
+        throw new TwentyOrmException(
+          'upsert requires at least one conflict path',
+          TwentyOrmExceptionCode.INVALID_PARAMETER,
+        );
+      }
+
+      if (entities.length === 0) {
+        return new InsertResult();
+      }
+
+      return this.runAtomically(async (repository) => {
+        const conflictWhere = entities.map((entity) =>
+          Object.fromEntries(
+            conflictPaths.map((path) => [path, entity[path] ?? null]),
+          ),
+        );
+
+        const existingRecords = await applyFindOptionsToQueryBuilder(
+          repository.buildBypassingEventSelectQueryBuilder(
+            repository.options.tableShape.nameSingular,
+          ),
+          { where: conflictWhere, withDeleted: true },
+        ).getMany<ObjectRecord>();
+
+        const { toUpdate, toInsert } = matchEntitiesForUpsert(
+          entities,
+          existingRecords,
+          conflictPaths,
+        );
+
+        const emptyOutcome = { identifiers: [], generatedMaps: [], raw: [] };
+
+        const updateOutcome =
+          toUpdate.length > 0
+            ? await repository.runBatchUpdate({
+                inputs: toUpdate.map((match) => ({
+                  id: match.id,
+                  data: match.entity,
+                })),
+                columnsToReturn: ['id'],
+              })
+            : emptyOutcome;
+
+        const insertOutcome =
+          toInsert.length > 0
+            ? await repository.runInsert({
+                records: toInsert,
+                columnsToReturn: ['id'],
+              })
+            : emptyOutcome;
+
+        const insertResult = new InsertResult();
+
+        insertResult.identifiers = [
+          ...updateOutcome.identifiers,
+          ...insertOutcome.identifiers,
+        ];
+        insertResult.generatedMaps = [
+          ...updateOutcome.generatedMaps,
+          ...insertOutcome.generatedMaps,
+        ];
+        insertResult.raw = [...updateOutcome.raw, ...insertOutcome.raw];
+
+        return insertResult;
+      });
     });
   }
 
@@ -1082,17 +1095,32 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     raw: ObjectRecord[];
   }> {
     return runNativeCrmAuditWrite(this.options.executor, async () => {
+      const nativeAudit = getNativeCrmAuditContext(this.options.executor);
+      if (this.isOmniNativeRepository || nativeAudit)
+        args = {
+          ...args,
+          records: args.records.map((record) =>
+            nativeAudit
+              ? captureNativeCrmAuditWriteData(record)
+              : { ...record },
+          ),
+          columnsToReturn: [...args.columnsToReturn],
+        };
       assertNativeCrmAuditWriteSupported(
         this.options.executor,
         this.options.tableShape,
         this.options.flatObjectMetadata.universalIdentifier,
         'create',
       );
-      if (this.isOmniNativeRepository)
-        args = {
-          ...args,
-          records: args.records.map((record) => ({ ...record })),
-        };
+      if (nativeAudit)
+        for (const record of args.records)
+          assertNativeCrmAuditWriteSupported(
+            this.options.executor,
+            this.options.tableShape,
+            this.options.flatObjectMetadata.universalIdentifier,
+            'create',
+            record,
+          );
       return this.runWithValidationRules({
         inputRecordIds: args.records.map((record) => record.id),
         write: (repository, validateWrittenRecords) =>
@@ -1172,11 +1200,14 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
 
     await this.assertRecordStockAvailable(recordsToInsert.length);
 
+    const nativeAudit = getNativeCrmAuditContext(this.options.executor);
     const sql = buildInsertStatement({
       tableShape: this.options.tableShape,
       columnNames,
       rows,
-      returningColumns: columnsToReturn,
+      returningColumns: nativeAudit
+        ? [...new Set([...columnsToReturn, 'id'])]
+        : columnsToReturn,
       onConflictDoNothing,
     });
 
@@ -1184,21 +1215,38 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
 
     await validateWrittenRecords?.(rawRows);
 
+    const insertedIds = rawRows.map((row) => row.id).filter(isNonEmptyString);
+    if (nativeAudit) {
+      if (
+        insertedIds.length !== rawRows.length ||
+        new Set(insertedIds).size !== insertedIds.length
+      )
+        throw new Error('Native audited insert returned invalid identities');
+      await recordNativeCrmCreates(
+        this.options.executor,
+        this.options.tableShape,
+        insertedIds,
+      );
+    }
+
     await this.acquireRecordStock(rawRows.length);
 
     if (isDefined(filesFieldFileIds)) {
       await this.filesFieldSync.updateFileEntityRecords(filesFieldFileIds);
     }
 
-    const generatedMaps = this.formatResult<ObjectRecord[]>(rawRows);
-    const insertedIds = rawRows.map((row) => row.id).filter(isNonEmptyString);
+    const returnedRows =
+      nativeAudit && !columnsToReturn.includes('id')
+        ? rawRows.map(({ id: _id, ...row }) => row as ObjectRecord)
+        : rawRows;
+    const generatedMaps = this.formatResult<ObjectRecord[]>(returnedRows);
 
     await this.emitCreateEvents(insertedIds);
 
     return {
       identifiers: insertedIds.map((id) => ({ id })),
       generatedMaps,
-      raw: rawRows,
+      raw: returnedRows,
     };
   }
 

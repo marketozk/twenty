@@ -348,7 +348,7 @@ const descriptor = (
   if (nativeRecord || source.objectMetadataId !== undefined) {
     if (
       !nativeRecord ||
-      mutation.action !== 'update' ||
+      !['create', 'update'].includes(mutation.action) ||
       source.objectMetadataId === undefined ||
       source.bindingId !== undefined ||
       source.conversationId !== undefined ||
@@ -356,7 +356,7 @@ const descriptor = (
       source.deletedParent !== undefined
     ) {
       throw new Error(
-        'Native CRM audit requires an exact object/record update scope',
+        'Native CRM audit requires an exact object/record create or update scope',
       );
     }
     requireUuid(source.objectMetadataId);

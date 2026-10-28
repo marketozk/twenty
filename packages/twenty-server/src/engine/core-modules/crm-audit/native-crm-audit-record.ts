@@ -122,17 +122,21 @@ export const assertNativeCrmAuditWriteSupported = (
 ): void => {
   if (!getNativeCrmAuditContext(executor)) return;
   if (
-    kind !== 'update' ||
+    !['create', 'update'].includes(kind) ||
     !isNativeCrmAuditObject(shape.nameSingular, universalIdentifier)
   )
     throw new Error(
-      'Native audit currently supports only standard Company, Person and Opportunity updates',
+      'Native audit currently supports only standard Company, Person and Opportunity creates and updates',
     );
   for (const [name, value] of Object.entries(data)) {
     if (name === 'id' || value === undefined) continue;
     const column = shape.columnShapeByColumnName[name];
     if (column?.fieldMetadataType === 'FILES') {
       if (value === null) continue;
+      if (kind === 'create')
+        throw new Error(
+          'Native audited create does not yet support file attachments',
+        );
       if (!Array.isArray(value)) throw coverageError();
       const ids = new Set<string>();
       for (const file of value) {
@@ -224,6 +228,41 @@ const snapshot = (
       row[column.columnName];
   }
   return fields;
+};
+
+export const recordNativeCrmCreates = async (
+  executor: QueryExecutor,
+  shape: WorkspaceTableShape,
+  actualIds: string[],
+): Promise<void> => {
+  const audit = getNativeCrmAuditContext(executor);
+  if (!audit || !actualIds.length) return;
+  const after = await readNativeCrmAuditRows(executor, shape, actualIds);
+  if (after.length !== new Set(actualIds).size)
+    throw new Error('Native audited row vanished after insert');
+  for (const row of after) {
+    // Defaults and triggers must not introduce an untracked core File attachment.
+    for (const column of Object.values(shape.columnShapeByColumnName))
+      if (
+        column.fieldMetadataType === 'FILES' &&
+        !['null', '[]'].includes(String(row[column.columnName]))
+      )
+        throw new Error(
+          'Native audited create does not yet support file attachments',
+        );
+    audit.record({
+      resourceKind: 'crmRecord',
+      resourceId: row.id,
+      action: 'create',
+      before: null,
+      after: snapshot(shape, row),
+      securityDescriptor: {
+        resourceKind: 'crmRecord',
+        resourceId: row.id,
+        objectMetadataId: shape.objectMetadataId,
+      },
+    });
+  }
 };
 
 export const recordNativeCrmUpdates = async (

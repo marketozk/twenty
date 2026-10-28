@@ -86,3 +86,10 @@ COMMIT с прежним awaited error contract. 685 tests/26 suites PASS, 25 н
 26 guard tests PASS. HTTP/JWT и File URL signing не эмулируются этой fixture.
 Следом native CREATE kernel; public CREATE/upsert/shareWith/nested custom objects
 требуют сохранения их контрактов до автоматического включения. ROB765 In Progress.
+
+[LOG095](../implementation/log095/README.md): внутренний CREATE kernel для standard
+Company/Person/Opportunity без вложений. Actual INSERT IDs и DB after snapshots,
+mixed save/upsert в том же owner, capture inputs до lookup, отдельные create/update
+action events. 716 tests/27 suites PASS, 31 новый PG case, 26 guard tests PASS.
+FILES arrays пока отказаны; nullable/default-empty состояние проверяется readback.
+Public CREATE ещё не включён; далее same-executor File sync и проверка skipped parents.

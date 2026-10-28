@@ -31,3 +31,8 @@ cases. Реальные processors/repositories/permissions; root hooks посл
 inherited identity/workspace/actor proof и nested reads в том же executor. Создание
 записей, mixed upsert, shareWith и custom nested creates требуют следующей реализации;
 общая приёмка ROB765 не выполнена.
+
+LOG095: [native CREATE kernel](log095/README.md), 716 tests/27 suites PASS, 31 новый PG
+case. Actual inserted rows/defaults, mixed save/upsert и input capture до lookup;
+реальная FK ошибка откатывает все writes. FILES create arrays пока отказаны, null
+безопасен; public CREATE/другие объекты не включены. Далее File executor для CREATE.

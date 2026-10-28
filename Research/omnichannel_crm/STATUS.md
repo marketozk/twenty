@@ -27,7 +27,12 @@ core File audit и actual parent/state readback;642 tests/25 suites +26 guards P
 UPDATE стандартных Company/Person/Opportunity, inherited scope proof и scoped nested
 reads. 685 tests/26 suites PASS, 25 новых PostgreSQL cases. Прежние awaited postcommit
 hook errors сохранены; unknown COMMIT не вызывает повторную запись. Это код и тесты,
-не выкат. Далее native CREATE kernel; публичный CREATE ещё не подключён.
+не выкат. Публичный CREATE ещё не подключён.
+
+[LOG095](implementation/log095/README.md): native CREATE kernel без вложений,
+actual INSERT IDs/defaults и mixed save/upsert. 716 tests/27 suites PASS, 31 новый PG
+case. FILES arrays пока отказаны внутри этого bounded owner. Далее CREATE FILES,
+затем публичные create/upsert/nested/shareWith контракты.
 
 Продолжаем native CRUD/merge и подключение реальных writers, затем
 metadata/session и negative audit. [Приёмка ROB765](implementation/rob765-progress.md).

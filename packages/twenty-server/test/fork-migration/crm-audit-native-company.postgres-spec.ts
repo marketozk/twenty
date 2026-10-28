@@ -238,9 +238,8 @@ it.each([
   expect(await audit()).toEqual([]);
 });
 
-it('refuses unaudited create/delete and other-object writes inside the bounded owner', async () => {
+it('refuses unaudited delete and other-object writes inside the bounded owner', async () => {
   for (const work of [
-    (scope: WorkspaceTransactionScope) => repo(scope).insert({ name: 'new' }),
     (scope: WorkspaceTransactionScope) => repo(scope).delete(id),
     (scope: WorkspaceTransactionScope) =>
       scope

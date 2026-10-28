@@ -755,3 +755,12 @@ reads используют его executor. Root getters/visibility и awaited p
 выполняются после COMMIT; ошибка hook не отменяет committed audit. Inherited hooks
 откладываются владельцем. LOG094 проверяет это через реальные public runners и PG;
 full HTTP authentication, CREATE/merge и остальные owners этим не объявляются готовыми.
+
+LOG095 расширяет внутренний native owner на non-file CREATE этих стандартных объектов.
+Успех определяется actual INSERT RETURNING IDs; skipped conflicts не дают audit.
+Снимок after читается из БД, включая defaults, before=null. Служебный RETURNING id
+нужен независимо от caller selection и не расширяет raw/generatedMaps полями.
+Mixed save/upsert захватывают вход до lookup, poisoned owner не коммитит частичный
+результат при перехваченной ошибке. Create→update остаются разными action events.
+FILES arrays пока отказаны; null/empty defaults допустимы, неожиданные attachments
+из trigger/default приводят к rollback. Public CREATE требует следующего покрытия.
