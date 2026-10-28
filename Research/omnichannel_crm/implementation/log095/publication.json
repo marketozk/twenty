@@ -1,0 +1,52 @@
+{
+  "commit": "69417619637f4a81795c58abb40f442a31a20449",
+  "commentId": "560c6a19-a96f-4bf6-aebf-6d8ca3879d42",
+  "descriptionReadbackMatch": true,
+  "commentReadbackMatch": true,
+  "states": [
+    {
+      "id": "ROB-765",
+      "status": "In Progress"
+    },
+    {
+      "id": "ROB-764",
+      "status": "Done"
+    },
+    {
+      "id": "ROB-769",
+      "status": "Backlog"
+    },
+    {
+      "id": "ROB-772",
+      "status": "Done"
+    },
+    {
+      "id": "ROB-762",
+      "status": "Done"
+    },
+    {
+      "id": "ROB-763",
+      "status": "Done"
+    },
+    {
+      "id": "ROB-766",
+      "status": "Backlog"
+    },
+    {
+      "id": "ROB-767",
+      "status": "Backlog"
+    },
+    {
+      "id": "ROB-768",
+      "status": "Backlog"
+    },
+    {
+      "id": "ROB-770",
+      "status": "Backlog"
+    },
+    {
+      "id": "ROB-771",
+      "status": "Backlog"
+    }
+  ]
+}

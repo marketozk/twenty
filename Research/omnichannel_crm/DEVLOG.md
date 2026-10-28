@@ -3114,3 +3114,7 @@ guard, Jest parameter table и test generic исправлены, проверк
 
 ROB765 In Progress. Далее native CREATE FILES с actual-written parent mapping и
 postconditions; затем public CREATE/nested/shareWith/upsert. Демо и Actions не затронуты.
+
+LOG095 publication: `69417619637f4a81795c58abb40f442a31a20449` pushed/API verified.
+ROB765 description and comment `560c6a19-a96f-4bf6-aebf-6d8ca3879d42` independently
+read back; all 11 states match. ROB765 remains In Progress; implementation continues.
