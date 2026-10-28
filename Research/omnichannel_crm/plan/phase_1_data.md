@@ -6,14 +6,13 @@
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
-Зависимость: этап0. LOG-073 / ROB-764 In Progress: calendar list-fetch получает атомарный допуск
-по текущему account/enabled/stage; recovery/error передают точный run token.
-Курсор и следующий статус записываются вместе под тем же owner, с проверкой run.
-Declined fetch не запускает inline import из webhook; unknown commit не вызывает fallback.
-Проверено 756 targeted Jest/7 suites +26 guards =782 PASS,
-17 новых PostgreSQL/caller cases. Typecheck 292 roots:188/188,0 new/changed-code.
-7 migrations неизменны. [Доказательства](../implementation/log073/README.md). Scoped read-only review без находок.
-Последний full fork LOG067:2205/75. Далее native result apply/cleanup и Redis run boundaries.
+Зависимость: этап0. LOG-074 / ROB-764 In Progress: native сохранение сообщений/событий проверяет
+текущий account/enabled/stage и точный run token внутри той же strict transaction.
+Calendar read/build/write выполняются одним transaction owner; declined результат
+останавливает завершение import. Native nullable participants сохранены без подмены.
+Full fork 2443 Jest/76 suites +26 guards=2469 PASS; 29 new PostgreSQL cases. Typecheck 294 roots:188/187,0 new/changed-code. Seven migrations unchanged.
+[Доказательства](../implementation/log074/README.md). Scoped read-only review без находок.
+Далее native cleanup и проверка защищённых границ Redis/postcommit effects.
 Демо прежнее, GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы fork migrations,

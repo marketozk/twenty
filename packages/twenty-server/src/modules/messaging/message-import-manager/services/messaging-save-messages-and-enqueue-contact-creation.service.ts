@@ -1,3 +1,5 @@
+import { lockOrdinaryNativeSyncRun } from 'src/modules/omnichannel/services/lock-ordinary-native-sync-run';
+import { type OrdinaryMetadataSyncRun } from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
 import {
   type OmniLocalCommandCancellationPrincipal,
   type OmniLocalCommandCancellationInput,
@@ -36,10 +38,6 @@ import {
   CreateCompanyAndContactJob,
   type CreateCompanyAndContactJobData,
 } from 'src/modules/contact-creation-manager/jobs/create-company-and-contact.job';
-import {
-  type Participant,
-  type ParticipantWithMessageId,
-} from 'src/modules/messaging/message-import-manager/drivers/gmail/types/gmail-message.type';
 import { MessagingMessageFolderAssociationService } from 'src/modules/messaging/message-import-manager/services/messaging-message-folder-association.service';
 import { MessagingMessageService } from 'src/modules/messaging/message-import-manager/services/messaging-message.service';
 import { type MessageChannelMessageAssociationFolderAssociation } from 'src/modules/messaging/message-import-manager/types/message-channel-message-association-folder-association.type';
@@ -1311,6 +1309,7 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     messageChannel: MessageChannelEntity,
     connectedAccount: ConnectedAccountEntity,
     workspaceId: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<
     | {
         messageExternalIdsAndIdsMap: Map<string, string>;
@@ -1318,6 +1317,23 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
       }
     | undefined
   > {
+    expectedRun = expectedRun && { ...expectedRun };
+    messageChannel = { ...messageChannel };
+    connectedAccount = {
+      ...connectedAccount,
+      handleAliases: connectedAccount.handleAliases && [
+        ...connectedAccount.handleAliases,
+      ],
+    };
+    if (
+      expectedRun &&
+      (expectedRun.kind !== 'message' ||
+        expectedRun.workspaceId !== workspaceId ||
+        expectedRun.channelId !== messageChannel.id ||
+        expectedRun.connectedAccountId !== connectedAccount.id ||
+        messageChannel.connectedAccountId !== connectedAccount.id)
+    )
+      throw new Error('MESSAGE_NATIVE_SYNC_SCOPE_MISMATCH');
     const handleAliases = connectedAccount.handleAliases || [];
     const authContext = buildSystemAuthContext(workspaceId);
 
@@ -1326,6 +1342,14 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
         async () => {
           return this.workspaceOrmManager.runInWorkspaceTransaction(
             async (transactionScope) => {
+              if (
+                expectedRun &&
+                !(await lockOrdinaryNativeSyncRun(
+                  transactionScope,
+                  expectedRun,
+                ))
+              )
+                return undefined;
               const {
                 messageExternalIdsAndIdsMap,
                 messageExternalIdToMessageChannelMessageAssociationIdMap,
@@ -1337,57 +1361,57 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
                 workspaceId,
               );
 
-              const participantsWithMessageId: (ParticipantWithMessageId & {
-                shouldCreateContact: boolean;
-              })[] = messagesToSave.flatMap((message) => {
-                const messageId = messageExternalIdsAndIdsMap.get(
-                  message.externalId,
-                );
+              const participantsWithMessageId = messagesToSave.flatMap(
+                (message) => {
+                  const messageId = messageExternalIdsAndIdsMap.get(
+                    message.externalId,
+                  );
 
-                return messageId
-                  ? message.participants.map((participant: Participant) => {
-                      const fromHandle =
-                        message.participants.find(
-                          (p) => p.role === MessageParticipantRole.FROM,
-                        )?.handle || '';
+                  return messageId
+                    ? message.participants.map((participant) => {
+                        const fromHandle =
+                          message.participants.find(
+                            (p) => p.role === MessageParticipantRole.FROM,
+                          )?.handle || '';
 
-                      const isMessageSentByConnectedAccount =
-                        handleAliases.includes(fromHandle) ||
-                        fromHandle === connectedAccount.handle;
+                        const isMessageSentByConnectedAccount =
+                          handleAliases.includes(fromHandle) ||
+                          fromHandle === connectedAccount.handle;
 
-                      const isParticipantConnectedAccount =
-                        handleAliases.includes(participant.handle) ||
-                        participant.handle === connectedAccount.handle;
+                        const isParticipantConnectedAccount =
+                          handleAliases.includes(participant.handle ?? '') ||
+                          participant.handle === connectedAccount.handle;
 
-                      const isExcludedByNonProfessionalEmails =
-                        messageChannel.excludeNonProfessionalEmails &&
-                        !isWorkEmail(participant.handle);
+                        const isExcludedByNonProfessionalEmails =
+                          messageChannel.excludeNonProfessionalEmails &&
+                          !isWorkEmail(participant.handle ?? '');
 
-                      const isExcludedByGroupEmails =
-                        messageChannel.excludeGroupEmails &&
-                        isGroupEmail(participant.handle);
+                        const isExcludedByGroupEmails =
+                          messageChannel.excludeGroupEmails &&
+                          isGroupEmail(participant.handle ?? '');
 
-                      // Drafts are outgoing, so recipients of an unsent email don't become contacts
-                      const shouldCreateContact =
-                        !message.isDraft &&
-                        !!participant.handle &&
-                        !isParticipantConnectedAccount &&
-                        !isExcludedByNonProfessionalEmails &&
-                        !isExcludedByGroupEmails &&
-                        (messageChannel.contactAutoCreationPolicy ===
-                          MessageChannelContactAutoCreationPolicy.SENT_AND_RECEIVED ||
+                        // Drafts are outgoing, so recipients of an unsent email don't become contacts
+                        const shouldCreateContact =
+                          !message.isDraft &&
+                          !!participant.handle &&
+                          !isParticipantConnectedAccount &&
+                          !isExcludedByNonProfessionalEmails &&
+                          !isExcludedByGroupEmails &&
                           (messageChannel.contactAutoCreationPolicy ===
-                            MessageChannelContactAutoCreationPolicy.SENT &&
-                            isMessageSentByConnectedAccount));
+                            MessageChannelContactAutoCreationPolicy.SENT_AND_RECEIVED ||
+                            (messageChannel.contactAutoCreationPolicy ===
+                              MessageChannelContactAutoCreationPolicy.SENT &&
+                              isMessageSentByConnectedAccount));
 
-                      return {
-                        ...participant,
-                        messageId,
-                        shouldCreateContact,
-                      };
-                    })
-                  : [];
-              });
+                        return {
+                          ...participant,
+                          messageId,
+                          shouldCreateContact,
+                        };
+                      })
+                    : [];
+                },
+              );
 
               const savedMessageParticipants =
                 await this.messageParticipantService.saveMessageParticipants(
@@ -1434,6 +1458,7 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
                 messageExternalIdToMessageThreadIdMap,
               };
             },
+            expectedRun ? { commitOutcome: 'strict' } : undefined,
           );
         },
         authContext,
@@ -1442,8 +1467,15 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
 
     if (messageChannel.isContactAutoCreationEnabled && savedMessagesResult) {
       const contactsToCreate =
-        savedMessagesResult.participantsWithMessageId.filter(
-          (participant) => participant.shouldCreateContact,
+        savedMessagesResult.participantsWithMessageId.flatMap((participant) =>
+          participant.shouldCreateContact && participant.handle
+            ? [
+                {
+                  handle: participant.handle,
+                  displayName: participant.displayName ?? '',
+                },
+              ]
+            : [],
         );
 
       await this.messageQueueService.add<CreateCompanyAndContactJobData>(

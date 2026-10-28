@@ -33,14 +33,17 @@ export class CalendarEventParticipantService {
 
   public async findCalendarEventParticipantsByCalendarEventIds({
     calendarEventIds,
+    transactionScope,
   }: {
     calendarEventIds: string[];
+    transactionScope?: WorkspaceTransactionScope;
   }): Promise<CalendarEventParticipantWorkspaceEntity[]> {
-    const calendarEventParticipantRepository =
-      this.workspaceOrmManager.getRepository<CalendarEventParticipantWorkspaceEntity>(
-        'calendarEventParticipant',
-        { shouldBypassPermissionChecks: true },
-      );
+    const calendarEventParticipantRepository = (
+      transactionScope ?? this.workspaceOrmManager
+    ).getRepository<CalendarEventParticipantWorkspaceEntity>(
+      'calendarEventParticipant',
+      { shouldBypassPermissionChecks: true },
+    );
 
     return calendarEventParticipantRepository.find({
       where: { calendarEventId: Any([...new Set(calendarEventIds)]) },

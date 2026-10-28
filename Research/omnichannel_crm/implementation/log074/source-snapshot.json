@@ -1,0 +1,15 @@
+{
+  "baseCommit": "6c1075daad80ed0552c8362afbd2929468720d13",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-events-import.service.ts": "b3ae86e9f77d1896ca9e017dc8268f090f3cacfe561813a84d442ecb4c8af4ec",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-save-events.service.ts": "77f74c69d87bbbf0f077f10f718723aa2c52270df17bab5641d4776b8f52950b",
+    "packages/twenty-server/src/modules/calendar/calendar-event-participant-manager/services/calendar-event-participant.service.ts": "86a4d7c46780d7f816113a6101a659af3c18383a1cb1c1b474c8c7838701c854",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-messages-import.service.ts": "7b95fc2fc7c770da1b5504981dd39622c75dadccda5e5936349cb668ac357c52",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts": "51dd40a340fc2b00d96f6e475854d89073c7f79d514b70c197c9445f12c806e7",
+    "packages/twenty-server/test/fork-migration/omni-native-message.fixture.ts": "95532981b11ce494bd25f0d0b7de69f26dcd71c974b9c07e59661603ae2ded6d",
+    "packages/twenty-server/src/modules/omnichannel/services/lock-ordinary-native-sync-run.ts": "79f6822e20847a90fe0d0e801a6da061eb645f071bc43b227c4e72d2e4b87459",
+    "packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts": "09c22938a61384741fbc2c9b02ff1904bded06899eda819d97583c9c263471bb"
+  }
+}

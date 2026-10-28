@@ -58,16 +58,18 @@ Canonical lifecycle requirements remain in the implementation specification.
 
 - LOG073: calendar list-fetch atomic admission and fresh entities, run-guarded legacy/error path, cursor+status finalization in one owner transaction. Declined result stops webhook inline import. Native association/orphan cleanup and Redis side effects remain below.
 
+- LOG074: native message/calendar aggregate locks exact current run within existing strict native transaction; calendar reads/build/writes use that owner. Decline stops completion and postcommit jobs; accepted postcommit effects still have no run proof. Full fork regression refreshed.
+
 ## Remaining owners, in implementation order
 
 Paths below are relative to `packages/twenty-server/src`.
 
 | Owner | Observed gap / required check |
 |---|---|
-| Message run side effects | Admission, recent/full distinction and cursor/scheduling metadata callbacks covered by LOG071–072. Account-scoped Redis publication/requeue/monitoring and native save/cleanup still need final contract coverage. |
+| Message run side effects | Admission, recent/full distinction and cursor/scheduling metadata callbacks covered by LOG071–072. Native save is covered by LOG074. Account-scoped Redis publication/requeue/monitoring, native cleanup and accepted postcommit effects still need final contract coverage. |
 
 | Calendar provider native side effects | Metadata stage/cursor/run callbacks covered by LOG071/073. CalendarFetchEventsService association deletion/orphan cleanup still require run guard inside their native transaction; Redis publication remains outside SQL. |
-| Native provider-result writes | Message save aggregate/calendar save aggregate must check parent/run under their existing native transaction; calendar association/orphan cleanup also needs same-owner admission. External SELECT is insufficient. |
+| Native provider cleanup and postcommit effects | Aggregate run guard covered by LOG074. Message/calendar association + orphan cleanup require proof inside their native owner. Accepted contact creation/rematch postcommit effects currently have no run proof. |
 | Legacy list-fetch downstream cache/cleanup callbacks | Final completion is parent-pinned (LOG058); intermediate cache mutations and cleanup are separate. Review with group/folder scope before claiming complete callback lifecycle protection. |
 
 ## Required evidence

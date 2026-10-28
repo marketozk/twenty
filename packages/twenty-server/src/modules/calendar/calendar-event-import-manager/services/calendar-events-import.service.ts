@@ -173,12 +173,15 @@ export class CalendarEventsImportService {
           for (let i = 0; i < filteredEvents.length; i = i + BATCH_SIZE) {
             const eventsBatch = filteredEvents.slice(i, i + BATCH_SIZE);
 
-            await this.calendarSaveEventsService.saveCalendarEventsAndEnqueueContactCreationJob(
-              eventsBatch,
-              calendarChannel,
-              connectedAccount,
-              workspaceId,
-            );
+            const saved =
+              await this.calendarSaveEventsService.saveCalendarEventsAndEnqueueContactCreationJob(
+                eventsBatch,
+                calendarChannel,
+                connectedAccount,
+                workspaceId,
+                expectedRun,
+              );
+            if (!saved.applied) return;
           }
           if (eventExternalIdsToRemove.length > 0) {
             const calendarChannelEventAssociationRepository =

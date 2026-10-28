@@ -44,6 +44,7 @@ type TableName =
   | 'messageThreadTarget'
   | 'calendarEvent'
   | 'calendarEventParticipant'
+  | 'calendarChannelEventAssociation'
   | 'calendarEventTarget'
   | 'blocklist'
   | 'messageCampaign'
