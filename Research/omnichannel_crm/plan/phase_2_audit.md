@@ -101,3 +101,10 @@ Public CREATE ещё не включён; далее nested/shareWith/upsert com
 COMMIT. 744 tests/27 suites PASS, 28 новых PG cases, 26 guards; 334/334 type roots,
 189/189 baseline diagnostics и 0 новых. Публичные CREATE и собственный shared access
 не объявляются готовыми; ROB765 In Progress.
+
+[LOG097](../implementation/log097/README.md): внутренние create/update local
+non-standard application objects. Metadata authority и canonical table identity,
+исключение system/remote/чужих standard IDs; custom FILES и реальная вложенная цепочка
+в одном explicit scope. 766 tests/28 suites PASS, 22 новых PG cases; 26 guards,
+0 новых diagnostics. Public selector остаётся прежним. Далее soft-delete/restore;
+CREATE/shareWith, физический delete/merge и прочие owners ещё не закрыты.

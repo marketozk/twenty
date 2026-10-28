@@ -1109,7 +1109,8 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       assertNativeCrmAuditWriteSupported(
         this.options.executor,
         this.options.tableShape,
-        this.options.flatObjectMetadata.universalIdentifier,
+        this.options.flatObjectMetadata,
+        this.options.internalContext.workspaceId,
         'create',
       );
       if (nativeAudit)
@@ -1117,7 +1118,8 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
           assertNativeCrmAuditWriteSupported(
             this.options.executor,
             this.options.tableShape,
-            this.options.flatObjectMetadata.universalIdentifier,
+            this.options.flatObjectMetadata,
+            this.options.internalContext.workspaceId,
             'create',
             record,
           );
@@ -1332,7 +1334,8 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
           assertNativeCrmAuditWriteSupported(
             this.options.executor,
             this.options.tableShape,
-            this.options.flatObjectMetadata.universalIdentifier,
+            this.options.flatObjectMetadata,
+            this.options.internalContext.workspaceId,
             'update',
             input.data,
           );
@@ -1911,7 +1914,8 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       assertNativeCrmAuditWriteSupported(
         this.options.executor,
         this.options.tableShape,
-        this.options.flatObjectMetadata.universalIdentifier,
+        this.options.flatObjectMetadata,
+        this.options.internalContext.workspaceId,
         args.kind,
         args.data,
       );

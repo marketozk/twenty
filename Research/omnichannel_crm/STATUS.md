@@ -39,6 +39,11 @@ case. Ограничение FILES arrays снято в [LOG096](implementation/
 LOG096: 744 tests/27 suites PASS, 28 новых PostgreSQL cases; 26 guards PASS,
 10 migration checksums неизменны, 0 новых type diagnostics. Демо не менялось.
 
+[LOG097](implementation/log097/README.md): внутренние create/update local custom
+objects, включая FILES и вложенную цепочку standard→custom→standard. 766 tests/28
+suites PASS, 22 новых PG cases; 0 новых type diagnostics. Public custom owner и CREATE
+ещё не включены. Следом soft-delete/restore; shares остаются отдельным access owner.
+
 Продолжаем native CRUD/merge и подключение реальных writers, затем
 metadata/session и negative audit. [Приёмка ROB765](implementation/rob765-progress.md).
 

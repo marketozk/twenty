@@ -3141,3 +3141,22 @@ Enterprise recordShare не включается в generic audit coverage. Де
 LOG096 publication: `93a7e9d42cc3591f9048d46cfd73f5b37135e92a` pushed/API verified.
 ROB765 description and comment `3f076067-c224-4244-ac0f-5cac47f5f434` independently
 read back; all 11 states match. ROB765 remains In Progress; implementation continues.
+
+## LOG-097 — custom CRM records в native audit owner
+
+Добавлена metadata-based coverage обычных local non-standard application objects.
+Workspace/object/application IDs, isSystem/isRemote и canonical table name проверяются
+перед записью. Старый isCustom не используется. Public selector остаётся standard
+UPDATE; custom CREATE/UPDATE требуют явного owner. Существующие snapshots, File store,
+permissions и poisoning переиспользованы. Actual CommonCreate nested chain
+Company→customCase→Company проверяет общий commit/rollback без recordShare calls.
+
+766 tests/28 suites PASS, 22 новых PG cases, 114 targeted; 26 guards PASS, 10 migration
+checksums неизменны. Types 334/336 roots, 189/189 baseline diagnostics, 0 новых/changed.
+8 source hashes совпадают. Независимое review без блокеров. Исправлены тестовые
+row/UUID annotations и устаревшее ожидание текста coverage refusal; финальный
+regression повторён. [Доказательства](implementation/log097/README.md).
+
+ROB765 In Progress. Следом soft-delete/restore и соответствующие public owners.
+Физический delete/merge требует отдельной проверки FK side effects; public CREATE
+и shared access не включаются ценой обхода аудита. Демо и GitHub Actions не менялись.

@@ -768,3 +768,10 @@ File lifecycle применяется только к actual INSERT IDs. Про�
 FILES поля after row, включая null/empty/omitted; неожиданные attachments или
 подмена parent из trigger/default приводят к rollback. Public CREATE требует
 следующего покрытия nested/shareWith/upsert; этот контракт пока внутренний.
+
+LOG097 расширяет внутренние create/update на обычные local non-standard application
+objects. Authority — реальные workspace/object/application identifiers, а не удалённый
+upstream флаг isCustom. Требуются !isSystem, !isRemote, совпадение workspace/object
+shape и canonical table name; standard names/IDs вне исходных трёх объектов отказаны.
+Это не допуск для recordShare/workflow/calendar/message и не включение public custom
+autoowner. Цепочка standard→custom→standard использует один явный native scope.

@@ -42,3 +42,8 @@ Actual-written parents и неизменность skipped File rows, full FILES
 mixed save/upsert, concurrent claim, trigger/core/audit rollback и unknown COMMIT.
 Далее coverage связанных пользовательских записей и public CREATE; recordShare не
 добавляется в generic CRM allowlist, собственные права остаются ROB766.
+
+LOG097: [custom records](log097/README.md), 766 tests/28 suites PASS, 22 новых PG cases.
+Custom create/update/FILES внутри явного owner, metadata boundaries и цепочка
+Company→customCase→Company с полным rollback. Public selector пока standard UPDATE.
+Следом soft-delete/restore; public CREATE/shares сохраняются в открытом остатке.

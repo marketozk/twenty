@@ -1,0 +1,14 @@
+{
+  "baseCommit": "cefe43524d0b493c60b91386c1d3f161cae8b07f",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-record.ts": "b66870428629a6107f28ae5435721d22b48b9f5481b27fa34e192918a4f3aa20",
+    "packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts": "dbc40bb149e3706c6a8e03044d259e30287aee00b12973d7d77ddad0e3ee029c",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-company.postgres-spec.ts": "6a14be4c680cbe5b7245678b3e3822820948682eddc0452a9263ceee9607ccc5",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-files.postgres-spec.ts": "d309c5d64f70d0d2dab863237a584a408af30b33147c191d027d7f75298df7be",
+    "packages/twenty-server/test/fork-migration/crm-audit-public-update.postgres-spec.ts": "65194ead47671db436844898ed04b4c19bf6af436c68bc357aa536e0fe865ef6",
+    "packages/twenty-server/test/fork-migration/omni-native-message.fixture.ts": "a22f0b2b96f44c1bc0689ccda7d6ec390113d78b421811d2b0b6e6d1546da257",
+    "packages/twenty-server/test/fork-migration/crm-audit-custom-record.postgres-spec.ts": "16d6161d36c9749ea5144e95d47d7b1c6ec25c2dc76aa179bbf4a84a8fed02e6",
+    "packages/twenty-server/test/fork-migration/custom-crm-metadata.fixture.ts": "fab3ac8fb2dc38203af4eab803d0bd28e2406902bfbc1038153bd2f076c2f849"
+  },
+  "uploadedSourceHashesVerified": true
+}

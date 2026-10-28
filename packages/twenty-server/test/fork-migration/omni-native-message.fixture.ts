@@ -36,33 +36,21 @@ const TABLE_NAMES = [
   'person',
   'messageThreadTarget',
 ] as const;
-type TableName =
-  | (typeof TABLE_NAMES)[number]
-  | 'workspaceMember'
-  | 'company'
-  | 'opportunity'
-  | 'task'
-  | 'messageThreadTarget'
-  | 'calendarEvent'
-  | 'calendarEventParticipant'
-  | 'calendarChannelEventAssociation'
-  | 'calendarEventTarget'
-  | 'blocklist'
-  | 'messageCampaign'
-  | 'messageChannelMessageAssociationMessageFolder';
-
 export const createOmniNativeMessageFixture = (
   options: {
-    additionalTables?: readonly TableName[];
+    additionalTables?: readonly string[];
+    configureMetadata?: (
+      maps: Pick<
+        WorkspaceInternalContext,
+        'flatObjectMetadataMaps' | 'flatFieldMetadataMaps' | 'flatIndexMaps'
+      >,
+    ) => void;
     coreSchema?: 'audit' | 'fork';
     useStandardForeignKeyActions?: boolean;
   } = {},
 ) => {
   const tableNames = [
-    ...new Set<TableName>([
-      ...TABLE_NAMES,
-      ...(options.additionalTables ?? []),
-    ]),
+    ...new Set<string>([...TABLE_NAMES, ...(options.additionalTables ?? [])]),
   ];
   const databaseUrl = process.env.FORK_MIGRATION_TEST_URL;
 
@@ -117,6 +105,11 @@ export const createOmniNativeMessageFixture = (
     ...metadataArguments,
     dependencyFlatEntityMaps: { flatObjectMetadataMaps, flatFieldMetadataMaps },
   });
+  options.configureMetadata?.({
+    flatObjectMetadataMaps,
+    flatFieldMetadataMaps,
+    flatIndexMaps,
+  });
   const objects = Object.values(
     flatObjectMetadataMaps.byUniversalIdentifier,
   ).filter(isDefined);
@@ -148,6 +141,7 @@ export const createOmniNativeMessageFixture = (
   const selected = objects.filter((object) =>
     tableNames.some((name) => name === object.nameSingular),
   );
+  const createdTableNames: string[] = [];
   const eventEmitter = jest.fn();
   const recordStock = {
     assertRecordStockAvailable: jest.fn().mockResolvedValue(undefined),
@@ -180,7 +174,7 @@ export const createOmniNativeMessageFixture = (
     authContext: buildSystemAuthContext(workspaceId),
     objectPermissionsByRoleId: {},
   });
-  const read = (tableName: TableName) =>
+  const read = (tableName: string) =>
     owner.query(`SELECT * FROM "${schemaName}"."${tableName}" ORDER BY id`);
 
   const initialize = async () => {
@@ -283,6 +277,7 @@ export const createOmniNativeMessageFixture = (
           tableName: shape.tableName,
           columnDefinitions: columns,
         });
+        createdTableNames.push(shape.tableName);
       }
       for (const object of selected) {
         const shape = buildWorkspaceTableShape({
@@ -321,7 +316,11 @@ export const createOmniNativeMessageFixture = (
             foreignKey: {
               tableName: shape.tableName,
               columnName: relation.joinColumnName,
-              referencedTableName: target.nameSingular,
+              referencedTableName: buildWorkspaceTableShape({
+                workspaceId,
+                flatObjectMetadata: target,
+                flatFieldMetadataMaps,
+              }).tableName,
               referencedColumnName: 'id',
               onDelete,
             },
@@ -368,7 +367,7 @@ export const createOmniNativeMessageFixture = (
   };
   const reset = async () => {
     await owner.query(
-      `TRUNCATE ${tableNames.map((name) => `"${schemaName}"."${name}"`).join(', ')} CASCADE`,
+      `TRUNCATE ${createdTableNames.map((name) => `"${schemaName}"."${name}"`).join(', ')} CASCADE`,
     );
     await owner.query('TRUNCATE crm_audit."crmAuditEntry"');
     eventEmitter.mockClear();

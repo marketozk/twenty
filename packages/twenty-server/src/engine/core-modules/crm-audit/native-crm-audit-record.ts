@@ -1,5 +1,9 @@
-import { STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS } from 'twenty-shared/application-runtime';
+import {
+  STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS,
+  TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER,
+} from 'twenty-shared/application-runtime';
 import { getNativeCrmAuditContext } from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
+import { computeTableName } from 'src/engine/utils/compute-table-name.util';
 
 type ObjectRecord = { id: string } & Record<string, unknown>;
 type QueryExecutor = {
@@ -54,6 +58,49 @@ export const isNativeCrmAuditObject = (
 ): boolean =>
   Object.hasOwn(AUDITED_OBJECTS, name) &&
   AUDITED_OBJECTS[name] === universalIdentifier;
+
+type NativeCrmAuditObjectMetadata = {
+  id: string;
+  workspaceId: string;
+  nameSingular: string;
+  universalIdentifier: string;
+  applicationUniversalIdentifier: string;
+  isSystem: boolean;
+  isRemote: boolean;
+};
+const STANDARD_OBJECT_IDS = new Set<string>(
+  Object.values(STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS),
+);
+const UUID_PATTERN = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
+
+export const isNativeCrmAuditMetadata = (
+  metadata: NativeCrmAuditObjectMetadata,
+  workspaceId: string,
+): boolean => {
+  if (
+    metadata.workspaceId !== workspaceId ||
+    metadata.isSystem !== false ||
+    metadata.isRemote !== false ||
+    ![
+      metadata.id,
+      metadata.universalIdentifier,
+      metadata.applicationUniversalIdentifier,
+    ].every((value) => typeof value === 'string' && UUID_PATTERN.test(value))
+  )
+    return false;
+  if (
+    metadata.applicationUniversalIdentifier ===
+    TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER
+  )
+    return isNativeCrmAuditObject(
+      metadata.nameSingular,
+      metadata.universalIdentifier,
+    );
+  return (
+    !STANDARD_OBJECT_IDS.has(metadata.universalIdentifier) &&
+    !Object.hasOwn(STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS, metadata.nameSingular)
+  );
+};
 
 const coverageError = () =>
   new Error(
@@ -116,17 +163,26 @@ export const captureNativeCrmAuditWriteData = (
 export const assertNativeCrmAuditWriteSupported = (
   executor: QueryExecutor,
   shape: WorkspaceTableShape,
-  universalIdentifier: string,
+  metadata: NativeCrmAuditObjectMetadata,
+  workspaceId: string,
   kind: string,
   data: Record<string, unknown> = {},
 ): void => {
   if (!getNativeCrmAuditContext(executor)) return;
   if (
     !['create', 'update'].includes(kind) ||
-    !isNativeCrmAuditObject(shape.nameSingular, universalIdentifier)
+    !isNativeCrmAuditMetadata(metadata, workspaceId) ||
+    metadata.id !== shape.objectMetadataId ||
+    metadata.nameSingular !== shape.nameSingular ||
+    shape.tableName !==
+      computeTableName(
+        metadata.nameSingular,
+        metadata.applicationUniversalIdentifier !==
+          TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER,
+      )
   )
     throw new Error(
-      'Native audit currently supports only standard Company, Person and Opportunity creates and updates',
+      'Native audit supports only covered local CRM creates and updates',
     );
   for (const [name, value] of Object.entries(data)) {
     if (name === 'id' || value === undefined) continue;
@@ -140,7 +196,7 @@ export const assertNativeCrmAuditWriteSupported = (
           !file ||
           typeof file !== 'object' ||
           typeof file.fileId !== 'string' ||
-          !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(file.fileId) ||
+          !UUID_PATTERN.test(file.fileId) ||
           typeof file.label !== 'string' ||
           (file.extension !== undefined &&
             typeof file.extension !== 'string') ||

@@ -9,13 +9,15 @@ import { type WorkspaceTransactionScope } from 'src/engine/twenty-orm/types/work
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { getWorkspaceContext } from 'src/engine/twenty-orm/storage/orm-workspace-context.storage';
 import { createOmniNativeMessageFixture } from 'test/fork-migration/omni-native-message.fixture';
+import { addCustomCrmMetadata } from 'test/fork-migration/custom-crm-metadata.fixture';
 
 jest.mock(
   'src/engine/metadata-modules/index-metadata/index-metadata.entity',
   () => ({ IndexMetadataEntity: class {} }),
 );
 const f = createOmniNativeMessageFixture({
-  additionalTables: ['company', 'opportunity'],
+  additionalTables: ['company', 'opportunity', 'customCase'],
+  configureMetadata: addCustomCrmMetadata,
   coreSchema: 'audit',
 });
 const recordId = randomUUID(),
@@ -90,7 +92,7 @@ const attach = (object = 'company') =>
 beforeAll(async () => {
   await f.withContext(async () => {
     const context = getWorkspaceContext();
-    for (const name of ['company', 'person', 'opportunity']) {
+    for (const name of ['company', 'person', 'opportunity', 'customCase']) {
       const object = Object.values(
         context.flatObjectMetadataMaps.byUniversalIdentifier,
       ).find((item) => item?.nameSingular === name)!;
@@ -180,10 +182,14 @@ beforeEach(async () => {
     `INSERT INTO "${f.schemaName}".opportunity(id) VALUES($1)`,
     [recordId],
   );
+  await f.owner.query(
+    `INSERT INTO "${f.schemaName}"."_customCase"(id) VALUES($1)`,
+    [recordId],
+  );
 });
 afterAll(() => f.dispose());
 
-it.each(['company', 'person', 'opportunity'])(
+it.each(['company', 'person', 'opportunity', 'customCase'])(
   'attaches a File and audits its exact %s parent in one commit',
   async (object) => {
     await seed({}, object);
@@ -211,7 +217,7 @@ it.each(['company', 'person', 'opportunity'])(
     expect(JSON.stringify(rows)).not.toContain('private');
     expect(f.eventEmitter).not.toHaveBeenCalled();
     const native = (
-      (await f.read(object as 'company' | 'person' | 'opportunity')) as {
+      (await f.read(object === 'customCase' ? '_customCase' : object)) as {
         id: string;
         documents: unknown;
       }[]
@@ -593,7 +599,7 @@ it('preserves public FILES JSON-array transformation before audited writes', asy
   expect(await audits()).toHaveLength(2);
 });
 
-it.each(['company', 'person', 'opportunity'])(
+it.each(['company', 'person', 'opportunity', 'customCase'])(
   'creates a %s with a generated parent ID and an atomic File attachment',
   async (object) => {
     await seed({}, object);

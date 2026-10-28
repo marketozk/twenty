@@ -24,6 +24,9 @@ import {
 import { type WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
 import { type WorkspaceTransactionScope } from 'src/engine/twenty-orm/types/workspace-transaction-scope.type';
 import { createOmniNativeMessageFixture } from 'test/fork-migration/omni-native-message.fixture';
+import { addCustomCrmMetadata } from 'test/fork-migration/custom-crm-metadata.fixture';
+import { CommonCreateOneQueryRunnerService } from 'src/engine/api/common/common-query-runners/common-create-one-query-runner.service';
+import { CommonCreateManyQueryRunnerService } from 'src/engine/api/common/common-query-runners/common-create-many-query-runner/common-create-many-query-runner.service';
 
 jest.mock(
   'src/engine/metadata-modules/index-metadata/index-metadata.entity',
@@ -63,9 +66,14 @@ jest.mock(
 jest.mock('src/engine/core-modules/file/file-url/file-url.service', () => ({
   FileUrlService: class {},
 }));
+jest.mock(
+  'src/engine/core-modules/record-share/services/share-with.service',
+  () => ({ ShareWithService: class {} }),
+);
 
 const f = createOmniNativeMessageFixture({
-  additionalTables: ['company', 'opportunity'],
+  additionalTables: ['company', 'opportunity', 'customCase'],
+  configureMetadata: addCustomCrmMetadata,
   coreSchema: 'audit',
 });
 const id = randomUUID();
@@ -159,7 +167,18 @@ const harness = (
   const visibility = new CommonRecordVisibilityService();
   const many = new CommonUpdateManyQueryRunnerService();
   const one = new CommonUpdateOneQueryRunnerService(many);
-  for (const runner of [one, many])
+  const shares = {
+    validateShareWithOrThrow: jest.fn(),
+    insertRecordSharesForCreatedRecords: jest.fn(),
+  };
+  const createMany = new CommonCreateManyQueryRunnerService(
+    new RecordPositionService(manager),
+    shares as unknown as ConstructorParameters<
+      typeof CommonCreateManyQueryRunnerService
+    >[1],
+  );
+  const createOne = new CommonCreateOneQueryRunnerService(createMany);
+  for (const runner of [one, many, createOne, createMany])
     Object.assign(runner, {
       workspaceOrmManager: manager,
       workspaceQueryHookService: hooks,
@@ -187,6 +206,7 @@ const harness = (
     ).find((object) => object?.id === base.objectIdByNameSingular[name])!,
     flatObjectMetadataMaps: base.flatObjectMetadataMaps,
     flatFieldMetadataMaps: base.flatFieldMetadataMaps,
+    flatIndexMaps: base.flatIndexMaps,
     objectIdByNameSingular: base.objectIdByNameSingular,
     transactionScope,
   });
@@ -194,6 +214,9 @@ const harness = (
     permissions,
     one,
     many,
+    createOne,
+    createMany,
+    shares,
     queryContext,
     hooks,
     visibility,
@@ -231,6 +254,66 @@ afterEach(async () => {
   await f.owner.query('DROP FUNCTION IF EXISTS crm_audit.fail_public_audit()');
 });
 afterAll(() => f.dispose());
+
+it.each([false, true])(
+  'creates standard-custom-standard nested records inside an explicit audited scope; rollback=%s',
+  async (rollback) => {
+    const h = harness(),
+      parentId = randomUUID(),
+      caseId = randomUUID(),
+      nestedId = randomUUID();
+    const operation = h.run(() =>
+      h.dataSource.transaction(
+        async (scope) => {
+          const result = await h.createOne.execute(
+            {
+              data: {
+                id: parentId,
+                name: 'parent',
+                case: {
+                  create: {
+                    id: caseId,
+                    name: 'case',
+                    company: {
+                      create: { id: nestedId, name: 'nested company' },
+                    },
+                  },
+                },
+              },
+              selectedFields: { id: true, caseId: true },
+            },
+            h.queryContext('company', scope),
+          );
+          expect(result.results).toMatchObject({ id: parentId, caseId });
+          expect(await audit()).toHaveLength(0);
+          if (rollback) throw new Error('NESTED_CUSTOM_ROLLBACK');
+        },
+        {
+          nativeAudit: {
+            operationId: randomUUID(),
+            systemActorId: 'nested-custom-test',
+          },
+        },
+      ),
+    );
+    if (rollback)
+      await expect(operation).rejects.toThrow('NESTED_CUSTOM_ROLLBACK');
+    else await operation;
+    expect(
+      (await f.read('_customCase')).map((row: ObjectRecord) => row.id),
+    ).toEqual(rollback ? [] : [caseId]);
+    expect(
+      (await f.read('company')).filter(
+        (row: ObjectRecord) => row.id === parentId || row.id === nestedId,
+      ),
+    ).toHaveLength(rollback ? 0 : 2);
+    const entries = await audit();
+    expect(entries).toHaveLength(rollback ? 0 : 3);
+    if (!rollback)
+      expect(new Set(entries.map((entry) => entry.operationId)).size).toBe(1);
+    expect(h.shares.insertRecordSharesForCreatedRecords).not.toHaveBeenCalled();
+  },
+);
 
 it.each(['system', 'user', 'apiKey', 'application'] as const)(
   'automatically audits the authenticated %s public update once',
