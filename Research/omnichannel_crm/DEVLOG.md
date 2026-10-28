@@ -3206,3 +3206,7 @@ Read-only review нашёл postflush trigger gap, потерю rollback cause �
 ROB765 In Progress. Далее single/bulk revoke и cache-hit revocation check: audit failure
 не должен отменять отзыв. Public CREATE/shared access, physical delete/merge, metadata,
 roles, negative audit/health ещё открыты. Demo/Actions/внешние сообщения не затронуты.
+
+LOG099 publication: `01f8718b538eb6d29d765dcc2a6a8f6f26619eee` pushed/API verified.
+ROB765 description and comment `4fd700de-3925-4477-b9da-f9ad595cdaaf` independently
+read back; all 11 states match. ROB765 remains In Progress; implementation continues.
