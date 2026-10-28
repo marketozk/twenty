@@ -5,6 +5,10 @@ import { type AllMetadataName } from 'twenty-shared/metadata';
 import { FeatureFlagKey, FieldMetadataType } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 import { DataSource } from 'typeorm';
+import {
+  getRoleUpdateAudit,
+  runAuditedRoleUpdate,
+} from 'src/engine/core-modules/crm-audit/role-update-audit';
 
 import { FeatureFlagService } from 'src/engine/core-modules/feature-flag/services/feature-flag.service';
 import { LoggerService } from 'src/engine/core-modules/logger/logger.service';
@@ -260,8 +264,6 @@ export class WorkspaceMigrationRunnerService {
 
     const initialCacheRetrievalStart = performance.now();
 
-    const queryRunner = this.coreDataSource.createQueryRunner();
-
     const actionMetadataNames = [
       ...new Set(actions.flatMap((action) => action.metadataName)),
     ];
@@ -372,6 +374,77 @@ export class WorkspaceMigrationRunnerService {
 
     this.logger.perfTime('Runner', 'Transaction execution');
 
+    const roleAudit = getRoleUpdateAudit(workspaceId);
+    if (roleAudit) {
+      try {
+        return await runAuditedRoleUpdate(
+          this.coreDataSource,
+          roleAudit,
+          actions,
+          async (queryRunner) => {
+            const metadataEvents: MetadataEvent[] = [];
+            for (const action of actions) {
+              if (
+                action.type !== 'update' ||
+                action.metadataName !== 'role' ||
+                allFlatEntityMaps.flatRoleMaps?.byUniversalIdentifier[
+                  action.universalIdentifier
+                ]?.id !== roleAudit.roleId
+              )
+                throw new Error(
+                  'Audited role update resolved a different record',
+                );
+              const executed =
+                await this.workspaceMigrationRunnerActionHandlerRegistry.executeActionHandler(
+                  {
+                    action,
+                    context: {
+                      flatApplication,
+                      action,
+                      allFlatEntityMaps,
+                      queryRunner,
+                      workspaceId,
+                      preallocatedIdByUniversalIdentifierByMetadataName,
+                      getSearchFieldMetadatasByTsVectorFieldId: () => [],
+                      featureFlagsMap,
+                    },
+                  },
+                );
+              if (executed.deferredActions.length)
+                throw new Error(
+                  'Audited role update cannot dispatch deferred actions',
+                );
+              allFlatEntityMaps = {
+                ...allFlatEntityMaps,
+                ...executed.partialOptimisticCache,
+              } as typeof allFlatEntityMaps;
+              metadataEvents.push(...executed.metadataEvents);
+            }
+            return {
+              allFlatEntityMaps,
+              metadataEvents,
+              hasSchemaMetadataChanged: false,
+            };
+          },
+        );
+      } finally {
+        // A lost COMMIT acknowledgement can still have changed permissions.
+        try {
+          await this.invalidateCache({
+            allFlatEntityMapsKeys,
+            workspaceId,
+            hasSchemaMetadataChanged: false,
+          });
+        } catch (cacheError) {
+          this.logger.error(
+            `Cache invalidation failed after audited role update: ${cacheError}`,
+            'Runner',
+          );
+        }
+      }
+    }
+
+    const queryRunner = this.coreDataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
@@ -543,7 +616,7 @@ export class WorkspaceMigrationRunnerService {
       }
 
       throw new WorkspaceMigrationRunnerException({
-        message: error.message,
+        message: error instanceof Error ? error.message : String(error),
         code: WorkspaceMigrationRunnerExceptionCode.INTERNAL_SERVER_ERROR,
         context: getFlatEntityMapsExceptionContext(error),
       });

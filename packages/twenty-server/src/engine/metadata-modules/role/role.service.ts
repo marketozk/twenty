@@ -1,4 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import {
+  withRoleUpdateAudit,
+  type RoleUpdateAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/role-update-audit';
+import { captureNativeCrmAuditWriteData } from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { msg } from '@lingui/core/macro';
@@ -229,7 +234,30 @@ export class RoleService {
     );
   }
 
-  public async updateRole({
+  public async updateRole(args: {
+    input: UpdateRoleInput;
+    workspaceId: string;
+    ownerFlatApplication?: FlatApplication;
+    actingRoleIds?: string[];
+    auditIdentity: RoleUpdateAuditIdentity;
+  }): Promise<RoleDTO> {
+    const captured = {
+      ...args,
+      input: {
+        id: args.input.id,
+        update: captureNativeCrmAuditWriteData({ ...args.input.update }),
+      },
+      actingRoleIds: args.actingRoleIds ? [...args.actingRoleIds] : undefined,
+    };
+    return withRoleUpdateAudit(
+      args.workspaceId,
+      captured.input.id,
+      args.auditIdentity,
+      () => this.updateRoleWithAudit(captured),
+    );
+  }
+
+  private async updateRoleWithAudit({
     input,
     workspaceId,
     ownerFlatApplication,

@@ -14,6 +14,8 @@ import {
 } from '@nestjs/graphql';
 
 import { PermissionFlagType } from 'twenty-shared/constants';
+import { type Request } from 'express';
+import { roleAuditIdentityFromRequest } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { isDefined } from 'twenty-shared/utils';
 
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
@@ -225,12 +227,14 @@ export class RoleResolver {
   async updateOneRole(
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Args('updateRoleInput') updateRoleInput: UpdateRoleInput,
+    @Context() context: { req: Request },
     @AuthUserWorkspaceId({ allowUndefined: true })
     actingUserWorkspaceId?: string,
   ): Promise<RoleDTO> {
     const role = await this.roleService.updateRole({
       input: updateRoleInput,
       workspaceId: workspace.id,
+      auditIdentity: roleAuditIdentityFromRequest(context.req),
       actingRoleIds: await this.getActingRoleIds({
         workspaceId: workspace.id,
         actingUserWorkspaceId,

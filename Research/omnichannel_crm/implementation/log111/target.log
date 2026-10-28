@@ -1,0 +1,9 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-refresh-logout.postgres-spec.ts (6.785 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-role-update.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-transaction.postgres-spec.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       101 passed, 101 total
+Snapshots:   0 total
+Time:        9.336 s
+Ran all test suites matching /crm-audit-role-update|crm-audit-refresh-logout|crm-audit-native-transaction/i.

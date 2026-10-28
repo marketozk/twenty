@@ -905,3 +905,13 @@ flush; sign/SQL/audit failures откатывают выдачу, unknown COMMIT
 возвращает токен. Catalog refreshToken разрешает create/update с прежним tokenOwner;
 createdAt/expiresAt также redacted. Workspace-null tenant audit и family revoke не
 обещаны. Standalone sign-in/security-revoke fencing и stateless application JWT открыты.
+
+LOG111: RoleService.updateRole автоматически требует trusted audit identity обоих
+входов (GraphQL/AI tool), копирует input до await и открывает immutable async scope.
+Runner допускает ровно role/update ожидаемого ID, проверяет protected snapshot под
+FOR UPDATE и использует existing handler на strict core owner. Actual persisted
+before/after и post-flush проверка входят в тот же commit. Unknown не компенсируется;
+cache invalidation выполняется в finally, без подмены исходной ошибки. Catalog role
+имеет update + exact metadataAccess=currentWorkspaceAdministration; permissions
+allowlisted, display text redacted. Выполненный no-op имеет empty diff; builder no-op
+без SQL не создаёт audit. Остальные role/metadata owners и ROB766 fences открыты.

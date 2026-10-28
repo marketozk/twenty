@@ -11,6 +11,7 @@ export type CrmAuditPrincipal = {
 };
 
 export type CrmAuditResourceKind =
+  | 'role'
   | 'userSession'
   | 'refreshToken'
   | 'crmRecord'
@@ -44,6 +45,7 @@ export type CrmAuditAction = 'create' | 'update' | 'delete';
 export type CrmAuditSecurityDescriptor = {
   resourceKind: CrmAuditResourceKind;
   resourceId: string;
+  metadataAccess?: 'currentWorkspaceAdministration';
   sessionOwner?: {
     userId: string;
     userWorkspaceId: string;

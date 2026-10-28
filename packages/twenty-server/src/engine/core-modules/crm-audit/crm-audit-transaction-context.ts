@@ -26,6 +26,21 @@ const CATALOG: Record<
   CrmAuditResourceKind,
   { values: string[]; redacted: string[] }
 > = {
+  role: {
+    values: [
+      'canUpdateAllSettings',
+      'canAccessAllTools',
+      'canAccessAllAgentChatChannels',
+      'canReadAllObjectRecords',
+      'canUpdateAllObjectRecords',
+      'canSoftDeleteAllObjectRecords',
+      'canDestroyAllObjectRecords',
+      'canBeAssignedToUsers',
+      'canBeAssignedToAgents',
+      'canBeAssignedToApiKeys',
+    ],
+    redacted: ['label', 'description', 'icon'],
+  },
   refreshToken: {
     values: ['revokedReason'],
     redacted: ['revokedAt', 'expiresAt', 'createdAt'],
@@ -336,6 +351,16 @@ const descriptor = (
   const source = mutation.securityDescriptor;
   const nativeRecord = mutation.resourceKind === 'crmRecord';
   const nativeFile = mutation.resourceKind === 'crmFile';
+  if (mutation.resourceKind === 'role' || source.metadataAccess !== undefined) {
+    if (
+      mutation.resourceKind !== 'role' ||
+      mutation.action !== 'update' ||
+      source.metadataAccess !== 'currentWorkspaceAdministration' ||
+      Object.keys(source).sort().join(',') !==
+        'metadataAccess,resourceId,resourceKind'
+    )
+      throw new Error('Role audit requires exact current administrative scope');
+  }
   let deletedRecord: CrmAuditSecurityDescriptor['deletedRecord'];
   if (
     (nativeRecord && mutation.action === 'delete') ||
@@ -530,6 +555,9 @@ const descriptor = (
   return {
     resourceKind: mutation.resourceKind,
     resourceId: requireUuid(mutation.resourceId),
+    ...(source.metadataAccess === undefined
+      ? {}
+      : { metadataAccess: source.metadataAccess }),
     ...(tokenOwner === undefined ? {} : { tokenOwner }),
     ...(sessionOwner === undefined ? {} : { sessionOwner }),
     ...(fileParent === undefined ? {} : { fileParent }),

@@ -39,10 +39,15 @@ export class UpdateRoleTool extends BaseTool<typeof updateRoleInputSchema> {
 
   async execute({
     input,
-    context: { workspaceId, rolePermissionConfig },
+    context,
   }: ToolExecuteArgs<typeof updateRoleInputSchema>): Promise<ToolOutput> {
+    const { workspaceId, rolePermissionConfig } = context;
     const role = await this.roleService.updateRole({
       workspaceId,
+      auditIdentity: {
+        auth: context.authContext!,
+        agentId: context.agentId,
+      },
       input: {
         id: input.roleId,
         update: input.update,

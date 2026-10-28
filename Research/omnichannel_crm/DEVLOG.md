@@ -3443,3 +3443,24 @@ Family revoke, standalone sign-in fencing и stateless application JWT откр�
 1054 tests/34 suites PASS (201.141s); 129 targeted/3 suites PASS. 26 новых PostgreSQL cases. 26 guards PASS; 10 migration checksums неизменны. Types 347/347 roots, 189/189 прежних диагностик, 0 новых/changed-code. 4 local/remote source hashes совпадают.
 
 LOG110 publication: 957d45086d8796451cac38197e00c04d03343505 pushed/API verified. ROB765 description and comment 2eb3d69b-63d6-4fc1-9b63-40a2796d8c75 independently read back; all 11 issue states match. Implementation continues.
+
+## LOG-111 — role UPDATE через metadata audit owner
+
+GraphQL/AI callers передают trusted identity, RoleService копирует input до await.
+Bounded async scope связывает final single role/update с existing migration handler
+на strict core runner. Actual row lock/snapshots, redacted role catalog и post-flush
+check сохраняются одним commit. Unknown не компенсируется и не возвращает events.
+Read-only review выявил stale cache после lost ACK; invalidation перенесена в finally.
+Добавлены actual service/tool/self-lockout/no-auth и comparator no-op проверки.
+
+[Доказательства](implementation/log111/README.md). ROB765 In Progress. Полный builder
+validator/HTTP stack не заявлен. Две новые Enterprise import edges удалены без
+изменения baseline; используется structural request projection. Types охватывают
+дополнительный metadata/auth graph; исправлен прежний unknown-error.message в runner.
+Демо, образ, сообщения и Actions не менялись.
+
+1086 tests/35 suites PASS (201.025s); 101 targeted/3 suites PASS. 32 новых сценария: 28 PG + 4 descriptor. 26 guards PASS; 10 migration checksums неизменны. Types 349/351 roots, 219/218 диагностик baseline/current, 0 новых/changed-code. 8 local/remote source hashes совпадают.
+
+Следом role CREATE: публичный audited вход с existing create body, final enriched ID,
+actual insert snapshot и defaults. Bootstrap/member/guest/seeder сохраняют явный
+прежний путь; не приписываем системную инициализацию несуществующему пользователю.

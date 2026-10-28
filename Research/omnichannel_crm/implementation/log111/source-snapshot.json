@@ -1,0 +1,14 @@
+{
+  "baseCommit": "d7ee3530acfc9f3dc0eaa27789f4fd4dce686a17",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "739ad1ce996e48d4d58de4db44475af9f4ee7ece0613b36fdc2517c2c41624b5",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "12c966bb80eccc2e17bce8b02bc5f231a8efb0860fab77b445c735003be7cdf0",
+    "packages/twenty-server/src/engine/metadata-modules/role/role.resolver.ts": "c9e133802d6c536e144f93df02ca2f1250eea84785ba462a68623cb01341c04d",
+    "packages/twenty-server/src/engine/metadata-modules/role/role.service.ts": "6a96e826926a05c9290dfc241b379638d693e1a89eff14b9f727c7b55a3a3bd9",
+    "packages/twenty-server/src/engine/metadata-modules/role/tools/update-role.tool.ts": "50227b9d32112a46dafacdf90599e57112cceab23763855027c2831879208c45",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts": "5aeaffd859e811b6be713ef17f77bbfb43bbcb9f5eb0b7242445ba40f1964655",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/role-update-audit.ts": "01c6628d397b172a1562995376612127602b53bad05600266377a02180190ac4",
+    "packages/twenty-server/test/fork-migration/crm-audit-role-update.postgres-spec.ts": "ed304c242155e67bfefa2eb8db98bfd76b6404f07db1f8283e418c91e79070e6"
+  },
+  "uploadedSourceHashesVerified": true
+}
