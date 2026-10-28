@@ -744,4 +744,14 @@ core writes используют тот же executor и проверенные 
 parent FILES список и final File state проверяются до commit. Missing/deleted/foreign
 File reference и неоднозначные владельцы отказаны, не исправляются молча. Физическое
 storage deletion остаётся отдельным lifecycle. LOG092 реализует внутренний array-input
-update путь; LOG093 сохраняет public null/timestamp parity, автоматическое подключение ещё впереди.
+update путь; LOG093 сохраняет public null/timestamp parity, LOG094 подключает public UPDATE.
+
+Common UPDATE_ONE/UPDATE_MANY для exact standard Company/Person/Opportunity создают
+strict native audit owner автоматически. Самостоятельный API-вызов получает новый
+server operationId; повтор HTTP не является receipt replay. Входящий scope принимается
+по identity регистрации native owner, действующему lifecycle, workspace и actor; копия,
+чужой либо завершённый scope не допускают unscoped fallback. Mutation и nested relation
+reads используют его executor. Root getters/visibility и awaited post-query hooks
+выполняются после COMMIT; ошибка hook не отменяет committed audit. Inherited hooks
+откладываются владельцем. LOG094 проверяет это через реальные public runners и PG;
+full HTTP authentication, CREATE/merge и остальные owners этим не объявляются готовыми.

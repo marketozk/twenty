@@ -9,7 +9,7 @@
 | Rollback при сбое журнала, безопасный unknown | LOG089 PG insert fault, actual lost COMMIT ACK, poisoned caller-caught failure |
 | Точный безопасный diff и aggregation | LOG089 first-before/last-after, custom NUMERIC >2^53, metadata IDs, без значений |
 | Повтор не скрывает вторую mutation | LOG089 sequential/concurrent reuse rejected; повтор после rollback допустим. General command replay ещё не реализован |
-| Общий native CRUD/merge/bulk и API | Предстоит; LOG091/092 opt-in updates Company/Person/Opportunity, включая FILES через same executor; public entry points впереди |
+| Общий native CRUD/merge/bulk и API | Частично: LOG094 автоматически включает public UPDATE Company/Person/Opportunity; CREATE/delete/merge и остальные writers впереди. FILES same-executor — LOG092/093 |
 | Metadata/role/session lifecycle | Предстоит, каждый через реального transaction owner |
 | Denied/failed audit и health | Omni уже имеет отдельные attempts; general native post-rollback/alert предстоит |
 | AI/workflow/connector события | Дополняются ROB768/769, текущий срез их не подключает |
@@ -25,3 +25,9 @@ LOG091: [проверки расширенного native покрытия](log0
 LOG092: [core File transaction/audit](log092/README.md),642 tests/25 suites PASS. Public valid-input parity сохранён LOG093; далее UPDATE owner; общий CRUD/merge/metadata/session/negative audit не готовы.
 
 LOG093: [public input parity](log093/README.md),660 tests/25 suites PASS. Полные snapshots + operation-level explicit timestamp diff; FILES null без изменения прежнего core lifecycle.
+
+LOG094: [public UPDATE owner](log094/README.md), 685 tests/26 suites PASS, 25 новых PG
+cases. Реальные processors/repositories/permissions; root hooks после COMMIT,
+inherited identity/workspace/actor proof и nested reads в том же executor. Создание
+записей, mixed upsert, shareWith и custom nested creates требуют следующей реализации;
+общая приёмка ROB765 не выполнена.

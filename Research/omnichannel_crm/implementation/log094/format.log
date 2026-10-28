@@ -1,0 +1,8 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/api/common/common-query-runners/common-base-query-runner.service.ts 298ms (unchanged)
+../../../source/packages/twenty-server/src/engine/api/common/common-query-runners/common-update-many-query-runner.service.ts 25ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-record.ts 47ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-transaction.ts 59ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-public-update.postgres-spec.ts 132ms (unchanged)
+
+{"formattedFiles": 5, "singleSshSession": true}

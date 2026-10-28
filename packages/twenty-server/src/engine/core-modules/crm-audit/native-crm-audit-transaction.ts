@@ -23,6 +23,38 @@ const contexts = new WeakMap<
   object,
   { audit: CrmAuditTransactionContext; failure?: unknown }
 >();
+const scopes = new WeakMap<
+  object,
+  { executor: object; operation: CrmAuditOperation }
+>();
+
+export const runInExistingNativeCrmAuditScope = async <TData>(
+  scope: Parameters<typeof createCrmAuditWorkspaceExecutor>[0],
+  auth: NativeCrmAuditAuth,
+  work: () => Promise<TData>,
+): Promise<TData> => {
+  const binding = scopes.get(scope);
+  if (!binding)
+    throw new Error('Public CRM update requires a proven native audit scope');
+  return runNativeCrmAuditWrite(binding.executor, async () => {
+    createCrmAuditWorkspaceExecutor(scope);
+    const expected = captureNativeCrmAuditOperation(scope.workspaceId, auth, {
+      operationId: binding.operation.operationId,
+      ...(auth.type === 'system'
+        ? { systemActorId: binding.operation.actor.id }
+        : {}),
+    });
+    if (
+      expected.workspaceId !== binding.operation.workspaceId ||
+      expected.actor.kind !== binding.operation.actor.kind ||
+      expected.actor.id !== binding.operation.actor.id
+    )
+      throw new Error(
+        'Public CRM update scope has a different workspace or actor',
+      );
+    return work();
+  });
+};
 export const getNativeCrmAuditContext = (executor: object) =>
   contexts.get(executor)?.audit;
 
@@ -116,8 +148,13 @@ export const withNativeCrmAuditTransaction = async <T>(
   operation: CrmAuditOperation,
   work: () => Promise<T>,
 ): Promise<T> => {
-  if (contexts.has(executor))
+  if (contexts.has(executor) || scopes.has(scope))
     throw new Error('Native audit owner already exists');
+  operation = {
+    ...operation,
+    actor: { ...operation.actor },
+    ...(operation.initiator ? { initiator: { ...operation.initiator } } : {}),
+  };
   const auditExecutor = createCrmAuditWorkspaceExecutor(scope);
   // Native mutations have no command receipt: reusing an operation is not a safe retry.
   await auditExecutor.query(
@@ -136,12 +173,14 @@ export const withNativeCrmAuditTransaction = async <T>(
     audit,
   };
   contexts.set(executor, binding);
+  scopes.set(scope, { executor, operation });
   try {
     const result = await work();
     if (binding.failure !== undefined) throw binding.failure;
     await audit.flush();
     return result;
   } finally {
+    scopes.delete(scope);
     contexts.delete(executor);
   }
 };

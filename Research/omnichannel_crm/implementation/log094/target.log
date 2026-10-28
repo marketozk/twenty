@@ -1,0 +1,32 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-public-update.postgres-spec.ts (8.967 s)
+  ✓ automatically audits the authenticated system public update once (120 ms)
+  ✓ automatically audits the authenticated user public update once (66 ms)
+  ✓ automatically audits the authenticated apiKey public update once (53 ms)
+  ✓ automatically audits the authenticated application public update once (42 ms)
+  ✓ uses the actual public transformer and writer for person (53 ms)
+  ✓ uses the actual public transformer and writer for opportunity (54 ms)
+  ✓ updates a filtered batch with one audit operation and actual affected IDs (67 ms)
+  ✓ denies an actor lacking update permission without changing data or success audit (105 ms)
+  ✓ rolls the public mutation back if the append-only audit writer fails (74 ms)
+  ✓ preserves awaited postcommit hook errors after the database and audit are committed (56 ms)
+  ✓ reads nested relations on the inherited transaction and rolls all writes back with its owner (66 ms)
+  ✓ rejects an unproven legacy scope instead of silently writing without audit (41 ms)
+  ✓ commits one operation for inherited updates and runs hooks only after commit (68 ms)
+  ✓ poisons a proven owner on mismatched actor even if the caller catches the error (44 ms)
+  ✓ rejects a foreign workspace against an otherwise matching actor and poisons the owner (51 ms)
+  ✓ refuses a expired audit scope with no unscoped fallback (41 ms)
+  ✓ refuses a copied audit scope with no unscoped fallback (34 ms)
+  ✓ keeps unknown commit outcome without rollback, retry, or public postcommit hook (39 ms)
+  ✓ applies existing visibility restrictions to nested results before returning them or running hooks (70 ms)
+  ✓ preserves the public OPEN createdAt timestamp contract (55 ms)
+  ✓ preserves the public OPEN updatedAt timestamp contract (59 ms)
+  ✓ preserves the public OPEN deletedAt timestamp contract (58 ms)
+  ✓ keeps missing single records and empty batches free of success audit (58 ms)
+  ✓ enforces existing field update restrictions inside the automatic owner (47 ms)
+  ✓ resolves public connect and disconnect with the scoped nested relation writer (75 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       25 passed, 25 total
+Snapshots:   0 total
+Time:        9.071 s
+Ran all test suites matching /crm-audit-public-update/i.

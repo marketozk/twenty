@@ -3074,3 +3074,22 @@ nested reads с прежними postcommit hook errors. Демо/Actions не �
 LOG093 publication: `f66197d44ce2f7467a542bd90f4b1f8c797a7bb1` pushed/API verified.
 ROB765 description and comment `4c20eb15-a640-47f7-b388-46d36bb1be35` independently
 read back; all11 states match. ROB765 remains In Progress; implementation continues.
+
+## LOG-094 — публичные UPDATE в audited transaction
+
+Common UPDATE_ONE/UPDATE_MANY стандартных Company/Person/Opportunity автоматически
+используют strict native owner. Inherited scope проверяется по identity/workspace/actor;
+nested reads используют его repository. Root awaited postcommit hooks сохраняют прежние
+ошибки после commit, inherited hooks откладываются владельцем. Неподтверждённый COMMIT
+не вызывает повторной записи. Проверены реальные processors/permissions/SQL.
+
+685 tests/26 suites PASS, 25 новых PostgreSQL cases, 26 guard tests PASS; 10 migration
+checksums неизменны. Types 332/333 roots, 189/189 существующих diagnostics, 0 новых/changed.
+Пять source hashes совпадают. Независимый reviewer не нашёл блокеров; предложенные
+lost ACK/чужой actor/workspace/expired scope cases добавлены и прошли. Ошибочная форма
+connect test исправлена на connect.where; production resolver не менялся.
+[Доказательства и границы](implementation/log094/README.md).
+
+ROB765 In Progress. Следующий шаг — native CREATE kernel с actual INSERT IDs,
+after snapshots и сохранением FILES/conflict/nested/shareWith контрактов. Общий CRUD,
+metadata/session/negative audit ещё не завершены. Демо и Actions не затронуты.

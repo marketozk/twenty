@@ -76,6 +76,7 @@ export class CommonUpdateManyQueryRunnerService extends CommonBaseQueryRunnerSer
         authContext,
         rolePermissionConfig,
         selectedFields: args.selectedFieldsResult.select,
+        repository: queryRunnerContext.repository,
         ...this.getNestedRelationsReadPathOptions(),
       });
     }

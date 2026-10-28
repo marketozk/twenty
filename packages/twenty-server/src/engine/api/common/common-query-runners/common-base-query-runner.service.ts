@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { QUERY_MAX_RECORDS_FROM_RELATION } from 'twenty-shared/constants';
@@ -46,6 +48,8 @@ import { WorkspacePreQueryHookPayload } from 'src/engine/api/graphql/workspace-q
 import { WorkspaceQueryHookService } from 'src/engine/api/graphql/workspace-query-runner/workspace-query-hook/workspace-query-hook.service';
 import { isApplicationAuthContext } from 'src/engine/core-modules/auth/guards/is-application-auth-context.guard';
 import { WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
+import { isNativeCrmAuditObject } from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
+import { runInExistingNativeCrmAuditScope } from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
 import { ApplicationRepeatedEventRecorderService } from 'src/engine/core-modules/event-logs/emit/application-repeated-event-recorder.service';
 import { MetricsService } from 'src/engine/core-modules/metrics/metrics.service';
 import { MetricsKeys } from 'src/engine/core-modules/metrics/types/metrics-keys.type';
@@ -271,16 +275,47 @@ export abstract class CommonBaseQueryRunnerService<
     queryRunnerContext: CommonBaseQueryRunnerContext,
     commonQueryParser: GraphqlQueryParser,
   ): Promise<Output> {
-    const extendedQueryRunnerContext =
-      await this.prepareExtendedQueryRunnerContextWithGlobalDatasource(
-        queryRunnerContext,
+    const prepareAndRun = async (context: CommonBaseQueryRunnerContext) => {
+      const extendedQueryRunnerContext =
+        await this.prepareExtendedQueryRunnerContextWithGlobalDatasource(
+          context,
+        );
+      const results = await this.run(processedArgs, {
+        ...extendedQueryRunnerContext,
+        commonQueryParser,
+      });
+      return { results, extendedQueryRunnerContext };
+    };
+    const auditedUpdate =
+      (this.operationName === CommonQueryNames.UPDATE_ONE ||
+        this.operationName === CommonQueryNames.UPDATE_MANY) &&
+      isNativeCrmAuditObject(
+        queryRunnerContext.flatObjectMetadata.nameSingular,
+        queryRunnerContext.flatObjectMetadata.universalIdentifier,
       );
+    const auth = getWorkspaceContext().authContext;
+    const { results, extendedQueryRunnerContext } = auditedUpdate
+      ? queryRunnerContext.transactionScope
+        ? await runInExistingNativeCrmAuditScope(
+            queryRunnerContext.transactionScope,
+            auth,
+            () => prepareAndRun(queryRunnerContext),
+          )
+        : await this.workspaceOrmManager.runInWorkspaceTransaction(
+            (transactionScope) =>
+              prepareAndRun({ ...queryRunnerContext, transactionScope }),
+            {
+              nativeAudit: {
+                operationId: randomUUID(),
+                ...(auth.type === 'system'
+                  ? { systemActorId: 'crm-api-update' }
+                  : {}),
+              },
+            },
+          )
+      : await prepareAndRun(queryRunnerContext);
 
-    const results = await this.run(processedArgs, {
-      ...extendedQueryRunnerContext,
-      commonQueryParser,
-    });
-
+    // Root public hooks keep their awaited post-commit contract; inherited scopes defer them.
     return this.enrichResultsWithGettersAndHooks({
       results,
       operationName: this.operationName,

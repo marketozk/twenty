@@ -56,7 +56,7 @@ LOG087 adds bounded parent delete audit and retained current-administrative dele
 
 Первый срез ROB-765 реализован в [LOG089](../implementation/log089/README.md): внутренний `nativeAudit` owner для Company scalar update/updateMany, server-derived actor, row locks и точные snapshots независимо от emission flags; crmRecord — 24-й вид ресурса. Успех и audit атомарны, перехваченная ошибка mutation отравляет transaction. Повтор уже committed operationId отказывается до callback, это не command replay. Значения native полей редактируются полностью; NUMERIC сохраняет точность при сравнении.
 
-**Остаётся до Done:** автоматическое подключение native entry points и общий CRM CRUD/merge/bulk, файловый executor, metadata/role/session owners, отрицательные события после подтверждённого rollback, health/alert, доказательства API/AI/workflow. Индекс audit(workspaceId, operationId) подготовлен и проверен в [LOG090](../implementation/log090/README.md), десятая fork migration; при выкате writers должны быть остановлены на время построения. Вызовы без opt-in пока сохраняют прежнее поведение; их изменения не объявляются аудированными. Просмотр/экспорт — ROB767 после ROB766. [Текущая приёмка ROB765](../implementation/rob765-progress.md).
+**Остаётся до Done:** остальные native entry points и общий CRM CRUD/merge/bulk, metadata/role/session owners, отрицательные события после подтверждённого rollback, health/alert, доказательства API/AI/workflow. Файловый executor для updates реализован LOG092/093; public UPDATE owner — LOG094. Индекс audit(workspaceId, operationId) подготовлен и проверен в [LOG090](../implementation/log090/README.md), десятая fork migration; при выкате writers должны быть остановлены на время построения. Неподключённые writers не объявляются аудированными. Просмотр/экспорт — ROB767 после ROB766. [Текущая приёмка ROB765](../implementation/rob765-progress.md).
 
 
 [LOG091](../implementation/log091/README.md) расширяет внутренний opt-in на non-file
@@ -75,5 +75,14 @@ public input parity для FILES null и OPEN system timestamps выполнен
 
 [LOG093](../implementation/log093/README.md): существующие OPEN system timestamp writes
 аудируются без implicit updatedAt шума; FILES null сохраняет native-only clear без
-core cleanup.660 tests/25 suites,18 новых PG cases,26 guards PASS. Далее automatic
-REST/GraphQL UPDATE owner, proven inherited scope и scoped nested reads/hooks.
+core cleanup.660 tests/25 suites,18 новых PG cases,26 guards PASS. Automatic
+REST/GraphQL UPDATE owner, proven inherited scope и scoped nested reads/hooks реализованы LOG094.
+
+[LOG094](../implementation/log094/README.md): Common UPDATE_ONE/UPDATE_MANY стандартных
+Company/Person/Opportunity автоматически получают strict audit transaction. Nested
+reads и mutation используют один executor; inherited scope требует identity proof,
+актуального lifecycle, workspace и actor. Root getters/visibility/hooks остаются после
+COMMIT с прежним awaited error contract. 685 tests/26 suites PASS, 25 новых PG cases,
+26 guard tests PASS. HTTP/JWT и File URL signing не эмулируются этой fixture.
+Следом native CREATE kernel; public CREATE/upsert/shareWith/nested custom objects
+требуют сохранения их контрактов до автоматического включения. ROB765 In Progress.

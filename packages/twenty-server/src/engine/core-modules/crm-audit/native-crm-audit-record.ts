@@ -48,6 +48,13 @@ const AUDITED_OBJECTS: Record<string, string> = {
   opportunity: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.opportunity,
 };
 
+export const isNativeCrmAuditObject = (
+  name: string,
+  universalIdentifier: string,
+): boolean =>
+  Object.hasOwn(AUDITED_OBJECTS, name) &&
+  AUDITED_OBJECTS[name] === universalIdentifier;
+
 const coverageError = () =>
   new Error(
     'Native audit update coverage does not include this value or field',
@@ -116,8 +123,7 @@ export const assertNativeCrmAuditWriteSupported = (
   if (!getNativeCrmAuditContext(executor)) return;
   if (
     kind !== 'update' ||
-    !Object.hasOwn(AUDITED_OBJECTS, shape.nameSingular) ||
-    universalIdentifier !== AUDITED_OBJECTS[shape.nameSingular]
+    !isNativeCrmAuditObject(shape.nameSingular, universalIdentifier)
   )
     throw new Error(
       'Native audit currently supports only standard Company, Person and Opportunity updates',

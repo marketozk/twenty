@@ -15,14 +15,19 @@ EXPLAIN использует индекс. Проверка типов не до
 606 tests/24 suites +26 guards PASS,27 новых PG cases. Composite/JSON/array/Date/FK,
 mutable input protection;0 новых type diagnostics.
 
-Это ещё не общий аудит UI/API: без opt-in обычный ORM работает как прежде.
+Это ещё не общий аудит всех ORM writers: непокрытые entry points работают как прежде.
 [LOG092](implementation/log092/README.md): FILES включены в тот же executor,
 core File audit и actual parent/state readback;642 tests/25 suites +26 guards PASS.
 Типы без новых диагностик.
 
 [LOG093](implementation/log093/README.md): FILES null/system timestamp parity сохранён,
-660 tests/25 suites +26 guards PASS,18 новых PG cases. Далее automatic REST/GraphQL
-UPDATE owner и scoped nested reads; публичные writers пока не подключены.
+660 tests/25 suites +26 guards PASS,18 новых PG cases.
+
+[LOG094](implementation/log094/README.md): автоматический owner для REST/GraphQL
+UPDATE стандартных Company/Person/Opportunity, inherited scope proof и scoped nested
+reads. 685 tests/26 suites PASS, 25 новых PostgreSQL cases. Прежние awaited postcommit
+hook errors сохранены; unknown COMMIT не вызывает повторную запись. Это код и тесты,
+не выкат. Далее native CREATE kernel; публичный CREATE ещё не подключён.
 
 Продолжаем native CRUD/merge и подключение реальных writers, затем
 metadata/session и negative audit. [Приёмка ROB765](implementation/rob765-progress.md).
