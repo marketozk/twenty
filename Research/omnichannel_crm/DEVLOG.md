@@ -3339,3 +3339,5 @@ Fixture ошибки и пять тестовых type diagnostics исправ�
 
 Далее actual SET_NULL side effects для covered children; blanket public leaf gate
 не включаем, поскольку он запрещал бы прежнее удаление компании с контактами.
+
+LOG105 publication: 6f7dae3049d2d6721b269dd22c5f200aa542ba69 pushed/API verified. ROB765 description and comment 7217300b-3a62-4d09-b29a-395283572986 independently read back; all 11 issue states match. Implementation continues.
