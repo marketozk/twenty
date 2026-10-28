@@ -4,6 +4,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ConnectedAccountProvider } from 'twenty-shared/types';
 import { assertUnreachable, isDefined } from 'twenty-shared/utils';
 import { Repository } from 'typeorm';
+import { withOmniMetadataMutation } from 'src/modules/omnichannel/services/omni-metadata-transaction';
+import { lockOrdinaryProviderAccount } from 'src/modules/omnichannel/services/lock-ordinary-provider-account';
 
 import {
   ordinaryConnectedAccountWriteWhere,
@@ -55,6 +57,7 @@ export class ConnectedAccountRefreshTokensService {
     connectedAccount: ConnectedAccountEntity,
     workspaceId: string,
   ): Promise<ConnectedAccountTokens> {
+    connectedAccount = { ...connectedAccount };
     ordinaryConnectedAccountWriteWhere({ ...connectedAccount, workspaceId });
     const isAccessTokenValid =
       await this.isAccessTokenStillValid(connectedAccount);
@@ -130,16 +133,32 @@ export class ConnectedAccountRefreshTokensService {
       workspaceId,
     });
 
-    const result = await this.connectedAccountRepository.update(
-      ordinaryConnectedAccountWriteWhere({ ...connectedAccount, workspaceId }),
-      {
-        accessToken: encryptedAccessToken,
-        refreshToken: reEncryptedRefreshToken,
-        lastCredentialsRefreshedAt: new Date(),
+    await withOmniMetadataMutation(
+      this.connectedAccountRepository.manager,
+      workspaceId,
+      async (manager) => {
+        await lockOrdinaryProviderAccount(
+          manager,
+          workspaceId,
+          connectedAccount.id,
+        );
+        const result = await manager
+          .getRepository(ConnectedAccountEntity)
+          .update(
+            ordinaryConnectedAccountWriteWhere({
+              ...connectedAccount,
+              workspaceId,
+            }),
+            {
+              accessToken: encryptedAccessToken,
+              refreshToken: reEncryptedRefreshToken,
+              lastCredentialsRefreshedAt: new Date(),
+            },
+          );
+
+        assertConnectedAccountWriteApplied(result);
       },
     );
-
-    assertConnectedAccountWriteApplied(result);
     return {
       accessToken: encryptedAccessToken,
       refreshToken: reEncryptedRefreshToken,

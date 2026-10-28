@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { withOmniMetadataMutation } from 'src/modules/omnichannel/services/omni-metadata-transaction';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import {
@@ -188,7 +189,9 @@ export class GoogleAPIsService {
           },
         });
 
-      await this.messageChannelRepository.manager.transaction(
+      await withOmniMetadataMutation(
+        this.messageChannelRepository.manager,
+        workspaceId,
         async (transactionManager: EntityManager) => {
           await this.createConnectedAccountService.createConnectedAccount({
             workspaceId,
@@ -215,12 +218,6 @@ export class GoogleAPIsService {
                 scopes,
                 transactionManager,
               },
-            );
-
-            await this.accountsToReconnectService.removeAccountToReconnect(
-              userId,
-              workspaceId,
-              newOrExistingConnectedAccountId,
             );
           }
 
@@ -287,6 +284,14 @@ export class GoogleAPIsService {
           }
         },
       );
+
+      if (existingAccountId) {
+        await this.accountsToReconnectService.removeAccountToReconnect(
+          userId,
+          workspaceId,
+          newOrExistingConnectedAccountId,
+        );
+      }
 
       if (isMessagingEnabled && isMessagingAvailable) {
         const connectedAccountForAliases =

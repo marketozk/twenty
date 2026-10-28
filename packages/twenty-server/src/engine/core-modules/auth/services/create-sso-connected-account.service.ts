@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { type ConnectedAccountProvider } from 'twenty-shared/types';
 import { Repository } from 'typeorm';
+import { withOmniMetadataMutation } from 'src/modules/omnichannel/services/omni-metadata-transaction';
+import { lockOrdinaryProviderAccount } from 'src/modules/omnichannel/services/lock-ordinary-provider-account';
 
 import {
   ordinaryConnectedAccountWriteWhere,
@@ -36,6 +38,11 @@ export class CreateSsoConnectedAccountService {
   ): Promise<void> {
     const { workspaceId, userId, handle, provider, scopes, oidcTokenClaims } =
       params;
+    const capturedScopes = [...scopes];
+    const capturedClaims =
+      oidcTokenClaims === undefined
+        ? undefined
+        : structuredClone(oidcTokenClaims);
 
     const userWorkspace = await this.userWorkspaceRepository.findOneBy({
       userId,
@@ -58,36 +65,55 @@ export class CreateSsoConnectedAccountService {
     });
 
     if (existing) {
-      const mergedScopes = Array.from(
-        new Set([...(existing.scopes ?? []), ...scopes]),
-      );
+      return withOmniMetadataMutation(
+        this.connectedAccountRepository.manager,
+        workspaceId,
+        async (manager) => {
+          await lockOrdinaryProviderAccount(manager, workspaceId, existing.id);
+          const repository = manager.getRepository(ConnectedAccountEntity);
+          const current = await repository.findOneByOrFail({
+            id: existing.id,
+            workspaceId,
+          });
+          const mergedScopes = Array.from(
+            new Set([...(current.scopes ?? []), ...capturedScopes]),
+          );
 
-      const result = await this.connectedAccountRepository.update(
-        ordinaryConnectedAccountWriteWhere(existing),
-        {
-          lastSignedInAt: new Date(),
-          provider,
-          scopes: mergedScopes,
-          ...(oidcTokenClaims !== undefined
-            ? { oidcTokenClaims: oidcTokenClaims as object }
-            : {}),
+          const result = await repository.update(
+            ordinaryConnectedAccountWriteWhere(existing),
+            {
+              lastSignedInAt: new Date(),
+              provider,
+              scopes: mergedScopes,
+              ...(capturedClaims !== undefined
+                ? { oidcTokenClaims: capturedClaims as object }
+                : {}),
+            },
+          );
+
+          assertConnectedAccountWriteApplied(result);
         },
       );
-
-      assertConnectedAccountWriteApplied(result);
-      return;
     }
 
-    await this.connectedAccountRepository.save({
-      handle,
-      provider,
-      scopes,
-      accessToken: null,
-      refreshToken: null,
-      lastSignedInAt: new Date(),
-      userWorkspaceId: userWorkspace.id,
+    await withOmniMetadataMutation(
+      this.connectedAccountRepository.manager,
       workspaceId,
-      ...(oidcTokenClaims ? { oidcTokenClaims } : {}),
-    });
+      async (manager) => {
+        await manager.getRepository(ConnectedAccountEntity).insert({
+          handle,
+          provider,
+          scopes: capturedScopes,
+          accessToken: null,
+          refreshToken: null,
+          lastSignedInAt: new Date(),
+          userWorkspaceId: userWorkspace.id,
+          workspaceId,
+          ...(capturedClaims
+            ? { oidcTokenClaims: capturedClaims as object }
+            : {}),
+        });
+      },
+    );
   }
 }

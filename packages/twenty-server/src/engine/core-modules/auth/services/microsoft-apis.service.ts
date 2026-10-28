@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { withOmniMetadataMutation } from 'src/modules/omnichannel/services/omni-metadata-transaction';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import {
@@ -154,7 +155,9 @@ export class MicrosoftAPIsService {
           },
         });
 
-      await this.messageChannelRepository.manager.transaction(
+      await withOmniMetadataMutation(
+        this.messageChannelRepository.manager,
+        workspaceId,
         async (transactionManager: EntityManager) => {
           await this.createConnectedAccountService.createConnectedAccount({
             workspaceId,

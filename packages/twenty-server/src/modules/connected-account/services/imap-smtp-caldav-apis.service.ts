@@ -14,6 +14,8 @@ import {
 } from 'src/engine/metadata-modules/connected-account/utils/ordinary-connected-account-write.util';
 import { v4 } from 'uuid';
 import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
+import { withOmniMetadataMutation } from 'src/modules/omnichannel/services/omni-metadata-transaction';
+import { lockOrdinaryProviderAccount } from 'src/modules/omnichannel/services/lock-ordinary-provider-account';
 
 import { CreateCalendarChannelService } from 'src/engine/core-modules/auth/services/create-calendar-channel.service';
 import { CreateMessageChannelService } from 'src/engine/core-modules/auth/services/create-message-channel.service';
@@ -73,6 +75,13 @@ export class ImapSmtpCalDavApiService {
     connectionParameters: PlaintextImapSmtpCaldavParams;
     existingAccount?: ConnectedAccountEntity | null;
   }): Promise<string> {
+    input = {
+      ...input,
+      connectionParameters: structuredClone(input.connectionParameters),
+      existingAccount: input.existingAccount
+        ? { ...input.existingAccount }
+        : input.existingAccount,
+    };
     const { handle, workspaceId, userWorkspaceId } = input;
 
     const userWorkspace = await this.userWorkspaceRepository.findOne({
@@ -119,7 +128,9 @@ export class ImapSmtpCalDavApiService {
       !isDefined(existingCalendarChannel) &&
       Boolean(input.connectionParameters.CALDAV);
 
-    await this.connectedAccountRepository.manager.transaction(
+    await withOmniMetadataMutation(
+      this.connectedAccountRepository.manager,
+      workspaceId,
       async (transactionManager: EntityManager) => {
         const encryptedConnectionParameters =
           this.connectedAccountTokenEncryptionService.encryptConnectionParameters(
@@ -152,6 +163,11 @@ export class ImapSmtpCalDavApiService {
           connectionProviderId: null,
         });
         if (existingAccount) {
+          await lockOrdinaryProviderAccount(
+            transactionManager,
+            workspaceId,
+            newOrExistingAccountId,
+          );
           assertConnectedAccountWriteApplied(
             await repository.update(where, accountData),
           );
@@ -182,12 +198,14 @@ export class ImapSmtpCalDavApiService {
           isDefined(existingMessageChannel) &&
           isDefined(input.connectionParameters.IMAP)
         ) {
-          await transactionManager
-            .getRepository(MessageChannelEntity)
-            .update(
-              { id: existingMessageChannel.id, workspaceId },
-              { isSyncEnabled: true },
-            );
+          await transactionManager.getRepository(MessageChannelEntity).update(
+            {
+              id: existingMessageChannel.id,
+              workspaceId,
+              connectedAccountId: newOrExistingAccountId,
+            },
+            { isSyncEnabled: true },
+          );
         }
 
         if (
@@ -195,12 +213,14 @@ export class ImapSmtpCalDavApiService {
           isDefined(existingCalendarChannel) &&
           isDefined(input.connectionParameters.CALDAV)
         ) {
-          await transactionManager
-            .getRepository(CalendarChannelEntity)
-            .update(
-              { id: existingCalendarChannel.id, workspaceId },
-              { isSyncEnabled: true },
-            );
+          await transactionManager.getRepository(CalendarChannelEntity).update(
+            {
+              id: existingCalendarChannel.id,
+              workspaceId,
+              connectedAccountId: newOrExistingAccountId,
+            },
+            { isSyncEnabled: true },
+          );
         }
       },
     );

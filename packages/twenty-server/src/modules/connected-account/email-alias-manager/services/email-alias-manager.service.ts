@@ -4,6 +4,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ConnectedAccountProvider } from 'twenty-shared/types';
 import { assertUnreachable, isDefined } from 'twenty-shared/utils';
 import { Repository } from 'typeorm';
+import { withOmniMetadataMutation } from 'src/modules/omnichannel/services/omni-metadata-transaction';
+import { lockOrdinaryProviderAccount } from 'src/modules/omnichannel/services/lock-ordinary-provider-account';
 
 import {
   ordinaryConnectedAccountWriteWhere,
@@ -32,6 +34,7 @@ export class EmailAliasManagerService {
     connectedAccount: ConnectedAccountEntity,
     workspaceId: string,
   ): Promise<string[]> {
+    connectedAccount = { ...connectedAccount };
     if (
       connectedAccount.provider !== ConnectedAccountProvider.GOOGLE &&
       connectedAccount.provider !== ConnectedAccountProvider.MICROSOFT
@@ -56,10 +59,23 @@ export class EmailAliasManagerService {
     const authContext = buildSystemAuthContext(workspaceId);
 
     await this.workspaceOrmManager.executeInWorkspaceContext(async () => {
-      const result = await this.connectedAccountRepository.update(where, {
-        handleAliases,
-      });
-      assertConnectedAccountWriteApplied(result);
+      await withOmniMetadataMutation(
+        this.connectedAccountRepository.manager,
+        workspaceId,
+        async (manager) => {
+          await lockOrdinaryProviderAccount(
+            manager,
+            workspaceId,
+            connectedAccount.id,
+          );
+          const result = await manager
+            .getRepository(ConnectedAccountEntity)
+            .update(where, {
+              handleAliases,
+            });
+          assertConnectedAccountWriteApplied(result);
+        },
+      );
     }, authContext);
 
     return handleAliases;

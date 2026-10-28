@@ -36,6 +36,14 @@ import {
 import { ConnectedAccountTokenEncryptionService } from 'src/engine/metadata-modules/connected-account/services/connected-account-token-encryption.service';
 import { buildConnectedAccountUsableByCallerWhere } from 'src/engine/metadata-modules/connected-account/utils/build-connected-account-usable-by-caller-where.util';
 import { unboundConnectedAccountId } from 'src/engine/metadata-modules/connected-account/utils/ordinary-connected-account-write.util';
+import {
+  withOmniMetadataMutation,
+  OmniMetadataAccountNotFoundError,
+} from 'src/modules/omnichannel/services/omni-metadata-transaction';
+import {
+  lockOrdinaryProviderAccount,
+  OrdinaryProviderAccountChangedError,
+} from 'src/modules/omnichannel/services/lock-ordinary-provider-account';
 
 const STATE_JWT_EXPIRES_IN = '10m';
 
@@ -376,6 +384,24 @@ export class ConnectionProviderOAuthFlowService {
     scope: ConnectedAccountScope;
     reconnectingConnectedAccountId: string | null;
   }): Promise<ConnectedAccountEntity> {
+    provider = {
+      ...provider,
+      oauthConfig: {
+        ...provider.oauthConfig,
+        scopes: provider.oauthConfig.scopes
+          ? [...provider.oauthConfig.scopes]
+          : provider.oauthConfig.scopes,
+      },
+    };
+    tokenResponse = {
+      ...tokenResponse,
+      scopes: tokenResponse.scopes
+        ? [...tokenResponse.scopes]
+        : tokenResponse.scopes,
+    };
+    identifiedAccount = identifiedAccount
+      ? { ...identifiedAccount }
+      : identifiedAccount;
     const { encryptedAccessToken, encryptedRefreshToken } =
       this.connectedAccountTokenEncryptionService.encryptTokenPair({
         accessToken: tokenResponse.accessToken,
@@ -405,80 +431,104 @@ export class ConnectionProviderOAuthFlowService {
       externalAccountId: identifiedAccount?.externalAccountId ?? null,
     };
 
-    if (isDefined(reconnectingConnectedAccountId)) {
-      const reconnectTarget = {
-        id: unboundConnectedAccountId(
-          reconnectingConnectedAccountId,
-          workspaceId,
-        ),
-        workspaceId,
-        provider: ConnectedAccountProvider.APP,
-        applicationId: provider.applicationId,
-        connectionProviderId: provider.id,
-      };
-      const usableTargets = buildConnectedAccountUsableByCallerWhere({
-        baseWhere: reconnectTarget,
-        userWorkspaceId,
-      });
-
-      // Compared and written in one statement so overlapping reconnects cannot pin different accounts.
-      const updateResult = await this.connectedAccountRepository.update(
-        isDefined(identifiedAccount)
-          ? usableTargets.flatMap((target) => [
-              { ...target, externalAccountId: IsNull() },
-              {
-                ...target,
-                externalAccountId: identifiedAccount.externalAccountId,
-              },
-            ])
-          : usableTargets,
-        { ...sharedFields, userWorkspaceId },
-      );
-
-      const connectedAccount = await this.connectedAccountRepository.findOne({
-        where: usableTargets,
-      });
-
-      if (
-        !isDefined(connectedAccount) ||
-        (updateResult.affected !== 1 && !isDefined(identifiedAccount))
-      ) {
-        throw new ConnectionProviderException(
-          'Connection changed while authorizing. Start authorization again.',
-          ConnectionProviderExceptionCode.FORBIDDEN,
-        );
-      }
-
-      if (updateResult.affected !== 1 && isDefined(identifiedAccount)) {
-        const authorizedAccountHandle =
-          identifiedAccount.handle ?? identifiedAccount.externalAccountId;
-
-        throw new ConnectionProviderException(
-          `You authorized ${authorizedAccountHandle}, but this connection belongs to ${connectedAccount.handle}. Reconnect with ${connectedAccount.handle}, or add a new connection for ${authorizedAccountHandle}.`,
-          ConnectionProviderExceptionCode.RECONNECT_ACCOUNT_MISMATCH,
-        );
-      }
-
-      return connectedAccount;
-    }
-
-    const existingCount = await this.connectedAccountRepository.count({
-      where: { connectionProviderId: provider.id, workspaceId },
-    });
-
-    const name = `${provider.displayName} #${existingCount + 1}`;
-
-    const created = this.connectedAccountRepository.create({
-      ...sharedFields,
-      name,
-      scope,
-      provider: ConnectedAccountProvider.APP,
+    return withOmniMetadataMutation(
+      this.connectedAccountRepository.manager,
       workspaceId,
-      applicationId: provider.applicationId,
-      connectionProviderId: provider.id,
-      userWorkspaceId,
-    });
+      async (manager) => {
+        const repository = manager.getRepository(ConnectedAccountEntity);
+        if (isDefined(reconnectingConnectedAccountId)) {
+          try {
+            await lockOrdinaryProviderAccount(
+              manager,
+              workspaceId,
+              reconnectingConnectedAccountId,
+            );
+          } catch (error) {
+            if (
+              !(error instanceof OrdinaryProviderAccountChangedError) &&
+              !(error instanceof OmniMetadataAccountNotFoundError)
+            )
+              throw error;
+            throw new ConnectionProviderException(
+              'Connection changed while authorizing. Start authorization again.',
+              ConnectionProviderExceptionCode.FORBIDDEN,
+            );
+          }
+          const reconnectTarget = {
+            id: unboundConnectedAccountId(
+              reconnectingConnectedAccountId,
+              workspaceId,
+            ),
+            workspaceId,
+            provider: ConnectedAccountProvider.APP,
+            applicationId: provider.applicationId,
+            connectionProviderId: provider.id,
+          };
+          const usableTargets = buildConnectedAccountUsableByCallerWhere({
+            baseWhere: reconnectTarget,
+            userWorkspaceId,
+          });
 
-    return this.connectedAccountRepository.save(created);
+          // Compared and written in one statement so overlapping reconnects cannot pin different accounts.
+          const updateResult = await repository.update(
+            isDefined(identifiedAccount)
+              ? usableTargets.flatMap((target) => [
+                  { ...target, externalAccountId: IsNull() },
+                  {
+                    ...target,
+                    externalAccountId: identifiedAccount.externalAccountId,
+                  },
+                ])
+              : usableTargets,
+            { ...sharedFields, userWorkspaceId },
+          );
+
+          const connectedAccount = await repository.findOne({
+            where: usableTargets,
+          });
+
+          if (
+            !isDefined(connectedAccount) ||
+            (updateResult.affected !== 1 && !isDefined(identifiedAccount))
+          ) {
+            throw new ConnectionProviderException(
+              'Connection changed while authorizing. Start authorization again.',
+              ConnectionProviderExceptionCode.FORBIDDEN,
+            );
+          }
+
+          if (updateResult.affected !== 1 && isDefined(identifiedAccount)) {
+            const authorizedAccountHandle =
+              identifiedAccount.handle ?? identifiedAccount.externalAccountId;
+
+            throw new ConnectionProviderException(
+              `You authorized ${authorizedAccountHandle}, but this connection belongs to ${connectedAccount.handle}. Reconnect with ${connectedAccount.handle}, or add a new connection for ${authorizedAccountHandle}.`,
+              ConnectionProviderExceptionCode.RECONNECT_ACCOUNT_MISMATCH,
+            );
+          }
+
+          return connectedAccount;
+        }
+
+        const existingCount = await repository.count({
+          where: { connectionProviderId: provider.id, workspaceId },
+        });
+
+        const name = `${provider.displayName} #${existingCount + 1}`;
+
+        const created = repository.create({
+          ...sharedFields,
+          name,
+          scope,
+          provider: ConnectedAccountProvider.APP,
+          workspaceId,
+          applicationId: provider.applicationId,
+          connectionProviderId: provider.id,
+          userWorkspaceId,
+        });
+
+        return repository.save(created);
+      },
+    );
   }
 }

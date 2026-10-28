@@ -36,14 +36,16 @@ Canonical lifecycle requirements remain in the implementation specification.
 
 - LOG062: folder discovery captures fresh identity/policy/folder set before network; applies only an unchanged snapshot in one ordinary transaction and returns stored pending actions. Null stops downstream list-fetch; initial ongoing status precedes discovery. IMAP unknown commit propagates.
 
+- LOG063: seven provider writers use complete derived ownership under shared fence/account write lock; Google/MS/IMAP strict outer owners, same-manager app readback, fresh SSO scopes and unknown commit propagation. IMAP archived re-enable pins child parent. Postcommit reset/enqueue remains below.
+
 ## Remaining owners, in implementation order
 
 Paths below are relative to `packages/twenty-server/src`.
 
 | Owner | Observed gap / required check |
 |---|---|
+| Reconnect reset/enqueue callbacks | MS/IMAP retain pre-transaction channel IDs; reset APIs lack expected-parent parameters and accepted-ID returns. Queue scheduling must use current accepted IDs, with jobs' SCHEDULED admission respected. |
 | Legacy list-fetch downstream cache/cleanup callbacks | Final completion is parent-pinned (LOG058); intermediate cache mutations and cleanup are separate. Review with group/folder scope before claiming complete callback lifecycle protection. |
-| Ordinary provider write predicate vs derived metadata ownership | LOG053 excludes direct retained bindings. Compare with `findOmniOwnedConnectedAccountIds` derived ownership through channel/message associations during final inventory; do not infer full derived-owner coverage from the direct-binding tests. |
 
 ## Required evidence
 

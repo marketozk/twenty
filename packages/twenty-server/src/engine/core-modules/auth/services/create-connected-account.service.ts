@@ -17,6 +17,7 @@ import { getWorkspaceContext } from 'src/engine/twenty-orm/storage/orm-workspace
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
 import { resolveRolePermissionConfig } from 'src/engine/twenty-orm/utils/resolve-role-permission-config.util';
 import { type WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
+import { lockOrdinaryProviderAccount } from 'src/modules/omnichannel/services/lock-ordinary-provider-account';
 
 export type CreateConnectedAccountInput = {
   workspaceId: string;
@@ -53,6 +54,9 @@ export class CreateConnectedAccountService {
       accountOwnerId,
       scopes,
     } = input;
+    const transactionManager = input.transactionManager;
+    const isReconnect = input.isReconnect;
+    const capturedScopes = [...scopes];
 
     const authContext = buildSystemAuthContext(workspaceId);
 
@@ -104,7 +108,7 @@ export class CreateConnectedAccountService {
           workspaceId,
         });
 
-      const repository = input.transactionManager.getRepository(
+      const repository = transactionManager.getRepository(
         ConnectedAccountEntity,
       );
       const identity = {
@@ -121,9 +125,14 @@ export class CreateConnectedAccountService {
         handle,
         accessToken: encryptedAccessToken,
         refreshToken: encryptedRefreshToken,
-        scopes,
+        scopes: capturedScopes,
       };
-      if (input.isReconnect) {
+      if (isReconnect) {
+        await lockOrdinaryProviderAccount(
+          transactionManager,
+          workspaceId,
+          connectedAccountId,
+        );
         assertConnectedAccountWriteApplied(
           await repository.update(where, data),
         );

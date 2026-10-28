@@ -1024,3 +1024,45 @@ Next: derived provider ownership with actual writer serialization, then remainin
 list-fetch cache/cleanup boundaries and final T22 acceptance. Demo/SaleBot unchanged,
 GitHub Actions unused. Applied ai-dev-workflow, behavioral-guardrails,
 server-schrodinger and scoped read-only review.
+
+
+## LOG-063 — provider writes under complete metadata ownership (28.10.2026)
+
+Research confirmed direct retained-binding Raw predicate did not cover MessageLink,
+Conversation or another bound association. Merely duplicating that SQL would not
+serialize first ownership introduction. Reused findOmniOwnedConnectedAccountIds with
+the existing shared native fence and account FOR UPDATE, preserving identity WHERE
+and affected===1. The direct Raw predicate remains an additional check, not the owner.
+
+Seven actual writers: create-existing, reconnect update, IMAP, SSO, refresh, aliases,
+app OAuth. Google/MS/IMAP use one strict outer owner; create/reconnect helpers use its
+manager, no nesting. New-account paths retain INSERT/PK collision refusal. SSO merges
+fresh scopes under lock. Refresh and alias network work stays outside transaction;
+caller identity is captured before awaits. App OAuth retains authorized shared-account
+reconnect by another custodian and external-account pinning; UPDATE/readback share
+the same manager. Google reconnect-list cleanup moved after known commit.
+
+Unknown commit propagates without new returned tokens/aliases. Application connection
+mapping no longer turns an unknown refresh commit into successful null fallback.
+Scoped review found IMAP archived re-enable by old channel ID could affect a reparented
+message/calendar channel; both UPDATEs now pin captured parent. Regression and re-review
+confirm the fix. Missing-account error contract remains CONNECTED_ACCOUNT_CHANGED.
+
+342 targeted Jest/6 suites +26 guards=368 PASS.
+45 new cases:28 seven-writer×derived-marker checks,7 lost-ACK writers, mutable caller,
+both shared/exclusive fence directions, fresh SSO scopes, application-mapping error,
+IMAP child reparent, and4 actual Google/MS outer rollback/unknown-commit checks.
+44 use real PostgreSQL;1 checks the application mapping boundary. Initial2 regressions
+were missing-account error wording and were fixed without weakening the guard.
+Typecheck found SSO JSON insert typing and test enum literal; corrected and rerun.
+Typecheck 269 roots:190/190,0 new/changed-code.
+7 migration sources unchanged; local/remote LF hashes matched. Last full fork LOG056
+1881/71; no new full fork/full server typecheck/full Claude pass or ROB764 acceptance.
+
+Postcommit reconnect reset/enqueue still needs captured-parent/accepted-ID handling;
+it is not covered by the preceding account transaction. Later list-fetch cache/cleanup
+also remains separate. No claim of atomic Redis/SQL effects or arbitrary raw SQL safety.
+[Evidence](log063/README.md). [Remaining writers](rob764-metadata-writer-inventory.md).
+Next: those callbacks, then T22 inventory and fresh stage acceptance. Demo/SaleBot
+unchanged, GitHub Actions unused. Applied ai-dev-workflow, behavioral-guardrails,
+server-schrodinger and scoped read-only review.

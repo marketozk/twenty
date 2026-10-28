@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { type FindOptionsWhere, In, Repository } from 'typeorm';
@@ -273,6 +274,7 @@ export class ApplicationConnectionsListService {
         authFailedReason: account.authFailedReason,
       };
     } catch (error) {
+      if (error instanceof OmniCoreTransactionOutcomeUnknownError) throw error;
       this.logger.warn(
         `Failed to refresh tokens for connection ${account.id}: ${(error as Error).message}`,
       );

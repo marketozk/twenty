@@ -21,6 +21,7 @@ import { randomUUID } from 'node:crypto';
 import { DataSource, EntitySchema } from 'typeorm';
 import {
   ConnectedAccountProvider,
+  MessageChannelType,
   MessageChannelSyncStage,
   CalendarChannelSyncStage,
 } from 'twenty-shared/types';
@@ -28,7 +29,17 @@ import { ConnectedAccountEntity } from 'src/engine/metadata-modules/connected-ac
 import { bootstrapOmniAccountBinding } from 'src/modules/omnichannel/services/omni-binding-bootstrap';
 import { createOmniNativeMessageFixture } from 'test/fork-migration/omni-native-message.fixture';
 import { ordinaryConnectedAccountWriteWhere } from 'src/engine/metadata-modules/connected-account/utils/ordinary-connected-account-write.util';
+import { ApplicationConnectionsListService } from 'src/engine/core-modules/application/connection-provider/connections/services/application-connections-list.service';
+jest.mock(
+  'src/engine/workspace-cache/services/workspace-cache.service',
+  () => ({ WorkspaceCacheService: class {} }),
+);
+jest.mock(
+  'src/engine/core-modules/application/connection-provider/connection-provider.entity',
+  () => ({ ConnectionProviderEntity: class {} }),
+);
 import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
+import { withOmniMetadataMutation } from 'src/modules/omnichannel/services/omni-metadata-transaction';
 import { CreateConnectedAccountService } from 'src/engine/core-modules/auth/services/create-connected-account.service';
 import { UpdateConnectedAccountOnReconnectService } from 'src/engine/core-modules/auth/services/update-connected-account-on-reconnect.service';
 import { CreateSsoConnectedAccountService } from 'src/engine/core-modules/auth/services/create-sso-connected-account.service';
@@ -273,30 +284,36 @@ const create = (
   isReconnect: boolean,
   provider = ConnectedAccountProvider.GOOGLE,
 ) =>
-  runtime.transaction((transactionManager) =>
-    createService().createConnectedAccount({
-      workspaceId: fixture.workspaceId,
-      connectedAccountId: accountId,
-      provider,
-      handle: 'ordinary',
-      ...tokens,
-      accountOwnerId: randomUUID(),
-      scopes: ['mail'],
-      transactionManager,
-      isReconnect,
-    }),
+  withOmniMetadataMutation(
+    runtime.manager,
+    fixture.workspaceId,
+    (transactionManager) =>
+      createService().createConnectedAccount({
+        workspaceId: fixture.workspaceId,
+        connectedAccountId: accountId,
+        provider,
+        handle: 'ordinary',
+        ...tokens,
+        accountOwnerId: randomUUID(),
+        scopes: ['mail'],
+        transactionManager,
+        isReconnect,
+      }),
   );
 const reconnect = (provider = ConnectedAccountProvider.GOOGLE) =>
-  runtime.transaction((transactionManager) =>
-    reconnectService().updateConnectedAccountOnReconnect({
-      workspaceId: fixture.workspaceId,
-      connectedAccountId: accountId,
-      userWorkspaceId: memberId,
-      provider,
-      ...tokens,
-      scopes: ['mail'],
-      transactionManager,
-    }),
+  withOmniMetadataMutation(
+    runtime.manager,
+    fixture.workspaceId,
+    (transactionManager) =>
+      reconnectService().updateConnectedAccountOnReconnect({
+        workspaceId: fixture.workspaceId,
+        connectedAccountId: accountId,
+        userWorkspaceId: memberId,
+        provider,
+        ...tokens,
+        scopes: ['mail'],
+        transactionManager,
+      }),
   );
 const bootstrap = () =>
   bootstrapOmniAccountBinding(
@@ -728,13 +745,17 @@ describe('app OAuth reconnect persistence', () => {
 
 describe('full Google/Microsoft reconnect callers', () => {
   it.each([
-    [ConnectedAccountProvider.GOOGLE, false],
-    [ConnectedAccountProvider.MICROSOFT, false],
-    [ConnectedAccountProvider.GOOGLE, true],
-    [ConnectedAccountProvider.MICROSOFT, true],
+    [ConnectedAccountProvider.GOOGLE, false, 'none'],
+    [ConnectedAccountProvider.MICROSOFT, false, 'none'],
+    [ConnectedAccountProvider.GOOGLE, true, 'none'],
+    [ConnectedAccountProvider.MICROSOFT, true, 'none'],
+    [ConnectedAccountProvider.GOOGLE, false, 'unknown'],
+    [ConnectedAccountProvider.MICROSOFT, false, 'unknown'],
+    [ConnectedAccountProvider.GOOGLE, false, 'rollback'],
+    [ConnectedAccountProvider.MICROSOFT, false, 'rollback'],
   ] as const)(
-    'reconnect %s existing mailbox/calendar stale=%s',
-    async (provider, stale) => {
+    'reconnect %s existing mailbox/calendar stale=%s failure=%s',
+    async (provider, stale, failure) => {
       await repository().update(accountId, {
         provider,
         archivedAt: new Date(),
@@ -821,6 +842,32 @@ describe('full Google/Microsoft reconnect callers', () => {
         calendarVisibility: undefined,
         messageVisibility: undefined,
       };
+      if (failure !== 'none') {
+        const original = runtime.createQueryRunner.bind(runtime);
+        jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+          const runner = original(),
+            query = runner.query.bind(runner),
+            commit = runner.commitTransaction.bind(runner);
+          let written = false;
+          runner.query = async (...args: Parameters<typeof runner.query>) => {
+            if (args[0].startsWith('UPDATE')) {
+              written = true;
+              if (
+                failure === 'rollback' &&
+                args[0].includes('"calendarChannel"')
+              )
+                throw new Error('fixture calendar restore failed');
+            }
+            return query(...args);
+          };
+          runner.commitTransaction = async () => {
+            await commit();
+            if (written && failure === 'unknown')
+              throw new Error('outer provider ACK lost');
+          };
+          return runner;
+        });
+      }
       const work =
         provider === ConnectedAccountProvider.GOOGLE
           ? makeService(
@@ -831,7 +878,19 @@ describe('full Google/Microsoft reconnect callers', () => {
               MicrosoftAPIsService.prototype,
               dependencies,
             ).refreshMicrosoftRefreshToken(input);
-      if (stale) {
+      if (failure !== 'none') {
+        if (failure === 'unknown')
+          await expect(work).rejects.toBeInstanceOf(
+            OmniCoreTransactionOutcomeUnknownError,
+          );
+        else {
+          await expect(work).rejects.toThrow('fixture calendar restore failed');
+          expect((await read()).accessToken).toBe('encrypted-old');
+        }
+        expect(sideEffect).not.toHaveBeenCalled();
+        expect(resetMessages).not.toHaveBeenCalled();
+        expect(resetCalendar).not.toHaveBeenCalled();
+      } else if (stale) {
         await expect(work).rejects.toThrow('CONNECTED_ACCOUNT_CHANGED');
         expect(sideEffect).not.toHaveBeenCalled();
         expect(resetMessages).not.toHaveBeenCalled();
@@ -856,14 +915,14 @@ describe('full Google/Microsoft reconnect callers', () => {
             .getRepository(MessageChannelEntity)
             .findOneByOrFail({ id: channelId })
         ).isSyncEnabled,
-      ).toBe(!stale);
+      ).toBe(!stale && failure !== 'rollback');
       expect(
         (
           await runtime
             .getRepository(CalendarChannelEntity)
             .findOneByOrFail({ id: calendarId })
         ).isSyncEnabled,
-      ).toBe(!stale);
+      ).toBe(!stale && failure !== 'rollback');
     },
   );
 });
@@ -914,7 +973,475 @@ it.each([false, true])(
     }
   },
 );
+const prepareProviderWriter = async (kind: string) => {
+  if (kind === 'create') return () => create(true);
+  if (kind === 'reconnect') return () => reconnect();
+  if (kind === 'sso') {
+    await repository().update(accountId, {
+      provider: ConnectedAccountProvider.OIDC,
+    });
+    const service = makeService(CreateSsoConnectedAccountService.prototype, {
+      connectedAccountRepository: repository(),
+      userWorkspaceRepository,
+    });
+    return () =>
+      service.createOrUpdateSsoConnectedAccount({
+        workspaceId: fixture.workspaceId,
+        userId,
+        handle: 'ordinary',
+        provider: ConnectedAccountProvider.OIDC,
+        scopes: ['new'],
+      });
+  }
+  if (kind === 'imap') {
+    await repository().update(accountId, {
+      provider: ConnectedAccountProvider.IMAP_SMTP_CALDAV,
+    });
+    const snapshot = await read();
+    const service = makeService(ImapSmtpCalDavApiService.prototype, {
+      connectedAccountRepository: repository(),
+      userWorkspaceRepository,
+      messageChannelRepository: { findOne: async () => ({ id: channelId }) },
+      calendarChannelRepository: { findOne: async () => null },
+      connectedAccountTokenEncryptionService: encryption,
+      accountsToReconnectService: { removeAccountToReconnect: jest.fn() },
+    });
+    return () =>
+      service.upsertConnectedAccount({
+        workspaceId: fixture.workspaceId,
+        userWorkspaceId: memberId,
+        handle: 'ordinary',
+        existingAccount: snapshot,
+        connectionParameters: {} as never,
+      });
+  }
+  if (kind === 'refresh') {
+    const snapshot = await read();
+    const service = makeService(
+      ConnectedAccountRefreshTokensService.prototype,
+      {
+        connectedAccountRepository: repository(),
+        connectedAccountTokenEncryptionService: encryption,
+        googleApiRefreshAccessTokenService: {
+          refreshTokens: async () => tokens,
+        },
+        logger: { debug: jest.fn() },
+      },
+    );
+    return () => service.resolveTokens(snapshot, fixture.workspaceId);
+  }
+  if (kind === 'alias') {
+    const snapshot = await read();
+    const service = makeService(EmailAliasManagerService.prototype, {
+      connectedAccountRepository: repository(),
+      workspaceOrmManager: workspaceOrm,
+      messageChannelRepository: { exists: async () => true },
+      googleEmailAliasManagerService: {
+        getHandleAliases: async () => ['new-alias'],
+      },
+    });
+    return () => service.refreshHandleAliases(snapshot, fixture.workspaceId);
+  }
+  if (kind === 'app') {
+    const applicationId = randomUUID(),
+      providerId = randomUUID();
+    await repository().update(accountId, {
+      provider: ConnectedAccountProvider.APP,
+      applicationId,
+      connectionProviderId: providerId,
+    });
+    const service = makeService(ConnectionProviderOAuthFlowService.prototype, {
+      connectedAccountRepository: repository(),
+      connectedAccountTokenEncryptionService: encryption,
+      userRepository: { findOneBy: async () => ({ email: 'ordinary' }) },
+    });
+    return () =>
+      service['persistConnectedAccount']({
+        provider: {
+          id: providerId,
+          applicationId,
+          oauthConfig: { scopes: ['app'] },
+        } as never,
+        tokenResponse: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+        } as never,
+        identifiedAccount: null,
+        workspaceId: fixture.workspaceId,
+        userId,
+        userWorkspaceId: memberId,
+        scope: 'USER',
+        reconnectingConnectedAccountId: accountId,
+      });
+  }
+  throw new Error('Unknown fixture writer');
+};
+const introduceDerivedOwnership = async (kind: string) => {
+  const boundAccount = randomUUID(),
+    boundChannel = randomUUID();
+  await repository().insert({
+    id: boundAccount,
+    workspaceId: fixture.workspaceId,
+    provider: ConnectedAccountProvider.APP,
+    userWorkspaceId: memberId,
+    scope: 'USER',
+    handle: 'native',
+  });
+  await runtime.getRepository(MessageChannelEntity).insert({
+    id: boundChannel,
+    workspaceId: fixture.workspaceId,
+    connectedAccountId: boundAccount,
+    type: MessageChannelType.APP,
+    isSyncEnabled: false,
+  });
+  const binding = await bootstrapOmniAccountBinding(
+    runtime,
+    { kind: 'system', id: 'derived-test' },
+    {
+      workspaceId: fixture.workspaceId,
+      platform: 'telegram',
+      connectorInstanceId: 'derived-test',
+      accountId: randomUUID(),
+      connectedAccountId: boundAccount,
+      messageChannelId: boundChannel,
+      idempotencyKey: randomUUID(),
+      expectedRevision: '0',
+    },
+    async () => undefined,
+  );
+  const thread = randomUUID(),
+    message = randomUUID(),
+    association = randomUUID();
+  await fixture.owner.query(
+    `INSERT INTO "${fixture.schemaName}"."messageThread"(id) VALUES ($1)`,
+    [thread],
+  );
+  await fixture.owner.query(
+    `INSERT INTO "${fixture.schemaName}"."message"(id,"messageThreadId") VALUES ($1,$2)`,
+    [message, thread],
+  );
+  await fixture.owner.query(
+    `INSERT INTO "${fixture.schemaName}"."messageChannelMessageAssociation"(id,"messageId","messageChannelId","messageExternalId","deletedAt") VALUES ($1,$2,$3,'derived',$4)`,
+    [
+      association,
+      message,
+      channelId,
+      kind === 'soft-deleted' ? new Date() : null,
+    ],
+  );
+  if (kind === 'bound') {
+    await fixture.owner.query(
+      `INSERT INTO "${fixture.schemaName}"."messageChannelMessageAssociation"(id,"messageId","messageChannelId","messageExternalId","deletedAt") VALUES ($1,$2,$3,'bound',$4)`,
+      [randomUUID(), message, boundChannel, new Date()],
+    );
+    return;
+  }
+  const conversation = randomUUID(),
+    conversationThread = kind === 'conversation' ? thread : randomUUID();
+  if (conversationThread !== thread)
+    await fixture.owner.query(
+      `INSERT INTO "${fixture.schemaName}"."messageThread"(id) VALUES ($1)`,
+      [conversationThread],
+    );
+  await fixture.owner.query(
+    'INSERT INTO core."omniConversation"(id,"workspaceId","bindingId","providerChatId","messageThreadId","policyId","policyVersion") VALUES ($1,$2,$3,$4,$5,$6,\'0\')',
+    [
+      conversation,
+      fixture.workspaceId,
+      binding.bindingId,
+      randomUUID(),
+      conversationThread,
+      binding.policyId,
+    ],
+  );
+  if (kind !== 'conversation')
+    await fixture.owner.query(
+      'INSERT INTO core."omniMessageLink"(id,"workspaceId","bindingId","conversationId","messageId","rawNativeMessageId","nativeMessageKey","nativeMessageKeyVersion","displayOccurredAt","displayTimeSource","immutableAuthorSnapshot","senderProvenance","correlationState") VALUES ($1,$2,$3,$4,$5,$6,$7,1,now(),\'source\',\'{}\',\'fixture\',\'unresolved\')',
+      [
+        randomUUID(),
+        fixture.workspaceId,
+        binding.bindingId,
+        conversation,
+        message,
+        randomUUID(),
+        randomUUID(),
+      ],
+    );
+};
+describe('full derived ownership at actual provider writes', () => {
+  it.each(
+    ['create', 'reconnect', 'sso', 'imap', 'refresh', 'alias', 'app'].flatMap(
+      (writer) =>
+        ['link', 'conversation', 'bound', 'soft-deleted'].map((marker) => [
+          writer,
+          marker,
+        ]),
+    ),
+  )('%s refuses %s ownership', async (writer, marker) => {
+    const write = await prepareProviderWriter(writer);
+    await introduceDerivedOwnership(marker);
+    const before = await read();
+    await expect(write()).rejects.toThrow();
+    expect(await read()).toEqual(before);
+  });
+  it.each(['create', 'reconnect', 'sso', 'imap', 'refresh', 'alias', 'app'])(
+    '%s propagates lost commit acknowledgement',
+    async (kind) => {
+      const write = await prepareProviderWriter(kind),
+        original = runtime.createQueryRunner.bind(runtime);
+      jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+        const runner = original(),
+          commit = runner.commitTransaction.bind(runner),
+          query = runner.query.bind(runner);
+        let written = false;
+        runner.query = async (...args: Parameters<typeof runner.query>) => {
+          if (args[0].startsWith('UPDATE')) written = true;
+          return query(...args);
+        };
+        runner.commitTransaction = async () => {
+          await commit();
+          if (written) throw new Error('provider commit ACK lost');
+        };
+        return runner;
+      });
+      await expect(write()).rejects.toBeInstanceOf(
+        OmniCoreTransactionOutcomeUnknownError,
+      );
+    },
+  );
+  it('captures refresh identity before provider can mutate the caller object', async () => {
+    const snapshot = await read(),
+      service = makeService(ConnectedAccountRefreshTokensService.prototype, {
+        connectedAccountRepository: repository(),
+        connectedAccountTokenEncryptionService: encryption,
+        googleApiRefreshAccessTokenService: {
+          refreshTokens: async () => {
+            snapshot.id = randomUUID();
+            snapshot.userWorkspaceId = randomUUID();
+            return tokens;
+          },
+        },
+        logger: { debug: jest.fn() },
+      });
+    await expect(
+      service.resolveTokens(snapshot, fixture.workspaceId),
+    ).resolves.toMatchObject({ accessToken: 'encrypted-new-access' });
+    expect((await read()).accessToken).toBe('encrypted-new-access');
+  });
+  it('waits for exclusive enrollment before deciding a refresh write', async () => {
+    const write = await prepareProviderWriter('refresh'),
+      runner = fixture.owner.createQueryRunner();
+    await runner.connect();
+    await runner.startTransaction();
+    let pending: Promise<unknown> | undefined;
+    try {
+      await runner.query(
+        'SELECT pg_advisory_xact_lock(hashtextextended($1,0))',
+        ['twenty:omni-native:' + fixture.workspaceId],
+      );
+      pending = write();
+      let waiting = false;
+      for (let n = 0; n < 100; n++) {
+        const rows = await fixture.owner.query(
+          "SELECT 1 FROM pg_stat_activity WHERE usename=$1 AND wait_event='advisory'",
+          [fixture.roleName],
+        );
+        if (rows.length) {
+          waiting = true;
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      expect(waiting).toBe(true);
+      await runner.query(
+        'UPDATE core."connectedAccount" SET provider=\'app\' WHERE id=$1',
+        [accountId],
+      );
+      await runner.commitTransaction();
+      await expect(pending).rejects.toThrow('CONNECTED_ACCOUNT_CHANGED');
+      expect((await read()).accessToken).toBe('encrypted-old');
+    } finally {
+      if (runner.isTransactionActive) await runner.rollbackTransaction();
+      await runner.release();
+      if (pending) await pending.catch(() => undefined);
+    }
+  });
+});
 describe('retained bindings from pre-invariant snapshots', () => {
+  it('archived IMAP reconnect cannot re-enable reparented message/calendar channels', async () => {
+    await repository().update(accountId, {
+      provider: ConnectedAccountProvider.IMAP_SMTP_CALDAV,
+      archivedAt: new Date(),
+    });
+    await runtime.getRepository(MessageChannelEntity).update(channelId, {
+      syncStage: MessageChannelSyncStage.PENDING_CONFIGURATION,
+    });
+    const calendarId = randomUUID(),
+      otherAccount = randomUUID();
+    await repository().insert({
+      id: otherAccount,
+      workspaceId: fixture.workspaceId,
+      provider: ConnectedAccountProvider.APP,
+      userWorkspaceId: memberId,
+      handle: 'native',
+    });
+    await runtime.getRepository(CalendarChannelEntity).insert({
+      id: calendarId,
+      workspaceId: fixture.workspaceId,
+      connectedAccountId: accountId,
+      isSyncEnabled: false,
+      syncStage: CalendarChannelSyncStage.PENDING_CONFIGURATION,
+    });
+    const calendarRepository = runtime.getRepository(CalendarChannelEntity),
+      find = calendarRepository.findOne.bind(calendarRepository);
+    jest
+      .spyOn(calendarRepository, 'findOne')
+      .mockImplementationOnce(async (options) => {
+        const old = await find(options);
+        await runtime
+          .getRepository(MessageChannelEntity)
+          .update(channelId, { connectedAccountId: otherAccount });
+        await calendarRepository.update(calendarId, {
+          connectedAccountId: otherAccount,
+        });
+        return old;
+      });
+    const service = makeService(ImapSmtpCalDavApiService.prototype, {
+      connectedAccountRepository: repository(),
+      userWorkspaceRepository,
+      messageChannelRepository: runtime.getRepository(MessageChannelEntity),
+      calendarChannelRepository: calendarRepository,
+      connectedAccountTokenEncryptionService: encryption,
+      accountsToReconnectService: { removeAccountToReconnect: jest.fn() },
+    });
+    await service.upsertConnectedAccount({
+      workspaceId: fixture.workspaceId,
+      userWorkspaceId: memberId,
+      handle: 'ordinary',
+      existingAccount: await read(),
+      connectionParameters: { IMAP: {}, CALDAV: {} } as never,
+    });
+    expect(
+      await runtime
+        .getRepository(MessageChannelEntity)
+        .findOneByOrFail({ id: channelId }),
+    ).toMatchObject({ connectedAccountId: otherAccount, isSyncEnabled: false });
+    expect(
+      await calendarRepository.findOneByOrFail({ id: calendarId }),
+    ).toMatchObject({ connectedAccountId: otherAccount, isSyncEnabled: false });
+  });
+  it('SSO scope merge includes changes committed after initial discovery', async () => {
+    await repository().update(accountId, {
+      provider: ConnectedAccountProvider.OIDC,
+    });
+    const repo = repository(),
+      find = repo.findOneBy.bind(repo);
+    jest.spyOn(repo, 'findOneBy').mockImplementationOnce(async (where) => {
+      const before = await find(where);
+      await repo.update(accountId, { scopes: ['old', 'concurrent'] });
+      return before;
+    });
+    const service = makeService(CreateSsoConnectedAccountService.prototype, {
+      connectedAccountRepository: repo,
+      userWorkspaceRepository,
+    });
+    await service.createOrUpdateSsoConnectedAccount({
+      workspaceId: fixture.workspaceId,
+      userId,
+      handle: 'ordinary',
+      provider: ConnectedAccountProvider.OIDC,
+      scopes: ['added'],
+    });
+    expect((await read()).scopes).toEqual(['old', 'concurrent', 'added']);
+  });
+  it('application connection mapping propagates unknown refresh commit', async () => {
+    const error = new OmniCoreTransactionOutcomeUnknownError(
+        new Error('ACK lost'),
+      ),
+      providerId = randomUUID(),
+      warn = jest.fn();
+    const service = makeService(ApplicationConnectionsListService.prototype, {
+      refreshTokensService: {
+        resolveTokens: async () => {
+          throw error;
+        },
+      },
+      logger: { warn },
+    });
+    await expect(
+      service['refreshAndMap'](
+        { ...(await read()), connectionProviderId: providerId },
+        fixture.workspaceId,
+        new Map([[providerId, { id: providerId } as never]]),
+        null,
+      ),
+    ).rejects.toBe(error);
+    expect(warn).not.toHaveBeenCalled();
+  });
+  it('shared provider owner holds off exclusive enrollment until commit', async () => {
+    const write = await prepareProviderWriter('refresh'),
+      original = runtime.createQueryRunner.bind(runtime);
+    let entered!: () => void, release!: () => void;
+    const atWrite = new Promise<void>((resolve) => {
+        entered = resolve;
+      }),
+      gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+      const runner = original(),
+        query = runner.query.bind(runner);
+      runner.query = async (...args: Parameters<typeof runner.query>) => {
+        const result = await query(...args);
+        if (args[0].startsWith('UPDATE')) {
+          entered();
+          await gate;
+        }
+        return result;
+      };
+      return runner;
+    });
+    const pending = write();
+    await atWrite;
+    const exclusiveRunner = fixture.owner.createQueryRunner();
+    await exclusiveRunner.connect();
+    await exclusiveRunner.startTransaction();
+    let exclusive: Promise<unknown> | undefined;
+    try {
+      const [{ pid }] = await exclusiveRunner.query(
+        'SELECT pg_backend_pid() AS pid',
+      );
+      exclusive = exclusiveRunner.query(
+        'SELECT pg_advisory_xact_lock(hashtextextended($1,0))',
+        ['twenty:omni-native:' + fixture.workspaceId],
+      );
+      let waiting = false;
+      for (let n = 0; n < 100; n++) {
+        const rows = await fixture.owner.query(
+          "SELECT 1 FROM pg_stat_activity WHERE pid=$1 AND wait_event='advisory'",
+          [pid],
+        );
+        if (rows.length) {
+          waiting = true;
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      expect(waiting).toBe(true);
+      release();
+      await pending;
+      await exclusive;
+      await exclusiveRunner.commitTransaction();
+      expect((await read()).accessToken).toBe('encrypted-new-access');
+    } finally {
+      release();
+      await pending.catch(() => undefined);
+      if (exclusive) await exclusive.catch(() => undefined);
+      if (exclusiveRunner.isTransactionActive)
+        await exclusiveRunner.rollbackTransaction();
+      await exclusiveRunner.release();
+    }
+  });
   it.each([
     ConnectedAccountProvider.GOOGLE,
     ConnectedAccountProvider.MICROSOFT,

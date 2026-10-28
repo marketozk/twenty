@@ -1,0 +1,19 @@
+{
+  "baseCommit": "35014b29be3a04e14bf084093111fcab02a8cf2f",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/application/connection-provider/connection-provider-oauth-flow.service.ts": "e5db7fe68753942ebc5e6f875316f6be35a835e1b410d6b71cd0be517a844a91",
+    "packages/twenty-server/src/engine/core-modules/application/connection-provider/connections/services/application-connections-list.service.ts": "186754aee8ea1efbc339d5dffb8bd764dce9190aa1034d3e835302c1d8af91af",
+    "packages/twenty-server/src/engine/core-modules/auth/services/create-connected-account.service.ts": "a185628332b050051fe71dc2986b4e73fa52afefb6518839b6339a57306ccd70",
+    "packages/twenty-server/src/engine/core-modules/auth/services/create-sso-connected-account.service.ts": "af87e112dd365e78c8d819bb7534cda570801e7d896c11bf0630363d158dbdcf",
+    "packages/twenty-server/src/engine/core-modules/auth/services/google-apis.service.ts": "093e8baa716e30ebbda9e5d477fe47f834bb895f4335173b0033d1e59b4a137c",
+    "packages/twenty-server/src/engine/core-modules/auth/services/microsoft-apis.service.ts": "c80dcf806f885088e119d2c698cce2d9ccde1b6344bec68262cb88f9d72acfa6",
+    "packages/twenty-server/src/engine/core-modules/auth/services/update-connected-account-on-reconnect.service.ts": "651bf956c3e07b0317b78e258087920277ba0e55c12d7cf19087b58fe2595d70",
+    "packages/twenty-server/src/modules/connected-account/email-alias-manager/services/email-alias-manager.service.ts": "fa78008aba67767a5e4455d720ecdc225db9db56fcee10808bf70c08db874a06",
+    "packages/twenty-server/src/modules/connected-account/refresh-tokens-manager/services/connected-account-refresh-tokens.service.ts": "df399d861e588b30d970342a5443a6a1c78d596959092e7d3eb6c05d5f39c0a5",
+    "packages/twenty-server/src/modules/connected-account/services/imap-smtp-caldav-apis.service.ts": "956f09640801ba4681e23f8d06dea2c09fbd59cd4cfe400a0e17bb1b33e4e767",
+    "packages/twenty-server/test/fork-migration/omni-account-provider-writes.postgres-spec.ts": "c74567b5f1b2cff9d36a0364f9bd94a05cea9694ae07678e27abd3cb69a45db5",
+    "packages/twenty-server/src/modules/omnichannel/services/lock-ordinary-provider-account.ts": "a821ef423a47c2f51c261ab235aed33482358bc6d17695d172d21a0d05604fe7"
+  }
+}

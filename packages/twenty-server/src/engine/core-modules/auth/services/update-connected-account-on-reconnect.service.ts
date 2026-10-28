@@ -11,6 +11,7 @@ import { ConnectedAccountEntity } from 'src/engine/metadata-modules/connected-ac
 import { ConnectedAccountTokenEncryptionService } from 'src/engine/metadata-modules/connected-account/services/connected-account-token-encryption.service';
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
+import { lockOrdinaryProviderAccount } from 'src/modules/omnichannel/services/lock-ordinary-provider-account';
 
 export type UpdateConnectedAccountOnReconnectInput = {
   workspaceId: string;
@@ -40,6 +41,16 @@ export class UpdateConnectedAccountOnReconnectService {
       refreshToken,
       scopes,
     } = input;
+    const transactionManager = input.transactionManager;
+    const identity = {
+      id: connectedAccountId,
+      workspaceId,
+      provider: input.provider,
+      userWorkspaceId: input.userWorkspaceId,
+      applicationId: null,
+      connectionProviderId: null,
+    };
+    const capturedScopes = [...scopes];
 
     // Boundary: tokens entering here were just re-issued by the external
     // OAuth provider on reconnect, so we brand them as plaintext before
@@ -54,26 +65,21 @@ export class UpdateConnectedAccountOnReconnectService {
     const authContext = buildSystemAuthContext(workspaceId);
 
     await this.workspaceOrmManager.executeInWorkspaceContext(async () => {
-      const result = await input.transactionManager
+      await lockOrdinaryProviderAccount(
+        transactionManager,
+        workspaceId,
+        connectedAccountId,
+      );
+      const result = await transactionManager
         .getRepository(ConnectedAccountEntity)
-        .update(
-          ordinaryConnectedAccountWriteWhere({
-            id: connectedAccountId,
-            workspaceId,
-            provider: input.provider,
-            userWorkspaceId: input.userWorkspaceId,
-            applicationId: null,
-            connectionProviderId: null,
-          }),
-          {
-            accessToken: encryptedAccessToken,
-            refreshToken: encryptedRefreshToken,
-            scopes,
-            authFailedAt: null,
-            authFailedReason: null,
-            archivedAt: null,
-          },
-        );
+        .update(ordinaryConnectedAccountWriteWhere(identity), {
+          accessToken: encryptedAccessToken,
+          refreshToken: encryptedRefreshToken,
+          scopes: capturedScopes,
+          authFailedAt: null,
+          authFailedReason: null,
+          archivedAt: null,
+        });
       assertConnectedAccountWriteApplied(result);
     }, authContext);
   }

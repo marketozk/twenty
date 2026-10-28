@@ -54,18 +54,18 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-062 / ROB-764 In Progress: folder discovery получает свежий snapshot
-account/channel/folders, выполняет provider request вне транзакции и повторно
-проверяет ownership, identity, policy, состав папок и точные версии перед записью.
-Все изменения и readback используют один manager; pending actions возвращаются
-из БД без синтетического NONE. Stale response прекращает downstream list-fetch.
-IMAP endpoint/external account identity также входят в snapshot; unknown commit
-не маскируется initial-sync catch.
-Проверено 236 targeted Jest/5 suites +26 guards =262 PASS,
-38 новых cases. Typecheck 267 roots: 190/190, 0 new/changed-code.
-Все7 migrations неизменны. [Доказательства](Research/omnichannel_crm/implementation/log062/README.md). Scoped review finding исправлена.
-Последний full fork: LOG056,1881 tests/71 suites. Далее derived provider ownership,
-downstream lifecycle и итоговый T22/ROB764 acceptance; этап остаётся In Progress.
+LOG-063 / ROB-764 In Progress:7 provider writers используют shared ownership
+fence, account FOR UPDATE и существующую полную проверку derived ownership перед
+identity-limited записью. Google/MS/IMAP outer owners стали strict; helper methods
+не открывают nested transactions. SSO merge читает текущие scopes; app reconnect
+сохраняет shared access/external account pinning и same-manager readback.
+Unknown commit не возвращает новые credentials и не запускает postcommit cleanup.
+IMAP archived re-enable дополнительно проверяет parent обоих каналов.
+Проверено 342 targeted Jest/6 suites +26 guards =368 PASS,
+45 новых regression cases. Typecheck 269 roots:190/190,0 new/changed-code.
+Все7 migrations неизменны. [Доказательства](Research/omnichannel_crm/implementation/log063/README.md). Scoped review finding исправлена.
+Последний full fork LOG0561881/71. Далее reconnect reset/enqueue и downstream
+list-fetch callbacks, затем свежая T22/ROB764 acceptance; этап In Progress.
 Демо прежнее, GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы минимальный аудит и атомарное создание
