@@ -2156,3 +2156,5 @@ separate work. No full server typecheck/full fork/ROB764 Done claim. Last full f
 LOG0672205/75. Next: onboarding/list-fetch scheduling/run proof, then native apply.
 Demo/SaleBot unchanged, no Actions. Skills ai-dev-workflow, behavioral-guardrails,
 server-schrodinger and scoped read-only review/research.
+
+LOG-071 publication: code `39f57dc923d5d181bff19d60f44bb7ca7dc1a32e` pushed; GitHub ref verified by API. Linear description/comment `3b30360b-e473-4705-a65a-331410adb841` independently read back; all11 project states match. ROB-764 remains In Progress.
