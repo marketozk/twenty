@@ -3534,3 +3534,7 @@ DB-отзыв и recovery intent с явным AUDIT_UNAVAILABLE; foreign scope 
 full HTTP/native-share приёмку. Найден soft-delete/JWT stale-cache gap: добавим DB
 recheck существующим repository. [Следующий шаг](implementation/log115/next-boundary.md).
 ROB765 In Progress; демо, образ, клиентские сообщения и Actions не менялись.
+
+LOG115 publication: 54d88543970732a2439c31729aa5a74d64ceb5b3 pushed/API verified.
+ROB765 description/comment 7310a199-5af8-422d-92d0-dfc2ccad368f independently read back;
+all 11 issue states match. Implementation continues with membership authentication checks.
