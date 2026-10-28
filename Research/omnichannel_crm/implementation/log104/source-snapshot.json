@@ -1,0 +1,10 @@
+{
+  "baseCommit": "17a7636b5ef28afb7a635301b39bcb09c5aad58b",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/api/common/common-query-runners/common-base-query-runner.service.ts": "944c69efe22d6566f06e1e2ceef4df95161ad8dbf1d45d756eb22957f06e26c3",
+    "packages/twenty-server/src/engine/api/common/common-query-runners/common-create-many-query-runner/common-create-many-query-runner.service.ts": "ee518ac6e08ec488ad6859edbced85c264268088a680594d5d25b0c8782ba560",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-transaction.ts": "c42997c42f5a5ce3f4184967431928169d738398da3a8707cfcc5ef616b1e61e",
+    "packages/twenty-server/test/fork-migration/crm-audit-public-update.postgres-spec.ts": "2d58e28804d8dd1a65b09e39b0cf020c62695945fea0cdf7e1af2d444db90212"
+  },
+  "uploadedSourceHashesVerified": true
+}

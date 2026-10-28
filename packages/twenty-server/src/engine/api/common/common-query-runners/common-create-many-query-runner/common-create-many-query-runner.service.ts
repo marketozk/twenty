@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 
 import { msg } from '@lingui/core/macro';
-import { QUERY_MAX_RECORDS } from 'twenty-shared/constants';
+import {
+  QUERY_MAX_RECORDS,
+  RELATION_NESTED_QUERY_KEYWORDS,
+} from 'twenty-shared/constants';
 import { MetadataReadability, ObjectRecord } from 'twenty-shared/types';
-import { isDefined, isNonEmptyArray } from 'twenty-shared/utils';
+import { isDefined, isNonEmptyArray, isPlainObject } from 'twenty-shared/utils';
 import {
   Brackets,
   FindOptionsRelations,
@@ -39,6 +42,7 @@ import { buildColumnsToSelect } from 'src/engine/api/graphql/graphql-query-runne
 import { assertIsValidUuid } from 'src/engine/api/graphql/workspace-query-runner/utils/assert-is-valid-uuid.util';
 import { getAllSelectableColumnNames } from 'src/engine/api/utils/get-all-selectable-column-names.util';
 import { WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
+import { isNativeCrmAuditMetadata } from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
 import { RecordPositionService } from 'src/engine/core-modules/record-position/services/record-position.service';
 import { type FlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/types/flat-entity-maps.type';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
@@ -78,18 +82,63 @@ export class CommonCreateManyQueryRunnerService extends CommonBaseQueryRunnerSer
     context: CommonBaseQueryRunnerContext &
       Pick<CommonExtendedQueryRunnerContext, 'featureFlagsMap'>,
   ): boolean {
-    const { sharingMode } = resolveObjectSharing(context);
-    return (
-      resolveShareWithToWrite({ sharingMode, shareWith: args.shareWith }) ===
-        null &&
-      !containsNestedRelationCreate(
-        args.data,
-        getNestedRelationFieldNames({
-          flatObjectMetadata: context.flatObjectMetadata,
-          flatFieldMetadataMaps: context.flatFieldMetadataMaps,
-        }),
+    let nestedRecords = 0;
+    const canAudit = (
+      records: Record<string, unknown>[],
+      flatObjectMetadata: FlatObjectMetadata,
+      depth: number,
+    ): boolean => {
+      if (
+        depth > MAX_NESTED_RELATION_CREATE_DEPTH ||
+        !isNativeCrmAuditMetadata(
+          flatObjectMetadata,
+          context.authContext.workspace.id,
+        ) ||
+        resolveShareWithToWrite({
+          sharingMode: resolveObjectSharing({ ...context, flatObjectMetadata })
+            .sharingMode,
+          shareWith: args.shareWith,
+        }) !== null
       )
-    );
+        return false;
+      const relationFieldNames = getNestedRelationFieldNames({
+        flatObjectMetadata,
+        flatFieldMetadataMaps: context.flatFieldMetadataMaps,
+      });
+      const { fieldIdByName } = buildFieldMapsFromFlatObjectMetadata(
+        context.flatFieldMetadataMaps,
+        flatObjectMetadata,
+      );
+      for (const record of records) {
+        for (const fieldName of relationFieldNames) {
+          const relation = record[fieldName];
+          if (!isDefined(relation) || typeof relation !== 'object') continue;
+          const create = (relation as Record<string, unknown>)[
+            RELATION_NESTED_QUERY_KEYWORDS.CREATE
+          ];
+          if (!isDefined(create)) continue;
+          if (!isPlainObject(create) || ++nestedRecords > QUERY_MAX_RECORDS)
+            return false;
+          const field = findFlatEntityByIdInFlatEntityMaps({
+            flatEntityId: fieldIdByName[fieldName],
+            flatEntityMaps: context.flatFieldMetadataMaps,
+          });
+          const target = field?.relationTargetObjectMetadataId
+            ? findFlatEntityByIdInFlatEntityMaps({
+                flatEntityId: field.relationTargetObjectMetadataId,
+                flatEntityMaps: context.flatObjectMetadataMaps,
+              })
+            : undefined;
+          if (
+            !target ||
+            !canAudit([create as Record<string, unknown>], target, depth + 1)
+          )
+            return false;
+        }
+      }
+      return true;
+    };
+    return canAudit(args.data, context.flatObjectMetadata, 0);
   }
 
   async run(

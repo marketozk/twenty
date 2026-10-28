@@ -53,7 +53,10 @@ import {
   isNativeCrmAuditMetadata,
   isNativeCrmAuditObject,
 } from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
-import { runInExistingNativeCrmAuditScope } from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
+import {
+  runInExistingNativeCrmAuditScope,
+  isRegisteredNativeCrmAuditScope,
+} from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
 import { ApplicationRepeatedEventRecorderService } from 'src/engine/core-modules/event-logs/emit/application-repeated-event-recorder.service';
 import { MetricsService } from 'src/engine/core-modules/metrics/metrics.service';
 import { MetricsKeys } from 'src/engine/core-modules/metrics/types/metrics-keys.type';
@@ -312,21 +315,25 @@ export abstract class CommonBaseQueryRunnerService<
       CommonQueryNames.CREATE_ONE,
       CommonQueryNames.CREATE_MANY,
     ].includes(this.operationName);
-    // Legacy nested/share owners retain their existing transaction boundary. A
-    // strict inherited owner must prove native registration before a covered write.
+    const inheritedNativeScope =
+      queryRunnerContext.transactionScope &&
+      isRegisteredNativeCrmAuditScope(queryRunnerContext.transactionScope);
+    const canAuditCreate = () =>
+      this.isNativeAuditCreateEligible(processedArgs, {
+        ...queryRunnerContext,
+        featureFlagsMap: getWorkspaceContext().featureFlagsMap,
+      });
     const createCandidate =
       isCreate &&
-      isNativeCrmAuditMetadata(
-        queryRunnerContext.flatObjectMetadata,
-        queryRunnerContext.authContext.workspace.id,
-      ) &&
-      (queryRunnerContext.transactionScope
-        ? queryRunnerContext.transactionScope.transactionLifecycle
-            ?.commitOutcome === 'strict'
-        : this.isNativeAuditCreateEligible(processedArgs, {
-            ...queryRunnerContext,
-            featureFlagsMap: getWorkspaceContext().featureFlagsMap,
-          }));
+      (inheritedNativeScope ||
+        (isNativeCrmAuditMetadata(
+          queryRunnerContext.flatObjectMetadata,
+          queryRunnerContext.authContext.workspace.id,
+        ) &&
+          (queryRunnerContext.transactionScope
+            ? queryRunnerContext.transactionScope.transactionLifecycle
+                ?.commitOutcome === 'strict'
+            : canAuditCreate())));
     const auditedMutation =
       createCandidate ||
       ([
@@ -351,7 +358,13 @@ export abstract class CommonBaseQueryRunnerService<
         ? await runInExistingNativeCrmAuditScope(
             queryRunnerContext.transactionScope,
             auth,
-            () => prepareAndRun(queryRunnerContext),
+            async () => {
+              if (isCreate && !canAuditCreate())
+                throw new Error(
+                  'Nested public CREATE exceeds native audit coverage',
+                );
+              return prepareAndRun(queryRunnerContext);
+            },
           )
         : await this.workspaceOrmManager.runInWorkspaceTransaction(
             (transactionScope) =>

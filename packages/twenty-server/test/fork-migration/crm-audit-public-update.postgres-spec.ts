@@ -83,7 +83,7 @@ jest.mock(
 );
 
 const f = createOmniNativeMessageFixture({
-  additionalTables: ['company', 'opportunity', 'customCase'],
+  additionalTables: ['company', 'opportunity', 'customCase', 'task'],
   configureMetadata: addCustomCrmMetadata,
   coreSchema: 'audit',
 });
@@ -312,6 +312,35 @@ beforeAll(async () => {
     customDocumentsUniversalId;
   custom.fieldIds.push(customDocuments.id);
   custom.fieldUniversalIdentifiers.push(customDocumentsUniversalId);
+  const task = Object.values(
+    base.flatObjectMetadataMaps.byUniversalIdentifier,
+  ).find((item) => item?.nameSingular === 'task')!;
+  const customCompany = Object.values(
+    base.flatFieldMetadataMaps.byUniversalIdentifier,
+  ).find(
+    (item) => item?.objectMetadataId === custom.id && item.name === 'company',
+  )!;
+  const taskField = {
+    ...customCompany,
+    id: randomUUID(),
+    universalIdentifier: randomUUID(),
+    name: 'task',
+    label: 'task',
+    relationTargetObjectMetadataId: task.id,
+    relationTargetFieldMetadataId: null,
+    settings: {
+      ...customCompany.settings,
+      relationType: 'MANY_TO_ONE',
+      joinColumnName: 'taskId',
+    },
+  } as typeof customCompany;
+  base.flatFieldMetadataMaps.byUniversalIdentifier[
+    taskField.universalIdentifier
+  ] = taskField;
+  base.flatFieldMetadataMaps.universalIdentifierById[taskField.id] =
+    taskField.universalIdentifier;
+  custom.fieldIds.push(taskField.id);
+  custom.fieldUniversalIdentifiers.push(taskField.universalIdentifier);
   await f.initialize();
   await f.owner.query('INSERT INTO core.workspace(id)VALUES($1)', [
     f.workspaceId,
@@ -1134,7 +1163,7 @@ it('rolls back automatic public CREATE on real audit failure', async () => {
   expect(await audit()).toHaveLength(0);
   expect(h.hooks.executePostQueryHooks).not.toHaveBeenCalled();
 });
-it('preserves legacy root and child scopes for nested public CREATE', async () => {
+it('automatically audits root and children for covered nested public CREATE', async () => {
   const h = harness();
   const parent = randomUUID(),
     custom = randomUUID(),
@@ -1164,7 +1193,8 @@ it('preserves legacy root and child scopes for nested public CREATE', async () =
       [[parent, child]],
     ),
   ).toHaveLength(2);
-  expect(await audit()).toHaveLength(0);
+  expect(await audit()).toHaveLength(3);
+  expect(new Set((await audit()).map((row) => row.operationId)).size).toBe(1);
 });
 it('audits public upsert of an existing record', async () => {
   const h = harness();
@@ -1752,7 +1782,7 @@ it('distinguishes OPEN default-everyone from explicit nondefault shares', () => 
     ),
   ).toBe(false);
 });
-it('selects legacy root if a pre-query hook adds nested CREATE', async () => {
+it('audits a covered nested CREATE added by the root pre-query hook', async () => {
   const h = harness();
   const parent = randomUUID(),
     custom = randomUUID();
@@ -1772,7 +1802,7 @@ it('selects legacy root if a pre-query hook adds nested CREATE', async () => {
       h.queryContext('company'),
     ),
   );
-  expect(await audit()).toHaveLength(0);
+  expect(await audit()).toHaveLength(2);
   expect(
     await f.owner.query(
       `SELECT id FROM "${f.schemaName}".company WHERE id=$1`,
@@ -1933,6 +1963,440 @@ const seedCustomPublicRecords = () =>
     `INSERT INTO "${f.schemaName}"."_customCase"(id,name)VALUES($1,'original'),($2,'second')`,
     [id, secondId],
   );
+
+const nestedPublicInput = () => ({
+  id: randomUUID(),
+  name: 'root',
+  position: 1,
+  case: {
+    create: {
+      id: randomUUID(),
+      name: 'child',
+      position: 1,
+      company: {
+        create: { id: randomUUID(), name: 'grandchild', position: 1 },
+      },
+    },
+  },
+});
+const expectNoNestedPublicRows = async (
+  data: ReturnType<typeof nestedPublicInput>,
+) => {
+  expect(
+    await f.owner.query(
+      `SELECT id FROM "${f.schemaName}".company WHERE id=ANY($1::uuid[])`,
+      [[data.id, data.case.create.company.create.id]],
+    ),
+  ).toHaveLength(0);
+  expect(
+    await f.owner.query(
+      `SELECT id FROM "${f.schemaName}"."_customCase" WHERE id=$1`,
+      [data.case.create.id],
+    ),
+  ).toHaveLength(0);
+  expect(await audit()).toHaveLength(0);
+};
+it('audits nested public upsert with created children and updated parent', async () => {
+  const h = harness(),
+    data = { ...nestedPublicInput(), id };
+  await h.run(() =>
+    h.createOne.execute(
+      { data, upsert: true, selectedFields: { id: true } },
+      h.queryContext('company'),
+    ),
+  );
+  const entries = await audit();
+  expect(entries).toHaveLength(3);
+  expect(entries.find((entry) => entry.resourceId === id)?.action).toBe(
+    'update',
+  );
+  expect(entries.filter((entry) => entry.action === 'create')).toHaveLength(2);
+  expect(new Set(entries.map((entry) => entry.operationId)).size).toBe(1);
+});
+it.each(['audit', 'permission', 'file'] as const)(
+  'rolls the whole nested public graph back after child %s failure',
+  async (reason) => {
+    const h = harness(reason === 'permission' ? 'user' : 'system'),
+      data = nestedPublicInput();
+    if (reason === 'permission')
+      h.permissions[roleId][
+        base.objectIdByNameSingular.customCase
+      ].canUpdateObjectRecords = false;
+    if (reason === 'audit')
+      await f.owner.query(
+        `CREATE FUNCTION crm_audit.fail_public_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'NESTED_AUDIT_FAILURE';END $$;CREATE TRIGGER fail_public_audit BEFORE INSERT ON crm_audit."crmAuditEntry" FOR EACH ROW EXECUTE FUNCTION crm_audit.fail_public_audit()`,
+      );
+    if (reason === 'file')
+      Object.assign(data.case.create, {
+        documents: [{ fileId: randomUUID(), label: 'missing-file' }],
+      });
+    await expect(
+      h.run(() =>
+        h.createOne.execute(
+          { data, selectedFields: { id: true } },
+          h.queryContext('company'),
+        ),
+      ),
+    ).rejects.toThrow();
+    await expectNoNestedPublicRows(data);
+    expect(h.hooks.executePostQueryHooks).not.toHaveBeenCalled();
+  },
+);
+it('rejects an unsupported descendant injected by a child prehook before any commit', async () => {
+  const h = harness(),
+    data = nestedPublicInput();
+  h.hooks.executePreQueryHooks.mockImplementation(
+    async (_auth, name, _operation, args) => {
+      if (name !== 'customCase') return args;
+      const input = args as { data: Record<string, unknown>[] };
+      return {
+        ...input,
+        data: input.data.map((row) => ({
+          ...row,
+          task: {
+            create: { id: randomUUID(), title: 'unsupported', position: 1 },
+          },
+        })),
+      };
+    },
+  );
+  await expect(
+    h.run(() =>
+      h.createOne.execute(
+        { data, selectedFields: { id: true } },
+        h.queryContext('company'),
+      ),
+    ),
+  ).rejects.toThrow('Nested public CREATE exceeds native audit coverage');
+  await expectNoNestedPublicRows(data);
+  expect(h.hooks.executePostQueryHooks).not.toHaveBeenCalled();
+});
+it('audits a supported child prehook change and defers every child hook to commit', async () => {
+  const h = harness(),
+    data = nestedPublicInput();
+  h.hooks.executePreQueryHooks.mockImplementation(
+    async (_auth, name, _operation, args) => {
+      if (name !== 'customCase') return args;
+      const input = args as { data: Record<string, unknown>[] };
+      return {
+        ...input,
+        data: input.data.map((row) => ({ ...row, name: 'hook changed' })),
+      };
+    },
+  );
+  h.hooks.executePostQueryHooks.mockImplementation(async () => {
+    expect(await audit()).toHaveLength(3);
+  });
+  await h.run(() =>
+    h.createOne.execute(
+      { data, selectedFields: { id: true } },
+      h.queryContext('company'),
+    ),
+  );
+  expect(
+    await f.owner.query(
+      `SELECT name FROM "${f.schemaName}"."_customCase" WHERE id=$1`,
+      [data.case.create.id],
+    ),
+  ).toEqual([{ name: 'hook changed' }]);
+  expect(h.hooks.executePostQueryHooks).toHaveBeenCalledTimes(3);
+});
+it('preserves the complete legacy path for an initially unsupported nested graph', async () => {
+  const h = harness(),
+    parent = randomUUID(),
+    task = randomUUID();
+  await h.run(() =>
+    h.createOne.execute(
+      {
+        data: {
+          id: parent,
+          name: 'legacy',
+          position: 1,
+          task: { create: { id: task, title: 'legacy task', position: 1 } },
+        },
+        selectedFields: { id: true },
+      },
+      h.queryContext('customCase'),
+    ),
+  );
+  expect(
+    await f.owner.query(
+      `SELECT "taskId" FROM "${f.schemaName}"."_customCase" WHERE id=$1`,
+      [parent],
+    ),
+  ).toEqual([{ taskId: task }]);
+  expect(
+    await f.owner.query(`SELECT id FROM "${f.schemaName}".task WHERE id=$1`, [
+      task,
+    ]),
+  ).toHaveLength(1);
+  expect(await audit()).toHaveLength(0);
+});
+it('preserves unsupported CREATE in a strict owner without native audit registration', async () => {
+  const h = harness(),
+    task = randomUUID();
+  await h.run(() =>
+    h.dataSource.transaction(
+      (scope) =>
+        h.createOne.execute(
+          {
+            data: { id: task, title: 'legacy strict', position: 1 },
+            selectedFields: { id: true },
+          },
+          h.queryContext('task', scope),
+        ),
+      { commitOutcome: 'strict' },
+    ),
+  );
+  expect(
+    await f.owner.query(`SELECT id FROM "${f.schemaName}".task WHERE id=$1`, [
+      task,
+    ]),
+  ).toHaveLength(1);
+  expect(await audit()).toHaveLength(0);
+});
+it('poisons a registered owner when an unsupported CREATE error is caught by its caller', async () => {
+  const h = harness(),
+    task = randomUUID();
+  await expect(
+    h.run(() =>
+      h.dataSource.transaction(
+        async (scope) => {
+          await scope
+            .getRepository('company', bypass)
+            .update(id, { name: 'must rollback' });
+          await expect(
+            h.createOne.execute(
+              {
+                data: { id: task, title: 'unsupported', position: 1 },
+                selectedFields: { id: true },
+              },
+              h.queryContext('task', scope),
+            ),
+          ).rejects.toThrow(
+            'Nested public CREATE exceeds native audit coverage',
+          );
+        },
+        {
+          nativeAudit: {
+            operationId: randomUUID(),
+            systemActorId: 'nested-test',
+          },
+        },
+      ),
+    ),
+  ).rejects.toThrow();
+  expect(
+    await f.owner.query(
+      `SELECT name FROM "${f.schemaName}".company WHERE id=$1`,
+      [id],
+    ),
+  ).toEqual([{ name: 'original' }]);
+  expect(await audit()).toHaveLength(0);
+});
+it('rejects a copied native scope before covered nested CREATE', async () => {
+  const h = harness(),
+    data = nestedPublicInput();
+  await expect(
+    h.run(() =>
+      h.dataSource.transaction(
+        (scope) =>
+          h.createOne.execute(
+            { data, selectedFields: { id: true } },
+            h.queryContext('company', { ...scope }),
+          ),
+        {
+          nativeAudit: {
+            operationId: randomUUID(),
+            systemActorId: 'nested-test',
+          },
+        },
+      ),
+    ),
+  ).rejects.toThrow('proven native audit scope');
+  await expectNoNestedPublicRows(data);
+});
+it('does not retry a nested graph after a lost actual COMMIT acknowledgement', async () => {
+  const h = harness(),
+    data = nestedPublicInput(),
+    client = await f.pool.connect(),
+    query = client.query.bind(client),
+    statements: string[] = [];
+  jest.spyOn(client, 'query').mockImplementation((async (
+    statement: string | { text: string },
+    values?: unknown[],
+  ) => {
+    const text = typeof statement === 'string' ? statement : statement.text;
+    statements.push(text);
+    const result = await query(statement as string, values);
+    if (text === 'COMMIT') throw new Error('lost ack');
+    return result;
+  }) as typeof client.query);
+  jest
+    .spyOn(f.pool, 'connect')
+    .mockImplementationOnce(() => Promise.resolve(client));
+  await expect(
+    h.run(() =>
+      h.createOne.execute(
+        { data, selectedFields: { id: true } },
+        h.queryContext('company'),
+      ),
+    ),
+  ).rejects.toBeInstanceOf(NativeTransactionOutcomeUnknownError);
+  expect(statements.filter((text) => text === 'COMMIT')).toHaveLength(1);
+  expect(statements).not.toContain('ROLLBACK');
+  expect(await audit()).toHaveLength(3);
+  expect(h.hooks.executePostQueryHooks).not.toHaveBeenCalled();
+});
+
+it('rejects real share writes injected by a child prehook before ShareWithService', async () => {
+  const previousFlags = base.featureFlagsMap;
+  const custom = Object.values(
+    base.flatObjectMetadataMaps.byUniversalIdentifier,
+  ).find((item) => item?.nameSingular === 'customCase')!;
+  const previousReadability = custom.readability;
+  base.featureFlagsMap = {
+    ...previousFlags,
+    [FeatureFlagKey.IS_RECORD_LEVEL_SHARING_ENABLED]: true,
+  };
+  custom.readability = MetadataReadability.OPEN;
+  try {
+    const h = harness(),
+      data = nestedPublicInput();
+    h.hooks.executePreQueryHooks.mockImplementation(
+      async (_auth, name, _operation, args) =>
+        name === 'customCase'
+          ? {
+              ...(args as Record<string, unknown>),
+              shareWith: [
+                {
+                  workspaceMemberId: actorId,
+                  accessLevel: RecordShareAccessLevel.READ_WRITE,
+                },
+              ],
+            }
+          : args,
+    );
+    await expect(
+      h.run(() =>
+        h.createOne.execute(
+          { data, selectedFields: { id: true } },
+          h.queryContext('company'),
+        ),
+      ),
+    ).rejects.toThrow('Nested public CREATE exceeds native audit coverage');
+    await expectNoNestedPublicRows(data);
+    expect(h.shares.validateShareWithOrThrow).not.toHaveBeenCalled();
+    expect(h.shares.insertRecordSharesForCreatedRecords).not.toHaveBeenCalled();
+    expect(h.hooks.executePostQueryHooks).not.toHaveBeenCalled();
+  } finally {
+    base.featureFlagsMap = previousFlags;
+    custom.readability = previousReadability;
+  }
+});
+it('rejects a changed actor in a nested child and rolls the graph back', async () => {
+  const h = harness('user'),
+    data = nestedPublicInput();
+  h.hooks.executePreQueryHooks.mockImplementation(
+    async (auth, name, _operation, args) => {
+      if (name === 'customCase')
+        (auth as { workspaceMemberId: string }).workspaceMemberId =
+          randomUUID();
+      return args;
+    },
+  );
+  await expect(
+    h.run(() =>
+      h.createOne.execute(
+        { data, selectedFields: { id: true } },
+        h.queryContext('company'),
+      ),
+    ),
+  ).rejects.toThrow('different workspace or actor');
+  await expectNoNestedPublicRows(data);
+  expect(h.hooks.executePostQueryHooks).not.toHaveBeenCalled();
+});
+it.each([5, 6])(
+  'keeps the existing nested public depth limit at depth %s',
+  async (depth) => {
+    const h = harness(),
+      ids: string[] = [];
+    const build = (level: number): Record<string, unknown> => {
+      const key = randomUUID();
+      ids.push(key);
+      return {
+        id: key,
+        name: 'depth ' + level,
+        position: 1,
+        ...(level < depth
+          ? {
+              [level % 2 === 0 ? 'case' : 'company']: {
+                create: build(level + 1),
+              },
+            }
+          : {}),
+      };
+    };
+    const data = build(0);
+    const pending = h.run(() =>
+      h.createOne.execute(
+        { data, selectedFields: { id: true } },
+        h.queryContext('company'),
+      ),
+    );
+    if (depth === 5) {
+      await pending;
+      expect(await audit()).toHaveLength(6);
+    } else {
+      await expect(pending).rejects.toThrow(
+        'Nested relation create depth cannot exceed',
+      );
+      expect(
+        await f.owner.query(
+          `SELECT id FROM "${f.schemaName}".company WHERE id=ANY($1::uuid[])`,
+          [ids],
+        ),
+      ).toHaveLength(0);
+      expect(
+        await f.owner.query(
+          `SELECT id FROM "${f.schemaName}"."_customCase" WHERE id=ANY($1::uuid[])`,
+          [ids],
+        ),
+      ).toHaveLength(0);
+      expect(await audit()).toHaveLength(0);
+    }
+  },
+);
+it.each([200, 201])(
+  'bounds nested audit admission by total child count %s',
+  (count) => {
+    const h = harness();
+    const data = Array.from({ length: Math.ceil(count / 2) }, (_, index) => ({
+      name: 'root',
+      case: {
+        create: {
+          name: 'child',
+          ...(index * 2 + 1 < count
+            ? { company: { create: { name: 'grandchild' } } }
+            : {}),
+        },
+      },
+    }));
+    expect(
+      h.createMany.isNativeAuditCreateEligible(
+        {
+          data,
+          selectedFieldsResult: {
+            select: { id: true },
+            relations: {},
+            aggregate: {},
+          },
+        },
+        { ...h.queryContext('company'), featureFlagsMap: base.featureFlagsMap },
+      ),
+    ).toBe(count === 200);
+  },
+);
 const customPublicMethods = [
   'one',
   'many',

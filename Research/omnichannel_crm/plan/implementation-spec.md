@@ -833,3 +833,11 @@ local custom objects. Standard admission сохраняется через OR с
 изменённая standard metadata по-прежнему доходит до strict fail-closed validation.
 Relation connect/disconnect не создаёт дочерних записей; DELETE остаётся soft-delete,
 без physical FK cascades. Same executor/readback/FILES/permissions/hooks — прежние.
+
+LOG104: public nested CREATE/upsert допускается только для рекурсивно covered
+local metadata, без real share writes на каждом узле, с прежними depth/count limits.
+Admission повторяется после child prehook внутри registered owner; WeakMap probe
+не заменяет scope identity/lifecycle/workspace/actor proof. Ошибка child admission
+отравляет общий owner даже при caller-caught error. Первоначально unsupported graph
+остаётся полностью legacy. Предел200/201 проверен admission-only; PG depth5/6,
+rollback и actual lost COMMIT ACK проверены отдельно.

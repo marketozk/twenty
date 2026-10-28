@@ -3304,3 +3304,19 @@ negative audit и health ещё открыты. Демо/сообщения/Acti
 LOG103 publication: aaadb6f21343b46be763ba366f24a202109d011f pushed/API verified.
 ROB765 description and comment 14bc0974-a77a-42a9-b700-d3953e521a6c independently
 read back; all 11 states match. ROB765 remains In Progress; implementation continues.
+
+## LOG-104 — bounded nested public CREATE/upsert
+
+LOG104: bounded nested public CREATE/upsert standard/custom объектов использует единый native audit owner. Исходный граф и каждый child после prehook проверяются; unsupported/share/actor injection отравляет транзакцию. Права, FILES, actual rows и postcommit hooks сохраняются. Первоначально неподдерживаемый граф остаётся на прежнем пути целиком. ROB765 In Progress.
+
+905 tests/30 suites PASS (174.02s); 109 targeted PASS. 17 новых cases: 15 PostgreSQL и 2 admission-only. 26 guards PASS; 10 migration checksums неизменны. Types 342/342 roots, 189/189 baseline diagnostics, 0 новых/changed-code. 4 local/remote source hashes совпадают.
+
+Read-only review не выявил блокеров. Existing INSERT permission действительно
+использует canUpdateObjectRecords; новое canCreateObjectRecords не добавлялось.
+Depth5/6 проверены в PG, count200/201 — только admission. Unsupported/share injection,
+changed actor, caught-error poison, copied scope и actual lost ACK проверены.
+STATUS переписан как актуальная сводка; исторические результаты остаются здесь.
+[Доказательства](implementation/log104/README.md).
+
+Далее internal native hard-delete leaf records; retained omni guard сохраняется.
+Public DESTROY/MERGE, metadata/roles и negative audit/health ещё открыты.

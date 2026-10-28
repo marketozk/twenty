@@ -28,6 +28,9 @@ const scopes = new WeakMap<
   { executor: object; operation: CrmAuditOperation }
 >();
 
+export const isRegisteredNativeCrmAuditScope = (scope: object): boolean =>
+  scopes.has(scope);
+
 export const runInExistingNativeCrmAuditScope = async <TData>(
   scope: Parameters<typeof createCrmAuditWorkspaceExecutor>[0],
   auth: NativeCrmAuditAuth,

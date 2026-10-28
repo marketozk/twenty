@@ -161,3 +161,7 @@ objects подключены к тому же strict native audit owner. Standar
 audit и scoped reads атомарны; hooks после confirmed COMMIT. ROB765 In Progress. [Доказательства](../implementation/log103/README.md).
 
 888 tests/30 suites PASS (174.467s), 17 новых PG cases; targeted193 tests/4 suites PASS. 26 guards PASS, 10 migration checksums неизменны. Types 341/341 roots, 189/189 baseline diagnostics, 0 новых/changed-code. 3 local/remote source hashes совпадают.
+
+LOG104: bounded nested public CREATE/upsert standard/custom объектов использует единый native audit owner. Исходный граф и каждый child после prehook проверяются; unsupported/share/actor injection отравляет транзакцию. Права, FILES, actual rows и postcommit hooks сохраняются. Первоначально неподдерживаемый граф остаётся на прежнем пути целиком. ROB765 In Progress. [Доказательства](../implementation/log104/README.md).
+
+905 tests/30 suites PASS (174.02s); 109 targeted PASS. 17 новых cases: 15 PostgreSQL и 2 admission-only. 26 guards PASS; 10 migration checksums неизменны. Types 342/342 roots, 189/189 baseline diagnostics, 0 новых/changed-code. 4 local/remote source hashes совпадают.

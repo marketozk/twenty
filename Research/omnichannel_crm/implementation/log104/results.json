@@ -1,0 +1,25 @@
+{
+  "status": "pass-scoped-not-phase-complete",
+  "issue": "ROB-765",
+  "newPostgresTests": 15,
+  "newAdmissionOnlyTests": 2,
+  "targetedTests": 109,
+  "regressionTests": 905,
+  "regressionSuites": 30,
+  "regressionSeconds": 174.02,
+  "guardUnitTests": 20,
+  "checksumUnitTests": 6,
+  "unchangedMigrations": 10,
+  "typecheck": {
+    "baselineRoots": 342,
+    "currentRoots": 342,
+    "baselineDiagnostics": 189,
+    "currentDiagnostics": 189,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0,
+    "fullServerTypecheck": false
+  },
+  "uploadedSourceHashesVerified": 4,
+  "productionDeployment": false,
+  "githubActionsUsed": false
+}
