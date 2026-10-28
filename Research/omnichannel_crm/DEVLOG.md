@@ -2953,3 +2953,5 @@ a clean full-server typecheck. Uploaded source hashes match the local LF source.
 
 
 [Evidence](implementation/log088/README.md).
+
+LOG-088 fix publication: `8855d9e4ecc07e2502a63de1d3971847d883ff36` pushed and GitHub API verified. Linear ROB764 description and comment `244404eb-ee19-46cb-8299-fc3d6ae8e6ae` independently read back; all11 states match. Actual rebuilt runtime checks are pending. Scoped read-only package/export review found no remaining blocker.

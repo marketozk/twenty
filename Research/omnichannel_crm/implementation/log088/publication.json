@@ -1,0 +1,11 @@
+{
+  "codeCommit": "8855d9e4ecc07e2502a63de1d3971847d883ff36",
+  "githubBranchVerifiedByApi": true,
+  "linearDescriptionReadbackMatches": true,
+  "linearCommentId": "244404eb-ee19-46cb-8299-fc3d6ae8e6ae",
+  "linearCommentReadbackVerified": true,
+  "projectStatesReadbackVerified": 11,
+  "issueState": "In Progress",
+  "runtimeAcceptance": "pending rebuild and smoke; initial image failed package export loading",
+  "githubActionsUsed": false
+}
