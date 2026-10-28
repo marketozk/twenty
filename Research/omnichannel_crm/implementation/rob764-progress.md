@@ -2126,3 +2126,19 @@ a clean full-server typecheck. Uploaded source hashes match the local LF source.
 
 
 [Evidence](log088/README.md).
+
+
+## LOG-088 — итоговая приёмка ROB-764 и переход к ROB-765
+
+LOG-088: собственный объём ROB-764 проверен и завершён. Полный fork regression:
+2814 tests/88 suites +33 guard/checksum/Linux startup tests =2847 PASS.
+Образ из commit8855d9e4 проходит миграции пустой/заполненной старой базы, replay,
+реальный startup/restart server+worker и отрицательные schema/ledger/privilege gates.
+CRM-записи и upstream ledger сохранены по контрольным суммам. Новых ошибок типов нет.
+Следующий этап ROB-765 — аудит обычных CRM/ORM изменений; он начат.
+Публичные права, внешние коннекторы, чаты и автоматизация ещё не готовы.
+Демо прежнее; GitHub Actions не используется.
+
+Фактический runtime: server health200 и27 worker queues до/после restart в обеих БД, все exit0/no OOM. Неполный ledger, schema drift и owner role отказаны до запуска; восстановленная схема проходит gate. Full committed image ec91306f8b6f3648f6bfdf93cf9acf4e5a2d6091b309d0612fdd48450b187ae4; архив и4 source hashes сверены. Full regression886.901s/exit0. Тесты не выполнялись через GitHub Actions.
+
+Read-only acceptance review новых собственных gaps не нашёл; исправлены устаревшие pending формулировки. ROB765 reuse research выявило отсутствие гарантированной транзакции у обычного Company update и зависимость snapshots от event flag; следующий patch исправляет это для первого audited native среза. Existing omni audit protocol сохраняется.

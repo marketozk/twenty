@@ -1,33 +1,19 @@
 # Текущее состояние Twenty CRM
 
-LOG-088 / ROB-764 In Progress: реальный запуск нового образа выявил два импорта
-через закрытые package subpaths. Исправлены экспорты констант через узкий application-runtime.
-69 PostgreSQL tests/2 suites и26 guard/checksum tests проходят; typecheck189/189,0 новых.
-Полная пересборка, startup/restart и негативные runtime gates пока проверяются.
-Последний полный fork regression — LOG082:2661 tests/83 suites; LOG087:235 targeted+guard PASS.
+LOG-088: собственный объём ROB-764 проверен и завершён. Полный fork regression:
+2814 tests/88 suites +33 guard/checksum/Linux startup tests =2847 PASS.
+Образ из commit8855d9e4 проходит миграции пустой/заполненной старой базы, replay,
+реальный startup/restart server+worker и отрицательные schema/ledger/privilege gates.
+CRM-записи и upstream ledger сохранены по контрольным суммам. Новых ошибок типов нет.
+Следующий этап ROB-765 — аудит обычных CRM/ORM изменений; он начат.
+Публичные права, внешние коннекторы, чаты и автоматизация ещё не готовы.
 Демо прежнее; GitHub Actions не используется.
-[Доказательства и ограничения](implementation/log088/README.md).
 
-## Предыдущая порция — LOG-022
+[Проверки LOG088](implementation/log088/README.md) · [Приёмка ROB764](implementation/rob764-acceptance.md) · [Следующий этап](plan/phase_2_audit.md).
 
-LOG-022 / ROB-764 In Progress: реализованы минимальный audit writer и атомарное
-создание выключенного подключения с disabled policy v0, текущей проверкой прав
-через обязательный authorizer и защитой от повторов. Добавлены audit schema/receipt
-и проверка append-only privileges перед runtime. Прошли81 PostgreSQL,25 Python
-guard/checksum и7 shell tests, focused strict typecheck. [Доказательства и ограничения](implementation/log022/README.md).
-Демо не обновлялось; публичного API/чатов/приёма/отправки нет. ROB-772 Done как
-планирование; нового полного архитектурного review pass не заявлено.
+ROB-762/763/772 и ROB-764 — Done; ROB-765 — In Progress; ROB-766–771 — Backlog.
+Полный server typecheck не является чистым:189 существующих диагностик в сопоставимых снимках,0 новых/в изменённом коде. Это ограничение не скрывается результатами Jest и SWC.
 
-[Результат R16](plan/cross-review/review-result.md) · [Владельцы контрактов](plan/contracts/README.md) · [Журнал](DEVLOG.md) · [Задачи](linear.md).
+Демо на прежнем образе. Текущие функции проверены в изолированных synthetic PostgreSQL fixtures; реальных отправок клиентам не было. Критерии всей CRM ещё не выполнены.
 
-База2.52 развёрнута ранее; реализация ROB-764 не меняет её live runtime.
-Остальные T01–T33 не закрыты,
-внешние коннекторы требуют квалификации. ROB-765–771 Backlog, ROB-762/763 исторические Done.
-
-[Реализация ROB-764 и оставшиеся шаги](implementation/rob764-progress.md).
-
-Код LOG-022 опубликован (`128a3526`); журнал и подтверждение публикации —
-`45c52c45`. [Сохранённый результат Linear/CI](implementation/log022/publication.json):
-113 выполненных тестов прошли, оба GitHub job не стартовали из-за billing block.
-Полный server typecheck не выполнялся. Это не препятствует учёту выполненной
-порции, но облачный CI pass и готовность ROB-764 целиком не заявляются.
+[Журнал](DEVLOG.md) · [Задачи](linear.md) · [Владельцы контрактов](plan/contracts/README.md).

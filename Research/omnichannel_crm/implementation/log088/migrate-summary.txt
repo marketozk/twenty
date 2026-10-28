@@ -1,0 +1,6 @@
+migrate-fresh: PASS
+migrate-upgraded: PASS
+migrate-replay: PASS
+runtime-db-status-freshDatabase: PASS
+runtime-db-status-upgradedDatabase: PASS
+Nine migrations, replay and preserved CRM fingerprints: PASS

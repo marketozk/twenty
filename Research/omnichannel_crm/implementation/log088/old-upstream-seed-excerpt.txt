@@ -1,0 +1,80 @@
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32mCache invalidation flatCommandMenuItemMaps,flatObjectMetadataMaps,flatFrontComponentMaps,flatPageLayoutMaps: 39.8ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32m[install-perf] Runner post-commit invalidateCache took 39.9ms for 4 flat-maps keys[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32mTotal execution: 52.3ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[WorkspaceMigrationValidateBuildAndRunService] [39m[32m[install-perf] workspaceMigrationRunnerService.run took 52.4ms for 1 actions[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder commandMenuItem] [39m[32mmatrix computation: 0.0ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder commandMenuItem] [39m[32mdeletion validation: 0.0ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder commandMenuItem] [39m[32mcreation validation: 0.5ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder commandMenuItem] [39m[32mupdate validation: 0.0ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder commandMenuItem] [39m[32mentity processing: 0.6ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder commandMenuItem] [39m[32mvalidateAndBuild: 0.7ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[WorkspaceMigrationValidateBuildAndRunService] [39m[32m[install-perf] buildWorkspaceMigration took 1.6ms (status=success)[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[WorkspaceMigrationValidateBuildAndRunService] [39m[32m[install-perf] validateBuildAndRunWorkspaceMigrationFromTo running 4 actions: {"create:commandMenuItem":4}[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32mInitial cache retrieval: 0.1ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32m[install-perf] Runner initial cache retrieval (getOrRecomputeManyOrAllFlatEntityMaps) took 0.1ms for 4 flat-maps keys[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32m[install-perf] Runner flat-maps clone took 4.3ms for 4 flat-maps keys[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[BaseWorkspaceMigrationRunnerActionHandlerService] [39m[32mcreate_commandMenuItem executeForWorkspaceSchema: 0.3ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[BaseWorkspaceMigrationRunnerActionHandlerService] [39m[32mcreate_commandMenuItem executeForMetadata: 7.5ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[BaseWorkspaceMigrationRunnerActionHandlerService] [39m[32mcreate_commandMenuItem executeForWorkspaceSchema: 0.2ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[BaseWorkspaceMigrationRunnerActionHandlerService] [39m[32mcreate_commandMenuItem executeForMetadata: 1.7ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[BaseWorkspaceMigrationRunnerActionHandlerService] [39m[32mcreate_commandMenuItem executeForWorkspaceSchema: 0.2ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[BaseWorkspaceMigrationRunnerActionHandlerService] [39m[32mcreate_commandMenuItem executeForMetadata: 2.7ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[BaseWorkspaceMigrationRunnerActionHandlerService] [39m[32mcreate_commandMenuItem executeForWorkspaceSchema: 0.2ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[BaseWorkspaceMigrationRunnerActionHandlerService] [39m[32mcreate_commandMenuItem executeForMetadata: 1.7ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32m[install-perf] Runner transaction summary: 4 actions, total transaction 14.6ms (commit 0.3ms), slowest action create:commandMenuItem 7.7ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32mTransaction execution: 14.9ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32mCache invalidation flatCommandMenuItemMaps,flatObjectMetadataMaps,flatFrontComponentMaps,flatPageLayoutMaps: 38.3ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32m[install-perf] Runner post-commit invalidateCache took 38.4ms for 4 flat-maps keys[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32mTotal execution: 57.9ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[WorkspaceMigrationValidateBuildAndRunService] [39m[32m[install-perf] workspaceMigrationRunnerService.run took 58.0ms for 4 actions[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder agent] [39m[32mmatrix computation: 0.0ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder agent] [39m[32mdeletion validation: 0.0ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder agent] [39m[32mcreation validation: 0.3ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder agent] [39m[32mupdate validation: 0.0ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder agent] [39m[32mentity processing: 0.5ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder agent] [39m[32mvalidateAndBuild: 0.6ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder roleTarget] [39m[32mmatrix computation: 0.1ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder roleTarget] [39m[32mdeletion validation: 0.0ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder roleTarget] [39m[32mcreation validation: 25.7ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder roleTarget] [39m[32mupdate validation: 0.0ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder roleTarget] [39m[32mentity processing: 25.9ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder roleTarget] [39m[32mvalidateAndBuild: 26.1ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[WorkspaceMigrationValidateBuildAndRunService] [39m[32m[install-perf] buildWorkspaceMigration took 27.9ms (status=success)[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[WorkspaceMigrationValidateBuildAndRunService] [39m[32m[install-perf] validateBuildAndRunWorkspaceMigrationFromTo running 1 actions: {"create:agent":1}[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32mInitial cache retrieval: 0.1ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32m[install-perf] Runner initial cache retrieval (getOrRecomputeManyOrAllFlatEntityMaps) took 0.1ms for 2 flat-maps keys[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32m[install-perf] Runner flat-maps clone took 0.5ms for 2 flat-maps keys[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[BaseWorkspaceMigrationRunnerActionHandlerService] [39m[32mcreate_agent executeForWorkspaceSchema: 0.3ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[BaseWorkspaceMigrationRunnerActionHandlerService] [39m[32mcreate_agent executeForMetadata: 2.8ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32m[install-perf] Runner transaction summary: 1 actions, total transaction 3.2ms (commit 0.2ms), slowest action create:agent 2.9ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32mTransaction execution: 3.6ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32mCache invalidation flatAgentMaps,flatRoleMaps: 10.8ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32m[install-perf] Runner post-commit invalidateCache took 10.8ms for 2 flat-maps keys[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32mTotal execution: 15.1ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[WorkspaceMigrationValidateBuildAndRunService] [39m[32m[install-perf] workspaceMigrationRunnerService.run took 15.3ms for 1 actions[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder agent] [39m[32mmatrix computation: 0.0ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder agent] [39m[32mdeletion validation: 0.0ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder agent] [39m[32mcreation validation: 0.2ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder agent] [39m[32mupdate validation: 0.0ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder agent] [39m[32mentity processing: 0.3ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder agent] [39m[32mvalidateAndBuild: 0.4ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder roleTarget] [39m[32mmatrix computation: 0.0ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder roleTarget] [39m[32mdeletion validation: 0.0ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder roleTarget] [39m[32mcreation validation: 14.0ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder roleTarget] [39m[32mupdate validation: 0.0ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder roleTarget] [39m[32mentity processing: 14.1ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[EntityBuilder roleTarget] [39m[32mvalidateAndBuild: 14.2ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[WorkspaceMigrationValidateBuildAndRunService] [39m[32m[install-perf] buildWorkspaceMigration took 15.8ms (status=success)[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[WorkspaceMigrationValidateBuildAndRunService] [39m[32m[install-perf] validateBuildAndRunWorkspaceMigrationFromTo running 1 actions: {"create:agent":1}[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32mInitial cache retrieval: 0.1ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32m[install-perf] Runner initial cache retrieval (getOrRecomputeManyOrAllFlatEntityMaps) took 0.1ms for 2 flat-maps keys[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32m[install-perf] Runner flat-maps clone took 0.5ms for 2 flat-maps keys[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[BaseWorkspaceMigrationRunnerActionHandlerService] [39m[32mcreate_agent executeForWorkspaceSchema: 0.3ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[BaseWorkspaceMigrationRunnerActionHandlerService] [39m[32mcreate_agent executeForMetadata: 1.7ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32m[install-perf] Runner transaction summary: 1 actions, total transaction 2.2ms (commit 0.2ms), slowest action create:agent 1.8ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32mTransaction execution: 9.1ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32mCache invalidation flatAgentMaps,flatRoleMaps: 11.9ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32m[install-perf] Runner post-commit invalidateCache took 11.9ms for 2 flat-maps keys[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[Runner] [39m[32mTotal execution: 21.7ms[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[WorkspaceMigrationValidateBuildAndRunService] [39m[32m[install-perf] workspaceMigrationRunnerService.run took 21.9ms for 1 actions[39m
+[32m[Nest] 37  - [39m10/28/2026, 10:47:34 AM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mMessage queue shutdown complete[39m

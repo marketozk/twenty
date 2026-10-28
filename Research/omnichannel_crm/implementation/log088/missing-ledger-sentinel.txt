@@ -1,0 +1,1 @@
+Omnichannel message persistence schema does not match its manifest

@@ -1,10 +1,12 @@
 # Технический план реализации CRM — v1
 
-LOG-088 / ROB-764 In Progress: реальный запуск нового образа выявил два импорта
-через закрытые package subpaths. Исправлены экспорты констант через узкий application-runtime.
-69 PostgreSQL tests/2 suites и26 guard/checksum tests проходят; typecheck189/189,0 новых.
-Полная пересборка, startup/restart и негативные runtime gates пока проверяются.
-Последний полный fork regression — LOG082:2661 tests/83 suites; LOG087:235 targeted+guard PASS.
+LOG-088: собственный объём ROB-764 проверен и завершён. Полный fork regression:
+2814 tests/88 suites +33 guard/checksum/Linux startup tests =2847 PASS.
+Образ из commit8855d9e4 проходит миграции пустой/заполненной старой базы, replay,
+реальный startup/restart server+worker и отрицательные schema/ledger/privilege gates.
+CRM-записи и upstream ledger сохранены по контрольным суммам. Новых ошибок типов нет.
+Следующий этап ROB-765 — аудит обычных CRM/ORM изменений; он начат.
+Публичные права, внешние коннекторы, чаты и автоматизация ещё не готовы.
 Демо прежнее; GitHub Actions не используется.
 [Доказательства и ограничения](../implementation/log088/README.md).
 

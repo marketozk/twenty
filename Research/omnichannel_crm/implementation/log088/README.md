@@ -1,6 +1,6 @@
 # LOG-088: actual server image startup validation
 
-Status: IN PROGRESS. ROB-764 remains In Progress; current runtime acceptance is not passed.
+Status: runtime and final full fork regression PASS. ROB-764 own phase1 acceptance is complete.
 
 A complete git archive of 6dff1d0875e6f6b68a1185e68c0200c509626c9f built through
 its official Dockerfile twenty-server target. Actual migration of an isolated empty
@@ -21,9 +21,27 @@ because the old test image cannot contain the newly exported symbols. Baseline a
 both have 189 existing diagnostics, with no new or changed-code diagnostics; this is not
 a clean full-server typecheck. Uploaded source hashes match the local LF source.
 
-Next: rebuild a complete committed snapshot, verify built exports, migrate fresh and
-populated two-migration databases, check preserved CRM/upstream-ledger fingerprints,
-start/restart actual server and worker, exercise incomplete/schema/privilege gates,
-and run the full fork regression. These checks remain pending until their evidence is recorded.
+The runtime checks and full regression below have now passed.
 Only isolated synthetic databases/networks are used. No demo or external transports changed.
 GitHub Actions is not used.
+
+## Current runtime results
+
+Full committed image8855d9e4 now passes CJS/ESM/type-export probes. Fresh and populated
+old two-migration databases reach all9 fork migrations; repeated migration preserves
+CRM row counts/hashes and the full upstream upgrade ledger. Restricted runtime role
+passes native upgrade status in both DBs. Actual server health200 and27 worker Bull
+queue subscriptions are observed before and after restart in both DBs. All stop
+exit codes are0, no OOM. Incomplete ledger blocks sentinel/server/worker before exec;
+schema drift blocks sentinel/server; restored gate passes; DB owner role refuses
+append-only audit verification. Seven Linux startup unit tests pass.
+
+Full fork regression PASS:2814 tests/88 suites in886.901s;20 dependency guard,6 checksum and7 Linux startup tests also pass (2847 total). ROB764 own acceptance is complete.
+Large native logs are stored as explicitly labelled last80-line excerpts with raw
+SHA256/size; exact harness, image hashes, fixture and assertion results are retained.
+Read-only acceptance reconciliation found no additional confirmed own-phase gap;
+stale pending statements in acceptance/inventory/spec have been reconciled.
+
+## Acceptance boundary
+
+[ROB764 acceptance](../rob764-acceptance.md) records actual evidence. T04 external provider evidence remains ROB768; full native ORM/session/metadata audit is ROB765; public access is ROB766; UI/transport is ROB768; governed effects/import activation are ROB769/770. No whole-project completion or public CRM functionality is claimed.

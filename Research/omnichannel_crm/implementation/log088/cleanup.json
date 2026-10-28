@@ -1,0 +1,54 @@
+{
+  "finalLedgerCounts": [
+    9,
+    9
+  ],
+  "finalCrmFingerprintsUnchanged": true,
+  "containers": [
+    {
+      "name": "/twenty-rob764-runtime-0f04670661f04e63-fresh-server",
+      "ports": {},
+      "memoryLimit": 3221225472,
+      "exitCode": 0,
+      "oomKilled": false
+    },
+    {
+      "name": "/twenty-rob764-runtime-0f04670661f04e63-fresh-worker",
+      "ports": {},
+      "memoryLimit": 3221225472,
+      "exitCode": 0,
+      "oomKilled": false
+    },
+    {
+      "name": "/twenty-rob764-runtime-0f04670661f04e63-upgraded-server",
+      "ports": {},
+      "memoryLimit": 3221225472,
+      "exitCode": 0,
+      "oomKilled": false
+    },
+    {
+      "name": "/twenty-rob764-runtime-0f04670661f04e63-upgraded-worker",
+      "ports": {},
+      "memoryLimit": 3221225472,
+      "exitCode": 0,
+      "oomKilled": false
+    },
+    {
+      "name": "/twenty-rob764-runtime-0f04670661f04e63-db",
+      "ports": {},
+      "memoryLimit": 2147483648,
+      "exitCode": 0,
+      "oomKilled": false
+    },
+    {
+      "name": "/twenty-rob764-runtime-0f04670661f04e63-redis",
+      "ports": {},
+      "memoryLimit": 134217728,
+      "exitCode": 0,
+      "oomKilled": false
+    }
+  ],
+  "cleanupComplete": true,
+  "onlyGeneratedRuntimeFixtureRemoved": true,
+  "builderStoppedAndOriginalCpuQuotaRestored": true
+}

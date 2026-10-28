@@ -1,0 +1,12 @@
+{
+  "sourceCommit": "8855d9e4ecc07e2502a63de1d3971847d883ff36",
+  "host": "root@176.114.84.194",
+  "name": "twenty-rob764-runtime-0f04670661f04e63",
+  "remote": "/opt/twenty-tests/twenty-rob764-runtime-0f04670661f04e63",
+  "source": "/opt/twenty-tests/twenty-rob764-runtime-0f04670661f04e63/source-8855d9e4ecc0",
+  "network": "twenty-rob764-runtime-0f04670661f04e63-net",
+  "image": "marketozk/twenty:log088-server-fixed",
+  "freshDatabase": "twenty_rob764_test_9c6efcb22b2b48db",
+  "upgradedDatabase": "twenty_rob764_test_ff0c0b8ae7044a1b",
+  "archiveSha256": "be6726a312f90e2c7a0f9ace36a161393b1bd75704393bce987d308e7937a952"
+}

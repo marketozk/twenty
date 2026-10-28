@@ -1,0 +1,8 @@
+missing-ledger-sentinel: PASS
+missing-ledger-server: PASS
+missing-ledger-worker: PASS
+schema-drift-sentinel: PASS
+schema-drift: PASS
+restored-gate: PASS
+owner-role: PASS
+Runtime refuses incomplete ledger/schema/owner role: PASS

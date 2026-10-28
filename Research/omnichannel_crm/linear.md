@@ -24,13 +24,15 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 
 Актуальные статусы — в Linear. Первоначальный снимок статусов — [DEVLOG, запись LOG-002](DEVLOG.md). Описание задачи содержит критерии и ссылку на документ; при изменении плана обновлять соответствующую задачу. Отчёты о работе — в DEVLOG и комментариях задачи, а не только в чате Codex.
 
-## Сверка текущего состояния — 27.10.2026
+## Сверка текущего состояния — 28.10.2026
 
-LOG-088 / ROB-764 In Progress: реальный запуск нового образа выявил два импорта
-через закрытые package subpaths. Исправлены экспорты констант через узкий application-runtime.
-69 PostgreSQL tests/2 suites и26 guard/checksum tests проходят; typecheck189/189,0 новых.
-Полная пересборка, startup/restart и негативные runtime gates пока проверяются.
-Последний полный fork regression — LOG082:2661 tests/83 suites; LOG087:235 targeted+guard PASS.
+LOG-088: собственный объём ROB-764 проверен и завершён. Полный fork regression:
+2814 tests/88 suites +33 guard/checksum/Linux startup tests =2847 PASS.
+Образ из commit8855d9e4 проходит миграции пустой/заполненной старой базы, replay,
+реальный startup/restart server+worker и отрицательные schema/ledger/privilege gates.
+CRM-записи и upstream ledger сохранены по контрольным суммам. Новых ошибок типов нет.
+Следующий этап ROB-765 — аудит обычных CRM/ORM изменений; он начат.
+Публичные права, внешние коннекторы, чаты и автоматизация ещё не готовы.
 Демо прежнее; GitHub Actions не используется.
 [Доказательства и ограничения](implementation/log088/README.md).
 
@@ -44,7 +46,7 @@ LOG-022 / ROB-764 In Progress: добавлены минимальный audit w
 ROB-772 Done как планирование; R16 остаётся историческим, нового полного pass
 не заявлено. [Проверки LOG-022](implementation/log022/README.md).
 
-[Итог R16](plan/cross-review/review-result.md). ROB-762/763 Done; ROB-772 Done по решению владельца начать реализацию; ROB-764 In Progress; ROB-765–771 Backlog. Зависимость ROB-772 → ROB-764 сохраняется как выполненная предпосылка. [Ход реализации](implementation/rob764-progress.md) · [Проверки LOG-021](implementation/log021/README.md).
+[Итог R16](plan/cross-review/review-result.md). ROB-762/763 Done; ROB-772 Done по решению владельца начать реализацию; ROB-764 Done; ROB-765 In Progress; ROB-766–771 Backlog. Зависимость ROB-772 → ROB-764 сохраняется как выполненная предпосылка. [Ход реализации](implementation/rob764-progress.md) · [Проверки LOG-021](implementation/log021/README.md).
 
 Предыдущая публикация R13: `183039a3c16b0e4b4a3495805ba42bf9e0d51e76`, [комментарий LOG-015](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-1df99847); read-back всех11 описаний и прежних статусов подтверждён.
 

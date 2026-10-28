@@ -4,13 +4,13 @@
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
-Спецификация: [design/08-audit.md](../design/08-audit.md). Статус: не выполнен. 2a зависит от 1; 2b зависит от собственной политики этапа 3. Остальные этапы дополняют аудит своими событиями.
+Спецификация: [design/08-audit.md](../design/08-audit.md). Статус: ROB-765 In Progress, реализация начата после подтверждённой приёмки ROB-764 (LOG088). ROB-767 остаётся Backlog. 2a зависит от 1; 2b зависит от собственной политики этапа 3. Остальные этапы дополняют аудит своими событиями.
 
 Основа уже реализована в ROB-764 / LOG-022: CrmAuditEntry, транзакционный context,
 append-only writer, безопасный diff и проверка DB privileges. Текущий каталог охватывает 23 вида ресурсов; собственные omni operations, native Message
 composition, receipts/outbox/revisions используют общий atomic audit context (LOG028–087).
 ROB-765 расширяет этот механизм на CRM/ORM/merge/bulk/session/metadata; ROB-767
-добавляет просмотр и экспорт после собственных прав. Обе задачи остаются Backlog.
+добавляет просмотр и экспорт после собственных прав. ROB-765 начат; ROB-767 остаётся Backlog до собственных прав.
 [Результат и границы LOG-022](../implementation/log022/README.md).
 
 ## Файлы
@@ -53,3 +53,5 @@ ROB-764 уже вводит минимальный audit transaction context д�
 **Rollback:** отключение UI не отключает сбор; исправление событий добавлением нового correction-event, не редактированием истории. Для schema rollback сначала резервная копия и проверка потери полей/событий.
 
 LOG087 adds bounded parent delete audit and retained current-administrative deletedParent scope, including multi-binding manifest hash. Native/custom FK effects without an audited writer refuse the operation. ROB765 must preserve this contract while broadening native ORM/lifecycle coverage; new destroy is not proof that generic native audit is complete.
+
+Первый срез ROB-765: обычные Company scalar update/updateMany через текущие native kernels, один strict transaction-owned audit context и фактические row snapshots независимо от emission flags. Предварительно подтверждены: no-validation Company update может идти без transaction; FilesFieldSync использует отдельный core pool. Поэтому файловая атомарность и полный native audit ещё не заявляются.

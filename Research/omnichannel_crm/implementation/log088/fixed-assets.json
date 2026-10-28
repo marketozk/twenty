@@ -1,0 +1,15 @@
+{
+  "cjsExports": true,
+  "typeExports": true,
+  "migrationCount": 9,
+  "hashes": {
+    "dist/main.js": "41877c3fca80f5d51ad5295c58edfd348e76213d33eaca0fcc8f9a20a42f3cbd",
+    "dist/queue-worker/queue-worker.js": "a0f273d1c8eb75bcba580b8a987720b29a7523011bcff2011406296f053173f6",
+    "dist/modules/omnichannel/services/destroy-omni-crm-parent.js": "be399469a3bcdbdda03e7909acdfbc98072ae9b08d940bc4215203447a5332bb",
+    "dist/database/commands/fork-upgrade/fork-upgrade.cli.js": "c8c08a208b05898cc69a56e3202eb3b00e8663b99dd1f728e7e5ca743ccd2c54",
+    "dist/engine/core-modules/omnichannel-storage/migrations/fork-schema-manifest.json": "c13ddb3d47cdb2a3035464d9ef3d3216184db48a53a09244a4318bd4477b2882"
+  },
+  "esmExports": true,
+  "image": "sha256:ec91306f8b6f3648f6bfdf93cf9acf4e5a2d6091b309d0612fdd48450b187ae4",
+  "sourceCommit": "8855d9e4ecc07e2502a63de1d3971847d883ff36"
+}

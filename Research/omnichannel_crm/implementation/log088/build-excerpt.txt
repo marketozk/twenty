@@ -1,0 +1,80 @@
+#27 [twenty-server  2/23] COPY ./packages/twenty-docker/twenty/entrypoint.sh /app/entrypoint.sh
+#27 CACHED
+
+#28 [twenty-server  3/23] RUN chmod +x /app/entrypoint.sh
+#28 CACHED
+
+#29 [twenty-server  6/23] WORKDIR /app/packages/twenty-server
+#29 CACHED
+
+#30 [twenty-server  7/23] COPY --chown=1000 --from=twenty-server-build /app/package.json /app/yarn.lock /app/.yarnrc.yml /app/
+#30 CACHED
+
+#31 [twenty-server  1/23] RUN apk add --no-cache     'curl>=8.22.0-r0'     'libexpat>=2.8.5-r0'     'nghttp2-libs>=1.69.0-r0'     'libcrypto3>=3.5.8-r0'     'libssl3>=3.5.8-r0'     'postgresql18-client>=18.5-r0'     'jq>=1.8.2-r0'
+#31 CACHED
+
+#32 [twenty-server  4/23] COPY ./ops/omnichannel/entrypoint.sh ./ops/omnichannel/migrate.sh ./ops/omnichannel/start-runtime.sh /app/omnichannel/
+#32 CACHED
+
+#33 [twenty-server  8/23] COPY --chown=1000 --from=twenty-server-build /app/tsconfig.base.json /app/nx.json /app/
+#33 CACHED
+
+#34 [twenty-server  9/23] COPY --chown=1000 --from=twenty-server-build /app/.yarn /app/.yarn
+#34 DONE 0.1s
+
+#35 [twenty-server 10/23] COPY --chown=1000 --from=twenty-server-build /app/node_modules /app/node_modules
+#35 DONE 14.6s
+
+#36 [twenty-server 11/23] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-server/package.json /app/packages/twenty-server/
+#36 DONE 0.7s
+
+#37 [twenty-server 12/23] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-server/dist /app/packages/twenty-server/dist
+#37 DONE 3.7s
+
+#38 [twenty-server 13/23] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-server/patches /app/packages/twenty-server/patches
+#38 DONE 0.3s
+
+#39 [twenty-server 14/23] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-server/scripts /app/packages/twenty-server/scripts
+#39 DONE 0.0s
+
+#40 [twenty-server 15/23] RUN chmod +x /app/packages/twenty-server/scripts/command-background.sh
+#40 DONE 0.1s
+
+#41 [twenty-server 16/23] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-shared/package.json /app/packages/twenty-shared/
+#41 DONE 0.0s
+
+#42 [twenty-server 17/23] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-shared/dist /app/packages/twenty-shared/dist
+#42 DONE 0.4s
+
+#43 [twenty-server 18/23] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-emails/package.json /app/packages/twenty-emails/
+#43 DONE 0.0s
+
+#44 [twenty-server 19/23] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-emails/dist /app/packages/twenty-emails/dist
+#44 DONE 0.1s
+
+#45 [twenty-server 20/23] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-client-sdk/package.json /app/packages/twenty-client-sdk/
+#45 DONE 0.0s
+
+#46 [twenty-server 21/23] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-client-sdk/dist /app/packages/twenty-client-sdk/dist
+#46 DONE 0.0s
+
+#47 [twenty-server 22/23] RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx       /usr/local/include/node &&     find /app/node_modules -type d -name example -prune -exec rm -rf {} +
+#47 DONE 1.7s
+
+#48 [twenty-server 23/23] RUN mkdir -p /app/.local-storage /app/packages/twenty-server/.local-storage &&     chown 1000:1000 /app/.local-storage /app/packages/twenty-server/.local-storage
+#48 DONE 0.1s
+
+#49 exporting to oci image format
+#49 exporting layers
+#49 exporting layers 20.8s done
+#49 exporting manifest sha256:ec91306f8b6f3648f6bfdf93cf9acf4e5a2d6091b309d0612fdd48450b187ae4 done
+#49 exporting config sha256:a318ffab0896270bd7ad3ca99ce917538abf7c51226eaf060a9520b7851bdd14 done
+#49 sending tarball
+#49 ...
+
+#50 importing to docker
+#50 DONE 0.0s
+
+#49 exporting to oci image format
+#49 sending tarball 32.1s done
+#49 DONE 53.0s

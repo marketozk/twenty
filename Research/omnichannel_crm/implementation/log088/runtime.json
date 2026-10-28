@@ -1,0 +1,74 @@
+{
+  "fresh": {
+    "initial": {
+      "health": {
+        "status": "ok",
+        "info": {},
+        "error": {},
+        "details": {}
+      },
+      "workerQueueSubscriptions": 27
+    },
+    "firstStop": {
+      "seconds": 1.63,
+      "exitCodes": [
+        0,
+        0
+      ],
+      "oomKilled": false
+    },
+    "restart": {
+      "health": {
+        "status": "ok",
+        "info": {},
+        "error": {},
+        "details": {}
+      },
+      "workerQueueSubscriptions": 27
+    },
+    "finalStop": {
+      "seconds": 1.63,
+      "exitCodes": [
+        0,
+        0
+      ],
+      "oomKilled": false
+    }
+  },
+  "upgraded": {
+    "initial": {
+      "health": {
+        "status": "ok",
+        "info": {},
+        "error": {},
+        "details": {}
+      },
+      "workerQueueSubscriptions": 27
+    },
+    "firstStop": {
+      "seconds": 1.99,
+      "exitCodes": [
+        0,
+        0
+      ],
+      "oomKilled": false
+    },
+    "restart": {
+      "health": {
+        "status": "ok",
+        "info": {},
+        "error": {},
+        "details": {}
+      },
+      "workerQueueSubscriptions": 27
+    },
+    "finalStop": {
+      "seconds": 1.73,
+      "exitCodes": [
+        0,
+        0
+      ],
+      "oomKilled": false
+    }
+  }
+}
