@@ -48,7 +48,11 @@ import { WorkspacePreQueryHookPayload } from 'src/engine/api/graphql/workspace-q
 import { WorkspaceQueryHookService } from 'src/engine/api/graphql/workspace-query-runner/workspace-query-hook/workspace-query-hook.service';
 import { isApplicationAuthContext } from 'src/engine/core-modules/auth/guards/is-application-auth-context.guard';
 import { WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
-import { isNativeCrmAuditObject } from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
+import {
+  captureNativeCrmAuditWriteData,
+  isNativeCrmAuditMetadata,
+  isNativeCrmAuditObject,
+} from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
 import { runInExistingNativeCrmAuditScope } from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
 import { ApplicationRepeatedEventRecorderService } from 'src/engine/core-modules/event-logs/emit/application-repeated-event-recorder.service';
 import { MetricsService } from 'src/engine/core-modules/metrics/metrics.service';
@@ -122,6 +126,14 @@ export abstract class CommonBaseQueryRunnerService<
 
   protected readonly isReadOnly: boolean = false;
 
+  public isNativeAuditCreateEligible(
+    _args: CommonExtendedInput<Args>,
+    _context: CommonBaseQueryRunnerContext &
+      Pick<CommonExtendedQueryRunnerContext, 'featureFlagsMap'>,
+  ): boolean {
+    return false;
+  }
+
   public async execute(
     args: CommonInput<Args>,
     queryRunnerContext: CommonBaseQueryRunnerContext,
@@ -152,10 +164,20 @@ export abstract class CommonBaseQueryRunnerService<
       args.selectedFields,
     );
 
-    const processedArgs = {
+    let processedArgs = {
       ...(await this.processArgs(args, queryRunnerContext, this.operationName)),
       selectedFieldsResult,
     } as CommonExtendedInput<Args>;
+
+    if (
+      [CommonQueryNames.CREATE_ONE, CommonQueryNames.CREATE_MANY].includes(
+        this.operationName,
+      )
+    ) {
+      processedArgs = captureNativeCrmAuditWriteData(
+        processedArgs as unknown as Record<string, unknown>,
+      ) as unknown as CommonExtendedInput<Args>;
+    }
 
     this.validateQueryComplexity(
       selectedFieldsResult,
@@ -286,8 +308,28 @@ export abstract class CommonBaseQueryRunnerService<
       });
       return { results, extendedQueryRunnerContext };
     };
+    const isCreate = [
+      CommonQueryNames.CREATE_ONE,
+      CommonQueryNames.CREATE_MANY,
+    ].includes(this.operationName);
+    // Legacy nested/share owners retain their existing transaction boundary. A
+    // strict inherited owner must prove native registration before a covered write.
+    const createCandidate =
+      isCreate &&
+      isNativeCrmAuditMetadata(
+        queryRunnerContext.flatObjectMetadata,
+        queryRunnerContext.authContext.workspace.id,
+      ) &&
+      (queryRunnerContext.transactionScope
+        ? queryRunnerContext.transactionScope.transactionLifecycle
+            ?.commitOutcome === 'strict'
+        : this.isNativeAuditCreateEligible(processedArgs, {
+            ...queryRunnerContext,
+            featureFlagsMap: getWorkspaceContext().featureFlagsMap,
+          }));
     const auditedMutation =
-      [
+      createCandidate ||
+      ([
         CommonQueryNames.UPDATE_ONE,
         CommonQueryNames.UPDATE_MANY,
         CommonQueryNames.DELETE_ONE,
@@ -295,10 +337,10 @@ export abstract class CommonBaseQueryRunnerService<
         CommonQueryNames.RESTORE_ONE,
         CommonQueryNames.RESTORE_MANY,
       ].includes(this.operationName) &&
-      isNativeCrmAuditObject(
-        queryRunnerContext.flatObjectMetadata.nameSingular,
-        queryRunnerContext.flatObjectMetadata.universalIdentifier,
-      );
+        isNativeCrmAuditObject(
+          queryRunnerContext.flatObjectMetadata.nameSingular,
+          queryRunnerContext.flatObjectMetadata.universalIdentifier,
+        ));
     const auth = getWorkspaceContext().authContext;
     const { results, extendedQueryRunnerContext } = auditedMutation
       ? queryRunnerContext.transactionScope
@@ -319,7 +361,9 @@ export abstract class CommonBaseQueryRunnerService<
                         this.operationName === CommonQueryNames.UPDATE_ONE ||
                         this.operationName === CommonQueryNames.UPDATE_MANY
                           ? 'crm-api-update'
-                          : 'crm-api-lifecycle',
+                          : isCreate
+                            ? 'crm-api-create'
+                            : 'crm-api-lifecycle',
                     }
                   : {}),
               },

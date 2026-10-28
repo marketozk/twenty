@@ -36,6 +36,17 @@ export class CommonCreateOneQueryRunnerService extends CommonBaseQueryRunnerServ
 
   protected readonly operationName = CommonQueryNames.CREATE_ONE;
 
+  public override isNativeAuditCreateEligible(
+    args: CommonExtendedInput<CreateOneQueryArgs>,
+    context: CommonBaseQueryRunnerContext &
+      Pick<CommonExtendedQueryRunnerContext, 'featureFlagsMap'>,
+  ): boolean {
+    return this.commonCreateManyQueryRunnerService.isNativeAuditCreateEligible(
+      { ...args, data: [args.data] },
+      context,
+    );
+  }
+
   async run(
     args: CommonExtendedInput<CreateManyQueryArgs>,
     queryRunnerContext: CommonExtendedQueryRunnerContext,

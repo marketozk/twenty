@@ -1,3 +1,9 @@
+import { FieldMetadataType } from 'twenty-shared/types';
+import {
+  MetadataReadability,
+  FeatureFlagKey,
+  RecordShareAccessLevel,
+} from 'twenty-shared/types';
 import { randomUUID } from 'node:crypto';
 import {
   type ObjectsPermissionsByRoleId,
@@ -80,6 +86,8 @@ const f = createOmniNativeMessageFixture({
   configureMetadata: addCustomCrmMetadata,
   coreSchema: 'audit',
 });
+const documentsId = randomUUID(),
+  documentsUniversalId = randomUUID();
 const id = randomUUID();
 const secondId = randomUUID();
 const actorId = randomUUID();
@@ -121,6 +129,7 @@ const harness = (
         objectId,
         {
           canReadObjectRecords: true,
+          canCreateObjectRecords: canUpdate,
           canUpdateObjectRecords: canUpdate,
           canSoftDeleteObjectRecords: canUpdate,
           canDestroyObjectRecords: false,
@@ -250,9 +259,45 @@ const harness = (
 
 beforeAll(async () => {
   base = await f.withContext(async () => getWorkspaceContext());
+  const company = Object.values(
+    base.flatObjectMetadataMaps.byUniversalIdentifier,
+  ).find((item) => item?.nameSingular === 'company')!;
+  const position = Object.values(
+    base.flatFieldMetadataMaps.byUniversalIdentifier,
+  ).find(
+    (item) => item?.objectMetadataId === company.id && item.name === 'position',
+  )!;
+  const documents = {
+    ...position,
+    id: documentsId,
+    universalIdentifier: documentsUniversalId,
+    name: 'documents',
+    label: 'documents',
+    type: FieldMetadataType.FILES,
+    isNullable: true,
+    isCustom: true,
+    defaultValue: null,
+    settings: { maxNumberOfValues: 5 },
+  };
+  base.flatFieldMetadataMaps.byUniversalIdentifier[documentsUniversalId] =
+    documents;
+  base.flatFieldMetadataMaps.universalIdentifierById[documentsId] =
+    documentsUniversalId;
+  company.fieldIds.push(documentsId);
+  company.fieldUniversalIdentifiers.push(documentsUniversalId);
   await f.initialize();
+  await f.owner.query('INSERT INTO core.workspace(id)VALUES($1)', [
+    f.workspaceId,
+  ]);
+  await f.owner.query(
+    `CREATE TABLE core.file(id uuid PRIMARY KEY,"workspaceId" uuid NOT NULL,path varchar NOT NULL,size bigint NOT NULL,settings jsonb,status text NOT NULL DEFAULT 'UPLOADED',"createdAt" timestamptz NOT NULL DEFAULT now(),"updatedAt" timestamptz NOT NULL DEFAULT now(),"deletedAt" timestamptz,"applicationId" uuid,"applicationRegistrationId" uuid,"isStaticAsset" boolean DEFAULT false,"mimeType" varchar DEFAULT 'application/pdf',"contentSha256" varchar)`,
+  );
+  await f.owner.query(
+    `GRANT USAGE ON SCHEMA core TO "${f.roleName}";GRANT SELECT,UPDATE ON core.file TO "${f.roleName}"`,
+  );
 });
 beforeEach(async () => {
+  await f.owner.query('TRUNCATE core.file');
   await f.reset();
   await f.owner.query(
     `INSERT INTO "${f.schemaName}".company(id,name) VALUES ($1,'original'),($2,'second')`,
@@ -984,3 +1029,377 @@ it('does not retry lifecycle writes after a lost real COMMIT acknowledgement', a
   expect(await audit()).toHaveLength(1);
   expect(f.eventEmitter).not.toHaveBeenCalled();
 });
+
+it.each(['company', 'person', 'opportunity', 'customCase'])(
+  'audits actual public CREATE_ONE/MANY for %s',
+  async (name) => {
+    const h = harness();
+    const first = randomUUID(),
+      second = randomUUID();
+    const data = (id: string) =>
+      name === 'person'
+        ? { id, name: { firstName: 'Created' } }
+        : { id, name: 'Created' };
+    await h.run(() =>
+      h.createOne.execute(
+        { data: data(first), selectedFields: { id: true } },
+        h.queryContext(name),
+      ),
+    );
+    await h.run(() =>
+      h.createMany.execute(
+        { data: [data(second)], selectedFields: { id: true } },
+        h.queryContext(name),
+      ),
+    );
+    const rows = await audit();
+    expect(rows).toHaveLength(2);
+    expect(new Set(rows.map((row) => row.resourceId))).toEqual(
+      new Set([first, second]),
+    );
+    expect(rows.every((row) => row.action === 'create')).toBe(true);
+    expect(h.shares.insertRecordSharesForCreatedRecords).not.toHaveBeenCalled();
+  },
+);
+it.each(['user', 'apiKey', 'application'] as const)(
+  'records %s actor for automatic public CREATE',
+  async (kind) => {
+    const h = harness(kind);
+    const created = randomUUID();
+    await h.run(() =>
+      h.createOne.execute(
+        {
+          data: { id: created, name: 'Created' },
+          selectedFields: { id: true },
+        },
+        h.queryContext('company'),
+      ),
+    );
+    expect((await audit())[0].actor).toEqual({
+      kind: kind === 'user' ? 'workspaceMember' : kind,
+      id: actorId,
+    });
+  },
+);
+it('rolls back automatic public CREATE on real audit failure', async () => {
+  const h = harness();
+  const created = randomUUID();
+  await f.owner.query(
+    `CREATE FUNCTION crm_audit.fail_public_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'CREATE_AUDIT_FAILURE';END $$;CREATE TRIGGER fail_public_audit BEFORE INSERT ON crm_audit."crmAuditEntry" FOR EACH ROW EXECUTE FUNCTION crm_audit.fail_public_audit()`,
+  );
+  await expect(
+    h.run(() =>
+      h.createOne.execute(
+        {
+          data: { id: created, name: 'Created' },
+          selectedFields: { id: true },
+        },
+        h.queryContext('company'),
+      ),
+    ),
+  ).rejects.toThrow();
+  expect(
+    await f.owner.query(
+      `SELECT id FROM "${f.schemaName}".company WHERE id=$1`,
+      [created],
+    ),
+  ).toHaveLength(0);
+  expect(await audit()).toHaveLength(0);
+  expect(h.hooks.executePostQueryHooks).not.toHaveBeenCalled();
+});
+it('preserves legacy root and child scopes for nested public CREATE', async () => {
+  const h = harness();
+  const parent = randomUUID(),
+    custom = randomUUID(),
+    child = randomUUID();
+  await h.run(() =>
+    h.createOne.execute(
+      {
+        data: {
+          id: parent,
+          name: 'parent',
+          case: {
+            create: {
+              id: custom,
+              name: 'case',
+              company: { create: { id: child, name: 'child' } },
+            },
+          },
+        },
+        selectedFields: { id: true },
+      },
+      h.queryContext('company'),
+    ),
+  );
+  expect(
+    await f.owner.query(
+      `SELECT id FROM "${f.schemaName}".company WHERE id=ANY($1::uuid[])`,
+      [[parent, child]],
+    ),
+  ).toHaveLength(2);
+  expect(await audit()).toHaveLength(0);
+});
+it('keeps public upsert outside the automatic CREATE cohort', async () => {
+  const h = harness();
+  await h.run(() =>
+    h.createOne.execute(
+      {
+        data: { id, name: 'upserted' },
+        upsert: true,
+        selectedFields: { id: true },
+      },
+      h.queryContext('company'),
+    ),
+  );
+  expect(await audit()).toHaveLength(0);
+});
+
+it.each([MetadataReadability.PRIVATE, MetadataReadability.INHERITED])(
+  'does not misclassify %s empty shares as no-share CREATE',
+  (readability) => {
+    const h = harness();
+    const context = {
+      ...h.queryContext('company'),
+      featureFlagsMap: {
+        [FeatureFlagKey.IS_RECORD_LEVEL_SHARING_ENABLED]: true,
+      } as typeof base.featureFlagsMap,
+    };
+    context.flatObjectMetadata = { ...context.flatObjectMetadata, readability };
+    expect(
+      h.createOne.isNativeAuditCreateEligible(
+        {
+          data: { name: 'private' },
+          shareWith: [],
+          selectedFieldsResult: {
+            select: { id: true },
+            relations: {},
+            aggregate: {},
+          },
+        },
+        context,
+      ),
+    ).toBe(false);
+  },
+);
+it('distinguishes OPEN default-everyone from explicit nondefault shares', () => {
+  const h = harness();
+  const context = {
+    ...h.queryContext('company'),
+    featureFlagsMap: {
+      [FeatureFlagKey.IS_RECORD_LEVEL_SHARING_ENABLED]: true,
+    } as typeof base.featureFlagsMap,
+  };
+  context.flatObjectMetadata = {
+    ...context.flatObjectMetadata,
+    readability: MetadataReadability.OPEN,
+  };
+  const args = {
+    data: { name: 'open' },
+    selectedFields: { id: true },
+    selectedFieldsResult: {
+      select: { id: true },
+      relations: {},
+      aggregate: {},
+    },
+  };
+  expect(
+    h.createOne.isNativeAuditCreateEligible(
+      {
+        ...args,
+        shareWith: [
+          { everyone: true, accessLevel: RecordShareAccessLevel.READ_WRITE },
+        ],
+      },
+      context,
+    ),
+  ).toBe(true);
+  expect(
+    h.createOne.isNativeAuditCreateEligible(
+      {
+        ...args,
+        shareWith: [
+          {
+            workspaceMemberId: actorId,
+            accessLevel: RecordShareAccessLevel.READ,
+          },
+        ],
+      },
+      context,
+    ),
+  ).toBe(false);
+});
+it('selects legacy root if a pre-query hook adds nested CREATE', async () => {
+  const h = harness();
+  const parent = randomUUID(),
+    custom = randomUUID();
+  h.hooks.executePreQueryHooks.mockImplementationOnce(
+    async (_auth, _name, _operation, args) => ({
+      ...(args as Record<string, unknown>),
+      data: {
+        id: parent,
+        name: 'parent',
+        case: { create: { id: custom, name: 'hook nested' } },
+      },
+    }),
+  );
+  await h.run(() =>
+    h.createOne.execute(
+      { data: { id: parent, name: 'simple' }, selectedFields: { id: true } },
+      h.queryContext('company'),
+    ),
+  );
+  expect(await audit()).toHaveLength(0);
+  expect(
+    await f.owner.query(
+      `SELECT id FROM "${f.schemaName}".company WHERE id=$1`,
+      [parent],
+    ),
+  ).toHaveLength(1);
+});
+it('does not retry automatic CREATE after lost real COMMIT acknowledgement', async () => {
+  const h = harness();
+  const created = randomUUID(),
+    client = await f.pool.connect(),
+    query = client.query.bind(client);
+  const statements: string[] = [];
+  jest.spyOn(client, 'query').mockImplementation((async (
+    statement: string | { text: string },
+    values?: unknown[],
+  ) => {
+    const text = typeof statement === 'string' ? statement : statement.text;
+    statements.push(text);
+    const result = await query(statement as string, values);
+    if (text === 'COMMIT') throw new Error('lost CREATE ack');
+    return result;
+  }) as typeof client.query);
+  jest
+    .spyOn(f.pool, 'connect')
+    .mockImplementationOnce(() => Promise.resolve(client));
+  await expect(
+    h.run(() =>
+      h.createOne.execute(
+        {
+          data: { id: created, name: 'created', position: 1 },
+          selectedFields: { id: true },
+        },
+        h.queryContext('company'),
+      ),
+    ),
+  ).rejects.toBeInstanceOf(NativeTransactionOutcomeUnknownError);
+  expect(
+    await f.owner.query(
+      `SELECT id FROM "${f.schemaName}".company WHERE id=$1`,
+      [created],
+    ),
+  ).toHaveLength(1);
+  expect(await audit()).toHaveLength(1);
+  expect(statements.filter((text) => text === 'COMMIT')).toHaveLength(1);
+  expect(h.hooks.executePostQueryHooks).not.toHaveBeenCalled();
+});
+it('runs public CREATE hooks after committed row and audit are visible', async () => {
+  const h = harness(),
+    created = randomUUID();
+  h.hooks.executePostQueryHooks.mockImplementationOnce(async () => {
+    expect(
+      await f.owner.query(
+        `SELECT id FROM "${f.schemaName}".company WHERE id=$1`,
+        [created],
+      ),
+    ).toHaveLength(1);
+    expect(await audit()).toHaveLength(1);
+  });
+  await h.run(() =>
+    h.createOne.execute(
+      { data: { id: created, name: 'created' }, selectedFields: { id: true } },
+      h.queryContext('company'),
+    ),
+  );
+  expect(h.hooks.executePostQueryHooks).toHaveBeenCalledTimes(1);
+});
+
+it('captures hook output before awaiting workspace context preparation', async () => {
+  const h = harness(),
+    created = randomUUID(),
+    child = randomUUID();
+  const hookOutput = {
+    data: { id: created, name: 'captured', position: 1 } as Record<
+      string,
+      unknown
+    >,
+    selectedFields: { id: true },
+  };
+  h.hooks.executePreQueryHooks.mockImplementationOnce(async () => hookOutput);
+  jest
+    .spyOn(h.managerPort, 'executeInWorkspaceContext')
+    .mockImplementation(async (work) => {
+      hookOutput.data.name = 'changed';
+      hookOutput.data.case = { create: { id: child, name: 'injected' } };
+      return h.run(work);
+    });
+  await h.run(() =>
+    h.createOne.execute(
+      {
+        data: { id: created, name: 'input', position: 1 },
+        selectedFields: { id: true },
+      },
+      h.queryContext('company'),
+    ),
+  );
+  expect(
+    await f.owner.query(
+      `SELECT name FROM "${f.schemaName}".company WHERE id=$1`,
+      [created],
+    ),
+  ).toEqual([{ name: 'captured' }]);
+  expect(await audit()).toHaveLength(1);
+});
+
+it.each([false, true])(
+  'creates public record with FILES atomically; audit fault=%s',
+  async (fail) => {
+    const h = harness(),
+      created = randomUUID(),
+      fileId = randomUUID();
+    await f.owner.query(
+      'INSERT INTO core.file(id,"workspaceId",path,size,settings)VALUES($1,$2,$3,12,$4)',
+      [
+        fileId,
+        f.workspaceId,
+        'secret/' + documentsUniversalId + '/private.pdf',
+        { isTemporaryFile: true, toDelete: true },
+      ],
+    );
+    if (fail)
+      await f.owner.query(
+        `CREATE FUNCTION crm_audit.fail_public_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'FILES_CREATE_AUDIT_FAILURE';END $$;CREATE TRIGGER fail_public_audit BEFORE INSERT ON crm_audit."crmAuditEntry" FOR EACH ROW EXECUTE FUNCTION crm_audit.fail_public_audit()`,
+      );
+    const pending = h.run(() =>
+      h.createOne.execute(
+        {
+          data: {
+            id: created,
+            name: 'attachment',
+            documents: [{ fileId, label: 'private-label' }],
+          },
+          selectedFields: { id: true },
+        },
+        h.queryContext('company'),
+      ),
+    );
+    if (fail) await expect(pending).rejects.toThrow();
+    else await pending;
+    const [file] = await f.owner.query(
+      'SELECT settings FROM core.file WHERE id=$1',
+      [fileId],
+    );
+    expect(file.settings.isTemporaryFile).toBe(fail);
+    expect(
+      await f.owner.query(
+        `SELECT id FROM "${f.schemaName}".company WHERE id=$1`,
+        [created],
+      ),
+    ).toHaveLength(fail ? 0 : 1);
+    expect(await audit()).toHaveLength(fail ? 0 : 2);
+    expect(JSON.stringify(await audit())).not.toContain('private-label');
+  },
+);

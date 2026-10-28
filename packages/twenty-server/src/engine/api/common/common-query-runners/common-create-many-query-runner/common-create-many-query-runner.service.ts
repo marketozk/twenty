@@ -73,6 +73,26 @@ export class CommonCreateManyQueryRunnerService extends CommonBaseQueryRunnerSer
     super();
   }
 
+  public override isNativeAuditCreateEligible(
+    args: CommonExtendedInput<CreateManyQueryArgs>,
+    context: CommonBaseQueryRunnerContext &
+      Pick<CommonExtendedQueryRunnerContext, 'featureFlagsMap'>,
+  ): boolean {
+    const { sharingMode } = resolveObjectSharing(context);
+    return (
+      !args.upsert &&
+      resolveShareWithToWrite({ sharingMode, shareWith: args.shareWith }) ===
+        null &&
+      !containsNestedRelationCreate(
+        args.data,
+        getNestedRelationFieldNames({
+          flatObjectMetadata: context.flatObjectMetadata,
+          flatFieldMetadataMaps: context.flatFieldMetadataMaps,
+        }),
+      )
+    );
+  }
+
   async run(
     args: CommonExtendedInput<CreateManyQueryArgs>,
     queryRunnerContext: CommonExtendedQueryRunnerContext,

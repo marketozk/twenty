@@ -1,0 +1,7 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/api/common/common-query-runners/common-base-query-runner.service.ts 306ms (unchanged)
+../../../source/packages/twenty-server/src/engine/api/common/common-query-runners/common-create-many-query-runner/common-create-many-query-runner.service.ts 174ms (unchanged)
+../../../source/packages/twenty-server/src/engine/api/common/common-query-runners/common-create-one-query-runner.service.ts 10ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-public-update.postgres-spec.ts 353ms
+
+{"formattedFiles": 4, "singleSshSession": true}

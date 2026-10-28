@@ -3234,3 +3234,22 @@ audit ещё открыты. Образ/демо, GitHub Actions и внешни
 LOG100 publication: `a3a81589ed223616fddd6349418263c4ec457956` pushed/API verified.
 ROB765 description and comment `6f654bee-8102-4eea-a863-6706d9c06db9` independently
 read back; all 11 states match. ROB765 remains In Progress; implementation continues.
+
+## LOG-101 — автоматический аудит обычного создания записей
+
+Public One/Many CREATE covered standard/custom objects: captured post-hook arguments,
+no-share admission, strict native owner. Legacy nested/upsert/share paths сохранены.
+Actual FILES attach и audit откатываются вместе, hooks только после confirmed commit.
+
+854 tests/30 suites PASS (169.5s), 19 новых PG cases, 58 targeted. 26 guard tests PASS; 10 migration checksums неизменны. Types 343/343 roots, 189/189 baseline diagnostics, 0 новых и 0 в изменённых строках. Существующая Brackets type diagnostic в неизменённом методе сохранена. 4 source hashes совпадают.
+
+Read-only review: блокеров нет, тест mutable hook output добавлен по рекомендации.
+Первые проверки нашли 2 ошибки только в тестах (лишний selectedFields и несуществующий
+READ_ONLY); исправлены и проверены. Lost-ACK fixture сначала блокировалась на backfill
+position с искусственно занятым pool client; устранено заданием position. Остановлен
+только сверенный тестовый контейнер; runtime ради fixture не менялся.
+[Доказательства](implementation/log101/README.md).
+
+ROB765 In Progress. Следом public upsert/nested coverage без recordShare writes;
+physical delete/merge, metadata/roles и negative audit/health ещё открыты.
+Образ/демо, внешние сообщения и GitHub Actions не затронуты.

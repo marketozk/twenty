@@ -137,3 +137,12 @@ Workspace-agnostic revoke сохраняется без выдуманного a
 concurrent sign-in fencing пока открыты. [Доказательства](../implementation/log100/README.md).
 
 835 tests/30 suites PASS, 15 новых PG cases, 43 targeted. 26 guards PASS, 10 migration checksums неизменны. Types: все изменённые server roots включены явно, 341/341 roots, 189/189 baseline diagnostics, 0 новых/changed. 4 source hashes совпадают.
+
+LOG101: обычные public CREATE_ONE/MANY для Company/Person/Opportunity и local custom
+objects получают strict native owner. Admission использует snapshot после pre-hook;
+настоящие share writes, upsert и nested CREATE пока остаются в прежнем root path.
+PRIVATE/INHERITED с пустыми shares не считаются no-share. Strict inherited scope
+требует proof, legacy inherited path сохраняется. FILES и postcommit hooks используют
+существующие механизмы. Полного HTTP/JWT покрытия и выката нет. [Доказательства](../implementation/log101/README.md).
+
+854 tests/30 suites PASS (169.5s), 19 новых PG cases, 58 targeted. 26 guard tests PASS; 10 migration checksums неизменны. Types 343/343 roots, 189/189 baseline diagnostics, 0 новых и 0 в изменённых строках. Существующая Brackets type diagnostic в неизменённом методе сохранена. 4 source hashes совпадают.

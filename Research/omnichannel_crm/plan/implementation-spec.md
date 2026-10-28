@@ -812,3 +812,10 @@ Actor — текущий server caller, не автоматически влад
 Sign-out impersonation сохраняет реального initiator через membership resolution;
 невозможность audit attribution не отменяет отзыв. Это не refresh-token audit и не
 глобальный запрет concurrent sign-in после bulk snapshot.
+
+LOG101: root public CREATE_ONE/MANY автоматически включает native owner только для
+metadata-covered local объектов, обычного insert и resolveShareWithToWrite===null.
+PRIVATE/INHERITED [] не являются no-op sharing. Upsert/nested пока не включены в
+root admission. После pre-query hooks processed args копируются до await workspace
+context; child с legacy scope остаётся legacy, child со strict scope требует native
+identity/workspace/actor proof. Audited failure никогда не переключается на legacy.

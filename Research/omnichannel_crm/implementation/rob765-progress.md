@@ -9,7 +9,7 @@
 | Rollback при сбое журнала, безопасный unknown | LOG089 PG insert fault, actual lost COMMIT ACK, poisoned caller-caught failure |
 | Точный безопасный diff и aggregation | LOG089 first-before/last-after, custom NUMERIC >2^53, metadata IDs, без значений |
 | Повтор не скрывает вторую mutation | LOG089 sequential/concurrent reuse rejected; повтор после rollback допустим. General command replay ещё не реализован |
-| Общий native CRUD/merge/bulk и API | Частично: LOG094 автоматически включает public UPDATE Company/Person/Opportunity; LOG098 включает public soft-delete/restore и native custom lifecycle; public CREATE, physical delete/merge и остальные writers впереди. FILES same-executor — LOG092/093 |
+| Общий native CRUD/merge/bulk и API | Частично: LOG094 автоматически включает public UPDATE Company/Person/Opportunity; LOG098 включает public soft-delete/restore и native custom lifecycle; LOG101 включает обычный public CREATE standard/custom; upsert/nested/shares, physical delete/merge и остальные writers впереди. FILES same-executor — LOG092/093 |
 | Metadata/role/session lifecycle | LOG099: workspace session CREATE через реальный core owner; LOG100: single/bulk revoke с audit SAVEPOINT и DB cache recheck; metadata и roles открыты |
 | Denied/failed audit и health | Omni уже имеет отдельные attempts; general native post-rollback/alert предстоит |
 | AI/workflow/connector события | Дополняются ROB768/769, текущий срез их не подключает |
@@ -75,3 +75,12 @@ Workspace-agnostic revoke сохраняется без выдуманного a
 concurrent sign-in fencing пока открыты. [Доказательства](log100/README.md).
 
 835 tests/30 suites PASS, 15 новых PG cases, 43 targeted. 26 guards PASS, 10 migration checksums неизменны. Types: все изменённые server roots включены явно, 341/341 roots, 189/189 baseline diagnostics, 0 новых/changed. 4 source hashes совпадают.
+
+LOG101: обычные public CREATE_ONE/MANY для Company/Person/Opportunity и local custom
+objects получают strict native owner. Admission использует snapshot после pre-hook;
+настоящие share writes, upsert и nested CREATE пока остаются в прежнем root path.
+PRIVATE/INHERITED с пустыми shares не считаются no-share. Strict inherited scope
+требует proof, legacy inherited path сохраняется. FILES и postcommit hooks используют
+существующие механизмы. Полного HTTP/JWT покрытия и выката нет. [Доказательства](log101/README.md).
+
+854 tests/30 suites PASS (169.5s), 19 новых PG cases, 58 targeted. 26 guard tests PASS; 10 migration checksums неизменны. Types 343/343 roots, 189/189 baseline diagnostics, 0 новых и 0 в изменённых строках. Существующая Brackets type diagnostic в неизменённом методе сохранена. 4 source hashes совпадают.
