@@ -3137,3 +3137,7 @@ null-ID compatibility; оба исправлены с PG regressions, повто
 ROB765 In Progress. Далее связанные пользовательские records и public CREATE;
 Enterprise recordShare не включается в generic audit coverage. Демо, внешние
 сообщения и GitHub Actions не затронуты.
+
+LOG096 publication: `93a7e9d42cc3591f9048d46cfd73f5b37135e92a` pushed/API verified.
+ROB765 description and comment `3f076067-c224-4244-ac0f-5cac47f5f434` independently
+read back; all 11 states match. ROB765 remains In Progress; implementation continues.
