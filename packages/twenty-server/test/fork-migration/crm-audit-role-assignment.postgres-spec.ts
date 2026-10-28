@@ -7,6 +7,7 @@ import { OmniAuditBootstrapFastInstanceCommand } from 'src/database/commands/for
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { flatEntityToScalarFlatEntity } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/utils/flat-entity-to-scalar-flat-entity.util';
 import { STANDARD_ROLE } from 'src/engine/workspace-manager/twenty-standard-application/constants/standard-role.constant';
+import { deleteUserWorkspaceTransaction } from 'src/engine/core-modules/user-workspace/delete-user-workspace-transaction';
 
 jest.mock('twenty-shared/ai', () => ({ ToolCategory: { ROLE: 'ROLE' } }));
 for (const [path, name] of [
@@ -396,12 +397,12 @@ beforeAll(async () => {
   );
   await owner.synchronize();
   await owner.query(
-    'CREATE TABLE core.workspace(id uuid PRIMARY KEY,"databaseSchema" text); CREATE TABLE core.role(id uuid PRIMARY KEY,"workspaceId" uuid,"universalIdentifier" uuid,"canBeAssignedToUsers" boolean); ALTER TABLE core."roleTarget" ADD FOREIGN KEY ("roleId") REFERENCES core.role(id) ON DELETE CASCADE; CREATE TABLE synthetic_members."workspaceMember"(id uuid PRIMARY KEY,"userId" uuid,"deletedAt" timestamptz)',
+    'CREATE TABLE core.workspace(id uuid PRIMARY KEY,"databaseSchema" text,"deletedAt" timestamptz); CREATE TABLE core.role(id uuid PRIMARY KEY,"workspaceId" uuid,"universalIdentifier" uuid,"canBeAssignedToUsers" boolean); ALTER TABLE core."roleTarget" ADD FOREIGN KEY ("roleId") REFERENCES core.role(id) ON DELETE CASCADE; CREATE TABLE synthetic_members."workspaceMember"(id uuid PRIMARY KEY,"userId" uuid,"deletedAt" timestamptz); CREATE TABLE core.workflow(id uuid PRIMARY KEY,"workspaceId" uuid,"applicationId" uuid,"createdByUserWorkspaceId" uuid)',
   );
-  await owner.query('INSERT INTO core.workspace VALUES($1,$2)', [
-    workspaceId,
-    'synthetic_members',
-  ]);
+  await owner.query(
+    'INSERT INTO core.workspace(id,"databaseSchema") VALUES($1,$2)',
+    [workspaceId, 'synthetic_members'],
+  );
   await owner.query(
     'CREATE TABLE core.application(id uuid PRIMARY KEY,"workspaceId" uuid,"universalIdentifier" uuid,"deletedAt" timestamptz)',
   );
@@ -464,6 +465,109 @@ it('replaces one roleTarget through the real runner and handlers with two atomic
   expect(new Set(entries.map((e) => e.operationId)).size).toBe(1);
   expect(entries.find((e) => e.action === 'delete')?.resourceId).toBe(old.id);
   expect(entries[0].actor).toEqual({ kind: 'workspaceMember', id: actorId });
+});
+const signal = () => {
+  let release!: () => void;
+  const promise = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { promise, release };
+};
+const observeWorkspaceFence = (
+  source: DataSource,
+  entered: ReturnType<typeof signal>,
+) => {
+  const create = source.createQueryRunner.bind(source);
+  jest.spyOn(source, 'createQueryRunner').mockImplementation((mode) => {
+    const queryRunner = create(mode),
+      query = queryRunner.query.bind(queryRunner);
+    queryRunner.query = (
+      sql: string,
+      parameters?: unknown[],
+      structured?: true,
+    ) => {
+      if (sql.includes('FOR NO KEY UPDATE')) entered.release();
+      return structured ? query(sql, parameters, true) : query(sql, parameters);
+    };
+    return queryRunner;
+  });
+};
+const removeMembership = (persistReconciliation = async () => async () => {}) =>
+  deleteUserWorkspaceTransaction({
+    dataSource: owner,
+    entities: { membership: UserWorkspaceEntity, roleTarget: RoleTargetEntity },
+    workspaceId,
+    userWorkspaceId,
+    softDelete: false,
+    persistReconciliation,
+  });
+it('assignment first: deletion waits for its commit, then removes the replacement target', async () => {
+  const assigned = signal(),
+    release = signal(),
+    deleting = signal();
+  const flush = CrmAuditTransactionContext.prototype.flush;
+  jest
+    .spyOn(CrmAuditTransactionContext.prototype, 'flush')
+    .mockImplementation(async function (this: CrmAuditTransactionContext) {
+      const result = await flush.call(this);
+      assigned.release();
+      await release.promise;
+      return result;
+    });
+  const assigning = run();
+  await assigned.promise;
+  observeWorkspaceFence(owner, deleting);
+  const removing = removeMembership();
+  await deleting.promise;
+  release.release();
+  await assigning;
+  await removing;
+  expect(
+    (await targets()).filter(
+      (target) => target.userWorkspaceId === userWorkspaceId,
+    ),
+  ).toEqual([]);
+  expect(
+    await owner.query('SELECT id FROM core."userWorkspace" WHERE id=$1', [
+      userWorkspaceId,
+    ]),
+  ).toEqual([]);
+  expect(await audits()).toHaveLength(2);
+});
+it('deletion first: an already prepared assignment waits, then refuses the missing membership', async () => {
+  const plan = await makeActions(),
+    maps = await flatMaps();
+  const deleting = signal(),
+    release = signal(),
+    assigning = signal();
+  await owner.query('INSERT INTO core.workflow VALUES($1,$2,$3,$4)', [
+    randomUUID(),
+    workspaceId,
+    applicationId,
+    userWorkspaceId,
+  ]);
+  const removing = removeMembership(async () => {
+    deleting.release();
+    await release.promise;
+    return async () => {};
+  });
+  await deleting.promise;
+  observeWorkspaceFence(runtime, assigning);
+  const assignmentResult = run(plan, { maps }).then(
+    () => undefined,
+    (error: Error) => error,
+  );
+  await assigning.promise;
+  release.release();
+  await removing;
+  expect(await assignmentResult).toBeInstanceOf(Error);
+  expect(
+    (await targets()).filter(
+      (target) => target.userWorkspaceId === userWorkspaceId,
+    ),
+  ).toEqual([]);
+  expect(await audits()).toEqual([]);
+  await owner.query('DELETE FROM core.workflow');
 });
 it('audits an initial assignment with no old target', async () => {
   await owner.query(

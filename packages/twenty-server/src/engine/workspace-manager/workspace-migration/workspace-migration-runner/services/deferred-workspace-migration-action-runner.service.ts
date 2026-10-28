@@ -17,14 +17,12 @@ import { getMetadataFlatEntityMapsKey } from 'src/engine/metadata-modules/flat-e
 import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
 import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
 import { DEFERRED_WORKSPACE_MIGRATION_ACTION_MAX_ATTEMPTS } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/constants/deferred-workspace-migration-action-max-attempts.constant';
-import { DEFERRED_WORKSPACE_MIGRATION_ACTION_RETRY_BACKOFF } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/constants/deferred-workspace-migration-action-retry-backoff.constant';
 import { DEFERRED_WORKSPACE_MIGRATION_ACTION_STATEMENT_TIMEOUT_MS } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/constants/deferred-workspace-migration-action-statement-timeout-ms.constant';
-import { RUN_DEFERRED_WORKSPACE_MIGRATION_ACTIONS_JOB_NAME } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/constants/run-deferred-workspace-migration-actions-job-name.constant';
 import {
   DeferredWorkspaceMigrationActionException,
   DeferredWorkspaceMigrationActionExceptionCode,
 } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/exceptions/deferred-workspace-migration-action.exception';
-import { type RunDeferredWorkspaceMigrationActionsJobData } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/jobs/run-deferred-workspace-migration-actions.job';
+import { enqueueDeferredWorkspaceMigrationActions } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/utils/enqueue-deferred-workspace-migration-actions';
 import { DeferredWorkspaceMigrationActionHandlerRegistryService } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/registry/deferred-workspace-migration-action-handler-registry.service';
 import {
   type DeferredWorkspaceMigrationAction,
@@ -151,24 +149,11 @@ export class DeferredWorkspaceMigrationActionRunnerService {
   }
 
   async enqueue(workspaceId: string): Promise<void> {
-    try {
-      await this.messageQueueService.add<RunDeferredWorkspaceMigrationActionsJobData>(
-        RUN_DEFERRED_WORKSPACE_MIGRATION_ACTIONS_JOB_NAME,
-        { workspaceId },
-        {
-          deduplication: {
-            id: `deferred-workspace-migration-actions:${workspaceId}`,
-            keepLastIfActive: true,
-          },
-          retryLimit: DEFERRED_WORKSPACE_MIGRATION_ACTION_MAX_ATTEMPTS - 1,
-          backoff: DEFERRED_WORKSPACE_MIGRATION_ACTION_RETRY_BACKOFF,
-        },
-      );
-    } catch (error) {
-      this.logger.error(
-        `Failed to enqueue deferred workspace migration actions for workspace ${workspaceId}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
+    await enqueueDeferredWorkspaceMigrationActions(
+      this.messageQueueService,
+      workspaceId,
+      (message) => this.logger.error(message),
+    );
   }
 
   private async executeInProcess({

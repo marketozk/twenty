@@ -68,3 +68,5 @@ audit entry и PolicyMutationReceipt. Runtime gate проверяет append-onl
 полного нового архитектурного review pass не заявлено.
 
 Установка и команды upstream находятся в [README.md](README.md) и [CLAUDE.md](CLAUDE.md). Исходники и документы хранятся в этой папке на Рабочем столе; сборка выполнена на Schrodinger официальным Dockerfile с ограничением ресурсов.
+
+LOG114: core membership cleanup и durable workflow-share reconciliation проверены; [доказательства](Research/omnichannel_crm/implementation/log114/README.md). 1191 tests/37 suites PASS (203.747s); 78 targeted/2 suites PASS, 39 новых cases. 26 guards PASS; 10 migration checksums неизменны. Types 355/360 roots, 188/188 прежних диагностик, 0 новых/changed-code. 12 local/remote source hashes совпадают. ROB765 In Progress: аудит membership/FK effects, весь public removal и реальное применение native shares ещё не приняты. Выката после LOG088 нет.

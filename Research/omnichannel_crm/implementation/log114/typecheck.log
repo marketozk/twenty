@@ -1,0 +1,4 @@
+Checking baseline
+Baseline complete 355 188
+Checking current
+{"status":"pass-no-new-diagnostics","baselineDiagnostics":188,"currentDiagnostics":188,"newDiagnostics":[],"changedFileDiagnostics":[{"file":"src/engine/core-modules/user-workspace/user-workspace.service.ts","code":18046,"message":"'error' is of type 'unknown'.","line":665}],"baselineOnlyUnchangedMethodDiagnostics":[{"file":"src/engine/core-modules/user-workspace/user-workspace.service.ts","code":18046,"message":"'error' is of type 'unknown'.","line":665}],"changedCodeDiagnostics":[],"currentRootFiles":360}

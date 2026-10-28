@@ -76,6 +76,7 @@ ROB765 остаётся In Progress. Единственная текущая т�
 | Workspace refresh issuance/rotation: strict owner, actual snapshots, common operation | [LOG110](../implementation/log110/README.md) |
 | Public/AI role CREATE/UPDATE: metadata owner, actual snapshots, conservative cache invalidation | [LOG111](../implementation/log111/README.md), [LOG112](../implementation/log112/README.md) |
 | Public member role assignment, serialized demotions, fresh application tenant checks | [LOG113](../implementation/log113/README.md) |
+| Core membership cleanup: shared fence, atomic deletion, durable workflow-share recovery prerequisite | [LOG114](../implementation/log114/README.md) |
 
 Открыто: остальные native/system writers и FK effects, real share writes, public
 DESTROY/MERGE, остальные metadata/role mutations, общий denied/failed audit после rollback и health/alert.
@@ -84,8 +85,8 @@ stateless application JWT и concurrent-sign-in fencing ещё не объявл
 Просмотр/экспорт — ROB767 после ROB766; AI/workflow/connector добавляют свои события
 в ROB768/769. Полный HTTP/JWT и сборка/выкат изменений после LOG088 не выполнялись.
 
-Последние проверки: 1152 tests/36 suites PASS (201.448s); 98 targeted/2 suites + 11 existing role-tool unit tests PASS. 44 новых cases: 40 PG + 4 descriptor. 26 guards PASS; 10 migration checksums неизменны. Types 352/354 roots, 218/218 прежних диагностик, 0 новых/changed-code. 11 local/remote source hashes совпадают.
-Full-server typecheck не чистый. [Проверки LOG113](../implementation/log113/results.json).
+Последние проверки: 1191 tests/37 suites PASS (203.747s); 78 targeted/2 suites PASS, 39 новых cases. 26 guards PASS; 10 migration checksums неизменны. Types 355/360 roots, 188/188 прежних диагностик, 0 новых/changed-code. 12 local/remote source hashes совпадают.
+Full-server typecheck не чистый. [Проверки LOG114](../implementation/log114/results.json).
 
 Демо остаётся прежним. При будущем выкате migration10 writers останавливаются на
 время построения индекса. GitHub Actions не используется.

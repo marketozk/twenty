@@ -1,0 +1,10 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-role-assignment.postgres-spec.ts (5.774 s)
+[Nest] 1  - 10/28/2026, 10:54:21 PM   ERROR [DeferredWorkspaceMigrationActionRunnerService] Failed to enqueue deferred workspace migration actions for workspace 5621005c-5545-4048-a622-75781cd1006b: redis unavailable
+[32m[Nest] 1  - [39m10/28/2026, 10:54:21 PM [32m    LOG[39m [38;5;3m[DeferredWorkspaceMigrationActionRunnerService] [39m[32mDeferred action sync_workflowRunShares 7e1b5259-9e8a-4ead-a439-4992ae153f4e completed for workspace 5621005c-5545-4048-a622-75781cd1006b in 4ms[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-cleanup.postgres-spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       78 passed, 78 total
+Snapshots:   0 total
+Time:        7.501 s
+Ran all test suites matching /crm-audit-membership-cleanup|crm-audit-role-assignment/i.

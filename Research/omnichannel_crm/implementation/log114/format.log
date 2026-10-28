@@ -1,0 +1,15 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/user-workspace/user-workspace.service.ts 337ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/workflow/workflow-run-record-share.module.ts 6ms (unchanged)
+../../../source/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/deferred-action-handlers/decorators/deferred-workspace-migration-action-handler.decorator.ts 3ms (unchanged)
+../../../source/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/registry/deferred-workspace-migration-action-handler-registry.service.ts 51ms (unchanged)
+../../../source/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/deferred-workspace-migration-action-runner.service.ts 31ms (unchanged)
+../../../source/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/types/deferred-workspace-migration-action.type.ts 4ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-role-assignment.postgres-spec.ts 191ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/user-workspace/delete-user-workspace-transaction.ts 60ms (unchanged)
+../../../source/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/deferred-action-handlers/services/sync-workflow-run-shares-deferred-action-handler.service.ts 7ms (unchanged)
+../../../source/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/types/deferred-workspace-migration-action-name.type.ts 1ms (unchanged)
+../../../source/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/utils/enqueue-deferred-workspace-migration-actions.ts 3ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-cleanup.postgres-spec.ts 172ms (unchanged)
+
+{"formattedFiles": 12, "singleSshSession": true}

@@ -3500,3 +3500,13 @@ core cleanup не атомарен, публичный путь дополнит
 переносит accounts/shares; требуется полноценная полоса, не механический SQL patch.
 
 LOG113 publication: 1590c2cebfe52ff8769e1662d5975712ac4e5612 pushed/API verified. ROB765 description and comment 80a75041-4c39-4ab1-bff4-89fabf0f168b independently read back; all 11 issue states match. Implementation continues.
+
+## LOG-114 — атомарный core cleanup сотрудника и восстановление доступа процессов
+
+Targets/membership удаляются под общим workspace fence; soft/hard postconditions проверяются перед commit. Workflow IDs сохраняются в existing deferred table до SET NULL; повторная обработка пересчитывает текущее состояние. Silent skipped writes и повреждённый intent откатываются. Existing queue/recovery/Nest handler wiring проверены.
+
+1191 tests/37 suites PASS (203.747s); 78 targeted/2 suites PASS, 39 новых cases. 26 guards PASS; 10 migration checksums неизменны. Types 355/360 roots, 188/188 прежних диагностик, 0 новых/changed-code. 12 local/remote source hashes совпадают.
+
+[Доказательства](implementation/log114/README.md), [ревью](implementation/log114/review.md). Первичный typecheck нашёл missing this annotation в новом тесте; исправлено. Enterprise guard сначала выявил broad imports; устранены через structural ports/leaf types, baseline не менялся. Full-server typecheck не чистый; native shares spy, HTTP/whole public removal не проверены. Демо/образ/сообщения/Actions не менялись.
+
+Далее — [аудит core membership/FK effects](implementation/log114/next-boundary.md) с trusted actor capture и security-first audit failure по утверждённому контракту. ROB765 остаётся In Progress.

@@ -930,5 +930,16 @@ Actual DELETE/CREATE audit до COMMIT, post-flush target/role/member/applicatio
 RoleTarget create/delete имеет exact administrative descriptor; no-op проверяется
 по DB и требует валидного server actor/workspace, без фиктивного mutation audit.
 Оба CREATE owners сверяют core.application tenant/UID/deletedAt под SHARE. Bootstrap
-bulk сохраняет прежний путь. Membership removal, role DELETE и прочие writers ещё
-не участвуют в этом fence: полная lifecycle атомарность/ROB766 не заявляется.
+bulk сохраняет прежний путь. Role DELETE и прочие writers ещё не участвуют в этом
+fence: полная lifecycle атомарность/ROB766 не заявляется.
+
+LOG114: core `deleteUserWorkspace` использует тот же workspace fence и membership
+FOR UPDATE. Scoped hard/soft writes проверяются по фактическому результату до commit.
+При hard-delete IDs процессов фиксируются до SET NULL; reconciliation intent пишется
+в существующую deferred-action таблицу в той же транзакции и проверяется после DELETE.
+Worker пересчитывает актуальные shares, не восстанавливает сохранённые permissions.
+Очередь имеет at-least-once semantics, bounded retries и FAILED/manual retry. Tombstoned
+workspace не создаёт новых intents; handler пропускает удалённые workspace/workflow.
+Unknown COMMIT не повторяет mutation, caches инвалидируются, durable intent остаётся
+для recovery. Это prerequisite аудита: полный public removal (transfers/native member),
+membership/FK audit, общая last-admin защита и real native share acceptance открыты.

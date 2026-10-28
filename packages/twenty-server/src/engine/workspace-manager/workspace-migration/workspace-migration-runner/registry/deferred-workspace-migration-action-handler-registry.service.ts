@@ -1,4 +1,5 @@
 import { Injectable, type OnModuleInit } from '@nestjs/common';
+import { SyncWorkflowRunSharesDeferredActionHandlerService } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/deferred-action-handlers/services/sync-workflow-run-shares-deferred-action-handler.service';
 import { DiscoveryService } from '@nestjs/core';
 
 import { isDefined } from 'twenty-shared/utils';
@@ -13,7 +14,9 @@ import {
 import { type DeferredWorkspaceMigrationActionName } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/types/deferred-workspace-migration-action.type';
 
 @Injectable()
-export class DeferredWorkspaceMigrationActionHandlerRegistryService implements OnModuleInit {
+export class DeferredWorkspaceMigrationActionHandlerRegistryService
+  implements OnModuleInit
+{
   private readonly handlerByName = new Map<
     DeferredWorkspaceMigrationActionName,
     DeferredWorkspaceMigrationActionHandler
@@ -22,25 +25,32 @@ export class DeferredWorkspaceMigrationActionHandlerRegistryService implements O
   constructor(private readonly discoveryService: DiscoveryService) {}
 
   onModuleInit() {
-    this.discoveryService
-      .getProviders({
-        include: [WorkspaceSchemaMigrationRunnerActionHandlersModule],
-      })
-      .forEach(({ instance, metatype }) => {
-        if (!isDefined(instance) || !isDefined(metatype)) {
-          return;
-        }
+    const providers = this.discoveryService.getProviders({
+      include: [WorkspaceSchemaMigrationRunnerActionHandlersModule],
+    });
+    providers.push(
+      ...this.discoveryService
+        .getProviders()
+        .filter(
+          ({ metatype }) =>
+            metatype === SyncWorkflowRunSharesDeferredActionHandlerService,
+        ),
+    );
+    providers.forEach(({ instance, metatype }) => {
+      if (!isDefined(instance) || !isDefined(metatype)) {
+        return;
+      }
 
-        const name: DeferredWorkspaceMigrationActionName | undefined =
-          Reflect.getMetadata(
-            DEFERRED_WORKSPACE_MIGRATION_ACTION_HANDLER_METADATA_KEY,
-            metatype,
-          );
+      const name: DeferredWorkspaceMigrationActionName | undefined =
+        Reflect.getMetadata(
+          DEFERRED_WORKSPACE_MIGRATION_ACTION_HANDLER_METADATA_KEY,
+          metatype,
+        );
 
-        if (isDefined(name)) {
-          this.handlerByName.set(name, instance);
-        }
-      });
+      if (isDefined(name)) {
+        this.handlerByName.set(name, instance);
+      }
+    });
   }
 
   getHandler(

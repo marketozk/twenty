@@ -7,6 +7,10 @@ import { WorkflowEntity } from 'src/engine/core-modules/workflow/entities/workfl
 import { WorkflowRunRecordShareService } from 'src/engine/core-modules/workflow/services/workflow-run-record-share.service';
 import { provideWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/provide-workspace-scoped-repository';
 import { WorkspaceCacheModule } from 'src/engine/workspace-cache/workspace-cache.module';
+import {
+  WORKFLOW_RUN_SHARE_RECONCILIATION,
+  SyncWorkflowRunSharesDeferredActionHandlerService,
+} from 'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/deferred-action-handlers/services/sync-workflow-run-shares-deferred-action-handler.service';
 
 // Its own module because its callers (run creation, visibility changes, member removal) already depend on each other
 @Module({
@@ -18,8 +22,13 @@ import { WorkspaceCacheModule } from 'src/engine/workspace-cache/workspace-cache
   ],
   providers: [
     WorkflowRunRecordShareService,
+    SyncWorkflowRunSharesDeferredActionHandlerService,
+    {
+      provide: WORKFLOW_RUN_SHARE_RECONCILIATION,
+      useExisting: WorkflowRunRecordShareService,
+    },
     provideWorkspaceScopedRepository(WorkflowEntity),
   ],
-  exports: [WorkflowRunRecordShareService],
+  exports: [WorkflowRunRecordShareService, WORKFLOW_RUN_SHARE_RECONCILIATION],
 })
 export class WorkflowRunRecordShareModule {}

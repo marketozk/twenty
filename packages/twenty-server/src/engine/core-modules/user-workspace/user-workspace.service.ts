@@ -37,9 +37,12 @@ import {
   PermissionsExceptionCode,
   PermissionsExceptionMessage,
 } from 'src/engine/metadata-modules/permissions/permissions.exception';
+import { deleteUserWorkspaceTransaction } from 'src/engine/core-modules/user-workspace/delete-user-workspace-transaction';
 import { RoleTargetEntity } from 'src/engine/metadata-modules/role-target/role-target.entity';
-import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
-import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
+import { InjectMessageQueue } from 'src/engine/core-modules/message-queue/decorators/message-queue.decorator';
+import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
+import { MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
+import { enqueueDeferredWorkspaceMigrationActions } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/utils/enqueue-deferred-workspace-migration-actions';
 import { RoleAssignmentValidationService } from 'src/engine/metadata-modules/role-assignment-validation/services/role-assignment-validation.service';
 import { UserRoleService } from 'src/engine/metadata-modules/user-role/user-role.service';
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
@@ -57,8 +60,6 @@ export class UserWorkspaceService {
     private readonly userWorkspaceRepository: Repository<UserWorkspaceEntity>,
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
-    @InjectWorkspaceScopedRepository(RoleTargetEntity)
-    private readonly roleTargetRepository: WorkspaceScopedRepository<RoleTargetEntity>,
     private readonly roleAssignmentValidationService: RoleAssignmentValidationService,
     private readonly workspaceInvitationService: WorkspaceInvitationService,
     private readonly workspaceDomainsService: WorkspaceDomainsService,
@@ -73,6 +74,8 @@ export class UserWorkspaceService {
     private readonly twentyConfigService: TwentyConfigService,
     private readonly workflowRunRecordShareService: WorkflowRunRecordShareService,
     private readonly workspaceCacheService: WorkspaceCacheService,
+    @InjectMessageQueue(MessageQueue.workspaceQueue)
+    private readonly workspaceQueue: MessageQueueService,
   ) {}
 
   async findById(id: string): Promise<UserWorkspaceEntity | null> {
@@ -359,27 +362,84 @@ export class UserWorkspaceService {
     workspaceId: string;
     softDelete?: boolean;
   }): Promise<void> {
-    if (softDelete) {
-      // roleTarget has no deletedAt column, so its rows stay and access is gated by the soft-deleted userWorkspace.
-      await this.userWorkspaceRepository.softDelete({ id: userWorkspaceId });
-    } else {
-      // The delete nulls the creator of this member's workflows, making them workspace-visible, so their runs' grants must follow.
-      const createdCoreWorkflowIds =
-        await this.workflowRunRecordShareService.findCoreWorkflowIdsCreatedBy({
-          workspaceId,
-          userWorkspaceId,
-        });
-
-      await this.roleTargetRepository.delete(workspaceId, { userWorkspaceId }); // TODO remove once userWorkspace foreign key is added on roleTarget
-      await this.userWorkspaceRepository.delete({ id: userWorkspaceId });
-      await this.workspaceCacheService.invalidateAndRecompute(workspaceId, [
-        'flatRoleTargetMaps',
-        'userApplicationVariableValueMaps',
-      ]);
-
+    try {
+      const createdCoreWorkflowIds = await deleteUserWorkspaceTransaction({
+        dataSource: this.userWorkspaceRepository.manager.connection,
+        entities: {
+          membership: UserWorkspaceEntity,
+          roleTarget: RoleTargetEntity,
+        },
+        workspaceId,
+        userWorkspaceId,
+        softDelete,
+        persistReconciliation: async ({
+          queryRunner,
+          coreWorkflowId,
+          applicationUniversalIdentifier,
+        }) => {
+          const inserted = await queryRunner.query(
+            `INSERT INTO core."deferredWorkspaceMigrationAction"
+              ("workspaceId", "applicationUniversalIdentifier", name, payload, position, "runByVersion")
+             VALUES ($1,$2,'sync_workflowRunShares',$3::jsonb,0,$4) RETURNING id`,
+            [
+              workspaceId,
+              applicationUniversalIdentifier,
+              JSON.stringify({ version: 1, coreWorkflowId }),
+              this.twentyConfigService.get('APP_VERSION') ?? null,
+            ],
+          );
+          if (inserted.length !== 1)
+            throw new Error('Workflow reconciliation intent was not persisted');
+          const intentId = inserted[0].id;
+          return async () => {
+            const rows = await queryRunner.query(
+              `SELECT id FROM core."deferredWorkspaceMigrationAction"
+               WHERE id=$1 AND "workspaceId"=$2 AND "applicationUniversalIdentifier"=$3
+                 AND name='sync_workflowRunShares' AND payload=$4::jsonb
+                 AND status='PENDING' AND attempts=0`,
+              [
+                intentId,
+                workspaceId,
+                applicationUniversalIdentifier,
+                JSON.stringify({ version: 1, coreWorkflowId }),
+              ],
+            );
+            if (rows.length !== 1)
+              throw new Error(
+                'Workflow reconciliation intent changed before commit',
+              );
+          };
+        },
+      });
+      if (createdCoreWorkflowIds.length === 0) return;
+      await enqueueDeferredWorkspaceMigrationActions(
+        this.workspaceQueue,
+        workspaceId,
+        (message) => this.logger.error(message),
+      );
       await this.workflowRunRecordShareService.syncRunsOfCoreWorkflows({
         workspaceId,
         coreWorkflowIds: createdCoreWorkflowIds,
+      });
+    } finally {
+      // An unknown COMMIT can still have revoked access; never restore stale caches.
+      await Promise.allSettled([
+        this.coreEntityCacheService.invalidate(
+          'userWorkspaceEntity',
+          userWorkspaceId,
+        ),
+        this.workspaceCacheService.invalidateAndRecompute(workspaceId, [
+          'flatRoleTargetMaps',
+          'userApplicationVariableValueMaps',
+        ]),
+      ]).then((results) => {
+        for (const result of results) {
+          if (result.status === 'rejected')
+            this.logger.error(
+              'Membership deletion cache invalidation failed',
+              result.reason,
+            );
+        }
       });
     }
   }
