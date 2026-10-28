@@ -2895,6 +2895,7 @@ it.each([
             await bootstrap(ordinary);
           }
           if (mutation === 'unknown-inline') installCommitFault(1);
+          return mutation !== 'handled-error';
         },
       );
     const processCalendarEventsImport = jest.fn().mockResolvedValue(undefined);
@@ -3146,6 +3147,13 @@ for (const kind of ['fetch', 'import'] as const) {
     'actual calendar ' + kind + ' stops before provider/pop on legacy backlog',
     async () => {
       if (kind === 'import') await scheduleImport('calendar');
+      else
+        await runtime
+          .getRepository(CalendarChannelEntity)
+          .update(ordinary.calendar, {
+            syncStage:
+              CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED,
+          });
       cache.getSetLength.mockResolvedValue(1);
       const channel = await runtime
         .getRepository(CalendarChannelEntity)
@@ -3189,6 +3197,11 @@ for (const kind of ['fetch', 'import'] as const) {
   );
 }
 it('calendar delayed provider result uses captured account cache namespace', async () => {
+  await runtime
+    .getRepository(CalendarChannelEntity)
+    .update(ordinary.calendar, {
+      syncStage: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED,
+    });
   const actual = jest.requireActual<
     typeof import('src/modules/calendar/calendar-event-import-manager/services/calendar-fetch-events.service')
   >(
@@ -3205,12 +3218,7 @@ it('calendar delayed provider result uses captured account cache namespace', asy
   const fetch = makeService(actual.CalendarFetchEventsService.prototype, {
     logger: { log: jest.fn(), error: jest.fn() },
     cacheStorage: { setAdd },
-    calendarChannelSyncStatusService: {
-      recoverLegacyCalendarImport:
-        calendar.recoverLegacyCalendarImport.bind(calendar),
-      markAsCalendarEventListFetchOngoing: jest.fn(),
-      markAsCalendarEventsImportPending: jest.fn(),
-    },
+    calendarChannelSyncStatusService: calendar,
     calendarChannelRepository: { update: jest.fn() },
     workspaceOrmManager: {
       executeInWorkspaceContext: async (work: () => Promise<void>) => work(),
@@ -4226,5 +4234,303 @@ describe('recent onboarding reservation and full-fetch recovery', () => {
       }),
     ).rejects.toBe(error);
     expect(fallback).not.toHaveBeenCalled();
+  });
+});
+
+describe('calendar list fetch run admission and atomic cursor finalization', () => {
+  const actual = jest.requireActual<
+    typeof import('src/modules/calendar/calendar-event-import-manager/services/calendar-fetch-events.service')
+  >(
+    'src/modules/calendar/calendar-event-import-manager/services/calendar-fetch-events.service',
+  );
+  const current = () =>
+    runtime
+      .getRepository(CalendarChannelEntity)
+      .findOneByOrFail({ id: ordinary.calendar });
+  const schedule = () =>
+    runtime
+      .getRepository(CalendarChannelEntity)
+      .update(ordinary.calendar, {
+        syncStage: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED,
+      });
+  const begin = () =>
+    calendar.beginCalendarListFetch(
+      ordinary.calendar,
+      fixture.workspaceId,
+      ordinary.account,
+    );
+  const makeFetch = (provider: jest.Mock, overrides = {}) =>
+    makeService(actual.CalendarFetchEventsService.prototype, {
+      calendarChannelSyncStatusService: calendar,
+      cacheStorage: { ...cache, setAdd: jest.fn() },
+      workspaceOrmManager: {
+        executeInWorkspaceContext: async (work: () => Promise<unknown>) =>
+          work(),
+      },
+      getCalendarEventsService: { getCalendarEvents: provider },
+      calendarEventImportErrorHandlerService: makeService(
+        CalendarEventImportErrorHandlerService.prototype,
+        {
+          calendarChannelSyncStatusService: calendar,
+          exceptionHandlerService: { captureExceptions: jest.fn() },
+          logger: { debug: jest.fn(), error: jest.fn() },
+        },
+      ),
+      logger: { log: jest.fn(), error: jest.fn() },
+      ...overrides,
+    });
+  const invoke = async (
+    owner: InstanceType<typeof actual.CalendarFetchEventsService>,
+  ) =>
+    owner.fetchCalendarEvents(
+      await current(),
+      await runtime
+        .getRepository(ConnectedAccountEntity)
+        .findOneByOrFail({ id: ordinary.account }),
+      fixture.workspaceId,
+    );
+  const response = (count: number) => ({
+    calendarEventIds: count ? ['event-id'] : [],
+    calendarEventIdsToDelete: [],
+    nextSyncCursor: 'next-cursor',
+  });
+  it('concurrent stale scheduled callers invoke provider once', async () => {
+    await schedule();
+    const channel = await current();
+    const account = await runtime
+      .getRepository(ConnectedAccountEntity)
+      .findOneByOrFail({ id: ordinary.account });
+    const provider = jest.fn().mockResolvedValue(response(1));
+    const owner = makeFetch(provider);
+    const results = await Promise.all([
+      owner.fetchCalendarEvents(channel, account, fixture.workspaceId),
+      owner.fetchCalendarEvents(channel, account, fixture.workspaceId),
+    ]);
+    expect(results.filter(Boolean)).toHaveLength(1);
+    expect(provider).toHaveBeenCalledTimes(1);
+    expect(await current()).toMatchObject({
+      syncCursor: 'next-cursor',
+      syncStage: CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_PENDING,
+    });
+  });
+  it.each(['disabled', 'owned', 'reparented', 'ongoing', 'pending'] as const)(
+    'rejects %s admission before provider and legacy cache read',
+    async (reason) => {
+      await schedule();
+      const channel = await current();
+      const account = await runtime
+        .getRepository(ConnectedAccountEntity)
+        .findOneByOrFail({ id: ordinary.account });
+      if (reason === 'disabled')
+        await runtime
+          .getRepository(CalendarChannelEntity)
+          .update(ordinary.calendar, { isSyncEnabled: false });
+      if (reason === 'owned') {
+        await runtime
+          .getRepository(ConnectedAccountEntity)
+          .update(ordinary.account, { provider: ConnectedAccountProvider.APP });
+        await bootstrap(ordinary);
+      }
+      if (reason === 'reparented')
+        await runtime
+          .getRepository(CalendarChannelEntity)
+          .update(ordinary.calendar, {
+            connectedAccountId: (await seed()).account,
+          });
+      if (reason === 'ongoing') await begin();
+      if (reason === 'pending')
+        await runtime
+          .getRepository(CalendarChannelEntity)
+          .update(ordinary.calendar, {
+            syncStage:
+              CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING,
+          });
+      const before = await current(),
+        provider = jest.fn();
+      expect(
+        await makeFetch(provider).fetchCalendarEvents(
+          channel,
+          account,
+          fixture.workspaceId,
+        ),
+      ).toBe(false);
+      expect(provider).not.toHaveBeenCalled();
+      expect(cache.getSetLength).not.toHaveBeenCalled();
+      expect(await current()).toEqual(before);
+    },
+  );
+  it.each([0, 1])(
+    'actual fetch applies cursor and final stage together (%i events)',
+    async (count) => {
+      await schedule();
+      expect(
+        await invoke(makeFetch(jest.fn().mockResolvedValue(response(count)))),
+      ).toBe(true);
+      expect(await current()).toMatchObject({
+        syncCursor: 'next-cursor',
+        syncStage: count
+          ? CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_PENDING
+          : CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING,
+        syncStageStartedAt: null,
+      });
+      expect(Boolean((await current()).syncedAt)).toBe(!count);
+      expect(metrics.incrementCounterForEvents).toHaveBeenCalledTimes(
+        count ? 0 : 1,
+      );
+    },
+  );
+  it.each(['parent', 'new-run', 'disabled'] as const)(
+    'late provider result after %s cannot change cursor/status',
+    async (mutation) => {
+      await schedule();
+      let before: CalendarChannelEntity | undefined;
+      const provider = jest.fn().mockImplementation(async () => {
+        if (mutation === 'parent')
+          await runtime
+            .getRepository(CalendarChannelEntity)
+            .update(ordinary.calendar, {
+              connectedAccountId: (await seed()).account,
+            });
+        if (mutation === 'new-run') {
+          await schedule();
+          await begin();
+        }
+        if (mutation === 'disabled')
+          await runtime
+            .getRepository(CalendarChannelEntity)
+            .update(ordinary.calendar, { isSyncEnabled: false });
+        before = await current();
+        return response(0);
+      });
+      expect(await invoke(makeFetch(provider))).toBe(false);
+      expect(await current()).toEqual(before);
+      expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
+    },
+  );
+  it('legacy recovery after admission cannot reset a newer run', async () => {
+    await schedule();
+    let next: OrdinaryMetadataSyncRun | undefined;
+    cache.getSetLength.mockImplementation(async () => {
+      await schedule();
+      const admitted = await begin();
+      if (!admitted) throw new Error('next missing');
+      next = admitted.run;
+      return 1;
+    });
+    const provider = jest.fn();
+    expect(await invoke(makeFetch(provider))).toBe(false);
+    expect(provider).not.toHaveBeenCalled();
+    expect(cache.del).not.toHaveBeenCalled();
+    expect(await calendar.finishCalendarListFetch(next!, 'latest', false)).toBe(
+      true,
+    );
+  });
+  it('same-millisecond different microsecond proof cannot finalize', async () => {
+    await schedule();
+    const admitted = await begin();
+    if (!admitted) throw new Error('missing admission');
+    const wrong = {
+      ...admitted.run,
+      startedAt:
+        admitted.run.startedAt.slice(0, -4) +
+        (admitted.run.startedAt.slice(-4, -1) === '000' ? '001Z' : '000Z'),
+    };
+    expect(new Date(wrong.startedAt).getTime()).toBe(
+      new Date(admitted.run.startedAt).getTime(),
+    );
+    expect(await calendar.finishCalendarListFetch(wrong, 'stale', false)).toBe(
+      false,
+    );
+    expect((await current()).syncCursor).toBe('old-cursor');
+  });
+  it('failed finalizer UPDATE rolls back cursor and stage together', async () => {
+    await schedule();
+    const admitted = await begin();
+    if (!admitted) throw new Error('missing admission');
+    const before = await current();
+    const create = runtime.createQueryRunner.bind(runtime);
+    jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+      const runner = create(),
+        query = runner.query.bind(runner);
+      runner.query = (async (sql: string, ...args: unknown[]) => {
+        if (
+          sql.includes('UPDATE') &&
+          sql.includes('calendarChannel') &&
+          sql.includes('syncCursor')
+        )
+          throw new Error('finalizer update refused');
+        return query(sql, ...(args as []));
+      }) as typeof runner.query;
+      return runner;
+    });
+    await expect(
+      calendar.finishCalendarListFetch(admitted.run, 'next', true),
+    ).rejects.toThrow('finalizer update refused');
+    expect(await current()).toEqual(before);
+    expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
+  });
+  it('unknown finalizer commit does not perform failure reset or emit success metrics', async () => {
+    await schedule();
+    const create = runtime.createQueryRunner.bind(runtime);
+    let commits = 0;
+    jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+      const runner = create(),
+        commit = runner.commitTransaction.bind(runner);
+      runner.commitTransaction = async () => {
+        await commit();
+        if (++commits === 2) throw new Error('final ACK lost');
+      };
+      return runner;
+    });
+    await expect(
+      invoke(makeFetch(jest.fn().mockResolvedValue(response(0)))),
+    ).rejects.toThrow('OMNI_CORE_TRANSACTION_OUTCOME_UNKNOWN');
+    expect(await current()).toMatchObject({
+      syncCursor: 'next-cursor',
+      syncStatus: CalendarChannelSyncStatus.ACTIVE,
+      throttleFailureCount: 0,
+    });
+    expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
+  });
+  it('stale temporary provider failure cannot retry newer run', async () => {
+    await schedule();
+    let before: CalendarChannelEntity | undefined;
+    const provider = jest.fn().mockImplementation(async () => {
+      await schedule();
+      await begin();
+      before = await current();
+      throw new CalendarEventImportDriverException(
+        'late',
+        CalendarEventImportDriverExceptionCode.TEMPORARY_ERROR,
+      );
+    });
+    expect(await invoke(makeFetch(provider))).toBe(false);
+    expect(await current()).toEqual(before);
+  });
+  it('declined fetch result prevents webhook inline import of another run pending queue', async () => {
+    const fetchCalendarEvents = jest.fn().mockImplementation(async () => {
+      await runtime
+        .getRepository(CalendarChannelEntity)
+        .update(ordinary.calendar, {
+          syncStage: CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_PENDING,
+        });
+      return false;
+    });
+    const getSetLength = jest.fn().mockResolvedValue(1),
+      processCalendarEventsImport = jest.fn();
+    const service = new CalendarEventWebhookSyncService(
+      { getSetLength } as never,
+      runtime.getRepository(CalendarChannelEntity),
+      { fetchCalendarEvents } as never,
+      { processCalendarEventsImport } as never,
+    );
+    await service.processCalendarEventWebhookSync({
+      workspaceId: fixture.workspaceId,
+      calendarChannelId: ordinary.calendar,
+      expectedConnectedAccountId: ordinary.account,
+    });
+    expect(fetchCalendarEvents).toHaveBeenCalledTimes(1);
+    expect(getSetLength).not.toHaveBeenCalled();
+    expect(processCalendarEventsImport).not.toHaveBeenCalled();
   });
 });

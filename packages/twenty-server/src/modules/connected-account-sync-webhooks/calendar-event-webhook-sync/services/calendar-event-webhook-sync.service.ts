@@ -69,11 +69,13 @@ export class CalendarEventWebhookSyncService {
       return;
     }
 
-    await this.calendarFetchEventsService.fetchCalendarEvents(
+    const applied = await this.calendarFetchEventsService.fetchCalendarEvents(
       calendarChannel,
       calendarChannel.connectedAccount,
       workspaceId,
     );
+
+    if (!applied) return;
 
     await this.importFetchedCalendarEvents({
       calendarChannelId,

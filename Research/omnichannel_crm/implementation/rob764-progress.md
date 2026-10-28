@@ -1401,3 +1401,31 @@ check and ROB764 acceptance are not complete. Last full fork LOG067:2205/75.
 Next: calendar list-fetch admission/cursor finalization, native apply, final regression.
 Demo/SaleBot unchanged; no Actions. Skills: ai-dev-workflow, behavioral-guardrails,
 server-schrodinger; scoped read-only review/research.
+
+## LOG-073 — calendar list-fetch and atomic cursor/status result (28.10.2026)
+
+Calendar list-fetch claims ordinary/current-account/enabled/SCHEDULED through the
+existing transaction owner and loads fresh channel/account. Declined admission stops
+before legacy cache/provider. Legacy recovery and errors carry the exact DB run proof.
+Completion now atomically updates cursor and IMPORT_PENDING or completed/full-fetch
+pending status. This avoids clearing the run token before a separately committed
+cursor write. Success metrics are emitted only after known accepted completion.
+Fetch returns accepted/declined; webhook refuses inline import after a declined fetch.
+
+756 targeted Jest/7 suites +26 guards=782 PASS;
+17 new PostgreSQL/caller cases. Typecheck 292 roots:
+188/188,0 new/changed-code diagnostics.
+Seven migrations unchanged, source LF hashes matched uploaded tests. Tests exercise
+concurrent actual fetch, current enabled/parent/ownership/stage, empty/nonempty
+finalization, stale response after reparent/new run, legacy recovery, microseconds,
+rollback and unknown commit, stale temporary failure and webhook declined result.
+Provider/network/cache use explicit doubles. [Evidence](log073/README.md).
+
+Limits: native association deletion/orphan cleanup and aggregate save still need run
+proof inside their own native transaction. Redis publication is account scoped, not
+atomic with SQL or isolated per same-account run. This slice does not claim those
+side effects are suppressed. No full fork/full server typecheck/ROB764 Done claim;
+last full fork LOG067:2205/75. Scoped read-only review, no reviewer tests.
+Next: native result apply and cleanup, then fresh regression/acceptance.
+Demo/SaleBot unchanged, no Actions. Skills ai-dev-workflow, behavioral-guardrails,
+server-schrodinger; scoped read-only research/review.

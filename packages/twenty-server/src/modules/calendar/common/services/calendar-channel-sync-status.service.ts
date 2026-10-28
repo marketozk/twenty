@@ -302,6 +302,79 @@ export class CalendarChannelSyncStatusService {
     );
   }
 
+  public async beginCalendarListFetch(
+    channelId: string,
+    workspaceId: string,
+    expectedConnectedAccountId: string,
+  ) {
+    return beginOrdinaryMetadataSyncRun(
+      this.calendarChannelRepository.manager,
+      workspaceId,
+      channelId,
+      expectedConnectedAccountId,
+      'calendar',
+      {
+        scheduled: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED,
+        ongoing: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_ONGOING,
+        syncStatus: CalendarChannelSyncStatus.ONGOING,
+      },
+      async (manager, run) => {
+        const channel = await manager
+          .getRepository(CalendarChannelEntity)
+          .findOneOrFail({
+            where: { id: channelId, workspaceId },
+            relations: ['connectedAccount'],
+          });
+        return { channel, run };
+      },
+    );
+  }
+
+  public async finishCalendarListFetch(
+    run: OrdinaryMetadataSyncRun,
+    nextSyncCursor: string,
+    hasEventsToImport: boolean,
+  ): Promise<boolean> {
+    run = { ...run };
+    if (
+      run.kind !== 'calendar' ||
+      run.stage !== CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_ONGOING
+    )
+      return false;
+    const updated = await this.mutateCalendarChannels(
+      [run.channelId],
+      run.workspaceId,
+      {
+        syncCursor: nextSyncCursor,
+        syncStageStartedAt: null,
+        ...(hasEventsToImport
+          ? {
+              syncStage:
+                CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_PENDING,
+            }
+          : {
+              syncStage:
+                CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING,
+              syncStatus: CalendarChannelSyncStatus.ACTIVE,
+              throttleFailureCount: 0,
+              syncedAt: new Date().toISOString(),
+            }),
+      },
+      false,
+      run.connectedAccountId,
+      false,
+      undefined,
+      run,
+    );
+    if (!updated.length) return false;
+    if (!hasEventsToImport)
+      await this.metricsService.incrementCounterForEvents({
+        key: MetricsKeys.CalendarEventSyncJobActive,
+        eventIds: updated.map(({ id }) => id),
+      });
+    return true;
+  }
+
   public async beginCalendarEventsImport(
     channelId: string,
     workspaceId: string,

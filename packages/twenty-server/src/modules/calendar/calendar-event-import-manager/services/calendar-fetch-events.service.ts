@@ -39,11 +39,21 @@ export class CalendarFetchEventsService {
     calendarChannel: CalendarChannelEntity,
     connectedAccount: ConnectedAccountEntity,
     workspaceId: string,
-  ): Promise<void> {
+  ): Promise<boolean> {
     calendarChannel = { ...calendarChannel };
     connectedAccount = { ...connectedAccount };
     if (calendarChannel.connectedAccountId !== connectedAccount.id)
       throw new Error('CALENDAR_IMPORT_ACCOUNT_MISMATCH');
+    const admitted =
+      await this.calendarChannelSyncStatusService.beginCalendarListFetch(
+        calendarChannel.id,
+        workspaceId,
+        connectedAccount.id,
+      );
+    if (!admitted) return false;
+    calendarChannel = admitted.channel;
+    connectedAccount = admitted.channel.connectedAccount;
+    const expectedRun = admitted.run;
     const importKey = calendarImportCacheKey({
       workspaceId,
       calendarChannelId: calendarChannel.id,
@@ -54,22 +64,18 @@ export class CalendarFetchEventsService {
         calendarChannel.id,
         workspaceId,
         connectedAccount.id,
+        expectedRun,
       )
     )
-      return;
+      return false;
 
     this.logger.log(
       `WorkspaceId: ${workspaceId}, CalendarChannelId: ${calendarChannel.id} - Fetching calendar events`,
     );
 
-    await this.calendarChannelSyncStatusService.markAsCalendarEventListFetchOngoing(
-      [calendarChannel.id],
-      workspaceId,
-    );
-
     const authContext = buildSystemAuthContext(workspaceId);
 
-    await this.workspaceOrmManager.executeInWorkspaceContext(
+    return this.workspaceOrmManager.executeInWorkspaceContext(
       async () => {
         try {
           const { calendarEventIds, calendarEventIdsToDelete, nextSyncCursor } =
@@ -109,25 +115,12 @@ export class CalendarFetchEventsService {
             );
           }
 
-          if (calendarEventIds.length > 0) {
+          if (calendarEventIds.length > 0)
             await this.cacheStorage.setAdd(importKey, calendarEventIds);
-
-            await this.calendarChannelSyncStatusService.markAsCalendarEventsImportPending(
-              [calendarChannel.id],
-              workspaceId,
-            );
-          } else {
-            await this.calendarChannelSyncStatusService.markAsCalendarEventSyncCompleted(
-              [calendarChannel.id],
-              workspaceId,
-            );
-          }
-
-          await this.calendarChannelRepository.update(
-            { id: calendarChannel.id, workspaceId },
-            {
-              syncCursor: nextSyncCursor,
-            },
+          return await this.calendarChannelSyncStatusService.finishCalendarListFetch(
+            expectedRun,
+            nextSyncCursor,
+            calendarEventIds.length > 0,
           );
         } catch (error) {
           this.logger.error(
@@ -138,7 +131,9 @@ export class CalendarFetchEventsService {
             CalendarEventImportSyncStep.CALENDAR_EVENT_LIST_FETCH,
             calendarChannel,
             workspaceId,
+            expectedRun,
           );
+          return false;
         }
       },
       authContext,

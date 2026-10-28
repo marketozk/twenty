@@ -56,6 +56,8 @@ Canonical lifecycle requirements remain in the implementation specification.
 
 - LOG072: message list-fetch/recent onboarding claim current account/stage atomically. Recent handoff rotates proof once, finishes or recovers through full fetch without syncedAt. Cursor and scheduling callbacks carry proof; job no longer retries errors without owner. Redis/native apply remains below.
 
+- LOG073: calendar list-fetch atomic admission and fresh entities, run-guarded legacy/error path, cursor+status finalization in one owner transaction. Declined result stops webhook inline import. Native association/orphan cleanup and Redis side effects remain below.
+
 ## Remaining owners, in implementation order
 
 Paths below are relative to `packages/twenty-server/src`.
@@ -64,7 +66,7 @@ Paths below are relative to `packages/twenty-server/src`.
 |---|---|
 | Message run side effects | Admission, recent/full distinction and cursor/scheduling metadata callbacks covered by LOG071–072. Account-scoped Redis publication/requeue/monitoring and native save/cleanup still need final contract coverage. |
 
-| Calendar provider callbacks | CalendarFetchEventsService still writes stage/cursor and association/orphan cleanup after provider without complete run snapshot; cache provenance is covered by LOG069. |
+| Calendar provider native side effects | Metadata stage/cursor/run callbacks covered by LOG071/073. CalendarFetchEventsService association deletion/orphan cleanup still require run guard inside their native transaction; Redis publication remains outside SQL. |
 | Native provider-result writes | Message save aggregate/calendar save aggregate must check parent/run under their existing native transaction; calendar association/orphan cleanup also needs same-owner admission. External SELECT is insufficient. |
 | Legacy list-fetch downstream cache/cleanup callbacks | Final completion is parent-pinned (LOG058); intermediate cache mutations and cleanup are separate. Review with group/folder scope before claiming complete callback lifecycle protection. |
 

@@ -1,0 +1,11 @@
+{
+  "baseCommit": "d63268b51c9d2688d86f1f600d60d8d7bde678ea",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-fetch-events.service.ts": "e820e7c2900a88ad9189a18d89498761ac3262d0d883a8f3ad51aec82ccd1d4c",
+    "packages/twenty-server/src/modules/calendar/common/services/calendar-channel-sync-status.service.ts": "610a2c7646e932c3475143b0b084a42dcd6e9d37928cb5d16aea411c2ea4c248",
+    "packages/twenty-server/src/modules/connected-account-sync-webhooks/calendar-event-webhook-sync/services/calendar-event-webhook-sync.service.ts": "d1754ae6b7a4366fd531e57e6ca1f2d9673bd7cf83d39b283185cae78d00d875",
+    "packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts": "3dbdcd4dc31f03a2690ef51573198ab57709c747ba33cea6fa4776914abaf3e2"
+  }
+}

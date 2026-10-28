@@ -26,16 +26,15 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 
 ## Сверка текущего состояния — 27.10.2026
 
-LOG-072 / ROB-764 In Progress: recent onboarding и ordinary message list-fetch
-получают атомарный допуск с текущим account/stage. Recent handoff одноразовый,
-с новым точным token; completion/temporary error/crash recovery ведут к full fetch,
-не устанавливая syncedAt для неполной истории. Message cursor сохраняет run token;
-completion/scheduling/error callbacks проверяют его. OAuth передаёт parent и наблюдает ошибки.
-Проверено 739 targeted Jest/7 suites +26 guards =765 PASS,
-22 новых PostgreSQL/caller cases. Typecheck 292 roots:188/188,0 new/changed-code.
-7 migrations неизменны. [Доказательства](implementation/log072/README.md). Scoped read-only review без находок.
-Последний full fork LOG067:2205/75. Далее calendar list-fetch и native apply.
-Redis/run atomicity ещё не обеспечена. Демо прежнее, GitHub Actions не используется.
+LOG-073 / ROB-764 In Progress: calendar list-fetch получает атомарный допуск
+по текущему account/enabled/stage; recovery/error передают точный run token.
+Курсор и следующий статус записываются вместе под тем же owner, с проверкой run.
+Declined fetch не запускает inline import из webhook; unknown commit не вызывает fallback.
+Проверено 756 targeted Jest/7 suites +26 guards =782 PASS,
+17 новых PostgreSQL/caller cases. Typecheck 292 roots:188/188,0 new/changed-code.
+7 migrations неизменны. [Доказательства](implementation/log073/README.md). Scoped read-only review без находок.
+Последний full fork LOG067:2205/75. Далее native result apply/cleanup и Redis run boundaries.
+Демо прежнее, GitHub Actions не используется.
 
 ### Предыдущая порция
 
