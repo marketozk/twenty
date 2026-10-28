@@ -3481,3 +3481,5 @@ Read-only review нашёл потерю microseconds и late identity capture; 
 metadata builder не проверен. Демо/образ/сообщения/Actions не менялись. Следом —
 публичное назначение роли сотруднику: fresh membership/assignment, serial last-admin
 check, existing roleTarget handlers и общий strict owner.
+
+LOG112 publication: 5075ecd0cd004afbdc05cce5f02646812ab157d2 pushed/API verified. ROB765 description and comment 162fd500-5f7a-4638-a71f-961d24c3e858 independently read back; all 11 issue states match. Implementation continues.
