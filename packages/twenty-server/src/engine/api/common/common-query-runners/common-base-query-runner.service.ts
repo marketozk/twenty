@@ -337,10 +337,14 @@ export abstract class CommonBaseQueryRunnerService<
         CommonQueryNames.RESTORE_ONE,
         CommonQueryNames.RESTORE_MANY,
       ].includes(this.operationName) &&
-        isNativeCrmAuditObject(
+        (isNativeCrmAuditObject(
           queryRunnerContext.flatObjectMetadata.nameSingular,
           queryRunnerContext.flatObjectMetadata.universalIdentifier,
-        ));
+        ) ||
+          isNativeCrmAuditMetadata(
+            queryRunnerContext.flatObjectMetadata,
+            queryRunnerContext.authContext.workspace.id,
+          )));
     const auth = getWorkspaceContext().authContext;
     const { results, extendedQueryRunnerContext } = auditedMutation
       ? queryRunnerContext.transactionScope

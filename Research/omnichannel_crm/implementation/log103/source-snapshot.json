@@ -1,0 +1,9 @@
+{
+  "baseCommit": "d2720e636d1eb18baeeff861fab1dbe7494fbccf",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/api/common/common-query-runners/common-base-query-runner.service.ts": "f4e63cd5a1ed43926562f568bb3da862c737c1ee36eabf6624d70d19f44b5ad9",
+    "packages/twenty-server/test/fork-migration/crm-audit-public-update.postgres-spec.ts": "b56150a94e1022764cd48627565130b44e38161775a425cce2878490d1845f18",
+    "packages/twenty-server/test/fork-migration/custom-crm-metadata.fixture.ts": "2a32de75a51de2fb8bfc193e14ce891ef34ea1ae7793881f9c7877cc3a29ff91"
+  },
+  "uploadedSourceHashesVerified": true
+}

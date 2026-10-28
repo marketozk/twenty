@@ -1,0 +1,10 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-public-update.postgres-spec.ts (12.652 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-files.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-lifecycle.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-custom-record.postgres-spec.ts
+
+Test Suites: 4 passed, 4 total
+Tests:       193 passed, 193 total
+Snapshots:   0 total
+Time:        20.749 s
+Ran all test suites matching /crm-audit-public-update|crm-audit-custom-record|crm-audit-native-lifecycle|crm-audit-native-files/i.

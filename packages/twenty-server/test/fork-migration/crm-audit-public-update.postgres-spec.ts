@@ -89,6 +89,7 @@ const f = createOmniNativeMessageFixture({
 });
 const documentsId = randomUUID(),
   documentsUniversalId = randomUUID();
+const customDocumentsUniversalId = randomUUID();
 const id = randomUUID();
 const secondId = randomUUID();
 const actorId = randomUUID();
@@ -285,6 +286,32 @@ beforeAll(async () => {
     documentsUniversalId;
   company.fieldIds.push(documentsId);
   company.fieldUniversalIdentifiers.push(documentsUniversalId);
+  const custom = Object.values(
+    base.flatObjectMetadataMaps.byUniversalIdentifier,
+  ).find((item) => item?.nameSingular === 'customCase')!;
+  const customPosition = Object.values(
+    base.flatFieldMetadataMaps.byUniversalIdentifier,
+  ).find(
+    (item) => item?.objectMetadataId === custom.id && item.name === 'position',
+  )!;
+  const customDocuments = {
+    ...customPosition,
+    id: randomUUID(),
+    universalIdentifier: customDocumentsUniversalId,
+    name: 'documents',
+    label: 'documents',
+    type: FieldMetadataType.FILES,
+    isNullable: true,
+    isCustom: true,
+    defaultValue: null,
+    settings: { maxNumberOfValues: 5 },
+  };
+  base.flatFieldMetadataMaps.byUniversalIdentifier[customDocumentsUniversalId] =
+    customDocuments;
+  base.flatFieldMetadataMaps.universalIdentifierById[customDocuments.id] =
+    customDocumentsUniversalId;
+  custom.fieldIds.push(customDocuments.id);
+  custom.fieldUniversalIdentifiers.push(customDocumentsUniversalId);
   await f.initialize();
   await f.owner.query('INSERT INTO core.workspace(id)VALUES($1)', [
     f.workspaceId,
@@ -1898,5 +1925,271 @@ it.each([false, true])(
     ).toHaveLength(fail ? 0 : 1);
     expect(await audit()).toHaveLength(fail ? 0 : 2);
     expect(JSON.stringify(await audit())).not.toContain('private-label');
+  },
+);
+
+const seedCustomPublicRecords = () =>
+  f.owner.query(
+    `INSERT INTO "${f.schemaName}"."_customCase"(id,name)VALUES($1,'original'),($2,'second')`,
+    [id, secondId],
+  );
+const customPublicMethods = [
+  'one',
+  'many',
+  'deleteOne',
+  'deleteMany',
+  'restoreOne',
+  'restoreMany',
+] as const;
+type CustomPublicMethod = (typeof customPublicMethods)[number];
+const executeCustomPublic = async (
+  h: ReturnType<typeof harness>,
+  method: CustomPublicMethod,
+  scope?: WorkspaceTransactionScope,
+) => {
+  const context = h.queryContext('customCase', scope),
+    selectedFields = { id: true, name: true, deletedAt: true };
+  switch (method) {
+    case 'one':
+      return h.one.execute(
+        { id, data: { name: 'changed' }, selectedFields },
+        context,
+      );
+    case 'many':
+      return h.many.execute(
+        {
+          filter: { id: { in: [id, secondId] } },
+          data: { name: 'changed' },
+          selectedFields,
+        },
+        context,
+      );
+    case 'deleteOne':
+      return h.deleteOne.execute({ id, selectedFields }, context);
+    case 'deleteMany':
+      return h.deleteMany.execute(
+        { filter: { id: { in: [id, secondId] } }, selectedFields },
+        context,
+      );
+    case 'restoreOne':
+      return h.restoreOne.execute({ id, selectedFields }, context);
+    case 'restoreMany':
+      return h.restoreMany.execute(
+        { filter: { id: { in: [id, secondId] } }, selectedFields },
+        context,
+      );
+  }
+};
+it.each(customPublicMethods)(
+  'automatically audits custom public %s',
+  async (method) => {
+    await seedCustomPublicRecords();
+    if (method.startsWith('restore'))
+      await f.owner.query(
+        `UPDATE "${f.schemaName}"."_customCase" SET "deletedAt"=now()`,
+      );
+    const h = harness('user');
+    await h.run(() => executeCustomPublic(h, method));
+    const batch = method.endsWith('Many') || method === 'many';
+    const entries = await audit();
+    expect(entries).toHaveLength(batch ? 2 : 1);
+    expect(new Set(entries.map((entry) => entry.operationId)).size).toBe(1);
+    expect(
+      entries.every(
+        (entry) =>
+          entry.action === 'update' &&
+          entry.actor.id === actorId &&
+          entry.securityDescriptor.objectMetadataId ===
+            base.objectIdByNameSingular.customCase,
+      ),
+    ).toBe(true);
+    const rows = await f.owner.query(
+      `SELECT id,name,"deletedAt" FROM "${f.schemaName}"."_customCase"`,
+    );
+    for (const row of rows) {
+      if (!batch && row.id !== id) continue;
+      if (method.startsWith('delete'))
+        expect(row.deletedAt).toBeInstanceOf(Date);
+      else if (method.startsWith('restore')) expect(row.deletedAt).toBeNull();
+      else expect(row.name).toBe('changed');
+    }
+    expect(h.managerPort.getRepository).not.toHaveBeenCalled();
+    expect(h.hooks.executePostQueryHooks).toHaveBeenCalledTimes(1);
+  },
+);
+it.each(['one', 'deleteMany', 'restoreMany'] as const)(
+  'rolls custom public %s back on audit INSERT failure',
+  async (method) => {
+    await seedCustomPublicRecords();
+    if (method.startsWith('restore'))
+      await f.owner.query(
+        `UPDATE "${f.schemaName}"."_customCase" SET "deletedAt"=now()`,
+      );
+    const before = await f.owner.query(
+        `SELECT * FROM "${f.schemaName}"."_customCase" ORDER BY id`,
+      ),
+      h = harness();
+    await f.owner.query(
+      `CREATE FUNCTION crm_audit.fail_public_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'CUSTOM_PUBLIC_AUDIT_FAILURE';END $$;CREATE TRIGGER fail_public_audit BEFORE INSERT ON crm_audit."crmAuditEntry" FOR EACH ROW EXECUTE FUNCTION crm_audit.fail_public_audit()`,
+    );
+    await expect(h.run(() => executeCustomPublic(h, method))).rejects.toThrow();
+    expect(
+      await f.owner.query(
+        `SELECT * FROM "${f.schemaName}"."_customCase" ORDER BY id`,
+      ),
+    ).toEqual(before);
+    expect(await audit()).toHaveLength(0);
+    expect(h.hooks.executePostQueryHooks).not.toHaveBeenCalled();
+  },
+);
+it.each(['many', 'deleteOne', 'restoreOne'] as const)(
+  'preserves permission denial on custom public %s',
+  async (method) => {
+    await seedCustomPublicRecords();
+    if (method.startsWith('restore'))
+      await f.owner.query(
+        `UPDATE "${f.schemaName}"."_customCase" SET "deletedAt"=now()`,
+      );
+    const h = harness('apiKey', false),
+      before = await f.owner.query(
+        `SELECT * FROM "${f.schemaName}"."_customCase" ORDER BY id`,
+      );
+    await expect(h.run(() => executeCustomPublic(h, method))).rejects.toThrow();
+    expect(
+      await f.owner.query(
+        `SELECT * FROM "${f.schemaName}"."_customCase" ORDER BY id`,
+      ),
+    ).toEqual(before);
+    expect(await audit()).toHaveLength(0);
+  },
+);
+it('refuses unproven inherited scope for custom public update', async () => {
+  await seedCustomPublicRecords();
+  const h = harness();
+  await expect(
+    h.run(() =>
+      h.dataSource.transaction((scope) => executeCustomPublic(h, 'one', scope)),
+    ),
+  ).rejects.toThrow('proven native audit scope');
+  expect(
+    await f.owner.query(
+      `SELECT name FROM "${f.schemaName}"."_customCase" WHERE id=$1`,
+      [id],
+    ),
+  ).toEqual([{ name: 'original' }]);
+  expect(await audit()).toHaveLength(0);
+});
+it('keeps custom relation result reads and audit inside one inherited owner', async () => {
+  await seedCustomPublicRecords();
+  const h = harness();
+  await expect(
+    h.run(() =>
+      h.dataSource.transaction(
+        async (scope) => {
+          const result = await h.one.execute(
+            {
+              id,
+              data: { company: { connect: { where: { id: secondId } } } },
+              selectedFields: { id: true, company: { id: true, name: true } },
+            },
+            h.queryContext('customCase', scope),
+          );
+          expect(result.results.company).toMatchObject({
+            id: secondId,
+            name: 'second',
+          });
+          expect(h.hooks.executePostQueryHooks).not.toHaveBeenCalled();
+          throw new Error('ROLLBACK_CUSTOM_OWNER');
+        },
+        {
+          nativeAudit: {
+            operationId: randomUUID(),
+            systemActorId: 'custom-public-test',
+          },
+        },
+      ),
+    ),
+  ).rejects.toThrow('ROLLBACK_CUSTOM_OWNER');
+  expect(
+    await f.owner.query(
+      `SELECT "companyId" FROM "${f.schemaName}"."_customCase" WHERE id=$1`,
+      [id],
+    ),
+  ).toEqual([{ companyId: null }]);
+  expect(await audit()).toHaveLength(0);
+  expect(h.hooks.executePostQueryHooks).not.toHaveBeenCalled();
+});
+it('does not retry custom public lifecycle after losing actual COMMIT ACK', async () => {
+  await seedCustomPublicRecords();
+  const h = harness(),
+    client = await f.pool.connect(),
+    query = client.query.bind(client),
+    statements: string[] = [];
+  jest.spyOn(client, 'query').mockImplementation((async (
+    statement: string | { text: string },
+    values?: unknown[],
+  ) => {
+    const text = typeof statement === 'string' ? statement : statement.text;
+    statements.push(text);
+    const result = await query(statement as string, values);
+    if (text === 'COMMIT') throw new Error('lost ack');
+    return result;
+  }) as typeof client.query);
+  jest
+    .spyOn(f.pool, 'connect')
+    .mockImplementationOnce(() => Promise.resolve(client));
+  await expect(
+    h.run(() => executeCustomPublic(h, 'deleteOne')),
+  ).rejects.toBeInstanceOf(NativeTransactionOutcomeUnknownError);
+  expect(statements.filter((text) => text === 'COMMIT')).toHaveLength(1);
+  expect(statements).not.toContain('ROLLBACK');
+  expect(await audit()).toHaveLength(1);
+  expect(h.hooks.executePostQueryHooks).not.toHaveBeenCalled();
+});
+
+it.each([false, true])(
+  'updates custom public FILES atomically; audit fault=%s',
+  async (fail) => {
+    await seedCustomPublicRecords();
+    const h = harness(),
+      fileId = randomUUID();
+    await f.owner.query(
+      'INSERT INTO core.file(id,"workspaceId",path,size,settings)VALUES($1,$2,$3,12,$4)',
+      [
+        fileId,
+        f.workspaceId,
+        'secret/' + customDocumentsUniversalId + '/private.pdf',
+        { isTemporaryFile: true, toDelete: true },
+      ],
+    );
+    if (fail)
+      await f.owner.query(
+        `CREATE FUNCTION crm_audit.fail_public_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'CUSTOM_FILES_AUDIT_FAILURE';END $$;CREATE TRIGGER fail_public_audit BEFORE INSERT ON crm_audit."crmAuditEntry" FOR EACH ROW EXECUTE FUNCTION crm_audit.fail_public_audit()`,
+      );
+    const pending = h.run(() =>
+      h.one.execute(
+        {
+          id,
+          data: { documents: [{ fileId, label: 'private-custom-label' }] },
+          selectedFields: { id: true },
+        },
+        h.queryContext('customCase'),
+      ),
+    );
+    if (fail) await expect(pending).rejects.toThrow();
+    else await pending;
+    const [file] = await f.owner.query(
+      'SELECT settings FROM core.file WHERE id=$1',
+      [fileId],
+    );
+    expect(file.settings.isTemporaryFile).toBe(fail);
+    const [row] = await f.owner.query(
+      `SELECT documents FROM "${f.schemaName}"."_customCase" WHERE id=$1`,
+      [id],
+    );
+    if (fail) expect(row.documents).toBeNull();
+    else expect(row.documents).toHaveLength(1);
+    expect(await audit()).toHaveLength(fail ? 0 : 2);
+    expect(JSON.stringify(await audit())).not.toContain('private-custom-label');
   },
 );

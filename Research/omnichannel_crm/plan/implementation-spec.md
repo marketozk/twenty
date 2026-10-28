@@ -827,3 +827,9 @@ update actions. Это read/classify/write, не ON CONFLICT/retry protocol: к�
 unique violation откатывает всю операцию, unknown COMMIT не повторяется. Nested и
 real share writes не включены. Public FILES [] по-прежнему нормализуется в null;
 insert/update используют существующее canUpdateObjectRecords право.
+
+LOG103 расширяет automatic public UPDATE/soft-delete/restore на metadata-covered
+local custom objects. Standard admission сохраняется через OR с metadata predicate;
+изменённая standard metadata по-прежнему доходит до strict fail-closed validation.
+Relation connect/disconnect не создаёт дочерних записей; DELETE остаётся soft-delete,
+без physical FK cascades. Same executor/readback/FILES/permissions/hooks — прежние.

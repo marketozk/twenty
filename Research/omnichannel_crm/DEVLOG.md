@@ -3281,3 +3281,22 @@ Fixture assumptions о domain URL, empty FILES, create permission и response id
 LOG102 publication: 2e6efe2aba08bc6da19cd6989a53f6001bb7a2af pushed/API verified.
 ROB765 description and comment 2e50826e-f07e-42f4-a66c-6c9618089504 independently
 read back; all 11 states match. ROB765 remains In Progress; implementation continues.
+
+## LOG-103 — public custom UPDATE и lifecycle
+
+LOG103: public UPDATE_ONE/MANY, soft-delete/restore One/Many для covered custom
+objects подключены к тому же strict native audit owner. Standard selector сохранён
+через OR, permissions и relation behavior не расширены. Actual mutations, FILES,
+audit и scoped reads атомарны; hooks после confirmed COMMIT. ROB765 In Progress.
+
+888 tests/30 suites PASS (174.467s), 17 новых PG cases; targeted193 tests/4 suites PASS. 26 guards PASS, 10 migration checksums неизменны. Types 341/341 roots, 189/189 baseline diagnostics, 0 новых/changed-code. 3 local/remote source hashes совпадают.
+
+Read-only side-effect review не нашёл нового writer или обхода прав. В новых тестах
+исправлены connect.where, отсутствующая обратная relation metadata fixture и тип
+объединённого async test helper. Проверены все четыре потребителя общей fixture.
+Полные HTTP/JWT/private-sharing tests и image build не заявляются.
+[Доказательства](implementation/log103/README.md).
+
+Далее bounded public nested CREATE с проверкой исходного графа и каждого child
+после prehook внутри proven native scope. Physical delete/merge, metadata/roles,
+negative audit и health ещё открыты. Демо/сообщения/Actions не затронуты.

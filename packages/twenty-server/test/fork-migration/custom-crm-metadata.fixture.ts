@@ -78,9 +78,9 @@ export const addCustomCrmMetadata = ({
     (field) =>
       field?.objectMetadataId === person.id && field.name === 'company',
   )!;
-  for (const [parent, target, name] of [
-    [company, custom, 'case'],
-    [custom, company, 'company'],
+  for (const [parent, target, name, inverseName] of [
+    [company, custom, 'case', 'companies'],
+    [custom, company, 'company', 'cases'],
   ] as const) {
     const field = {
       ...relation,
@@ -99,9 +99,25 @@ export const addCustomCrmMetadata = ({
         joinColumnName: name + 'Id',
       },
     } as typeof relation;
+    const inverse = {
+      ...field,
+      id: randomUUID(),
+      universalIdentifier: randomUUID(),
+      objectMetadataId: target.id,
+      name: inverseName,
+      label: inverseName,
+      relationTargetObjectMetadataId: parent.id,
+      relationTargetFieldMetadataId: field.id,
+      settings: { ...relation.settings, relationType: 'ONE_TO_MANY' },
+    } as typeof relation;
+    field.relationTargetFieldMetadataId = inverse.id;
     flatFieldMetadataMaps.byUniversalIdentifier[field.universalIdentifier] =
       field;
     flatFieldMetadataMaps.universalIdentifierById[field.id] =
       field.universalIdentifier;
+    flatFieldMetadataMaps.byUniversalIdentifier[inverse.universalIdentifier] =
+      inverse;
+    flatFieldMetadataMaps.universalIdentifierById[inverse.id] =
+      inverse.universalIdentifier;
   }
 };

@@ -90,3 +90,10 @@ normalization, createdBy, permissions и response contract. Concurrent absent ke
 Nested CREATE/real shares пока вне root admission. ROB765 In Progress. [Доказательства](implementation/log102/README.md).
 
 871 tests/30 suites PASS (171.954s), 17 новых PG cases, 75 targeted. 26 guards PASS; 10 migration checksums неизменны. Types 341/341 roots, 189/189 baseline diagnostics, 0 новых/changed-code. Прежняя Brackets diagnostic в неизменённом методе остаётся. 2 source hashes совпадают.
+
+LOG103: public UPDATE_ONE/MANY, soft-delete/restore One/Many для covered custom
+objects подключены к тому же strict native audit owner. Standard selector сохранён
+через OR, permissions и relation behavior не расширены. Actual mutations, FILES,
+audit и scoped reads атомарны; hooks после confirmed COMMIT. ROB765 In Progress. [Доказательства](implementation/log103/README.md).
+
+888 tests/30 suites PASS (174.467s), 17 новых PG cases; targeted193 tests/4 suites PASS. 26 guards PASS, 10 migration checksums неизменны. Types 341/341 roots, 189/189 baseline diagnostics, 0 новых/changed-code. 3 local/remote source hashes совпадают.
