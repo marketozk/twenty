@@ -20,6 +20,7 @@ export class WebhookSyncTriggerService {
   async triggerMessagingSync(
     messageChannelId: string,
     workspaceId: string,
+    expectedConnectedAccountId?: string,
   ): Promise<void> {
     const isWorkspaceServiceable =
       await this.workspaceActivationService.isWorkspaceServiceableFromCache(
@@ -32,10 +33,16 @@ export class WebhookSyncTriggerService {
 
     await this.connectedAccountSyncWebhookQueueService.add<MessagingMessageWebhookSyncJobData>(
       MessagingMessageWebhookSyncJob.name,
-      { workspaceId, messageChannelId },
+      {
+        workspaceId,
+        messageChannelId,
+        ...(expectedConnectedAccountId !== undefined
+          ? { expectedConnectedAccountId }
+          : {}),
+      },
       {
         deduplication: {
-          id: `messaging-message-webhook-sync:${workspaceId}:${messageChannelId}`,
+          id: `messaging-message-webhook-sync:${workspaceId}:${messageChannelId}${expectedConnectedAccountId === undefined ? '' : `:${expectedConnectedAccountId}`}`,
           keepLastIfActive: true,
         },
       },
@@ -45,6 +52,7 @@ export class WebhookSyncTriggerService {
   async triggerCalendarSync(
     calendarChannelId: string,
     workspaceId: string,
+    expectedConnectedAccountId?: string,
   ): Promise<void> {
     const isWorkspaceServiceable =
       await this.workspaceActivationService.isWorkspaceServiceableFromCache(
@@ -57,10 +65,16 @@ export class WebhookSyncTriggerService {
 
     await this.connectedAccountSyncWebhookQueueService.add<CalendarEventWebhookSyncJobData>(
       CalendarEventWebhookSyncJob.name,
-      { workspaceId, calendarChannelId },
+      {
+        workspaceId,
+        calendarChannelId,
+        ...(expectedConnectedAccountId !== undefined
+          ? { expectedConnectedAccountId }
+          : {}),
+      },
       {
         deduplication: {
-          id: `calendar-event-webhook-sync:${workspaceId}:${calendarChannelId}`,
+          id: `calendar-event-webhook-sync:${workspaceId}:${calendarChannelId}${expectedConnectedAccountId === undefined ? '' : `:${expectedConnectedAccountId}`}`,
           keepLastIfActive: true,
         },
       },

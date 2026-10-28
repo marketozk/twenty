@@ -54,16 +54,16 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-067 / ROB-764 In Progress: scheduler сохраняет id/account descriptors во
-всех message list consumers: cron, CLI и webhook. Webhook повторно читает current
-ordinary parent/enabled/stage перед provider. Member blocklist reset сверяет
-captured account и custodian под блокировкой до channel/folder/cache effects;
-global scope перекрывает member scope без повторного reset.
-Проверено 2205 full fork Jest/75 suites +26 guards =2231 PASS,
-28 новых PostgreSQL cases. Typecheck 282 roots:189/189,0 new/changed-code.
-7 migrations неизменны. [Доказательства](Research/omnichannel_crm/implementation/log067/README.md). Scoped review без blockers.
-Далее calendar webhook scheduling, direct importer/onboarding admission и native
-response apply; итоговая T22/ROB764 acceptance остаётся открыта.
+LOG-068 / ROB-764 In Progress: все восемь notification trigger calls передают
+captured account; очередь разделяет dedup по аккаунту с сохранением legacy payload/key.
+Первое scheduling проверяет expected parent до UPDATE. Calendar webhook делает
+fresh scheduled read и после fetch допускает inline import только из current
+IMPORT_PENDING того же account, затем повторяет guarded read.
+Проверено 568 targeted Jest/7 suites +26 guards =594 PASS,
+21 новый case (17 PostgreSQL,4 queue dispatch). Typecheck 290 roots:189/189,0 new/changed-code.
+7 migrations неизменны. [Доказательства](Research/omnichannel_crm/implementation/log068/README.md). Scoped review без blockers.
+Последний full fork LOG067:2205/75. Далее calendar cache/provider callbacks,
+MS notification lifecycle и direct importer/onboarding/native apply.
 Демо прежнее, GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы минимальный аудит и атомарное создание

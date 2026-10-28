@@ -19,9 +19,9 @@ import { type MicrosoftGraphNotification } from 'src/modules/connected-account-s
 import { type WebhookNotificationHandler } from 'src/modules/connected-account-sync-webhooks/types/webhook-notification-handler.type';
 
 @Injectable()
-export class MicrosoftMessagingNotificationHandler implements WebhookNotificationHandler<
-  MicrosoftGraphNotification[]
-> {
+export class MicrosoftMessagingNotificationHandler
+  implements WebhookNotificationHandler<MicrosoftGraphNotification[]>
+{
   private readonly logger = new Logger(
     MicrosoftMessagingNotificationHandler.name,
   );
@@ -115,6 +115,7 @@ export class MicrosoftMessagingNotificationHandler implements WebhookNotificatio
       await this.webhookSyncTriggerService.triggerMessagingSync(
         messageChannel.id,
         messageChannel.workspaceId,
+        messageChannel.connectedAccountId,
       );
 
       this.logger.log(
@@ -142,6 +143,7 @@ export class MicrosoftMessagingNotificationHandler implements WebhookNotificatio
         await this.webhookSyncTriggerService.triggerMessagingSync(
           messageChannel.id,
           messageChannel.workspaceId,
+          messageChannel.connectedAccountId,
         );
         break;
       case 'reauthorizationRequired':
@@ -154,6 +156,7 @@ export class MicrosoftMessagingNotificationHandler implements WebhookNotificatio
         await this.webhookSyncTriggerService.triggerMessagingSync(
           messageChannel.id,
           messageChannel.workspaceId,
+          messageChannel.connectedAccountId,
         );
         break;
       default: {

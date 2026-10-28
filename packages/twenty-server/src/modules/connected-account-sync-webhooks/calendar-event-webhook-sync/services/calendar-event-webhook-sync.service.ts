@@ -1,3 +1,5 @@
+import { scheduleOrdinaryMetadataChannels } from 'src/modules/omnichannel/services/schedule-ordinary-metadata-channels';
+import { withOrdinaryMetadataChannels } from 'src/modules/omnichannel/services/with-ordinary-metadata-channels';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -29,17 +31,25 @@ export class CalendarEventWebhookSyncService {
   async processCalendarEventWebhookSync({
     calendarChannelId,
     workspaceId,
+    expectedConnectedAccountId,
   }: {
     calendarChannelId: string;
     workspaceId: string;
+    expectedConnectedAccountId?: string;
   }): Promise<void> {
-    const isCalendarChannelScheduled =
-      await this.markCalendarChannelAsListFetchScheduledIfPending({
-        calendarChannelId,
-        workspaceId,
-      });
+    const [scheduledChannel] = await scheduleOrdinaryMetadataChannels(
+      this.calendarChannelRepository.manager,
+      workspaceId,
+      [calendarChannelId],
+      'calendar',
+      {
+        pending: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING,
+        scheduled: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED,
+      },
+      expectedConnectedAccountId,
+    );
 
-    if (!isCalendarChannelScheduled) {
+    if (!scheduledChannel) {
       this.logger.log(
         `Skipping webhook sync for calendar channel ${calendarChannelId}, a sync is already in progress`,
       );
@@ -50,6 +60,8 @@ export class CalendarEventWebhookSyncService {
     const calendarChannel = await this.findSyncEnabledCalendarChannel({
       calendarChannelId,
       workspaceId,
+      expectedConnectedAccountId: scheduledChannel.connectedAccountId,
+      stage: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED,
     });
 
     if (!isDefined(calendarChannel)) {
@@ -62,54 +74,54 @@ export class CalendarEventWebhookSyncService {
       workspaceId,
     );
 
-    await this.importFetchedCalendarEvents({ calendarChannelId, workspaceId });
-  }
-
-  private async markCalendarChannelAsListFetchScheduledIfPending({
-    calendarChannelId,
-    workspaceId,
-  }: {
-    calendarChannelId: string;
-    workspaceId: string;
-  }): Promise<boolean> {
-    const updateResult = await this.calendarChannelRepository
-      .createQueryBuilder()
-      .update()
-      .set({
-        syncStage: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED,
-        syncStageStartedAt: new Date(),
-      })
-      .where({
-        id: calendarChannelId,
-        workspaceId,
-        isSyncEnabled: true,
-        syncStage: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING,
-      })
-      .returning('id')
-      .execute();
-
-    return updateResult.raw.length > 0;
+    await this.importFetchedCalendarEvents({
+      calendarChannelId,
+      workspaceId,
+      expectedConnectedAccountId: scheduledChannel.connectedAccountId,
+    });
   }
 
   private async findSyncEnabledCalendarChannel({
     calendarChannelId,
     workspaceId,
+    expectedConnectedAccountId,
+    stage,
   }: {
     calendarChannelId: string;
     workspaceId: string;
+    expectedConnectedAccountId: string;
+    stage: CalendarChannelSyncStage;
   }): Promise<CalendarChannelEntity | null> {
-    return this.calendarChannelRepository.findOne({
-      where: { id: calendarChannelId, workspaceId, isSyncEnabled: true },
-      relations: ['connectedAccount'],
-    });
+    return withOrdinaryMetadataChannels(
+      this.calendarChannelRepository.manager,
+      workspaceId,
+      [calendarChannelId],
+      'calendar',
+      async (manager, channels) =>
+        channels.length
+          ? manager.getRepository(CalendarChannelEntity).findOne({
+              where: {
+                id: calendarChannelId,
+                workspaceId,
+                isSyncEnabled: true,
+                syncStage: stage,
+              },
+              relations: ['connectedAccount'],
+            })
+          : null,
+      'read',
+      expectedConnectedAccountId,
+    );
   }
 
   private async importFetchedCalendarEvents({
     calendarChannelId,
     workspaceId,
+    expectedConnectedAccountId,
   }: {
     calendarChannelId: string;
     workspaceId: string;
+    expectedConnectedAccountId: string;
   }): Promise<void> {
     const calendarEventsToImportCount = await this.cacheStorage.getSetLength(
       `calendar-events-to-import:${workspaceId}:${calendarChannelId}`,
@@ -127,9 +139,24 @@ export class CalendarEventWebhookSyncService {
       return;
     }
 
+    const [scheduledChannel] = await scheduleOrdinaryMetadataChannels(
+      this.calendarChannelRepository.manager,
+      workspaceId,
+      [calendarChannelId],
+      'calendar',
+      {
+        pending: CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_PENDING,
+        scheduled: CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_SCHEDULED,
+      },
+      expectedConnectedAccountId,
+    );
+    if (!scheduledChannel) return;
+
     const calendarChannel = await this.findSyncEnabledCalendarChannel({
       calendarChannelId,
       workspaceId,
+      expectedConnectedAccountId,
+      stage: CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_SCHEDULED,
     });
 
     if (!isDefined(calendarChannel)) {

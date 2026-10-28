@@ -32,7 +32,9 @@ export type GoogleMessagingNotificationRequest = {
 };
 
 @Injectable()
-export class GoogleMessagingNotificationHandler implements WebhookNotificationHandler<GoogleMessagingNotificationRequest> {
+export class GoogleMessagingNotificationHandler
+  implements WebhookNotificationHandler<GoogleMessagingNotificationRequest>
+{
   private readonly logger = new Logger(GoogleMessagingNotificationHandler.name);
   private readonly oauth2Client = new OAuth2Client();
 
@@ -94,6 +96,7 @@ export class GoogleMessagingNotificationHandler implements WebhookNotificationHa
       await this.webhookSyncTriggerService.triggerMessagingSync(
         messageChannel.id,
         messageChannel.workspaceId,
+        messageChannel.connectedAccountId,
       );
     }
 

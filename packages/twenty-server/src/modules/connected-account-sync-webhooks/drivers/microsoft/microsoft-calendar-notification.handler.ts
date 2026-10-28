@@ -19,9 +19,9 @@ import { type MicrosoftGraphNotification } from 'src/modules/connected-account-s
 import { type WebhookNotificationHandler } from 'src/modules/connected-account-sync-webhooks/types/webhook-notification-handler.type';
 
 @Injectable()
-export class MicrosoftCalendarNotificationHandler implements WebhookNotificationHandler<
-  MicrosoftGraphNotification[]
-> {
+export class MicrosoftCalendarNotificationHandler
+  implements WebhookNotificationHandler<MicrosoftGraphNotification[]>
+{
   private readonly logger = new Logger(
     MicrosoftCalendarNotificationHandler.name,
   );
@@ -116,6 +116,7 @@ export class MicrosoftCalendarNotificationHandler implements WebhookNotification
       await this.webhookSyncTriggerService.triggerCalendarSync(
         calendarChannel.id,
         calendarChannel.workspaceId,
+        calendarChannel.connectedAccountId,
       );
 
       this.logger.log(
@@ -143,6 +144,7 @@ export class MicrosoftCalendarNotificationHandler implements WebhookNotification
         await this.webhookSyncTriggerService.triggerCalendarSync(
           calendarChannel.id,
           calendarChannel.workspaceId,
+          calendarChannel.connectedAccountId,
         );
         break;
       case 'reauthorizationRequired':
@@ -155,6 +157,7 @@ export class MicrosoftCalendarNotificationHandler implements WebhookNotification
         await this.webhookSyncTriggerService.triggerCalendarSync(
           calendarChannel.id,
           calendarChannel.workspaceId,
+          calendarChannel.connectedAccountId,
         );
         break;
       default: {

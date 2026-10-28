@@ -22,7 +22,9 @@ import { type WebhookNotificationHandler } from 'src/modules/connected-account-s
 const GOOGLE_CALENDAR_SYNC_RESOURCE_STATE = 'sync';
 
 @Injectable()
-export class GoogleCalendarNotificationHandler implements WebhookNotificationHandler<GoogleCalendarChannelNotification> {
+export class GoogleCalendarNotificationHandler
+  implements WebhookNotificationHandler<GoogleCalendarChannelNotification>
+{
   private readonly logger = new Logger(GoogleCalendarNotificationHandler.name);
 
   constructor(
@@ -85,6 +87,7 @@ export class GoogleCalendarNotificationHandler implements WebhookNotificationHan
     await this.webhookSyncTriggerService.triggerCalendarSync(
       calendarChannel.id,
       calendarChannel.workspaceId,
+      calendarChannel.connectedAccountId,
     );
 
     this.logger.log(

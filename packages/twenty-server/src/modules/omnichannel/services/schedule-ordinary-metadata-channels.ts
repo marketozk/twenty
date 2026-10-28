@@ -7,6 +7,7 @@ export const scheduleOrdinaryMetadataChannels = (
   channelIds: string[],
   kind: 'message' | 'calendar',
   stages: { pending: string; scheduled: string },
+  expectedConnectedAccountId?: string,
 ): Promise<{ id: string; connectedAccountId: string }[]> => {
   const { pending, scheduled } = stages;
   const table = kind === 'message' ? 'messageChannel' : 'calendarChannel';
@@ -30,5 +31,7 @@ export const scheduleOrdinaryMetadataChannels = (
         ],
       );
     },
+    'read',
+    expectedConnectedAccountId,
   );
 };

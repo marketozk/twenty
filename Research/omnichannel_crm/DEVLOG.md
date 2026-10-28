@@ -2004,3 +2004,36 @@ Demo/SaleBot unchanged; no Actions. Skills ai-dev-workflow, behavioral-guardrail
 server-schrodinger with narrow read-only research/review.
 
 LOG067 publication: code 1408d41a9e46d7fa3c4d827d004bf13757ebf62f pushed; GitHub API ref verified. Linear comment abd3075b-4a4f-4456-9931-b01aa373fcdf, description/comment and all11 project states independently verified. Full fork2205/75 PASS; ROB764 In Progress.
+
+
+## LOG-068 — notification account dispatch and calendar webhook orchestration (28.10.2026)
+
+All eight Google/Microsoft notification trigger calls carry captured account through
+queue payload/job. New dedup keys include account; legacy key/body remain unchanged
+and separate from qualified keys. Workspace serviceability check still gates queue.
+Optional scheduler expected parent is checked by the existing ordinary owner before
+UPDATE, not merely after it. Message wrapper/status/webhook forward this pin.
+Calendar direct scheduling replaced by generic ordinary scheduling plus fresh
+parent/enabled/SCHEDULED read. The accepted account survives fetch. Inline import
+requires same-parent IMPORT_PENDING→SCHEDULED and another current read. A resolved
+fetch does not itself prove success: handled errors must not import old cache.
+Empty/deferred cache behavior preserved. No transaction spans network/provider work.
+
+568 targeted Jest/7 suites +26 guards=594 PASS.
+21 new cases:16 actual calendar orchestration/SQL,1 old-parent message rejection,
+4 queue dispatch/dedup contract cases with controlled enqueue. Provider/import are
+controlled doubles, so no claim on internal fetch/import writes or real BullMQ
+execution. Unknown initial/read/inline commit produces no next fetch/import;
+parent/stage/disabled/native changes rejected. Legacy body/key compatibility tested.
+Typecheck 290 roots:189/189,0 new/changed-code;
+7 migrations unchanged, source LF hashes matched; dependency baseline unchanged.
+Scoped review checked all callers and found no blockers, did not execute tests.
+[Evidence](implementation/log068/README.md). Last full fork LOG0672205/75, no new full suite claim.
+
+Remaining: CalendarFetchEventsService ongoing/pending/completed/cursor and native
+cleanup after provider, shared calendar cache namespace, direct import/onboarding
+admission, same-account run tokens and native apply. Microsoft renew/recreate
+lifecycle calls need event parent/subscription pins independently of trigger pin.
+The current change only protects scheduling/dispatch/orchestration. No full server
+typecheck/full Claude review/ROB764 Done. Demo/SaleBot unchanged; no Actions.
+Skills ai-dev-workflow, behavioral-guardrails, server-schrodinger, scoped read-only review.

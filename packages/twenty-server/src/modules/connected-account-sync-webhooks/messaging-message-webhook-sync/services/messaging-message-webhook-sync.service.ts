@@ -23,11 +23,13 @@ export class MessagingMessageWebhookSyncService {
   async processMessagingMessageWebhookSync({
     messageChannelId,
     workspaceId,
+    expectedConnectedAccountId,
   }: MessagingMessageWebhookSyncJobData): Promise<void> {
     const [scheduledChannel] =
       await this.messageChannelSyncStatusService.markAsMessagesListFetchScheduledIfPending(
         [messageChannelId],
         workspaceId,
+        expectedConnectedAccountId,
       );
 
     if (!isDefined(scheduledChannel)) {

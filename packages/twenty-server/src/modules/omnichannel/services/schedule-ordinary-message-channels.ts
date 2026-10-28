@@ -6,6 +6,7 @@ export const scheduleOrdinaryMessageChannels = async (
   workspaceId: string,
   channelIds: string[],
   stages: { pending: string; scheduled: string },
+  expectedConnectedAccountId?: string,
 ): Promise<{ id: string; connectedAccountId: string }[]> =>
   scheduleOrdinaryMetadataChannels(
     manager,
@@ -13,4 +14,5 @@ export const scheduleOrdinaryMessageChannels = async (
     channelIds,
     'message',
     stages,
+    expectedConnectedAccountId,
   );

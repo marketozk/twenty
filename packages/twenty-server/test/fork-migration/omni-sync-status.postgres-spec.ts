@@ -1,3 +1,5 @@
+import { CalendarEventWebhookSyncService } from 'src/modules/connected-account-sync-webhooks/calendar-event-webhook-sync/services/calendar-event-webhook-sync.service';
+import { WebhookSyncTriggerService } from 'src/modules/connected-account/webhook-subscription-manager/services/webhook-sync-trigger.service';
 import { BlocklistReimportMessagesJob } from 'src/modules/messaging/blocklist-manager/jobs/messaging-blocklist-reimport-messages.job';
 import { BlocklistReimportCalendarEventsJob } from 'src/modules/calendar/blocklist-manager/jobs/blocklist-reimport-calendar-events.job';
 import { MessagingMessageListFetchCronJob } from 'src/modules/messaging/message-import-manager/crons/jobs/messaging-message-list-fetch.cron.job';
@@ -2754,3 +2756,234 @@ it.each(['ordinary', 'parent', 'disabled', 'stage', 'owned', 'unknown'])(
       );
   },
 );
+
+it.each([
+  'ordinary',
+  'legacy',
+  'wrong-parent',
+  'protected',
+  'disabled',
+  'busy',
+  'parent-before-read',
+  'parent-after-fetch',
+  'disabled-after-fetch',
+  'owned-after-fetch',
+  'handled-error',
+  'empty',
+  'deferred',
+  'unknown-schedule',
+  'unknown-read',
+  'unknown-inline',
+])(
+  'calendar webhook keeps scheduled account through inline import: %s',
+  async (mutation) => {
+    const ws = fixture.workspaceId;
+    const channelId =
+      mutation === 'protected' ? protectedIds.calendar : ordinary.calendar;
+    const accountId =
+      mutation === 'protected' ? protectedIds.account : ordinary.account;
+    const other = await seed();
+    const repository = runtime.getRepository(CalendarChannelEntity);
+    if (mutation === 'wrong-parent')
+      await repository.update(channelId, { connectedAccountId: other.account });
+    if (mutation === 'disabled')
+      await repository.update(channelId, { isSyncEnabled: false });
+    if (mutation === 'busy')
+      await repository.update(channelId, {
+        syncStage: CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_ONGOING,
+      });
+    const installCommitFault = (index: number, reparent = false) => {
+      const create = runtime.createQueryRunner.bind(runtime);
+      let commits = 0;
+      jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+        const runner = create(),
+          commit = runner.commitTransaction.bind(runner);
+        runner.commitTransaction = async () => {
+          await commit();
+          commits++;
+          if (commits === index) {
+            if (reparent)
+              await runtime.query(
+                'UPDATE core."calendarChannel" SET "connectedAccountId"=$1 WHERE id=$2',
+                [other.account, channelId],
+              );
+            else throw new Error('webhook calendar ACK lost');
+          }
+        };
+        return runner;
+      });
+    };
+    if (mutation === 'unknown-schedule') installCommitFault(1);
+    if (mutation === 'unknown-read') installCommitFault(2);
+    if (mutation === 'parent-before-read') installCommitFault(1, true);
+    const fetchCalendarEvents = jest
+      .fn()
+      .mockImplementation(
+        async (
+          channel: CalendarChannelEntity,
+          account: ConnectedAccountEntity,
+        ) => {
+          expect(channel.connectedAccountId).toBe(accountId);
+          expect(account.id).toBe(accountId);
+          expect(channel.syncStage).toBe(
+            CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED,
+          );
+          await repository.update(channelId, {
+            syncStage:
+              mutation === 'handled-error'
+                ? CalendarChannelSyncStage.FAILED
+                : CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_PENDING,
+          });
+          if (mutation === 'parent-after-fetch')
+            await repository.update(channelId, {
+              connectedAccountId: other.account,
+            });
+          if (mutation === 'disabled-after-fetch')
+            await repository.update(channelId, { isSyncEnabled: false });
+          if (mutation === 'owned-after-fetch') {
+            await runtime
+              .getRepository(ConnectedAccountEntity)
+              .update(accountId, { provider: ConnectedAccountProvider.APP });
+            await bootstrap(ordinary);
+          }
+          if (mutation === 'unknown-inline') installCommitFault(1);
+        },
+      );
+    const processCalendarEventsImport = jest.fn().mockResolvedValue(undefined);
+    const service = new CalendarEventWebhookSyncService(
+      {
+        getSetLength: jest
+          .fn()
+          .mockResolvedValue(
+            mutation === 'empty' ? 0 : mutation === 'deferred' ? 100000 : 1,
+          ),
+      } as never,
+      repository,
+      { fetchCalendarEvents } as never,
+      { processCalendarEventsImport } as never,
+    );
+    const action = service.processCalendarEventWebhookSync({
+      calendarChannelId: channelId,
+      workspaceId: ws,
+      ...(mutation === 'legacy'
+        ? {}
+        : { expectedConnectedAccountId: accountId }),
+    });
+    if (mutation.startsWith('unknown-'))
+      await expect(action).rejects.toThrow(
+        'OMNI_CORE_TRANSACTION_OUTCOME_UNKNOWN',
+      );
+    else await action;
+    const shouldFetch = ![
+      'wrong-parent',
+      'protected',
+      'disabled',
+      'busy',
+      'parent-before-read',
+      'unknown-schedule',
+      'unknown-read',
+    ].includes(mutation);
+    expect(fetchCalendarEvents).toHaveBeenCalledTimes(shouldFetch ? 1 : 0);
+    expect(processCalendarEventsImport).toHaveBeenCalledTimes(
+      ['ordinary', 'legacy'].includes(mutation) ? 1 : 0,
+    );
+    const current = await repository.findOneByOrFail({ id: channelId });
+    if (['ordinary', 'legacy'].includes(mutation)) {
+      const [channel, account, workspace] =
+        processCalendarEventsImport.mock.calls[0];
+      expect(channel.connectedAccountId).toBe(accountId);
+      expect(account.id).toBe(accountId);
+      expect(workspace).toBe(ws);
+      expect(channel.syncStage).toBe(
+        CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_SCHEDULED,
+      );
+    }
+    if (
+      [
+        'parent-after-fetch',
+        'disabled-after-fetch',
+        'owned-after-fetch',
+        'empty',
+        'deferred',
+      ].includes(mutation)
+    )
+      expect(current.syncStage).toBe(
+        CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_PENDING,
+      );
+    if (['wrong-parent', 'protected', 'disabled'].includes(mutation))
+      expect(current.syncStage).toBe(
+        CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING,
+      );
+    if (mutation === 'handled-error')
+      expect(current.syncStage).toBe(CalendarChannelSyncStage.FAILED);
+  },
+);
+it('old-account message notification cannot schedule a new parent', async () => {
+  const other = await seed();
+  await repo('message').update(ordinary.message, {
+    connectedAccountId: other.account,
+  });
+  const processMessageListFetch = jest.fn();
+  const service = new MessagingMessageWebhookSyncService(
+    runtime.getRepository(MessageChannelEntity),
+    messaging,
+    { processMessageListFetch } as never,
+  );
+  await service.processMessagingMessageWebhookSync({
+    messageChannelId: ordinary.message,
+    workspaceId: fixture.workspaceId,
+    expectedConnectedAccountId: ordinary.account,
+  });
+  expect(processMessageListFetch).not.toHaveBeenCalled();
+  expect(
+    (await repo('message').findOneByOrFail({ id: ordinary.message })).syncStage,
+  ).toBe(MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING);
+});
+for (const kind of ['message', 'calendar'] as const) {
+  it(
+    kind +
+      ' webhook dispatch isolates account dedup and retains legacy payload',
+    async () => {
+      const add = jest.fn().mockResolvedValue(undefined);
+      const service = new WebhookSyncTriggerService(
+        { add } as never,
+        { isWorkspaceServiceableFromCache: async () => true } as never,
+      );
+      const trigger =
+        kind === 'message'
+          ? service.triggerMessagingSync.bind(service)
+          : service.triggerCalendarSync.bind(service);
+      const otherAccount = randomUUID();
+      await trigger(ordinary[kind], fixture.workspaceId, ordinary.account);
+      await trigger(ordinary[kind], fixture.workspaceId, otherAccount);
+      await trigger(ordinary[kind], fixture.workspaceId);
+      expect(add).toHaveBeenCalledTimes(3);
+      expect(
+        add.mock.calls.map((call) => call[1].expectedConnectedAccountId),
+      ).toEqual([ordinary.account, otherAccount, undefined]);
+      const ids = add.mock.calls.map((call) => call[2].deduplication.id);
+      expect(new Set(ids).size).toBe(3);
+      expect(ids[0]).toBe(ids[2] + ':' + ordinary.account);
+      expect(ids[1]).toBe(ids[2] + ':' + otherAccount);
+      expect(add.mock.calls[2][1]).toEqual({
+        workspaceId: fixture.workspaceId,
+        [kind + 'ChannelId']: ordinary[kind],
+      });
+      for (const call of add.mock.calls)
+        expect(call[2].deduplication.keepLastIfActive).toBe(true);
+    },
+  );
+  it(kind + ' webhook inactive workspace does not enqueue', async () => {
+    const add = jest.fn();
+    const service = new WebhookSyncTriggerService(
+      { add } as never,
+      { isWorkspaceServiceableFromCache: async () => false } as never,
+    );
+    const trigger =
+      kind === 'message'
+        ? service.triggerMessagingSync.bind(service)
+        : service.triggerCalendarSync.bind(service);
+    await trigger(ordinary[kind], fixture.workspaceId, ordinary.account);
+    expect(add).not.toHaveBeenCalled();
+  });
+}

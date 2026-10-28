@@ -1,0 +1,20 @@
+{
+  "baseCommit": "ef1866c63c0c55e34d1fe7c4e47e98a199162e0c",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/connected-account-sync-webhooks/calendar-event-webhook-sync/services/calendar-event-webhook-sync.service.ts": "92f616b6cf85abcf22aab284d611dca831803b12c24c45b0cd468b8d03adbd1f",
+    "packages/twenty-server/src/modules/connected-account-sync-webhooks/calendar-event-webhook-sync/types/calendar-event-webhook-sync-job-data.type.ts": "1741d681a74952f8eb7ce33d99de9f757e59ae092993eb3d2d90a17283482266",
+    "packages/twenty-server/src/modules/connected-account-sync-webhooks/drivers/google/google-calendar-notification.handler.ts": "a55afa8b396d9507c4e7c58a2fa424603514e24657ef9f558f24f4ee564eb705",
+    "packages/twenty-server/src/modules/connected-account-sync-webhooks/drivers/google/google-messaging-notification.handler.ts": "442cef03d4d6276a0321d707a2374a6f785a98a44c2206291cedf753f4526caa",
+    "packages/twenty-server/src/modules/connected-account-sync-webhooks/drivers/microsoft/microsoft-calendar-notification.handler.ts": "d110350877b081a2832777a86760a9515e575fe6e0ad42557449e5bc12e0d14d",
+    "packages/twenty-server/src/modules/connected-account-sync-webhooks/drivers/microsoft/microsoft-messaging-notification.handler.ts": "76e67a78ae3576b5d022342e2cfc6c8cb40157ba2c0fe1ba963e34272e8b86c3",
+    "packages/twenty-server/src/modules/connected-account-sync-webhooks/messaging-message-webhook-sync/services/messaging-message-webhook-sync.service.ts": "f199d97610cdeb2e5e78ebf0b37b3e09cbd38321ebf1b447b1e66e443ca41f46",
+    "packages/twenty-server/src/modules/connected-account-sync-webhooks/messaging-message-webhook-sync/types/messaging-message-webhook-sync-job-data.type.ts": "db64170cdbdb6c49ee2ce331b2be43e46324183d792e2c34c8bf93b9583f1f9f",
+    "packages/twenty-server/src/modules/connected-account/webhook-subscription-manager/services/webhook-sync-trigger.service.ts": "0fa89adc1f0078ddb684d0d4910f080448472ab438a4c83a4f00052ff5c537aa",
+    "packages/twenty-server/src/modules/messaging/common/services/message-channel-sync-status.service.ts": "0816b1bfbd62a6b0276e2170ae3255618b2e7256c0f9a9ffd7c3e08b6e3c0421",
+    "packages/twenty-server/src/modules/omnichannel/services/schedule-ordinary-message-channels.ts": "9e0a1f6b7987d9407176f18348c914e80120a023cb4f64da946c41ae361989f3",
+    "packages/twenty-server/src/modules/omnichannel/services/schedule-ordinary-metadata-channels.ts": "d6569a7bef6fffbc98c700a915b65313e7663f07c96c028dc7f9b6266e45dc24",
+    "packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts": "baffa2896f4ba8b8e2cc668979729015c2a14ba4dcbbd0bfe0cdc3b6d77a2c30"
+  }
+}

@@ -339,6 +339,7 @@ export class MessageChannelSyncStatusService {
   public async markAsMessagesListFetchScheduledIfPending(
     messageChannelIds: string[],
     workspaceId: string,
+    expectedConnectedAccountId?: string,
   ): Promise<{ id: string; connectedAccountId: string }[]> {
     if (!messageChannelIds.length) {
       return [];
@@ -352,6 +353,7 @@ export class MessageChannelSyncStatusService {
         pending: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
         scheduled: MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,
       },
+      expectedConnectedAccountId,
     );
   }
 
