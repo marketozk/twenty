@@ -1,16 +1,17 @@
 # Дорожная карта проекта
 
-LOG-061 / ROB-764 In Progress: folder actions фиксируют текущие parent/action,
-точные версии папки/канала и полную иерархию. Каждая порция удаления связей и сообщений
-использует одну native transaction; stale прекращает работу. Finalizer повторно
-проверяет snapshot и ownership; папка удаляется только без оставшихся junctions.
-Gmail import ограничен выбранной меткой с полным именем; неполная иерархия отклоняется.
-Проверено 226 targeted Jest/6 suites +13 Gmail +26 guards =265 PASS,
-37 новых PG cases заменили14 устаревших mock cases. Typecheck 265 roots:
-190/190, 0 new/changed-code. Все7 migrations неизменны.
-[Доказательства](../implementation/log061/README.md). Две находки scoped review исправлены и повторно проверены.
-Последний full fork: LOG056,1881 tests/71 suites. Далее sync-folder discovery,
-provider predicate и итоговый T22. ROB-764 остаётся In Progress.
+LOG-062 / ROB-764 In Progress: folder discovery получает свежий snapshot
+account/channel/folders, выполняет provider request вне транзакции и повторно
+проверяет ownership, identity, policy, состав папок и точные версии перед записью.
+Все изменения и readback используют один manager; pending actions возвращаются
+из БД без синтетического NONE. Stale response прекращает downstream list-fetch.
+IMAP endpoint/external account identity также входят в snapshot; unknown commit
+не маскируется initial-sync catch.
+Проверено 236 targeted Jest/5 suites +26 guards =262 PASS,
+38 новых cases. Typecheck 267 roots: 190/190, 0 new/changed-code.
+Все7 migrations неизменны. [Доказательства](../implementation/log062/README.md). Scoped review finding исправлена.
+Последний full fork: LOG056,1881 tests/71 suites. Далее derived provider ownership,
+downstream lifecycle и итоговый T22/ROB764 acceptance; этап остаётся In Progress.
 Демо прежнее, GitHub Actions не используется.
 
 Полный объём описан в [requirements.md](../requirements.md). Переход к следующей фазе подтверждается результатом предыдущей. Даты и трудозатраты появятся после исследования; сейчас их нельзя обоснованно назначить.

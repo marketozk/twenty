@@ -13,6 +13,7 @@ import {
   assertConnectedAccountWriteApplied,
 } from 'src/engine/metadata-modules/connected-account/utils/ordinary-connected-account-write.util';
 import { v4 } from 'uuid';
+import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
 
 import { CreateCalendarChannelService } from 'src/engine/core-modules/auth/services/create-calendar-channel.service';
 import { CreateMessageChannelService } from 'src/engine/core-modules/auth/services/create-message-channel.service';
@@ -228,6 +229,8 @@ export class ImapSmtpCalDavApiService {
             workspaceId,
           });
         } catch (error) {
+          if (error instanceof OmniCoreTransactionOutcomeUnknownError)
+            throw error;
           this.logger.warn(
             `Initial folder sync failed for account ${newOrExistingAccountId}, will retry on next scheduled sync: ${error instanceof Error ? error.message : String(error)}`,
           );

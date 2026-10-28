@@ -28,6 +28,7 @@ import { ConnectedAccountEntity } from 'src/engine/metadata-modules/connected-ac
 import { bootstrapOmniAccountBinding } from 'src/modules/omnichannel/services/omni-binding-bootstrap';
 import { createOmniNativeMessageFixture } from 'test/fork-migration/omni-native-message.fixture';
 import { ordinaryConnectedAccountWriteWhere } from 'src/engine/metadata-modules/connected-account/utils/ordinary-connected-account-write.util';
+import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
 import { CreateConnectedAccountService } from 'src/engine/core-modules/auth/services/create-connected-account.service';
 import { UpdateConnectedAccountOnReconnectService } from 'src/engine/core-modules/auth/services/update-connected-account-on-reconnect.service';
 import { CreateSsoConnectedAccountService } from 'src/engine/core-modules/auth/services/create-sso-connected-account.service';
@@ -867,6 +868,52 @@ describe('full Google/Microsoft reconnect callers', () => {
   );
 });
 
+it.each([false, true])(
+  'IMAP initial folder sync preserves unknown commit=%s',
+  async (unknown) => {
+    await repository().update(accountId, {
+      provider: ConnectedAccountProvider.IMAP_SMTP_CALDAV,
+    });
+    const failure = unknown
+      ? new OmniCoreTransactionOutcomeUnknownError(new Error('ACK lost'))
+      : new Error('ordinary discovery failure');
+    const warn = jest.fn();
+    const service = makeService(ImapSmtpCalDavApiService.prototype, {
+      connectedAccountRepository: repository(),
+      userWorkspaceRepository,
+      messageChannelRepository: {
+        findOne: jest
+          .fn()
+          .mockResolvedValueOnce(null)
+          .mockResolvedValue({ id: channelId }),
+      },
+      calendarChannelRepository: { findOne: async () => null },
+      connectedAccountTokenEncryptionService: encryption,
+      accountsToReconnectService: { removeAccountToReconnect: jest.fn() },
+      createMessageChannelService: { createMessageChannel: jest.fn() },
+      syncMessageFoldersService: {
+        syncMessageFolders: async () => {
+          throw failure;
+        },
+      },
+      logger: { warn },
+    });
+    const work = service.upsertConnectedAccount({
+      workspaceId: fixture.workspaceId,
+      userWorkspaceId: memberId,
+      handle: 'ordinary',
+      existingAccount: await read(),
+      connectionParameters: { IMAP: {} } as never,
+    });
+    if (unknown) {
+      await expect(work).rejects.toBe(failure);
+      expect(warn).not.toHaveBeenCalled();
+    } else {
+      await expect(work).resolves.toBe(accountId);
+      expect(warn).toHaveBeenCalledTimes(1);
+    }
+  },
+);
 describe('retained bindings from pre-invariant snapshots', () => {
   it.each([
     ConnectedAccountProvider.GOOGLE,

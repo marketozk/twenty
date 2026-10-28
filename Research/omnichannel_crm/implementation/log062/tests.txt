@@ -1,0 +1,101 @@
+[32m[Nest] 1  - [39m10/28/2026, 12:27:33 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggering message list fetch for workspace fb14aa6d-9815-48f6-8709-33f25accd565 (all pending channels)[39m
+[32m[Nest] 1  - [39m10/28/2026, 12:27:33 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mFound 2 message channel(s) to process[39m
+[32m[Nest] 1  - [39m10/28/2026, 12:27:33 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggered fetch for message channel 473f9931-f719-44c4-8fc9-bf5d6f3e5218[39m
+[32m[Nest] 1  - [39m10/28/2026, 12:27:33 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mSuccessfully triggered 1 message list fetch job(s)[39m
+[32m[Nest] 1  - [39m10/28/2026, 12:27:34 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggering message list fetch for workspace fb14aa6d-9815-48f6-8709-33f25accd565 (all pending channels)[39m
+[32m[Nest] 1  - [39m10/28/2026, 12:27:34 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mFound 2 message channel(s) to process[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts (21.196 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-account-provider-writes.postgres-spec.ts (7.119 s)
+[32m[Nest] 1  - [39m10/28/2026, 12:27:44 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 26e2adf3-6b6d-4197-a876-54e834eb909d Deleting 1 message channel message associations[39m
+[Nest] 1  - 10/28/2026, 12:27:48 AM   ERROR [MessagingProcessFolderActionsService] WorkspaceId: 26e2adf3-6b6d-4197-a876-54e834eb909d, MessageChannelId: 29ba61ea-955d-4696-857d-ee675b3b9339, FolderId: 6ef04899-e351-4464-875a-52f26f11f3df - Error processing folder action: ordinary provider failure
+Error: ordinary provider failure
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:318:10)
+    at Runtime._execModule (/tools/node_modules/jest-runtime/build/index.js:1439:24)
+    at Runtime._loadModule (/tools/node_modules/jest-runtime/build/index.js:1022:12)
+    at Runtime.requireModule (/tools/node_modules/jest-runtime/build/index.js:882:12)
+    at jestAdapter (/tools/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:77:13)
+    at runTestInternal (/tools/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/tools/node_modules/jest-runner/build/runTest.js:444:34)
+[Nest] 1  - 10/28/2026, 12:27:48 AM   ERROR [MessagingProcessFolderActionsService] WorkspaceId: 26e2adf3-6b6d-4197-a876-54e834eb909d, MessageChannelId: 563e788b-4c41-433b-92ae-c471d702a980, FolderId: c12b4ede-11af-4144-9914-bbe51cc952fa - Error processing folder action: Unexpected folder processing failure
+Error: Unexpected folder processing failure
+    at /source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:128:19
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:323:12
+[Nest] 1  - 10/28/2026, 12:27:49 AM   ERROR [MessagingProcessFolderActionsService] WorkspaceId: 26e2adf3-6b6d-4197-a876-54e834eb909d, MessageChannelId: 4e36eec4-d966-4ef4-af89-080e61bbb5f3, FolderId: e2daba3f-6f41-4390-b72e-089f13c4a893 - Error processing folder action: permission denied for table omniAccountBinding
+QueryFailedError: permission denied for table omniAccountBinding
+    at PostgresQueryRunner.query (/app/src/driver/postgres/PostgresQueryRunner.ts:325:19)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at DataSource.query (/app/src/data-source/DataSource.ts:541:20)
+    at findOwnedMetadataIds (/source/packages/twenty-server/src/modules/omnichannel/services/find-omni-owned-metadata-ids.ts:78:18)
+    at /source/packages/twenty-server/src/modules/omnichannel/services/with-ordinary-metadata-channels.ts:62:19
+    at withOmniNativeOwnershipTransaction (/source/packages/twenty-server/src/modules/omnichannel/services/omni-core-transaction.ts:41:14)
+    at /source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:68:30
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:332:12)
+[32m[Nest] 1  - [39m10/28/2026, 12:27:49 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 26e2adf3-6b6d-4197-a876-54e834eb909d Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/28/2026, 12:27:49 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 26e2adf3-6b6d-4197-a876-54e834eb909d Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/28/2026, 12:27:50 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 26e2adf3-6b6d-4197-a876-54e834eb909d Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/28/2026, 12:27:51 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 26e2adf3-6b6d-4197-a876-54e834eb909d Deleting 200 message channel message associations[39m
+[Nest] 1  - 10/28/2026, 12:27:51 AM   ERROR [MessagingProcessFolderActionsService] WorkspaceId: 26e2adf3-6b6d-4197-a876-54e834eb909d, MessageChannelId: 64d5be70-e3f5-4b93-8d1f-cd34ec1a04af, FolderId: 5dd918e2-8117-417e-abe8-504ca1bda7c5 - Error processing folder action: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL
+Error: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL
+    at computeGmailExcludeSearchFilter (/source/packages/twenty-server/src/modules/messaging/message-import-manager/drivers/gmail/utils/compute-gmail-exclude-search-filter.util.ts:52:13)
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:608:40)
+    at /tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:397:39
+    at Object.<anonymous> (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:404:13)
+    at Object.mockConstructor [as getMessageListWithoutCursor] (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:148:19)
+    at MessagingImportFolderMessagesService.getMessageListWithoutCursor (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-import-folder-messages.service.ts:34:49)
+    at getFolderMessageIdsToImport (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:98:65)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:616:12
+[Nest] 1  - 10/28/2026, 12:27:52 AM   ERROR [MessagingProcessFolderActionsService] WorkspaceId: 26e2adf3-6b6d-4197-a876-54e834eb909d, MessageChannelId: e8c0076c-7090-43b4-b997-0cc51b98dc51, FolderId: 226e892f-86db-4f58-a183-16acc88f6652 - Error processing folder action: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL
+Error: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL
+    at computeGmailExcludeSearchFilter (/source/packages/twenty-server/src/modules/messaging/message-import-manager/drivers/gmail/utils/compute-gmail-exclude-search-filter.util.ts:52:13)
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:608:40)
+    at /tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:397:39
+    at Object.<anonymous> (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:404:13)
+    at Object.mockConstructor [as getMessageListWithoutCursor] (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:148:19)
+    at MessagingImportFolderMessagesService.getMessageListWithoutCursor (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-import-folder-messages.service.ts:34:49)
+    at getFolderMessageIdsToImport (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:98:65)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:616:12
+[Nest] 1  - 10/28/2026, 12:27:52 AM   ERROR [MessagingProcessFolderActionsService] WorkspaceId: 26e2adf3-6b6d-4197-a876-54e834eb909d, MessageChannelId: 9603543f-b76b-4c3b-b281-fecdab93d549, FolderId: 25aa9902-1594-41a7-a52f-c9531a6cc23c - Error processing folder action: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL
+Error: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL
+    at computeGmailExcludeSearchFilter (/source/packages/twenty-server/src/modules/messaging/message-import-manager/drivers/gmail/utils/compute-gmail-exclude-search-filter.util.ts:52:13)
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:639:40)
+    at /tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:397:39
+    at Object.<anonymous> (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:404:13)
+    at Object.mockConstructor [as getMessageListWithoutCursor] (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:148:19)
+    at MessagingImportFolderMessagesService.getMessageListWithoutCursor (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-import-folder-messages.service.ts:34:49)
+    at getFolderMessageIdsToImport (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:98:65)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:647:12
+[Nest] 1  - 10/28/2026, 12:27:52 AM   ERROR [MessagingProcessFolderActionsService] WorkspaceId: 26e2adf3-6b6d-4197-a876-54e834eb909d, MessageChannelId: 0c0cd824-a2ae-46d7-83cd-5ff606ac82c0, FolderId: 8297d8e0-d1ce-43d5-8872-6be660c9f5ea - Error processing folder action: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL
+Error: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL
+    at computeGmailExcludeSearchFilter (/source/packages/twenty-server/src/modules/messaging/message-import-manager/drivers/gmail/utils/compute-gmail-exclude-search-filter.util.ts:52:13)
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:639:40)
+    at /tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:397:39
+    at Object.<anonymous> (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:404:13)
+    at Object.mockConstructor [as getMessageListWithoutCursor] (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:148:19)
+    at MessagingImportFolderMessagesService.getMessageListWithoutCursor (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-import-folder-messages.service.ts:34:49)
+    at getFolderMessageIdsToImport (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:98:65)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:647:12
+[Nest] 1  - 10/28/2026, 12:27:52 AM   ERROR [MessagingProcessFolderActionsService] WorkspaceId: 26e2adf3-6b6d-4197-a876-54e834eb909d, MessageChannelId: fff47994-0014-4c52-944d-c5e58bf1ebef, FolderId: 10497317-2167-475d-adde-7defca843272 - Error processing folder action: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL
+Error: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL
+    at computeGmailExcludeSearchFilter (/source/packages/twenty-server/src/modules/messaging/message-import-manager/drivers/gmail/utils/compute-gmail-exclude-search-filter.util.ts:52:13)
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:639:40)
+    at /tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:397:39
+    at Object.<anonymous> (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:404:13)
+    at Object.mockConstructor [as getMessageListWithoutCursor] (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:148:19)
+    at MessagingImportFolderMessagesService.getMessageListWithoutCursor (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-import-folder-messages.service.ts:34:49)
+    at getFolderMessageIdsToImport (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:98:65)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:647:12
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts (10.876 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-folder-metadata.postgres-spec.ts (6.961 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-folder-discovery.postgres-spec.ts (8.938 s)
+
+Test Suites: 5 passed, 5 total
+Tests:       236 passed, 236 total
+Snapshots:   0 total
+Time:        55.229 s
+Ran all test suites matching /omni-folder-discovery|omni-account-provider-writes|omni-sync-status|omni-folder-actions|omni-folder-metadata/i.

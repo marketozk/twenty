@@ -1757,3 +1757,45 @@ Demo/SaleBot unchanged; GitHub Actions unused. Applied ai-dev-workflow,
 behavioral-guardrails, server-schrodinger and scoped read-only review.
 
 LOG-061 publication: complete code be4ae869a74e43c5aedb5a07ce627ff8ad2f8c86 pushed; GitHub ref verified through API. Evidence/test retirement was published immediately before it in4fb54bfc because the deleted-path staging rejected the first source list; history was not rewritten. Linear comment08af6696-01d6-4dc1-958d-2a7c1182b11a; description/comment and all11 project states independently read back. ROB764 In Progress. See implementation/log061/publication.json.
+
+
+## LOG-062 — guarded folder discovery reconciliation (28.10.2026)
+
+Research confirmed SyncMessageFoldersService applied provider responses using the
+caller's stale folder list through separate repository writes. Its synthetic return
+projection also replaced retained pending IMPORT/DELETION with NONE. Four callers
+were checked: list-fetch consumes results; Google/Microsoft/IMAP initial sync ignores
+them and runs after account transaction. The selected minimal boundary reuses the
+existing ordinary-channel owner and scoped repository.withManager; no new schema.
+
+Before network: fresh ownership, account/channel/folder locks and exact6 versions,
+current account identity/import policy/folder rows. During network: no open transaction.
+After response: repeat the same owner and reject changed snapshot, then compute delta,
+write every folder through the same manager and return actual rows after known commit.
+Folder-set changes reject stale discovery rather than deleting newly created folders.
+Pending actions remain as stored. Null stops list-fetch before subsequent provider,
+cache and completion effects. Existing markAsMessagesListFetchOngoing precedes
+discovery and is not rolled back by a later null result.
+
+Scoped review identified same-account IMAP endpoint replacement while old discovery
+was running. Snapshot now conservatively includes full connectionParameters and
+externalAccountId, while OAuth token refresh remains excluded. Regression verifies
+old endpoint response refusal; re-review found no confirmed blockers. IMAP initial
+sync explicitly rethrows core unknown commit; ordinary provider failure warning remains.
+
+236 targeted Jest/5 suites +26 guards=262 PASS.
+35 new discovery PG cases plus3 actual caller regressions cover current readback,
+pending actions,3 provider dispatches, parent/policy/identity/endpoint changes,
+folder-set changes, ownership introduction, protected junction, permission failure,
+SQL rollback, lost commit ACK and concurrent duplicate prevention. Initial2 failures
+were missing UUID-default in the minimal test table; fixture corrected to match the
+real generated-ID schema. No production migration was necessary.
+Typecheck 267 roots:190/190,0 new/changed-code.
+7 migrations unchanged; source LF hashes matched. Last full fork LOG0561881/71;
+no new full fork/full server typecheck/full Claude pass or ROB764 acceptance claimed.
+
+[Evidence](implementation/log062/README.md). [Remaining writers](implementation/rob764-metadata-writer-inventory.md).
+Next: derived provider ownership with actual writer serialization, then remaining
+list-fetch cache/cleanup boundaries and final T22 acceptance. Demo/SaleBot unchanged,
+GitHub Actions unused. Applied ai-dev-workflow, behavioral-guardrails,
+server-schrodinger and scoped read-only review.

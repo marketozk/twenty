@@ -112,6 +112,8 @@ export class MessagingMessageListFetchService {
               workspaceId,
             });
 
+          if (messageFolders === null) return;
+
           const messageFoldersToSync = messageFolders.filter(
             (folder) =>
               folder.pendingSyncAction === MessageFolderPendingSyncAction.NONE,

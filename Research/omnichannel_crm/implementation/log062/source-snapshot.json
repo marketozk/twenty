@@ -1,0 +1,13 @@
+{
+  "baseCommit": "6fc3ba6f3ddf94f4368700a4159db5905dcc180a",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/connected-account/services/imap-smtp-caldav-apis.service.ts": "b06b4ecf500e609773d44a6882afb58fffea9de85e9c3d765ce717a32edca1ba",
+    "packages/twenty-server/src/modules/messaging/message-folder-manager/services/sync-message-folders.service.ts": "37a515429edc95c26ee2a2b5d85fb2f86a9d3f18bf35247aff784ff952eb7081",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-message-list-fetch.service.ts": "16a7dc515e02dee943562f11b563858a1ffa9671657fbca8a5a7e7f7a88f830f",
+    "packages/twenty-server/test/fork-migration/omni-account-provider-writes.postgres-spec.ts": "c0570841b1b85668f96239cf899cbe3d864d85737c3a8c45514152d2ea758b40",
+    "packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts": "c8d84938130d0f4bc70fac1ad3a15d4ab7551b3ae6098c6bbb6800076762a46a",
+    "packages/twenty-server/test/fork-migration/omni-folder-discovery.postgres-spec.ts": "1debe8571334e563ed60dc539a0757dcb4de9f0ea3a719388e080d716566db95"
+  }
+}

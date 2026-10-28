@@ -1423,6 +1423,42 @@ it('native cleanup unknown outcome bypasses import failure classification', asyn
   expect(cache.mdel).not.toHaveBeenCalled();
   expect(broadcast.broadcast).not.toHaveBeenCalled();
 });
+it('stale folder discovery stops downstream fetch/cache/completion', async () => {
+  const fetch = jest.fn(),
+    completed = jest.fn();
+  const service = makeService(MessagingMessageListFetchService.prototype, {
+    workspaceOrmManager: {
+      executeInWorkspaceContext: async (work: () => Promise<unknown>) => work(),
+    },
+    messageChannelSyncStatusService: {
+      markAsMessagesListFetchOngoing: jest.fn(),
+      markAsMessageSyncCompleted: completed,
+    },
+    syncMessageFoldersService: { syncMessageFolders: async () => null },
+    messagingGetMessageListService: { getMessageLists: fetch },
+    cacheStorage: cache,
+    messageImportErrorHandlerService: {
+      handleDriverException: async (error: unknown) => {
+        throw error;
+      },
+    },
+    logger: { log: jest.fn(), debug: jest.fn(), error: jest.fn() },
+  });
+  const before = await repo('message').findOneByOrFail({
+    id: ordinary.message,
+  });
+  await service.processMessageListFetch(
+    {
+      ...before,
+      pendingGroupEmailsAction: 'NONE',
+      messageFolders: [],
+    } as never,
+    fixture.workspaceId,
+  );
+  expect(fetch).not.toHaveBeenCalled();
+  expect(completed).not.toHaveBeenCalled();
+  expect(cache.mdel).not.toHaveBeenCalled();
+});
 it('stale group work aborts list fetch before folder/status/cache side effects', async () => {
   const folders = { processFolderActions: jest.fn() },
     groups = { processGroupEmailActions: jest.fn().mockResolvedValue(false) };
