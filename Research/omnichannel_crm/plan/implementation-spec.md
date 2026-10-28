@@ -854,3 +854,14 @@ deletedRecord запрещён. Это сохранённое требовани
 Public DESTROY/MERGE и FK side effects ещё не включены: blanket отказ обычных
 связанных записей изменил бы прежний контракт SET_NULL. Следом аудит actual SET_NULL
 для covered child records без замены PostgreSQL cascade ручным repository.update.
+
+LOG106 расширяет internal delete на direct single-column SET_NULL references к id
+для covered child metadata того же workspace с совпадающим relation target. Sorted
+child locks + fresh before-image защищают от concurrent reparent. PostgreSQL делает
+сам UPDATE; original timestamps/events/permissions cascade не заменяются ручной
+мутацией. Actual deleted parent IDs определяют ожидаемые null columns; все остальные
+columns child должны совпадать, audit update агрегируется прежним context.
+Транзитивные FK effects на изменяемых child columns с существующими references
+отказываются до DELETE; unchanged child.id references не блокируют. CASCADE,
+SET_DEFAULT, composite/non-id keys, self-reference и unsupported children ещё вне
+покрытия. Public DESTROY/MERGE остаются отдельной работой.

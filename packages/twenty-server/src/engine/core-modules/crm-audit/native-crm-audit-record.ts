@@ -12,7 +12,7 @@ type QueryExecutor = {
     values: unknown[];
   }) => Promise<Record<string, unknown>[]>;
 };
-type WorkspaceTableShape = {
+export type NativeCrmAuditTableShape = {
   objectMetadataId: string;
   nameSingular: string;
   schemaName: string;
@@ -27,6 +27,7 @@ type WorkspaceTableShape = {
     }
   >;
 };
+type WorkspaceTableShape = NativeCrmAuditTableShape;
 
 const VALUE_TYPES = new Set([
   'TEXT',
@@ -59,7 +60,7 @@ export const isNativeCrmAuditObject = (
   Object.hasOwn(AUDITED_OBJECTS, name) &&
   AUDITED_OBJECTS[name] === universalIdentifier;
 
-type NativeCrmAuditObjectMetadata = {
+export type NativeCrmAuditObjectMetadata = {
   id: string;
   workspaceId: string;
   nameSingular: string;

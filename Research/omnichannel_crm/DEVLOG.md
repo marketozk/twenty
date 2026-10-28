@@ -3341,3 +3341,25 @@ Fixture ошибки и пять тестовых type diagnostics исправ�
 не включаем, поскольку он запрещал бы прежнее удаление компании с контактами.
 
 LOG105 publication: 6f7dae3049d2d6721b269dd22c5f200aa542ba69 pushed/API verified. ROB765 description and comment 7217300b-3a62-4d09-b29a-395283572986 independently read back; all 11 issue states match. Implementation continues.
+
+## LOG-106 — actual SET_NULL и аудит дочерних изменений
+
+LOG106: internal native delete аудирует direct single-column SET_NULL effects для covered child metadata в том же workspace. Child locks/readback, actual parent RETURNING и full-column postconditions сохраняют штатную семантику DB cascade. Транзитивные FK effects с существующими references отказываются. Public DESTROY/MERGE ещё не включены; ROB765 In Progress.
+
+954 tests/32 suites PASS (185.638s); 86 targeted/3 suites PASS. 19 новых PostgreSQL cases. 26 guards PASS; 10 migration checksums неизменны. Types 343/345 roots, 189/189 прежних диагностик, 0 новых/changed-code. 5 local/remote source hashes совпадают.
+
+Read-only review выявил неучтённый grandchild ON UPDATE CASCADE. Реальный PG test
+воспроизвёл успешное неаудированное изменение третьего уровня до исправления.
+Добавлена проверка incoming references к меняющимся child columns после child lock.
+Негативный composite regression и положительные unchanged-ID/empty-reference cases
+прошли; второй review не выявил новых блокеров. Оба reparent race порядка проверены.
+Три diagnostics явного типа массива plans исправлены без изменения поведения.
+[Доказательства](implementation/log106/README.md). Полный HTTP/JWT и image/deploy не заявляются.
+
+Далее оставшиеся native FK effects и публичные destroy/merge boundaries, metadata/roles,
+negative audit/health. ROB765 остаётся In Progress. Демо/сообщения/Actions не затронуты.
+
+Phase2 и rob765-progress приведены к текущему покрытию: исторические сводки вынесены
+из них в существующий DEVLOG/LOG evidence, критерии приёмки и rollback сохранены.
+Следом найденный статическим review native UPDATE/batch/lifecycle ON UPDATE cascade
+gap для нестандартных non-id/composite FK; implicit updatedAt/deletedAt учитываются.

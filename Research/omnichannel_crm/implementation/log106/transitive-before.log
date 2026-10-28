@@ -1,0 +1,58 @@
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-delete-set-null.postgres-spec.ts (11.159 s)
+  ✓ audits actual standard SET NULL effects without extra timestamps or child events (169 ms)
+  ✓ aggregates two FK effects on the same child across deleted parents (95 ms)
+  ✓ preserves the other parent FK and audits only the actual nulling fields (98 ms)
+  ✓ rolls back the complete cascade graph when audit insertion fails (134 ms)
+  ✓ rejects uncovered CASCADE action without partially nulling other records (130 ms)
+  ✓ rejects uncovered SET DEFAULT action without partially nulling other records (99 ms)
+  ✓ rejects uncovered RESTRICT action without partially nulling other records (96 ms)
+  ✓ rejects an unregistered child table even with SET NULL (92 ms)
+  ✓ rejects a child trigger changing unrelated nameFirstName (111 ms)
+  ✓ rejects a child trigger changing unrelated updatedAt (96 ms)
+  ✕ refuses transitive ON UPDATE CASCADE effects beyond the audited child (128 ms)
+  ✓ poisons caught SET NULL postcondition failures (129 ms)
+  ✓ keeps children unchanged when the parent delete is skipped (99 ms)
+  ✓ aggregates explicit child update and later cascade using first-before and final-after (108 ms)
+  ✓ does not null a child reparented before its lock is acquired (86 ms)
+  ✓ serializes reparenting after a committed SET NULL without recording the later change (62 ms)
+  ✓ reports actual lost COMMIT acknowledgement for the whole graph without replay (105 ms)
+
+  ● refuses transitive ON UPDATE CASCADE effects beyond the audited child
+
+    expect(received).rejects.toThrow()
+
+    Received promise resolved instead of rejected
+    Resolved to value: {"affected": 1, "generatedMaps": [], "raw": [{"id": "5c38b4fc-0d70-46ad-864d-2bf5cc979799"}]}
+
+      280 |   const before = await snapshot(),
+      281 |     grandchildren = await read('grandchild');
+    > 282 |   await expect(run((scope) => repo(scope).delete(parentId))).rejects.toThrow(
+          |         ^
+      283 |     'transitive',
+      284 |   );
+      285 |   expect(await snapshot()).toEqual(before);
+
+      at expect (../../../tools/node_modules/@jest/expect/node_modules/expect/build/index.js:113:15)
+      at Object.expect (test/fork-migration/crm-audit-delete-set-null.postgres-spec.ts:282:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 16 passed, 17 total
+Snapshots:   0 total
+Time:        11.263 s
+Ran all test suites matching /crm-audit-delete-set-null/i.
+Traceback (most recent call last):
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log106-target.py", line 6, in <module>
+    m['node'](['/tools/node_modules/jest/bin/jest.js','--config','/source/packages/twenty-server/jest-fork-migration.config.mjs','--runInBand','--testPathPattern='+pattern],{'FORK_MIGRATION_TEST_URL':'postgres://test_owner:isolated-test-only@postgres/'+s['database']})
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log106-run.py", line 16, in node
+    return ssh(cmd+['--entrypoint','node','marketozk/twenty:log088-server-fixed',*args])
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log106-run.py", line 4, in ssh
+    def ssh(args,**kw):return call(['ssh',HOST,shlex.join(args)],**kw)
+                              ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log106-run.py", line 3, in call
+    def call(args,**kw):return subprocess.run(args,check=True,**kw)
+                               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['ssh', 'root@176.114.84.194', 'docker run --rm --user 0:0 --network twenty-rob764-3e371e20ab394c2b-net --memory 3g --cpus 2 -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source:/source:ro -v /opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools:/tools:ro -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/out:/out:rw -e NODE_PATH=/out/tools/node_modules:/tools/node_modules:/app/node_modules -e FORK_MIGRATION_TEST_URL=postgres://test_owner:isolated-test-only@postgres/twenty_rob764_test_3e371e20ab394c2b --entrypoint node marketozk/twenty:log088-server-fixed /tools/node_modules/jest/bin/jest.js --config /source/packages/twenty-server/jest-fork-migration.config.mjs --runInBand --testPathPattern=crm-audit-delete-set-null']' returned non-zero exit status 1.

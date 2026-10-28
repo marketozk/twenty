@@ -6,6 +6,7 @@ import {
   assertNativeCrmAuditWriteSupported,
   assertNativeCrmDeleteFilesEmpty,
   captureNativeCrmAuditWriteData,
+  isNativeCrmAuditMetadata,
   readNativeCrmAuditRows,
   recordNativeCrmCreates,
   recordNativeCrmDeletes,
@@ -105,7 +106,7 @@ import {
   OMNI_NATIVE_REPOSITORIES,
 } from 'src/modules/omnichannel/services/assert-omni-native-write-unowned';
 import { findOmniProtectedParentIds } from 'src/modules/omnichannel/services/find-omni-protected-parent-ids';
-import { hasReferencingRecords } from 'src/engine/twenty-orm/utils/has-referencing-records';
+import { prepareNativeCrmDeleteEffects } from 'src/engine/core-modules/crm-audit/native-crm-audit-delete-effects';
 import { verifyOmniDetachedParent } from 'src/modules/omnichannel/services/verify-omni-detached-parent';
 import {
   buildInsertStatement,
@@ -1984,6 +1985,9 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
 
     const nativeAudit = getNativeCrmAuditContext(this.options.executor);
     let nativeAuditBefore: ObjectRecord[] = [];
+    let nativeDeleteEffects:
+      | ((deletedIds: string[]) => Promise<void>)
+      | undefined;
     if (this.requiresOmniOwnershipCheck || kind === 'delete' || nativeAudit) {
       const candidates = await this.buildEventSnapshotQueryBuilder(
         selectQueryBuilder,
@@ -2033,15 +2037,48 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
             this.options.tableShape,
             nativeAuditBefore,
           );
-          if (
-            await hasReferencingRecords(
-              query,
-              this.options.tableShape.schemaName,
-              this.options.tableShape.tableName,
-              locked.map((record) => record.id),
-            )
-          )
-            throw new Error('Native audit delete excludes referenced records');
+          nativeDeleteEffects = await prepareNativeCrmDeleteEffects(
+            this.options.executor,
+            this.options.tableShape,
+            locked.map((record) => record.id),
+            this.options.internalContext.workspaceId,
+            (schemaName, tableName) => {
+              if (schemaName !== this.options.tableShape.schemaName)
+                return undefined;
+              for (const metadata of Object.values(
+                this.options.internalContext.flatObjectMetadataMaps
+                  .byUniversalIdentifier,
+              )) {
+                if (
+                  !metadata ||
+                  !isNativeCrmAuditMetadata(
+                    metadata,
+                    this.options.internalContext.workspaceId,
+                  )
+                )
+                  continue;
+                const shape = this.options.tableShapeByObjectMetadataId(
+                  metadata.id,
+                );
+                if (shape.tableName !== tableName) continue;
+                return {
+                  shape,
+                  metadata,
+                  columnsReferencingParent: new Set(
+                    Object.values(shape.relationShapeByFieldName)
+                      .filter(
+                        (relation) =>
+                          relation.targetObjectMetadataId ===
+                            this.options.tableShape.objectMetadataId &&
+                          isDefined(relation.joinColumnName),
+                      )
+                      .map((relation) => relation.joinColumnName!),
+                  ),
+                };
+              }
+              return undefined;
+            },
+          );
         }
       }
       // Preserve the original predicate AND the captured set. Row-access clauses
@@ -2202,6 +2239,9 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
           )
         : recordsAfterWrite;
 
+    await nativeDeleteEffects?.(
+      mutationResult.generatedMaps.map((row) => row.id),
+    );
     if (kind === 'delete')
       await recordNativeCrmDeletes(
         this.options.executor,
