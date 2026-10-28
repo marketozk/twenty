@@ -53,42 +53,43 @@ export class BlocklistReimportMessagesJob {
             data.events.map((eventPayload) => eventPayload.properties.before),
           );
 
-        const messageChannelIdsToReset = new Set<string>();
-
         if (workspaceScopedHandles.length > 0) {
-          for (const messageChannelId of await this.findMessageChannelIdsToReset(
-            { workspaceId, connectedAccountIds: null },
-          )) {
-            messageChannelIdsToReset.add(messageChannelId);
-          }
-        }
-
-        for (const workspaceMemberId of handlesByWorkspaceMemberId.keys()) {
-          const connectedAccountIds =
-            await this.findWorkspaceMemberConnectedAccountIds({
-              workspaceMemberId,
-              workspaceId,
-            });
-
-          if (connectedAccountIds.length === 0) {
-            continue;
-          }
-
-          for (const messageChannelId of await this.findMessageChannelIdsToReset(
-            { workspaceId, connectedAccountIds },
-          )) {
-            messageChannelIdsToReset.add(messageChannelId);
-          }
-        }
-
-        if (messageChannelIdsToReset.size === 0) {
+          const channels = await this.findMessageChannelIdsToReset({
+            workspaceId,
+            connectedAccountIds: null,
+          });
+          await this.messagingChannelSyncStatusService.resetAndMarkAsMessagesListFetchPending(
+            channels.map(({ id }) => id),
+            workspaceId,
+          );
           return;
         }
-
-        await this.messagingChannelSyncStatusService.resetAndMarkAsMessagesListFetchPending(
-          [...messageChannelIdsToReset],
-          workspaceId,
-        );
+        for (const workspaceMemberId of handlesByWorkspaceMemberId.keys()) {
+          const selection = await this.findWorkspaceMemberConnectedAccountIds({
+            workspaceMemberId,
+            workspaceId,
+          });
+          if (!selection) continue;
+          const { userWorkspaceId, connectedAccountIds } = selection;
+          const channels = await this.findMessageChannelIdsToReset({
+            workspaceId,
+            connectedAccountIds,
+          });
+          const byAccount = new Map<string, string[]>();
+          for (const { id, connectedAccountId } of channels) {
+            const ids = byAccount.get(connectedAccountId) ?? [];
+            ids.push(id);
+            byAccount.set(connectedAccountId, ids);
+          }
+          for (const [connectedAccountId, ids] of byAccount) {
+            await this.messagingChannelSyncStatusService.resetAndMarkAsMessagesListFetchPending(
+              ids,
+              workspaceId,
+              connectedAccountId,
+              userWorkspaceId,
+            );
+          }
+        }
       },
       authContext,
       { lite: true },
@@ -101,7 +102,10 @@ export class BlocklistReimportMessagesJob {
   }: {
     workspaceMemberId: string;
     workspaceId: string;
-  }): Promise<string[]> {
+  }): Promise<{
+    userWorkspaceId: string;
+    connectedAccountIds: string[];
+  } | null> {
     const workspaceMemberRepository =
       this.workspaceOrmManager.getRepository<WorkspaceMemberWorkspaceEntity>(
         'workspaceMember',
@@ -113,7 +117,7 @@ export class BlocklistReimportMessagesJob {
     });
 
     if (!isDefined(workspaceMember)) {
-      return [];
+      return null;
     }
 
     const userWorkspace = await this.userWorkspaceRepository.findOne({
@@ -121,7 +125,7 @@ export class BlocklistReimportMessagesJob {
     });
 
     if (!isDefined(userWorkspace)) {
-      return [];
+      return null;
     }
 
     const connectedAccounts = await this.connectedAccountRepository.find({
@@ -129,7 +133,10 @@ export class BlocklistReimportMessagesJob {
       where: { userWorkspaceId: userWorkspace.id, workspaceId },
     });
 
-    return connectedAccounts.map((connectedAccount) => connectedAccount.id);
+    return {
+      userWorkspaceId: userWorkspace.id,
+      connectedAccountIds: connectedAccounts.map(({ id }) => id),
+    };
   }
 
   private async findMessageChannelIdsToReset({
@@ -138,7 +145,7 @@ export class BlocklistReimportMessagesJob {
   }: {
     workspaceId: string;
     connectedAccountIds: string[] | null;
-  }): Promise<string[]> {
+  }): Promise<Pick<MessageChannelEntity, 'id' | 'connectedAccountId'>[]> {
     const where: FindOptionsWhere<MessageChannelEntity> = {
       syncStage: Not(MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING),
       workspaceId,
@@ -149,10 +156,10 @@ export class BlocklistReimportMessagesJob {
     }
 
     const messageChannels = await this.messageChannelRepository.find({
-      select: ['id'],
+      select: ['id', 'connectedAccountId'],
       where,
     });
 
-    return messageChannels.map((messageChannel) => messageChannel.id);
+    return messageChannels;
   }
 }

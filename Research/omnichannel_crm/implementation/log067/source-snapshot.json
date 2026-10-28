@@ -1,0 +1,16 @@
+{
+  "baseCommit": "dcef3d6fe40b0d88f3e4a32b7834ad2013b733aa",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/calendar/blocklist-manager/jobs/blocklist-reimport-calendar-events.job.ts": "10c941e475183ace856e37de6470f4dca6f8d88228f160dbe1c5aa2e8bb68fe3",
+    "packages/twenty-server/src/modules/calendar/common/services/calendar-channel-sync-status.service.ts": "4919fdb5b51c8b681d3c3280344204fdb1e6c5261ac5d66b9b60e531493f2b07",
+    "packages/twenty-server/src/modules/connected-account-sync-webhooks/messaging-message-webhook-sync/services/messaging-message-webhook-sync.service.ts": "4881b6efaba0ccbcaac4f9035c15518967bc50e3a2ee9a4095960cd4a88094da",
+    "packages/twenty-server/src/modules/messaging/blocklist-manager/jobs/messaging-blocklist-reimport-messages.job.ts": "8eb2d977f710f50963cbf30e9bb227288e79c6594efd5bbdc74085cc104b12dd",
+    "packages/twenty-server/src/modules/messaging/common/services/message-channel-sync-status.service.ts": "fce24f76ee054237f1613e46b984ce1f9bac33691d3165a4ababd13c13af4c2f",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/commands/messaging-trigger-message-list-fetch.command.ts": "f15a9128f1d66b76f237d9da2c78c423e7f0b7cb3d9fa29cc60367373973d006",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/crons/jobs/messaging-message-list-fetch.cron.job.ts": "e63810cce5b6827427c9cb96c5db9580e07ba110ee6677036e4d848ab0214859",
+    "packages/twenty-server/src/modules/omnichannel/services/schedule-ordinary-message-channels.ts": "e800c920f1c05d9ce8594da07362cd0675f6c67fa0554fe5b7f1cc82927c0da6",
+    "packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts": "2a6c08e811fbeef738069e0056f0a2ae175c85330b6bcee6762e3ee9f65375d5"
+  }
+}

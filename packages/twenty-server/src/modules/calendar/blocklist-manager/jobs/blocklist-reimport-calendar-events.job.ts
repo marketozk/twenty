@@ -50,43 +50,41 @@ export class BlocklistReimportCalendarEventsJob {
             data.events.map((eventPayload) => eventPayload.properties.before),
           );
 
-        const calendarChannelIdsToReset = new Set<string>();
-
         if (workspaceScopedHandles.length > 0) {
-          for (const calendarChannelId of await this.findCalendarChannelIdsToReset(
-            { workspaceId, userWorkspaceId: null },
-          )) {
-            calendarChannelIdsToReset.add(calendarChannelId);
-          }
-        }
-
-        for (const workspaceMemberId of handlesByWorkspaceMemberId.keys()) {
-          const userWorkspaceId = await this.findWorkspaceMemberUserWorkspaceId(
-            {
-              workspaceMemberId,
-              workspaceId,
-            },
+          const channels = await this.findCalendarChannelIdsToReset({
+            workspaceId,
+            userWorkspaceId: null,
+          });
+          await this.calendarChannelSyncStatusService.resetAndMarkAsCalendarEventListFetchPending(
+            channels.map(({ id }) => id),
+            workspaceId,
           );
-
-          if (!isDefined(userWorkspaceId)) {
-            continue;
-          }
-
-          for (const calendarChannelId of await this.findCalendarChannelIdsToReset(
-            { workspaceId, userWorkspaceId },
-          )) {
-            calendarChannelIdsToReset.add(calendarChannelId);
-          }
-        }
-
-        if (calendarChannelIdsToReset.size === 0) {
           return;
         }
-
-        await this.calendarChannelSyncStatusService.resetAndMarkAsCalendarEventListFetchPending(
-          [...calendarChannelIdsToReset],
-          workspaceId,
-        );
+        for (const workspaceMemberId of handlesByWorkspaceMemberId.keys()) {
+          const userWorkspaceId = await this.findWorkspaceMemberUserWorkspaceId(
+            { workspaceMemberId, workspaceId },
+          );
+          if (!isDefined(userWorkspaceId)) continue;
+          const channels = await this.findCalendarChannelIdsToReset({
+            workspaceId,
+            userWorkspaceId,
+          });
+          const byAccount = new Map<string, string[]>();
+          for (const { id, connectedAccountId } of channels) {
+            const ids = byAccount.get(connectedAccountId) ?? [];
+            ids.push(id);
+            byAccount.set(connectedAccountId, ids);
+          }
+          for (const [connectedAccountId, ids] of byAccount) {
+            await this.calendarChannelSyncStatusService.resetAndMarkAsCalendarEventListFetchPending(
+              ids,
+              workspaceId,
+              connectedAccountId,
+              userWorkspaceId,
+            );
+          }
+        }
       },
       authContext,
       { lite: true },
@@ -128,7 +126,7 @@ export class BlocklistReimportCalendarEventsJob {
   }: {
     workspaceId: string;
     userWorkspaceId: string | null;
-  }): Promise<string[]> {
+  }): Promise<Pick<CalendarChannelEntity, 'id' | 'connectedAccountId'>[]> {
     const where: FindOptionsWhere<CalendarChannelEntity> = {
       syncStage: Not(
         CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING,
@@ -141,10 +139,10 @@ export class BlocklistReimportCalendarEventsJob {
     }
 
     const calendarChannels = await this.calendarChannelRepository.find({
-      select: ['id'],
+      select: ['id', 'connectedAccountId'],
       where,
     });
 
-    return calendarChannels.map((calendarChannel) => calendarChannel.id);
+    return calendarChannels;
   }
 }

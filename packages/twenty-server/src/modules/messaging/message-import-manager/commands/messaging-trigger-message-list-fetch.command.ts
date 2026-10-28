@@ -86,11 +86,12 @@ export class MessagingTriggerMessageListFetchCommand extends CommandRunner {
             scheduled: MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,
           },
         );
-        for (const acceptedId of acceptedIds) {
+        for (const { id: acceptedId, connectedAccountId } of acceptedIds) {
           await this.messageQueueService.add<MessagingMessageListFetchJobData>(
             MessagingMessageListFetchJob.name,
             {
               messageChannelId: acceptedId,
+              expectedConnectedAccountId: connectedAccountId,
               workspaceId,
             },
           );

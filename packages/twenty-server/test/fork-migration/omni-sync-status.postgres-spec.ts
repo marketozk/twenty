@@ -1,3 +1,8 @@
+import { BlocklistReimportMessagesJob } from 'src/modules/messaging/blocklist-manager/jobs/messaging-blocklist-reimport-messages.job';
+import { BlocklistReimportCalendarEventsJob } from 'src/modules/calendar/blocklist-manager/jobs/blocklist-reimport-calendar-events.job';
+import { MessagingMessageListFetchCronJob } from 'src/modules/messaging/message-import-manager/crons/jobs/messaging-message-list-fetch.cron.job';
+import { MessagingMessageWebhookSyncService } from 'src/modules/connected-account-sync-webhooks/messaging-message-webhook-sync/services/messaging-message-webhook-sync.service';
+import { BlocklistScope } from 'twenty-shared/types';
 import { MessagingMessagesImportCronJob } from 'src/modules/messaging/message-import-manager/crons/jobs/messaging-messages-import.cron.job';
 import { CalendarEventListFetchCronJob } from 'src/modules/calendar/calendar-event-import-manager/crons/jobs/calendar-event-list-fetch.cron.job';
 import { CalendarEventsImportCronJob } from 'src/modules/calendar/calendar-event-import-manager/crons/jobs/calendar-events-import.cron.job';
@@ -634,7 +639,7 @@ it('conditional scheduling preserves pending/enabled predicates and returns acce
       ],
       fixture.workspaceId,
     ),
-  ).toEqual([ordinary.message]);
+  ).toEqual([{ id: ordinary.message, connectedAccountId: ordinary.account }]);
   expect(
     await messaging.markAsMessagesListFetchScheduledIfPending(
       [ordinary.message],
@@ -1344,6 +1349,9 @@ it('manual CLI queues only ordinary channels admitted by the conditional update'
   expect(queue.add.mock.calls.map((x) => x[1].messageChannelId)).toEqual([
     ordinary.message,
   ]);
+  expect(queue.add.mock.calls[0][1].expectedConnectedAccountId).toBe(
+    ordinary.account,
+  );
   expect(
     (await repo('message').findOneByOrFail({ id: protectedIds.message }))
       .syncStage,
@@ -2204,6 +2212,14 @@ for (const producer of ['list-fetch', 'onboarding'] as const) {
 describe('remaining scheduling owners', () => {
   const definitions = [
     {
+      name: 'message list cron',
+      kind: 'message',
+      prototype: MessagingMessageListFetchCronJob.prototype,
+      pending: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
+      scheduled: MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,
+      cli: false,
+    },
+    {
       name: 'message import cron',
       kind: 'message',
       prototype: MessagingMessagesImportCronJob.prototype,
@@ -2276,6 +2292,7 @@ describe('remaining scheduling owners', () => {
         messageChannelRepository: runtime.getRepository(MessageChannelEntity),
         calendarChannelRepository: runtime.getRepository(CalendarChannelEntity),
         messageQueueService: { add },
+        messageChannelSyncStatusService: messaging,
         exceptionHandlerService: { captureExceptions },
         workspaceOrmManager: {
           executeInWorkspaceContext: async (work: () => Promise<void>) =>
@@ -2520,3 +2537,220 @@ for (const kind of ['message', 'calendar'] as const) {
     );
   });
 }
+
+for (const kind of ['message', 'calendar'] as const) {
+  it.each([
+    'ordinary',
+    'parent',
+    'custodian',
+    'owned',
+    'global-overlap',
+    'global-transfer',
+    'unknown',
+    'missing-member',
+  ])(
+    kind + ' blocklist reimport preserves selected owner: %s',
+    async (mutation) => {
+      const ws = fixture.workspaceId;
+      const other = await seed();
+      const memberId = randomUUID();
+      const pending =
+        kind === 'message'
+          ? MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING
+          : CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING;
+      await runtime.query(
+        `UPDATE core."${kind}Channel" SET "syncStage"='PENDING_CONFIGURATION'`,
+      );
+      const repository = repo(kind) as Repository<
+        MessageChannelEntity | CalendarChannelEntity
+      >;
+      const find = repository.find.bind(repository);
+      const memberFind = jest
+        .fn()
+        .mockResolvedValue(
+          mutation === 'missing-member' ? null : { userId: ordinary.user },
+        );
+      jest.spyOn(repository, 'find').mockImplementationOnce(async (options) => {
+        const selected = await find(options);
+        if (mutation === 'parent')
+          await repository.update(ordinary[kind], {
+            connectedAccountId: other.account,
+          });
+        if (['custodian', 'global-transfer'].includes(mutation))
+          await runtime
+            .getRepository(ConnectedAccountEntity)
+            .update(ordinary.account, { userWorkspaceId: other.userWorkspace });
+        if (mutation === 'owned') {
+          await runtime
+            .getRepository(ConnectedAccountEntity)
+            .update(ordinary.account, {
+              provider: ConnectedAccountProvider.APP,
+            });
+          await bootstrap(ordinary);
+        }
+        if (mutation === 'unknown') {
+          const create = runtime.createQueryRunner.bind(runtime);
+          jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+            const runner = create(),
+              commit = runner.commitTransaction.bind(runner);
+            runner.commitTransaction = async () => {
+              await commit();
+              throw new Error('member reset ACK lost');
+            };
+            return runner;
+          });
+        }
+        return selected;
+      });
+      const dependencies = {
+        workspaceOrmManager: {
+          executeInWorkspaceContext: async (work: () => Promise<unknown>) =>
+            work(),
+          getRepository: () => ({ findOne: memberFind }),
+        },
+        messageChannelRepository: runtime.getRepository(MessageChannelEntity),
+        calendarChannelRepository: runtime.getRepository(CalendarChannelEntity),
+        connectedAccountRepository: runtime.getRepository(
+          ConnectedAccountEntity,
+        ),
+        userWorkspaceRepository: runtime.getRepository(UserWorkspaceEntity),
+        messagingChannelSyncStatusService: messaging,
+        calendarChannelSyncStatusService: calendar,
+      };
+      const events = [
+        {
+          properties: {
+            before: {
+              handle: 'member@example.test',
+              scope: BlocklistScope.WORKSPACE_MEMBER,
+              workspaceMemberId: memberId,
+            },
+          },
+        },
+      ];
+      if (mutation.startsWith('global-'))
+        events.push({
+          properties: {
+            before: {
+              handle: 'global@example.test',
+              scope: BlocklistScope.WORKSPACE,
+              workspaceMemberId: memberId,
+            },
+          },
+        });
+      const job =
+        kind === 'message'
+          ? makeService(BlocklistReimportMessagesJob.prototype, dependencies)
+          : makeService(
+              BlocklistReimportCalendarEventsJob.prototype,
+              dependencies,
+            );
+      if (mutation === 'unknown')
+        await expect(
+          job.handle({ workspaceId: ws, events } as never),
+        ).rejects.toThrow('OMNI_CORE_TRANSACTION_OUTCOME_UNKNOWN');
+      else await job.handle({ workspaceId: ws, events } as never);
+      const accepted =
+        mutation === 'ordinary' || mutation.startsWith('global-');
+      const row = await repository.findOneByOrFail({ id: ordinary[kind] });
+      if (mutation !== 'unknown')
+        expect(row.syncCursor).toBe(accepted ? '' : 'old-cursor');
+      expect(
+        (await repository.findOneByOrFail({ id: protectedIds[kind] }))
+          .syncStage,
+      ).toBe('PENDING_CONFIGURATION');
+      if (accepted) {
+        expect(row.syncStage).toBe(pending);
+        expect(
+          kind === 'message' ? cache.mdel : cache.del,
+        ).toHaveBeenCalledTimes(mutation.startsWith('global-') ? 2 : 1);
+      } else {
+        expect(cache.mdel).not.toHaveBeenCalled();
+        expect(cache.del).not.toHaveBeenCalled();
+        expect(broadcast.broadcast).not.toHaveBeenCalled();
+      }
+      if (kind === 'message' && !accepted && mutation !== 'unknown')
+        expect(
+          (
+            await runtime
+              .getRepository(MessageFolderEntity)
+              .findOneByOrFail({ id: ordinary.folder })
+          ).syncCursor,
+        ).toBe('folder-cursor');
+      if (mutation.startsWith('global-'))
+        expect(memberFind).not.toHaveBeenCalled();
+    },
+  );
+}
+
+it.each(['ordinary', 'parent', 'disabled', 'stage', 'owned', 'unknown'])(
+  'webhook list-fetch rechecks accepted account before provider: %s',
+  async (mutation) => {
+    const schedule =
+      messaging.markAsMessagesListFetchScheduledIfPending.bind(messaging);
+    jest
+      .spyOn(messaging, 'markAsMessagesListFetchScheduledIfPending')
+      .mockImplementationOnce(async (...args) => {
+        const accepted = await schedule(...args);
+        if (mutation === 'parent') {
+          const other = await seed();
+          await repo('message').update(ordinary.message, {
+            connectedAccountId: other.account,
+          });
+        }
+        if (mutation === 'disabled')
+          await repo('message').update(ordinary.message, {
+            isSyncEnabled: false,
+          });
+        if (mutation === 'stage')
+          await runtime
+            .getRepository(MessageChannelEntity)
+            .update(ordinary.message, {
+              syncStage: MessageChannelSyncStage.PENDING_CONFIGURATION,
+            });
+        if (mutation === 'owned') {
+          await runtime
+            .getRepository(ConnectedAccountEntity)
+            .update(ordinary.account, {
+              provider: ConnectedAccountProvider.APP,
+            });
+          await bootstrap(ordinary);
+        }
+        if (mutation === 'unknown') {
+          const create = runtime.createQueryRunner.bind(runtime);
+          jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+            const runner = create(),
+              commit = runner.commitTransaction.bind(runner);
+            runner.commitTransaction = async () => {
+              await commit();
+              throw new Error('webhook admission ACK lost');
+            };
+            return runner;
+          });
+        }
+        return accepted;
+      });
+    const processMessageListFetch = jest.fn().mockResolvedValue(undefined);
+    const service = new MessagingMessageWebhookSyncService(
+      runtime.getRepository(MessageChannelEntity),
+      messaging,
+      { processMessageListFetch } as never,
+    );
+    const action = service.processMessagingMessageWebhookSync({
+      messageChannelId: ordinary.message,
+      workspaceId: fixture.workspaceId,
+    });
+    if (mutation === 'unknown')
+      await expect(action).rejects.toThrow(
+        'OMNI_CORE_TRANSACTION_OUTCOME_UNKNOWN',
+      );
+    else await action;
+    expect(processMessageListFetch).toHaveBeenCalledTimes(
+      mutation === 'ordinary' ? 1 : 0,
+    );
+    if (mutation === 'ordinary')
+      expect(processMessageListFetch.mock.calls[0][0].connectedAccountId).toBe(
+        ordinary.account,
+      );
+  },
+);

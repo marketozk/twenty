@@ -107,12 +107,13 @@ export class MessagingMessageListFetchCronJob {
             workspaceId,
           );
 
-        for (const messageChannelId of updatedIds) {
+        for (const { id: messageChannelId, connectedAccountId } of updatedIds) {
           await this.messageQueueService.add<MessagingMessageListFetchJobData>(
             MessagingMessageListFetchJob.name,
             {
               workspaceId,
               messageChannelId,
+              expectedConnectedAccountId: connectedAccountId,
             },
           );
         }

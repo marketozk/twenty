@@ -247,12 +247,15 @@ export class MessageChannelSyncStatusService {
     messageChannelIds: string[],
     workspaceId: string,
     expectedConnectedAccountId?: string,
+    expectedUserWorkspaceId?: string,
   ): Promise<string[]> {
     return this.resetMessageChannels(
       messageChannelIds,
       workspaceId,
       expectedConnectedAccountId,
       false,
+      false,
+      expectedUserWorkspaceId,
     );
   }
 
@@ -262,6 +265,7 @@ export class MessageChannelSyncStatusService {
     expectedConnectedAccountId: string | undefined,
     schedule: boolean,
     preservePendingActions = false,
+    expectedUserWorkspaceId?: string,
   ): Promise<string[]> {
     if (!messageChannelIds.length) return [];
 
@@ -287,6 +291,7 @@ export class MessageChannelSyncStatusService {
       {
         resetFolders: true,
         expectedConnectedAccountId,
+        expectedUserWorkspaceId,
         reconnect: schedule || preservePendingActions,
         preservePendingActions,
       },
@@ -334,7 +339,7 @@ export class MessageChannelSyncStatusService {
   public async markAsMessagesListFetchScheduledIfPending(
     messageChannelIds: string[],
     workspaceId: string,
-  ): Promise<string[]> {
+  ): Promise<{ id: string; connectedAccountId: string }[]> {
     if (!messageChannelIds.length) {
       return [];
     }
@@ -347,6 +352,33 @@ export class MessageChannelSyncStatusService {
         pending: MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING,
         scheduled: MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,
       },
+    );
+  }
+
+  public async readScheduledMessageListChannel(
+    messageChannelId: string,
+    workspaceId: string,
+    expectedConnectedAccountId: string,
+  ): Promise<MessageChannelEntity | null> {
+    return withOrdinaryMetadataChannels(
+      this.messageChannelRepository.manager,
+      workspaceId,
+      [messageChannelId],
+      'message',
+      async (manager, channels) =>
+        channels.length
+          ? manager.getRepository(MessageChannelEntity).findOne({
+              where: {
+                id: messageChannelId,
+                workspaceId,
+                isSyncEnabled: true,
+                syncStage: MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED,
+              },
+              relations: { connectedAccount: true, messageFolders: true },
+            })
+          : null,
+      'read',
+      expectedConnectedAccountId,
     );
   }
 
@@ -590,6 +622,7 @@ export class MessageChannelSyncStatusService {
       preservePendingActions?: boolean;
       reconnect?: boolean;
       expectedConnectedAccountId?: string;
+      expectedUserWorkspaceId?: string;
       authFailure?: { reason: string | null };
     } = {},
   ): Promise<UpdatedMessageChannel[]> {
@@ -603,7 +636,12 @@ export class MessageChannelSyncStatusService {
           workspaceId,
           requestedIds,
           'message',
-          async (manager, channels) => {
+          async (manager, admittedChannels) => {
+            const channels = admittedChannels.filter(
+              ({ userWorkspaceId }) =>
+                options.expectedUserWorkspaceId === undefined ||
+                userWorkspaceId === options.expectedUserWorkspaceId,
+            );
             if (!channels.length) return [];
             const ids = channels.map(({ id }) => id);
             const result = await manager

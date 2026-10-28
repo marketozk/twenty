@@ -1180,3 +1180,40 @@ are not newly transactional; no full lifecycle or SQL/queue atomicity claim.
 Last full fork LOG0561881/71; no full server typecheck/full Claude review/ROB764 Done.
 Demo/SaleBot unchanged; no GitHub Actions. Skills: ai-dev-workflow,
 behavioral-guardrails, server-schrodinger, scoped read-only research/review.
+
+
+## LOG-067 — scheduled parent and member reset provenance (28.10.2026)
+
+Internal message scheduler/status API now returns accepted ID/account descriptors;
+all production callers updated. Cron/CLI enqueue the captured parent; webhook uses
+a status-owned current ordinary enabled/SCHEDULED read after scheduling before
+provider. No second unguarded account lookup or string-only identity handoff.
+Member blocklist deletion retains account and UserWorkspace from discovery and
+passes both into reset. Existing owner filters locked channel descriptors before
+channel/folder UPDATE and actual-ID cache/broadcast. Global deletion supersedes
+member selection, preserving workspace-wide behavior and avoiding duplicate reset.
+Member batches are independent per-account transactions; a later failure does not
+roll back previously committed accounts. Existing unscoped resets remain compatible.
+
+2205 full fork Jest/75 suites +26 guards=2231 PASS.
+28 new PG cases:6 message list cron,16 actual blocklist jobs,6 actual webhook service.
+CLI existing case strengthened for captured parent. Tests cover parent/custodian
+change after discovery, native enrollment, missing member, global overlap/transfer,
+unknown commit/no effects and disabled/stage change before webhook provider.
+Member lookup only uses a controlled WorkspaceMember stub; core account/channel,
+reset transaction and persistence are real PostgreSQL. Earlier targeted462/6 passed;
+final full suite verifies the final read method placement in status service.
+Typecheck 282 roots:189/189,0 new/changed-code;
+7 migration sources unchanged; source LF hashes matched. Dependency guard passed
+without baseline exceptions. New shared types barrel edge in webhook was avoided
+by keeping stage/read ownership inside the existing status service.
+Scoped read-only review found no blockers, did not run tests. [Evidence](log067/README.md).
+
+Next code inspection found calendar webhook direct status UPDATE and inline import
+from IMPORT_PENDING. Guard/pin that caller before requiring SCHEDULED admission in
+direct import services. Onboarding/list-fetch callbacks and native post-provider
+save/delete remain open: native guards must run inside existing workspace transaction,
+not around provider network or a nested transaction. Fresh full suite is regression
+evidence, not full ROB764/CRM acceptance. No full server typecheck/full Claude review.
+Demo/SaleBot unchanged; no Actions. Skills ai-dev-workflow, behavioral-guardrails,
+server-schrodinger with narrow read-only research/review.

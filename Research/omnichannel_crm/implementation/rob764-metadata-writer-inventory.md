@@ -44,14 +44,18 @@ Canonical lifecycle requirements remain in the implementation specification.
 
 - LOG066: four direct schedulers use guarded accepted descriptors; two import jobs check current expected parent/stage, two watchdogs recheck timestamp/stage under the same owner. SQL/queue are not atomic.
 
+- LOG067: message list cron/CLI preserve accepted account; webhook reads scheduled current owner. Member blocklist resets pin account/custodian, global scope supersedes member. Per-account member resets are not one atomic batch. Fresh full fork suite recorded.
+
 ## Remaining owners, in implementation order
 
 Paths below are relative to `packages/twenty-server/src`.
 
 | Owner | Observed gap / required check |
 |---|---|
-| Message list-fetch cron/CLI and member blocklist reset | Existing string[] wrapper callers enqueue without expected account; member-scoped blocklist reimport drops owner provenance before reset. |
+| Calendar webhook scheduling | `calendar-event-webhook-sync.service.ts` still has direct list scheduling UPDATE/current unguarded read and inline import from IMPORT_PENDING. Pin expected parent through fetch/import and preserve inline behavior. |
 | Import/onboarding admission | Importer and recent-import caller require fresh expected-parent/stage admission; unknown outcomes must propagate. Account-scoped cache alone does not guard SQL callbacks. |
+| Notification dispatch/lifecycle and calendar cache | Trigger payload/dedup lacks captured account; Microsoft renew/recreate also lack event account/subscription pins. Calendar cache still uses workspace/channel only, and fetch writes cursor/status after provider. |
+| Native provider-result writes | Message save aggregate/calendar save aggregate must check parent/run under their existing native transaction; calendar association/orphan cleanup also needs same-owner admission. External SELECT is insufficient. |
 | Legacy list-fetch downstream cache/cleanup callbacks | Final completion is parent-pinned (LOG058); intermediate cache mutations and cleanup are separate. Review with group/folder scope before claiming complete callback lifecycle protection. |
 
 ## Required evidence

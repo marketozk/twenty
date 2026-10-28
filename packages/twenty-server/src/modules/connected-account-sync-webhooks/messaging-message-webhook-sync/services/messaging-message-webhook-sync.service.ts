@@ -24,13 +24,13 @@ export class MessagingMessageWebhookSyncService {
     messageChannelId,
     workspaceId,
   }: MessagingMessageWebhookSyncJobData): Promise<void> {
-    const [scheduledMessageChannelId] =
+    const [scheduledChannel] =
       await this.messageChannelSyncStatusService.markAsMessagesListFetchScheduledIfPending(
         [messageChannelId],
         workspaceId,
       );
 
-    if (!isDefined(scheduledMessageChannelId)) {
+    if (!isDefined(scheduledChannel)) {
       this.logger.log(
         `Skipping webhook sync for message channel ${messageChannelId}, a sync is already in progress`,
       );
@@ -38,10 +38,12 @@ export class MessagingMessageWebhookSyncService {
       return;
     }
 
-    const messageChannel = await this.messageChannelRepository.findOne({
-      where: { id: messageChannelId, workspaceId, isSyncEnabled: true },
-      relations: { connectedAccount: true, messageFolders: true },
-    });
+    const messageChannel =
+      await this.messageChannelSyncStatusService.readScheduledMessageListChannel(
+        messageChannelId,
+        workspaceId,
+        scheduledChannel.connectedAccountId,
+      );
 
     if (!isDefined(messageChannel)) {
       return;

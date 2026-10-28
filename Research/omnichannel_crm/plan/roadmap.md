@@ -1,15 +1,15 @@
 # Дорожная карта проекта
 
-LOG-066 / ROB-764 In Progress: четыре scheduler paths проверяют current
-ordinary owner, enabled и pending stage под блокировкой, enqueue только принятых
-каналов с captured account. Два import job повторно проверяют parent/stage перед
-provider, два watchdog перечитывают timestamp/stage под тем же owner.
-Проверено 434 targeted Jest/6 suites +26 guards =460 PASS,
-46 новых PostgreSQL cases. Typecheck 278 roots:191/189,0 new/changed-code.
-7 migrations неизменны. [Доказательства](../implementation/log066/README.md). Scoped review после исправления
-CTE result shape без оставшихся blockers. Последний full fork LOG0561881/71.
-Далее legacy message list payload/member reset provenance, direct importer/onboarding
-admission и downstream response apply, затем свежая T22/ROB764 acceptance.
+LOG-067 / ROB-764 In Progress: scheduler сохраняет id/account descriptors во
+всех message list consumers: cron, CLI и webhook. Webhook повторно читает current
+ordinary parent/enabled/stage перед provider. Member blocklist reset сверяет
+captured account и custodian под блокировкой до channel/folder/cache effects;
+global scope перекрывает member scope без повторного reset.
+Проверено 2205 full fork Jest/75 suites +26 guards =2231 PASS,
+28 новых PostgreSQL cases. Typecheck 282 roots:189/189,0 new/changed-code.
+7 migrations неизменны. [Доказательства](../implementation/log067/README.md). Scoped review без blockers.
+Далее calendar webhook scheduling, direct importer/onboarding admission и native
+response apply; итоговая T22/ROB764 acceptance остаётся открыта.
 Демо прежнее, GitHub Actions не используется.
 
 Полный объём описан в [requirements.md](../requirements.md). Переход к следующей фазе подтверждается результатом предыдущей. Даты и трудозатраты появятся после исследования; сейчас их нельзя обоснованно назначить.

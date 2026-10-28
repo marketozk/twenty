@@ -195,12 +195,14 @@ export class CalendarChannelSyncStatusService {
     calendarChannelIds: string[],
     workspaceId: string,
     expectedConnectedAccountId?: string,
+    expectedUserWorkspaceId?: string,
   ): Promise<string[]> {
     return this.resetCalendarChannels(
       calendarChannelIds,
       workspaceId,
       expectedConnectedAccountId,
       false,
+      expectedUserWorkspaceId,
     );
   }
 
@@ -209,6 +211,7 @@ export class CalendarChannelSyncStatusService {
     workspaceId: string,
     expectedConnectedAccountId: string | undefined,
     schedule: boolean,
+    expectedUserWorkspaceId?: string,
   ): Promise<string[]> {
     if (!calendarChannelIds.length) return [];
 
@@ -227,6 +230,7 @@ export class CalendarChannelSyncStatusService {
       false,
       expectedConnectedAccountId,
       schedule,
+      expectedUserWorkspaceId,
     );
     await this.flushImportCache(updated, workspaceId);
     return updated.map(({ id }) => id);
@@ -360,6 +364,7 @@ export class CalendarChannelSyncStatusService {
     authFailed = false,
     expectedConnectedAccountId?: string,
     reconnect = false,
+    expectedUserWorkspaceId?: string,
   ): Promise<OrdinaryMetadataChannel[]> {
     const requestedIds = [...ids];
     return this.workspaceOrmManager.executeInWorkspaceContext(
@@ -369,7 +374,12 @@ export class CalendarChannelSyncStatusService {
           workspaceId,
           requestedIds,
           'calendar',
-          async (manager, channels) => {
+          async (manager, admittedChannels) => {
+            const channels = admittedChannels.filter(
+              ({ userWorkspaceId }) =>
+                expectedUserWorkspaceId === undefined ||
+                userWorkspaceId === expectedUserWorkspaceId,
+            );
             if (!channels.length) return [];
             const result = await manager
               .getRepository(CalendarChannelEntity)
