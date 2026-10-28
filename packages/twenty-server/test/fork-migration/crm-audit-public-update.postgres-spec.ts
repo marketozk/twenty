@@ -21,6 +21,7 @@ import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/wo
 import { type FileUrlService } from 'src/engine/core-modules/file/file-url/file-url.service';
 import { RecordPositionService } from 'src/engine/core-modules/record-position/services/record-position.service';
 import { type CrmAuditEntryPayload } from 'src/engine/core-modules/crm-audit/append-crm-audit-entry';
+import { WorkspaceSelectQueryBuilder } from 'src/engine/twenty-orm/query-builder/workspace-select-query-builder';
 import { WorkspaceDataSource } from 'src/engine/twenty-orm/datasource/workspace-data-source';
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import {
@@ -129,7 +130,6 @@ const harness = (
         objectId,
         {
           canReadObjectRecords: true,
-          canCreateObjectRecords: canUpdate,
           canUpdateObjectRecords: canUpdate,
           canSoftDeleteObjectRecords: canUpdate,
           canDestroyObjectRecords: false,
@@ -1139,7 +1139,7 @@ it('preserves legacy root and child scopes for nested public CREATE', async () =
   ).toHaveLength(2);
   expect(await audit()).toHaveLength(0);
 });
-it('keeps public upsert outside the automatic CREATE cohort', async () => {
+it('audits public upsert of an existing record', async () => {
   const h = harness();
   await h.run(() =>
     h.createOne.execute(
@@ -1151,7 +1151,504 @@ it('keeps public upsert outside the automatic CREATE cohort', async () => {
       h.queryContext('company'),
     ),
   );
+  expect(await audit()).toHaveLength(1);
+  expect((await audit())[0]).toMatchObject({
+    action: 'update',
+    resourceId: id,
+  });
+});
+
+it.each(['company', 'person', 'opportunity', 'customCase'])(
+  'audits mixed public upsert in one operation for %s',
+  async (name) => {
+    const h = harness(),
+      created = randomUUID();
+    if (name === 'customCase')
+      await f.owner.query(
+        `INSERT INTO "${f.schemaName}"."_customCase"(id,name)VALUES($1,'original')`,
+        [id],
+      );
+    const data = (key: string, value: string) =>
+      name === 'person'
+        ? { id: key, name: { firstName: value }, position: 1 }
+        : { id: key, name: value, position: 1 };
+    const result = await h.run(() =>
+      h.createMany.execute(
+        {
+          data: [data(id, 'updated'), data(created, 'created')],
+          upsert: true,
+          selectedFields: { id: true },
+        },
+        h.queryContext(name),
+      ),
+    );
+    expect(new Set(result.results.map((row) => row.id))).toEqual(
+      new Set([id, created]),
+    );
+    const entries = await audit();
+    expect(entries).toHaveLength(2);
+    expect(new Set(entries.map((row) => row.operationId)).size).toBe(1);
+    expect(entries.find((row) => row.resourceId === id)?.action).toBe('update');
+    expect(entries.find((row) => row.resourceId === created)?.action).toBe(
+      'create',
+    );
+    expect(h.shares.insertRecordSharesForCreatedRecords).not.toHaveBeenCalled();
+  },
+);
+
+it('matches a unique composite field and restores without replacing createdBy', async () => {
+  const h = harness();
+  await f.owner.query(
+    `UPDATE "${f.schemaName}".company SET "domainNamePrimaryLinkUrl"='unique.invalid',"deletedAt"=now(),"createdByName"='original creator' WHERE id=$1`,
+    [id],
+  );
+  const result = await h.run(() =>
+    h.createOne.execute(
+      {
+        data: {
+          name: 'restored',
+          domainName: { primaryLinkUrl: 'https://unique.invalid' },
+          createdBy: { source: 'MANUAL', name: 'replacement' },
+        },
+        upsert: true,
+        selectedFields: { id: true },
+      },
+      h.queryContext('company'),
+    ),
+  );
+  expect(result.results.id).toBe(id);
+  expect(
+    await f.owner.query(
+      `SELECT name,"deletedAt","createdByName" FROM "${f.schemaName}".company WHERE id=$1`,
+      [id],
+    ),
+  ).toEqual([
+    { name: 'restored', deletedAt: null, createdByName: 'original creator' },
+  ]);
+  expect(await audit()).toHaveLength(1);
+  expect((await audit())[0].action).toBe('update');
+});
+
+it('rejects two different unique matches before any public upsert writes', async () => {
+  const h = harness();
+  await f.owner.query(
+    `UPDATE "${f.schemaName}".company SET "domainNamePrimaryLinkUrl"='other.invalid' WHERE id=$1`,
+    [secondId],
+  );
+  await expect(
+    h.run(() =>
+      h.createMany.execute(
+        {
+          data: [
+            { id, name: 'would change' },
+            { id, domainName: { primaryLinkUrl: 'https://other.invalid' } },
+          ],
+          upsert: true,
+          selectedFields: { id: true },
+        },
+        h.queryContext('company'),
+      ),
+    ),
+  ).rejects.toThrow('Multiple records');
+  expect(
+    await f.owner.query(
+      `SELECT name FROM "${f.schemaName}".company WHERE id=$1`,
+      [id],
+    ),
+  ).toEqual([{ name: 'original' }]);
   expect(await audit()).toHaveLength(0);
+});
+
+it.each(['success', 'audit', 'insert'] as const)(
+  'keeps mixed upsert FILES atomic with %s outcome',
+  async (outcome) => {
+    const h = harness(),
+      created = randomUUID(),
+      firstFile = randomUUID(),
+      secondFile = randomUUID();
+    for (const fileId of [firstFile, secondFile])
+      await f.owner.query(
+        'INSERT INTO core.file(id,"workspaceId",path,size,settings)VALUES($1,$2,$3,12,$4)',
+        [
+          fileId,
+          f.workspaceId,
+          'secret/' + documentsUniversalId + '/' + fileId + '.pdf',
+          { isTemporaryFile: true, toDelete: true },
+        ],
+      );
+    if (outcome === 'audit')
+      await f.owner.query(
+        `CREATE FUNCTION crm_audit.fail_public_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'UPSERT_AUDIT_FAILURE';END $$;CREATE TRIGGER fail_public_audit BEFORE INSERT ON crm_audit."crmAuditEntry" FOR EACH ROW EXECUTE FUNCTION crm_audit.fail_public_audit()`,
+      );
+    const inserts = {
+      id: created,
+      name: 'created',
+      position: 1,
+      documents: [{ fileId: secondFile, label: 'private-second' }],
+      ...(outcome === 'insert'
+        ? { domainName: { primaryLinkUrl: 'https://duplicate.invalid' } }
+        : {}),
+    };
+    const data = [
+      {
+        id,
+        name: 'updated',
+        documents: [{ fileId: firstFile, label: 'private-first' }],
+      },
+      inserts,
+    ];
+    // Two new rows with one absent unique key fail in INSERT after the UPDATE.
+    if (outcome === 'insert')
+      data.push({
+        ...inserts,
+        id: randomUUID(),
+        name: 'duplicate unique key',
+        documents: [],
+      });
+    const pending = h.run(() =>
+      h.createMany.execute(
+        { data, upsert: true, selectedFields: { id: true } },
+        h.queryContext('company'),
+      ),
+    );
+    if (outcome === 'success') await pending;
+    else if (outcome === 'insert')
+      await expect(pending).rejects.toMatchObject({ cause: { code: '23505' } });
+    else await expect(pending).rejects.toThrow();
+    const ok = outcome === 'success';
+    expect(
+      await f.owner.query(
+        `SELECT name FROM "${f.schemaName}".company WHERE id=$1`,
+        [id],
+      ),
+    ).toEqual([{ name: ok ? 'updated' : 'original' }]);
+    expect(
+      await f.owner.query(
+        `SELECT id FROM "${f.schemaName}".company WHERE id=$1`,
+        [created],
+      ),
+    ).toHaveLength(ok ? 1 : 0);
+    const files = await f.owner.query('SELECT settings FROM core.file');
+    expect(
+      files.every(
+        (row: { settings: { isTemporaryFile: boolean } }) =>
+          row.settings.isTemporaryFile === !ok,
+      ),
+    ).toBe(true);
+    expect(await audit()).toHaveLength(ok ? 4 : 0);
+    expect(JSON.stringify(await audit())).not.toContain('private-first');
+  },
+);
+
+it('does not grant update permission through public upsert', async () => {
+  const h = harness('user');
+  h.permissions[roleId][
+    base.objectIdByNameSingular.company
+  ].canUpdateObjectRecords = false;
+  const created = randomUUID();
+  await expect(
+    h.run(() =>
+      h.createMany.execute(
+        {
+          data: [
+            { id, name: 'forbidden' },
+            { id: created, name: 'new', position: 1 },
+          ],
+          upsert: true,
+          selectedFields: { id: true },
+        },
+        h.queryContext('company'),
+      ),
+    ),
+  ).rejects.toThrow();
+  expect(
+    await f.owner.query(
+      `SELECT name FROM "${f.schemaName}".company WHERE id=$1`,
+      [id],
+    ),
+  ).toEqual([{ name: 'original' }]);
+  expect(
+    await f.owner.query(
+      `SELECT id FROM "${f.schemaName}".company WHERE id=$1`,
+      [created],
+    ),
+  ).toHaveLength(0);
+  expect(await audit()).toHaveLength(0);
+});
+
+it('aggregates repeated flat upsert updates to the same authoritative ID', async () => {
+  const h = harness();
+  await h.run(() =>
+    h.createMany.execute(
+      {
+        data: [
+          { id, name: 'first' },
+          { id, name: 'last' },
+        ],
+        upsert: true,
+        selectedFields: { id: true },
+      },
+      h.queryContext('company'),
+    ),
+  );
+  expect(
+    await f.owner.query(
+      `SELECT name FROM "${f.schemaName}".company WHERE id=$1`,
+      [id],
+    ),
+  ).toEqual([{ name: 'last' }]);
+  expect(await audit()).toHaveLength(1);
+});
+
+it('rejects repeated authoritative upsert IDs with FILES before partial commit', async () => {
+  const h = harness(),
+    fileId = randomUUID();
+  await f.owner.query(
+    'INSERT INTO core.file(id,"workspaceId",path,size,settings)VALUES($1,$2,$3,12,$4)',
+    [
+      fileId,
+      f.workspaceId,
+      'secret/' + documentsUniversalId + '/duplicate.pdf',
+      { isTemporaryFile: true, toDelete: true },
+    ],
+  );
+  await expect(
+    h.run(() =>
+      h.createMany.execute(
+        {
+          data: [
+            { id, name: 'first', documents: [{ fileId, label: 'private' }] },
+            { id, name: 'last', documents: [{ fileId, label: 'private' }] },
+          ],
+          upsert: true,
+          selectedFields: { id: true },
+        },
+        h.queryContext('company'),
+      ),
+    ),
+  ).rejects.toThrow();
+  expect(
+    await f.owner.query(
+      `SELECT name FROM "${f.schemaName}".company WHERE id=$1`,
+      [id],
+    ),
+  ).toEqual([{ name: 'original' }]);
+  expect(await audit()).toHaveLength(0);
+});
+
+it('preserves a single commit and no retry after public upsert loses COMMIT ACK', async () => {
+  const h = harness(),
+    client = await f.pool.connect(),
+    query = client.query.bind(client),
+    statements: string[] = [],
+    created = randomUUID();
+  jest.spyOn(client, 'query').mockImplementation((async (
+    statement: string | { text: string },
+    values?: unknown[],
+  ) => {
+    const text = typeof statement === 'string' ? statement : statement.text;
+    statements.push(text);
+    const result = await query(statement as string, values);
+    if (text === 'COMMIT') throw new Error('lost ack');
+    return result;
+  }) as typeof client.query);
+  jest
+    .spyOn(f.pool, 'connect')
+    .mockImplementationOnce(() => Promise.resolve(client));
+  await expect(
+    h.run(() =>
+      h.createMany.execute(
+        {
+          data: [
+            { id, name: 'updated', position: 1 },
+            { id: created, name: 'created', position: 1 },
+          ],
+          upsert: true,
+          selectedFields: { id: true },
+        },
+        h.queryContext('company'),
+      ),
+    ),
+  ).rejects.toBeInstanceOf(NativeTransactionOutcomeUnknownError);
+  expect(statements.filter((text) => text === 'COMMIT')).toHaveLength(1);
+  expect(statements).not.toContain('ROLLBACK');
+  expect(await audit()).toHaveLength(2);
+  expect(h.hooks.executePostQueryHooks).not.toHaveBeenCalled();
+});
+
+it('rolls back a preceding upsert update when inserted field permission is denied', async () => {
+  const h = harness('user'),
+    created = randomUUID();
+  const objectId = base.objectIdByNameSingular.company;
+  const field = Object.values(
+    base.flatFieldMetadataMaps.byUniversalIdentifier,
+  ).find(
+    (item) => item?.objectMetadataId === objectId && item.name === 'domainName',
+  )!;
+  h.permissions[roleId][objectId].restrictedFields[field.id] = {
+    canRead: true,
+    canUpdate: false,
+  };
+  await expect(
+    h.run(() =>
+      h.createMany.execute(
+        {
+          data: [
+            { id, name: 'updated' },
+            {
+              id: created,
+              name: 'forbidden',
+              position: 1,
+              domainName: { primaryLinkUrl: 'https://forbidden.invalid' },
+            },
+          ],
+          upsert: true,
+          selectedFields: { id: true },
+        },
+        h.queryContext('company'),
+      ),
+    ),
+  ).rejects.toThrow();
+  expect(
+    await f.owner.query(
+      `SELECT name FROM "${f.schemaName}".company WHERE id=$1`,
+      [id],
+    ),
+  ).toEqual([{ name: 'original' }]);
+  expect(await audit()).toHaveLength(0);
+});
+
+it('retains public empty FILES normalization in repeated upsert inputs', async () => {
+  const h = harness();
+  await h.run(() =>
+    h.createMany.execute(
+      {
+        data: [
+          { id, name: 'first', documents: [] },
+          { id, name: 'last', documents: [] },
+        ],
+        upsert: true,
+        selectedFields: { id: true },
+      },
+      h.queryContext('company'),
+    ),
+  );
+  expect(
+    await f.owner.query(
+      `SELECT name,documents FROM "${f.schemaName}".company WHERE id=$1`,
+      [id],
+    ),
+  ).toEqual([{ name: 'last', documents: null }]);
+  expect(await audit()).toHaveLength(1);
+});
+
+it('audits upsert IDs independently of caller selection', async () => {
+  const h = harness(),
+    created = randomUUID();
+  const result = await h.run(() =>
+    h.createMany.execute(
+      {
+        data: [
+          { id, name: 'updated' },
+          { id: created, name: 'new', position: 1 },
+        ],
+        upsert: true,
+        selectedFields: { name: true },
+      },
+      h.queryContext('company'),
+    ),
+  );
+  expect(new Set(result.results.map((row) => row.name))).toEqual(
+    new Set(['updated', 'new']),
+  );
+  expect(new Set(result.results.map((row) => row.id))).toEqual(
+    new Set([id, created]),
+  );
+  expect(new Set((await audit()).map((row) => row.resourceId))).toEqual(
+    new Set([id, created]),
+  );
+});
+
+it('rolls back the loser of concurrent public upserts of an absent unique key', async () => {
+  const h = harness(),
+    first = randomUUID(),
+    second = randomUUID();
+  let reads = 0,
+    release!: () => void;
+  const ready = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const original = WorkspaceSelectQueryBuilder.prototype.getMany;
+  jest
+    .spyOn(WorkspaceSelectQueryBuilder.prototype, 'getMany')
+    .mockImplementation(async function (
+      this: WorkspaceSelectQueryBuilder,
+      options,
+    ) {
+      const result = await original.call(this, options);
+      const [, values] = this.getQueryAndParameters();
+      if (JSON.stringify(values).includes('race.invalid') && reads < 2) {
+        expect(result).toHaveLength(0);
+        reads++;
+        if (reads === 2) release();
+        await ready;
+      }
+      return result;
+    });
+  const outcomes = await Promise.allSettled(
+    [first, second].map((key) =>
+      h.run(() =>
+        h.createMany.execute(
+          {
+            data: [
+              {
+                id: key,
+                name: 'candidate',
+                position: 1,
+                domainName: { primaryLinkUrl: 'https://race.invalid' },
+              },
+            ],
+            upsert: true,
+            selectedFields: { id: true },
+          },
+          h.queryContext('company'),
+        ),
+      ),
+    ),
+  );
+  const failure = outcomes.find((outcome) => outcome.status === 'rejected');
+  const codes: string[] = [];
+  let cause: unknown =
+    failure?.status === 'rejected' ? failure.reason : undefined;
+  for (
+    let depth = 0;
+    depth < 8 && cause && typeof cause === 'object';
+    depth++
+  ) {
+    const error = cause as {
+      code?: string;
+      cause?: unknown;
+      driverError?: unknown;
+    };
+    if (error.code) codes.push(error.code);
+    cause = error.cause ?? error.driverError;
+  }
+  expect(codes).toContain('23505');
+  expect(reads).toBe(2);
+  expect(
+    outcomes.filter((outcome) => outcome.status === 'fulfilled'),
+  ).toHaveLength(1);
+  expect(
+    outcomes.filter((outcome) => outcome.status === 'rejected'),
+  ).toHaveLength(1);
+  expect(
+    await f.owner.query(
+      `SELECT id FROM "${f.schemaName}".company WHERE id=ANY($1::uuid[])`,
+      [[first, second]],
+    ),
+  ).toHaveLength(1);
+  expect(await audit()).toHaveLength(1);
+  expect(h.hooks.executePostQueryHooks).toHaveBeenCalledTimes(1);
 });
 
 it.each([MetadataReadability.PRIVATE, MetadataReadability.INHERITED])(

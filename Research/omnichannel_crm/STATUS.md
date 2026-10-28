@@ -82,3 +82,11 @@ PRIVATE/INHERITED с пустыми shares не считаются no-share. Str
 существующие механизмы. Полного HTTP/JWT покрытия и выката нет. [Доказательства](implementation/log101/README.md).
 
 854 tests/30 suites PASS (169.5s), 19 новых PG cases, 58 targeted. 26 guard tests PASS; 10 migration checksums неизменны. Types 343/343 roots, 189/189 baseline diagnostics, 0 новых и 0 в изменённых строках. Существующая Brackets type diagnostic в неизменённом методе сохранена. 4 source hashes совпадают.
+
+LOG102: flat public upsert включён в native audit owner для covered local объектов.
+Mixed update/insert, unique match/restore, FILES и audit теперь атомарны. Сохраняются
+normalization, createdBy, permissions и response contract. Concurrent absent key
+может дать PostgreSQL23505 с rollback, без retry; unknown COMMIT не повторяется.
+Nested CREATE/real shares пока вне root admission. ROB765 In Progress. [Доказательства](implementation/log102/README.md).
+
+871 tests/30 suites PASS (171.954s), 17 новых PG cases, 75 targeted. 26 guards PASS; 10 migration checksums неизменны. Types 341/341 roots, 189/189 baseline diagnostics, 0 новых/changed-code. Прежняя Brackets diagnostic в неизменённом методе остаётся. 2 source hashes совпадают.

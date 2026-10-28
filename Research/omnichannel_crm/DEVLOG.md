@@ -3257,3 +3257,23 @@ physical delete/merge, metadata/roles и negative audit/health ещё откры
 LOG101 publication: 647720c93dedc62c846a94be9be03cdbe70667c8 pushed/API verified.
 ROB765 description and comment 0b1d71c4-ce48-44fb-9214-fa29009ad80a independently
 read back; all 11 states match. ROB765 remains In Progress; implementation continues.
+
+## LOG-102 — атомарный public upsert
+
+LOG102: flat public upsert включён в native audit owner для covered local объектов.
+Mixed update/insert, unique match/restore, FILES и audit теперь атомарны. Сохраняются
+normalization, createdBy, permissions и response contract. Concurrent absent key
+может дать PostgreSQL23505 с rollback, без retry; unknown COMMIT не повторяется.
+Nested CREATE/real shares пока вне root admission. ROB765 In Progress.
+
+871 tests/30 suites PASS (171.954s), 17 новых PG cases, 75 targeted. 26 guards PASS; 10 migration checksums неизменны. Types 341/341 roots, 189/189 baseline diagnostics, 0 новых/changed-code. Прежняя Brackets diagnostic в неизменённом методе остаётся. 2 source hashes совпадают.
+
+Read-only review: runtime blockers нет; добавлен exact PostgreSQL23505 assertion
+для concurrent loser. Реальная SQL failure после UPDATE откатывает и core FILES.
+Fixture assumptions о domain URL, empty FILES, create permission и response id
+исправлены по actual source. Полный HTTP/JWT suite и image build не заявляются.
+[Доказательства](implementation/log102/README.md).
+
+Далее расширение public custom UPDATE/lifecycle и nested CREATE. Общий аудит не
+готов: metadata/roles, physical delete/merge, negative audit/health ещё открыты.
+Демо, внешние сообщения и GitHub Actions не затронуты.

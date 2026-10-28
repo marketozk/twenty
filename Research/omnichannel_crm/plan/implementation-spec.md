@@ -819,3 +819,11 @@ PRIVATE/INHERITED [] не являются no-op sharing. Upsert/nested пока
 root admission. После pre-query hooks processed args копируются до await workspace
 context; child с legacy scope остаётся legacy, child со strict scope требует native
 identity/workspace/actor proof. Audited failure никогда не переключается на legacy.
+
+LOG102 снимает только upsert exclusion из LOG101: flat public upsert использует тот
+же strict owner. Поиск совпадений по ID/unique metadata, восстановление deletedAt и
+сохранение createdBy остаются native. Один mixed batch — один operationId с create/
+update actions. Это read/classify/write, не ON CONFLICT/retry protocol: конкурентная
+unique violation откатывает всю операцию, unknown COMMIT не повторяется. Nested и
+real share writes не включены. Public FILES [] по-прежнему нормализуется в null;
+insert/update используют существующее canUpdateObjectRecords право.

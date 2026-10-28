@@ -1,0 +1,8 @@
+{
+  "baseCommit": "7186e11ee3ffa311d1161f064914d6073ace54fb",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/api/common/common-query-runners/common-create-many-query-runner/common-create-many-query-runner.service.ts": "314026f8b693631112d124079854422676a1ea9aa14a56aa8c21c86ca1fbda51",
+    "packages/twenty-server/test/fork-migration/crm-audit-public-update.postgres-spec.ts": "f01a34b4952b790a6389aa498beaa97efe8acb6fd37ac20772fa7130465ee44d"
+  },
+  "uploadedSourceHashesVerified": true
+}

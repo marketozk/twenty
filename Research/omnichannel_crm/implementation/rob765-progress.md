@@ -9,7 +9,7 @@
 | Rollback при сбое журнала, безопасный unknown | LOG089 PG insert fault, actual lost COMMIT ACK, poisoned caller-caught failure |
 | Точный безопасный diff и aggregation | LOG089 first-before/last-after, custom NUMERIC >2^53, metadata IDs, без значений |
 | Повтор не скрывает вторую mutation | LOG089 sequential/concurrent reuse rejected; повтор после rollback допустим. General command replay ещё не реализован |
-| Общий native CRUD/merge/bulk и API | Частично: LOG094 автоматически включает public UPDATE Company/Person/Opportunity; LOG098 включает public soft-delete/restore и native custom lifecycle; LOG101 включает обычный public CREATE standard/custom; upsert/nested/shares, physical delete/merge и остальные writers впереди. FILES same-executor — LOG092/093 |
+| Общий native CRUD/merge/bulk и API | Частично: LOG094 автоматически включает public UPDATE Company/Person/Opportunity; LOG098 включает public soft-delete/restore и native custom lifecycle; LOG101 включает обычный public CREATE standard/custom; LOG102 добавляет flat public upsert; nested/shares, physical delete/merge и остальные writers впереди. FILES same-executor — LOG092/093 |
 | Metadata/role/session lifecycle | LOG099: workspace session CREATE через реальный core owner; LOG100: single/bulk revoke с audit SAVEPOINT и DB cache recheck; metadata и roles открыты |
 | Denied/failed audit и health | Omni уже имеет отдельные attempts; general native post-rollback/alert предстоит |
 | AI/workflow/connector события | Дополняются ROB768/769, текущий срез их не подключает |
@@ -84,3 +84,11 @@ PRIVATE/INHERITED с пустыми shares не считаются no-share. Str
 существующие механизмы. Полного HTTP/JWT покрытия и выката нет. [Доказательства](log101/README.md).
 
 854 tests/30 suites PASS (169.5s), 19 новых PG cases, 58 targeted. 26 guard tests PASS; 10 migration checksums неизменны. Types 343/343 roots, 189/189 baseline diagnostics, 0 новых и 0 в изменённых строках. Существующая Brackets type diagnostic в неизменённом методе сохранена. 4 source hashes совпадают.
+
+LOG102: flat public upsert включён в native audit owner для covered local объектов.
+Mixed update/insert, unique match/restore, FILES и audit теперь атомарны. Сохраняются
+normalization, createdBy, permissions и response contract. Concurrent absent key
+может дать PostgreSQL23505 с rollback, без retry; unknown COMMIT не повторяется.
+Nested CREATE/real shares пока вне root admission. ROB765 In Progress. [Доказательства](log102/README.md).
+
+871 tests/30 suites PASS (171.954s), 17 новых PG cases, 75 targeted. 26 guards PASS; 10 migration checksums неизменны. Types 341/341 roots, 189/189 baseline diagnostics, 0 новых/changed-code. Прежняя Brackets diagnostic в неизменённом методе остаётся. 2 source hashes совпадают.

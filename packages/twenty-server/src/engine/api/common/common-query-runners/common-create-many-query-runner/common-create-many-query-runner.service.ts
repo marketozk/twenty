@@ -80,7 +80,6 @@ export class CommonCreateManyQueryRunnerService extends CommonBaseQueryRunnerSer
   ): boolean {
     const { sharingMode } = resolveObjectSharing(context);
     return (
-      !args.upsert &&
       resolveShareWithToWrite({ sharingMode, shareWith: args.shareWith }) ===
         null &&
       !containsNestedRelationCreate(
