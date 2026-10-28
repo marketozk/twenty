@@ -19,6 +19,7 @@ export const getIncomingRecordForeignKeys = async (
     childColumns: string[];
     parentColumns: string[];
     deleteAction: string;
+    updateAction: string;
   }[]
 > => {
   const parent = `${quote(schemaName)}.${quote(tableName)}`;
@@ -30,6 +31,7 @@ export const getIncomingRecordForeignKeys = async (
         childColumns: z.array(z.string()).min(1),
         parentColumns: z.array(z.string()).min(1),
         deleteAction: z.string(),
+        updateAction: z.string(),
       }),
     )
     .parse(
@@ -37,6 +39,7 @@ export const getIncomingRecordForeignKeys = async (
         `
     SELECT namespace.nspname AS "schemaName", relation.relname AS "tableName",
       constraint_row.confdeltype::text AS "deleteAction",
+      constraint_row.confupdtype::text AS "updateAction",
       array_agg(child.attname::text ORDER BY key.ordinality) AS "childColumns",
       array_agg(parent.attname::text ORDER BY key.ordinality) AS "parentColumns"
     FROM pg_constraint constraint_row
@@ -47,7 +50,7 @@ export const getIncomingRecordForeignKeys = async (
     JOIN pg_attribute parent ON parent.attrelid=constraint_row.confrelid
       AND parent.attnum=constraint_row.confkey[key.ordinality]
     WHERE constraint_row.contype='f' AND constraint_row.confrelid=$1::regclass
-    GROUP BY constraint_row.oid,constraint_row.confdeltype,namespace.nspname,relation.relname ORDER BY constraint_row.oid`,
+    GROUP BY constraint_row.oid,constraint_row.confdeltype,constraint_row.confupdtype,namespace.nspname,relation.relname ORDER BY constraint_row.oid`,
         [parent],
       ),
     );

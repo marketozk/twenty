@@ -1,0 +1,2283 @@
+{
+  "baselineRootFiles": 347,
+  "currentRootFiles": 349,
+  "baselineDiagnostics": [
+    {
+      "file": "src/engine/api/common/common-query-runners/common-create-many-query-runner/common-create-many-query-runner.service.ts",
+      "code": 2345,
+      "message": "Argument of type 'Brackets' is not assignable to parameter of type 'WhereConditionLike'.\n  Type 'Brackets' is not assignable to type 'ObjectWhereLike'.\n    Index signature for type 'string' is missing in type 'Brackets'.",
+      "line": 549
+    },
+    {
+      "file": "src/engine/api/common/common-query-runners/common-find-duplicates-query-runner.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.isempty'. '/app/node_modules/lodash.isempty/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.isempty` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.isempty';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/graphql-query-runner/graphql-query-parsers/graphql-query-filter/graphql-query-filter-condition.parser.ts",
+      "code": 2345,
+      "message": "Argument of type 'Brackets' is not assignable to parameter of type 'WhereConditionLike'.\n  Type 'Brackets' is not assignable to type 'ObjectWhereLike'.\n    Index signature for type 'string' is missing in type 'Brackets'.",
+      "line": 45
+    },
+    {
+      "file": "src/engine/api/graphql/graphql-query-runner/graphql-query-parsers/graphql-query-filter/graphql-query-filter-field.parser.ts",
+      "code": 2345,
+      "message": "Argument of type 'Brackets' is not assignable to parameter of type 'WhereConditionLike'.\n  Type 'Brackets' is not assignable to type 'ObjectWhereLike'.\n    Index signature for type 'string' is missing in type 'Brackets'.",
+      "line": 292
+    },
+    {
+      "file": "src/engine/api/graphql/graphql-query-runner/group-by/services/group-by-with-records.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.isempty'. '/app/node_modules/lodash.isempty/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.isempty` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.isempty';`",
+      "line": 4
+    },
+    {
+      "file": "src/engine/api/graphql/graphql-query-runner/utils/merge-links-field-values.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.uniqby'. '/app/node_modules/lodash.uniqby/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.uniqby` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.uniqby';`",
+      "line": 1
+    },
+    {
+      "file": "src/engine/api/graphql/graphql-query-runner/utils/merge-links-field-values.util.ts",
+      "code": 7006,
+      "message": "Parameter 'link' implicitly has an 'any' type.",
+      "line": 64
+    },
+    {
+      "file": "src/engine/api/graphql/graphql-query-runner/utils/merge-phones-field-values.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.uniqby'. '/app/node_modules/lodash.uniqby/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.uniqby` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.uniqby';`",
+      "line": 2
+    },
+    {
+      "file": "src/engine/api/graphql/graphql-query-runner/utils/merge-phones-field-values.util.ts",
+      "code": 7006,
+      "message": "Parameter 'phone' implicitly has an 'any' type.",
+      "line": 71
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-query-runner/workspace-query-hook/workspace-query-hook.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.merge'. '/app/node_modules/lodash.merge/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.merge` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.merge';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/create-many-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/create-many-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 62
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/create-one-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/create-one-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 59
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/delete-many-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/delete-many-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 62
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/delete-one-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/delete-one-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 59
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/destroy-many-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/destroy-many-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 62
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/destroy-one-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/destroy-one-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 59
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/find-duplicates-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/find-duplicates-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 65
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/find-many-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/find-many-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 75
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/find-one-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/find-one-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 59
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/group-by-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 4
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/group-by-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 79
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/merge-many-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/merge-many-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 59
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/restore-many-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/restore-many-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 62
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/restore-one-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/restore-one-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 59
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/update-many-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/update-many-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 62
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/update-one-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/update-one-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 59
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/big-float.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: string) => number' is not assignable to type 'GraphQLScalarSerializer<number>'.\n  Types of parameters 'value' and 'outputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'string'.",
+      "line": 8
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/big-float.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: number) => string' is not assignable to type 'GraphQLScalarValueParser<string | null>'.\n  Types of parameters 'value' and 'inputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'number'.",
+      "line": 11
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/big-int.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: bigint) => string' is not assignable to type 'GraphQLScalarSerializer<string>'.\n  Types of parameters 'value' and 'outputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'bigint'.",
+      "line": 7
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/big-int.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: string) => bigint' is not assignable to type 'GraphQLScalarValueParser<bigint | null>'.\n  Types of parameters 'value' and 'inputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'string'.",
+      "line": 10
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/date.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: string) => string' is not assignable to type 'GraphQLScalarSerializer<string>'.\n  Types of parameters 'value' and 'outputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'string'.",
+      "line": 8
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/date.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: string) => string' is not assignable to type 'GraphQLScalarValueParser<string | null>'.\n  Types of parameters 'value' and 'inputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'string'.",
+      "line": 11
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/time.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: Date) => number' is not assignable to type 'GraphQLScalarSerializer<number>'.\n  Types of parameters 'value' and 'outputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'Date'.",
+      "line": 9
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/time.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: number) => Date' is not assignable to type 'GraphQLScalarValueParser<Date>'.\n  Types of parameters 'value' and 'inputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'number'.",
+      "line": 12
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/ts-vector.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: string) => string' is not assignable to type 'GraphQLScalarSerializer<string>'.\n  Types of parameters 'value' and 'outputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'string'.",
+      "line": 6
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/ts-vector.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: string) => string' is not assignable to type 'GraphQLScalarValueParser<string | null>'.\n  Types of parameters 'value' and 'inputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'string'.",
+      "line": 9
+    },
+    {
+      "file": "src/engine/api/utils/build-duplicate-conditions.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.isempty'. '/app/node_modules/lodash.isempty/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.isempty` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.isempty';`",
+      "line": 1
+    },
+    {
+      "file": "src/engine/core-modules/application/application-install/utils/should-refresh-application-registration-on-install.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'semver'. '/app/node_modules/semver/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/semver` if it exists or add a new declaration (.d.ts) file containing `declare module 'semver';`",
+      "line": 1
+    },
+    {
+      "file": "src/engine/core-modules/application/application-package/application-package-fetcher.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'bytes'. '/app/node_modules/bytes/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/bytes` if it exists or add a new declaration (.d.ts) file containing `declare module 'bytes';`",
+      "line": 9
+    },
+    {
+      "file": "src/engine/core-modules/application/application-package/application-version-validation.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'semver'. '/app/node_modules/semver/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/semver` if it exists or add a new declaration (.d.ts) file containing `declare module 'semver';`",
+      "line": 4
+    },
+    {
+      "file": "src/engine/core-modules/application/application-package/utils/is-valid-npm-version-spec.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'semver'. '/app/node_modules/semver/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/semver` if it exists or add a new declaration (.d.ts) file containing `declare module 'semver';`",
+      "line": 1
+    },
+    {
+      "file": "src/engine/core-modules/application/application-registration/application-registration.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'bcrypt'. '/app/node_modules/bcrypt/bcrypt.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/bcrypt` if it exists or add a new declaration (.d.ts) file containing `declare module 'bcrypt';`",
+      "line": 8
+    },
+    {
+      "file": "src/engine/core-modules/application/application-registration/application-registration.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.isequal'. '/app/node_modules/lodash.isequal/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.isequal` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.isequal';`",
+      "line": 9
+    },
+    {
+      "file": "src/engine/core-modules/application/application.service.ts",
+      "code": 2322,
+      "message": "Type 'unknown' is not assignable to type '\"flatFieldMetadataMaps\" | \"flatObjectMetadataMaps\" | \"flatIndexMaps\" | \"flatApplicationVariableMaps\" | \"flatObjectPermissionMaps\" | \"flatPageLayoutWidgetMaps\" | \"flatPageLayoutTabMaps\" | ... 29 more ... | keyof AdditionalCacheDataMaps'.",
+      "line": 896
+    },
+    {
+      "file": "src/engine/core-modules/application/application.service.ts",
+      "code": 2322,
+      "message": "Type 'string' is not assignable to type '\"flatFieldMetadataMaps\" | \"flatObjectMetadataMaps\" | \"flatIndexMaps\" | \"flatApplicationVariableMaps\" | \"flatObjectPermissionMaps\" | \"flatPageLayoutWidgetMaps\" | \"flatPageLayoutTabMaps\" | ... 29 more ... | keyof AdditionalCacheDataMaps'.",
+      "line": 897
+    },
+    {
+      "file": "src/engine/core-modules/auth/strategies/jwt.auth.strategy.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'passport-jwt'. '/app/node_modules/passport-jwt/lib/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/passport-jwt` if it exists or add a new declaration (.d.ts) file containing `declare module 'passport-jwt';`",
+      "line": 6
+    },
+    {
+      "file": "src/engine/core-modules/auth/strategies/jwt.auth.strategy.ts",
+      "code": 7006,
+      "message": "Parameter '_request' implicitly has an 'any' type.",
+      "line": 50
+    },
+    {
+      "file": "src/engine/core-modules/auth/strategies/jwt.auth.strategy.ts",
+      "code": 7006,
+      "message": "Parameter 'rawJwtToken' implicitly has an 'any' type.",
+      "line": 51
+    },
+    {
+      "file": "src/engine/core-modules/auth/strategies/jwt.auth.strategy.ts",
+      "code": 7006,
+      "message": "Parameter 'done' implicitly has an 'any' type.",
+      "line": 52
+    },
+    {
+      "file": "src/engine/core-modules/email/drivers/smtp.driver.ts",
+      "code": 2307,
+      "message": "Cannot find module 'nodemailer/lib/smtp-transport' or its corresponding type declarations.",
+      "line": 11
+    },
+    {
+      "file": "src/engine/core-modules/emailing-domain/drivers/aws-ses/services/aws-ses-driver.service.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'AwsSesError'.",
+      "line": 86
+    },
+    {
+      "file": "src/engine/core-modules/emailing-domain/drivers/aws-ses/services/aws-ses-driver.service.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'AwsSesError'.",
+      "line": 135
+    },
+    {
+      "file": "src/engine/core-modules/emailing-domain/drivers/aws-ses/services/aws-ses-send-email.service.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'AwsSesError'.",
+      "line": 115
+    },
+    {
+      "file": "src/engine/core-modules/emailing-domain/drivers/aws-ses/services/aws-ses-send-email.service.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'AwsSesError'.",
+      "line": 215
+    },
+    {
+      "file": "src/engine/core-modules/emailing-domain/jobs/emailing-domain-workspace-cleanup.job.ts",
+      "code": 2339,
+      "message": "Property 'message' does not exist on type '{}'.",
+      "line": 26
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/local.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 90
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/local.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 111
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/local.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 411
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 135
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 172
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 181
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 2339,
+      "message": "Property 'name' does not exist on type '{}'.",
+      "line": 274
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 2339,
+      "message": "Property 'message' does not exist on type '{}'.",
+      "line": 274
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 367
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 374
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 411
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 412
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 464
+    },
+    {
+      "file": "src/engine/core-modules/file/file-upload/utils/assert-valid-direct-upload-size.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'bytes'. '/app/node_modules/bytes/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/bytes` if it exists or add a new declaration (.d.ts) file containing `declare module 'bytes';`",
+      "line": 2
+    },
+    {
+      "file": "src/engine/core-modules/file/jobs/file-workspace-folder-deletion.job.ts",
+      "code": 2339,
+      "message": "Property 'message' does not exist on type '{}'.",
+      "line": 22
+    },
+    {
+      "file": "src/engine/core-modules/file/utils/extract-file-info-or-throw.utils.ts",
+      "code": 2307,
+      "message": "Cannot find module '@file-type/pdf' or its corresponding type declarations.",
+      "line": 12
+    },
+    {
+      "file": "src/engine/core-modules/file/utils/sanitize-file.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'jsdom'. '/app/node_modules/jsdom/lib/api.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/jsdom` if it exists or add a new declaration (.d.ts) file containing `declare module 'jsdom';`",
+      "line": 2
+    },
+    {
+      "file": "src/engine/core-modules/graphql/utils/graphql-errors.util.ts",
+      "code": 2612,
+      "message": "Property 'locations' will overwrite the base property in 'GraphQLError'. If this is intentional, add an initializer. Otherwise, add a 'declare' modifier or remove the redundant declaration.",
+      "line": 49
+    },
+    {
+      "file": "src/engine/core-modules/graphql/utils/graphql-errors.util.ts",
+      "code": 2612,
+      "message": "Property 'path' will overwrite the base property in 'GraphQLError'. If this is intentional, add an initializer. Otherwise, add a 'declare' modifier or remove the redundant declaration.",
+      "line": 50
+    },
+    {
+      "file": "src/engine/core-modules/graphql/utils/graphql-errors.util.ts",
+      "code": 2612,
+      "message": "Property 'source' will overwrite the base property in 'GraphQLError'. If this is intentional, add an initializer. Otherwise, add a 'declare' modifier or remove the redundant declaration.",
+      "line": 51
+    },
+    {
+      "file": "src/engine/core-modules/graphql/utils/graphql-errors.util.ts",
+      "code": 2612,
+      "message": "Property 'positions' will overwrite the base property in 'GraphQLError'. If this is intentional, add an initializer. Otherwise, add a 'declare' modifier or remove the redundant declaration.",
+      "line": 52
+    },
+    {
+      "file": "src/engine/core-modules/graphql/utils/graphql-errors.util.ts",
+      "code": 2612,
+      "message": "Property 'nodes' will overwrite the base property in 'GraphQLError'. If this is intentional, add an initializer. Otherwise, add a 'declare' modifier or remove the redundant declaration.",
+      "line": 53
+    },
+    {
+      "file": "src/engine/core-modules/graphql/utils/graphql-errors.util.ts",
+      "code": 2612,
+      "message": "Property 'originalError' will overwrite the base property in 'GraphQLError'. If this is intentional, add an initializer. Otherwise, add a 'declare' modifier or remove the redundant declaration.",
+      "line": 54
+    },
+    {
+      "file": "src/engine/core-modules/graphql/utils/graphql-errors.util.ts",
+      "code": 2339,
+      "message": "Property 'status' does not exist on type '{}'.",
+      "line": 254
+    },
+    {
+      "file": "src/engine/core-modules/i18n/i18n.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module '@lingui/message-utils/compileMessage'. '/app/node_modules/@lingui/message-utils/compileMessage.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lingui__message-utils` if it exists or add a new declaration (.d.ts) file containing `declare module '@lingui/message-utils/compileMessage';`",
+      "line": 10
+    },
+    {
+      "file": "src/engine/core-modules/jwt/services/jwt-wrapper.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'passport-jwt'. '/app/node_modules/passport-jwt/lib/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/passport-jwt` if it exists or add a new declaration (.d.ts) file containing `declare module 'passport-jwt';`",
+      "line": 7
+    },
+    {
+      "file": "src/engine/core-modules/logic-function/logic-function-drivers/drivers/lambda/utils/reprefix-lambda-zip-entries.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'unzipper'. '/app/node_modules/unzipper/unzip.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/unzipper` if it exists or add a new declaration (.d.ts) file containing `declare module 'unzipper';`",
+      "line": 9
+    },
+    {
+      "file": "src/engine/core-modules/logic-function/logic-function-drivers/drivers/lambda/utils/reprefix-lambda-zip-entries.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'archiver'. '/app/node_modules/archiver/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/archiver` if it exists or add a new declaration (.d.ts) file containing `declare module 'archiver';`",
+      "line": 10
+    },
+    {
+      "file": "src/engine/core-modules/logic-function/logic-function-drivers/utils/create-zip-file.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'archiver'. '/app/node_modules/archiver/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/archiver` if it exists or add a new declaration (.d.ts) file containing `declare module 'archiver';`",
+      "line": 4
+    },
+    {
+      "file": "src/engine/core-modules/record-transformer/utils/transform-links-value.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.isempty'. '/app/node_modules/lodash.isempty/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.isempty` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.isempty';`",
+      "line": 2
+    },
+    {
+      "file": "src/engine/core-modules/record-transformer/utils/transform-phones-value.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.isempty'. '/app/node_modules/lodash.isempty/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.isempty` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.isempty';`",
+      "line": 7
+    },
+    {
+      "file": "src/engine/core-modules/sdk-client/sdk-client-archive.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'unzipper'. '/app/node_modules/unzipper/unzip.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/unzipper` if it exists or add a new declaration (.d.ts) file containing `declare module 'unzipper';`",
+      "line": 58
+    },
+    {
+      "file": "src/engine/core-modules/sdk-client/sdk-client-archive.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'unzipper'. '/app/node_modules/unzipper/unzip.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/unzipper` if it exists or add a new declaration (.d.ts) file containing `declare module 'unzipper';`",
+      "line": 99
+    },
+    {
+      "file": "src/engine/core-modules/sdk-client/sdk-client-archive.service.ts",
+      "code": 7006,
+      "message": "Parameter 'file' implicitly has an 'any' type.",
+      "line": 103
+    },
+    {
+      "file": "src/engine/core-modules/sdk-client/sdk-client-generation.service.ts",
+      "code": 2307,
+      "message": "Cannot find module 'twenty-client-sdk/generate' or its corresponding type declarations.",
+      "line": 9
+    },
+    {
+      "file": "src/engine/core-modules/secure-http-client/utils/create-ssrf-safe-agent.util.ts",
+      "code": 2339,
+      "message": "Property 'createConnection' does not exist on type 'Agent'.",
+      "line": 79
+    },
+    {
+      "file": "src/engine/core-modules/secure-http-client/utils/create-ssrf-safe-agent.util.ts",
+      "code": 2339,
+      "message": "Property 'createConnection' does not exist on type 'Agent'.",
+      "line": 102
+    },
+    {
+      "file": "src/engine/core-modules/twenty-config/decorators/cast-to-upper-snake-case.decorator.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.snakecase'. '/app/node_modules/lodash.snakecase/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.snakecase` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.snakecase';`",
+      "line": 2
+    },
+    {
+      "file": "src/engine/core-modules/twenty-config/decorators/is-twenty-semver.decorator.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'semver'. '/app/node_modules/semver/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/semver` if it exists or add a new declaration (.d.ts) file containing `declare module 'semver';`",
+      "line": 8
+    },
+    {
+      "file": "src/engine/core-modules/twenty-config/storage/config-storage.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 87
+    },
+    {
+      "file": "src/engine/core-modules/twenty-config/storage/config-storage.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 112
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-quota.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.uniqby'. '/app/node_modules/lodash.uniqby/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.uniqby` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.uniqby';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-quota.service.ts",
+      "code": 7006,
+      "message": "Parameter 'event' implicitly has an 'any' type.",
+      "line": 553
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-quota.service.ts",
+      "code": 7031,
+      "message": "Binding element 'resourceType' implicitly has an 'any' type.",
+      "line": 562
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-quota.service.ts",
+      "code": 7031,
+      "message": "Binding element 'operationType' implicitly has an 'any' type.",
+      "line": 562
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-quota.service.ts",
+      "code": 7031,
+      "message": "Binding element 'spenders' implicitly has an 'any' type.",
+      "line": 562
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-quota.service.ts",
+      "code": 7006,
+      "message": "Parameter 'counter' implicitly has an 'any' type.",
+      "line": 572
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.uniqby'. '/app/node_modules/lodash.uniqby/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.uniqby` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.uniqby';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter 'counter' implicitly has an 'any' type.",
+      "line": 201
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter 'counter' implicitly has an 'any' type.",
+      "line": 207
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7053,
+      "message": "Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Partial<Record<UsageUnit, number>>'.",
+      "line": 207
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter 'counter' implicitly has an 'any' type.",
+      "line": 312
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter 'counter' implicitly has an 'any' type.",
+      "line": 315
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter '_' implicitly has an 'any' type.",
+      "line": 319
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter 'index' implicitly has an 'any' type.",
+      "line": 319
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter 'counter' implicitly has an 'any' type.",
+      "line": 340
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter 'index' implicitly has an 'any' type.",
+      "line": 340
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter 'counter' implicitly has an 'any' type.",
+      "line": 344
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter 'index' implicitly has an 'any' type.",
+      "line": 344
+    },
+    {
+      "file": "src/engine/core-modules/user-workspace/user-workspace.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 605
+    },
+    {
+      "file": "src/engine/core-modules/workspace-invitation/services/workspace-invitation.service.ts",
+      "code": 18046,
+      "message": "'err' is of type 'unknown'.",
+      "line": 100
+    },
+    {
+      "file": "src/engine/metadata-modules/ai/ai-models/utils/sanitize-tool-result-refs.util.ts",
+      "code": 2345,
+      "message": "Argument of type '(part: LanguageModelV4ToolResultPart) => LanguageModelV4ToolResultPart' is not assignable to parameter of type '(value: LanguageModelV4ToolResultPart | LanguageModelV4ToolApprovalResponsePart, index: number, array: (LanguageModelV4ToolResultPart | LanguageModelV4ToolApprovalResponsePart)[]) => LanguageModelV4ToolResultPart'.\n  Types of parameters 'part' and 'value' are incompatible.\n    Type 'LanguageModelV4ToolResultPart | LanguageModelV4ToolApprovalResponsePart' is not assignable to type 'LanguageModelV4ToolResultPart'.\n      Type 'LanguageModelV4ToolApprovalResponsePart' is missing the following properties from type 'LanguageModelV4ToolResultPart': toolCallId, toolName, output",
+      "line": 53
+    },
+    {
+      "file": "src/engine/metadata-modules/flat-entity/constant/all-flat-entity-maps-properties.constant.ts",
+      "code": 2345,
+      "message": "Argument of type '<T extends AllMetadataName>(metadataName: T) => MetadataToFlatEntityMapsKey<T>' is not assignable to parameter of type '(value: string, index: number, array: string[]) => \"flatFieldMetadataMaps\" | \"flatObjectMetadataMaps\" | \"flatIndexMaps\" | \"flatRowLevelPermissionPredicateMaps\" | \"flatRowLevelPermissionPredicateGroupMaps\" | ... 32 more ... | \"flatTimelineActivityTypeMaps\"'.\n  Types of parameters 'metadataName' and 'value' are incompatible.\n    Type 'string' is not assignable to type '\"agent\" | \"workflow\" | \"role\" | \"workflowVersion\" | \"index\" | \"applicationVariable\" | \"frontComponent\" | \"objectMetadata\" | \"fieldMetadata\" | \"pageLayoutWidget\" | \"pageLayoutTab\" | ... 26 more ... | \"timelineActivityType\"'.",
+      "line": 7
+    },
+    {
+      "file": "src/engine/metadata-modules/flat-field-metadata/utils/build-morph-relation-head-from-target.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.omit'. '/app/node_modules/lodash.omit/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.omit` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.omit';`",
+      "line": 1
+    },
+    {
+      "file": "src/engine/twenty-orm/repository/permissions.utils.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.isempty'. '/app/node_modules/lodash.isempty/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.isempty` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.isempty';`",
+      "line": 2
+    },
+    {
+      "file": "src/engine/twenty-orm/utils/compute-relation-connect-query-configs.util.ts",
+      "code": 2740,
+      "message": "Type 'OrmFlatFieldMetadata<FieldMetadataType>' is missing the following properties from type 'UniqueFieldCondition[]': length, pop, push, concat, and 29 more.",
+      "line": 304
+    },
+    {
+      "file": "src/engine/twenty-orm/utils/compute-relation-connect-query-configs.util.ts",
+      "code": 2769,
+      "message": "No overload matches this call.\n  Overload 1 of 3, '(callbackfn: (previousValue: OrmFlatFieldMetadata<FieldMetadataType>, currentValue: OrmFlatFieldMetadata<FieldMetadataType>, currentIndex: number, array: OrmFlatFieldMetadata<...>[]) => OrmFlatFieldMetadata<...>, initialValue: OrmFlatFieldMetadata<...>): OrmFlatFieldMetadata<...>', gave the following error.\n    Argument of type '(acc: never[], uniqueConstraintField: OrmFlatFieldMetadata<FieldMetadataType>) => [string, any][]' is not assignable to parameter of type '(previousValue: OrmFlatFieldMetadata<FieldMetadataType>, currentValue: OrmFlatFieldMetadata<FieldMetadataType>, currentIndex: number, array: OrmFlatFieldMetadata<...>[]) => OrmFlatFieldMetadata<...>'.\n      Types of parameters 'acc' and 'previousValue' are incompatible.\n        Type 'OrmFlatFieldMetadata<FieldMetadataType>' is missing the following properties from type 'never[]': length, pop, push, concat, and 29 more.\n  Overload 2 of 3, '(callbackfn: (previousValue: never[], currentValue: OrmFlatFieldMetadata<FieldMetadataType>, currentIndex: number, array: OrmFlatFieldMetadata<FieldMetadataType>[]) => never[], initialValue: never[]): never[]', gave the following error.\n    Argument of type '(acc: never[], uniqueConstraintField: OrmFlatFieldMetadata<FieldMetadataType>) => [string, any][]' is not assignable to parameter of type '(previousValue: never[], currentValue: OrmFlatFieldMetadata<FieldMetadataType>, currentIndex: number, array: OrmFlatFieldMetadata<FieldMetadataType>[]) => never[]'.\n      Type '[string, any][]' is not assignable to type 'never[]'.\n        Type '[string, any]' is not assignable to type 'never'.",
+      "line": 304
+    },
+    {
+      "file": "src/engine/twenty-orm/workspace-schema-manager/services/workspace-schema-enum-manager.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 249
+    },
+    {
+      "file": "src/engine/workspace-manager/twenty-standard-application/utils/field-metadata/build-standard-flat-field-metadata-maps.util.ts",
+      "code": 2322,
+      "message": "Type '((args: Omit<CreateStandardFieldArgs<\"campaignDelivery\", FieldMetadataType>, \"context\">) => Record<\"createdAt\" | \"deletedAt\" | ... 16 more ... | \"renderingFailedAt\", FlatFieldMetadata>) | ... 39 more ... | (({ now, objectName, workspaceId, standardObjectMetadataRelatedEntityIds, dependencyFlatEntityMaps, twentyStand...' is not assignable to type 'StandardFieldBuilder<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"agentChatThread\" | \"agentChatThreadTarget\" | \"agentChatThreadParticipant\" | \"agentTurn\" | ... 30 more ... | \"messageThreadTarget\">'.\n  Type '(args: Omit<CreateStandardFieldArgs<\"campaignDelivery\", FieldMetadataType>, \"context\">) => Record<AllStandardObjectFieldName<\"campaignDelivery\">, FlatFieldMetadata>' is not assignable to type 'StandardFieldBuilder<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"agentChatThread\" | \"agentChatThreadTarget\" | \"agentChatThreadParticipant\" | \"agentTurn\" | ... 30 more ... | \"messageThreadTarget\">'.\n    Types of parameters 'args' and 'args' are incompatible.\n      Type 'Omit<CreateStandardFieldArgs<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"agentChatThread\" | \"agentChatThreadTarget\" | \"agentChatThreadParticipant\" | \"agentTurn\" | ... 30 more ... | \"messageThreadTarget\", FieldMetadataType>, \"context\">' is not assignable to type 'Omit<CreateStandardFieldArgs<\"campaignDelivery\", FieldMetadataType>, \"context\">'.\n        Types of property 'objectName' are incompatible.\n          Type '\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"agentChatThread\" | \"agentChatThreadTarget\" | \"agentChatThreadParticipant\" | \"agentTurn\" | ... 30 more ... | \"messageThreadTarget\"' is not assignable to type '\"campaignDelivery\"'.\n            Type '\"workspaceMember\"' is not assignable to type '\"campaignDelivery\"'.",
+      "line": 118
+    },
+    {
+      "file": "src/engine/workspace-manager/twenty-standard-application/utils/index/build-standard-flat-index-metadata-maps.util.ts",
+      "code": 2322,
+      "message": "Type '((args: Omit<CreateStandardIndexArgs<\"campaignDelivery\">, \"context\">) => Record<string, FlatIndexMetadata>) | ... 38 more ... | (({ now, objectName, workspaceId, standardObjectMetadataRelatedEntityIds, dependencyFlatEntityMaps, twentyStandardApplicationId, }: Omit<...>) => Record<...>)' is not assignable to type 'StandardIndexBuilder<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"agentChatThread\" | \"agentChatThreadTarget\" | \"agentChatThreadParticipant\" | \"agentTurn\" | ... 29 more ... | \"messageThreadTarget\">'.\n  Type '(args: Omit<CreateStandardIndexArgs<\"campaignDelivery\">, \"context\">) => Record<string, FlatIndexMetadata>' is not assignable to type 'StandardIndexBuilder<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"agentChatThread\" | \"agentChatThreadTarget\" | \"agentChatThreadParticipant\" | \"agentTurn\" | ... 29 more ... | \"messageThreadTarget\">'.\n    Types of parameters 'args' and 'args' are incompatible.\n      Type 'Omit<CreateStandardIndexArgs<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"agentChatThread\" | \"agentChatThreadTarget\" | \"agentChatThreadParticipant\" | \"agentTurn\" | ... 29 more ... | \"messageThreadTarget\">, \"context\">' is not assignable to type 'Omit<CreateStandardIndexArgs<\"campaignDelivery\">, \"context\">'.\n        Types of property 'objectName' are incompatible.\n          Type '\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"agentChatThread\" | \"agentChatThreadTarget\" | \"agentChatThreadParticipant\" | \"agentTurn\" | ... 29 more ... | \"messageThreadTarget\"' is not assignable to type '\"campaignDelivery\"'.\n            Type '\"workspaceMember\"' is not assignable to type '\"campaignDelivery\"'.",
+      "line": 111
+    },
+    {
+      "file": "src/engine/workspace-manager/twenty-standard-application/utils/view-field-group/build-standard-flat-view-field-group-metadata-maps.util.ts",
+      "code": 2322,
+      "message": "Type '((args: Omit<CreateStandardViewFieldGroupArgs<\"blocklist\">, \"context\">) => Record<string, FlatViewFieldGroup>) | ... 16 more ... | ((args: Omit<...>) => Record<...>)' is not assignable to type 'StandardViewFieldGroupBuilder<\"person\" | \"company\" | \"message\" | \"opportunity\" | \"blocklist\" | \"calendarChannelEventAssociation\" | \"calendarEvent\" | \"calendarEventParticipant\" | \"callRecording\" | \"note\" | ... 7 more ... | \"messageParticipant\">'.\n  Type '(args: Omit<CreateStandardViewFieldGroupArgs<\"blocklist\">, \"context\">) => Record<string, FlatViewFieldGroup>' is not assignable to type 'StandardViewFieldGroupBuilder<\"person\" | \"company\" | \"message\" | \"opportunity\" | \"blocklist\" | \"calendarChannelEventAssociation\" | \"calendarEvent\" | \"calendarEventParticipant\" | \"callRecording\" | \"note\" | ... 7 more ... | \"messageParticipant\">'.\n    Types of parameters 'args' and 'args' are incompatible.\n      Type 'Omit<CreateStandardViewFieldGroupArgs<\"person\" | \"company\" | \"message\" | \"opportunity\" | \"blocklist\" | \"calendarChannelEventAssociation\" | \"calendarEvent\" | \"calendarEventParticipant\" | \"callRecording\" | ... 8 more ... | \"messageParticipant\">, \"context\">' is not assignable to type 'Omit<CreateStandardViewFieldGroupArgs<\"blocklist\">, \"context\">'.\n        Types of property 'objectName' are incompatible.\n          Type '\"person\" | \"company\" | \"message\" | \"opportunity\" | \"blocklist\" | \"calendarChannelEventAssociation\" | \"calendarEvent\" | \"calendarEventParticipant\" | \"callRecording\" | \"note\" | ... 7 more ... | \"messageParticipant\"' is not assignable to type '\"blocklist\"'.\n            Type '\"person\"' is not assignable to type '\"blocklist\"'.",
+      "line": 71
+    },
+    {
+      "file": "src/engine/workspace-manager/twenty-standard-application/utils/view-field/build-standard-flat-view-field-metadata-maps.util.ts",
+      "code": 2322,
+      "message": "Type '((args: Omit<CreateStandardViewFieldArgs<\"attachment\">, \"context\">) => Record<string, FlatViewField>) | ((args: Omit<...>) => Record<...>) | ... 25 more ... | ((args: Omit<...>) => Record<...>)' is not assignable to type 'StandardViewFieldBuilder<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"timelineActivity\" | \"attachment\" | \"blocklist\" | \"calendarChannelEventAssociation\" | ... 17 more ... | \"messageThread\">'.\n  Type '(args: Omit<CreateStandardViewFieldArgs<\"attachment\">, \"context\">) => Record<string, FlatViewField>' is not assignable to type 'StandardViewFieldBuilder<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"timelineActivity\" | \"attachment\" | \"blocklist\" | \"calendarChannelEventAssociation\" | ... 17 more ... | \"messageThread\">'.\n    Types of parameters 'args' and 'args' are incompatible.\n      Type 'Omit<CreateStandardViewFieldArgs<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"timelineActivity\" | \"attachment\" | \"blocklist\" | \"calendarChannelEventAssociation\" | ... 17 more ... | \"messageThread\">, \"context\">' is not assignable to type 'Omit<CreateStandardViewFieldArgs<\"attachment\">, \"context\">'.\n        Types of property 'objectName' are incompatible.\n          Type '\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"timelineActivity\" | \"attachment\" | \"blocklist\" | \"calendarChannelEventAssociation\" | \"calendarEvent\" | ... 16 more ... | \"messageThread\"' is not assignable to type '\"attachment\"'.\n            Type '\"workspaceMember\"' is not assignable to type '\"attachment\"'.",
+      "line": 89
+    },
+    {
+      "file": "src/engine/workspace-manager/twenty-standard-application/utils/view-filter/build-standard-flat-view-filter-metadata-maps.util.ts",
+      "code": 2322,
+      "message": "Type '((args: Omit<CreateStandardViewFilterArgs<\"person\">, \"context\">) => Record<string, FlatViewFilter>) | ((args: Omit<...>) => Record<...>)' is not assignable to type 'StandardViewFilterBuilder<\"person\" | \"task\">'.\n  Type '(args: Omit<CreateStandardViewFilterArgs<\"person\">, \"context\">) => Record<string, FlatViewFilter>' is not assignable to type 'StandardViewFilterBuilder<\"person\" | \"task\">'.\n    Types of parameters 'args' and 'args' are incompatible.\n      Type 'Omit<CreateStandardViewFilterArgs<\"person\" | \"task\">, \"context\">' is not assignable to type 'Omit<CreateStandardViewFilterArgs<\"person\">, \"context\">'.\n        Types of property 'objectName' are incompatible.\n          Type '\"person\" | \"task\"' is not assignable to type '\"person\"'.\n            Type '\"task\"' is not assignable to type '\"person\"'.",
+      "line": 29
+    },
+    {
+      "file": "src/engine/workspace-manager/twenty-standard-application/utils/view-group/build-standard-flat-view-group-metadata-maps.util.ts",
+      "code": 2322,
+      "message": "Type '((args: Omit<CreateStandardViewGroupArgs<\"opportunity\">, \"context\">) => Record<string, FlatViewGroup>) | ((args: Omit<...>) => Record<...>)' is not assignable to type 'StandardViewGroupBuilder<\"opportunity\" | \"task\">'.\n  Type '(args: Omit<CreateStandardViewGroupArgs<\"opportunity\">, \"context\">) => Record<string, FlatViewGroup>' is not assignable to type 'StandardViewGroupBuilder<\"opportunity\" | \"task\">'.\n    Types of parameters 'args' and 'args' are incompatible.\n      Type 'Omit<CreateStandardViewGroupArgs<\"opportunity\" | \"task\">, \"context\">' is not assignable to type 'Omit<CreateStandardViewGroupArgs<\"opportunity\">, \"context\">'.\n        Types of property 'objectName' are incompatible.\n          Type '\"opportunity\" | \"task\"' is not assignable to type '\"opportunity\"'.\n            Type '\"task\"' is not assignable to type '\"opportunity\"'.",
+      "line": 29
+    },
+    {
+      "file": "src/engine/workspace-manager/twenty-standard-application/utils/view/build-standard-flat-view-metadata-maps.util.ts",
+      "code": 2322,
+      "message": "Type '((args: Omit<CreateStandardViewArgs<\"attachment\">, \"context\">) => Record<string, FlatView>) | ((args: Omit<CreateStandardViewArgs<\"blocklist\">, \"context\">) => Record<...>) | ... 25 more ... | ((args: Omit<...>) => Record<...>)' is not assignable to type 'StandardViewBuilder<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"timelineActivity\" | \"attachment\" | \"blocklist\" | \"calendarChannelEventAssociation\" | ... 17 more ... | \"messageThread\">'.\n  Type '(args: Omit<CreateStandardViewArgs<\"attachment\">, \"context\">) => Record<string, FlatView>' is not assignable to type 'StandardViewBuilder<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"timelineActivity\" | \"attachment\" | \"blocklist\" | \"calendarChannelEventAssociation\" | ... 17 more ... | \"messageThread\">'.\n    Types of parameters 'args' and 'args' are incompatible.\n      Type 'Omit<CreateStandardViewArgs<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"timelineActivity\" | \"attachment\" | \"blocklist\" | \"calendarChannelEventAssociation\" | ... 17 more ... | \"messageThread\">, \"context\">' is not assignable to type 'Omit<CreateStandardViewArgs<\"attachment\">, \"context\">'.\n        Types of property 'objectName' are incompatible.\n          Type '\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"timelineActivity\" | \"attachment\" | \"blocklist\" | \"calendarChannelEventAssociation\" | \"calendarEvent\" | ... 16 more ... | \"messageThread\"' is not assignable to type '\"attachment\"'.\n            Type '\"workspaceMember\"' is not assignable to type '\"attachment\"'.",
+      "line": 89
+    },
+    {
+      "file": "src/engine/workspace-manager/workspace-migration/workspace-migration-builder/services/workspace-entity-migration-builder.service.ts",
+      "code": 2683,
+      "message": "'this' implicitly has type 'any' because it does not have a type annotation.",
+      "line": 510
+    },
+    {
+      "file": "src/engine/workspace-manager/workspace-migration/workspace-migration-runner/interfaces/workspace-migration-runner-action-handler-service.interface.ts",
+      "code": 2322,
+      "message": "Type 'unknown' is not assignable to type 'Error | undefined'.",
+      "line": 250
+    },
+    {
+      "file": "src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 546
+    },
+    {
+      "file": "src/modules/contact-creation-manager/services/create-company-and-contact.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.compact'. '/app/node_modules/lodash.compact/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.compact` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.compact';`",
+      "line": 6
+    },
+    {
+      "file": "src/modules/contact-creation-manager/services/create-company.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.uniqby'. '/app/node_modules/lodash.uniqby/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.uniqby` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.uniqby';`",
+      "line": 5
+    },
+    {
+      "file": "src/modules/contact-creation-manager/services/create-company.service.ts",
+      "code": 7006,
+      "message": "Parameter 'companyToCreate' implicitly has an 'any' type.",
+      "line": 76
+    },
+    {
+      "file": "src/modules/contact-creation-manager/services/create-company.service.ts",
+      "code": 7006,
+      "message": "Parameter 'domainName' implicitly has an 'any' type.",
+      "line": 93
+    },
+    {
+      "file": "src/modules/contact-creation-manager/services/create-company.service.ts",
+      "code": 7006,
+      "message": "Parameter 'company' implicitly has an 'any' type.",
+      "line": 128
+    },
+    {
+      "file": "src/modules/contact-creation-manager/services/create-company.service.ts",
+      "code": 7006,
+      "message": "Parameter 'company' implicitly has an 'any' type.",
+      "line": 152
+    },
+    {
+      "file": "src/modules/contact-creation-manager/types/is-psl-parsed-domain.type.ts",
+      "code": 2339,
+      "message": "Property 'error' does not exist on type 'ParsedDomain | ErrorResult<number | unique symbol | \"length\" | \"toString\" | \"concat\" | \"slice\" | \"indexOf\" | \"lastIndexOf\" | \"includes\" | \"at\" | \"fixed\" | \"charAt\" | \"charCodeAt\" | ... 37 more ... | \"valueOf\">'.\n  Property 'error' does not exist on type 'ParsedDomain'.",
+      "line": 7
+    },
+    {
+      "file": "src/modules/contact-creation-manager/utils/get-unique-contacts-and-handles.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.uniq'. '/app/node_modules/lodash.uniq/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.uniq` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.uniq';`",
+      "line": 1
+    },
+    {
+      "file": "src/modules/contact-creation-manager/utils/get-unique-contacts-and-handles.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.uniqby'. '/app/node_modules/lodash.uniqby/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.uniqby` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.uniqby';`",
+      "line": 2
+    },
+    {
+      "file": "src/modules/contact-creation-manager/utils/get-unique-contacts-and-handles.util.ts",
+      "code": 7006,
+      "message": "Parameter 'contact' implicitly has an 'any' type.",
+      "line": 18
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/providers/imap-client.provider.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 44
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/providers/imap-client.provider.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 45
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/providers/imap-client.provider.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'ImapFlowError'.",
+      "line": 48
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/providers/imap-client.provider.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 57
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-find-sent-folder.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 51
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-find-sent-folder.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 146
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-get-message-list.service.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error'.",
+      "line": 68
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-get-message-list.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 82
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-get-message-list.service.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error'.",
+      "line": 84
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-get-message-list.service.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error'.",
+      "line": 165
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-get-message-list.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 170
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-get-message-list.service.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error'.",
+      "line": 172
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-get-message-list.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 244
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-message-parser.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 70
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-message-parser.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 98
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/microsoft/services/microsoft-get-messages.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'addressparser'. '/app/node_modules/addressparser/lib/addressparser.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/addressparser` if it exists or add a new declaration (.d.ts) file containing `declare module 'addressparser';`",
+      "line": 3
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/convert-html-to-text.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'sanitize-html'. '/app/node_modules/sanitize-html/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/sanitize-html` if it exists or add a new declaration (.d.ts) file containing `declare module 'sanitize-html';`",
+      "line": 1
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/message-html-sanitize-options.constant.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'sanitize-html'. '/app/node_modules/sanitize-html/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/sanitize-html` if it exists or add a new declaration (.d.ts) file containing `declare module 'sanitize-html';`",
+      "line": 1
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/render-html-with-quote-markers.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'html-to-text'. '/app/node_modules/html-to-text/lib/html-to-text.cjs' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/html-to-text` if it exists or add a new declaration (.d.ts) file containing `declare module 'html-to-text';`",
+      "line": 5
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/render-html-with-quote-markers.util.ts",
+      "code": 7006,
+      "message": "Parameter 'element' implicitly has an 'any' type.",
+      "line": 10
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/render-html-with-quote-markers.util.ts",
+      "code": 7006,
+      "message": "Parameter 'walk' implicitly has an 'any' type.",
+      "line": 10
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/render-html-with-quote-markers.util.ts",
+      "code": 7006,
+      "message": "Parameter 'builder' implicitly has an 'any' type.",
+      "line": 10
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/render-html-with-quote-markers.util.ts",
+      "code": 7006,
+      "message": "Parameter 'element' implicitly has an 'any' type.",
+      "line": 20
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/render-html-with-quote-markers.util.ts",
+      "code": 7006,
+      "message": "Parameter 'walk' implicitly has an 'any' type.",
+      "line": 20
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/render-html-with-quote-markers.util.ts",
+      "code": 7006,
+      "message": "Parameter 'builder' implicitly has an 'any' type.",
+      "line": 20
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/safe-parse-email-address-address.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'addressparser'. '/app/node_modules/addressparser/lib/addressparser.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/addressparser` if it exists or add a new declaration (.d.ts) file containing `declare module 'addressparser';`",
+      "line": 3
+    },
+    {
+      "file": "src/modules/workflow/workflow-trigger/utils/compute-cron-pattern-from-schedule.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 15
+    },
+    {
+      "file": "src/utils/camel-case.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.isobject'. '/app/node_modules/lodash.isobject/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.isobject` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.isobject';`",
+      "line": 1
+    },
+    {
+      "file": "src/utils/camel-case.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.camelcase'. '/app/node_modules/lodash.camelcase/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.camelcase` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.camelcase';`",
+      "line": 2
+    },
+    {
+      "file": "src/utils/image.ts",
+      "code": 2307,
+      "message": "Cannot find module '@file-type/pdf' or its corresponding type declarations.",
+      "line": 1
+    },
+    {
+      "file": "../twenty-shared/src/application-runtime/constants/ConnectionScopeByLegacyVisibility.ts",
+      "code": 2307,
+      "message": "Cannot find module '@/application/appConnectionType' or its corresponding type declarations.",
+      "line": 1
+    },
+    {
+      "file": "../twenty-shared/src/application-runtime/constants/LegacyConnectionVisibilityByScope.ts",
+      "code": 2307,
+      "message": "Cannot find module '@/application/appConnectionType' or its corresponding type declarations.",
+      "line": 1
+    }
+  ],
+  "currentDiagnostics": [
+    {
+      "file": "src/engine/api/common/common-query-runners/common-create-many-query-runner/common-create-many-query-runner.service.ts",
+      "code": 2345,
+      "message": "Argument of type 'Brackets' is not assignable to parameter of type 'WhereConditionLike'.\n  Type 'Brackets' is not assignable to type 'ObjectWhereLike'.\n    Index signature for type 'string' is missing in type 'Brackets'.",
+      "line": 549
+    },
+    {
+      "file": "src/engine/api/common/common-query-runners/common-find-duplicates-query-runner.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.isempty'. '/app/node_modules/lodash.isempty/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.isempty` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.isempty';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/graphql-query-runner/graphql-query-parsers/graphql-query-filter/graphql-query-filter-condition.parser.ts",
+      "code": 2345,
+      "message": "Argument of type 'Brackets' is not assignable to parameter of type 'WhereConditionLike'.\n  Type 'Brackets' is not assignable to type 'ObjectWhereLike'.\n    Index signature for type 'string' is missing in type 'Brackets'.",
+      "line": 45
+    },
+    {
+      "file": "src/engine/api/graphql/graphql-query-runner/graphql-query-parsers/graphql-query-filter/graphql-query-filter-field.parser.ts",
+      "code": 2345,
+      "message": "Argument of type 'Brackets' is not assignable to parameter of type 'WhereConditionLike'.\n  Type 'Brackets' is not assignable to type 'ObjectWhereLike'.\n    Index signature for type 'string' is missing in type 'Brackets'.",
+      "line": 292
+    },
+    {
+      "file": "src/engine/api/graphql/graphql-query-runner/group-by/services/group-by-with-records.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.isempty'. '/app/node_modules/lodash.isempty/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.isempty` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.isempty';`",
+      "line": 4
+    },
+    {
+      "file": "src/engine/api/graphql/graphql-query-runner/utils/merge-links-field-values.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.uniqby'. '/app/node_modules/lodash.uniqby/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.uniqby` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.uniqby';`",
+      "line": 1
+    },
+    {
+      "file": "src/engine/api/graphql/graphql-query-runner/utils/merge-links-field-values.util.ts",
+      "code": 7006,
+      "message": "Parameter 'link' implicitly has an 'any' type.",
+      "line": 64
+    },
+    {
+      "file": "src/engine/api/graphql/graphql-query-runner/utils/merge-phones-field-values.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.uniqby'. '/app/node_modules/lodash.uniqby/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.uniqby` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.uniqby';`",
+      "line": 2
+    },
+    {
+      "file": "src/engine/api/graphql/graphql-query-runner/utils/merge-phones-field-values.util.ts",
+      "code": 7006,
+      "message": "Parameter 'phone' implicitly has an 'any' type.",
+      "line": 71
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-query-runner/workspace-query-hook/workspace-query-hook.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.merge'. '/app/node_modules/lodash.merge/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.merge` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.merge';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/create-many-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/create-many-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 62
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/create-one-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/create-one-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 59
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/delete-many-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/delete-many-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 62
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/delete-one-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/delete-one-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 59
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/destroy-many-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/destroy-many-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 62
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/destroy-one-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/destroy-one-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 59
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/find-duplicates-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/find-duplicates-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 65
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/find-many-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/find-many-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 75
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/find-one-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/find-one-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 59
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/group-by-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 4
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/group-by-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 79
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/merge-many-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/merge-many-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 59
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/restore-many-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/restore-many-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 62
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/restore-one-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/restore-one-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 59
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/update-many-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/update-many-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 62
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/update-one-resolver.factory.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'graphql-fields'. '/app/node_modules/graphql-fields/build/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/graphql-fields` if it exists or add a new declaration (.d.ts) file containing `declare module 'graphql-fields';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-resolver-builder/factories/update-one-resolver.factory.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error | QueryFailedError<Error>'.",
+      "line": 59
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/big-float.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: string) => number' is not assignable to type 'GraphQLScalarSerializer<number>'.\n  Types of parameters 'value' and 'outputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'string'.",
+      "line": 8
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/big-float.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: number) => string' is not assignable to type 'GraphQLScalarValueParser<string | null>'.\n  Types of parameters 'value' and 'inputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'number'.",
+      "line": 11
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/big-int.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: bigint) => string' is not assignable to type 'GraphQLScalarSerializer<string>'.\n  Types of parameters 'value' and 'outputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'bigint'.",
+      "line": 7
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/big-int.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: string) => bigint' is not assignable to type 'GraphQLScalarValueParser<bigint | null>'.\n  Types of parameters 'value' and 'inputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'string'.",
+      "line": 10
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/date.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: string) => string' is not assignable to type 'GraphQLScalarSerializer<string>'.\n  Types of parameters 'value' and 'outputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'string'.",
+      "line": 8
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/date.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: string) => string' is not assignable to type 'GraphQLScalarValueParser<string | null>'.\n  Types of parameters 'value' and 'inputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'string'.",
+      "line": 11
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/time.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: Date) => number' is not assignable to type 'GraphQLScalarSerializer<number>'.\n  Types of parameters 'value' and 'outputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'Date'.",
+      "line": 9
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/time.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: number) => Date' is not assignable to type 'GraphQLScalarValueParser<Date>'.\n  Types of parameters 'value' and 'inputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'number'.",
+      "line": 12
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/ts-vector.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: string) => string' is not assignable to type 'GraphQLScalarSerializer<string>'.\n  Types of parameters 'value' and 'outputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'string'.",
+      "line": 6
+    },
+    {
+      "file": "src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/ts-vector.scalar.ts",
+      "code": 2322,
+      "message": "Type '(value: string) => string' is not assignable to type 'GraphQLScalarValueParser<string | null>'.\n  Types of parameters 'value' and 'inputValue' are incompatible.\n    Type 'unknown' is not assignable to type 'string'.",
+      "line": 9
+    },
+    {
+      "file": "src/engine/api/utils/build-duplicate-conditions.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.isempty'. '/app/node_modules/lodash.isempty/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.isempty` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.isempty';`",
+      "line": 1
+    },
+    {
+      "file": "src/engine/core-modules/application/application-install/utils/should-refresh-application-registration-on-install.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'semver'. '/app/node_modules/semver/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/semver` if it exists or add a new declaration (.d.ts) file containing `declare module 'semver';`",
+      "line": 1
+    },
+    {
+      "file": "src/engine/core-modules/application/application-package/application-package-fetcher.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'bytes'. '/app/node_modules/bytes/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/bytes` if it exists or add a new declaration (.d.ts) file containing `declare module 'bytes';`",
+      "line": 9
+    },
+    {
+      "file": "src/engine/core-modules/application/application-package/application-version-validation.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'semver'. '/app/node_modules/semver/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/semver` if it exists or add a new declaration (.d.ts) file containing `declare module 'semver';`",
+      "line": 4
+    },
+    {
+      "file": "src/engine/core-modules/application/application-package/utils/is-valid-npm-version-spec.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'semver'. '/app/node_modules/semver/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/semver` if it exists or add a new declaration (.d.ts) file containing `declare module 'semver';`",
+      "line": 1
+    },
+    {
+      "file": "src/engine/core-modules/application/application-registration/application-registration.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'bcrypt'. '/app/node_modules/bcrypt/bcrypt.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/bcrypt` if it exists or add a new declaration (.d.ts) file containing `declare module 'bcrypt';`",
+      "line": 8
+    },
+    {
+      "file": "src/engine/core-modules/application/application-registration/application-registration.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.isequal'. '/app/node_modules/lodash.isequal/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.isequal` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.isequal';`",
+      "line": 9
+    },
+    {
+      "file": "src/engine/core-modules/application/application.service.ts",
+      "code": 2322,
+      "message": "Type 'unknown' is not assignable to type '\"flatFieldMetadataMaps\" | \"flatObjectMetadataMaps\" | \"flatIndexMaps\" | \"flatApplicationVariableMaps\" | \"flatObjectPermissionMaps\" | \"flatPageLayoutWidgetMaps\" | \"flatPageLayoutTabMaps\" | ... 29 more ... | keyof AdditionalCacheDataMaps'.",
+      "line": 896
+    },
+    {
+      "file": "src/engine/core-modules/application/application.service.ts",
+      "code": 2322,
+      "message": "Type 'string' is not assignable to type '\"flatFieldMetadataMaps\" | \"flatObjectMetadataMaps\" | \"flatIndexMaps\" | \"flatApplicationVariableMaps\" | \"flatObjectPermissionMaps\" | \"flatPageLayoutWidgetMaps\" | \"flatPageLayoutTabMaps\" | ... 29 more ... | keyof AdditionalCacheDataMaps'.",
+      "line": 897
+    },
+    {
+      "file": "src/engine/core-modules/auth/strategies/jwt.auth.strategy.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'passport-jwt'. '/app/node_modules/passport-jwt/lib/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/passport-jwt` if it exists or add a new declaration (.d.ts) file containing `declare module 'passport-jwt';`",
+      "line": 6
+    },
+    {
+      "file": "src/engine/core-modules/auth/strategies/jwt.auth.strategy.ts",
+      "code": 7006,
+      "message": "Parameter '_request' implicitly has an 'any' type.",
+      "line": 50
+    },
+    {
+      "file": "src/engine/core-modules/auth/strategies/jwt.auth.strategy.ts",
+      "code": 7006,
+      "message": "Parameter 'rawJwtToken' implicitly has an 'any' type.",
+      "line": 51
+    },
+    {
+      "file": "src/engine/core-modules/auth/strategies/jwt.auth.strategy.ts",
+      "code": 7006,
+      "message": "Parameter 'done' implicitly has an 'any' type.",
+      "line": 52
+    },
+    {
+      "file": "src/engine/core-modules/email/drivers/smtp.driver.ts",
+      "code": 2307,
+      "message": "Cannot find module 'nodemailer/lib/smtp-transport' or its corresponding type declarations.",
+      "line": 11
+    },
+    {
+      "file": "src/engine/core-modules/emailing-domain/drivers/aws-ses/services/aws-ses-driver.service.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'AwsSesError'.",
+      "line": 86
+    },
+    {
+      "file": "src/engine/core-modules/emailing-domain/drivers/aws-ses/services/aws-ses-driver.service.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'AwsSesError'.",
+      "line": 135
+    },
+    {
+      "file": "src/engine/core-modules/emailing-domain/drivers/aws-ses/services/aws-ses-send-email.service.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'AwsSesError'.",
+      "line": 115
+    },
+    {
+      "file": "src/engine/core-modules/emailing-domain/drivers/aws-ses/services/aws-ses-send-email.service.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'AwsSesError'.",
+      "line": 215
+    },
+    {
+      "file": "src/engine/core-modules/emailing-domain/jobs/emailing-domain-workspace-cleanup.job.ts",
+      "code": 2339,
+      "message": "Property 'message' does not exist on type '{}'.",
+      "line": 26
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/local.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 90
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/local.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 111
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/local.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 411
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 135
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 172
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 181
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 2339,
+      "message": "Property 'name' does not exist on type '{}'.",
+      "line": 274
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 2339,
+      "message": "Property 'message' does not exist on type '{}'.",
+      "line": 274
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 367
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 374
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 411
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 412
+    },
+    {
+      "file": "src/engine/core-modules/file-storage/drivers/s3.driver.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 464
+    },
+    {
+      "file": "src/engine/core-modules/file/file-upload/utils/assert-valid-direct-upload-size.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'bytes'. '/app/node_modules/bytes/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/bytes` if it exists or add a new declaration (.d.ts) file containing `declare module 'bytes';`",
+      "line": 2
+    },
+    {
+      "file": "src/engine/core-modules/file/jobs/file-workspace-folder-deletion.job.ts",
+      "code": 2339,
+      "message": "Property 'message' does not exist on type '{}'.",
+      "line": 22
+    },
+    {
+      "file": "src/engine/core-modules/file/utils/extract-file-info-or-throw.utils.ts",
+      "code": 2307,
+      "message": "Cannot find module '@file-type/pdf' or its corresponding type declarations.",
+      "line": 12
+    },
+    {
+      "file": "src/engine/core-modules/file/utils/sanitize-file.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'jsdom'. '/app/node_modules/jsdom/lib/api.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/jsdom` if it exists or add a new declaration (.d.ts) file containing `declare module 'jsdom';`",
+      "line": 2
+    },
+    {
+      "file": "src/engine/core-modules/graphql/utils/graphql-errors.util.ts",
+      "code": 2612,
+      "message": "Property 'locations' will overwrite the base property in 'GraphQLError'. If this is intentional, add an initializer. Otherwise, add a 'declare' modifier or remove the redundant declaration.",
+      "line": 49
+    },
+    {
+      "file": "src/engine/core-modules/graphql/utils/graphql-errors.util.ts",
+      "code": 2612,
+      "message": "Property 'path' will overwrite the base property in 'GraphQLError'. If this is intentional, add an initializer. Otherwise, add a 'declare' modifier or remove the redundant declaration.",
+      "line": 50
+    },
+    {
+      "file": "src/engine/core-modules/graphql/utils/graphql-errors.util.ts",
+      "code": 2612,
+      "message": "Property 'source' will overwrite the base property in 'GraphQLError'. If this is intentional, add an initializer. Otherwise, add a 'declare' modifier or remove the redundant declaration.",
+      "line": 51
+    },
+    {
+      "file": "src/engine/core-modules/graphql/utils/graphql-errors.util.ts",
+      "code": 2612,
+      "message": "Property 'positions' will overwrite the base property in 'GraphQLError'. If this is intentional, add an initializer. Otherwise, add a 'declare' modifier or remove the redundant declaration.",
+      "line": 52
+    },
+    {
+      "file": "src/engine/core-modules/graphql/utils/graphql-errors.util.ts",
+      "code": 2612,
+      "message": "Property 'nodes' will overwrite the base property in 'GraphQLError'. If this is intentional, add an initializer. Otherwise, add a 'declare' modifier or remove the redundant declaration.",
+      "line": 53
+    },
+    {
+      "file": "src/engine/core-modules/graphql/utils/graphql-errors.util.ts",
+      "code": 2612,
+      "message": "Property 'originalError' will overwrite the base property in 'GraphQLError'. If this is intentional, add an initializer. Otherwise, add a 'declare' modifier or remove the redundant declaration.",
+      "line": 54
+    },
+    {
+      "file": "src/engine/core-modules/graphql/utils/graphql-errors.util.ts",
+      "code": 2339,
+      "message": "Property 'status' does not exist on type '{}'.",
+      "line": 254
+    },
+    {
+      "file": "src/engine/core-modules/i18n/i18n.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module '@lingui/message-utils/compileMessage'. '/app/node_modules/@lingui/message-utils/compileMessage.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lingui__message-utils` if it exists or add a new declaration (.d.ts) file containing `declare module '@lingui/message-utils/compileMessage';`",
+      "line": 10
+    },
+    {
+      "file": "src/engine/core-modules/jwt/services/jwt-wrapper.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'passport-jwt'. '/app/node_modules/passport-jwt/lib/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/passport-jwt` if it exists or add a new declaration (.d.ts) file containing `declare module 'passport-jwt';`",
+      "line": 7
+    },
+    {
+      "file": "src/engine/core-modules/logic-function/logic-function-drivers/drivers/lambda/utils/reprefix-lambda-zip-entries.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'unzipper'. '/app/node_modules/unzipper/unzip.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/unzipper` if it exists or add a new declaration (.d.ts) file containing `declare module 'unzipper';`",
+      "line": 9
+    },
+    {
+      "file": "src/engine/core-modules/logic-function/logic-function-drivers/drivers/lambda/utils/reprefix-lambda-zip-entries.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'archiver'. '/app/node_modules/archiver/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/archiver` if it exists or add a new declaration (.d.ts) file containing `declare module 'archiver';`",
+      "line": 10
+    },
+    {
+      "file": "src/engine/core-modules/logic-function/logic-function-drivers/utils/create-zip-file.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'archiver'. '/app/node_modules/archiver/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/archiver` if it exists or add a new declaration (.d.ts) file containing `declare module 'archiver';`",
+      "line": 4
+    },
+    {
+      "file": "src/engine/core-modules/record-transformer/utils/transform-links-value.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.isempty'. '/app/node_modules/lodash.isempty/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.isempty` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.isempty';`",
+      "line": 2
+    },
+    {
+      "file": "src/engine/core-modules/record-transformer/utils/transform-phones-value.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.isempty'. '/app/node_modules/lodash.isempty/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.isempty` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.isempty';`",
+      "line": 7
+    },
+    {
+      "file": "src/engine/core-modules/sdk-client/sdk-client-archive.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'unzipper'. '/app/node_modules/unzipper/unzip.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/unzipper` if it exists or add a new declaration (.d.ts) file containing `declare module 'unzipper';`",
+      "line": 58
+    },
+    {
+      "file": "src/engine/core-modules/sdk-client/sdk-client-archive.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'unzipper'. '/app/node_modules/unzipper/unzip.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/unzipper` if it exists or add a new declaration (.d.ts) file containing `declare module 'unzipper';`",
+      "line": 99
+    },
+    {
+      "file": "src/engine/core-modules/sdk-client/sdk-client-archive.service.ts",
+      "code": 7006,
+      "message": "Parameter 'file' implicitly has an 'any' type.",
+      "line": 103
+    },
+    {
+      "file": "src/engine/core-modules/sdk-client/sdk-client-generation.service.ts",
+      "code": 2307,
+      "message": "Cannot find module 'twenty-client-sdk/generate' or its corresponding type declarations.",
+      "line": 9
+    },
+    {
+      "file": "src/engine/core-modules/secure-http-client/utils/create-ssrf-safe-agent.util.ts",
+      "code": 2339,
+      "message": "Property 'createConnection' does not exist on type 'Agent'.",
+      "line": 79
+    },
+    {
+      "file": "src/engine/core-modules/secure-http-client/utils/create-ssrf-safe-agent.util.ts",
+      "code": 2339,
+      "message": "Property 'createConnection' does not exist on type 'Agent'.",
+      "line": 102
+    },
+    {
+      "file": "src/engine/core-modules/twenty-config/decorators/cast-to-upper-snake-case.decorator.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.snakecase'. '/app/node_modules/lodash.snakecase/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.snakecase` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.snakecase';`",
+      "line": 2
+    },
+    {
+      "file": "src/engine/core-modules/twenty-config/decorators/is-twenty-semver.decorator.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'semver'. '/app/node_modules/semver/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/semver` if it exists or add a new declaration (.d.ts) file containing `declare module 'semver';`",
+      "line": 8
+    },
+    {
+      "file": "src/engine/core-modules/twenty-config/storage/config-storage.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 87
+    },
+    {
+      "file": "src/engine/core-modules/twenty-config/storage/config-storage.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 112
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-quota.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.uniqby'. '/app/node_modules/lodash.uniqby/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.uniqby` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.uniqby';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-quota.service.ts",
+      "code": 7006,
+      "message": "Parameter 'event' implicitly has an 'any' type.",
+      "line": 553
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-quota.service.ts",
+      "code": 7031,
+      "message": "Binding element 'resourceType' implicitly has an 'any' type.",
+      "line": 562
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-quota.service.ts",
+      "code": 7031,
+      "message": "Binding element 'operationType' implicitly has an 'any' type.",
+      "line": 562
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-quota.service.ts",
+      "code": 7031,
+      "message": "Binding element 'spenders' implicitly has an 'any' type.",
+      "line": 562
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-quota.service.ts",
+      "code": 7006,
+      "message": "Parameter 'counter' implicitly has an 'any' type.",
+      "line": 572
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.uniqby'. '/app/node_modules/lodash.uniqby/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.uniqby` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.uniqby';`",
+      "line": 3
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter 'counter' implicitly has an 'any' type.",
+      "line": 201
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter 'counter' implicitly has an 'any' type.",
+      "line": 207
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7053,
+      "message": "Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Partial<Record<UsageUnit, number>>'.",
+      "line": 207
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter 'counter' implicitly has an 'any' type.",
+      "line": 312
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter 'counter' implicitly has an 'any' type.",
+      "line": 315
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter '_' implicitly has an 'any' type.",
+      "line": 319
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter 'index' implicitly has an 'any' type.",
+      "line": 319
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter 'counter' implicitly has an 'any' type.",
+      "line": 340
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter 'index' implicitly has an 'any' type.",
+      "line": 340
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter 'counter' implicitly has an 'any' type.",
+      "line": 344
+    },
+    {
+      "file": "src/engine/core-modules/usage-limit/services/usage-limit-stock.service.ts",
+      "code": 7006,
+      "message": "Parameter 'index' implicitly has an 'any' type.",
+      "line": 344
+    },
+    {
+      "file": "src/engine/core-modules/user-workspace/user-workspace.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 605
+    },
+    {
+      "file": "src/engine/core-modules/workspace-invitation/services/workspace-invitation.service.ts",
+      "code": 18046,
+      "message": "'err' is of type 'unknown'.",
+      "line": 100
+    },
+    {
+      "file": "src/engine/metadata-modules/ai/ai-models/utils/sanitize-tool-result-refs.util.ts",
+      "code": 2345,
+      "message": "Argument of type '(part: LanguageModelV4ToolResultPart) => LanguageModelV4ToolResultPart' is not assignable to parameter of type '(value: LanguageModelV4ToolResultPart | LanguageModelV4ToolApprovalResponsePart, index: number, array: (LanguageModelV4ToolResultPart | LanguageModelV4ToolApprovalResponsePart)[]) => LanguageModelV4ToolResultPart'.\n  Types of parameters 'part' and 'value' are incompatible.\n    Type 'LanguageModelV4ToolResultPart | LanguageModelV4ToolApprovalResponsePart' is not assignable to type 'LanguageModelV4ToolResultPart'.\n      Type 'LanguageModelV4ToolApprovalResponsePart' is missing the following properties from type 'LanguageModelV4ToolResultPart': toolCallId, toolName, output",
+      "line": 53
+    },
+    {
+      "file": "src/engine/metadata-modules/flat-entity/constant/all-flat-entity-maps-properties.constant.ts",
+      "code": 2345,
+      "message": "Argument of type '<T extends AllMetadataName>(metadataName: T) => MetadataToFlatEntityMapsKey<T>' is not assignable to parameter of type '(value: string, index: number, array: string[]) => \"flatFieldMetadataMaps\" | \"flatObjectMetadataMaps\" | \"flatIndexMaps\" | \"flatRowLevelPermissionPredicateMaps\" | \"flatRowLevelPermissionPredicateGroupMaps\" | ... 32 more ... | \"flatTimelineActivityTypeMaps\"'.\n  Types of parameters 'metadataName' and 'value' are incompatible.\n    Type 'string' is not assignable to type '\"agent\" | \"workflow\" | \"role\" | \"workflowVersion\" | \"index\" | \"applicationVariable\" | \"frontComponent\" | \"objectMetadata\" | \"fieldMetadata\" | \"pageLayoutWidget\" | \"pageLayoutTab\" | ... 26 more ... | \"timelineActivityType\"'.",
+      "line": 7
+    },
+    {
+      "file": "src/engine/metadata-modules/flat-field-metadata/utils/build-morph-relation-head-from-target.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.omit'. '/app/node_modules/lodash.omit/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.omit` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.omit';`",
+      "line": 1
+    },
+    {
+      "file": "src/engine/twenty-orm/repository/permissions.utils.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.isempty'. '/app/node_modules/lodash.isempty/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.isempty` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.isempty';`",
+      "line": 2
+    },
+    {
+      "file": "src/engine/twenty-orm/utils/compute-relation-connect-query-configs.util.ts",
+      "code": 2740,
+      "message": "Type 'OrmFlatFieldMetadata<FieldMetadataType>' is missing the following properties from type 'UniqueFieldCondition[]': length, pop, push, concat, and 29 more.",
+      "line": 304
+    },
+    {
+      "file": "src/engine/twenty-orm/utils/compute-relation-connect-query-configs.util.ts",
+      "code": 2769,
+      "message": "No overload matches this call.\n  Overload 1 of 3, '(callbackfn: (previousValue: OrmFlatFieldMetadata<FieldMetadataType>, currentValue: OrmFlatFieldMetadata<FieldMetadataType>, currentIndex: number, array: OrmFlatFieldMetadata<...>[]) => OrmFlatFieldMetadata<...>, initialValue: OrmFlatFieldMetadata<...>): OrmFlatFieldMetadata<...>', gave the following error.\n    Argument of type '(acc: never[], uniqueConstraintField: OrmFlatFieldMetadata<FieldMetadataType>) => [string, any][]' is not assignable to parameter of type '(previousValue: OrmFlatFieldMetadata<FieldMetadataType>, currentValue: OrmFlatFieldMetadata<FieldMetadataType>, currentIndex: number, array: OrmFlatFieldMetadata<...>[]) => OrmFlatFieldMetadata<...>'.\n      Types of parameters 'acc' and 'previousValue' are incompatible.\n        Type 'OrmFlatFieldMetadata<FieldMetadataType>' is missing the following properties from type 'never[]': length, pop, push, concat, and 29 more.\n  Overload 2 of 3, '(callbackfn: (previousValue: never[], currentValue: OrmFlatFieldMetadata<FieldMetadataType>, currentIndex: number, array: OrmFlatFieldMetadata<FieldMetadataType>[]) => never[], initialValue: never[]): never[]', gave the following error.\n    Argument of type '(acc: never[], uniqueConstraintField: OrmFlatFieldMetadata<FieldMetadataType>) => [string, any][]' is not assignable to parameter of type '(previousValue: never[], currentValue: OrmFlatFieldMetadata<FieldMetadataType>, currentIndex: number, array: OrmFlatFieldMetadata<FieldMetadataType>[]) => never[]'.\n      Type '[string, any][]' is not assignable to type 'never[]'.\n        Type '[string, any]' is not assignable to type 'never'.",
+      "line": 304
+    },
+    {
+      "file": "src/engine/twenty-orm/workspace-schema-manager/services/workspace-schema-enum-manager.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 249
+    },
+    {
+      "file": "src/engine/workspace-manager/twenty-standard-application/utils/field-metadata/build-standard-flat-field-metadata-maps.util.ts",
+      "code": 2322,
+      "message": "Type '((args: Omit<CreateStandardFieldArgs<\"campaignDelivery\", FieldMetadataType>, \"context\">) => Record<\"createdAt\" | \"deletedAt\" | ... 16 more ... | \"renderingFailedAt\", FlatFieldMetadata>) | ... 39 more ... | (({ now, objectName, workspaceId, standardObjectMetadataRelatedEntityIds, dependencyFlatEntityMaps, twentyStand...' is not assignable to type 'StandardFieldBuilder<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"agentChatThread\" | \"agentChatThreadTarget\" | \"agentChatThreadParticipant\" | \"agentTurn\" | ... 30 more ... | \"messageThreadTarget\">'.\n  Type '(args: Omit<CreateStandardFieldArgs<\"campaignDelivery\", FieldMetadataType>, \"context\">) => Record<AllStandardObjectFieldName<\"campaignDelivery\">, FlatFieldMetadata>' is not assignable to type 'StandardFieldBuilder<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"agentChatThread\" | \"agentChatThreadTarget\" | \"agentChatThreadParticipant\" | \"agentTurn\" | ... 30 more ... | \"messageThreadTarget\">'.\n    Types of parameters 'args' and 'args' are incompatible.\n      Type 'Omit<CreateStandardFieldArgs<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"agentChatThread\" | \"agentChatThreadTarget\" | \"agentChatThreadParticipant\" | \"agentTurn\" | ... 30 more ... | \"messageThreadTarget\", FieldMetadataType>, \"context\">' is not assignable to type 'Omit<CreateStandardFieldArgs<\"campaignDelivery\", FieldMetadataType>, \"context\">'.\n        Types of property 'objectName' are incompatible.\n          Type '\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"agentChatThread\" | \"agentChatThreadTarget\" | \"agentChatThreadParticipant\" | \"agentTurn\" | ... 30 more ... | \"messageThreadTarget\"' is not assignable to type '\"campaignDelivery\"'.\n            Type '\"workspaceMember\"' is not assignable to type '\"campaignDelivery\"'.",
+      "line": 118
+    },
+    {
+      "file": "src/engine/workspace-manager/twenty-standard-application/utils/index/build-standard-flat-index-metadata-maps.util.ts",
+      "code": 2322,
+      "message": "Type '((args: Omit<CreateStandardIndexArgs<\"campaignDelivery\">, \"context\">) => Record<string, FlatIndexMetadata>) | ... 38 more ... | (({ now, objectName, workspaceId, standardObjectMetadataRelatedEntityIds, dependencyFlatEntityMaps, twentyStandardApplicationId, }: Omit<...>) => Record<...>)' is not assignable to type 'StandardIndexBuilder<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"agentChatThread\" | \"agentChatThreadTarget\" | \"agentChatThreadParticipant\" | \"agentTurn\" | ... 29 more ... | \"messageThreadTarget\">'.\n  Type '(args: Omit<CreateStandardIndexArgs<\"campaignDelivery\">, \"context\">) => Record<string, FlatIndexMetadata>' is not assignable to type 'StandardIndexBuilder<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"agentChatThread\" | \"agentChatThreadTarget\" | \"agentChatThreadParticipant\" | \"agentTurn\" | ... 29 more ... | \"messageThreadTarget\">'.\n    Types of parameters 'args' and 'args' are incompatible.\n      Type 'Omit<CreateStandardIndexArgs<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"agentChatThread\" | \"agentChatThreadTarget\" | \"agentChatThreadParticipant\" | \"agentTurn\" | ... 29 more ... | \"messageThreadTarget\">, \"context\">' is not assignable to type 'Omit<CreateStandardIndexArgs<\"campaignDelivery\">, \"context\">'.\n        Types of property 'objectName' are incompatible.\n          Type '\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"agentChatThread\" | \"agentChatThreadTarget\" | \"agentChatThreadParticipant\" | \"agentTurn\" | ... 29 more ... | \"messageThreadTarget\"' is not assignable to type '\"campaignDelivery\"'.\n            Type '\"workspaceMember\"' is not assignable to type '\"campaignDelivery\"'.",
+      "line": 111
+    },
+    {
+      "file": "src/engine/workspace-manager/twenty-standard-application/utils/view-field-group/build-standard-flat-view-field-group-metadata-maps.util.ts",
+      "code": 2322,
+      "message": "Type '((args: Omit<CreateStandardViewFieldGroupArgs<\"blocklist\">, \"context\">) => Record<string, FlatViewFieldGroup>) | ... 16 more ... | ((args: Omit<...>) => Record<...>)' is not assignable to type 'StandardViewFieldGroupBuilder<\"person\" | \"company\" | \"message\" | \"opportunity\" | \"blocklist\" | \"calendarChannelEventAssociation\" | \"calendarEvent\" | \"calendarEventParticipant\" | \"callRecording\" | \"note\" | ... 7 more ... | \"messageParticipant\">'.\n  Type '(args: Omit<CreateStandardViewFieldGroupArgs<\"blocklist\">, \"context\">) => Record<string, FlatViewFieldGroup>' is not assignable to type 'StandardViewFieldGroupBuilder<\"person\" | \"company\" | \"message\" | \"opportunity\" | \"blocklist\" | \"calendarChannelEventAssociation\" | \"calendarEvent\" | \"calendarEventParticipant\" | \"callRecording\" | \"note\" | ... 7 more ... | \"messageParticipant\">'.\n    Types of parameters 'args' and 'args' are incompatible.\n      Type 'Omit<CreateStandardViewFieldGroupArgs<\"person\" | \"company\" | \"message\" | \"opportunity\" | \"blocklist\" | \"calendarChannelEventAssociation\" | \"calendarEvent\" | \"calendarEventParticipant\" | \"callRecording\" | ... 8 more ... | \"messageParticipant\">, \"context\">' is not assignable to type 'Omit<CreateStandardViewFieldGroupArgs<\"blocklist\">, \"context\">'.\n        Types of property 'objectName' are incompatible.\n          Type '\"person\" | \"company\" | \"message\" | \"opportunity\" | \"blocklist\" | \"calendarChannelEventAssociation\" | \"calendarEvent\" | \"calendarEventParticipant\" | \"callRecording\" | \"note\" | ... 7 more ... | \"messageParticipant\"' is not assignable to type '\"blocklist\"'.\n            Type '\"person\"' is not assignable to type '\"blocklist\"'.",
+      "line": 71
+    },
+    {
+      "file": "src/engine/workspace-manager/twenty-standard-application/utils/view-field/build-standard-flat-view-field-metadata-maps.util.ts",
+      "code": 2322,
+      "message": "Type '((args: Omit<CreateStandardViewFieldArgs<\"attachment\">, \"context\">) => Record<string, FlatViewField>) | ((args: Omit<...>) => Record<...>) | ... 25 more ... | ((args: Omit<...>) => Record<...>)' is not assignable to type 'StandardViewFieldBuilder<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"timelineActivity\" | \"attachment\" | \"blocklist\" | \"calendarChannelEventAssociation\" | ... 17 more ... | \"messageThread\">'.\n  Type '(args: Omit<CreateStandardViewFieldArgs<\"attachment\">, \"context\">) => Record<string, FlatViewField>' is not assignable to type 'StandardViewFieldBuilder<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"timelineActivity\" | \"attachment\" | \"blocklist\" | \"calendarChannelEventAssociation\" | ... 17 more ... | \"messageThread\">'.\n    Types of parameters 'args' and 'args' are incompatible.\n      Type 'Omit<CreateStandardViewFieldArgs<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"timelineActivity\" | \"attachment\" | \"blocklist\" | \"calendarChannelEventAssociation\" | ... 17 more ... | \"messageThread\">, \"context\">' is not assignable to type 'Omit<CreateStandardViewFieldArgs<\"attachment\">, \"context\">'.\n        Types of property 'objectName' are incompatible.\n          Type '\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"timelineActivity\" | \"attachment\" | \"blocklist\" | \"calendarChannelEventAssociation\" | \"calendarEvent\" | ... 16 more ... | \"messageThread\"' is not assignable to type '\"attachment\"'.\n            Type '\"workspaceMember\"' is not assignable to type '\"attachment\"'.",
+      "line": 89
+    },
+    {
+      "file": "src/engine/workspace-manager/twenty-standard-application/utils/view-filter/build-standard-flat-view-filter-metadata-maps.util.ts",
+      "code": 2322,
+      "message": "Type '((args: Omit<CreateStandardViewFilterArgs<\"person\">, \"context\">) => Record<string, FlatViewFilter>) | ((args: Omit<...>) => Record<...>)' is not assignable to type 'StandardViewFilterBuilder<\"person\" | \"task\">'.\n  Type '(args: Omit<CreateStandardViewFilterArgs<\"person\">, \"context\">) => Record<string, FlatViewFilter>' is not assignable to type 'StandardViewFilterBuilder<\"person\" | \"task\">'.\n    Types of parameters 'args' and 'args' are incompatible.\n      Type 'Omit<CreateStandardViewFilterArgs<\"person\" | \"task\">, \"context\">' is not assignable to type 'Omit<CreateStandardViewFilterArgs<\"person\">, \"context\">'.\n        Types of property 'objectName' are incompatible.\n          Type '\"person\" | \"task\"' is not assignable to type '\"person\"'.\n            Type '\"task\"' is not assignable to type '\"person\"'.",
+      "line": 29
+    },
+    {
+      "file": "src/engine/workspace-manager/twenty-standard-application/utils/view-group/build-standard-flat-view-group-metadata-maps.util.ts",
+      "code": 2322,
+      "message": "Type '((args: Omit<CreateStandardViewGroupArgs<\"opportunity\">, \"context\">) => Record<string, FlatViewGroup>) | ((args: Omit<...>) => Record<...>)' is not assignable to type 'StandardViewGroupBuilder<\"opportunity\" | \"task\">'.\n  Type '(args: Omit<CreateStandardViewGroupArgs<\"opportunity\">, \"context\">) => Record<string, FlatViewGroup>' is not assignable to type 'StandardViewGroupBuilder<\"opportunity\" | \"task\">'.\n    Types of parameters 'args' and 'args' are incompatible.\n      Type 'Omit<CreateStandardViewGroupArgs<\"opportunity\" | \"task\">, \"context\">' is not assignable to type 'Omit<CreateStandardViewGroupArgs<\"opportunity\">, \"context\">'.\n        Types of property 'objectName' are incompatible.\n          Type '\"opportunity\" | \"task\"' is not assignable to type '\"opportunity\"'.\n            Type '\"task\"' is not assignable to type '\"opportunity\"'.",
+      "line": 29
+    },
+    {
+      "file": "src/engine/workspace-manager/twenty-standard-application/utils/view/build-standard-flat-view-metadata-maps.util.ts",
+      "code": 2322,
+      "message": "Type '((args: Omit<CreateStandardViewArgs<\"attachment\">, \"context\">) => Record<string, FlatView>) | ((args: Omit<CreateStandardViewArgs<\"blocklist\">, \"context\">) => Record<...>) | ... 25 more ... | ((args: Omit<...>) => Record<...>)' is not assignable to type 'StandardViewBuilder<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"timelineActivity\" | \"attachment\" | \"blocklist\" | \"calendarChannelEventAssociation\" | ... 17 more ... | \"messageThread\">'.\n  Type '(args: Omit<CreateStandardViewArgs<\"attachment\">, \"context\">) => Record<string, FlatView>' is not assignable to type 'StandardViewBuilder<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"timelineActivity\" | \"attachment\" | \"blocklist\" | \"calendarChannelEventAssociation\" | ... 17 more ... | \"messageThread\">'.\n    Types of parameters 'args' and 'args' are incompatible.\n      Type 'Omit<CreateStandardViewArgs<\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"timelineActivity\" | \"attachment\" | \"blocklist\" | \"calendarChannelEventAssociation\" | ... 17 more ... | \"messageThread\">, \"context\">' is not assignable to type 'Omit<CreateStandardViewArgs<\"attachment\">, \"context\">'.\n        Types of property 'objectName' are incompatible.\n          Type '\"workspaceMember\" | \"workflow\" | \"person\" | \"company\" | \"message\" | \"opportunity\" | \"timelineActivity\" | \"attachment\" | \"blocklist\" | \"calendarChannelEventAssociation\" | \"calendarEvent\" | ... 16 more ... | \"messageThread\"' is not assignable to type '\"attachment\"'.\n            Type '\"workspaceMember\"' is not assignable to type '\"attachment\"'.",
+      "line": 89
+    },
+    {
+      "file": "src/engine/workspace-manager/workspace-migration/workspace-migration-builder/services/workspace-entity-migration-builder.service.ts",
+      "code": 2683,
+      "message": "'this' implicitly has type 'any' because it does not have a type annotation.",
+      "line": 510
+    },
+    {
+      "file": "src/engine/workspace-manager/workspace-migration/workspace-migration-runner/interfaces/workspace-migration-runner-action-handler-service.interface.ts",
+      "code": 2322,
+      "message": "Type 'unknown' is not assignable to type 'Error | undefined'.",
+      "line": 250
+    },
+    {
+      "file": "src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 546
+    },
+    {
+      "file": "src/modules/contact-creation-manager/services/create-company-and-contact.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.compact'. '/app/node_modules/lodash.compact/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.compact` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.compact';`",
+      "line": 6
+    },
+    {
+      "file": "src/modules/contact-creation-manager/services/create-company.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.uniqby'. '/app/node_modules/lodash.uniqby/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.uniqby` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.uniqby';`",
+      "line": 5
+    },
+    {
+      "file": "src/modules/contact-creation-manager/services/create-company.service.ts",
+      "code": 7006,
+      "message": "Parameter 'companyToCreate' implicitly has an 'any' type.",
+      "line": 76
+    },
+    {
+      "file": "src/modules/contact-creation-manager/services/create-company.service.ts",
+      "code": 7006,
+      "message": "Parameter 'domainName' implicitly has an 'any' type.",
+      "line": 93
+    },
+    {
+      "file": "src/modules/contact-creation-manager/services/create-company.service.ts",
+      "code": 7006,
+      "message": "Parameter 'company' implicitly has an 'any' type.",
+      "line": 128
+    },
+    {
+      "file": "src/modules/contact-creation-manager/services/create-company.service.ts",
+      "code": 7006,
+      "message": "Parameter 'company' implicitly has an 'any' type.",
+      "line": 152
+    },
+    {
+      "file": "src/modules/contact-creation-manager/types/is-psl-parsed-domain.type.ts",
+      "code": 2339,
+      "message": "Property 'error' does not exist on type 'ParsedDomain | ErrorResult<number | unique symbol | \"length\" | \"toString\" | \"concat\" | \"slice\" | \"indexOf\" | \"lastIndexOf\" | \"includes\" | \"at\" | \"fixed\" | \"charAt\" | \"charCodeAt\" | ... 37 more ... | \"valueOf\">'.\n  Property 'error' does not exist on type 'ParsedDomain'.",
+      "line": 7
+    },
+    {
+      "file": "src/modules/contact-creation-manager/utils/get-unique-contacts-and-handles.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.uniq'. '/app/node_modules/lodash.uniq/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.uniq` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.uniq';`",
+      "line": 1
+    },
+    {
+      "file": "src/modules/contact-creation-manager/utils/get-unique-contacts-and-handles.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.uniqby'. '/app/node_modules/lodash.uniqby/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.uniqby` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.uniqby';`",
+      "line": 2
+    },
+    {
+      "file": "src/modules/contact-creation-manager/utils/get-unique-contacts-and-handles.util.ts",
+      "code": 7006,
+      "message": "Parameter 'contact' implicitly has an 'any' type.",
+      "line": 18
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/providers/imap-client.provider.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 44
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/providers/imap-client.provider.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 45
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/providers/imap-client.provider.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'ImapFlowError'.",
+      "line": 48
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/providers/imap-client.provider.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 57
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-find-sent-folder.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 51
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-find-sent-folder.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 146
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-get-message-list.service.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error'.",
+      "line": 68
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-get-message-list.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 82
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-get-message-list.service.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error'.",
+      "line": 84
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-get-message-list.service.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error'.",
+      "line": 165
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-get-message-list.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 170
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-get-message-list.service.ts",
+      "code": 2345,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Error'.",
+      "line": 172
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-get-message-list.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 244
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-message-parser.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 70
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/imap/services/imap-message-parser.service.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 98
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/drivers/microsoft/services/microsoft-get-messages.service.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'addressparser'. '/app/node_modules/addressparser/lib/addressparser.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/addressparser` if it exists or add a new declaration (.d.ts) file containing `declare module 'addressparser';`",
+      "line": 3
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/convert-html-to-text.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'sanitize-html'. '/app/node_modules/sanitize-html/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/sanitize-html` if it exists or add a new declaration (.d.ts) file containing `declare module 'sanitize-html';`",
+      "line": 1
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/message-html-sanitize-options.constant.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'sanitize-html'. '/app/node_modules/sanitize-html/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/sanitize-html` if it exists or add a new declaration (.d.ts) file containing `declare module 'sanitize-html';`",
+      "line": 1
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/render-html-with-quote-markers.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'html-to-text'. '/app/node_modules/html-to-text/lib/html-to-text.cjs' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/html-to-text` if it exists or add a new declaration (.d.ts) file containing `declare module 'html-to-text';`",
+      "line": 5
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/render-html-with-quote-markers.util.ts",
+      "code": 7006,
+      "message": "Parameter 'element' implicitly has an 'any' type.",
+      "line": 10
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/render-html-with-quote-markers.util.ts",
+      "code": 7006,
+      "message": "Parameter 'walk' implicitly has an 'any' type.",
+      "line": 10
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/render-html-with-quote-markers.util.ts",
+      "code": 7006,
+      "message": "Parameter 'builder' implicitly has an 'any' type.",
+      "line": 10
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/render-html-with-quote-markers.util.ts",
+      "code": 7006,
+      "message": "Parameter 'element' implicitly has an 'any' type.",
+      "line": 20
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/render-html-with-quote-markers.util.ts",
+      "code": 7006,
+      "message": "Parameter 'walk' implicitly has an 'any' type.",
+      "line": 20
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/render-html-with-quote-markers.util.ts",
+      "code": 7006,
+      "message": "Parameter 'builder' implicitly has an 'any' type.",
+      "line": 20
+    },
+    {
+      "file": "src/modules/messaging/message-import-manager/utils/safe-parse-email-address-address.util.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'addressparser'. '/app/node_modules/addressparser/lib/addressparser.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/addressparser` if it exists or add a new declaration (.d.ts) file containing `declare module 'addressparser';`",
+      "line": 3
+    },
+    {
+      "file": "src/modules/workflow/workflow-trigger/utils/compute-cron-pattern-from-schedule.ts",
+      "code": 18046,
+      "message": "'error' is of type 'unknown'.",
+      "line": 15
+    },
+    {
+      "file": "src/utils/camel-case.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.isobject'. '/app/node_modules/lodash.isobject/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.isobject` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.isobject';`",
+      "line": 1
+    },
+    {
+      "file": "src/utils/camel-case.ts",
+      "code": 7016,
+      "message": "Could not find a declaration file for module 'lodash.camelcase'. '/app/node_modules/lodash.camelcase/index.js' implicitly has an 'any' type.\n  Try `npm i --save-dev @types/lodash.camelcase` if it exists or add a new declaration (.d.ts) file containing `declare module 'lodash.camelcase';`",
+      "line": 2
+    },
+    {
+      "file": "src/utils/image.ts",
+      "code": 2307,
+      "message": "Cannot find module '@file-type/pdf' or its corresponding type declarations.",
+      "line": 1
+    },
+    {
+      "file": "../twenty-shared/src/application-runtime/constants/ConnectionScopeByLegacyVisibility.ts",
+      "code": 2307,
+      "message": "Cannot find module '@/application/appConnectionType' or its corresponding type declarations.",
+      "line": 1
+    },
+    {
+      "file": "../twenty-shared/src/application-runtime/constants/LegacyConnectionVisibilityByScope.ts",
+      "code": 2307,
+      "message": "Cannot find module '@/application/appConnectionType' or its corresponding type declarations.",
+      "line": 1
+    }
+  ],
+  "unchangedSourceDiagnosticWordingChanges": [],
+  "newDiagnostics": [],
+  "changedFileDiagnostics": [],
+  "baselineOnlyUnchangedMethodDiagnostics": [],
+  "changedCodeDiagnostics": [],
+  "status": "pass-no-new-diagnostics",
+  "fullServerTypecheck": false
+}

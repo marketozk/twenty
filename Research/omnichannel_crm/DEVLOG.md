@@ -3365,3 +3365,21 @@ Phase2 и rob765-progress приведены к текущему покрыти�
 gap для нестандартных non-id/composite FK; implicit updatedAt/deletedAt учитываются.
 
 LOG106 publication: 5ec44c8711ab591aa28205d3b5c32dd35c7aaea5 pushed/API verified. ROB765 description and comment cf736d40-f0c8-48be-9820-d89cd376a1d9 independently read back; all 11 issue states match. Implementation continues.
+
+## LOG-107 — guard фактических ON UPDATE effects
+
+Закрыт подтверждённый composite FK gap: native UPDATE ранее мог успешно изменить
+child через PostgreSQL cascade без audit. До исправления сохранён реальный failing
+regression. Guard использует существующий mutation SET/WHERE/compiler, parent locks,
+PG equality и implicit timestamps. Unchanged/id/empty/unmatched случаи разрешены.
+
+Read-only review нашёл BEFORE UPDATE NEW-key rewrite; добавлен консервативный refusal
+для actual mutating references и paired populated/empty cases. Arbitrary trigger SQL
+и privileged replication-role override вне покрытия. Final review новых блокеров
+в объявленной границе не выявил. Dependency guard PASS после удаления новых
+транзитивных Enterprise imports; baseline не расширялся.
+
+[Доказательства](implementation/log107/README.md). ROB765 In Progress. Следом direct
+covered ON DELETE CASCADE с retained child guards. Демо/образ/Actions/сообщения не тронуты.
+
+978 tests/33 suites PASS (191.233s); 166 targeted/4 suites PASS. 24 новых PostgreSQL cases. 26 guards PASS; 10 migration checksums неизменны. Types 347/349 roots, 189/189 прежних диагностик, 0 новых/changed-code. 6 local/remote source hashes совпадают.

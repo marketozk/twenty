@@ -70,6 +70,7 @@ ROB765 остаётся In Progress. Единственная текущая т�
 | Workspace user-session CREATE и revoke/cache check | [LOG099](../implementation/log099/README.md), [LOG100](../implementation/log100/README.md) |
 | Public CREATE/upsert, custom UPDATE/lifecycle, bounded nested CREATE | [LOG101](../implementation/log101/README.md), [LOG102](../implementation/log102/README.md), [LOG103](../implementation/log103/README.md), [LOG104](../implementation/log104/README.md) |
 | Internal hard-delete и direct covered SET_NULL; retained guards, actual effects | [LOG105](../implementation/log105/README.md), [LOG106](../implementation/log106/README.md) |
+| Guard неаудированных ON UPDATE effects: composite keys, timestamps, BEFORE triggers | [LOG107](../implementation/log107/README.md) |
 
 Открыто: остальные native/system writers и FK effects, real share writes, public
 DESTROY/MERGE, metadata/roles, общий denied/failed audit после rollback и health/alert.
@@ -77,10 +78,8 @@ Session refresh/appToken/concurrent-sign-in fencing не объявлены по
 Просмотр/экспорт — ROB767 после ROB766; AI/workflow/connector добавляют свои события
 в ROB768/769. Полный HTTP/JWT и сборка/выкат изменений после LOG088 не выполнялись.
 
-Последний регрессионный прогон: 954 tests/32 suites PASS; 86 targeted/3 suites;
-26 guards, 10 неизменных migration checksums, 5 source hashes. Types: 343/345 roots,
-189/189 прежних диагностик, 0 новых/changed-code; full-server typecheck не чистый.
-[Проверки LOG106](../implementation/log106/results.json).
+Последние проверки: 978 tests/33 suites PASS (191.233s); 166 targeted/4 suites PASS. 24 новых PostgreSQL cases. 26 guards PASS; 10 migration checksums неизменны. Types 347/349 roots, 189/189 прежних диагностик, 0 новых/changed-code. 6 local/remote source hashes совпадают.
+Full-server typecheck не чистый. [Проверки LOG107](../implementation/log107/results.json).
 
 Демо остаётся прежним. При будущем выкате migration10 writers останавливаются на
 время построения индекса. GitHub Actions не используется.

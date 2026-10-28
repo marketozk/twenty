@@ -2374,6 +2374,9 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       mutationQueryBuilder.set(setColumns ?? {});
     }
 
+    if (getNativeCrmAuditContext(this.options.executor))
+      await mutationQueryBuilder.assertNoReferentialUpdateEffects();
+
     return mutationQueryBuilder.returning(columnsToReturn).execute();
   }
 

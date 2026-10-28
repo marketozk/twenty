@@ -1,0 +1,12 @@
+{
+  "baseCommit": "bed6b009016c1451dcbf240b2fd8879551a6893c",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/twenty-orm/query-builder/workspace-mutation-query-builder.ts": "61e2e3658757a2b209dedaca1aacf102e7a2c012e17322ddc5cf624b2ccd6fa5",
+    "packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts": "d38cb2f26dad1d579579e9f7e10327823f10850357c4c1d1cc82182f9f7f3ba7",
+    "packages/twenty-server/src/engine/twenty-orm/sql/utils/build-mutation-statement.util.ts": "73c4c52fdaf08cc6937c1ef12b17ad42500dfce387c51ee5b39a212f0b4a0a89",
+    "packages/twenty-server/src/engine/twenty-orm/utils/has-referencing-records.ts": "34a440505a22215ef7bbe819036220a689236b61cca9e27f662dbfc04be4967d",
+    "packages/twenty-server/src/engine/twenty-orm/utils/assert-no-referential-update-effects.ts": "17ff3be1c9fb58ced9db153c589d4f9f6fa8dfd1f307f3613a0d0b27809b88f0",
+    "packages/twenty-server/test/fork-migration/crm-audit-update-fk.postgres-spec.ts": "023fb52661a325d9e2fc583b8f741f82138b1e2d9b8da4f5c176d7d7f5121295"
+  },
+  "uploadedSourceHashesVerified": true
+}

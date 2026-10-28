@@ -865,3 +865,13 @@ columns child должны совпадать, audit update агрегирует
 отказываются до DELETE; unchanged child.id references не блокируют. CASCADE,
 SET_DEFAULT, composite/non-id keys, self-reference и unsupported children ещё вне
 покрытия. Public DESTROY/MERGE остаются отдельной работой.
+
+LOG107: covered native single/batch/lifecycle UPDATE до SQL проверяет actual incoming
+ON UPDATE CASCADE/SET_NULL/SET_DEFAULT references под parent FOR UPDATE. Используется
+тот же SET/WHERE/row-access/lifecycle builder, включая implicit timestamps; PG сравнивает
+старый ключ и SET через IS DISTINCT FROM. Unchanged keys/id references/empty tables
+разрешены. Enabled origin BEFORE UPDATE trigger вызывает консервативный отказ при
+actual mutating references, поскольку NEW key может отличаться от SET. Arbitrary
+trigger-issued SQL и privileged replication override вне покрытия. Caught guard failure
+отравляет общий owner; legacy путь не меняется. FK mutations не объявлены реализованными:
+неподдерживаемые эффекты запрещены, а не выполнены без аудита.

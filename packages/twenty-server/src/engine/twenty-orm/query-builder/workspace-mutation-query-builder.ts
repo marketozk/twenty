@@ -14,10 +14,13 @@ import { compileNamedParameters } from 'src/engine/twenty-orm/sql/utils/compile-
 import { serializeJsonbWriteValue } from 'src/engine/twenty-orm/sql/utils/serialize-jsonb-write-value.util';
 import {
   buildMutationStatement,
+  buildMutationWhereExpression,
   type MutationKind,
   type SetClause,
+  type MutationStatementState,
 } from 'src/engine/twenty-orm/sql/utils/build-mutation-statement.util';
 import { type WorkspaceTableShape } from 'src/engine/twenty-orm/table-shape/types/workspace-table-shape.type';
+import { assertNoReferentialUpdateEffects } from 'src/engine/twenty-orm/utils/assert-no-referential-update-effects';
 
 let mutationSetParameterSequence = 0;
 
@@ -98,6 +101,17 @@ export class WorkspaceMutationQueryBuilder {
     return this.buildStatement().sql;
   }
 
+  async assertNoReferentialUpdateEffects(): Promise<void> {
+    const { state, parameters } = this.buildStatement();
+    await assertNoReferentialUpdateEffects(
+      this.context.executor,
+      state,
+      parameters,
+      buildMutationWhereExpression(state),
+      compileNamedParameters,
+    );
+  }
+
   async execute(): Promise<MutationResult> {
     const { sql, parameters } = this.buildStatement();
     const compiled = compileNamedParameters(sql, parameters);
@@ -118,11 +132,12 @@ export class WorkspaceMutationQueryBuilder {
   private buildStatement(): {
     sql: string;
     parameters: Record<string, unknown>;
+    state: MutationStatementState;
   } {
     const parameters = { ...this.parameters };
     const setClauses = this.buildSetClauses(parameters);
 
-    const sql = buildMutationStatement({
+    const state: MutationStatementState = {
       alias: this.alias,
       tableShape: this.tableShape,
       kind: this.kind,
@@ -131,9 +146,10 @@ export class WorkspaceMutationQueryBuilder {
       rowAccessConditions: this.rowAccessConditions,
       includeDeleted: this.includeDeleted,
       returningColumns: this.returningColumns,
-    });
+    };
+    const sql = buildMutationStatement(state);
 
-    return { sql, parameters };
+    return { sql, parameters, state };
   }
 
   private buildSetClauses(parameters: Record<string, unknown>): SetClause[] {

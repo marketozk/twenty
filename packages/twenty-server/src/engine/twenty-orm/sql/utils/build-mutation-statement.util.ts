@@ -57,7 +57,9 @@ const buildSetClause = (state: MutationStatementState): string =>
     )
     .join(', ')}`;
 
-const buildWhereExpression = (state: MutationStatementState): string => {
+export const buildMutationWhereExpression = (
+  state: MutationStatementState,
+): string => {
   const filterExpression = renderWhereExpressionWithRowAccess({
     whereClauses: state.whereClauses,
     rowAccessConditions: state.rowAccessConditions,
@@ -81,7 +83,7 @@ const buildWhereExpression = (state: MutationStatementState): string => {
 export const buildMutationStatement = (
   state: MutationStatementState,
 ): string => {
-  const whereExpression = buildWhereExpression(state);
+  const whereExpression = buildMutationWhereExpression(state);
   const returningClause = buildReturningClause(state);
 
   if (state.kind === 'delete') {

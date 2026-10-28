@@ -1,0 +1,9 @@
+{"sshRecentMaxStartupsLines": 1, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/twenty-orm/query-builder/workspace-mutation-query-builder.ts 195ms (unchanged)
+../../../source/packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts 588ms (unchanged)
+../../../source/packages/twenty-server/src/engine/twenty-orm/sql/utils/build-mutation-statement.util.ts 47ms (unchanged)
+../../../source/packages/twenty-server/src/engine/twenty-orm/utils/has-referencing-records.ts 9ms (unchanged)
+../../../source/packages/twenty-server/src/engine/twenty-orm/utils/assert-no-referential-update-effects.ts 9ms
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-update-fk.postgres-spec.ts 90ms (unchanged)
+
+{"formattedFiles": 6, "singleSshSession": true}
