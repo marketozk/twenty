@@ -42,14 +42,16 @@ Canonical lifecycle requirements remain in the implementation specification.
 
 - LOG065: all five message cache owners use account-scoped v2 keys; captured-account clear/progress, legacy-only old cleanup and guarded legacy reset/refetch preserving pending actions. No same-account request isolation or cross-store atomicity claim.
 
+- LOG066: four direct schedulers use guarded accepted descriptors; two import jobs check current expected parent/stage, two watchdogs recheck timestamp/stage under the same owner. SQL/queue are not atomic.
+
 ## Remaining owners, in implementation order
 
 Paths below are relative to `packages/twenty-server/src`.
 
 | Owner | Observed gap / required check |
 |---|---|
+| Message list-fetch cron/CLI and member blocklist reset | Existing string[] wrapper callers enqueue without expected account; member-scoped blocklist reimport drops owner provenance before reset. |
 | Import/onboarding admission | Importer and recent-import caller require fresh expected-parent/stage admission; unknown outcomes must propagate. Account-scoped cache alone does not guard SQL callbacks. |
-| Import/calendar cron scheduling | `messaging-messages-import.cron.job.ts`, `calendar-event-list-fetch.cron.job.ts` and `calendar-events-import.cron.job.ts` still have direct status UPDATEs; reuse guarded scheduling and enqueue accepted current channels. |
 | Legacy list-fetch downstream cache/cleanup callbacks | Final completion is parent-pinned (LOG058); intermediate cache mutations and cleanup are separate. Review with group/folder scope before claiming complete callback lifecycle protection. |
 
 ## Required evidence

@@ -1,3 +1,4 @@
+import { withOrdinaryMetadataChannels } from 'src/modules/omnichannel/services/with-ordinary-metadata-channels';
 import { Scope } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -16,6 +17,7 @@ import { MessageChannelEntity } from 'src/engine/metadata-modules/message-channe
 export type MessagingMessagesImportJobData = {
   messageChannelId: string;
   workspaceId: string;
+  expectedConnectedAccountId?: string;
 };
 
 @Processor({
@@ -33,7 +35,7 @@ export class MessagingMessagesImportJob {
 
   @Process(MessagingMessagesImportJob.name)
   async handle(data: MessagingMessagesImportJobData): Promise<void> {
-    const { messageChannelId, workspaceId } = data;
+    const { messageChannelId, workspaceId, expectedConnectedAccountId } = data;
 
     await this.messagingMonitoringService.track({
       eventName: 'messages_import.triggered',
@@ -45,13 +47,25 @@ export class MessagingMessagesImportJob {
 
     await this.workspaceOrmManager.executeInWorkspaceContext(
       async () => {
-        const messageChannel = await this.messageChannelRepository.findOne({
-          where: {
-            id: messageChannelId,
-            workspaceId,
+        const messageChannel = await withOrdinaryMetadataChannels(
+          this.messageChannelRepository.manager,
+          workspaceId,
+          [messageChannelId],
+          'message',
+          async (manager, channels) => {
+            if (!channels.length) return null;
+            return manager.getRepository(MessageChannelEntity).findOne({
+              where: {
+                id: messageChannelId,
+                isSyncEnabled: true,
+                workspaceId,
+              },
+              relations: { connectedAccount: true, messageFolders: true },
+            });
           },
-          relations: { connectedAccount: true, messageFolders: true },
-        });
+          'read',
+          expectedConnectedAccountId,
+        );
 
         if (!messageChannel) {
           await this.messagingMonitoringService.track({

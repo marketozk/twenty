@@ -1,0 +1,22 @@
+{
+  "baseCommit": "c291fdebbcf146b18c9c2f2f442c6964d4121a78",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/commands/calendar-trigger-event-list-fetch.command.ts": "90809212c687ca06f1c1c50e62879fe0944822b1b9db4212246d3587842fd267",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/crons/jobs/calendar-event-list-fetch.cron.job.ts": "17148778b172d2456488105c10b7e1534c3d81fe07639dd60a9e94e1017c2d0c",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/crons/jobs/calendar-events-import.cron.job.ts": "1d9b39b6986ce37d5cca8753136e086c9321d919bd4609c1be95ea076043f67d",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/jobs/calendar-events-import.job.ts": "dbad6465e6700f893e09f85e2f2aba5f16d2819baf5fdfd67f47841e8e9cd201",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/jobs/calendar-ongoing-stale.job.ts": "11b223730a5a3e1610c17e7d4236fdf4a9c5d6dff4b3a91aea376d6a4ab9b143",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/utils/is-sync-stale.util.ts": "1261a912b9abc8cb066139991b4325b532c5b3c90489964c691c63a86a4fcf60",
+    "packages/twenty-server/src/modules/calendar/common/services/calendar-channel-sync-status.service.ts": "c5e5a81595247223c7340d9eaec9df7d3283577cd0553668efca0f45529b2cf6",
+    "packages/twenty-server/src/modules/messaging/common/services/message-channel-sync-status.service.ts": "35eb6c006e8953ef49d07d1c00c994c1bc213e92110bc09f2b5076b10a454319",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/crons/jobs/messaging-messages-import.cron.job.ts": "b17d760b9725f242a9bde9122efd0cecdb532eb65d5caa6e2ddd6bc297848eb9",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/jobs/messaging-messages-import.job.ts": "942a0a98e8c82f7f0c5c2629be826966191f169abd3ac9faa7af27ba6275c411",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/jobs/messaging-ongoing-stale.job.ts": "47c91f4cc15fe4e3523b602eb706448deee81375bc67ad36ca2e0b664daef8c8",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/utils/is-sync-stale.util.ts": "3d2d490d60765d69b7f4f750e779e52ff8f012fc5cf8393dcf03c10d30eebfae",
+    "packages/twenty-server/src/modules/omnichannel/services/schedule-ordinary-message-channels.ts": "ff44565e995e7ded0dcd91560c83ff3952a9efaf61fc47eb063e84f4822d800a",
+    "packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts": "5f0a080b21ab74ba6bb955564e62d69ebed08f279a508d7b7b7fb12839c4cfb4",
+    "packages/twenty-server/src/modules/omnichannel/services/schedule-ordinary-metadata-channels.ts": "548652e0042867575486d5adf647cdab5cc3a479b3f3b8c5219bca039bdd9bd6"
+  }
+}

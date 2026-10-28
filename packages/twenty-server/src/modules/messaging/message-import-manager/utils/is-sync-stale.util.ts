@@ -1,9 +1,7 @@
-import { isDefined } from 'twenty-shared/utils';
-
 import { MESSAGING_IMPORT_ONGOING_SYNC_TIMEOUT } from 'src/modules/messaging/message-import-manager/constants/messaging-import-ongoing-sync-timeout.constant';
 
 export const isSyncStale = (syncStageStartedAt?: string | null): boolean => {
-  if (!isDefined(syncStageStartedAt)) {
+  if (syncStageStartedAt === undefined || syncStageStartedAt === null) {
     return true;
   }
 

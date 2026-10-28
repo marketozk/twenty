@@ -54,16 +54,16 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-065 / ROB-764 In Progress: пять runtime owners используют единые
-account-scoped v2 cache keys. Clear/broadcast привязаны к принятому account;
-progress читает current ordinary owner. Legacy backlog не переносится в новый
-account: guarded reset/refetch сохраняет pending actions, затем удаляет старые
-ключи после известного commit. Старый cleanup job удаляет только legacy keys.
-Проверено 388 targeted Jest/6 suites +26 guards =414 PASS,
-16 новых cases. Typecheck 269 roots:190/189,0 new/changed-code.
-7 migrations неизменны. [Доказательства](Research/omnichannel_crm/implementation/log065/README.md). Scoped review без новых blockers.
-Последний full fork LOG0561881/71. Далее downstream response application,
-import scheduling/onboarding admission, затем свежая T22/ROB764 acceptance.
+LOG-066 / ROB-764 In Progress: четыре scheduler paths проверяют current
+ordinary owner, enabled и pending stage под блокировкой, enqueue только принятых
+каналов с captured account. Два import job повторно проверяют parent/stage перед
+provider, два watchdog перечитывают timestamp/stage под тем же owner.
+Проверено 434 targeted Jest/6 suites +26 guards =460 PASS,
+46 новых PostgreSQL cases. Typecheck 278 roots:191/189,0 new/changed-code.
+7 migrations неизменны. [Доказательства](Research/omnichannel_crm/implementation/log066/README.md). Scoped review после исправления
+CTE result shape без оставшихся blockers. Последний full fork LOG0561881/71.
+Далее legacy message list payload/member reset provenance, direct importer/onboarding
+admission и downstream response apply, затем свежая T22/ROB764 acceptance.
 Демо прежнее, GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы минимальный аудит и атомарное создание

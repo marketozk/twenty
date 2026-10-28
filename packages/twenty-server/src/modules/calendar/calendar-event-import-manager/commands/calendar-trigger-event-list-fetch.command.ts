@@ -1,3 +1,4 @@
+import { scheduleOrdinaryMetadataChannels } from 'src/modules/omnichannel/services/schedule-ordinary-metadata-channels';
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -77,20 +78,23 @@ export class CalendarTriggerEventListFetchCommand extends CommandRunner {
           `Found ${calendarChannels.length} calendar channel(s) to process`,
         );
 
-        for (const calendarChannel of calendarChannels) {
-          await this.calendarChannelRepository.update(
-            { id: calendarChannel.id, workspaceId },
-            {
-              syncStage:
-                CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED,
-              syncStageStartedAt: new Date().toISOString(),
-            },
-          );
-
+        const accepted = await scheduleOrdinaryMetadataChannels(
+          this.calendarChannelRepository.manager,
+          workspaceId,
+          calendarChannels.map(({ id }) => id),
+          'calendar',
+          {
+            pending: CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING,
+            scheduled:
+              CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED,
+          },
+        );
+        for (const calendarChannel of accepted) {
           await this.messageQueueService.add<CalendarEventListFetchJobData>(
             CalendarEventListFetchJob.name,
             {
               calendarChannelId: calendarChannel.id,
+              expectedConnectedAccountId: calendarChannel.connectedAccountId,
               workspaceId,
             },
           );
@@ -101,7 +105,7 @@ export class CalendarTriggerEventListFetchCommand extends CommandRunner {
         }
 
         this.logger.log(
-          `Successfully triggered ${calendarChannels.length} calendar event list fetch job(s)`,
+          `Successfully triggered ${accepted.length} calendar event list fetch job(s)`,
         );
       },
       authContext,

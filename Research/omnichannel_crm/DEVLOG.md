@@ -1924,3 +1924,42 @@ ROB764 completion claimed. Demo/SaleBot unchanged; no Actions. Applied ai-dev-wo
 behavioral-guardrails, server-schrodinger and scoped read-only research/review.
 
 LOG065 publication: code e99085b8f7c2e06be8a0a8192c7ea6e4d1f06863 pushed and GitHub API ref verified; Linear comment 894dcf36-9a9b-43e3-8d4a-c64734ff1d09, description/comment and all11 project states independently read back. ROB764 remains In Progress.
+
+
+## LOG-066 — scheduler and stale recovery admission (28.10.2026)
+
+Generic ordinary metadata scheduling reuses shared ownership fence/account-channel
+locks, rechecks enabled/pending in SQL, and returns accepted ID/account descriptors.
+Three cron writers and calendar CLI enqueue only these descriptors after known
+commit. The compatibility message scheduler retains its string[] contract.
+Both import jobs accept expectedConnectedAccountId and read current ordinary
+channel/account under the owner before stage/enabled checks and provider calls.
+Legacy job payloads remain compatible through current-owner admission.
+Both stale watchdogs re-read stage/start time under the owner before resetting;
+message broadcasts happen after known commit and contain actual updated channels.
+Network/provider calls do not hold DB locks. SQL commit plus queue is not atomic;
+partial enqueue failure leaves scheduled rows for existing stale recovery.
+
+434 targeted Jest/6 suites +26 guards=460 PASS;
+46 new PostgreSQL cases:24 scheduler,10 watchdog,12 import-job cases. Includes
+mixed protected rows, disabled/stage/enrollment changes after candidate reads,
+unknown commit/no enqueue or broadcast, known commit/queue failure, parent changes
+and legacy payloads. Initial direct UPDATE returned TypeORM [rows,count], not rows;
+regression and independent review caught it. CTE SELECT restores flat descriptors.
+Typed repository test doubles fix new test errors. Restored declared lodash.groupby
+imports after review caught undeclared lodash imports; isolated type tools now include
+the declared @types/lodash.groupby 4.6.9 for both baseline and current sources. Dependency guard initially rejected two new transitive edges
+through the shared utils barrel. The pure stale helpers now use explicit null/undefined
+checks with unchanged timeout/invalid-date behavior; baseline guard passed unchanged.
+Typecheck 278 roots:191/189,0 new/changed-code;
+7 migration checksums unchanged and remote LF source hashes matched.
+Scoped read-only review final reread found no other blockers, did not run tests.
+[Evidence](implementation/log066/README.md).
+
+Existing message list-fetch cron/CLI payloads still lack expected account; member
+blocklist reset loses selected owner provenance. Direct importer/onboarding and
+provider-response-to-write lifecycle remain open. Candidate throttle/webhook checks
+are not newly transactional; no full lifecycle or SQL/queue atomicity claim.
+Last full fork LOG0561881/71; no full server typecheck/full Claude review/ROB764 Done.
+Demo/SaleBot unchanged; no GitHub Actions. Skills: ai-dev-workflow,
+behavioral-guardrails, server-schrodinger, scoped read-only research/review.

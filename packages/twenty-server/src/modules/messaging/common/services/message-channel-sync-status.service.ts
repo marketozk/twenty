@@ -1,3 +1,5 @@
+import { isSyncStale } from 'src/modules/messaging/message-import-manager/utils/is-sync-stale.util';
+import { toIsoStringOrNull } from 'src/utils/date/toIsoStringOrNull';
 import {
   messageImportCacheKeys,
   legacyMessageImportCacheKeys,
@@ -63,6 +65,55 @@ export class MessageChannelSyncStatusService {
     private readonly metricsService: MetricsService,
     private readonly workspaceEventBroadcaster: WorkspaceEventBroadcaster,
   ) {}
+
+  public async requeueStaleChannels(
+    ids: string[],
+    workspaceId: string,
+  ): Promise<string[]> {
+    const updated = await withOrdinaryMetadataChannels(
+      this.messageChannelRepository.manager,
+      workspaceId,
+      ids,
+      'message',
+      async (manager, channels) => {
+        const accepted = [];
+        const repository = manager.getRepository(MessageChannelEntity);
+        for (const channel of channels) {
+          const current = await repository.findOneByOrFail({
+            id: channel.id,
+            workspaceId,
+          });
+          if (!isSyncStale(toIsoStringOrNull(current.syncStageStartedAt)))
+            continue;
+          const pending =
+            current.syncStage ===
+              MessageChannelSyncStage.MESSAGE_LIST_FETCH_ONGOING ||
+            current.syncStage ===
+              MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED
+              ? MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING
+              : current.syncStage ===
+                    MessageChannelSyncStage.MESSAGES_IMPORT_ONGOING ||
+                  current.syncStage ===
+                    MessageChannelSyncStage.MESSAGES_IMPORT_SCHEDULED
+                ? MessageChannelSyncStage.MESSAGES_IMPORT_PENDING
+                : null;
+          if (pending === null) continue;
+          await repository.update(
+            { id: channel.id, workspaceId },
+            { syncStage: pending, syncStageStartedAt: null },
+          );
+          accepted.push({
+            ...channel,
+            syncStage: pending,
+            syncStatus: current.syncStatus,
+          });
+        }
+        return accepted;
+      },
+    );
+    await this.broadcastMessageChannelsUpdated(updated, workspaceId);
+    return updated.map(({ id }) => id);
+  }
 
   public async recordTemporaryFailure(
     channelId: string,

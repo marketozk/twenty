@@ -1,9 +1,10 @@
+import { scheduleOrdinaryMetadataChannels } from 'src/modules/omnichannel/services/schedule-ordinary-metadata-channels';
 import groupBy from 'lodash.groupby';
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { WorkspaceActivationStatus } from 'twenty-shared/workspace';
-import { In, IsNull, Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 
 import { CalendarChannelSyncStage } from 'twenty-shared/types';
 import { SentryCronMonitor } from 'src/engine/core-modules/cron/sentry-cron-monitor.decorator';
@@ -89,32 +90,24 @@ export class CalendarEventsImportCronJob {
           (calendarChannel) => calendarChannel.id,
         );
 
-        const updateResult = await this.calendarChannelRepository
-          .createQueryBuilder()
-          .update()
-          .set({
-            syncStage:
+        const accepted = await scheduleOrdinaryMetadataChannels(
+          this.calendarChannelRepository.manager,
+          workspaceId,
+          calendarChannelIds,
+          'calendar',
+          {
+            pending: CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_PENDING,
+            scheduled:
               CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_SCHEDULED,
-            syncStageStartedAt: new Date(),
-          })
-          .where({
-            id: In(calendarChannelIds),
-            workspaceId,
-            isSyncEnabled: true,
-            syncStage: CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_PENDING,
-          })
-          .returning('id')
-          .execute();
-
-        const updatedIds = updateResult.raw.map(
-          (row: { id: string }) => row.id,
+          },
         );
 
-        for (const calendarChannelId of updatedIds) {
+        for (const { id: calendarChannelId, connectedAccountId } of accepted) {
           await this.messageQueueService.add<CalendarEventsImportJobData>(
             CalendarEventsImportJob.name,
             {
               calendarChannelId,
+              expectedConnectedAccountId: connectedAccountId,
               workspaceId,
             },
           );

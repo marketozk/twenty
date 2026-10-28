@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { In, Repository } from 'typeorm';
 
-import { MessageChannelSyncStage } from 'twenty-shared/types';
 import { Process } from 'src/engine/core-modules/message-queue/decorators/process.decorator';
 import { Processor } from 'src/engine/core-modules/message-queue/decorators/processor.decorator';
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
@@ -12,8 +11,6 @@ import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
 import { MessageChannelSyncStatusService } from 'src/modules/messaging/common/services/message-channel-sync-status.service';
 import { MESSAGING_ONGOING_STALE_SYNC_STAGES } from 'src/modules/messaging/message-import-manager/constants/messaging-ongoing-stale-sync-stages.constant';
-import { isSyncStale } from 'src/modules/messaging/message-import-manager/utils/is-sync-stale.util';
-import { toIsoStringOrNull } from 'src/utils/date/toIsoStringOrNull';
 
 export type MessagingOngoingStaleJobData = {
   workspaceId: string;
@@ -47,41 +44,15 @@ export class MessagingOngoingStaleJob {
           },
         });
 
-        for (const messageChannel of messageChannels) {
-          if (
-            isSyncStale(toIsoStringOrNull(messageChannel.syncStageStartedAt))
-          ) {
-            await this.messageChannelSyncStatusService.resetSyncStageStartedAt(
-              [messageChannel.id],
-              workspaceId,
-            );
-
-            switch (messageChannel.syncStage) {
-              case MessageChannelSyncStage.MESSAGE_LIST_FETCH_ONGOING:
-              case MessageChannelSyncStage.MESSAGE_LIST_FETCH_SCHEDULED:
-                this.logger.log(
-                  `Sync for message channel ${messageChannel.id} and workspace ${workspaceId} is stale. Setting sync stage to MESSAGE_LIST_FETCH_PENDING`,
-                );
-                await this.messageChannelSyncStatusService.markAsMessagesListFetchPending(
-                  [messageChannel.id],
-                  workspaceId,
-                );
-                break;
-              case MessageChannelSyncStage.MESSAGES_IMPORT_ONGOING:
-              case MessageChannelSyncStage.MESSAGES_IMPORT_SCHEDULED:
-                this.logger.log(
-                  `Sync for message channel ${messageChannel.id} and workspace ${workspaceId} is stale. Setting sync stage to MESSAGES_IMPORT_PENDING`,
-                );
-                await this.messageChannelSyncStatusService.markAsMessagesImportPending(
-                  [messageChannel.id],
-                  workspaceId,
-                );
-                break;
-              default:
-                break;
-            }
-          }
-        }
+        const accepted =
+          await this.messageChannelSyncStatusService.requeueStaleChannels(
+            messageChannels.map(({ id }) => id),
+            workspaceId,
+          );
+        if (accepted.length)
+          this.logger.log(
+            `Requeued ${accepted.length} stale message channels in workspace ${workspaceId}`,
+          );
       },
       authContext,
       { lite: true },

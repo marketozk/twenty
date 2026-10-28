@@ -6,16 +6,16 @@
 
 Подробный действующий контракт: [implementation-spec.md](implementation-spec.md), включая обязательные уточнения раздела 15, схему, транзакции, API, lifecycle и T01–T33. Этот краткий этап читается вместе с ним; готовность реализации по наличию плана не заявляется.
 
-Зависимость: этап0. LOG-065 / ROB-764 In Progress: пять runtime owners используют единые
-account-scoped v2 cache keys. Clear/broadcast привязаны к принятому account;
-progress читает current ordinary owner. Legacy backlog не переносится в новый
-account: guarded reset/refetch сохраняет pending actions, затем удаляет старые
-ключи после известного commit. Старый cleanup job удаляет только legacy keys.
-Проверено 388 targeted Jest/6 suites +26 guards =414 PASS,
-16 новых cases. Typecheck 269 roots:190/189,0 new/changed-code.
-7 migrations неизменны. [Доказательства](../implementation/log065/README.md). Scoped review без новых blockers.
-Последний full fork LOG0561881/71. Далее downstream response application,
-import scheduling/onboarding admission, затем свежая T22/ROB764 acceptance.
+Зависимость: этап0. LOG-066 / ROB-764 In Progress: четыре scheduler paths проверяют current
+ordinary owner, enabled и pending stage под блокировкой, enqueue только принятых
+каналов с captured account. Два import job повторно проверяют parent/stage перед
+provider, два watchdog перечитывают timestamp/stage под тем же owner.
+Проверено 434 targeted Jest/6 suites +26 guards =460 PASS,
+46 новых PostgreSQL cases. Typecheck 278 roots:191/189,0 new/changed-code.
+7 migrations неизменны. [Доказательства](../implementation/log066/README.md). Scoped review после исправления
+CTE result shape без оставшихся blockers. Последний full fork LOG0561881/71.
+Далее legacy message list payload/member reset provenance, direct importer/onboarding
+admission и downstream response apply, затем свежая T22/ROB764 acceptance.
 Демо прежнее, GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы fork migrations,

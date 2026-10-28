@@ -1,3 +1,5 @@
+import { isSyncStale } from 'src/modules/calendar/calendar-event-import-manager/utils/is-sync-stale.util';
+import { toIsoStringOrNull } from 'src/utils/date/toIsoStringOrNull';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -40,6 +42,54 @@ export class CalendarChannelSyncStatusService {
     private readonly accountsToReconnectService: AccountsToReconnectService,
     private readonly metricsService: MetricsService,
   ) {}
+
+  public async requeueStaleChannels(
+    ids: string[],
+    workspaceId: string,
+  ): Promise<string[]> {
+    const updated = await withOrdinaryMetadataChannels(
+      this.calendarChannelRepository.manager,
+      workspaceId,
+      ids,
+      'calendar',
+      async (manager, channels) => {
+        const accepted = [];
+        const repository = manager.getRepository(CalendarChannelEntity);
+        for (const channel of channels) {
+          const current = await repository.findOneByOrFail({
+            id: channel.id,
+            workspaceId,
+          });
+          if (!isSyncStale(toIsoStringOrNull(current.syncStageStartedAt)))
+            continue;
+          const pending =
+            current.syncStage ===
+              CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_ONGOING ||
+            current.syncStage ===
+              CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_SCHEDULED
+              ? CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING
+              : current.syncStage ===
+                    CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_ONGOING ||
+                  current.syncStage ===
+                    CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_SCHEDULED
+                ? CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_PENDING
+                : null;
+          if (pending === null) continue;
+          await repository.update(
+            { id: channel.id, workspaceId },
+            { syncStage: pending, syncStageStartedAt: null },
+          );
+          accepted.push({
+            ...channel,
+            syncStage: pending,
+            syncStatus: current.syncStatus,
+          });
+        }
+        return accepted;
+      },
+    );
+    return updated.map(({ id }) => id);
+  }
 
   public async recordTemporaryFailure(
     channelId: string,

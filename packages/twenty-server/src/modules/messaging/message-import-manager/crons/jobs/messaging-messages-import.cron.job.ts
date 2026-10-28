@@ -1,3 +1,4 @@
+import { scheduleOrdinaryMetadataChannels } from 'src/modules/omnichannel/services/schedule-ordinary-metadata-channels';
 import groupBy from 'lodash.groupby';
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -94,37 +95,31 @@ export class MessagingMessagesImportCronJob {
           (messageChannel) => messageChannel.id,
         );
 
-        const updateResult = await this.messageChannelRepository
-          .createQueryBuilder()
-          .update()
-          .set({
-            syncStage: MessageChannelSyncStage.MESSAGES_IMPORT_SCHEDULED,
-            syncStageStartedAt: new Date(),
-          })
-          .where({
-            id: In(messageChannelIdsToSchedule),
-            workspaceId,
-            isSyncEnabled: true,
-            syncStage: MessageChannelSyncStage.MESSAGES_IMPORT_PENDING,
-          })
-          .returning('id')
-          .execute();
-
-        const updatedIds = updateResult.raw.map(
-          (row: { id: string }) => row.id,
+        const accepted = await scheduleOrdinaryMetadataChannels(
+          this.messageChannelRepository.manager,
+          workspaceId,
+          messageChannelIdsToSchedule,
+          'message',
+          {
+            pending: MessageChannelSyncStage.MESSAGES_IMPORT_PENDING,
+            scheduled: MessageChannelSyncStage.MESSAGES_IMPORT_SCHEDULED,
+          },
         );
 
-        for (const messageChannelId of updatedIds) {
+        for (const { id: messageChannelId, connectedAccountId } of accepted) {
           await this.messageQueueService.add<MessagingMessagesImportJobData>(
             MessagingMessagesImportJob.name,
             {
               workspaceId,
               messageChannelId,
+              expectedConnectedAccountId: connectedAccountId,
             },
           );
         }
       } catch (error) {
         if (
+          error instanceof Error &&
+          'code' in error &&
           error.code === '42P01' &&
           error.message.includes('messageChannel" does not exist')
         ) {
