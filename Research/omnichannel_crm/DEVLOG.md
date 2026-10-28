@@ -2196,3 +2196,5 @@ check and ROB764 acceptance are not complete. Last full fork LOG067:2205/75.
 Next: calendar list-fetch admission/cursor finalization, native apply, final regression.
 Demo/SaleBot unchanged; no Actions. Skills: ai-dev-workflow, behavioral-guardrails,
 server-schrodinger; scoped read-only review/research.
+
+LOG-072 publication: code `87c96976095cf040bc75e6deb599bafd8940fee1` pushed; GitHub ref verified by API. Linear description/comment `e17a469c-3439-4a84-9e10-7d788989d81f` independently read back; all11 project states match. ROB-764 remains In Progress.
