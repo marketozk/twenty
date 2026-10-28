@@ -3013,3 +3013,5 @@ index отклоняется, down/up не меняет аудит. Typecheck326
 Read-only review блокеров не обнаружило. CREATE INDEX требует остановленных writers
 при будущем выкате; не CONCURRENTLY. [Evidence](implementation/log090/README.md).
 ROB765 In Progress; далее продолжаем native coverage и реальные writer entry points.
+
+LOG090 publication: `cc44b9fc89de2da9ea24c14ef2343e30d25dbc8a` pushed/API verified. ROB765 description and comment `c01295fc-f893-4965-9599-9e6fbb4d9faf` independently read back; all11 states match. ROB765 remains In Progress; implementation continues.
