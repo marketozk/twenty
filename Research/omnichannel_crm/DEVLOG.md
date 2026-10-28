@@ -3160,3 +3160,7 @@ regression повторён. [Доказательства](implementation/log09
 ROB765 In Progress. Следом soft-delete/restore и соответствующие public owners.
 Физический delete/merge требует отдельной проверки FK side effects; public CREATE
 и shared access не включаются ценой обхода аудита. Демо и GitHub Actions не менялись.
+
+LOG097 publication: `d3bbfe8b7abaf63bf8b13adc6bb2e91f0d27a207` pushed/API verified.
+ROB765 description and comment `41484965-d47f-490f-8263-6e0180fc4b44` independently
+read back; all 11 states match. ROB765 remains In Progress; implementation continues.
