@@ -1,0 +1,14 @@
+{
+  "baseCommit": "3a592d6b52858fc96e9a2a2db68189ff3491c807",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/twenty-orm/workspace-orm.manager.ts": "cb45ca86fcf596116e0c4a6f90863b6bd06129bc0f0d0446f2341fc51d6db2b2",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts": "16e83dd273405a1325c56ffd954f567b1b6d45b7242181aec73e69050a1715ae",
+    "packages/twenty-server/test/fork-migration/omni-history-apply.fixture.ts": "d74393db92d8892e856c30ecf6b0141705387f5405346a1edccc0962c5326154",
+    "packages/twenty-server/test/fork-migration/omni-native-message.fixture.ts": "2ed0895168a5c54f1a8617b52f4ab773bc2ba26f4c923b9c56cebd83e1910fc7",
+    "packages/twenty-server/src/modules/omnichannel/services/set-omni-conversation-target.ts": "0245351c4ab5069b7e5f5595a5469d5730294315c45c7465081765146ac46484",
+    "packages/twenty-server/src/modules/omnichannel/services/verify-omni-conversation-target-history.ts": "af903d2d1e2d6fdc73fd65e90749f7967533ce50de3e46d99c1a6aeead5869e3",
+    "packages/twenty-server/test/fork-migration/omni-conversation-target.postgres-spec.ts": "0124d6daa870557029dc58ec64739e6e4506b37028c3e97e8ed4a52b871a5718"
+  }
+}

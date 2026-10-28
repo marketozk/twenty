@@ -1,0 +1,19 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-mutation-guard.postgres-spec.ts (21.596 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-apply.postgres-spec.ts (14.415 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-conversation-target.postgres-spec.ts (11.675 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-identity-person.postgres-spec.ts (9.225 s)
+[32m[Nest] 1  - [39m10/28/2026, 8:34:11 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 1 record(s) from person in workspace 38c456f3-a05b-4d92-a503-ede7ba70c1b7[39m
+[32m[Nest] 1  - [39m10/28/2026, 8:34:11 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 1 record(s) from workspace 38c456f3-a05b-4d92-a503-ede7ba70c1b7[39m
+[32m[Nest] 1  - [39m10/28/2026, 8:34:12 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 1 record(s) from messageParticipant in workspace 38c456f3-a05b-4d92-a503-ede7ba70c1b7[39m
+[32m[Nest] 1  - [39m10/28/2026, 8:34:12 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 1 record(s) from workspace 38c456f3-a05b-4d92-a503-ede7ba70c1b7[39m
+[32m[Nest] 1  - [39m10/28/2026, 8:34:12 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 1 record(s) from person in workspace 38c456f3-a05b-4d92-a503-ede7ba70c1b7[39m
+[32m[Nest] 1  - [39m10/28/2026, 8:34:12 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 1 record(s) from workspace 38c456f3-a05b-4d92-a503-ede7ba70c1b7[39m
+[32m[Nest] 1  - [39m10/28/2026, 8:34:12 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 0 record(s) from workspace 38c456f3-a05b-4d92-a503-ede7ba70c1b7[39m
+[32m[Nest] 1  - [39m10/28/2026, 8:34:12 AM [32m    LOG[39m [38;5;3m[TrashCleanupService] [39m[32mDeleted 0 record(s) from workspace 38c456f3-a05b-4d92-a503-ede7ba70c1b7[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-parent-lifecycle.postgres-spec.ts (8.241 s)
+
+Test Suites: 5 passed, 5 total
+Tests:       194 passed, 194 total
+Snapshots:   0 total
+Time:        65.272 s
+Ran all test suites matching /omni-(conversation-target|identity-person|parent-lifecycle|native-mutation-guard|history-apply|native-ingress-boundary).postgres/i.

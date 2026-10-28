@@ -1,3 +1,5 @@
+import { computeTableName } from 'src/engine/utils/compute-table-name.util';
+import { TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER } from 'twenty-shared/application/constants/TwentyStandardApplicationUniversalIdentifier';
 import { STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS } from 'twenty-shared/metadata/constants/standard-object-universal-identifiers.constant';
 import {
   PermissionsException,
@@ -40,6 +42,40 @@ export class WorkspaceOrmManager {
     private readonly enterprisePlanService: EnterprisePlanService,
     private readonly twentyConfigService: TwentyConfigService,
   ) {}
+
+  getOmniConversationTargetMetadata(objectMetadataId: string) {
+    const maps = getWorkspaceContext().flatObjectMetadataMaps;
+    const key = maps.universalIdentifierById[objectMetadataId];
+    const object = key ? maps.byUniversalIdentifier[key] : undefined;
+    if (!object) return undefined;
+    const projectionField:
+      | 'targetPersonId'
+      | 'targetCompanyId'
+      | 'targetOpportunityId'
+      | null =
+      object.universalIdentifier ===
+      STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.person
+        ? 'targetPersonId'
+        : object.universalIdentifier ===
+            STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.company
+          ? 'targetCompanyId'
+          : object.universalIdentifier ===
+              STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.opportunity
+            ? 'targetOpportunityId'
+            : null;
+    return Object.freeze({
+      id: object.id,
+      workspaceId: object.workspaceId,
+      isActive: object.isActive,
+      isSystem: object.isSystem,
+      tableName: computeTableName(
+        object.nameSingular,
+        object.applicationUniversalIdentifier !==
+          TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER,
+      ),
+      projectionField,
+    });
+  }
 
   getStandardPersonMetadata() {
     const object =

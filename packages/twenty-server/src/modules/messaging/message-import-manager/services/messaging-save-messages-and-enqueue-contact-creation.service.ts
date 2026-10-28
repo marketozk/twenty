@@ -1,4 +1,12 @@
 import {
+  setOmniConversationTarget,
+  snapshotOmniConversationTargetRequest,
+  appendOmniConversationTargetFailure,
+  type OmniConversationTargetPrincipal,
+  type OmniConversationTargetCommand,
+  type OmniConversationTargetAuthorizer,
+} from 'src/modules/omnichannel/services/set-omni-conversation-target';
+import {
   type OmniIncomingRevisionAdapter,
   snapshotOmniIncomingRevisionAdapter,
 } from 'src/modules/omnichannel/contracts/omni-incoming-text-revision';
@@ -196,6 +204,109 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     @InjectDataSource()
     private readonly dataSource: DataSource,
   ) {}
+
+  async setOmniConversationTarget(
+    principal: OmniConversationTargetPrincipal,
+    command: OmniConversationTargetCommand,
+    authorize: OmniConversationTargetAuthorizer,
+  ) {
+    const request = snapshotOmniConversationTargetRequest(
+      principal,
+      command,
+      authorize,
+    );
+    const operationId = randomUUID(),
+      candidateTargetId = randomUUID();
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        const metadata =
+          this.workspaceOrmManager.getOmniConversationTargetMetadata(
+            request.command.objectMetadataId,
+          );
+        if (
+          !metadata ||
+          metadata.workspaceId !== request.principal.workspaceId ||
+          !metadata.isActive ||
+          metadata.isSystem
+        )
+          throw new Error('OMNI_CONVERSATION_TARGET_METADATA_SCOPE');
+        let entered = false,
+          denied = false;
+        try {
+          return await this.workspaceOrmManager.runInWorkspaceTransaction(
+            async (scope) => {
+              entered = true;
+              return setOmniConversationTarget(
+                scope,
+                {
+                  ...request,
+                  authorize: async (...args) => {
+                    try {
+                      await request.authorize(...args);
+                    } catch (error) {
+                      denied = true;
+                      throw error;
+                    }
+                  },
+                },
+                { ...metadata, isActive: true, isSystem: false },
+                operationId,
+                candidateTargetId,
+                {
+                  insertProjection: async (projection) => {
+                    await withOmniRepositoryOptions(scope)
+                      .getRepository('messageThreadTarget', {
+                        shouldBypassPermissionChecks: true,
+                      })
+                      .insert(projection);
+                  },
+                  deleteProjection: async (id) => {
+                    const result = await withOmniRepositoryOptions(scope)
+                      .getRepository('messageThreadTarget', {
+                        shouldBypassPermissionChecks: true,
+                      })
+                      .delete({ id });
+                    if (result.affected !== 1)
+                      throw new Error(
+                        'OMNI_CONVERSATION_TARGET_PROJECTION_DELETE',
+                      );
+                  },
+                },
+              );
+            },
+            { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
+          );
+        } catch (error) {
+          if (
+            entered &&
+            !(error instanceof NativeTransactionOutcomeUnknownError)
+          ) {
+            try {
+              await this.workspaceOrmManager.runInWorkspaceTransaction(
+                (scope) =>
+                  appendOmniConversationTargetFailure(
+                    scope,
+                    request,
+                    operationId,
+                    candidateTargetId,
+                    denied,
+                  ),
+                { commitOutcome: 'strict' },
+              );
+            } catch (auditError) {
+              throw new AggregateError(
+                [error, auditError],
+                'OMNI_CONVERSATION_TARGET_FAILURE_AUDIT_UNCONFIRMED',
+              );
+            }
+          }
+          throw error;
+        }
+      },
+      buildSystemAuthContext(request.principal.workspaceId),
+      { lite: true },
+    );
+  }
 
   async setOmniIdentityPerson(
     principal: OmniIdentityPersonPrincipal,

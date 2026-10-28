@@ -41,6 +41,7 @@ type TableName =
   | 'workspaceMember'
   | 'company'
   | 'opportunity'
+  | 'task'
   | 'messageThreadTarget'
   | 'calendarEvent'
   | 'calendarEventParticipant'

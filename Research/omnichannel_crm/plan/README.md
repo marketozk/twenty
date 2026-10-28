@@ -1,11 +1,11 @@
 # Технический план реализации CRM — v1
 
-LOG-082 / ROB-764 In Progress: внутренний writer связывает ExternalIdentity с Person,
-меняет или снимает связь. Участники штатной переписки обновляются атомарно с identity,
-policy epoch, audit и receipt; прежний автор сообщения остаётся неизменным.
-Старая явная связь с Person и её native projection инвалидируются при rebind/unlink.
-2661 tests/83 suites +26 guards =2687 PASS;21 new PG cases. Differential typecheck 313 roots:187 baseline/187 current,0 new/changed-code. All nine migration sources unchanged. [Доказательства](../implementation/log082/README.md). Полный fork regression выполнен на текущем исходнике.
-Далее explicit ConversationTarget link/unlink/projector и оставшиеся phase1 criteria;
+LOG-083 / ROB-764 In Progress: реализован внутренний explicit ConversationTarget writer.
+Person/Company/Opportunity получают точную manual projection; Task/custom — только core edge.
+Current authorization, revision CAS, epoch и audit атомарны; replay сверяет всю retained
+цепочку состояния и native projection audit. 194 tests/5 suites +26 guards =220 PASS;32 new PG cases. Differential typecheck 316 roots:187 baseline/187 current,0 new/changed-code. All nine migration sources unchanged. [Доказательства](../implementation/log083/README.md).
+Последний полный fork regression: LOG082,2661 tests/83 suites.
+Далее CreatePerson/autoCreatePerson и сверка оставшихся phase1 criteria;
 transport discovery и полный ACL/API ещё не подключены.
 Демо прежнее, GitHub Actions не используется.
 

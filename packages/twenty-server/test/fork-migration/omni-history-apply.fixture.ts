@@ -1,3 +1,4 @@
+import { computeObjectTargetTable } from 'src/engine/utils/compute-object-target-table.util';
 import { STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS } from 'twenty-shared/metadata';
 import { randomUUID } from 'node:crypto';
 
@@ -22,6 +23,7 @@ import { createOmniNativeMessageFixture } from 'test/fork-migration/omni-native-
 export const createOmniHistoryApplyFixture = (
   options: {
     includeTargets?: boolean;
+    includeCrmTargets?: boolean;
     includeFolderAssociations?: boolean;
     includeWorkspaceMember?: boolean;
     useStandardForeignKeyActions?: boolean;
@@ -31,6 +33,9 @@ export const createOmniHistoryApplyFixture = (
     coreSchema: 'fork',
     useStandardForeignKeyActions: options.useStandardForeignKeyActions,
     additionalTables: [
+      ...(options.includeCrmTargets
+        ? ['company' as const, 'opportunity' as const, 'task' as const]
+        : []),
       ...(options.includeTargets ? ['messageThreadTarget' as const] : []),
       ...(options.includeFolderAssociations
         ? ['messageChannelMessageAssociationMessageFolder' as const]
@@ -46,6 +51,36 @@ export const createOmniHistoryApplyFixture = (
     extra: { max: 3, statement_timeout: 10000 },
   });
   const manager = {
+    getOmniConversationTargetMetadata: (objectMetadataId: string) => {
+      const maps = getWorkspaceContext().flatObjectMetadataMaps;
+      const key = maps.universalIdentifierById[objectMetadataId];
+      const object = key ? maps.byUniversalIdentifier[key] : undefined;
+      if (!object) return undefined;
+      const projectionField:
+        | 'targetPersonId'
+        | 'targetCompanyId'
+        | 'targetOpportunityId'
+        | null =
+        object.universalIdentifier ===
+        STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.person
+          ? 'targetPersonId'
+          : object.universalIdentifier ===
+              STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.company
+            ? 'targetCompanyId'
+            : object.universalIdentifier ===
+                STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.opportunity
+              ? 'targetOpportunityId'
+              : null;
+      return Object.freeze({
+        id: object.id,
+        workspaceId: object.workspaceId,
+        isActive: object.isActive,
+        isSystem: object.isSystem,
+        tableName: computeObjectTargetTable(object),
+        projectionField,
+      });
+    },
+
     getStandardPersonMetadata: () =>
       getWorkspaceContext().flatObjectMetadataMaps.byUniversalIdentifier[
         STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.person
