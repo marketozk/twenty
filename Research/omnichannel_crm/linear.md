@@ -26,16 +26,16 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 
 ## Сверка текущего состояния — 27.10.2026
 
-LOG-070 / ROB-764 In Progress: Microsoft lifecycle передаёт проверенный snapshot
-аккаунта/подписки/clientState/status/expiry. Claim, renew apply, delete, clear и
-повторное создание сравнивают актуальное состояние под существующей блокировкой.
-Поздний ответ не меняет заменённую подписку или более новое продление.
-Unknown commit из OAuth проходит без reset/failure metrics.
-Проверено 659 targeted Jest/7 suites +26 guards =685 PASS,
-72 новых PostgreSQL/caller cases. Typecheck 291 roots:188/188,0 new/changed-code.
-7 migrations неизменны. [Доказательства](implementation/log070/README.md). Обе находки ревью исправлены и перепроверены.
-Последний full fork LOG067:2205/75. Далее direct importer/onboarding,
-точные токены запусков и provider stage/cursor/native apply.
+LOG-071 / ROB-764 In Progress: message/calendar importer получают атомарный
+допуск SCHEDULED→ONGOING и свежие channel/account/folders. Токен сохраняет
+микросекунды PostgreSQL. Completion, retry, failure и legacy reset проверяют
+account/stage/token под существующей блокировкой. Unknown native/core outcome
+останавливает fallback; token копируется до ожиданий, actual run заморожен.
+Проверено 717 targeted Jest/7 suites +26 guards =743 PASS,
+58 новых PostgreSQL/caller cases. Typecheck 292 roots:188/188,0 new/changed-code.
+7 migrations неизменны. [Доказательства](implementation/log071/README.md). Находка ревью исправлена и перепроверена.
+Последний full fork LOG067:2205/75. Далее scheduling producers/onboarding,
+provider cursors и native apply. Redis/run atomicity ещё не обеспечена.
 Демо прежнее, GitHub Actions не используется.
 
 ### Предыдущая порция

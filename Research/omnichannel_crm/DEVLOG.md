@@ -2115,3 +2115,44 @@ Backlog; demo/SaleBot unchanged. No Actions. Skills ai-dev-workflow,
 behavioral-guardrails, server-schrodinger; scoped read-only review/research.
 
 LOG-070 publication: code `a458b5820c226d3b9fb8048f94a6e3428bac6e0d` pushed; GitHub ref verified by API. Linear description/comment `43009748-9290-4ae0-85a9-3771b463008c` independently read back; all11 project states match. ROB-764 remains In Progress.
+
+## LOG-071 — direct import admission and exact run status callbacks (28.10.2026)
+
+Both importers now enter only through a locked ordinary/current-account enabled
+SCHEDULED→ONGOING update. Fresh channel/account/folders are read in the same owner
+transaction; declined/unknown admission stops before legacy cache, aliases and
+provider. DB clock produces a six-digit microsecond token, retained separately from
+lossy JS Date. Real tokens are frozen; optional callback proofs are copied before
+workspace/cache awaits. Existing ordinary/manual status calls without token remain.
+
+Completion, next-batch pending, retry/failure/account-auth status, reset and legacy
+recovery compare workspace/channel/account/stage/exact token while holding existing
+account→channel locks. Legacy recovery runs after admission and cannot reset another
+run. Accepted update rows still control postcommit cache/metrics/broadcast effects;
+message ONGOING broadcast retained after known admission. Both core/native unknown
+outcomes stop import fallback; message no longer requeues native unknown outcomes.
+
+717 targeted Jest/7 suites +26 guards=743 PASS;
+58 new PostgreSQL/caller cases, including concurrent winner, fresh disabled/owned/
+stale parent/stage, same-millisecond different-microsecond tokens, completion and
+failure after newer run, actual importer error/empty paths, mutable proofs, legacy
+reset and unknown admission/native outcomes. Existing fixtures now seed real SQL
+SCHEDULED state and account aliases; caller stage substitution is no authorization.
+Typecheck 292 roots:188/188,0 new/changed-code;
+seven migrations unchanged; source LF hashes verified. Initial typecheck found one
+fixture-only union-repository type error; explicit typed repository branches fixed
+it and differential recheck passed. One SSH upload was declined by MaxStartups;
+retry succeeded, final source hashes and tests verified the uploaded revision.
+Scoped review found optional
+legacy recovery token copied only after cache await; entry snapshot fixed and paired
+regressions added. Reviewer ran no tests. [Evidence](implementation/log071/README.md).
+
+Limits: this is SQL status/run ownership, not a durable Redis batch lease or complete
+provider result transaction. Existing failed message run may requeue IDs to its
+account cache and emit monitoring even when later status mutation is declined.
+Postcommit cache effects are not atomic with next runs. Native Message/Event save,
+association deletion, cursor writes and scheduling producers/onboarding remain
+separate work. No full server typecheck/full fork/ROB764 Done claim. Last full fork
+LOG0672205/75. Next: onboarding/list-fetch scheduling/run proof, then native apply.
+Demo/SaleBot unchanged, no Actions. Skills ai-dev-workflow, behavioral-guardrails,
+server-schrodinger and scoped read-only review/research.

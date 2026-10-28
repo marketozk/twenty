@@ -1,3 +1,8 @@
+import {
+  beginOrdinaryMetadataSyncRun,
+  matchesOrdinaryMetadataSyncRun,
+  type OrdinaryMetadataSyncRun,
+} from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
 import { isSyncStale } from 'src/modules/messaging/message-import-manager/utils/is-sync-stale.util';
 import { toIsoStringOrNull } from 'src/utils/date/toIsoStringOrNull';
 import {
@@ -122,7 +127,9 @@ export class MessageChannelSyncStatusService {
     isListFetch: boolean,
     maximumAttempts: number,
     retryAfter: string | null,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<{ exhausted: boolean; failureCount: number } | null> {
+    expectedRun = expectedRun && { ...expectedRun };
     const retryStage = isListFetch
       ? MessageChannelSyncStage.MESSAGE_LIST_FETCH_PENDING
       : MessageChannelSyncStage.MESSAGES_IMPORT_PENDING;
@@ -133,6 +140,17 @@ export class MessageChannelSyncStatusService {
       'message',
       async (manager, channels) => {
         if (!channels.length) return null;
+        if (
+          expectedRun &&
+          !(await matchesOrdinaryMetadataSyncRun(
+            manager,
+            workspaceId,
+            channelId,
+            'message',
+            expectedRun,
+          ))
+        )
+          return null;
         const repository = manager.getRepository(MessageChannelEntity);
         const current = await repository.findOneByOrFail({
           id: channelId,
@@ -184,6 +202,7 @@ export class MessageChannelSyncStatusService {
     channelId: string,
     expectedConnectedAccountId: string,
     workspaceId: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<boolean> {
     const updated = await this.mutateMessageChannels(
       [channelId],
@@ -194,7 +213,7 @@ export class MessageChannelSyncStatusService {
         throttleRetryAfter: null,
         syncStageStartedAt: null,
       },
-      { expectedConnectedAccountId },
+      { expectedConnectedAccountId, expectedRun },
     );
     await this.broadcastMessageChannelsUpdated(updated, workspaceId);
     return updated.length > 0;
@@ -248,6 +267,7 @@ export class MessageChannelSyncStatusService {
     workspaceId: string,
     expectedConnectedAccountId?: string,
     expectedUserWorkspaceId?: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<string[]> {
     return this.resetMessageChannels(
       messageChannelIds,
@@ -256,6 +276,7 @@ export class MessageChannelSyncStatusService {
       false,
       false,
       expectedUserWorkspaceId,
+      expectedRun,
     );
   }
 
@@ -266,6 +287,7 @@ export class MessageChannelSyncStatusService {
     schedule: boolean,
     preservePendingActions = false,
     expectedUserWorkspaceId?: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<string[]> {
     if (!messageChannelIds.length) return [];
 
@@ -292,6 +314,7 @@ export class MessageChannelSyncStatusService {
         resetFolders: true,
         expectedConnectedAccountId,
         expectedUserWorkspaceId,
+        expectedRun,
         reconnect: schedule || preservePendingActions,
         preservePendingActions,
       },
@@ -403,6 +426,7 @@ export class MessageChannelSyncStatusService {
     messageChannelIds: string[],
     workspaceId: string,
     expectedConnectedAccountId?: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ) {
     if (!messageChannelIds.length) {
       return false;
@@ -419,7 +443,7 @@ export class MessageChannelSyncStatusService {
         syncStageStartedAt: null,
         syncedAt: new Date().toISOString(),
       },
-      { expectedConnectedAccountId },
+      { expectedConnectedAccountId, expectedRun },
     );
 
     const acceptedIds = updated.map(({ id }) => id);
@@ -446,6 +470,45 @@ export class MessageChannelSyncStatusService {
     });
   }
 
+  public async beginMessagesImport(
+    channelId: string,
+    workspaceId: string,
+    expectedConnectedAccountId: string,
+  ) {
+    const admitted = await beginOrdinaryMetadataSyncRun(
+      this.messageChannelRepository.manager,
+      workspaceId,
+      channelId,
+      expectedConnectedAccountId,
+      'message',
+      {
+        scheduled: MessageChannelSyncStage.MESSAGES_IMPORT_SCHEDULED,
+        ongoing: MessageChannelSyncStage.MESSAGES_IMPORT_ONGOING,
+        syncStatus: MessageChannelSyncStatus.ONGOING,
+      },
+      async (manager, run) => {
+        const channel = await manager
+          .getRepository(MessageChannelEntity)
+          .findOneOrFail({
+            where: { id: channelId, workspaceId },
+            relations: ['connectedAccount', 'messageFolders'],
+          });
+        return { channel, run };
+      },
+    );
+    if (admitted)
+      await this.broadcastMessageChannelsUpdated(
+        [
+          {
+            ...admitted.channel,
+            userWorkspaceId: admitted.channel.connectedAccount.userWorkspaceId,
+          },
+        ],
+        workspaceId,
+      );
+    return admitted;
+  }
+
   public async markAsMessagesImportOngoing(
     messageChannelIds: string[],
     workspaceId: string,
@@ -467,6 +530,7 @@ export class MessageChannelSyncStatusService {
     syncStatus,
     authFailedReason = null,
     expectedConnectedAccountId,
+    expectedRun,
   }: {
     messageChannelIds: string[];
     workspaceId: string;
@@ -475,6 +539,7 @@ export class MessageChannelSyncStatusService {
       | MessageChannelSyncStatus.FAILED_UNKNOWN;
     authFailedReason?: string | null;
     expectedConnectedAccountId?: string;
+    expectedRun?: OrdinaryMetadataSyncRun;
   }) {
     if (!messageChannelIds.length) {
       return;
@@ -498,8 +563,9 @@ export class MessageChannelSyncStatusService {
         ? {
             authFailure: { reason: authFailedReason },
             expectedConnectedAccountId,
+            expectedRun,
           }
-        : {},
+        : { expectedConnectedAccountId, expectedRun },
     );
     const acceptedIds = updated.map(({ id }) => id);
     if (!acceptedIds.length) return;
@@ -523,7 +589,9 @@ export class MessageChannelSyncStatusService {
     messageChannelId: string,
     workspaceId: string,
     expectedConnectedAccountId: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<boolean> {
+    expectedRun = expectedRun && { ...expectedRun };
     const keys = legacyMessageImportCacheKeys(workspaceId, messageChannelId);
     const [total, imported] = await this.cacheStorage.mget([
       keys.total,
@@ -539,6 +607,8 @@ export class MessageChannelSyncStatusService {
       expectedConnectedAccountId,
       false,
       true,
+      undefined,
+      expectedRun,
     );
     if (accepted.includes(messageChannelId))
       await this.cacheStorage.mdel(Object.values(keys));
@@ -625,9 +695,14 @@ export class MessageChannelSyncStatusService {
       reconnect?: boolean;
       expectedConnectedAccountId?: string;
       expectedUserWorkspaceId?: string;
+      expectedRun?: OrdinaryMetadataSyncRun;
       authFailure?: { reason: string | null };
     } = {},
   ): Promise<UpdatedMessageChannel[]> {
+    options = {
+      ...options,
+      expectedRun: options.expectedRun && { ...options.expectedRun },
+    };
     const requestedIds = [...channelIds];
     return this.workspaceOrmManager.executeInWorkspaceContext(
       async () => {
@@ -639,11 +714,27 @@ export class MessageChannelSyncStatusService {
           requestedIds,
           'message',
           async (manager, admittedChannels) => {
-            const channels = admittedChannels.filter(
+            let channels = admittedChannels.filter(
               ({ userWorkspaceId }) =>
                 options.expectedUserWorkspaceId === undefined ||
                 userWorkspaceId === options.expectedUserWorkspaceId,
             );
+            if (options.expectedRun) {
+              const accepted = [];
+              for (const channel of channels) {
+                if (
+                  await matchesOrdinaryMetadataSyncRun(
+                    manager,
+                    workspaceId,
+                    channel.id,
+                    'message',
+                    options.expectedRun,
+                  )
+                )
+                  accepted.push(channel);
+              }
+              channels = accepted;
+            }
             if (!channels.length) return [];
             const ids = channels.map(({ id }) => id);
             const result = await manager

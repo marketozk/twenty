@@ -1,4 +1,9 @@
 import {
+  beginOrdinaryMetadataSyncRun,
+  matchesOrdinaryMetadataSyncRun,
+  type OrdinaryMetadataSyncRun,
+} from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
+import {
   calendarImportCacheKey,
   legacyCalendarImportCacheKey,
 } from 'src/modules/calendar/common/utils/calendar-import-cache-key';
@@ -101,7 +106,9 @@ export class CalendarChannelSyncStatusService {
     workspaceId: string,
     isListFetch: boolean,
     maximumAttempts: number,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<{ exhausted: boolean; failureCount: number } | null> {
+    expectedRun = expectedRun && { ...expectedRun };
     const retryStage = isListFetch
       ? CalendarChannelSyncStage.CALENDAR_EVENT_LIST_FETCH_PENDING
       : CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_PENDING;
@@ -112,6 +119,17 @@ export class CalendarChannelSyncStatusService {
       'calendar',
       async (manager, channels) => {
         if (!channels.length) return null;
+        if (
+          expectedRun &&
+          !(await matchesOrdinaryMetadataSyncRun(
+            manager,
+            workspaceId,
+            channelId,
+            'calendar',
+            expectedRun,
+          ))
+        )
+          return null;
         const repository = manager.getRepository(CalendarChannelEntity);
         const current = await repository.findOneByOrFail({
           id: channelId,
@@ -200,6 +218,7 @@ export class CalendarChannelSyncStatusService {
     workspaceId: string,
     expectedConnectedAccountId?: string,
     expectedUserWorkspaceId?: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<string[]> {
     return this.resetCalendarChannels(
       calendarChannelIds,
@@ -207,6 +226,8 @@ export class CalendarChannelSyncStatusService {
       expectedConnectedAccountId,
       false,
       expectedUserWorkspaceId,
+      false,
+      expectedRun,
     );
   }
 
@@ -217,6 +238,7 @@ export class CalendarChannelSyncStatusService {
     schedule: boolean,
     expectedUserWorkspaceId?: string,
     recovery = false,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<string[]> {
     if (!calendarChannelIds.length) return [];
 
@@ -236,6 +258,7 @@ export class CalendarChannelSyncStatusService {
       expectedConnectedAccountId,
       schedule || recovery,
       expectedUserWorkspaceId,
+      expectedRun,
     );
     await this.flushImportCache(updated, workspaceId);
     return updated.map(({ id }) => id);
@@ -258,15 +281,53 @@ export class CalendarChannelSyncStatusService {
     calendarChannelIds: string[],
     workspaceId: string,
     preserveSyncStageStartedAt: boolean = false,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ) {
     if (!calendarChannelIds.length) {
       return;
     }
 
-    await this.mutateCalendarChannels(calendarChannelIds, workspaceId, {
-      syncStage: CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_PENDING,
-      ...(!preserveSyncStageStartedAt ? { syncStageStartedAt: null } : {}),
-    });
+    await this.mutateCalendarChannels(
+      calendarChannelIds,
+      workspaceId,
+      {
+        syncStage: CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_PENDING,
+        ...(!preserveSyncStageStartedAt ? { syncStageStartedAt: null } : {}),
+      },
+      false,
+      expectedRun?.connectedAccountId,
+      false,
+      undefined,
+      expectedRun,
+    );
+  }
+
+  public async beginCalendarEventsImport(
+    channelId: string,
+    workspaceId: string,
+    expectedConnectedAccountId: string,
+  ) {
+    return beginOrdinaryMetadataSyncRun(
+      this.calendarChannelRepository.manager,
+      workspaceId,
+      channelId,
+      expectedConnectedAccountId,
+      'calendar',
+      {
+        scheduled: CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_SCHEDULED,
+        ongoing: CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_ONGOING,
+        syncStatus: CalendarChannelSyncStatus.ONGOING,
+      },
+      async (manager, run) => {
+        const channel = await manager
+          .getRepository(CalendarChannelEntity)
+          .findOneOrFail({
+            where: { id: channelId, workspaceId },
+            relations: ['connectedAccount'],
+          });
+        return { channel, run };
+      },
+    );
   }
 
   public async markAsCalendarEventsImportOngoing(
@@ -287,6 +348,7 @@ export class CalendarChannelSyncStatusService {
   public async markAsCalendarEventSyncCompleted(
     calendarChannelIds: string[],
     workspaceId: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ) {
     if (!calendarChannelIds.length) {
       return;
@@ -302,6 +364,11 @@ export class CalendarChannelSyncStatusService {
         syncStageStartedAt: null,
         syncedAt: new Date().toISOString(),
       },
+      false,
+      expectedRun?.connectedAccountId,
+      false,
+      undefined,
+      expectedRun,
     );
     if (updated.length)
       await this.metricsService.incrementCounterForEvents({
@@ -314,6 +381,7 @@ export class CalendarChannelSyncStatusService {
     calendarChannelIds: string[],
     workspaceId: string,
     expectedConnectedAccountId?: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ) {
     if (!calendarChannelIds.length) {
       return;
@@ -328,6 +396,9 @@ export class CalendarChannelSyncStatusService {
       },
       false,
       expectedConnectedAccountId,
+      false,
+      undefined,
+      expectedRun,
     );
     await this.flushImportCache(updated, workspaceId);
     if (updated.length)
@@ -341,6 +412,7 @@ export class CalendarChannelSyncStatusService {
     calendarChannelIds: string[],
     workspaceId: string,
     expectedConnectedAccountId?: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ) {
     if (!calendarChannelIds.length) {
       return;
@@ -355,6 +427,9 @@ export class CalendarChannelSyncStatusService {
       },
       true,
       expectedConnectedAccountId,
+      false,
+      undefined,
+      expectedRun,
     );
     await this.flushImportCache(updated, workspaceId);
     if (!updated.length) return;
@@ -373,7 +448,9 @@ export class CalendarChannelSyncStatusService {
     expectedConnectedAccountId?: string,
     reconnect = false,
     expectedUserWorkspaceId?: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<OrdinaryMetadataChannel[]> {
+    expectedRun = expectedRun && { ...expectedRun };
     const requestedIds = [...ids];
     return this.workspaceOrmManager.executeInWorkspaceContext(
       () =>
@@ -383,11 +460,27 @@ export class CalendarChannelSyncStatusService {
           requestedIds,
           'calendar',
           async (manager, admittedChannels) => {
-            const channels = admittedChannels.filter(
+            let channels = admittedChannels.filter(
               ({ userWorkspaceId }) =>
                 expectedUserWorkspaceId === undefined ||
                 userWorkspaceId === expectedUserWorkspaceId,
             );
+            if (expectedRun) {
+              const accepted = [];
+              for (const channel of channels) {
+                if (
+                  await matchesOrdinaryMetadataSyncRun(
+                    manager,
+                    workspaceId,
+                    channel.id,
+                    'calendar',
+                    expectedRun,
+                  )
+                )
+                  accepted.push(channel);
+              }
+              channels = accepted;
+            }
             if (!channels.length) return [];
             const result = await manager
               .getRepository(CalendarChannelEntity)
@@ -442,7 +535,9 @@ export class CalendarChannelSyncStatusService {
     calendarChannelId: string,
     workspaceId: string,
     expectedConnectedAccountId: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<boolean> {
+    expectedRun = expectedRun && { ...expectedRun };
     const legacyKey = legacyCalendarImportCacheKey(
       workspaceId,
       calendarChannelId,
@@ -455,6 +550,7 @@ export class CalendarChannelSyncStatusService {
       false,
       undefined,
       true,
+      expectedRun,
     );
     if (accepted.includes(calendarChannelId))
       await this.cacheStorage.del(legacyKey);

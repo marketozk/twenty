@@ -63,19 +63,25 @@ export class CalendarEventsImportService {
       calendarChannelId: calendarChannel.id,
       connectedAccountId: connectedAccount.id,
     });
+    const admitted =
+      await this.calendarChannelSyncStatusService.beginCalendarEventsImport(
+        calendarChannel.id,
+        workspaceId,
+        connectedAccount.id,
+      );
+    if (!admitted) return;
+    calendarChannel = admitted.channel;
+    connectedAccount = admitted.channel.connectedAccount;
+    const expectedRun = admitted.run;
     if (
       await this.calendarChannelSyncStatusService.recoverLegacyCalendarImport(
         calendarChannel.id,
         workspaceId,
         connectedAccount.id,
+        expectedRun,
       )
     )
       return;
-
-    await this.calendarChannelSyncStatusService.markAsCalendarEventsImportOngoing(
-      [calendarChannel.id],
-      workspaceId,
-    );
 
     const authContext = buildSystemAuthContext(workspaceId);
 
@@ -91,6 +97,7 @@ export class CalendarEventsImportService {
             await this.calendarChannelSyncStatusService.markAsCalendarEventSyncCompleted(
               [calendarChannel.id],
               workspaceId,
+              expectedRun,
             );
 
             return;
@@ -208,11 +215,14 @@ export class CalendarEventsImportService {
             await this.calendarChannelSyncStatusService.markAsCalendarEventSyncCompleted(
               [calendarChannel.id],
               workspaceId,
+              expectedRun,
             );
           } else {
             await this.calendarChannelSyncStatusService.markAsCalendarEventsImportPending(
               [calendarChannel.id],
               workspaceId,
+              false,
+              expectedRun,
             );
           }
         } catch (error) {
@@ -221,6 +231,7 @@ export class CalendarEventsImportService {
             CalendarEventImportSyncStep.CALENDAR_EVENTS_IMPORT,
             calendarChannel,
             workspaceId,
+            expectedRun,
           );
         }
       },

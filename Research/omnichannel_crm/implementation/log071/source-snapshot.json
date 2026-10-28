@@ -1,0 +1,15 @@
+{
+  "baseCommit": "8acf09724aafe25fe846466a68cf4fdcf965b271",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-event-import-exception-handler.service.ts": "d29ac5f1331bb53c36ea0f156dc54081de3ad35bc92d3f28c8dd41f7d1c9ac46",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-events-import.service.ts": "a9116cb97c07daed5a0cdae098b39b828fedb7e431aff78c49ed446c3f7c1e31",
+    "packages/twenty-server/src/modules/calendar/common/services/calendar-channel-sync-status.service.ts": "7a8c176cbe7a47b4ef8db8cdc1ca8939296dd065b8c2a50914b38ffc7c540771",
+    "packages/twenty-server/src/modules/messaging/common/services/message-channel-sync-status.service.ts": "0f91214fea6f9d80c649085535dbd4e908e5ff7fb659d7ad72428e7d437f2159",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-import-exception-handler.service.ts": "d38893d29e9a110465dc84bfa622127fd39144098e46c0d18dd59584b328acbf",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-messages-import.service.ts": "d85d2aba4ac61add290b86dff2a6e0d57b6b839ca59e918f85893867bc7517c0",
+    "packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts": "46578dea997b97e2a384ecac046ce065eeaab2a0137c5c1ba1d0dc4e400869df",
+    "packages/twenty-server/src/modules/omnichannel/services/ordinary-metadata-sync-run.ts": "ab19a69a76fa08c85353a3e8407eea664a6482885fb22e0a7c58aa925c581224"
+  }
+}

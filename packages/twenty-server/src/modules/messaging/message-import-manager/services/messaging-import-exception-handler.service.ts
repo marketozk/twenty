@@ -1,3 +1,4 @@
+import { type OrdinaryMetadataSyncRun } from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
 import { Injectable } from '@nestjs/common';
@@ -41,7 +42,9 @@ export class MessageImportExceptionHandlerService {
       'id' | 'throttleFailureCount' | 'connectedAccountId'
     >,
     workspaceId: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<void> {
+    expectedRun = expectedRun && { ...expectedRun };
     if (
       exception instanceof OmniCoreTransactionOutcomeUnknownError ||
       exception instanceof NativeTransactionOutcomeUnknownError
@@ -66,6 +69,7 @@ export class MessageImportExceptionHandlerService {
             syncStep,
             messageChannel,
             workspaceId,
+            expectedRun,
           );
           break;
         case TwentyOrmExceptionCode.QUERY_READ_TIMEOUT:
@@ -82,6 +86,7 @@ export class MessageImportExceptionHandlerService {
             messageChannel,
             workspaceId,
             error,
+            expectedRun,
           );
           break;
         case ConnectedAccountRefreshAccessTokenExceptionCode.REFRESH_TOKEN_NOT_FOUND:
@@ -96,18 +101,21 @@ export class MessageImportExceptionHandlerService {
           await this.handleInsufficientPermissionsException(
             messageChannel,
             workspaceId,
+            expectedRun,
           );
           break;
         case MessageImportDriverExceptionCode.INSUFFICIENT_PERMISSIONS:
           await this.handleInsufficientPermissionsException(
             messageChannel,
             workspaceId,
+            expectedRun,
           );
           break;
         case MessageImportDriverExceptionCode.SERVER_CERTIFICATE_INVALID:
           await this.messageChannelSyncStatusService.markAsFailed({
             messageChannelIds: [messageChannel.id],
             workspaceId,
+            expectedRun,
             syncStatus:
               MessageChannelSyncStatus.FAILED_INSUFFICIENT_PERMISSIONS,
             expectedConnectedAccountId: messageChannel.connectedAccountId,
@@ -119,6 +127,7 @@ export class MessageImportExceptionHandlerService {
           await this.handleSyncCursorErrorException(
             messageChannel,
             workspaceId,
+            expectedRun,
           );
           break;
         case ConnectedAccountRefreshAccessTokenExceptionCode.ACCESS_TOKEN_NOT_FOUND:
@@ -134,6 +143,7 @@ export class MessageImportExceptionHandlerService {
             messageChannel,
             workspaceId,
             syncStep,
+            expectedRun,
           );
           break;
       }
@@ -143,17 +153,22 @@ export class MessageImportExceptionHandlerService {
         messageChannel,
         workspaceId,
         syncStep,
+        expectedRun,
       );
     }
   }
 
   private async handleSyncCursorErrorException(
-    messageChannel: Pick<MessageChannelEntity, 'id'>,
+    messageChannel: Pick<MessageChannelEntity, 'id' | 'connectedAccountId'>,
     workspaceId: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<void> {
     await this.messageChannelSyncStatusService.resetAndMarkAsMessagesListFetchPending(
       [messageChannel.id],
       workspaceId,
+      messageChannel.connectedAccountId,
+      undefined,
+      expectedRun,
     );
   }
 
@@ -165,6 +180,7 @@ export class MessageImportExceptionHandlerService {
     >,
     workspaceId: string,
     exception: { message: string },
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<void> {
     const retryAfter =
       exception instanceof MessageImportDriverException
@@ -178,6 +194,7 @@ export class MessageImportExceptionHandlerService {
         syncStep === MessageImportSyncStep.MESSAGE_LIST_FETCH,
         MESSAGING_THROTTLE_MAX_ATTEMPTS,
         isDefined(retryAfter) ? retryAfter.toISOString() : null,
+        expectedRun,
       );
     if (!result) return;
     if (result.exhausted) {
@@ -204,10 +221,12 @@ export class MessageImportExceptionHandlerService {
   private async handleInsufficientPermissionsException(
     messageChannel: Pick<MessageChannelEntity, 'id' | 'connectedAccountId'>,
     workspaceId: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<void> {
     await this.messageChannelSyncStatusService.markAsFailed({
       messageChannelIds: [messageChannel.id],
       workspaceId,
+      expectedRun,
       expectedConnectedAccountId: messageChannel.connectedAccountId,
       syncStatus: MessageChannelSyncStatus.FAILED_INSUFFICIENT_PERMISSIONS,
     });
@@ -215,9 +234,10 @@ export class MessageImportExceptionHandlerService {
 
   private async handleUnknownException(
     exception: Error,
-    messageChannel: Pick<MessageChannelEntity, 'id'>,
+    messageChannel: Pick<MessageChannelEntity, 'id' | 'connectedAccountId'>,
     workspaceId: string,
     syncStep: MessageImportSyncStep,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<void> {
     this.exceptionHandlerService.captureExceptions([exception], {
       additionalData: {
@@ -229,19 +249,24 @@ export class MessageImportExceptionHandlerService {
     await this.messageChannelSyncStatusService.markAsFailed({
       messageChannelIds: [messageChannel.id],
       workspaceId,
+      expectedConnectedAccountId: messageChannel.connectedAccountId,
+      expectedRun,
       syncStatus: MessageChannelSyncStatus.FAILED_UNKNOWN,
     });
   }
 
   private async handleNotFoundException(
     syncStep: MessageImportSyncStep,
-    messageChannel: Pick<MessageChannelEntity, 'id'>,
+    messageChannel: Pick<MessageChannelEntity, 'id' | 'connectedAccountId'>,
     workspaceId: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<void> {
     if (syncStep === MessageImportSyncStep.MESSAGE_LIST_FETCH) {
       await this.messageChannelSyncStatusService.markAsFailed({
         messageChannelIds: [messageChannel.id],
         workspaceId,
+        expectedConnectedAccountId: messageChannel.connectedAccountId,
+        expectedRun,
         syncStatus: MessageChannelSyncStatus.FAILED_UNKNOWN,
       });
 
@@ -266,6 +291,9 @@ export class MessageImportExceptionHandlerService {
     await this.messageChannelSyncStatusService.resetAndMarkAsMessagesListFetchPending(
       [messageChannel.id],
       workspaceId,
+      messageChannel.connectedAccountId,
+      undefined,
+      expectedRun,
     );
   }
 }

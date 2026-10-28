@@ -1,3 +1,5 @@
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
+import { type OrdinaryMetadataSyncRun } from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
 import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
 import { Injectable, Logger } from '@nestjs/common';
 
@@ -35,8 +37,13 @@ export class CalendarEventImportErrorHandlerService {
       'id' | 'throttleFailureCount' | 'connectedAccountId'
     >,
     workspaceId: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<void> {
-    if (exception instanceof OmniCoreTransactionOutcomeUnknownError)
+    expectedRun = expectedRun && { ...expectedRun };
+    if (
+      exception instanceof OmniCoreTransactionOutcomeUnknownError ||
+      exception instanceof NativeTransactionOutcomeUnknownError
+    )
       throw exception;
     const error =
       exception instanceof Error ? exception : new Error(String(exception));
@@ -47,6 +54,7 @@ export class CalendarEventImportErrorHandlerService {
           syncStep,
           calendarChannel,
           workspaceId,
+          expectedRun,
         );
         break;
       case TwentyOrmExceptionCode.QUERY_READ_TIMEOUT:
@@ -57,6 +65,7 @@ export class CalendarEventImportErrorHandlerService {
           syncStep,
           calendarChannel,
           workspaceId,
+          expectedRun,
         );
         break;
       case CalendarEventImportDriverExceptionCode.INSUFFICIENT_PERMISSIONS:
@@ -65,10 +74,15 @@ export class CalendarEventImportErrorHandlerService {
         await this.handleInsufficientPermissionsException(
           calendarChannel,
           workspaceId,
+          expectedRun,
         );
         break;
       case CalendarEventImportDriverExceptionCode.SYNC_CURSOR_ERROR:
-        await this.handleSyncCursorErrorException(calendarChannel, workspaceId);
+        await this.handleSyncCursorErrorException(
+          calendarChannel,
+          workspaceId,
+          expectedRun,
+        );
         break;
       case CalendarEventImportDriverExceptionCode.CHANNEL_MISCONFIGURED:
       case CalendarEventImportDriverExceptionCode.UNKNOWN:
@@ -76,7 +90,12 @@ export class CalendarEventImportErrorHandlerService {
       case ConnectedAccountRefreshAccessTokenExceptionCode.ACCESS_TOKEN_NOT_FOUND:
       case ConnectedAccountRefreshAccessTokenExceptionCode.PROVIDER_NOT_SUPPORTED:
       default:
-        await this.handleUnknownException(error, calendarChannel, workspaceId);
+        await this.handleUnknownException(
+          error,
+          calendarChannel,
+          workspaceId,
+          expectedRun,
+        );
         break;
     }
   }
@@ -84,6 +103,7 @@ export class CalendarEventImportErrorHandlerService {
   private async handleSyncCursorErrorException(
     calendarChannel: Pick<CalendarChannelEntity, 'id' | 'connectedAccountId'>,
     workspaceId: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<void> {
     this.logger.debug(
       `CalendarChannelId: ${calendarChannel.id} - Sync cursor error, resetting and rescheduling`,
@@ -93,6 +113,8 @@ export class CalendarEventImportErrorHandlerService {
       [calendarChannel.id],
       workspaceId,
       calendarChannel.connectedAccountId,
+      undefined,
+      expectedRun,
     );
   }
 
@@ -103,6 +125,7 @@ export class CalendarEventImportErrorHandlerService {
       'id' | 'throttleFailureCount' | 'connectedAccountId'
     >,
     workspaceId: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<void> {
     const result =
       await this.calendarChannelSyncStatusService.recordTemporaryFailure(
@@ -111,6 +134,7 @@ export class CalendarEventImportErrorHandlerService {
         workspaceId,
         syncStep === CalendarEventImportSyncStep.CALENDAR_EVENT_LIST_FETCH,
         CALENDAR_THROTTLE_MAX_ATTEMPTS,
+        expectedRun,
       );
     if (!result) return;
     if (result.exhausted) {
@@ -140,11 +164,13 @@ export class CalendarEventImportErrorHandlerService {
   private async handleInsufficientPermissionsException(
     calendarChannel: Pick<CalendarChannelEntity, 'id' | 'connectedAccountId'>,
     workspaceId: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<void> {
     await this.calendarChannelSyncStatusService.markAsFailedInsufficientPermissionsAndFlushCalendarEventsToImport(
       [calendarChannel.id],
       workspaceId,
       calendarChannel.connectedAccountId,
+      expectedRun,
     );
   }
 
@@ -152,11 +178,13 @@ export class CalendarEventImportErrorHandlerService {
     exception: { message: string },
     calendarChannel: Pick<CalendarChannelEntity, 'id' | 'connectedAccountId'>,
     workspaceId: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<void> {
     await this.calendarChannelSyncStatusService.markAsFailedUnknownAndFlushCalendarEventsToImport(
       [calendarChannel.id],
       workspaceId,
       calendarChannel.connectedAccountId,
+      expectedRun,
     );
 
     const calendarEventImportException = new CalendarEventImportException(
@@ -185,6 +213,7 @@ export class CalendarEventImportErrorHandlerService {
     syncStep: CalendarEventImportSyncStep,
     calendarChannel: Pick<CalendarChannelEntity, 'id' | 'connectedAccountId'>,
     workspaceId: string,
+    expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<void> {
     if (syncStep === CalendarEventImportSyncStep.CALENDAR_EVENT_LIST_FETCH) {
       return;
@@ -194,6 +223,8 @@ export class CalendarEventImportErrorHandlerService {
       [calendarChannel.id],
       workspaceId,
       calendarChannel.connectedAccountId,
+      undefined,
+      expectedRun,
     );
   }
 }

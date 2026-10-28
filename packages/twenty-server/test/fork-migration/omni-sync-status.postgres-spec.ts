@@ -1,3 +1,4 @@
+import { type OrdinaryMetadataSyncRun } from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
 // Provider network behavior is supplied explicitly by each calendar fetch test.
 jest.mock(
   'src/modules/calendar/calendar-event-import-manager/services/calendar-get-events.service',
@@ -152,6 +153,7 @@ const accountSchema = new EntitySchema<ConnectedAccountEntity>({
     userWorkspaceId: { type: 'uuid' },
     authFailedAt: { type: 'timestamptz', nullable: true },
     authFailedReason: { type: 'text', nullable: true },
+    handleAliases: { type: 'jsonb', nullable: true },
   },
 });
 const common = {
@@ -292,6 +294,20 @@ const bootstrap = (ids: typeof ordinary) =>
     },
     async () => undefined,
   );
+const scheduleImport = async (kind: 'message' | 'calendar') => {
+  if (kind === 'message')
+    await runtime.getRepository(MessageChannelEntity).update(ordinary.message, {
+      syncStage: MessageChannelSyncStage.MESSAGES_IMPORT_SCHEDULED,
+      syncStageStartedAt: new Date(),
+    });
+  else
+    await runtime
+      .getRepository(CalendarChannelEntity)
+      .update(ordinary.calendar, {
+        syncStage: CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_SCHEDULED,
+        syncStageStartedAt: new Date(),
+      });
+};
 const seed = async (native = false) => {
   const ids = {
     account: randomUUID(),
@@ -310,6 +326,7 @@ const seed = async (native = false) => {
     id: ids.account,
     workspaceId: fixture.workspaceId,
     userWorkspaceId: ids.userWorkspace,
+    handleAliases: [],
     provider: native
       ? ConnectedAccountProvider.APP
       : ConnectedAccountProvider.GOOGLE,
@@ -348,7 +365,7 @@ const seed = async (native = false) => {
 beforeAll(async () => {
   await fixture.initialize();
   await fixture.owner.query(
-    'ALTER TABLE core."connectedAccount" ADD "workspaceId" uuid,ADD provider text,ADD "applicationId" uuid,ADD "connectionProviderId" uuid,ADD "userWorkspaceId" uuid,ADD "authFailedAt" timestamptz,ADD "authFailedReason" text,ADD "archivedAt" timestamptz',
+    'ALTER TABLE core."connectedAccount" ADD "workspaceId" uuid,ADD provider text,ADD "applicationId" uuid,ADD "connectionProviderId" uuid,ADD "userWorkspaceId" uuid,ADD "authFailedAt" timestamptz,ADD "authFailedReason" text,ADD "archivedAt" timestamptz,ADD "handleAliases" jsonb',
   );
   await fixture.owner.query(
     'ALTER TABLE core."messageChannel" ADD "connectedAccountId" uuid REFERENCES core."connectedAccount"(id),ADD "throttleRetryAfter" timestamptz,ADD "pendingGroupEmailsAction" text,ADD "updatedAt" timestamptz DEFAULT now()',
@@ -883,6 +900,7 @@ for (const kind of ['message', 'calendar'] as const) {
     kind +
       ' actual import completion preserves unknown commit and does not replay/cache/fail',
     async () => {
+      await scheduleImport(kind);
       const original = runtime.createQueryRunner.bind(runtime);
       let commits = 0;
       jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
@@ -1993,6 +2011,7 @@ describe('account-scoped import cache and legacy recovery', () => {
       expect(values.has(name)).toBe(true);
   });
   it('actual importer refuses legacy backlog before pop/provider/completed', async () => {
+    await scheduleImport('message');
     const values = memory();
     values.set(legacy().pending, new Set(['untrusted']));
     const setPop = jest.fn(),
@@ -2025,6 +2044,7 @@ describe('account-scoped import cache and legacy recovery', () => {
     expect(track).not.toHaveBeenCalled();
   });
   it('actual importer requeues errors only to captured account with TTL', async () => {
+    await scheduleImport('message');
     memory();
     const other = await seed();
     const channel = await runtime
@@ -3106,6 +3126,7 @@ for (const kind of ['fetch', 'import'] as const) {
   it(
     'actual calendar ' + kind + ' stops before provider/pop on legacy backlog',
     async () => {
+      if (kind === 'import') await scheduleImport('calendar');
       cache.getSetLength.mockResolvedValue(1);
       const channel = await runtime
         .getRepository(CalendarChannelEntity)
@@ -3230,6 +3251,7 @@ it('calendar postcommit reset clears admitted account namespace after reparent',
   );
 });
 it('calendar batch pop uses captured identity despite caller object mutation', async () => {
+  await scheduleImport('calendar');
   const channel = await runtime
     .getRepository(CalendarChannelEntity)
     .findOneByOrFail({ id: ordinary.calendar });
@@ -3312,3 +3334,486 @@ for (const code of [
     },
   );
 }
+
+describe.each(['message', 'calendar'] as const)(
+  'atomic import admission and run callbacks %s',
+  (kind) => {
+    const begin = () =>
+      kind === 'message'
+        ? messaging.beginMessagesImport(
+            ordinary.message,
+            fixture.workspaceId,
+            ordinary.account,
+          )
+        : calendar.beginCalendarEventsImport(
+            ordinary.calendar,
+            fixture.workspaceId,
+            ordinary.account,
+          );
+    const complete = (run: OrdinaryMetadataSyncRun) =>
+      kind === 'message'
+        ? messaging.markAsMessageSyncCompleted(
+            [ordinary.message],
+            fixture.workspaceId,
+            ordinary.account,
+            run,
+          )
+        : calendar.markAsCalendarEventSyncCompleted(
+            [ordinary.calendar],
+            fixture.workspaceId,
+            run,
+          );
+    const runErrorHandler = () => {
+      const dependencies = {
+        messageChannelSyncStatusService: messaging,
+        calendarChannelSyncStatusService: calendar,
+        exceptionHandlerService: { captureExceptions: jest.fn() },
+        messagingMonitoringService: { track: jest.fn() },
+        logger: { debug: jest.fn(), error: jest.fn() },
+      };
+      return kind === 'message'
+        ? makeService(
+            MessageImportExceptionHandlerService.prototype,
+            dependencies,
+          )
+        : makeService(
+            CalendarEventImportErrorHandlerService.prototype,
+            dependencies,
+          );
+    };
+    const importer = (cacheOverrides: object = {}, provider: object = {}) => {
+      const dependencies = {
+        messageChannelSyncStatusService: messaging,
+        calendarChannelSyncStatusService: calendar,
+        cacheStorage: {
+          ...cache,
+          setPop: jest.fn().mockResolvedValue([]),
+          setAdd: jest.fn(),
+          ...cacheOverrides,
+        },
+        workspaceOrmManager: {
+          executeInWorkspaceContext: async (work: () => Promise<void>) =>
+            work(),
+        },
+        messagingMonitoringService: { track: jest.fn() },
+        messageImportErrorHandlerService: runErrorHandler(),
+        calendarEventImportErrorHandlerService: runErrorHandler(),
+        emailAliasManagerService: { refreshHandleAliases: jest.fn() },
+        messagingGetMessagesService: provider,
+        calendarImportEventsService: provider,
+        logger: { error: jest.fn() },
+      };
+      return kind === 'message'
+        ? makeService(MessagingMessagesImportService.prototype, dependencies)
+        : makeService(CalendarEventsImportService.prototype, dependencies);
+    };
+    const importNow = async (owner: ReturnType<typeof importer>) => {
+      const channel = await repo(kind).findOneByOrFail({ id: ordinary[kind] });
+      // A forged caller snapshot must not bypass the database stage gate.
+      channel.syncStage = (
+        kind === 'message'
+          ? MessageChannelSyncStage.MESSAGES_IMPORT_SCHEDULED
+          : CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_SCHEDULED
+      ) as never;
+      const account = await runtime
+        .getRepository(ConnectedAccountEntity)
+        .findOneByOrFail({ id: ordinary.account });
+      return owner instanceof MessagingMessagesImportService
+        ? owner.processMessageBatchImport(
+            channel as MessageChannelEntity,
+            account,
+            fixture.workspaceId,
+            1,
+          )
+        : owner.processCalendarEventsImport(
+            channel as CalendarChannelEntity,
+            account,
+            fixture.workspaceId,
+          );
+    };
+    const replaceRun = async () => {
+      await fixture.owner.query(
+        `UPDATE core."${kind === 'message' ? 'messageChannel' : 'calendarChannel'}" SET "syncStageStartedAt"="syncStageStartedAt"+interval '1 microsecond' WHERE id=$1`,
+        [ordinary[kind]],
+      );
+    };
+    it('only one concurrent scheduled job enters and token keeps six fractional digits', async () => {
+      await scheduleImport(kind);
+      const attempts = await Promise.all([begin(), begin()]);
+      expect(attempts.filter(Boolean)).toHaveLength(1);
+      const winner = attempts.find(Boolean)!;
+      expect(winner.run.startedAt).toMatch(/\.\d{6}Z$/);
+      expect(Object.isFrozen(winner.run)).toBe(true);
+      expect(winner.channel.connectedAccount.id).toBe(ordinary.account);
+      await complete(winner.run);
+      expect(
+        (await repo(kind).findOneByOrFail({ id: ordinary[kind] })).syncStatus,
+      ).toBe('ACTIVE');
+    });
+    it.each(['disabled', 'ongoing', 'protected', 'parent'] as const)(
+      'direct importer refuses %s before legacy recovery/cache/provider',
+      async (change) => {
+        await scheduleImport(kind);
+        if (change === 'disabled')
+          await repo(kind).update(ordinary[kind], { isSyncEnabled: false });
+        if (change === 'ongoing') await begin();
+        if (change === 'protected') {
+          await runtime
+            .getRepository(ConnectedAccountEntity)
+            .update(ordinary.account, {
+              provider: ConnectedAccountProvider.APP,
+            });
+          await bootstrap(ordinary);
+        }
+        const owner = importer(),
+          setPop = jest.fn(),
+          provider = { getMessages: jest.fn(), getCalendarEvents: jest.fn() };
+        Object.assign(owner, {
+          cacheStorage: { ...cache, setPop },
+          messagingGetMessagesService: provider,
+          calendarImportEventsService: provider,
+        });
+        if (change === 'parent') {
+          const original =
+            kind === 'message'
+              ? messaging.beginMessagesImport.bind(messaging)
+              : calendar.beginCalendarEventsImport.bind(calendar);
+          const other = await seed();
+          const hook = async (...args: [string, string, string]) => {
+            await repo(kind).update(ordinary[kind], {
+              connectedAccountId: other.account,
+            });
+            return original(...args);
+          };
+          if (kind === 'message')
+            jest
+              .spyOn(messaging, 'beginMessagesImport')
+              .mockImplementationOnce(hook as never);
+          else
+            jest
+              .spyOn(calendar, 'beginCalendarEventsImport')
+              .mockImplementationOnce(hook as never);
+        }
+        cache.getSetLength.mockClear();
+        await importNow(owner);
+        expect(setPop).not.toHaveBeenCalled();
+        expect(cache.getSetLength).not.toHaveBeenCalled();
+        expect(provider.getMessages).not.toHaveBeenCalled();
+        expect(provider.getCalendarEvents).not.toHaveBeenCalled();
+      },
+    );
+    it.each(['empty', 'nextRun'] as const)(
+      'actual empty batch completes only its admitted run: %s',
+      async (race) => {
+        await scheduleImport(kind);
+        const pop = jest.fn(async () => {
+          if (race === 'nextRun') await replaceRun();
+          return [];
+        });
+        await importNow(importer({ setPop: pop }));
+        const channel = await repo(kind).findOneByOrFail({
+          id: ordinary[kind],
+        });
+        expect(pop).toHaveBeenCalledTimes(1);
+        expect(channel.syncStatus).toBe(
+          race === 'empty' ? 'ACTIVE' : 'ONGOING',
+        );
+        expect(metrics.incrementCounterForEvents).toHaveBeenCalledTimes(
+          race === 'empty' ? 1 : 0,
+        );
+      },
+    );
+    it.each(['microsecond', 'parent', 'disabled'] as const)(
+      'stale completion cannot affect %s replacement',
+      async (change) => {
+        await scheduleImport(kind);
+        const admitted = (await begin())!;
+        if (change === 'microsecond') await replaceRun();
+        else if (change === 'parent') {
+          const other = await seed();
+          await repo(kind).update(ordinary[kind], {
+            connectedAccountId: other.account,
+          });
+        } else
+          await repo(kind).update(ordinary[kind], { isSyncEnabled: false });
+        const before = await repo(kind).findOneByOrFail({ id: ordinary[kind] });
+        cache.mdel.mockClear();
+        cache.del.mockClear();
+        broadcast.broadcast.mockClear();
+        await complete(admitted.run);
+        expect(
+          await repo(kind).findOneByOrFail({ id: ordinary[kind] }),
+        ).toEqual(before);
+        expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
+        expect(cache.mdel).not.toHaveBeenCalled();
+        expect(cache.del).not.toHaveBeenCalled();
+        expect(broadcast.broadcast).not.toHaveBeenCalled();
+      },
+    );
+    it('timestamps in one JS millisecond remain distinct callback tokens', async () => {
+      await scheduleImport(kind);
+      const admitted = (await begin())!;
+      const old = '2029-01-01T00:00:00.123456Z',
+        current = '2029-01-01T00:00:00.123457Z';
+      expect(new Date(old).getTime()).toBe(new Date(current).getTime());
+      await fixture.owner.query(
+        `UPDATE core."${kind === 'message' ? 'messageChannel' : 'calendarChannel'}" SET "syncStageStartedAt"=$2::timestamptz WHERE id=$1`,
+        [ordinary[kind], current],
+      );
+      await complete({ ...admitted.run, startedAt: old });
+      expect(
+        (await repo(kind).findOneByOrFail({ id: ordinary[kind] })).syncStatus,
+      ).toBe('ONGOING');
+      await complete({ ...admitted.run, startedAt: current });
+      expect(
+        (await repo(kind).findOneByOrFail({ id: ordinary[kind] })).syncStatus,
+      ).toBe('ACTIVE');
+    });
+    describe.each(['current', 'replaced'] as const)(
+      'failure callback for %s run',
+      (race) => {
+        it.each([
+          'TEMPORARY_ERROR',
+          'INSUFFICIENT_PERMISSIONS',
+          'SYNC_CURSOR_ERROR',
+          'NOT_FOUND',
+          'UNKNOWN',
+        ] as const)('%s', async (code) => {
+          await scheduleImport(kind);
+          const admitted = (await begin())!;
+          if (race === 'replaced') await replaceRun();
+          const before = await repo(kind).findOneByOrFail({
+            id: ordinary[kind],
+          });
+          cache.mdel.mockClear();
+          cache.del.mockClear();
+          broadcast.broadcast.mockClear();
+          const h = runErrorHandler();
+          const error = { code, message: 'controlled failure' };
+          // Errors must remain Error instances so real handler code preserves code.
+          const exception = Object.assign(new Error(error.message), { code });
+          const pending =
+            h instanceof MessageImportExceptionHandlerService
+              ? h.handleDriverException(
+                  exception,
+                  MessageImportSyncStep.MESSAGES_IMPORT_ONGOING,
+                  admitted.channel,
+                  fixture.workspaceId,
+                  admitted.run,
+                )
+              : h.handleDriverException(
+                  exception,
+                  CalendarEventImportSyncStep.CALENDAR_EVENTS_IMPORT,
+                  admitted.channel,
+                  fixture.workspaceId,
+                  admitted.run,
+                );
+          if (kind === 'calendar' && code === 'UNKNOWN')
+            await expect(pending).rejects.toThrow('Unknown error');
+          else await pending;
+          const after = await repo(kind).findOneByOrFail({
+            id: ordinary[kind],
+          });
+          if (race === 'replaced') {
+            expect(after).toEqual(before);
+            expect(cache.mdel).not.toHaveBeenCalled();
+            expect(cache.del).not.toHaveBeenCalled();
+            expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
+            expect(broadcast.broadcast).not.toHaveBeenCalled();
+            expect(reconnect.addAccountToReconnectByKey).not.toHaveBeenCalled();
+            expect(
+              (
+                await runtime
+                  .getRepository(ConnectedAccountEntity)
+                  .findOneByOrFail({ id: ordinary.account })
+              ).authFailedAt,
+            ).toBeNull();
+          } else expect(after.syncStage).not.toBe(admitted.run.stage);
+        });
+      },
+    );
+    it('callback copies optional token before asynchronous workspace setup', async () => {
+      await scheduleImport(kind);
+      const admitted = (await begin())!;
+      const input = { ...admitted.run };
+      const owner = kind === 'message' ? messaging : calendar;
+      Object.assign(owner, {
+        workspaceOrmManager: {
+          getWorkspaceId: () => fixture.workspaceId,
+          executeInWorkspaceContext: async (work: () => Promise<unknown>) => {
+            input.startedAt = '2035-01-01T00:00:00.123456Z';
+            return work();
+          },
+        },
+      });
+      await complete(input);
+      expect(
+        (await repo(kind).findOneByOrFail({ id: ordinary[kind] })).syncStatus,
+      ).toBe('ACTIVE');
+    });
+    it.each(['current', 'replaced'] as const)(
+      'batch continuation checks the %s run',
+      async (race) => {
+        await scheduleImport(kind);
+        const admitted = (await begin())!;
+        if (race === 'replaced') await replaceRun();
+        if (kind === 'message')
+          await messaging.markAsMessageBatchImported(
+            ordinary.message,
+            ordinary.account,
+            fixture.workspaceId,
+            admitted.run,
+          );
+        else
+          await calendar.markAsCalendarEventsImportPending(
+            [ordinary.calendar],
+            fixture.workspaceId,
+            false,
+            admitted.run,
+          );
+        const after = await repo(kind).findOneByOrFail({ id: ordinary[kind] });
+        expect(after.syncStage).toBe(
+          race === 'replaced'
+            ? admitted.run.stage
+            : kind === 'message'
+              ? MessageChannelSyncStage.MESSAGES_IMPORT_PENDING
+              : CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_PENDING,
+        );
+      },
+    );
+    it('actual late provider error cannot retry a replacement run', async () => {
+      await scheduleImport(kind);
+      const fail = async () => {
+        await replaceRun();
+        throw Object.assign(new Error('provider temporary'), {
+          code: 'TEMPORARY_ERROR',
+        });
+      };
+      await importNow(
+        importer(
+          { setPop: jest.fn().mockResolvedValue(['id']) },
+          { getMessages: fail, getCalendarEvents: fail },
+        ),
+      );
+      const after = await repo(kind).findOneByOrFail({ id: ordinary[kind] });
+      expect(after.syncStatus).toBe('ONGOING');
+      expect(after.throttleFailureCount).toBe(2);
+      expect(after.syncStage).toBe(
+        kind === 'message'
+          ? MessageChannelSyncStage.MESSAGES_IMPORT_ONGOING
+          : CalendarChannelSyncStage.CALENDAR_EVENTS_IMPORT_ONGOING,
+      );
+    });
+    it('unknown admission commit stops before cache/provider', async () => {
+      await scheduleImport(kind);
+      const original = runtime.createQueryRunner.bind(runtime);
+      jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+        const runner = original(),
+          commit = runner.commitTransaction.bind(runner);
+        runner.commitTransaction = async () => {
+          await commit();
+          throw new Error('admission-ack-lost');
+        };
+        return runner;
+      });
+      const setPop = jest.fn(),
+        provider = { getMessages: jest.fn(), getCalendarEvents: jest.fn() };
+      await expect(importNow(importer({ setPop }, provider))).rejects.toThrow(
+        'OMNI_CORE_TRANSACTION_OUTCOME_UNKNOWN',
+      );
+      expect(setPop).not.toHaveBeenCalled();
+      expect(cache.getSetLength).not.toHaveBeenCalled();
+      expect(provider.getMessages).not.toHaveBeenCalled();
+      expect(provider.getCalendarEvents).not.toHaveBeenCalled();
+      expect(broadcast.broadcast).not.toHaveBeenCalled();
+      expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
+    });
+    it('legacy recovery never resets a newer run or deletes its legacy cache', async () => {
+      await scheduleImport(kind);
+      const admitted = (await begin())!;
+      await replaceRun();
+      const before = await repo(kind).findOneByOrFail({ id: ordinary[kind] });
+      cache.getSetLength.mockResolvedValue(1);
+      cache.mdel.mockClear();
+      cache.del.mockClear();
+      const recovered =
+        kind === 'message'
+          ? await messaging.recoverLegacyMessageImport(
+              ordinary.message,
+              fixture.workspaceId,
+              ordinary.account,
+              admitted.run,
+            )
+          : await calendar.recoverLegacyCalendarImport(
+              ordinary.calendar,
+              fixture.workspaceId,
+              ordinary.account,
+              admitted.run,
+            );
+      expect(recovered).toBe(true);
+      expect(await repo(kind).findOneByOrFail({ id: ordinary[kind] })).toEqual(
+        before,
+      );
+      expect(cache.mdel).not.toHaveBeenCalled();
+      expect(cache.del).not.toHaveBeenCalled();
+    });
+    it('legacy recovery captures mutable optional token before cache awaits', async () => {
+      await scheduleImport(kind);
+      const admitted = (await begin())!,
+        input = { ...admitted.run };
+      await replaceRun();
+      const before = await repo(kind).findOneByOrFail({ id: ordinary[kind] });
+      cache.getSetLength.mockImplementationOnce(async () => {
+        const [row] = await fixture.owner.query(
+          `SELECT to_char("syncStageStartedAt" AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS token FROM core."${kind === 'message' ? 'messageChannel' : 'calendarChannel'}" WHERE id=$1`,
+          [ordinary[kind]],
+        );
+        input.startedAt = row.token;
+        return 1;
+      });
+      cache.mdel.mockClear();
+      cache.del.mockClear();
+      if (kind === 'message')
+        await messaging.recoverLegacyMessageImport(
+          ordinary.message,
+          fixture.workspaceId,
+          ordinary.account,
+          input,
+        );
+      else
+        await calendar.recoverLegacyCalendarImport(
+          ordinary.calendar,
+          fixture.workspaceId,
+          ordinary.account,
+          input,
+        );
+      expect(await repo(kind).findOneByOrFail({ id: ordinary[kind] })).toEqual(
+        before,
+      );
+      expect(cache.mdel).not.toHaveBeenCalled();
+      expect(cache.del).not.toHaveBeenCalled();
+    });
+    it('unknown native outcome exits actual importer without requeue or failure mutation', async () => {
+      await scheduleImport(kind);
+      const error = new NativeTransactionOutcomeUnknownError(
+        'commit',
+        new Error('lost-ack'),
+      );
+      const provider = {
+          getMessages: jest.fn().mockRejectedValue(error),
+          getCalendarEvents: jest.fn().mockRejectedValue(error),
+        },
+        setAdd = jest.fn();
+      const owner = importer(
+        { setPop: jest.fn().mockResolvedValue(['provider-id']), setAdd },
+        provider,
+      );
+      await expect(importNow(owner)).rejects.toBe(error);
+      expect(
+        (await repo(kind).findOneByOrFail({ id: ordinary[kind] })).syncStatus,
+      ).toBe('ONGOING');
+      expect(setAdd).not.toHaveBeenCalled();
+      expect(metrics.incrementCounterForEvents).not.toHaveBeenCalled();
+    });
+  },
+);

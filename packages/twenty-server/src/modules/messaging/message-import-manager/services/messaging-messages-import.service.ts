@@ -1,3 +1,4 @@
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { messageImportCacheKeys } from 'src/modules/messaging/common/utils/message-import-cache-keys';
 import { MESSAGE_IMPORT_CACHE_TTL_MS } from 'src/modules/messaging/common/constants/message-import-cache-ttl-ms.constant';
 import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
@@ -33,7 +34,6 @@ import { MessagingSaveMessagesAndEnqueueContactCreationService } from 'src/modul
 import { filterEmails } from 'src/modules/messaging/message-import-manager/utils/filter-emails.util';
 import { MessagingMonitoringService } from 'src/modules/messaging/monitoring/services/messaging-monitoring.service';
 import { type WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
-import { MessageChannelSyncStage } from 'twenty-shared/types';
 
 @Injectable()
 export class MessagingMessagesImportService {
@@ -74,6 +74,16 @@ export class MessagingMessagesImportService {
       messageChannelId: messageChannel.id,
       connectedAccountId: connectedAccount.id,
     });
+    const admitted =
+      await this.messageChannelSyncStatusService.beginMessagesImport(
+        messageChannel.id,
+        workspaceId,
+        connectedAccount.id,
+      );
+    if (!admitted) return;
+    messageChannel = admitted.channel;
+    connectedAccount = admitted.channel.connectedAccount;
+    const expectedRun = admitted.run;
     let messageIdsToFetch: string[] = [];
 
     const messagesGetBatchSize =
@@ -86,17 +96,11 @@ export class MessagingMessagesImportService {
       async () => {
         try {
           if (
-            messageChannel.syncStage !==
-            MessageChannelSyncStage.MESSAGES_IMPORT_SCHEDULED
-          ) {
-            return;
-          }
-
-          if (
             await this.messageChannelSyncStatusService.recoverLegacyMessageImport(
               messageChannel.id,
               workspaceId,
               connectedAccount.id,
+              expectedRun,
             )
           )
             return;
@@ -107,11 +111,6 @@ export class MessagingMessagesImportService {
             connectedAccountId: messageChannel.connectedAccountId,
             messageChannelId: messageChannel.id,
           });
-
-          await this.messageChannelSyncStatusService.markAsMessagesImportOngoing(
-            [messageChannel.id],
-            workspaceId,
-          );
 
           if (!isDefined(connectedAccount.handleAliases)) {
             connectedAccount.handleAliases =
@@ -132,6 +131,7 @@ export class MessagingMessagesImportService {
                 [messageChannel.id],
                 workspaceId,
                 messageChannel.connectedAccountId,
+                expectedRun,
               );
             if (!accepted) return;
 
@@ -241,11 +241,13 @@ export class MessagingMessagesImportService {
                 [messageChannel.id],
                 workspaceId,
                 messageChannel.connectedAccountId,
+                expectedRun,
               )
             : await this.messageChannelSyncStatusService.markAsMessageBatchImported(
                 messageChannel.id,
                 messageChannel.connectedAccountId,
                 workspaceId,
+                expectedRun,
               );
           if (!accepted) return;
 
@@ -265,7 +267,10 @@ export class MessagingMessagesImportService {
             workspaceId,
           );
         } catch (error) {
-          if (error instanceof OmniCoreTransactionOutcomeUnknownError)
+          if (
+            error instanceof OmniCoreTransactionOutcomeUnknownError ||
+            error instanceof NativeTransactionOutcomeUnknownError
+          )
             throw error;
           const message =
             error instanceof Error ? error.message : String(error);
@@ -287,6 +292,7 @@ export class MessagingMessagesImportService {
             MessageImportSyncStep.MESSAGES_IMPORT_ONGOING,
             messageChannel,
             workspaceId,
+            expectedRun,
           );
 
           return await this.trackMessageImportCompleted(
