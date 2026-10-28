@@ -2917,3 +2917,5 @@ was changed. GitHub Actions was not used.
 Skills: ai-dev-workflow, behavioral-guardrails, server-schrodinger; scoped read-only review.
 
 [Evidence](implementation/log087/README.md).
+
+LOG-087 publication: code `a2b8da3c321b827705a15d5a1cd9aa669453e3a4` pushed; GitHub ref verified by API. Linear ROB764, ROB765 and ROB769 descriptions/comment `a2bbb1a9-97e6-4967-9a2d-944f27132be7` independently read back; all11 project states match. ROB-764 remains In Progress.
