@@ -3363,3 +3363,5 @@ Phase2 и rob765-progress приведены к текущему покрыти�
 из них в существующий DEVLOG/LOG evidence, критерии приёмки и rollback сохранены.
 Следом найденный статическим review native UPDATE/batch/lifecycle ON UPDATE cascade
 gap для нестандартных non-id/composite FK; implicit updatedAt/deletedAt учитываются.
+
+LOG106 publication: 5ec44c8711ab591aa28205d3b5c32dd35c7aaea5 pushed/API verified. ROB765 description and comment cf736d40-f0c8-48be-9820-d89cd376a1d9 independently read back; all 11 issue states match. Implementation continues.
