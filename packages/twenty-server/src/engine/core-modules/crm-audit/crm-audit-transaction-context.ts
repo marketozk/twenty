@@ -26,6 +26,10 @@ const CATALOG: Record<
   CrmAuditResourceKind,
   { values: string[]; redacted: string[] }
 > = {
+  userSession: {
+    values: ['authProvider', 'isImpersonating', 'origin'],
+    redacted: ['expiresAt', 'createdAt'],
+  },
   crmRecord: { values: [], redacted: [] },
   crmFile: { values: [], redacted: ['settings', 'deletedAt'] },
   omniPerson: { values: ['destroyScopeHash'], redacted: ['name'] },
@@ -298,6 +302,7 @@ const principal = (value: CrmAuditPrincipal): CrmAuditPrincipal => {
   if (
     ![
       'workspaceMember',
+      'coreUser',
       'system',
       'agent',
       'workflow',
@@ -308,7 +313,13 @@ const principal = (value: CrmAuditPrincipal): CrmAuditPrincipal => {
     throw new Error('Audit principal kind is invalid');
   }
 
-  return { kind: value.kind, id: requireIdentifier(value.id) };
+  return {
+    kind: value.kind,
+    id:
+      value.kind === 'coreUser'
+        ? requireUuid(value.id)
+        : requireIdentifier(value.id),
+  };
 };
 
 const descriptor = (
@@ -321,6 +332,34 @@ const descriptor = (
   const source = mutation.securityDescriptor;
   const nativeRecord = mutation.resourceKind === 'crmRecord';
   const nativeFile = mutation.resourceKind === 'crmFile';
+  let sessionOwner: CrmAuditSecurityDescriptor['sessionOwner'];
+  if (
+    mutation.resourceKind === 'userSession' ||
+    source.sessionOwner !== undefined
+  ) {
+    const owner = source.sessionOwner;
+    if (
+      mutation.resourceKind !== 'userSession' ||
+      mutation.action !== 'create' ||
+      !owner ||
+      Object.keys(owner).sort().join(',') !== 'access,userId,userWorkspaceId' ||
+      owner.access !== 'currentWorkspaceAdministration' ||
+      source.objectMetadataId !== undefined ||
+      source.fileParent !== undefined ||
+      source.bindingId !== undefined ||
+      source.conversationId !== undefined ||
+      source.queueId !== undefined ||
+      source.deletedParent !== undefined
+    )
+      throw new Error(
+        'Session audit requires its exact administrative owner scope',
+      );
+    sessionOwner = {
+      userId: requireUuid(owner.userId),
+      userWorkspaceId: requireUuid(owner.userWorkspaceId),
+      access: 'currentWorkspaceAdministration',
+    };
+  }
   let fileParent: CrmAuditSecurityDescriptor['fileParent'];
   if (nativeFile || source.fileParent !== undefined) {
     const parent = source.fileParent;
@@ -442,6 +481,7 @@ const descriptor = (
   return {
     resourceKind: mutation.resourceKind,
     resourceId: requireUuid(mutation.resourceId),
+    ...(sessionOwner === undefined ? {} : { sessionOwner }),
     ...(fileParent === undefined ? {} : { fileParent }),
     ...(nativeRecord
       ? { objectMetadataId: requireUuid(source.objectMetadataId!) }

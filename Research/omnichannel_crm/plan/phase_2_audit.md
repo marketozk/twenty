@@ -116,5 +116,14 @@ Matched restore/агрегация сохраняют success с пустым di
 792 tests/29 suites PASS, 26 новых PG cases, 140 targeted; 26 guards, 10 unchanged
 migration checksums. Types 336/337 roots, 189/189 diagnostics, 0 новых/changed.
 11 source hashes проверены. Демо не менялось, GitHub Actions не используется.
-[Доказательства LOG098](../implementation/log098/README.md). Далее core user-session CREATE;
+[Доказательства LOG098](../implementation/log098/README.md). Core user-session CREATE выполнен LOG099; далее revoke/logout;
 public CREATE/shared access, physical delete/merge, остальные owners и negative audit открыты.
+
+LOG099 подключает реальное создание workspace user-session к strict core owner:
+session INSERT, actual readback и audit в одной транзакции; cookie после COMMIT.
+coreUser actor и отдельный impersonation initiator определяются по серверным данным.
+Workspace-agnostic session, logout/revoke и appToken пока отдельные открытые owners.
+Postflush credential/lifecycle проверка и различимый committed post-hook error
+не позволяют принять неизвестный исход за rollback. [Доказательства](../implementation/log099/README.md).
+
+820 tests/30 suites PASS, 28 новых PG cases; 26 guards, 10 unchanged migration checksums. Types 338/340 roots, 189/189 baseline diagnostics, 0 новых/changed. 5 source hashes совпадают.

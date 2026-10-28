@@ -1,4 +1,9 @@
+import { randomUUID } from 'node:crypto';
+
 import { Injectable, Logger } from '@nestjs/common';
+
+import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
+import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { isNonEmptyString } from '@sniptt/guards';
@@ -279,6 +284,7 @@ export class UserSessionService {
     sessionToken: string;
     session: UserSessionEntity;
   }> {
+    input = { ...input };
     if (isDefined(input.workspaceId) && !isDefined(input.userWorkspaceId)) {
       throw new AuthException(
         'Cannot create a workspace session without a user workspace',
@@ -313,34 +319,174 @@ export class UserSessionService {
     const now = new Date();
     const sessionToken = generateUserSessionToken();
 
-    const session = await this.userSessionRepository.save(
-      this.userSessionRepository.create({
-        tokenHash: hashUserSessionToken(sessionToken),
-        userId: input.userId,
-        workspaceId: input.workspaceId ?? null,
-        userWorkspaceId: input.userWorkspaceId ?? null,
-        authProvider: input.authProvider,
-        isImpersonating: input.isImpersonating === true,
-        impersonatorUserWorkspaceId:
-          input.isImpersonating === true
-            ? (input.impersonatorUserWorkspaceId ?? null)
-            : null,
-        impersonatedUserWorkspaceId:
-          input.isImpersonating === true
-            ? (input.impersonatedUserWorkspaceId ?? null)
-            : null,
-        userAgent: input.userAgent ?? null,
-        ipAddress: input.ipAddress ?? null,
-        expiresAt: addMilliseconds(now, ms(lifetime)),
-        lastActiveAt: now,
-      }),
-    );
+    const candidate = this.userSessionRepository.create({
+      id: randomUUID(),
+      tokenHash: hashUserSessionToken(sessionToken),
+      userId: input.userId,
+      workspaceId: input.workspaceId ?? null,
+      userWorkspaceId: input.userWorkspaceId ?? null,
+      authProvider: input.authProvider,
+      isImpersonating: input.isImpersonating === true,
+      impersonatorUserWorkspaceId:
+        input.isImpersonating === true
+          ? (input.impersonatorUserWorkspaceId ?? null)
+          : null,
+      impersonatedUserWorkspaceId:
+        input.isImpersonating === true
+          ? (input.impersonatedUserWorkspaceId ?? null)
+          : null,
+      userAgent: input.userAgent ?? null,
+      ipAddress: input.ipAddress ?? null,
+      expiresAt: addMilliseconds(now, ms(lifetime)),
+      lastActiveAt: now,
+    });
+    const session = isDefined(candidate.workspaceId)
+      ? await this.saveAuditedWorkspaceSession(candidate, input.origin)
+      : await this.userSessionRepository.save(candidate);
 
     if (input.origin === 'sign_in' && isDefined(session.workspaceId)) {
       this.emitAuthSessionEvent(session, 'user_signed_in');
     }
 
     return { sessionToken, session };
+  }
+
+  private async saveAuditedWorkspaceSession(
+    candidate: UserSessionEntity,
+    origin: UserSessionCreationOrigin,
+  ): Promise<UserSessionEntity> {
+    // The injected repository is unscoped. An unknown enclosing transaction must
+    // not be silently replaced by an independently committed session.
+    if (this.userSessionRepository.manager.queryRunner)
+      throw new Error(
+        'Session audit requires ownership of the core transaction',
+      );
+    for (const field of [
+      'userId',
+      'workspaceId',
+      'userWorkspaceId',
+      'impersonatorUserWorkspaceId',
+      'impersonatedUserWorkspaceId',
+    ] as const) {
+      if (typeof candidate[field] === 'string')
+        candidate[field] = candidate[field]!.toLowerCase();
+    }
+    const operationId = randomUUID();
+    return runInCoreAuditTransaction(
+      this.userSessionRepository.manager.connection,
+      async (runner) => {
+        const membershipIds = [candidate.userWorkspaceId!];
+        if (candidate.isImpersonating) {
+          if (
+            candidate.impersonatedUserWorkspaceId !== candidate.userWorkspaceId
+          )
+            throw new Error(
+              'Session impersonation target does not match membership',
+            );
+          membershipIds.push(candidate.impersonatorUserWorkspaceId!);
+        }
+        const memberships: {
+          id: string;
+          userId: string;
+          workspaceId: string;
+        }[] = await runner.query(
+          `SELECT id, "userId", "workspaceId" FROM core."userWorkspace"
+             WHERE id = ANY($1::uuid[]) AND "deletedAt" IS NULL ORDER BY id FOR SHARE`,
+          [membershipIds],
+        );
+        const target = memberships.find(
+          (row) => row.id === candidate.userWorkspaceId?.toLowerCase(),
+        );
+        if (
+          !target ||
+          target.userId !== candidate.userId.toLowerCase() ||
+          target.workspaceId !== candidate.workspaceId?.toLowerCase()
+        )
+          throw new Error(
+            'Session membership does not match its user and workspace',
+          );
+        const initiator = candidate.isImpersonating
+          ? memberships.find(
+              (row) =>
+                row.id === candidate.impersonatorUserWorkspaceId?.toLowerCase(),
+            )
+          : undefined;
+        if (candidate.isImpersonating && !initiator)
+          throw new Error('Session impersonation initiator is unavailable');
+        const audit = new CrmAuditTransactionContext(runner, {
+          workspaceId: target.workspaceId,
+          operationId,
+          actor: { kind: 'coreUser', id: target.userId },
+          ...(initiator
+            ? { initiator: { kind: 'coreUser' as const, id: initiator.userId } }
+            : {}),
+        });
+        const repository = runner.manager.getRepository(UserSessionEntity);
+        // save() may mutate its argument; retain the expected credential/scope.
+        const expected = { ...candidate };
+        const expectedExpiresAt = candidate.expiresAt.getTime();
+        const expectedLastActiveAt = candidate.lastActiveAt.getTime();
+        const validateSession = (session: UserSessionEntity) => {
+          for (const field of [
+            'tokenHash',
+            'userId',
+            'workspaceId',
+            'userWorkspaceId',
+            'authProvider',
+            'isImpersonating',
+            'impersonatorUserWorkspaceId',
+            'impersonatedUserWorkspaceId',
+          ] as const) {
+            const actualValue = session[field];
+            const expectedValue = expected[field];
+            if (actualValue !== expectedValue)
+              throw new Error(
+                'Session persisted credential or scope does not match',
+              );
+          }
+          if (
+            session.revokedAt !== null ||
+            session.revokedReason !== null ||
+            session.expiresAt.getTime() !== expectedExpiresAt ||
+            session.lastActiveAt.getTime() !== expectedLastActiveAt
+          )
+            throw new Error('Session persisted lifecycle does not match');
+        };
+        await repository.save(candidate);
+        const session = await repository.findOneByOrFail({ id: expected.id });
+        validateSession(session);
+        audit.record({
+          resourceKind: 'userSession',
+          resourceId: session.id,
+          action: 'create',
+          before: null,
+          after: {
+            authProvider: session.authProvider,
+            isImpersonating: session.isImpersonating,
+            origin,
+            expiresAt: session.expiresAt.toISOString(),
+            createdAt: session.createdAt.toISOString(),
+          },
+          securityDescriptor: {
+            resourceKind: 'userSession',
+            resourceId: session.id,
+            sessionOwner: {
+              userId: target.userId,
+              userWorkspaceId: target.id,
+              access: 'currentWorkspaceAdministration',
+            },
+          },
+        });
+        await audit.flush();
+        const finalSession = await repository.findOneByOrFail({
+          id: expected.id,
+        });
+        validateSession(finalSession);
+        if (finalSession.createdAt.getTime() !== session.createdAt.getTime())
+          throw new Error('Session audit snapshot changed during flush');
+        return finalSession;
+      },
+    );
   }
 
   async resolveSession(sessionToken: string): Promise<{

@@ -785,3 +785,16 @@ restore — null; несовпадение после trigger откатывае
 Common DELETE_ONE/MANY и RESTORE_ONE/MANY exact трёх standard объектов получают
 тот же strict owner и scoped nested reads, что UPDATE. Public CREATE/custom owner,
 physical delete/merge и FK side effects не считаются покрытыми.
+
+LOG099: workspace user-session CREATE использует собственный strict core transaction
+owner, не второй workspace executor. Actor coreUser означает core.userId; initiator
+для impersonation берётся из реального impersonator membership без target-workspace
+фильтра. Target membership должен соответствовать user/workspace и быть активным.
+Security descriptor userSession хранит sessionOwner(userId,userWorkspaceId,
+access=currentWorkspaceAdministration). Разрешённый diff: authProvider/isImpersonating/
+origin; даты redacted, credentials/hash/IP/device не передаются writer. Final DB
+credential/lifecycle readback проверяется после audit flush. Cookie выдаётся только
+после подтверждённого COMMIT; unknown не повторяется. Отдельная ошибка после
+подтверждённого COMMIT не считается rollback. NULL-workspace sessions пока используют
+прежний путь. Отзыв доступа должен сохраняться при отказе audit и не полагаться
+исключительно на успешное удаление Redis cache. Его реализация остаётся открытой.

@@ -1,6 +1,7 @@
 export type CrmAuditPrincipal = {
   kind:
     | 'workspaceMember'
+    | 'coreUser'
     | 'system'
     | 'agent'
     | 'workflow'
@@ -10,6 +11,7 @@ export type CrmAuditPrincipal = {
 };
 
 export type CrmAuditResourceKind =
+  | 'userSession'
   | 'crmRecord'
   | 'crmFile'
   | 'omniAccountBinding'
@@ -41,6 +43,11 @@ export type CrmAuditAction = 'create' | 'update' | 'delete';
 export type CrmAuditSecurityDescriptor = {
   resourceKind: CrmAuditResourceKind;
   resourceId: string;
+  sessionOwner?: {
+    userId: string;
+    userWorkspaceId: string;
+    access: 'currentWorkspaceAdministration';
+  };
   objectMetadataId?: string;
   fileParent?: {
     objectMetadataId: string;

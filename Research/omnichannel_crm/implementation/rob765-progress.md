@@ -10,14 +10,14 @@
 | Точный безопасный diff и aggregation | LOG089 first-before/last-after, custom NUMERIC >2^53, metadata IDs, без значений |
 | Повтор не скрывает вторую mutation | LOG089 sequential/concurrent reuse rejected; повтор после rollback допустим. General command replay ещё не реализован |
 | Общий native CRUD/merge/bulk и API | Частично: LOG094 автоматически включает public UPDATE Company/Person/Opportunity; LOG098 включает public soft-delete/restore и native custom lifecycle; public CREATE, physical delete/merge и остальные writers впереди. FILES same-executor — LOG092/093 |
-| Metadata/role/session lifecycle | Предстоит, каждый через реального transaction owner |
+| Metadata/role/session lifecycle | LOG099: workspace session CREATE через реальный core owner; revoke/logout, metadata и roles открыты |
 | Denied/failed audit и health | Omni уже имеет отдельные attempts; general native post-rollback/alert предстоит |
 | AI/workflow/connector события | Дополняются ROB768/769, текущий срез их не подключает |
 | Operation lookup index | LOG090: generated migration10, populated prefix upgrade/replay/down, real EXPLAIN, drift refusal; не выкатывалось |
 | Production rollout | Не выполнялся; нужны полная native coverage и согласованный выкат с остановленными writers при построении индекса |
 
 Подробные результаты: [LOG089 native owner](log089/README.md), [LOG090 operation index](log090/README.md).
-Следом core user-session CREATE; оставшиеся native writers, metadata/roles и negative audit ещё требуют реализации.
+Следом core user-session logout/revoke; оставшиеся native writers, metadata/roles и negative audit ещё требуют реализации.
 Просмотр и экспорт относятся к ROB767, свои права — ROB766; обе задачи пока Backlog.
 
 LOG091: [проверки расширенного native покрытия](log091/README.md);606 tests/24 suites PASS,27 новых PG tests. FilesFieldSync и batch owner mapping реализованы LOG092.
@@ -56,3 +56,12 @@ Matched restore/агрегация сохраняют success с пустым di
 migration checksums. Types 336/337 roots, 189/189 diagnostics, 0 новых/changed.
 11 source hashes проверены. Демо не менялось, GitHub Actions не используется.
 [Доказательства](log098/README.md). ROB765 остаётся In Progress.
+
+LOG099 подключает реальное создание workspace user-session к strict core owner:
+session INSERT, actual readback и audit в одной транзакции; cookie после COMMIT.
+coreUser actor и отдельный impersonation initiator определяются по серверным данным.
+Workspace-agnostic session, logout/revoke и appToken пока отдельные открытые owners.
+Postflush credential/lifecycle проверка и различимый committed post-hook error
+не позволяют принять неизвестный исход за rollback. [Доказательства](log099/README.md).
+
+820 tests/30 suites PASS, 28 новых PG cases; 26 guards, 10 unchanged migration checksums. Types 338/340 roots, 189/189 baseline diagnostics, 0 новых/changed. 5 source hashes совпадают.

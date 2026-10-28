@@ -46,7 +46,7 @@ suites PASS, 22 новых PG cases; 0 новых type diagnostics. Public custo
 
 [LOG098](implementation/log098/README.md): soft-delete/restore и public lifecycle owner,
 792 tests/29 suites PASS, 26 новых PG cases, 0 новых type diagnostics.
-Следом создание core user-session; physical delete/merge, public CREATE/shared access,
+Создание core user-session покрыто LOG099; далее logout/revoke; physical delete/merge, public CREATE/shared access,
 metadata/roles и negative audit ещё открыты. [Приёмка ROB765](implementation/rob765-progress.md).
 
 ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.
@@ -54,3 +54,12 @@ ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.
 Демо прежнее; отправок клиентам не было; GitHub Actions не используется.
 
 [Журнал](DEVLOG.md) · [Задачи](linear.md) · [Контракты](plan/contracts/README.md).
+
+LOG099 подключает реальное создание workspace user-session к strict core owner:
+session INSERT, actual readback и audit в одной транзакции; cookie после COMMIT.
+coreUser actor и отдельный impersonation initiator определяются по серверным данным.
+Workspace-agnostic session, logout/revoke и appToken пока отдельные открытые owners.
+Postflush credential/lifecycle проверка и различимый committed post-hook error
+не позволяют принять неизвестный исход за rollback. [Доказательства](implementation/log099/README.md).
+
+820 tests/30 suites PASS, 28 новых PG cases; 26 guards, 10 unchanged migration checksums. Types 338/340 roots, 189/189 baseline diagnostics, 0 новых/changed. 5 source hashes совпадают.

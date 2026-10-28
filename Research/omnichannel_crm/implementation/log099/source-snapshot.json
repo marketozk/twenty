@@ -1,0 +1,11 @@
+{
+  "baseCommit": "00e885de8d7ded818071131d6cd95f463b39b6ff",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "195bbb34dbfa1352fdd91656c3689d09e11a8cb804b061d0ce54c68833cee293",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "a6d4ccefeb78ed275bc0d166a629a323dbdbb5f8f3e0d9fe4266440b8597c564",
+    "packages/twenty-server/src/engine/core-modules/user-session/services/user-session.service.ts": "4900abe8156a987bb0faaa7f2e512101af513ebd61b34075b723641876a32a2d",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/run-in-core-audit-transaction.ts": "3fc3ff7df672630f48f1bf23a9842e672cc296aadb69db3a9a57bf08742695c6",
+    "packages/twenty-server/test/fork-migration/crm-audit-user-session.postgres-spec.ts": "1d22aede8caeaaeafd2a8b3fb12b5b3889dffaa38b62da24fda26e2e864e9e4b"
+  },
+  "uploadedSourceHashesVerified": true
+}

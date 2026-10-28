@@ -3186,3 +3186,23 @@ ROB765 In Progress. Следом actual core user-session CREATE; logout/revoke 
 LOG098 publication: `c9d93096e5fb40e388a2fafcc676421476fac352` pushed/API verified.
 ROB765 description and comment `4b9a2dc4-c07f-4965-b76f-be783526b742` independently
 read back; all 11 states match. ROB765 remains In Progress; implementation continues.
+
+## LOG-099 — атомарный аудит создания workspace user-session
+
+Реальный UserSessionService/TypeORM сохраняет session и audit через один strict core
+owner. coreUser actor, impersonation initiator из membership (cross-workspace допустим),
+exact administrative descriptor, capture до await, credential/lifecycle postconditions
+до и после flush. Cookie только после confirmed COMMIT. Workspace-agnostic path прежний.
+
+820 tests/30 suites PASS, 28 новых PG cases; 26 guards, 10 unchanged migration checksums. Types 338/340 roots, 189/189 baseline diagnostics, 0 новых/changed. 5 source hashes совпадают.
+
+Read-only review нашёл postflush trigger gap, потерю rollback cause при release fault
+и неоднозначную after-commit ошибку; исправлены и покрыты реальными PG fault tests.
+Начальные fixture errors устранены: импорт migration и минимальная FK metadata;
+28 pinned session dependency files добавлены в baseline/current, 2 TS overload errors
+исправлены. Итоговые target/types/regression PASS. Полный HTTP/JWT suite не запускался.
+[Доказательства](implementation/log099/README.md).
+
+ROB765 In Progress. Далее single/bulk revoke и cache-hit revocation check: audit failure
+не должен отменять отзыв. Public CREATE/shared access, physical delete/merge, metadata,
+roles, negative audit/health ещё открыты. Demo/Actions/внешние сообщения не затронуты.

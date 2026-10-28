@@ -1,0 +1,43 @@
+[Nest] 1  - 10/28/2026, 5:52:52 PM   ERROR [UserSessionService] Failed to issue a required session: SESSION_AUDIT_FAILURE
+[Nest] 1  - 10/28/2026, 5:52:52 PM   ERROR [UserSessionService] Failed to issue a required session: Session persisted credential or scope does not match
+[Nest] 1  - 10/28/2026, 5:52:52 PM   ERROR [UserSessionService] Failed to issue a required session: Session persisted lifecycle does not match
+[Nest] 1  - 10/28/2026, 5:52:52 PM   ERROR [UserSessionService] Failed to issue a required session: Session persisted lifecycle does not match
+[Nest] 1  - 10/28/2026, 5:52:52 PM   ERROR [UserSessionService] Failed to issue a required session: Session audit snapshot changed during flush
+[Nest] 1  - 10/28/2026, 5:52:52 PM   ERROR [UserSessionService] Failed to issue a required session: Native transaction outcome is unknown after commit
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-user-session.postgres-spec.ts (5.133 s)
+  actual workspace user-session creation audit
+    ✓ records sign_in after the real session insert without secrets (73 ms)
+    ✓ records renewal_bridge after the real session insert without secrets (29 ms)
+    ✓ issues the cookie only after successful commit (27 ms)
+    ✓ rolls session creation back on audit failure and issues no cookie/event (29 ms)
+    ✓ preserves a workspace-agnostic session without inventing audit tenancy (22 ms)
+    ✓ resolves actual impersonation initiator across workspace=false (23 ms)
+    ✓ resolves actual impersonation initiator across workspace=true (24 ms)
+    ✓ rejects mismatched user membership before session publication (42 ms)
+    ✓ rejects mismatched workspace membership before session publication (18 ms)
+    ✓ rejects mismatched missing membership before session publication (17 ms)
+    ✓ rejects mismatched deleted membership before session publication (16 ms)
+    ✓ rejects mismatched impersonated membership before session publication (16 ms)
+    ✓ rejects mismatched initiator membership before session publication (15 ms)
+    ✓ captures caller values before await and accepts UUID case normalization (22 ms)
+    ✓ rejects trigger-altered credential scope and rolls it back (24 ms)
+    ✓ rejects audit-trigger corruption of tokenHash before commit (26 ms)
+    ✓ rejects audit-trigger corruption of revokedAt before commit (29 ms)
+    ✓ rejects audit-trigger corruption of expiresAt before commit (27 ms)
+    ✓ rejects audit-trigger corruption of createdAt before commit (25 ms)
+    ✓ rejects an unowned enclosing transaction (29 ms)
+    ✓ reports actual lost COMMIT acknowledgement without retry or cookie (32 ms)
+  strict TypeORM core transaction owner
+    ✓ retains work, rollback and release causes in a combined failure (22 ms)
+    ✓ marks a failed after-commit hook as committed, never rolled back (22 ms)
+    ✓ classifies rollback cleanup failure without returning success (22 ms)
+    ✓ classifies release cleanup failure without returning success (13 ms)
+    ✓ preserves TypeORM transaction subscriber hooks (14 ms)
+    ✓ does not call a swallowed aborted transaction a committed success (26 ms)
+    ✓ keeps TypeORM transaction lifecycle active for real repository work (13 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       28 passed, 28 total
+Snapshots:   0 total
+Time:        5.23 s
+Ran all test suites matching /crm-audit-user-session/i.
