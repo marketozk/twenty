@@ -3277,3 +3277,7 @@ Fixture assumptions о domain URL, empty FILES, create permission и response id
 Далее расширение public custom UPDATE/lifecycle и nested CREATE. Общий аудит не
 готов: metadata/roles, physical delete/merge, negative audit/health ещё открыты.
 Демо, внешние сообщения и GitHub Actions не затронуты.
+
+LOG102 publication: 2e6efe2aba08bc6da19cd6989a53f6001bb7a2af pushed/API verified.
+ROB765 description and comment 2e50826e-f07e-42f4-a66c-6c9618089504 independently
+read back; all 11 states match. ROB765 remains In Progress; implementation continues.
