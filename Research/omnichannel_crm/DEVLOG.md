@@ -2388,3 +2388,5 @@ diagnostics remain unresolved. Skills: ai-dev-workflow, behavioral-guardrails,
 server-schrodinger; scoped read-only research/review.
 
 [Evidence](implementation/log077/README.md).
+
+LOG-077 publication: code `bb287f024d44a4c694e73059d07cbf22c89c6378` pushed; GitHub ref verified by API. Linear description/comment `e21d1e95-91f8-4a2a-8cb2-9f104f52d3ab` independently read back; all11 project states match. ROB-764 remains In Progress.
