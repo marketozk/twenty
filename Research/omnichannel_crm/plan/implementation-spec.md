@@ -922,3 +922,13 @@ normalized scalar snapshot и final enriched ID/application/workspace должн
 Input/identity фиксируются до первого await; post-flush row неизменна. Catalog role
 разрешает create/update с тем же administrative descriptor. Internal bootstrap path
 не приписывается user actor. Role DELETE/assignments и прочие metadata owners открыты.
+
+LOG113: public member assignment использует bounded roleTarget replacement scope и
+existing metadata handlers на strict core owner. Workspace NO KEY UPDATE сериализует
+покрытые назначения; fresh member/membership/roles и last-admin проверяются до SQL.
+Actual DELETE/CREATE audit до COMMIT, post-flush target/role/member/application checks.
+RoleTarget create/delete имеет exact administrative descriptor; no-op проверяется
+по DB и требует валидного server actor/workspace, без фиктивного mutation audit.
+Оба CREATE owners сверяют core.application tenant/UID/deletedAt под SHARE. Bootstrap
+bulk сохраняет прежний путь. Membership removal, role DELETE и прочие writers ещё
+не участвуют в этом fence: полная lifecycle атомарность/ROB766 не заявляется.

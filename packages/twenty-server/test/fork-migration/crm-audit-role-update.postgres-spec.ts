@@ -286,6 +286,9 @@ beforeAll(async () => {
   await owner.synchronize();
   await owner.query('CREATE TABLE core.workspace (id uuid PRIMARY KEY)');
   await owner.query(
+    'CREATE TABLE core.application (id uuid PRIMARY KEY,"workspaceId" uuid,"universalIdentifier" uuid,"deletedAt" timestamptz)',
+  );
+  await owner.query(
     'CREATE TABLE core."userWorkspace" (id uuid PRIMARY KEY,"userId" uuid NOT NULL,"deletedAt" timestamptz)',
   );
   await owner.transaction((manager) =>
@@ -293,11 +296,17 @@ beforeAll(async () => {
   );
   await owner.query(`CREATE ROLE "${databaseRole}" LOGIN PASSWORD 'isolated-role-fixture' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
     GRANT USAGE ON SCHEMA core,crm_audit TO "${databaseRole}"; GRANT SELECT ON ALL TABLES IN SCHEMA core TO "${databaseRole}";
-    GRANT INSERT,UPDATE ON core.role TO "${databaseRole}"; GRANT SELECT,INSERT ON crm_audit."crmAuditEntry" TO "${databaseRole}"`);
+    GRANT INSERT,UPDATE ON core.role TO "${databaseRole}"; GRANT UPDATE ON core.application TO "${databaseRole}"; GRANT SELECT,INSERT ON crm_audit."crmAuditEntry" TO "${databaseRole}"`);
   await runtime.initialize();
 });
 beforeEach(async () => {
   jest.restoreAllMocks();
+  await owner.query('TRUNCATE core.application');
+  await owner.query('INSERT INTO core.application VALUES($1,$2,$3,NULL)', [
+    applicationId,
+    workspaceId,
+    applicationUniversalIdentifier,
+  ]);
   await owner.query(
     'DROP TRIGGER IF EXISTS corrupt_audit ON crm_audit."crmAuditEntry"; DROP FUNCTION IF EXISTS crm_audit.corrupt_audit(); DROP TRIGGER IF EXISTS corrupt_role ON core.role; DROP FUNCTION IF EXISTS core.corrupt_role(); TRUNCATE core.role,core."userWorkspace",crm_audit."crmAuditEntry"',
   );
@@ -779,6 +788,38 @@ const runCreate = (
       workspaceMigration: { applicationUniversalIdentifier, actions } as never,
     }),
   );
+
+it.each(['missing', 'foreign', 'deleted', 'universalIdentifier'])(
+  'rejects stale application ownership on role create: %s',
+  async (kind) => {
+    if (kind === 'missing') await owner.query('DELETE FROM core.application');
+    if (kind === 'foreign')
+      await owner.query('UPDATE core.application SET "workspaceId"=$1', [
+        randomUUID(),
+      ]);
+    if (kind === 'deleted')
+      await owner.query('UPDATE core.application SET "deletedAt"=now()');
+    if (kind === 'universalIdentifier')
+      await owner.query(
+        'UPDATE core.application SET "universalIdentifier"=$1',
+        [randomUUID()],
+      );
+    const before = await rows();
+    await expect(runCreate()).rejects.toThrow('application ownership');
+    expect(await rows()).toEqual(before);
+    expect(await audits()).toEqual([]);
+  },
+);
+
+it('rechecks application ownership after role create audit flush', async () => {
+  await owner.query(
+    'CREATE FUNCTION crm_audit.corrupt_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN UPDATE core.application SET "deletedAt"=now(); RETURN NEW; END $$; CREATE TRIGGER corrupt_audit AFTER INSERT ON crm_audit."crmAuditEntry" FOR EACH ROW EXECUTE FUNCTION crm_audit.corrupt_audit()',
+  );
+  const before = await rows();
+  await expect(runCreate()).rejects.toThrow('application ownership');
+  expect(await rows()).toEqual(before);
+  expect(await audits()).toEqual([]);
+});
 
 const createRoleServiceFixture = (wait = async () => {}) => {
   const migration = services();

@@ -26,6 +26,7 @@ const CATALOG: Record<
   CrmAuditResourceKind,
   { values: string[]; redacted: string[] }
 > = {
+  roleTarget: { values: ['roleId', 'userWorkspaceId'], redacted: [] },
   role: {
     values: [
       'canUpdateAllSettings',
@@ -351,10 +352,17 @@ const descriptor = (
   const source = mutation.securityDescriptor;
   const nativeRecord = mutation.resourceKind === 'crmRecord';
   const nativeFile = mutation.resourceKind === 'crmFile';
-  if (mutation.resourceKind === 'role' || source.metadataAccess !== undefined) {
+  if (
+    ['role', 'roleTarget'].includes(mutation.resourceKind) ||
+    source.metadataAccess !== undefined
+  ) {
     if (
-      mutation.resourceKind !== 'role' ||
-      !['create', 'update'].includes(mutation.action) ||
+      !['role', 'roleTarget'].includes(mutation.resourceKind) ||
+      !(
+        mutation.resourceKind === 'role'
+          ? ['create', 'update']
+          : ['create', 'delete']
+      ).includes(mutation.action) ||
       source.metadataAccess !== 'currentWorkspaceAdministration' ||
       Object.keys(source).sort().join(',') !==
         'metadataAccess,resourceId,resourceKind'

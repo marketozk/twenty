@@ -1,0 +1,17 @@
+{
+  "baseCommit": "4e085f100496750b5beb9fc4fbdb8909b52ad874",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "3f540b4cb9dcb8a4068ea5b3acd9b7f66922af60ea7f9ee67e83a6ed55303bab",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "edcb382ea9b985a22ecb7ec0f2f53a9f86bf86df413f5652a65294d489ccf54e",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/role-update-audit.ts": "c868465a1b0696a904776b071a301511fdee4834cbb17e0e7a2a96e828379dd6",
+    "packages/twenty-server/src/engine/metadata-modules/role/role.resolver.ts": "ab1a4e2a24488b5cdcf37bc2c353fff4b6ddc625b26c824a7a7eb49f8d80999a",
+    "packages/twenty-server/src/engine/metadata-modules/role/tools/__tests__/role-tools.spec.ts": "428818b6994d8503f4d741fa43d18a16f169a52b4652a583fdf6cd0b51270de6",
+    "packages/twenty-server/src/engine/metadata-modules/role/tools/assign-role-to-workspace-member.tool.ts": "155c245745359f23edffc15dc856eb49277c5b45a770f94e03269da8da699c80",
+    "packages/twenty-server/src/engine/metadata-modules/user-role/user-role.service.ts": "5137672c792569ee3f267801062772301d0603e4899613a5cd13f2695a9a5fea",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts": "62de811f41903a06045c903d3b8d21221fd222ecf41d7b9f7f118744655d9cd0",
+    "packages/twenty-server/test/fork-migration/crm-audit-role-update.postgres-spec.ts": "5e5ecc147ef739f80a403fe732f46922a576bc25a18291534f38c13698c2d4bf",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/role-assignment-audit.ts": "ebe78f5d9e14a2467bf0600825d51bdf07a08057f2af886bc5fa09120aba2b04",
+    "packages/twenty-server/test/fork-migration/crm-audit-role-assignment.postgres-spec.ts": "c5e847cb9c90b2ec2e02a5d095d7b75182e56dddbe417aceee9ac6593620b8db"
+  },
+  "uploadedSourceHashesVerified": true
+}

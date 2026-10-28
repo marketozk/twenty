@@ -343,6 +343,7 @@ describe('Role tools', () => {
         workspaceMemberId: targetMemberId,
         roleId: otherRoleId,
         actingUserWorkspaceId: callerUserWorkspaceId,
+        auditIdentity: expect.objectContaining({ auth: context.authContext }),
       });
     });
   });

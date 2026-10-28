@@ -5,6 +5,12 @@ import { isDefined } from 'twenty-shared/utils';
 import { In, Not, Repository } from 'typeorm';
 
 import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
+import {
+  captureRoleAuditIdentity,
+  captureRoleAuditOperation,
+  type RoleUpdateAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/role-update-audit';
+import { withRoleAssignmentAudit } from 'src/engine/core-modules/crm-audit/role-assignment-audit';
 import { type FlatWorkspaceMember } from 'src/engine/core-modules/user/types/flat-workspace-member.type';
 import {
   PermissionsException,
@@ -40,15 +46,19 @@ export class UserRoleService {
     workspaceMemberId,
     roleId,
     actingUserWorkspaceId,
+    auditIdentity,
   }: {
     workspaceId: string;
     workspaceMemberId: string;
     roleId: string;
     actingUserWorkspaceId?: string;
+    auditIdentity: RoleUpdateAuditIdentity;
   }): Promise<{
     workspaceMember: WorkspaceMemberWorkspaceEntity;
     userWorkspaceId: string;
   }> {
+    const capturedIdentity = captureRoleAuditIdentity(auditIdentity);
+    captureRoleAuditOperation(workspaceId, capturedIdentity);
     const workspaceMember = await this.getWorkspaceMemberByIdOrThrow({
       workspaceMemberId,
       workspaceId,
@@ -74,12 +84,10 @@ export class UserRoleService {
       actingUserWorkspaceId,
     });
 
-    const { userWorkspaceRoleMap } =
-      await this.workspaceCacheService.getOrRecompute(workspaceId, [
-        'userWorkspaceRoleMap',
-      ]);
-
-    if (userWorkspaceRoleMap[userWorkspace.id] === roleId) {
+    const existing = await this.roleTargetRepository.findOne(workspaceId, {
+      where: { userWorkspaceId: userWorkspace.id, roleId },
+    });
+    if (existing) {
       return { workspaceMember, userWorkspaceId: userWorkspace.id };
     }
 
@@ -87,12 +95,24 @@ export class UserRoleService {
       { roleId, workspaceId },
     );
 
-    await this.assignRoleToManyUserWorkspace({
-      workspaceId,
-      userWorkspaceIds: [userWorkspace.id],
-      roleId,
-      actingUserWorkspaceId,
-    });
+    await withRoleAssignmentAudit(
+      {
+        workspaceId,
+        workspaceMemberId,
+        userId: workspaceMember.userId,
+        userWorkspaceId: userWorkspace.id,
+        roleId,
+        actingUserWorkspaceId,
+      },
+      capturedIdentity,
+      () =>
+        this.assignRoleToManyUserWorkspace({
+          workspaceId,
+          userWorkspaceIds: [userWorkspace.id],
+          roleId,
+          actingUserWorkspaceId,
+        }),
+    );
 
     return { workspaceMember, userWorkspaceId: userWorkspace.id };
   }

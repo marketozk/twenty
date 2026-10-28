@@ -3483,3 +3483,18 @@ metadata builder не проверен. Демо/образ/сообщения/A
 check, existing roleTarget handlers и общий strict owner.
 
 LOG112 publication: 5075ecd0cd004afbdc05cce5f02646812ab157d2 pushed/API verified. ROB765 description and comment 162fd500-5f7a-4638-a71f-961d24c3e858 independently read back; all 11 issue states match. Implementation continues.
+
+## LOG-113 — аудит назначения роли сотруднику
+
+Public resolver/tool передают trusted identity. Actual no-op заменяет cache no-op;
+final bounded roleTarget DELETE/CREATE исполняется existing handlers одним strict
+owner вместе с audit. Workspace fence и fresh DB last-admin check сериализуют
+public demotions. Application tenant проверяется по core DB также у role CREATE.
+Review исправил no-op identity gap и отсутствие composite application tenant FK.
+
+1152 tests/36 suites PASS (201.448s); 98 targeted/2 suites + 11 existing role-tool unit tests PASS. 44 новых cases: 40 PG + 4 descriptor. 26 guards PASS; 10 migration checksums неизменны. Types 352/354 roots, 218/218 прежних диагностик, 0 новых/changed-code. 11 local/remote source hashes совпадают.
+
+[Доказательства](implementation/log113/README.md). ROB765 In Progress. Демо/образ/
+сообщения/Actions не менялись. Остаток membership removal зафиксирован отдельно:
+core cleanup не атомарен, публичный путь дополнительно удаляет native member и
+переносит accounts/shares; требуется полноценная полоса, не механический SQL patch.

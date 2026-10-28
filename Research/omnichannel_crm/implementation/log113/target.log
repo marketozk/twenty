@@ -1,0 +1,8 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-role-update.postgres-spec.ts (5.537 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-role-assignment.postgres-spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       98 passed, 98 total
+Snapshots:   0 total
+Time:        7.401 s
+Ran all test suites matching /crm-audit-role-assignment|crm-audit-role-update/i.

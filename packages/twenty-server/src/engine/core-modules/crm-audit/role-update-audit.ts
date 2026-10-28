@@ -162,22 +162,16 @@ export const withRoleCreateAudit = async <T>(
   );
 };
 
-const withRoleAudit = async <T>(
+export const captureRoleAuditOperation = (
   workspaceId: string,
-  roleId: string,
   identity: RoleUpdateAuditIdentity,
-  mutation:
-    | { action: 'update' }
-    | { action: 'create'; expected: Readonly<Record<string, unknown>> },
-  work: () => Promise<T>,
-): Promise<T> => {
-  if (storage.getStore()) throw new Error('Nested role audit is unsupported');
+): CrmAuditOperation => {
   if (!identity?.auth)
     throw new Error('Role update requires authenticated audit identity');
   const captured = captureNativeCrmAuditOperation(workspaceId, identity.auth, {
     operationId: randomUUID(),
   });
-  const operation: CrmAuditOperation = identity.agentId
+  return identity.agentId
     ? Object.freeze({
         ...captured,
         actor: Object.freeze({
@@ -189,6 +183,56 @@ const withRoleAudit = async <T>(
           : { initiator: captured.actor }),
       })
     : captured;
+};
+
+export const resolveRoleAuditInitiator = async (
+  runner: QueryRunner,
+  operation: CrmAuditOperation,
+  impersonatorUserWorkspaceId?: string,
+): Promise<CrmAuditOperation> => {
+  if (!impersonatorUserWorkspaceId) return operation;
+  const rows = await runner.query(
+    'SELECT "userId" FROM core."userWorkspace" WHERE id=$1 AND "deletedAt" IS NULL',
+    [uuid(impersonatorUserWorkspaceId)],
+  );
+  if (rows.length !== 1)
+    throw new Error('Role audit impersonation initiator unavailable');
+  return {
+    ...operation,
+    initiator: { kind: 'coreUser', id: uuid(rows[0].userId) },
+  };
+};
+
+export const verifyRoleAuditApplication = async (
+  runner: QueryRunner,
+  workspaceId: string,
+  applicationId: string,
+  universalIdentifier: string,
+): Promise<void> => {
+  const rows = await runner.query(
+    'SELECT "workspaceId","universalIdentifier","deletedAt" FROM core.application WHERE id=$1 FOR SHARE',
+    [uuid(applicationId)],
+  );
+  if (
+    rows.length !== 1 ||
+    rows[0].workspaceId !== uuid(workspaceId) ||
+    rows[0].universalIdentifier !== uuid(universalIdentifier) ||
+    rows[0].deletedAt !== null
+  )
+    throw new Error('Role audit application ownership changed or unavailable');
+};
+
+const withRoleAudit = async <T>(
+  workspaceId: string,
+  roleId: string,
+  identity: RoleUpdateAuditIdentity,
+  mutation:
+    | { action: 'update' }
+    | { action: 'create'; expected: Readonly<Record<string, unknown>> },
+  work: () => Promise<T>,
+): Promise<T> => {
+  if (storage.getStore()) throw new Error('Nested role audit is unsupported');
+  const operation = captureRoleAuditOperation(workspaceId, identity);
   const request = Object.freeze({
     ...mutation,
     operation,
@@ -311,6 +355,16 @@ export const runAuditedRoleMutation = async <T>(
       return rows[0].row;
     };
     const before = request.action === 'update' ? await read(true) : null;
+    const verifyApplication = async () => {
+      if (request.action === 'create')
+        await verifyRoleAuditApplication(
+          runner,
+          request.operation.workspaceId,
+          request.expected.applicationId as string,
+          request.expected.applicationUniversalIdentifier as string,
+        );
+    };
+    await verifyApplication();
     if (
       before &&
       (before.universalIdentifier !== universalIdentifier ||
@@ -325,19 +379,11 @@ export const runAuditedRoleMutation = async <T>(
       if (existing.length)
         throw new Error('Role create audit ID already exists');
     }
-    let operation = request.operation;
-    if (request.impersonatorUserWorkspaceId) {
-      const rows = await runner.query(
-        'SELECT "userId" FROM core."userWorkspace" WHERE id=$1 AND "deletedAt" IS NULL',
-        [request.impersonatorUserWorkspaceId],
-      );
-      if (rows.length !== 1)
-        throw new Error('Role audit impersonation initiator unavailable');
-      operation = {
-        ...operation,
-        initiator: { kind: 'coreUser', id: uuid(rows[0].userId) },
-      };
-    }
+    const operation = await resolveRoleAuditInitiator(
+      runner,
+      request.operation,
+      request.impersonatorUserWorkspaceId,
+    );
     const audit = new CrmAuditTransactionContext(runner, operation);
     const result = await work(runner);
     const after = await read();
@@ -397,6 +443,7 @@ export const runAuditedRoleMutation = async <T>(
     await audit.flush();
     if (canonicalAuditJson(after) !== canonicalAuditJson(await read()))
       throw new Error('Role audit persisted snapshot changed during flush');
+    await verifyApplication();
     return result;
   });
 };

@@ -12,6 +12,7 @@ export type CrmAuditPrincipal = {
 
 export type CrmAuditResourceKind =
   | 'role'
+  | 'roleTarget'
   | 'userSession'
   | 'refreshToken'
   | 'crmRecord'

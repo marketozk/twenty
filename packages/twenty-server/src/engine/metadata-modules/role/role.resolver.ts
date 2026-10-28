@@ -151,6 +151,7 @@ export class RoleResolver {
     @Args('roleId', { type: () => UUIDScalarType }) roleId: string,
     @AuthUserWorkspaceId()
     actingUserWorkspaceId: string,
+    @Context() context: { req: Request },
   ): Promise<WorkspaceMemberDTO> {
     const { workspaceMember, userWorkspaceId } =
       await this.userRoleService.assignRoleToWorkspaceMember({
@@ -158,6 +159,7 @@ export class RoleResolver {
         workspaceMemberId,
         roleId,
         actingUserWorkspaceId,
+        auditIdentity: roleAuditIdentityFromRequest(context.req),
       });
 
     const roles = await this.userRoleService

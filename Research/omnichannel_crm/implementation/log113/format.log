@@ -1,0 +1,14 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts 300ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts 11ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/role-update-audit.ts 49ms
+../../../source/packages/twenty-server/src/engine/metadata-modules/role/role.resolver.ts 47ms (unchanged)
+../../../source/packages/twenty-server/src/engine/metadata-modules/role/tools/__tests__/role-tools.spec.ts 40ms (unchanged)
+../../../source/packages/twenty-server/src/engine/metadata-modules/role/tools/assign-role-to-workspace-member.tool.ts 47ms (unchanged)
+../../../source/packages/twenty-server/src/engine/metadata-modules/user-role/user-role.service.ts 111ms (unchanged)
+../../../source/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts 84ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-role-update.postgres-spec.ts 224ms
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/role-assignment-audit.ts 107ms
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-role-assignment.postgres-spec.ts 100ms
+
+{"formattedFiles": 11, "singleSshSession": true}

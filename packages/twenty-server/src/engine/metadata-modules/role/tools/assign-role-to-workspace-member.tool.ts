@@ -3,6 +3,7 @@ import { PermissionFlagType } from 'twenty-shared/constants';
 import { z } from 'zod';
 
 import { DefineTool } from 'src/engine/core-modules/tool-provider/decorators/define-tool.decorator';
+import { captureRoleAuditIdentity } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { BaseTool } from 'src/engine/core-modules/tool-provider/interfaces/base-tool.interface';
 import { type ToolExecuteArgs } from 'src/engine/core-modules/tool-provider/types/tool-execute-args.type';
 import { type ToolOutput } from 'src/engine/core-modules/tool/types/tool-output.type';
@@ -34,16 +35,22 @@ export class AssignRoleToWorkspaceMemberTool extends BaseTool<
 
   async execute({
     input,
-    context: { workspaceId, userWorkspaceId },
+    context,
   }: ToolExecuteArgs<
     typeof assignRoleToWorkspaceMemberInputSchema
   >): Promise<ToolOutput> {
+    const { workspaceId, userWorkspaceId } = context;
+    const capturedInput = { ...input };
     const { workspaceMember } =
       await this.userRoleService.assignRoleToWorkspaceMember({
         workspaceId,
-        workspaceMemberId: input.workspaceMemberId,
-        roleId: input.roleId,
+        workspaceMemberId: capturedInput.workspaceMemberId,
+        roleId: capturedInput.roleId,
         actingUserWorkspaceId: userWorkspaceId,
+        auditIdentity: captureRoleAuditIdentity({
+          auth: context.authContext!,
+          agentId: context.agentId,
+        }),
       });
 
     return {
@@ -51,8 +58,8 @@ export class AssignRoleToWorkspaceMemberTool extends BaseTool<
       message:
         `Role assigned to workspace member ${workspaceMember.name?.firstName ?? ''} ${workspaceMember.name?.lastName ?? ''}`.trim(),
       result: {
-        workspaceMemberId: input.workspaceMemberId,
-        roleId: input.roleId,
+        workspaceMemberId: capturedInput.workspaceMemberId,
+        roleId: capturedInput.roleId,
       },
     };
   }

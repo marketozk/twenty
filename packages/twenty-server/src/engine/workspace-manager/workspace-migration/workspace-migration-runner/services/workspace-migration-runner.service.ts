@@ -4,7 +4,11 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { type AllMetadataName } from 'twenty-shared/metadata';
 import { FeatureFlagKey, FieldMetadataType } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
-import { DataSource } from 'typeorm';
+import { DataSource, type QueryRunner } from 'typeorm';
+import {
+  getRoleAssignmentAudit,
+  runAuditedRoleAssignment,
+} from 'src/engine/core-modules/crm-audit/role-assignment-audit';
 import {
   getRoleMutationAudit,
   runAuditedRoleMutation,
@@ -375,17 +379,17 @@ export class WorkspaceMigrationRunnerService {
     this.logger.perfTime('Runner', 'Transaction execution');
 
     const roleAudit = getRoleMutationAudit(workspaceId);
-    if (roleAudit) {
+    const assignmentAudit = getRoleAssignmentAudit(workspaceId);
+    if (roleAudit && assignmentAudit)
+      throw new Error('Conflicting metadata audit owners');
+    if (roleAudit || assignmentAudit) {
       try {
-        return await runAuditedRoleMutation(
-          this.coreDataSource,
-          roleAudit,
-          actions,
-          async (queryRunner) => {
-            const metadataEvents: MetadataEvent[] = [];
-            for (const action of actions) {
-              if (
-                action.metadataName !== 'role' ||
+        const execute = async (queryRunner: QueryRunner) => {
+          const metadataEvents: MetadataEvent[] = [];
+          for (const action of actions) {
+            if (
+              roleAudit &&
+              (action.metadataName !== 'role' ||
                 (action.type === 'update'
                   ? allFlatEntityMaps.flatRoleMaps?.byUniversalIdentifier[
                       action.universalIdentifier
@@ -395,44 +399,64 @@ export class WorkspaceMigrationRunnerService {
                     roleAudit.action !== 'create' ||
                     flatApplication.id !== roleAudit.expected.applicationId ||
                     flatApplication.universalIdentifier !==
-                      roleAudit.expected.applicationUniversalIdentifier)
-              )
-                throw new Error(
-                  'Audited role mutation resolved a different record or application',
-                );
-              const executed =
-                await this.workspaceMigrationRunnerActionHandlerRegistry.executeActionHandler(
-                  {
+                      roleAudit.expected.applicationUniversalIdentifier))
+            )
+              throw new Error(
+                'Audited role mutation resolved a different record or application',
+              );
+            const executed =
+              await this.workspaceMigrationRunnerActionHandlerRegistry.executeActionHandler(
+                {
+                  action,
+                  context: {
+                    flatApplication,
                     action,
-                    context: {
-                      flatApplication,
-                      action,
-                      allFlatEntityMaps,
-                      queryRunner,
-                      workspaceId,
-                      preallocatedIdByUniversalIdentifierByMetadataName,
-                      getSearchFieldMetadatasByTsVectorFieldId: () => [],
-                      featureFlagsMap,
-                    },
+                    allFlatEntityMaps,
+                    queryRunner,
+                    workspaceId,
+                    preallocatedIdByUniversalIdentifierByMetadataName,
+                    getSearchFieldMetadatasByTsVectorFieldId: () => [],
+                    featureFlagsMap,
                   },
-                );
-              if (executed.deferredActions.length)
-                throw new Error(
-                  'Audited role mutation cannot dispatch deferred actions',
-                );
-              allFlatEntityMaps = {
-                ...allFlatEntityMaps,
-                ...executed.partialOptimisticCache,
-              } as typeof allFlatEntityMaps;
-              metadataEvents.push(...executed.metadataEvents);
-            }
-            return {
-              allFlatEntityMaps,
-              metadataEvents,
-              hasSchemaMetadataChanged: false,
-            };
-          },
-        );
+                },
+              );
+            if (executed.deferredActions.length)
+              throw new Error(
+                'Audited role mutation cannot dispatch deferred actions',
+              );
+            allFlatEntityMaps = {
+              ...allFlatEntityMaps,
+              ...executed.partialOptimisticCache,
+            } as typeof allFlatEntityMaps;
+            metadataEvents.push(...executed.metadataEvents);
+          }
+          return {
+            allFlatEntityMaps,
+            metadataEvents,
+            hasSchemaMetadataChanged: false,
+          };
+        };
+        return roleAudit
+          ? await runAuditedRoleMutation(
+              this.coreDataSource,
+              roleAudit,
+              actions,
+              execute,
+            )
+          : await runAuditedRoleAssignment(
+              this.coreDataSource,
+              assignmentAudit!,
+              actions,
+              {
+                application: flatApplication,
+                roles:
+                  allFlatEntityMaps.flatRoleMaps?.byUniversalIdentifier ?? {},
+                targets:
+                  allFlatEntityMaps.flatRoleTargetMaps?.byUniversalIdentifier ??
+                  {},
+              },
+              execute,
+            );
       } finally {
         // A lost COMMIT acknowledgement can still have changed permissions.
         try {
