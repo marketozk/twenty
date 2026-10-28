@@ -3253,3 +3253,7 @@ position с искусственно занятым pool client; устране�
 ROB765 In Progress. Следом public upsert/nested coverage без recordShare writes;
 physical delete/merge, metadata/roles и negative audit/health ещё открыты.
 Образ/демо, внешние сообщения и GitHub Actions не затронуты.
+
+LOG101 publication: 647720c93dedc62c846a94be9be03cdbe70667c8 pushed/API verified.
+ROB765 description and comment 0b1d71c4-ce48-44fb-9214-fa29009ad80a independently
+read back; all 11 states match. ROB765 remains In Progress; implementation continues.
