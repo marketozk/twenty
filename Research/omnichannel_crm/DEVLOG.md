@@ -3404,3 +3404,5 @@ Source review следующего core writer выявил security gap signOut
 refresh token. Он не обещает family revocation уже выданных successors.
 
 998 tests/33 suites PASS (197.09s); 134 targeted/4 suites PASS. Прирост 20 PostgreSQL cases. 26 guards PASS; 10 migration checksums неизменны. Types 345/345 roots, 189/189 прежних диагностик, 0 новых/changed-code. 3 local/remote source hashes совпадают.
+
+LOG108 publication: 6fcc1feab00f83f88d652376ea5e3d4aacac4a9e pushed/API verified. ROB765 description and comment 9c6a82d9-67bd-4abc-a614-c6c966681729 independently read back; all 11 issue states match. Implementation continues.
