@@ -14,8 +14,9 @@ export default {
   ],
   testTimeout: 20000,
   maxWorkers: 1,
+  transformIgnorePatterns: ['/node_modules/(?!marked/)'],
   transform: {
-    '^.+\\.ts$': [
+    '^.+\\.[jt]s$': [
       '@swc/jest',
       {
         swcrc: false,

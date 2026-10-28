@@ -1,3 +1,4 @@
+import { validateFilesFieldOrThrow } from 'src/engine/api/common/common-args-processors/data-arg-processor/validator-utils/validate-files-field-or-throw.util';
 import { randomUUID } from 'node:crypto';
 import { type CrmAuditEntryPayload } from 'src/engine/core-modules/crm-audit/append-crm-audit-entry';
 import { type CrmAuditSecurityDescriptor } from 'src/engine/core-modules/crm-audit/crm-audit.types';
@@ -322,7 +323,7 @@ it('refuses duplicate parent IDs in a file batch', async () => {
   expect(await audits()).toEqual([]);
 });
 it.each([
-  null,
+  {},
   [
     { fileId, label: 'x' },
     { fileId, label: 'y' },
@@ -537,4 +538,45 @@ it.each([
     ).toThrow();
   });
   expect(await audits()).toEqual([]);
+});
+
+it.each(['single', 'batch'])(
+  'preserves native-only FILES null semantics in %s updates',
+  async (mode) => {
+    await seed();
+    await attach();
+    const before = await files();
+    const documents = validateFilesFieldOrThrow(null, 'documents', {
+      maxNumberOfValues: 5,
+    });
+    expect(documents).toBeNull();
+    await run((scope) =>
+      mode === 'single'
+        ? repo(scope).update(recordId, { documents })
+        : repo(scope).updateMany([
+            { criteria: recordId, partialEntity: { documents } },
+          ]),
+    );
+    expect((await record()).documents).toBeNull();
+    expect(await files()).toEqual(before);
+    const rows = await audits();
+    expect(rows).toHaveLength(3);
+    expect(rows.filter((row) => row.resourceKind === 'crmFile')).toHaveLength(
+      1,
+    );
+    expect(rows.filter((row) => row.resourceKind === 'crmRecord')).toHaveLength(
+      2,
+    );
+  },
+);
+it('preserves public FILES JSON-array transformation before audited writes', async () => {
+  await seed();
+  const documents = validateFilesFieldOrThrow(
+    JSON.stringify(payload()),
+    'documents',
+    { maxNumberOfValues: 5 },
+  );
+  await run((scope) => repo(scope).update(recordId, { documents }));
+  expect((await record()).documents).toHaveLength(1);
+  expect(await audits()).toHaveLength(2);
 });

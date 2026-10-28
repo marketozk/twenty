@@ -1456,6 +1456,11 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       this.options.tableShape,
       nativeAuditBefore,
       generatedMaps.map((row) => row.id),
+      new Set(
+        writableInputs
+          .filter((input) => input.data.updatedAt !== undefined)
+          .map((input) => input.id),
+      ),
     );
     this.emitMutationEvent({ kind: 'update', recordsBefore, recordsAfter });
 
@@ -2071,6 +2076,11 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       this.options.tableShape,
       nativeAuditBefore,
       mutationResult.generatedMaps.map((row) => row.id),
+      new Set(
+        data?.updatedAt === undefined
+          ? []
+          : mutationResult.generatedMaps.map((row) => row.id),
+      ),
     );
     this.emitMutationEvent({
       kind,

@@ -22,4 +22,6 @@
 
 LOG091: [проверки расширенного native покрытия](log091/README.md);606 tests/24 suites PASS,27 новых PG tests. FilesFieldSync и batch owner mapping реализованы LOG092.
 
-LOG092: [core File transaction/audit](log092/README.md),642 tests/25 suites PASS. Далее public valid-input parity и UPDATE owner; общий CRUD/merge/metadata/session/negative audit не готовы.
+LOG092: [core File transaction/audit](log092/README.md),642 tests/25 suites PASS. Public valid-input parity сохранён LOG093; далее UPDATE owner; общий CRUD/merge/metadata/session/negative audit не готовы.
+
+LOG093: [public input parity](log093/README.md),660 tests/25 suites PASS. Полные snapshots + operation-level explicit timestamp diff; FILES null без изменения прежнего core lifecycle.

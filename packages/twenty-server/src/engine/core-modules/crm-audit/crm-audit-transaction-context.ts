@@ -507,7 +507,9 @@ const redactedDiff = (mutation: CapturedMutation) => {
     ]),
   ]
     .filter(
-      (field) => mutation.before[field]?.hash !== mutation.after[field]?.hash,
+      (field) =>
+        field !== mutation.implicitUpdatedAtFieldId &&
+        mutation.before[field]?.hash !== mutation.after[field]?.hash,
     )
     .sort();
   const values: Record<string, { before: unknown; after: unknown }> = {};
@@ -568,6 +570,20 @@ export class CrmAuditTransactionContext {
 
   record(mutation: CrmAuditMutation): void {
     this.assertOpen();
+    let implicitUpdatedAtFieldId: string | undefined;
+    if (mutation.implicitUpdatedAtFieldId !== undefined) {
+      implicitUpdatedAtFieldId = requireUuid(mutation.implicitUpdatedAtFieldId);
+      if (
+        mutation.resourceKind !== 'crmRecord' ||
+        !mutation.before ||
+        !mutation.after ||
+        !Object.hasOwn(mutation.before, implicitUpdatedAtFieldId) ||
+        !Object.hasOwn(mutation.after, implicitUpdatedAtFieldId)
+      )
+        throw new Error(
+          'Implicit timestamp suppression requires complete native record snapshots',
+        );
+    }
     if (!['create', 'update', 'delete'].includes(mutation.action)) {
       throw new Error('Audit action must be normalized create/update/delete');
     }
@@ -601,6 +617,12 @@ export class CrmAuditTransactionContext {
       mutation.action,
     ]);
     const previous = this.mutations.get(key);
+    // One explicit timestamp write keeps the full first/last diff for this operation.
+    if (
+      previous &&
+      previous.implicitUpdatedAtFieldId !== implicitUpdatedAtFieldId
+    )
+      implicitUpdatedAtFieldId = undefined;
 
     if (
       previous &&
@@ -616,6 +638,7 @@ export class CrmAuditTransactionContext {
       before: previous?.before ?? before,
       after,
       securityDescriptor,
+      implicitUpdatedAtFieldId,
     });
   }
 

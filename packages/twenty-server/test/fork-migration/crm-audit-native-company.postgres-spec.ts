@@ -1,3 +1,8 @@
+import { DataArgProcessorService } from 'src/engine/api/common/common-args-processors/data-arg-processor/data-arg-processor.service';
+import { type RecordPositionService } from 'src/engine/core-modules/record-position/services/record-position.service';
+import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
+import { createCrmAuditWorkspaceExecutor } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-executor';
+import { type CrmAuditMutation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { FieldMetadataType } from 'twenty-shared/types';
 import { type CrmAuditEntryPayload } from 'src/engine/core-modules/crm-audit/append-crm-audit-entry';
 import { getWorkspaceContext } from 'src/engine/twenty-orm/storage/orm-workspace-context.storage';
@@ -225,7 +230,7 @@ it('poisons the transaction even if its caller catches an unsupported write', as
 it.each([
   ['file', { attachments: [] }],
   ['raw function', { name: () => 'SQL' }],
-  ['system timestamp', { deletedAt: '2026-10-28' }],
+  ['unknown column', { unknownColumn: 'value' }],
 ])('refuses unsupported %s writes before persistence', async (_label, data) => {
   await expect(run((scope) => repo(scope).update(id, data))).rejects.toThrow(
     'coverage',
@@ -496,4 +501,183 @@ it('does not bypass native permissions when auditing an update', async () => {
   ).rejects.toThrow();
   expect((await readCompany()).find((row) => row.id === id)?.position).toBe(1);
   expect(await audit()).toHaveLength(0);
+});
+
+jest.mock(
+  'src/engine/core-modules/record-position/services/record-position.service',
+  () => ({ RecordPositionService: class {} }),
+);
+const oldUpdatedAt = '2001-01-01T00:00:00.000002Z';
+const explicitDate = '2020-02-03T04:05:06.123456Z';
+const setOldDates = () =>
+  f.owner.query(
+    `UPDATE "${f.schemaName}".company SET "createdAt"='2000-01-01T00:00:00.000001Z',"updatedAt"=$1`,
+    [oldUpdatedAt],
+  );
+const dateValues = () =>
+  f.owner.query<
+    {
+      id: string;
+      createdAt: string;
+      updatedAt: string;
+      deletedAt: string | null;
+    }[]
+  >(
+    `SELECT id,"createdAt"::text,"updatedAt"::text,"deletedAt"::text FROM "${f.schemaName}".company ORDER BY id`,
+  );
+const processPublicInput = (data: Record<string, unknown>) =>
+  f.withContext(async () => {
+    const context = getWorkspaceContext();
+    const processor = new DataArgProcessorService({
+      overridePositionOnRecords: async ({
+        partialRecordInputs,
+      }: Parameters<RecordPositionService['overridePositionOnRecords']>[0]) =>
+        partialRecordInputs,
+    } as unknown as RecordPositionService);
+    const object = Object.values(
+      context.flatObjectMetadataMaps.byUniversalIdentifier,
+    ).find((item) => item?.id === companyMetadataId)!;
+    return (
+      await processor.process({
+        partialRecordInputs: [data],
+        authContext: context.authContext,
+        flatObjectMetadata: object,
+        flatFieldMetadataMaps: context.flatFieldMetadataMaps,
+        flatObjectMetadataMaps: context.flatObjectMetadataMaps,
+        shouldBackfillPositionIfUndefined: false,
+      })
+    )[0];
+  });
+it.each(['createdAt', 'updatedAt', 'deletedAt'])(
+  'preserves a public-validated explicit %s write and audits the real metadata field',
+  async (name) => {
+    await setOldDates();
+    const input = await processPublicInput({ [name]: explicitDate });
+    await run((scope) => repo(scope).update(id, input));
+    expect(
+      (await dateValues()).find((row) => row.id === id)![name as 'createdAt'],
+    ).toBe('2020-02-03 04:05:06.123456+00');
+    const rows = await audit();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].redactedDiff.changedFields).toEqual([fieldId(name)]);
+    expect(rows[0].redactedDiff.values).toEqual({});
+    expect(rows[0]).not.toHaveProperty('implicitUpdatedAtFieldId');
+  },
+);
+it('omits automatic updatedAt changes while comparing complete native snapshots', async () => {
+  await setOldDates();
+  await run(async (scope) => {
+    await repo(scope).update(id, { name: 'first' });
+    await repo(scope).update(id, { name: 'last', updatedAt: undefined });
+  });
+  expect((await audit())[0].redactedDiff.changedFields).toEqual([
+    fieldId('name'),
+  ]);
+  expect((await dateValues()).find((row) => row.id === id)!.updatedAt).not.toBe(
+    '2001-01-01 00:00:00.000002+00',
+  );
+});
+it.each(['explicit-first', 'explicit-middle', 'explicit-last'])(
+  'keeps timestamp diff across %s sequences',
+  async (order) => {
+    await setOldDates();
+    await run(async (scope) => {
+      if (order === 'explicit-first')
+        await repo(scope).update(id, { updatedAt: explicitDate });
+      await repo(scope).update(id, { name: 'first' });
+      if (order === 'explicit-middle')
+        await repo(scope).update(id, { updatedAt: explicitDate });
+      await repo(scope).update(id, { name: 'last' });
+      if (order === 'explicit-last')
+        await repo(scope).update(id, { updatedAt: explicitDate });
+    });
+    const rows = await audit();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].redactedDiff.changedFields).toEqual(
+      [fieldId('name'), fieldId('updatedAt')].sort(),
+    );
+  },
+);
+it.each([false, true])(
+  'classifies explicit updatedAt independently for mixed batch IDs; repeated=%s',
+  async (repeated) => {
+    await setOldDates();
+    await run((scope) =>
+      repo(scope).updateMany([
+        {
+          criteria: id,
+          partialEntity: { updatedAt: explicitDate, name: 'first' },
+        },
+        {
+          criteria: secondId,
+          partialEntity: { name: 'second', updatedAt: undefined },
+        },
+        ...(repeated
+          ? [{ criteria: id, partialEntity: { name: 'last' } }]
+          : []),
+      ]),
+    );
+    const rows = await audit();
+    expect(rows).toHaveLength(2);
+    expect(
+      rows.find((row) => row.resourceId === id)!.redactedDiff.changedFields,
+    ).toContain(fieldId('updatedAt'));
+    expect(
+      rows.find((row) => row.resourceId === secondId)!.redactedDiff
+        .changedFields,
+    ).not.toContain(fieldId('updatedAt'));
+  },
+);
+it('does not invent a timestamp diff when an explicit final write restores its exact original value', async () => {
+  await setOldDates();
+  await run(async (scope) => {
+    await repo(scope).update(id, { name: 'changed' });
+    await repo(scope).update(id, { updatedAt: explicitDate });
+    await repo(scope).update(id, { updatedAt: oldUpdatedAt });
+  });
+  expect((await audit())[0].redactedDiff.changedFields).toEqual([
+    fieldId('name'),
+  ]);
+  expect((await dateValues()).find((row) => row.id === id)!.updatedAt).toBe(
+    '2001-01-01 00:00:00.000002+00',
+  );
+});
+it.each([
+  'badUuid',
+  'wrongKind',
+  'nullBefore',
+  'missingBefore',
+  'missingAfter',
+])('rejects invalid internal timestamp suppression %s', async (kind) => {
+  await run(async (scope) => {
+    const context = new CrmAuditTransactionContext(
+      createCrmAuditWorkspaceExecutor(scope),
+      {
+        workspaceId: f.workspaceId,
+        operationId: randomUUID(),
+        actor: { kind: 'system', id: 'suppression-test' },
+      },
+    );
+    const timestampId = fieldId('updatedAt');
+    const mutation: CrmAuditMutation = {
+      resourceKind: 'crmRecord',
+      resourceId: id,
+      action: 'update',
+      before: { [timestampId]: 'before' },
+      after: { [timestampId]: 'after' },
+      securityDescriptor: {
+        resourceKind: 'crmRecord',
+        resourceId: id,
+        objectMetadataId: companyMetadataId,
+      },
+      implicitUpdatedAtFieldId: timestampId,
+    };
+    if (kind === 'badUuid') mutation.implicitUpdatedAtFieldId = 'not-uuid';
+    if (kind === 'wrongKind') mutation.resourceKind = 'crmFile';
+    if (kind === 'nullBefore') mutation.before = null;
+    if (kind === 'missingBefore') mutation.before = {};
+    if (kind === 'missingAfter') mutation.after = {};
+    expect(() => context.record(mutation)).toThrow();
+  });
+  expect(await audit()).toEqual([]);
 });

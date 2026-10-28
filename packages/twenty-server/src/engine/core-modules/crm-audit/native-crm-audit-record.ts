@@ -124,10 +124,9 @@ export const assertNativeCrmAuditWriteSupported = (
     );
   for (const [name, value] of Object.entries(data)) {
     if (name === 'id' || value === undefined) continue;
-    if (['createdAt', 'updatedAt', 'deletedAt'].includes(name))
-      throw coverageError();
     const column = shape.columnShapeByColumnName[name];
     if (column?.fieldMetadataType === 'FILES') {
+      if (value === null) continue;
       if (!Array.isArray(value)) throw coverageError();
       const ids = new Set<string>();
       for (const file of value) {
@@ -212,7 +211,7 @@ const snapshot = (
 ): Record<string, unknown> => {
   const fields: Record<string, Record<string, unknown>> = {};
   for (const column of Object.values(shape.columnShapeByColumnName)) {
-    if (['id', 'createdAt', 'updatedAt'].includes(column.columnName)) continue;
+    if (column.columnName === 'id') continue;
     if (!Object.hasOwn(row, column.columnName))
       throw new Error('Native audit snapshot is incomplete');
     (fields[column.fieldMetadataId] ??= {})[column.columnName] =
@@ -226,6 +225,7 @@ export const recordNativeCrmUpdates = async (
   shape: WorkspaceTableShape,
   before: ObjectRecord[],
   actualIds: string[],
+  explicitUpdatedAtIds: ReadonlySet<string> = new Set(),
 ): Promise<void> => {
   const audit = getNativeCrmAuditContext(executor);
   if (!audit || !actualIds.length) return;
@@ -242,6 +242,9 @@ export const recordNativeCrmUpdates = async (
       action: 'update',
       before: snapshot(shape, previous),
       after: snapshot(shape, row),
+      implicitUpdatedAtFieldId: explicitUpdatedAtIds.has(row.id)
+        ? undefined
+        : shape.columnShapeByColumnName.updatedAt?.fieldMetadataId,
       securityDescriptor: {
         resourceKind: 'crmRecord',
         resourceId: row.id,

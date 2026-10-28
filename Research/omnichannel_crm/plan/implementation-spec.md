@@ -724,6 +724,16 @@ Housekeeping ограничен одним binding и одним rearm за вы
 Для native `crmRecord` ключ и security descriptor дополнительно включают `objectMetadataId`: одинаковые UUID записей разных объектов не объединяются. Поля native diff обозначаются fieldMetadataId, значения до явной allowlist не сохраняются. PostgreSQL NUMERIC и вложенные значения сравниваются без преобразования точных чисел в JS number. LOG089 вводит внутренний opt-in `nativeAudit` для Company scalar update/updateMany с одним strict owner; это ещё не автоматическое покрытие публичного ORM. Без domain command receipt повтор уже закоммиченного native operationId запрещён под общей workspace/operation блокировкой до callback; после подтверждённого rollback повтор допустим. Unknown outcome не означает retry и не записывается как failed. Общий replay принятой команды по receipt остаётся отдельным обязательным контрактом; operationId сам по себе его не реализует.
 
 
+Системные createdAt/updatedAt/deletedAt сохраняют исходную writability/permissions,
+не запрещаются audit guard. Native snapshots включают даты; createdAt сравнивается
+всегда. Автоматический updatedAt исключается только из diff и лишь если все writes
+данной resource/action были implicit. Явный nonundefined updatedAt хотя бы в одном
+write навсегда включает сравнение фактических first-before/last-after для этой операции;
+batch классифицирует каждый authoritative ID отдельно. Внутренний metadata field ID
+suppression не сохраняется в audit payload/descriptor. FILES null сохраняет прежний
+native-only clear без core File cleanup; [] остаётся removal. LOG093 проверяет это
+реальными validators/processor и PostgreSQL; public numeric transformer не меняется.
+
 Для core File изменения в native FILES update используется отдельный `crmFile`, action update,
 resourceId=File ID и exact fileParent(objectMetadataId,recordId,fieldMetadataId). Parent
 берётся из authoritative locked native records/metadata, не из payload.id. Scope должен
@@ -734,4 +744,4 @@ core writes используют тот же executor и проверенные 
 parent FILES список и final File state проверяются до commit. Missing/deleted/foreign
 File reference и неоднозначные владельцы отказаны, не исправляются молча. Физическое
 storage deletion остаётся отдельным lifecycle. LOG092 реализует внутренний array-input
-update путь; public null/timestamp parity и автоматическое подключение ещё впереди.
+update путь; LOG093 сохраняет public null/timestamp parity, автоматическое подключение ещё впереди.

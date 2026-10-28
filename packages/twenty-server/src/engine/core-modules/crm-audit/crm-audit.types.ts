@@ -73,4 +73,5 @@ export type CrmAuditMutation = {
   before: Record<string, unknown> | null;
   after: Record<string, unknown> | null;
   securityDescriptor: CrmAuditSecurityDescriptor;
+  implicitUpdatedAtFieldId?: string;
 };

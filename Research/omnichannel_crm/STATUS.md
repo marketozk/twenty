@@ -18,7 +18,11 @@ mutable input protection;0 новых type diagnostics.
 Это ещё не общий аудит UI/API: без opt-in обычный ORM работает как прежде.
 [LOG092](implementation/log092/README.md): FILES включены в тот же executor,
 core File audit и actual parent/state readback;642 tests/25 suites +26 guards PASS.
-Типы без новых диагностик. Перед public UPDATE wiring сохраняем FILES null/timestamp parity.
+Типы без новых диагностик.
+
+[LOG093](implementation/log093/README.md): FILES null/system timestamp parity сохранён,
+660 tests/25 suites +26 guards PASS,18 новых PG cases. Далее automatic REST/GraphQL
+UPDATE owner и scoped nested reads; публичные writers пока не подключены.
 
 Продолжаем native CRUD/merge и подключение реальных writers, затем
 metadata/session и negative audit. [Приёмка ROB765](implementation/rob765-progress.md).

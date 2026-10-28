@@ -3054,3 +3054,19 @@ public UPDATE owner/nested reads/hooks. Демо не менялось, Actions 
 LOG092 publication: `608d8b7668f272d5b34d61efdce2ac79b20309ca` pushed/API verified.
 ROB765 description and comment `14248efd-20f7-4638-ac37-35ac760c7845` independently
 read back; all11 states match. ROB765 remains In Progress; implementation continues.
+
+
+## LOG-093 — сохранение public input contract перед UPDATE owner
+
+OPEN createdAt/updatedAt/deletedAt разрешены через существующие permissions. Полные
+snapshots сохраняют точные даты; implicit updatedAt suppression снимается навсегда
+при любой explicit mutation данного record/action, batch считает каждый ID отдельно.
+FILES null остаётся native-only clear без core cleanup; [] сохраняет removal lifecycle.
+Internal suppression flag не сохраняется в payload. Actual DataArgProcessor потребовал
+Jest marked ESM transform; production dependencies/validators не подменялись.
+
+660 tests/25 suites PASS,18 новых PG cases,109 targeted;26 guards/checksum PASS,
+10 migrations неизменны. Types332/332 roots,189/189 existing diagnostics,0 новых/changed;
+8 source hashes совпадают. Read-only review без блокеров. [Evidence](implementation/log093/README.md).
+ROB765 In Progress. Далее automatic public UPDATE owner, inherited proof и scoped
+nested reads с прежними postcommit hook errors. Демо/Actions не затронуты.

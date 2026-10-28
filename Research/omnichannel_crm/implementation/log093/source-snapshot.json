@@ -1,0 +1,14 @@
+{
+  "baseCommit": "9bc2e040371b6cd83582c5494c3db2888ec3d506",
+  "lfSha256": {
+    "packages/twenty-server/jest-fork-migration.config.mjs": "64f864c18f21c64cf66bb42b12295167826e25ebe31d3e40ccc05c79d86d33c1",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "d425388977484b31521905a399f8ceba5e624045d53e85a84172f6aa84d93584",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "816606b79085f455cdfefd9a560bd7baf0a24e7bcdbe4f23d46904a55255e71b",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-record.ts": "e5096ef6db40ab95dee17c46a1ea1127c478d9f1ab3ca2fb275d1283fc3c0584",
+    "packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts": "c30f903259247a3438275d90f8c70edbf958cc176a5405f94f1a09a38462747c",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-company.postgres-spec.ts": "499ec051b68acb8c79bd492084cb13e40bc1589731efcb55627fb5c2bb507b26",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-files.postgres-spec.ts": "159e030f162e5a2ec4e066957202b6448926169c7bdf93e30cc25c15e2c34c3e",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-records.postgres-spec.ts": "12fdefb67e8fc2cb8ef71632db0dfbd7beb332fc4ae5aa794b275694a8267dc6"
+  },
+  "uploadedSourceHashesVerified": true
+}

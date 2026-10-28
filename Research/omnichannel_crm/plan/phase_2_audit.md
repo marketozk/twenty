@@ -69,5 +69,11 @@ updates Company/Person/Opportunity, включая composite/JSON/arrays/Date/re
 [LOG092](../implementation/log092/README.md) добавляет same-executor FilesFieldSync,
 actual parent/File postconditions и25-й ресурс crmFile с exact parent scope.
 642 tests/25 suites,36 новых PG cases и26 guards PASS. Ordinary path ещё не подключён;
-перед public UPDATE wiring выполняем parity для FILES null и OPEN system timestamps.
+public input parity для FILES null и OPEN system timestamps выполнен LOG093.
 Подробные критерии и остаток — [приёмка ROB765](../implementation/rob765-progress.md).
+
+
+[LOG093](../implementation/log093/README.md): существующие OPEN system timestamp writes
+аудируются без implicit updatedAt шума; FILES null сохраняет native-only clear без
+core cleanup.660 tests/25 suites,18 новых PG cases,26 guards PASS. Далее automatic
+REST/GraphQL UPDATE owner, proven inherited scope и scoped nested reads/hooks.
