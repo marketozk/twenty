@@ -2261,3 +2261,5 @@ stage acceptance inventory. Demo/SaleBot unchanged; no Actions. Skills ai-dev-wo
 behavioral-guardrails, server-schrodinger; scoped read-only research/review.
 
 [Evidence](implementation/log074/README.md).
+
+LOG-074 publication: code `bf37f6f2de392784215e9770d00486ad3f03c334` pushed; GitHub ref verified by API. Linear description/comment `13f90a3f-2c46-4679-af94-c1d02fa67ca2` independently read back; all11 project states match. ROB-764 remains In Progress.
