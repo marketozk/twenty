@@ -1755,3 +1755,5 @@ or ROB764 acceptance claimed. Deployment and client acceptance remain separate.
 Next: sync-folder discovery, derived provider ownership and final T22/acceptance.
 Demo/SaleBot unchanged; GitHub Actions unused. Applied ai-dev-workflow,
 behavioral-guardrails, server-schrodinger and scoped read-only review.
+
+LOG-061 publication: complete code be4ae869a74e43c5aedb5a07ce627ff8ad2f8c86 pushed; GitHub ref verified through API. Evidence/test retirement was published immediately before it in4fb54bfc because the deleted-path staging rejected the first source list; history was not rewritten. Linear comment08af6696-01d6-4dc1-958d-2a7c1182b11a; description/comment and all11 project states independently read back. ROB764 In Progress. See implementation/log061/publication.json.

@@ -1,0 +1,11 @@
+{
+  "codeCommit": "be4ae869a74e43c5aedb5a07ce627ff8ad2f8c86",
+  "precedingEvidenceCommit": "4fb54bfcedeec7cb105693530873bb2c3e45fc83",
+  "githubRefVerifiedThroughApi": true,
+  "linearCommentId": "08af6696-01d6-4dc1-958d-2a7c1182b11a",
+  "descriptionAndCommentReadBack": true,
+  "allElevenProjectStatesReadBack": true,
+  "issueStatus": "In Progress",
+  "githubActionsUsed": false,
+  "publicationNote": "Deleted-path staging rejected first source list; evidence and retired test were published first. All implementation files were immediately committed and pushed separately without rewriting history. Use codeCommit for the complete verified snapshot."
+}
