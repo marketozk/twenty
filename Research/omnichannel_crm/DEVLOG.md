@@ -1843,3 +1843,5 @@ also remains separate. No claim of atomic Redis/SQL effects or arbitrary raw SQL
 Next: those callbacks, then T22 inventory and fresh stage acceptance. Demo/SaleBot
 unchanged, GitHub Actions unused. Applied ai-dev-workflow, behavioral-guardrails,
 server-schrodinger and scoped read-only review.
+
+LOG063 publication: code 466051dfe02277e2934fbb7a0c0f1049ab09b011 pushed and GitHub API ref verified; Linear comment 83ae5013-808e-4de1-aacc-d79a833d0891, description/comment and all11 project states independently read back. ROB764 remains In Progress.
