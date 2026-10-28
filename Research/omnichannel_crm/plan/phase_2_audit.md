@@ -73,16 +73,17 @@ ROB765 остаётся In Progress. Единственная текущая т�
 | Guard неаудированных ON UPDATE effects: composite keys, timestamps, BEFORE triggers | [LOG107](../implementation/log107/README.md) |
 | Direct covered ON DELETE CASCADE с retained child guards и actual-effects audit | [LOG108](../implementation/log108/README.md) |
 | Refresh signOut: immediate security revoke, auth fence и security-first audit | [LOG109](../implementation/log109/README.md) |
+| Workspace refresh issuance/rotation: strict owner, actual snapshots, common operation | [LOG110](../implementation/log110/README.md) |
 
 Открыто: остальные native/system writers и FK effects, real share writes, public
 DESTROY/MERGE, metadata/roles, общий denied/failed audit после rollback и health/alert.
-LOG109 покрывает signOut предъявленного refresh token. Выпуск/rotation, family revoke,
+LOG109 покрывает signOut предъявленного refresh token; LOG110 — workspace выпуск/rotation. Family revoke,
 stateless application JWT и concurrent-sign-in fencing ещё не объявлены покрытыми.
 Просмотр/экспорт — ROB767 после ROB766; AI/workflow/connector добавляют свои события
 в ROB768/769. Полный HTTP/JWT и сборка/выкат изменений после LOG088 не выполнялись.
 
-Последние проверки: 1028 tests/34 suites PASS (197.443s); 103 targeted/3 suites PASS. 24 PG + 6 descriptor cases. 26 guards PASS; 10 migration checksums неизменны. Types 344/345 roots, 189/189 прежних диагностик, 0 новых/changed-code. 4 local/remote source hashes совпадают.
-Full-server typecheck не чистый. [Проверки LOG109](../implementation/log109/results.json).
+Последние проверки: 1054 tests/34 suites PASS (201.141s); 129 targeted/3 suites PASS. 26 новых PostgreSQL cases. 26 guards PASS; 10 migration checksums неизменны. Types 347/347 roots, 189/189 прежних диагностик, 0 новых/changed-code. 4 local/remote source hashes совпадают.
+Full-server typecheck не чистый. [Проверки LOG110](../implementation/log110/results.json).
 
 Демо остаётся прежним. При будущем выкате migration10 writers останавливаются на
 время построения индекса. GitHub Actions не используется.

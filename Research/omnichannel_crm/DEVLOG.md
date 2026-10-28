@@ -3424,3 +3424,20 @@ workspace-null audit и stateless application tokens не объявлены з�
 1028 tests/34 suites PASS (197.443s); 103 targeted/3 suites PASS. 24 PG + 6 descriptor cases. 26 guards PASS; 10 migration checksums неизменны. Types 344/345 roots, 189/189 прежних диагностик, 0 новых/changed-code. 4 local/remote source hashes совпадают.
 
 LOG109 publication: edf419e6d2a9e5bd611788852bb6f096ec44e47b pushed/API verified. ROB765 description and comment ce634e9c-87b0-4c5c-8c60-2f5155663221 independently read back; all 11 issue states match. Implementation continues.
+
+## LOG-110 — workspace refresh issuance/rotation audit
+
+Выпуск и rotation используют strict core owner; old update/new create имеют одну
+operation/commit. Повторная проверка owner/scope/security/grace выполняется под auth
+fence и row lock. Audit/sign/SQL failure отменяет выдачу; unknown не повторяется.
+Сохраняются исходные scopes/lifetimes и workspace-null поведение без tenant audit.
+Read-only review блокеров не выявил; lost ACK, corrupting trigger и row-lock grace
+cases добавлены. Ошибка повторного перехвата pooled client в fixture исправлена.
+
+[Доказательства](implementation/log110/README.md). ROB765 In Progress. Далее — аудит
+изменения роли через существующий metadata migration owner: actor из серверного
+контекста, actual before/after и строгий commit, без Enterprise audit dependency.
+Family revoke, standalone sign-in fencing и stateless application JWT открыты.
+Демо, образ, сообщения и Actions не затронуты.
+
+1054 tests/34 suites PASS (201.141s); 129 targeted/3 suites PASS. 26 новых PostgreSQL cases. 26 guards PASS; 10 migration checksums неизменны. Types 347/347 roots, 189/189 прежних диагностик, 0 новых/changed-code. 4 local/remote source hashes совпадают.

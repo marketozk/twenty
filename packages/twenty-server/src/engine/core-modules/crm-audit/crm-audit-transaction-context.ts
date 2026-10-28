@@ -26,7 +26,10 @@ const CATALOG: Record<
   CrmAuditResourceKind,
   { values: string[]; redacted: string[] }
 > = {
-  refreshToken: { values: ['revokedReason'], redacted: ['revokedAt'] },
+  refreshToken: {
+    values: ['revokedReason'],
+    redacted: ['revokedAt', 'expiresAt', 'createdAt'],
+  },
   userSession: {
     values: ['authProvider', 'isImpersonating', 'origin', 'revokedReason'],
     redacted: ['expiresAt', 'createdAt', 'revokedAt'],
@@ -359,7 +362,7 @@ const descriptor = (
     const owner = source.tokenOwner;
     if (
       mutation.resourceKind !== 'refreshToken' ||
-      mutation.action !== 'update' ||
+      !['create', 'update'].includes(mutation.action) ||
       !owner ||
       Object.keys(owner).sort().join(',') !== 'access,userId' ||
       owner.access !== 'currentWorkspaceAdministration' ||

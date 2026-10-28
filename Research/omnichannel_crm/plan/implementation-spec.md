@@ -896,3 +896,12 @@ security action при недоступном журнале с явным си�
 access:currentWorkspaceAdministration}; reason в allowlist, timestamp redacted,
 credential/context отсутствуют. Workspace-null audit остаётся за пределами coverage.
 Обе очередности renew/logout проверены; ранее выданный successor не считается revoked.
+
+LOG110: workspace refresh issuance/rotation используют strict core owner. Rotation
+получает shared user-auth fence и row lock, повторно проверяет owner/workspace/type,
+security reason и grace; original revokedAt сохраняется. Old update + new create
+используют одну operation/commit. Persisted credentials/scope проверяются до/после
+flush; sign/SQL/audit failures откатывают выдачу, unknown COMMIT не повторяется и не
+возвращает токен. Catalog refreshToken разрешает create/update с прежним tokenOwner;
+createdAt/expiresAt также redacted. Workspace-null tenant audit и family revoke не
+обещаны. Standalone sign-in/security-revoke fencing и stateless application JWT открыты.

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
-import { sign, verify, decode } from 'jsonwebtoken';
+import { sign, verify, decode, type SignOptions } from 'jsonwebtoken';
 import { DataSource } from 'typeorm';
 import {
   AppTokenEntity,
@@ -116,8 +116,14 @@ const secret = 'isolated-refresh-jwt-fixture-not-production';
 const jwt = {
   verifyJwtToken: jest.fn(async (token: string) => verify(token, secret)),
   decode: (token: string) => decode(token),
-  signAsyncOrThrow: async (payload: object, options: { jwtid: string }) =>
-    sign(payload, secret, { jwtid: options.jwtid, expiresIn: '1h' }),
+  signAsyncOrThrow: async (
+    payload: object,
+    options: { jwtid: string; expiresIn?: SignOptions['expiresIn'] },
+  ) =>
+    sign(payload, secret, {
+      jwtid: options.jwtid,
+      expiresIn: options.expiresIn ?? '1h',
+    }),
 };
 const config = {
   get: (key: string) =>
@@ -139,18 +145,14 @@ const services = () => {
     {} as never,
     {} as never,
   );
-  const renew = new RenewTokenService(
-    runtime.getRepository(AppTokenEntity),
-    {
-      generateAccessToken: jest.fn(async () => ({
-        token: 'synthetic-access',
-        expiresAt: new Date(),
-      })),
-    } as never,
-    {} as never,
-    refresh,
-  );
-  return { service, refresh, renew };
+  const access = {
+    generateAccessToken: jest.fn(async () => ({
+      token: 'synthetic-access',
+      expiresAt: new Date(),
+    })),
+  };
+  const renew = new RenewTokenService(access as never, {} as never, refresh);
+  return { service, refresh, renew, access };
 };
 const createToken = async (
   overrides: Partial<AppTokenEntity> = {},
@@ -231,6 +233,274 @@ it('logout immediately prevents renewing the presented token inside the rotation
     UserSessionRevokedReason.UserSignOut,
   );
 });
+
+const issuancePayload = () => ({
+  userId,
+  workspaceId,
+  targetedTokenType: JwtTokenTypeEnum.ACCESS,
+});
+
+it('issues a workspace refresh token with persisted scope and redacted create audit', async () => {
+  const issued =
+    await services().refresh.generateRefreshToken(issuancePayload());
+  const claims = verify(issued.token, secret) as {
+    jti: string;
+    sub: string;
+    workspaceId: string;
+    exp: number;
+    iat: number;
+  };
+  const rows = await tokens(),
+    entries = await audits();
+  expect(rows).toHaveLength(1);
+  expect(entries).toHaveLength(1);
+  expect(claims).toMatchObject({ jti: rows[0].id, sub: userId, workspaceId });
+  expect(claims.exp - claims.iat).toBe(3600);
+  expect(rows[0].expiresAt.getTime()).toBe(issued.expiresAt.getTime());
+  expect(entries[0]).toMatchObject({
+    resourceKind: 'refreshToken',
+    resourceId: rows[0].id,
+    action: 'create',
+    actor: { kind: 'coreUser', id: userId },
+  });
+  expect(JSON.stringify(entries)).not.toContain(issued.token);
+});
+
+it('rotates old and new credentials in one audited operation', async () => {
+  const { row, token } = await createToken(),
+    { renew, access } = services();
+  const result = await renew.generateTokensFromRefreshToken(token);
+  const rows = await tokens(),
+    entries = await audits();
+  expect(rows).toHaveLength(2);
+  expect(entries).toHaveLength(2);
+  expect(
+    entries.find(
+      (entry: { resourceId: string }) => entry.resourceId === row.id,
+    ),
+  ).toMatchObject({ action: 'update' });
+  expect(
+    entries.find(
+      (entry: { resourceId: string }) => entry.resourceId !== row.id,
+    ),
+  ).toMatchObject({ action: 'create' });
+  expect(
+    new Set(entries.map((entry: { operationId: string }) => entry.operationId))
+      .size,
+  ).toBe(1);
+  expect(verify(result.refreshToken.token, secret)).toMatchObject({
+    sub: userId,
+    workspaceId,
+  });
+  expect(access.generateAccessToken).toHaveBeenCalledTimes(1);
+});
+
+it('allows concurrent grace renewal with one old-token update and two audited successors', async () => {
+  const { row, token } = await createToken(),
+    { renew } = services();
+  const results = await Promise.all([
+    renew.generateTokensFromRefreshToken(token),
+    renew.generateTokensFromRefreshToken(token),
+  ]);
+  expect(new Set(results.map((result) => result.refreshToken.token)).size).toBe(
+    2,
+  );
+  const rows = await tokens(),
+    entries = await audits();
+  expect(rows).toHaveLength(3);
+  expect(entries).toHaveLength(3);
+  expect(
+    entries.filter(
+      (entry: { resourceId: string }) => entry.resourceId === row.id,
+    ),
+  ).toHaveLength(1);
+  expect(
+    entries.filter((entry: { action: string }) => entry.action === 'create'),
+  ).toHaveLength(2);
+});
+
+it('does not extend or re-audit the old timestamp on a permitted grace repeat', async () => {
+  const revokedAt = new Date(Date.now() - 1000);
+  const { row, token } = await createToken({ revokedAt });
+  await services().renew.generateTokensFromRefreshToken(token);
+  expect(
+    (await tokens()).find((item) => item.id === row.id)?.revokedAt?.getTime(),
+  ).toBe(revokedAt.getTime());
+  expect(await audits()).toEqual([
+    expect.objectContaining({ action: 'create' }),
+  ]);
+});
+
+it.each(['sign', 'audit', 'sql'])(
+  'rolls back standalone issuance on %s failure',
+  async (failure) => {
+    if (failure === 'sign')
+      jest
+        .spyOn(jwt, 'signAsyncOrThrow')
+        .mockRejectedValue(new Error('sign failed'));
+    if (failure === 'audit')
+      await owner.query(
+        `REVOKE INSERT ON crm_audit."crmAuditEntry" FROM "${role}"`,
+      );
+    if (failure === 'sql')
+      await owner.query(`REVOKE INSERT ON core."appToken" FROM "${role}"`);
+    try {
+      await expect(
+        services().refresh.generateRefreshToken(issuancePayload()),
+      ).rejects.toThrow();
+    } finally {
+      await owner.query(
+        `GRANT INSERT ON crm_audit."crmAuditEntry",core."appToken" TO "${role}"`,
+      );
+    }
+    expect(await tokens()).toEqual([]);
+    expect(await audits()).toEqual([]);
+  },
+);
+
+it.each(['sign', 'audit', 'sql'])(
+  'rolls back both sides of rotation on %s failure',
+  async (failure) => {
+    const { token } = await createToken(),
+      before = await tokens(),
+      { renew, access } = services();
+    if (failure === 'sign')
+      jest
+        .spyOn(jwt, 'signAsyncOrThrow')
+        .mockRejectedValue(new Error('sign failed'));
+    if (failure === 'audit')
+      await owner.query(
+        `REVOKE INSERT ON crm_audit."crmAuditEntry" FROM "${role}"`,
+      );
+    if (failure === 'sql')
+      await owner.query(`REVOKE INSERT ON core."appToken" FROM "${role}"`);
+    try {
+      await expect(
+        renew.generateTokensFromRefreshToken(token),
+      ).rejects.toThrow();
+    } finally {
+      await owner.query(
+        `GRANT INSERT ON crm_audit."crmAuditEntry",core."appToken" TO "${role}"`,
+      );
+    }
+    expect(await tokens()).toEqual(before);
+    expect(await audits()).toEqual([]);
+    expect(access.generateAccessToken).not.toHaveBeenCalled();
+  },
+);
+
+it('rejects a newly inserted credential changed by a database trigger', async () => {
+  await owner.query(`CREATE FUNCTION core.rewrite_refresh() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW."userId"='${otherUserId}'; RETURN NEW; END $$;
+    CREATE TRIGGER rewrite_refresh BEFORE INSERT ON core."appToken" FOR EACH ROW EXECUTE FUNCTION core.rewrite_refresh()`);
+  await expect(
+    services().refresh.generateRefreshToken(issuancePayload()),
+  ).rejects.toThrow('persisted credential');
+  expect(await tokens()).toEqual([]);
+  expect(await audits()).toEqual([]);
+});
+
+it('rolls back issuance if an audit trigger changes the persisted credential', async () => {
+  await owner.query(`CREATE FUNCTION crm_audit.fail_refresh_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN UPDATE core."appToken" SET "userId"='${otherUserId}' WHERE id=NEW."resourceId"::uuid; RETURN NEW; END $$;
+    CREATE TRIGGER fail_refresh_audit AFTER INSERT ON crm_audit."crmAuditEntry" FOR EACH ROW EXECUTE FUNCTION crm_audit.fail_refresh_audit()`);
+  await expect(
+    services().refresh.generateRefreshToken(issuancePayload()),
+  ).rejects.toThrow('persisted credential changed');
+  expect(await tokens()).toEqual([]);
+  expect(await audits()).toEqual([]);
+});
+
+it('preserves impersonation lifetime and records its resolved initiator', async () => {
+  const membership = randomUUID();
+  await owner.query(
+    'INSERT INTO core."userWorkspace"(id,"userId","workspaceId") VALUES($1,$2,$3)',
+    [membership, otherUserId, workspaceId],
+  );
+  const result = await services().refresh.generateRefreshToken(
+    {
+      ...issuancePayload(),
+      isImpersonating: true,
+      impersonatorUserWorkspaceId: membership,
+    },
+    true,
+  );
+  const claims = verify(result.token, secret) as { exp: number; iat: number };
+  expect(claims.exp - claims.iat).toBe(86400);
+  expect((await audits())[0]).toMatchObject({
+    actor: { kind: 'coreUser', id: userId },
+    initiator: { kind: 'coreUser', id: otherUserId },
+  });
+});
+
+it('refuses issuance when an impersonation initiator cannot be resolved', async () => {
+  await expect(
+    services().refresh.generateRefreshToken(
+      {
+        ...issuancePayload(),
+        isImpersonating: true,
+        impersonatorUserWorkspaceId: randomUUID(),
+      },
+      true,
+    ),
+  ).rejects.toThrow('initiator unavailable');
+  expect(await tokens()).toEqual([]);
+  expect(await audits()).toEqual([]);
+});
+
+it('keeps workspace-agnostic issuance without inventing a tenant audit', async () => {
+  const result = await services().refresh.generateRefreshToken({
+    userId,
+    targetedTokenType: JwtTokenTypeEnum.WORKSPACE_AGNOSTIC,
+  });
+  expect(verify(result.token, secret)).toMatchObject({
+    sub: userId,
+    type: JwtTokenTypeEnum.REFRESH,
+  });
+  expect((await tokens())[0].workspaceId).toBeNull();
+  expect(await audits()).toEqual([]);
+});
+
+it('refuses use of an inherited unowned issuance transaction', async () => {
+  await runtime.transaction(async (manager) => {
+    const refresh = new RefreshTokenService(
+      jwt as never,
+      config as never,
+      manager.getRepository(AppTokenEntity),
+      manager.getRepository(UserEntity),
+    );
+    await expect(
+      refresh.generateRefreshToken(issuancePayload()),
+    ).rejects.toThrow('ownership');
+  });
+  expect(await tokens()).toEqual([]);
+  expect(await audits()).toEqual([]);
+});
+
+it.each(['user', 'workspace', 'type', 'security-reason', 'expired-grace'])(
+  'checks fresh rotation %s under the owner',
+  async (variant) => {
+    const { row } = await createToken(
+      variant === 'type'
+        ? { type: AppTokenType.CodeChallenge }
+        : variant === 'security-reason'
+          ? {
+              revokedAt: new Date(),
+              context: { revokedReason: UserSessionRevokedReason.UserSignOut },
+            }
+          : variant === 'expired-grace'
+            ? { revokedAt: new Date(Date.now() - 120000) }
+            : {},
+    );
+    const payload = issuancePayload();
+    if (variant === 'user') payload.userId = otherUserId;
+    if (variant === 'workspace') payload.workspaceId = randomUUID();
+    const before = await tokens();
+    await expect(
+      services().refresh.rotateRefreshToken({ tokenId: row.id, payload }),
+    ).rejects.toThrow('revoked');
+    expect(await tokens()).toEqual(before);
+    expect(await audits()).toEqual([]);
+  },
+);
 
 it('audits the saved credential owner without copying token, email or full context', async () => {
   const { row, token } = await createToken(),
@@ -511,6 +781,92 @@ const waitForAuthenticationLock = async (prefix: string) => {
   throw new Error('Expected authentication lock wait not observed');
 };
 
+it.each(['issue', 'rotate'])(
+  'does not return credentials after lost actual %s COMMIT acknowledgement',
+  async (operation) => {
+    const existing = operation === 'rotate' ? await createToken() : undefined;
+    const create = runtime.createQueryRunner.bind(runtime),
+      statements: string[] = [],
+      patchedClients = new WeakSet<object>();
+    jest.spyOn(runtime, 'createQueryRunner').mockImplementation((mode) => {
+      const runner = create(mode),
+        connect = runner.connect.bind(runner);
+      jest.spyOn(runner, 'connect').mockImplementation(async () => {
+        const client = await connect();
+        if (!patchedClients.has(client)) {
+          patchedClients.add(client);
+          const query = client.query.bind(client);
+          client.query = async (sql: string, ...args: unknown[]) => {
+            statements.push(sql);
+            const result = await query(sql, ...args);
+            if (sql === 'COMMIT') throw new Error('lost issuance COMMIT ACK');
+            return result;
+          };
+        }
+        return client;
+      });
+      return runner;
+    });
+    const { refresh, renew, access } = services();
+    await expect(
+      existing
+        ? renew.generateTokensFromRefreshToken(existing.token)
+        : refresh.generateRefreshToken(issuancePayload()),
+    ).rejects.toBeInstanceOf(NativeTransactionOutcomeUnknownError);
+    expect(statements).not.toContain('ROLLBACK');
+    expect(
+      statements.filter((sql) =>
+        sql.startsWith('INSERT INTO "core"."appToken"'),
+      ),
+    ).toHaveLength(1);
+    expect(await tokens()).toHaveLength(existing ? 2 : 1);
+    expect(await audits()).toHaveLength(existing ? 2 : 1);
+    expect(access.generateAccessToken).not.toHaveBeenCalled();
+  },
+);
+
+it.each(['old', 'new'])(
+  'rolls back rotation when audit corrupts the %s credential',
+  async (target) => {
+    const { token } = await createToken(),
+      before = await tokens();
+    const action = target === 'old' ? 'update' : 'create';
+    await owner.query(`CREATE FUNCTION crm_audit.fail_refresh_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='${action}' THEN UPDATE core."appToken" SET "expiresAt"=now()+interval '100 years' WHERE id=NEW."resourceId"::uuid; END IF; RETURN NEW; END $$;
+    CREATE TRIGGER fail_refresh_audit AFTER INSERT ON crm_audit."crmAuditEntry" FOR EACH ROW EXECUTE FUNCTION crm_audit.fail_refresh_audit()`);
+    await expect(
+      services().renew.generateTokensFromRefreshToken(token),
+    ).rejects.toThrow('persisted credential changed');
+    expect(await tokens()).toEqual(before);
+    expect(await audits()).toEqual([]);
+  },
+);
+
+it('checks grace again after waiting for the token row lock', async () => {
+  const { row, token } = await createToken(),
+    writer = owner.createQueryRunner();
+  await writer.connect();
+  await writer.startTransaction();
+  await writer.query('SELECT id FROM core."appToken" WHERE id=$1 FOR UPDATE', [
+    row.id,
+  ]);
+  const renewing = services().renew.generateTokensFromRefreshToken(token);
+  const rejected = expect(renewing).rejects.toThrow('revoked');
+  try {
+    await waitForAuthenticationLock('SELECT "AppTokenEntity"');
+    await writer.query(
+      'UPDATE core."appToken" SET "revokedAt"=$1 WHERE id=$2',
+      [new Date(Date.now() - 120000), row.id],
+    );
+    await writer.commitTransaction();
+  } finally {
+    if (writer.isTransactionActive) await writer.rollbackTransaction();
+    await writer.release();
+  }
+  await rejected;
+  expect(await tokens()).toHaveLength(1);
+  expect(await audits()).toEqual([]);
+});
+
 it('blocks a renewal that read the token before logout acquired the authentication fence', async () => {
   const { token } = await createToken(),
     { service, renew } = services();
@@ -561,15 +917,13 @@ it('serializes logout after an earlier renewal without claiming to revoke succes
   let ready!: () => void, release!: () => void;
   const created = new Promise<void>((resolve) => (ready = resolve)),
     gate = new Promise<void>((resolve) => (release = resolve));
-  const generate = refresh.generateRefreshToken.bind(refresh);
-  jest
-    .spyOn(refresh, 'generateRefreshToken')
-    .mockImplementation(async (...args) => {
-      const result = await generate(...args);
-      ready();
-      await gate;
-      return result;
-    });
+  const generate = jwt.signAsyncOrThrow.bind(jwt);
+  jest.spyOn(jwt, 'signAsyncOrThrow').mockImplementation(async (...args) => {
+    const result = await generate(...args);
+    ready();
+    await gate;
+    return result;
+  });
   const renewing = renew.generateTokensFromRefreshToken(token);
   await created;
   const logout = service.signOut({ refreshToken: token });
@@ -589,7 +943,7 @@ it('serializes logout after an earlier renewal without claiming to revoke succes
   await expect(
     refresh.verifyRefreshToken(successor.refreshToken.token),
   ).resolves.toBeDefined();
-  expect(await audits()).toHaveLength(1);
+  expect(await audits()).toHaveLength(3);
 });
 
 it('does not report success if audit savepoint recovery fails', async () => {
@@ -653,7 +1007,7 @@ it.each([
     });
   if (variant === 'mixed-scope')
     mutation.securityDescriptor.bindingId = randomUUID();
-  if (variant === 'wrong-action') mutation.action = 'create';
+  if (variant === 'wrong-action') mutation.action = 'delete';
   if (variant === 'wrong-resource') {
     mutation.resourceKind = 'crmRecord';
     mutation.securityDescriptor.resourceKind = 'crmRecord';
