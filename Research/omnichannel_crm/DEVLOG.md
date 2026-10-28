@@ -3498,3 +3498,5 @@ Review исправил no-op identity gap и отсутствие composite app
 сообщения/Actions не менялись. Остаток membership removal зафиксирован отдельно:
 core cleanup не атомарен, публичный путь дополнительно удаляет native member и
 переносит accounts/shares; требуется полноценная полоса, не механический SQL patch.
+
+LOG113 publication: 1590c2cebfe52ff8769e1662d5975712ac4e5612 pushed/API verified. ROB765 description and comment 80a75041-4c39-4ab1-bff4-89fabf0f168b independently read back; all 11 issue states match. Implementation continues.
