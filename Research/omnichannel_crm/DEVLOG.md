@@ -3230,3 +3230,7 @@ revoke, savepoint recovery failure, lost actual COMMIT ACK и event failure test
 ROB765 In Progress. Далее public CREATE с сохранением sharing/nested contracts;
 refresh-token/global-session audit, physical delete/merge, metadata/roles и negative
 audit ещё открыты. Образ/демо, GitHub Actions и внешние сообщения не затронуты.
+
+LOG100 publication: `a3a81589ed223616fddd6349418263c4ec457956` pushed/API verified.
+ROB765 description and comment `6f654bee-8102-4eea-a863-6706d9c06db9` independently
+read back; all 11 states match. ROB765 remains In Progress; implementation continues.
