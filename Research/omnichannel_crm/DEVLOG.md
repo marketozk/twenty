@@ -3300,3 +3300,7 @@ Read-only side-effect review не нашёл нового writer или обхо
 Далее bounded public nested CREATE с проверкой исходного графа и каждого child
 после prehook внутри proven native scope. Physical delete/merge, metadata/roles,
 negative audit и health ещё открыты. Демо/сообщения/Actions не затронуты.
+
+LOG103 publication: aaadb6f21343b46be763ba366f24a202109d011f pushed/API verified.
+ROB765 description and comment 14bc0974-a77a-42a9-b700-d3953e521a6c independently
+read back; all 11 states match. ROB765 remains In Progress; implementation continues.

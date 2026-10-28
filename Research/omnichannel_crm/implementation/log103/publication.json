@@ -1,0 +1,55 @@
+{
+  "codeCommit": "aaadb6f21343b46be763ba366f24a202109d011f",
+  "githubRefVerified": true,
+  "linearIssue": "ROB-765",
+  "linearCommentId": "14bc0974-a77a-42a9-b700-d3953e521a6c",
+  "descriptionReadbackMatches": true,
+  "commentReadbackMatches": true,
+  "states": [
+    {
+      "id": "ROB-765",
+      "status": "In Progress"
+    },
+    {
+      "id": "ROB-764",
+      "status": "Done"
+    },
+    {
+      "id": "ROB-769",
+      "status": "Backlog"
+    },
+    {
+      "id": "ROB-772",
+      "status": "Done"
+    },
+    {
+      "id": "ROB-762",
+      "status": "Done"
+    },
+    {
+      "id": "ROB-763",
+      "status": "Done"
+    },
+    {
+      "id": "ROB-766",
+      "status": "Backlog"
+    },
+    {
+      "id": "ROB-767",
+      "status": "Backlog"
+    },
+    {
+      "id": "ROB-768",
+      "status": "Backlog"
+    },
+    {
+      "id": "ROB-770",
+      "status": "Backlog"
+    },
+    {
+      "id": "ROB-771",
+      "status": "Backlog"
+    }
+  ],
+  "githubActionsUsed": false
+}
