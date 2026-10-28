@@ -1,6 +1,8 @@
 import {
   assertNativeCrmAuditWriteSupported,
+  assertNativeCrmDeleteFilesEmpty,
   readNativeCrmAuditRows,
+  recordNativeCrmDeletes,
   recordNativeCrmUpdates,
   type NativeCrmAuditTableShape,
   type NativeCrmAuditObjectMetadata,
@@ -33,10 +35,14 @@ export const prepareNativeCrmDeleteEffects = async (
     schemaName: string,
     tableName: string,
   ) => ChildTable | undefined,
+  assertChildDeletionAllowed: (
+    shape: NativeCrmAuditTableShape,
+    ids: string[],
+  ) => Promise<void>,
 ): Promise<(deletedIds: string[]) => Promise<void>> => {
   const groups = new Map<
     string,
-    ChildTable & { ids: Set<string>; columns: Set<string> }
+    ChildTable & { ids: Set<string>; actions: Map<string, 'n' | 'c'> }
   >();
   const parentTable = `${quote(parent.schemaName)}.${quote(parent.tableName)}`;
   const scope = {
@@ -71,7 +77,7 @@ export const prepareNativeCrmDeleteEffects = async (
       if (
         !child ||
         childTable === parentTable ||
-        reference.deleteAction !== 'n' ||
+        !['n', 'c'].includes(reference.deleteAction) ||
         reference.childColumns.length !== 1 ||
         reference.parentColumns[0] !== 'id' ||
         !child.columnsReferencingParent.has(column) ||
@@ -80,22 +86,25 @@ export const prepareNativeCrmDeleteEffects = async (
         )
       )
         throw new Error(
-          'Native audit delete excludes referenced records outside SET NULL coverage',
+          'Native audit delete excludes referenced records outside direct FK coverage',
         );
       assertNativeCrmAuditWriteSupported(
         executor,
         child.shape,
         child.metadata,
         workspaceId,
-        'update',
-        { [column]: null },
+        reference.deleteAction === 'c' ? 'delete' : 'update',
+        reference.deleteAction === 'c' ? undefined : { [column]: null },
       );
       const group = groups.get(childTable) ?? {
         ...child,
         ids: new Set<string>(),
-        columns: new Set<string>(),
+        actions: new Map<string, 'n' | 'c'>(),
       };
-      group.columns.add(column);
+      const previousAction = group.actions.get(column);
+      if (previousAction && previousAction !== reference.deleteAction)
+        throw new Error('Native audit delete excludes conflicting FK actions');
+      group.actions.set(column, reference.deleteAction as 'n' | 'c');
       for (const row of await executor.execute({
         text: `SELECT child.id ${from}`,
         values: [parentIds],
@@ -108,7 +117,7 @@ export const prepareNativeCrmDeleteEffects = async (
     }
   const plans: {
     shape: NativeCrmAuditTableShape;
-    columns: ReadonlySet<string>;
+    actions: ReadonlyMap<string, 'n' | 'c'>;
     before: Awaited<ReturnType<typeof readNativeCrmAuditRows>>;
   }[] = [];
   const capturedParentIds = new Set(parentIds);
@@ -124,7 +133,31 @@ export const prepareNativeCrmDeleteEffects = async (
       group.shape,
       locked.map((row) => String(row.id)),
     );
-    for (const column of group.columns) {
+    const cascadeBefore = before.filter((row) =>
+      [...group.actions].some(
+        ([column, action]) =>
+          action === 'c' &&
+          capturedParentIds.has(JSON.parse(String(row[column]))),
+      ),
+    );
+    if (cascadeBefore.length) {
+      const cascadeIds = cascadeBefore.map((row) => row.id);
+      assertNativeCrmDeleteFilesEmpty(group.shape, cascadeBefore);
+      await assertChildDeletionAllowed(group.shape, cascadeIds);
+      if (
+        await hasReferencingRecords(
+          scope,
+          group.shape.schemaName,
+          group.shape.tableName,
+          cascadeIds,
+        )
+      )
+        throw new Error(
+          'Native delete excludes transitive foreign-key effects',
+        );
+    }
+    for (const [column, action] of group.actions) {
+      if (action !== 'n') continue;
       const changingIds = before
         .filter((row) => capturedParentIds.has(JSON.parse(String(row[column]))))
         .map((row) => row.id);
@@ -151,20 +184,32 @@ export const prepareNativeCrmDeleteEffects = async (
         plan.shape,
         plan.before.map((row) => row.id),
       );
-      if (after.length !== plan.before.length)
-        throw new Error('Native delete SET NULL child vanished');
       const changedIds: string[] = [];
+      const deletedChildIds: string[] = [];
       for (const before of plan.before) {
-        const current = after.find((row) => row.id === before.id)!;
+        const current = after.find((row) => row.id === before.id);
+        const shouldDelete = [...plan.actions].some(
+          ([column, action]) =>
+            action === 'c' && deleted.has(JSON.parse(String(before[column]))),
+        );
+        if (shouldDelete) {
+          if (current) throw new Error('Native delete CASCADE child remains');
+          deletedChildIds.push(before.id);
+          continue;
+        }
+        if (!current) throw new Error('Native delete SET NULL child vanished');
         const changedColumns = new Set(
-          [...plan.columns].filter((column) => {
-            const previous = JSON.parse(String(before[column]));
-            return (
-              typeof previous === 'string' &&
-              capturedParentIds.has(previous) &&
-              deleted.has(previous)
-            );
-          }),
+          [...plan.actions]
+            .filter(([column, action]) => {
+              const previous = JSON.parse(String(before[column]));
+              return (
+                action === 'n' &&
+                typeof previous === 'string' &&
+                capturedParentIds.has(previous) &&
+                deleted.has(previous)
+              );
+            })
+            .map(([column]) => column),
         );
         for (const column of Object.keys(before)) {
           const expected = changedColumns.has(column) ? 'null' : before[column];
@@ -178,6 +223,12 @@ export const prepareNativeCrmDeleteEffects = async (
         plan.shape,
         plan.before,
         changedIds,
+      );
+      await recordNativeCrmDeletes(
+        executor,
+        plan.shape,
+        plan.before,
+        deletedChildIds,
       );
     }
   };

@@ -1,0 +1,10 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-delete-set-null.postgres-spec.ts (14.239 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-parent-destroy.postgres-spec.ts (15.807 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-detached-parent-delete.postgres-spec.ts (11 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-delete.postgres-spec.ts (5.519 s)
+
+Test Suites: 4 passed, 4 total
+Tests:       134 passed, 134 total
+Snapshots:   0 total
+Time:        46.702 s
+Ran all test suites matching /crm-audit-delete-set-null|crm-audit-native-delete|omni-parent-destroy|omni-detached-parent-delete/i.

@@ -875,3 +875,13 @@ actual mutating references, поскольку NEW key может отличат
 trigger-issued SQL и privileged replication override вне покрытия. Caught guard failure
 отравляет общий owner; legacy путь не меняется. FK mutations не объявлены реализованными:
 неподдерживаемые эффекты запрещены, а не выполнены без аудита.
+
+LOG108 расширяет LOG106 на direct covered CASCADE. План хранит действие каждой FK;
+conflicting actions одной колонки отказываются. Child locks + fresh before определяют
+потенциальное удаление. Перед SQL: child FILES пусты, findOmniProtectedParentIds по
+точным child workspace/object/name/IDs не находит retained references, дальнейшие
+incoming references отсутствуют. Root detached grant не наследуется. Actual deleted
+parent IDs определяют child delete либо surviving SET_NULL, пропущенные parents
+не создают ложного эффекта. Child absence/full-column survivor postconditions обязательны.
+Audit delete/update используют прежний context; SQL cascade events/permissions не
+подменяются отдельными repository calls. Public DESTROY/MERGE и file cleanup owner открыты.

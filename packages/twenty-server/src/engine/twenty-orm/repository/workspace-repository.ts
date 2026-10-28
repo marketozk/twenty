@@ -2078,6 +2078,17 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
               }
               return undefined;
             },
+            async (shape, ids) => {
+              const protectedChildIds = await findOmniProtectedParentIds(
+                query,
+                this.options.internalContext.workspaceId,
+                shape.objectMetadataId,
+                shape.nameSingular,
+                ids,
+              );
+              if (protectedChildIds.size)
+                throw new Error('OMNI_PARENT_DELETE_REQUIRES_DOMAIN_COMMAND');
+            },
           );
         }
       }

@@ -3385,3 +3385,22 @@ covered ON DELETE CASCADE с retained child guards. Демо/образ/Actions/
 978 tests/33 suites PASS (191.233s); 166 targeted/4 suites PASS. 24 новых PostgreSQL cases. 26 guards PASS; 10 migration checksums неизменны. Types 347/349 roots, 189/189 прежних диагностик, 0 новых/changed-code. 6 local/remote source hashes совпадают.
 
 LOG107 publication: 463cfc731d25ce3b58e4f05f4f53bbc22b27a301 pushed/API verified. ROB765 description and comment 0f1a4549-49fb-49cc-89d2-844fdc67a400 independently read back; all 11 issue states match. Implementation continues.
+
+## LOG-108 — direct CASCADE и retained child protection
+
+Native audit internal delete расширен на direct covered CASCADE. Actual parent IDs,
+sorted child locks/fresh before, per-column actions и postconditions определяют одно
+итоговое child действие. Перед CASCADE проверяются child FILES, retained omni references
+и дальнейшие incoming FK. Root domain grant детям не передаётся. Mixed NULL/CASCADE,
+skipped parent, reparent races, audit faults и lost ACK проверяются реальным PG.
+Read-only review блокеров не выявил; отдельная child permission/event semantics не вводится.
+
+[Доказательства](implementation/log108/README.md). ROB765 In Progress; public DESTROY,
+MERGE и nonempty FILES cleanup остаются впереди. Демо/образ/Actions/сообщения не тронуты.
+
+Source review следующего core writer выявил security gap signOut refresh: текущая
+ветка ставит только revokedAt, а renew допускает revokedAt без revokedReason в grace.
+Следующий срез — reason + общий auth fence + security-first audit owner предъявленного
+refresh token. Он не обещает family revocation уже выданных successors.
+
+998 tests/33 suites PASS (197.09s); 134 targeted/4 suites PASS. Прирост 20 PostgreSQL cases. 26 guards PASS; 10 migration checksums неизменны. Types 345/345 roots, 189/189 прежних диагностик, 0 новых/changed-code. 3 local/remote source hashes совпадают.
