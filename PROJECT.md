@@ -54,13 +54,13 @@
 
 Перед реализацией ROB-764 пользователь расширил планирование на весь проект: ROB-772, подробная спецификация и независимое кроссревью с Claude Code. Актуальный вердикт и незакрытые вопросы находятся в [реестре](Research/omnichannel_crm/plan/cross-review/registry.md). Ранние положительные отзывы об архитектуре не заменяют этот проход. 33 группы будущих проверок и [карта покрытия требований](Research/omnichannel_crm/plan/coverage.md) относятся к ещё не написанным функциям; работающий экземпляр этим планированием не меняется.
 
-LOG-083 / ROB-764 In Progress: реализован внутренний explicit ConversationTarget writer.
-Person/Company/Opportunity получают точную manual projection; Task/custom — только core edge.
-Current authorization, revision CAS, epoch и audit атомарны; replay сверяет всю retained
-цепочку состояния и native projection audit. 194 tests/5 suites +26 guards =220 PASS;32 new PG cases. Differential typecheck 316 roots:187 baseline/187 current,0 new/changed-code. All nine migration sources unchanged. [Доказательства](Research/omnichannel_crm/implementation/log083/README.md).
-Последний полный fork regression: LOG082,2661 tests/83 suites.
-Далее CreatePerson/autoCreatePerson и сверка оставшихся phase1 criteria;
-transport discovery и полный ACL/API ещё не подключены.
+LOG-084 / ROB-764 In Progress: внутренняя createPersonForOmniIdentity создаёт штатный
+Person и связывает verified identity/прежних участников одной транзакцией с audit/receipt.
+Идентификатор назначает сервер, повтор после unlink/rebind не создаёт новый Person;
+разрешён только структурированный name, без guessing email/телефона. 129 tests/5 suites +26 guards =155 PASS;22 new PG cases. Differential typecheck 317 roots:187 baseline/187 current,0 new/changed-code. All nine migration sources unchanged.
+[Доказательства](Research/omnichannel_crm/implementation/log084/README.md). Последний полный fork regression: LOG082,2661 tests/83 suites.
+Далее opt-in live autoCreatePerson и итоговая сверка phase1 criteria.
+Governed Person-created event/visibility явно остаётся в producer inventory ROB-769.
 Демо прежнее, GitHub Actions не используется.
 
 Предыдущая порция LOG-022: реализованы минимальный аудит и атомарное создание

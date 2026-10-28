@@ -5,6 +5,7 @@ export type CrmAuditPrincipal = {
 
 export type CrmAuditResourceKind =
   | 'omniAccountBinding'
+  | 'omniPerson'
   | 'omniExternalIdentity'
   | 'omniConversationTarget'
   | 'omniMessageThreadTarget'

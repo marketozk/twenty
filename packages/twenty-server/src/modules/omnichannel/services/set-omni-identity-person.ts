@@ -17,21 +17,47 @@ const counter = z
   .string()
   .regex(/^[1-9][0-9]{0,18}$(?![\s\S])/)
   .refine((value) => BigInt(value) <= 9223372036854775807n);
+const idempotencyKeySchema = z
+  .string()
+  .min(1)
+  .max(256)
+  .refine(
+    (value) =>
+      value.trim() === value &&
+      !/[\u0000-\u001f\u007f\uD800-\uDFFF]/u.test(value),
+  );
 const commandSchema = z
   .strictObject({
     bindingId: uuid,
     externalIdentityId: uuid,
     personId: uuid.nullable(),
     expectedRevision: counter,
-    idempotencyKey: z
-      .string()
-      .min(1)
-      .max(256)
-      .refine(
-        (value) =>
-          value.trim() === value &&
-          !/[\u0000-\u001f\u007f\uD800-\uDFFF]/u.test(value),
-      ),
+    idempotencyKey: idempotencyKeySchema,
+  })
+  .readonly();
+const personNameText = z
+  .string()
+  .max(256)
+  .refine(
+    (value) =>
+      value.trim() === value &&
+      !/[\u0000-\u001f\u007f\uD800-\uDFFF]/u.test(value),
+  );
+const createPersonFieldsSchema = z
+  .strictObject({
+    name: z
+      .strictObject({ firstName: personNameText, lastName: personNameText })
+      .refine((name) => Boolean(name.firstName || name.lastName))
+      .readonly(),
+  })
+  .readonly();
+const createCommandSchema = z
+  .strictObject({
+    bindingId: uuid,
+    externalIdentityId: uuid,
+    expectedRevision: counter,
+    idempotencyKey: idempotencyKeySchema,
+    person: createPersonFieldsSchema,
   })
   .readonly();
 const identitySchema = z.object({
@@ -134,11 +160,48 @@ export const snapshotOmniIdentityPersonRequest = (
   if (typeof authorize !== 'function')
     throw new Error('OMNI_IDENTITY_PERSON_AUTHORIZER_REQUIRED');
   return Object.freeze({
+    mode: 'set' as const,
     principal: omniBindingConfigurationPrincipalSchema.parse(principal),
     command: commandSchema.parse(command),
     authorize,
   });
 };
+export type OmniIdentityCreatePersonFields = z.infer<
+  typeof createPersonFieldsSchema
+>;
+export type OmniIdentityCreatePersonCommand = z.infer<
+  typeof createCommandSchema
+>;
+export type OmniIdentityCreatePersonAuthorizer = (
+  scope: OmniHistoryApplyScope,
+  facts: Readonly<
+    OmniIdentityPersonPrincipal & {
+      action: 'identity.createPerson';
+      command: OmniIdentityCreatePersonCommand;
+      currentIdentity: Readonly<z.infer<typeof identitySchema>>;
+      conversations: readonly Readonly<z.infer<typeof conversationSchema>>[];
+      personObjectMetadataId: string;
+      replay: boolean;
+    }
+  >,
+) => Promise<void>;
+export const snapshotOmniIdentityCreatePersonRequest = (
+  principal: OmniIdentityPersonPrincipal,
+  command: OmniIdentityCreatePersonCommand,
+  authorize: OmniIdentityCreatePersonAuthorizer,
+) => {
+  if (typeof authorize !== 'function')
+    throw new Error('OMNI_IDENTITY_PERSON_AUTHORIZER_REQUIRED');
+  return Object.freeze({
+    mode: 'create' as const,
+    principal: omniBindingConfigurationPrincipalSchema.parse(principal),
+    command: createCommandSchema.parse(command),
+    authorize,
+  });
+};
+export type OmniIdentityPersonRequest =
+  | ReturnType<typeof snapshotOmniIdentityPersonRequest>
+  | ReturnType<typeof snapshotOmniIdentityCreatePersonRequest>;
 const fail = (code: string): never => {
   throw new Error(`OMNI_IDENTITY_PERSON_${code}`);
 };
@@ -153,7 +216,7 @@ const next = (value: string) => {
 
 export const setOmniIdentityPerson = async (
   originalScope: OmniHistoryApplyScope,
-  request: ReturnType<typeof snapshotOmniIdentityPersonRequest>,
+  request: OmniIdentityPersonRequest,
   personObjectMetadataId: string,
   attemptOperationId: string,
   nativePort: {
@@ -162,9 +225,15 @@ export const setOmniIdentityPerson = async (
       personId: string | null,
     ) => Promise<void>;
     deleteProjection: (id: string) => Promise<void>;
+    createPerson?: (
+      id: string,
+      fields: OmniIdentityCreatePersonFields,
+    ) => Promise<void>;
   },
 ) => {
-  const { principal, command, authorize } = request;
+  const { principal, command } = request;
+  let personId: string | null =
+    request.mode === 'set' ? request.command.personId : null;
   const { workspaceId } = principal;
   if (originalScope.workspaceId !== workspaceId)
     return fail('WORKSPACE_MISMATCH');
@@ -175,7 +244,8 @@ export const setOmniIdentityPerson = async (
   let operationId = uuid.parse(attemptOperationId);
   const schema = `workspace_${BigInt(`0x${workspaceId.replaceAll('-', '')}`).toString(36)}`;
   const { idempotencyKey, ...payload } = command;
-  const action = 'identity.setPerson';
+  const action =
+    request.mode === 'create' ? 'identity.createPerson' : 'identity.setPerson';
   const payloadHash = auditPayloadHash({ workspaceId, action, ...payload });
   const state = one(
     z.object({ id: uuid, epoch: counter }),
@@ -229,20 +299,33 @@ export const setOmniIdentityPerson = async (
       [workspaceId, command.bindingId, command.externalIdentityId],
     ),
   );
-  await authorize(
-    scope,
-    Object.freeze({
-      ...principal,
-      action: 'identity.setPerson',
-      command,
-      currentIdentity: Object.freeze(identity),
-      conversations: Object.freeze(
-        conversations.map((row) => Object.freeze(row)),
-      ),
-      personObjectMetadataId,
-      replay: Boolean(receipt),
-    }),
-  );
+  const facts = Object.freeze({
+    ...principal,
+    currentIdentity: Object.freeze(identity),
+    conversations: Object.freeze(
+      conversations.map((row) => Object.freeze(row)),
+    ),
+    personObjectMetadataId,
+    replay: Boolean(receipt),
+  });
+  if (request.mode === 'create')
+    await request.authorize(
+      scope,
+      Object.freeze({
+        ...facts,
+        action: 'identity.createPerson',
+        command: request.command,
+      }),
+    );
+  else
+    await request.authorize(
+      scope,
+      Object.freeze({
+        ...facts,
+        action: 'identity.setPerson',
+        command: request.command,
+      }),
+    );
   const history = await loadOmniIdentityBindingHistory(
     scope,
     workspaceId,
@@ -252,6 +335,30 @@ export const setOmniIdentityPerson = async (
     resourceKind: 'omniExternalIdentity' as const,
     resourceId: identity.id,
     bindingId: identity.bindingId,
+  };
+  const verifyCreationAudit = async (
+    createdOperationId: string,
+    createdPersonId: string,
+  ) => {
+    const entries = await query(
+      `SELECT "securityDescriptor","redactedDiff" FROM crm_audit."crmAuditEntry" WHERE "workspaceId"=$1 AND "operationId"=$2 AND "resourceKind"='omniPerson' AND "resourceId"=$3 AND action='create' AND outcome='success'`,
+      [workspaceId, createdOperationId, createdPersonId],
+    );
+    const proof = one(
+      z.object({ securityDescriptor: z.unknown(), redactedDiff: z.unknown() }),
+      entries,
+    );
+    if (
+      auditPayloadHash(proof.securityDescriptor) !==
+        auditPayloadHash({
+          resourceKind: 'omniPerson',
+          resourceId: createdPersonId,
+          bindingId: identity.bindingId,
+        }) ||
+      auditPayloadHash(proof.redactedDiff) !==
+        auditPayloadHash({ changedFields: ['name'], values: {} })
+    )
+      return fail('CREATED_PERSON_AUDIT');
   };
   if (receipt) {
     if (receipt.action !== action || receipt.payloadHash !== payloadHash)
@@ -265,7 +372,9 @@ export const setOmniIdentityPerson = async (
     const result = resultSchema.parse(receipt.resultPublic);
     if (
       result.externalIdentityId !== identity.id ||
-      result.personId !== command.personId ||
+      (request.mode === 'set'
+        ? result.personId !== personId
+        : result.personId === null) ||
       BigInt(result.policyEpoch) > BigInt(state.epoch)
     )
       return fail('RECEIPT_INTEGRITY');
@@ -276,17 +385,51 @@ export const setOmniIdentityPerson = async (
       result.personId,
       result.policyEpoch,
     );
+    if (request.mode === 'create')
+      await verifyCreationAudit(receipt.operationId, result.personId!);
     return { ...result, operationId: receipt.operationId, replayed: true };
   }
   if (identity.revision !== command.expectedRevision)
     return fail('REVISION_CONFLICT');
   const revision = next(identity.revision),
     epoch = next(state.epoch);
+  let createdPerson: OmniIdentityCreatePersonFields | null = null;
+  const verifyCreatedPerson = async () => {
+    if (!createdPerson || !personId) return;
+    const row = one(
+      z.object({
+        id: uuid,
+        nameFirstName: z.string(),
+        nameLastName: z.string(),
+        deletedAt: z.null(),
+      }),
+      await query(
+        `SELECT id,"nameFirstName","nameLastName","deletedAt" FROM "${schema}".person WHERE id=$1 FOR UPDATE`,
+        [personId],
+      ),
+    );
+    if (
+      auditPayloadHash(row) !==
+      auditPayloadHash({
+        id: personId,
+        nameFirstName: createdPerson.name.firstName,
+        nameLastName: createdPerson.name.lastName,
+        deletedAt: null,
+      })
+    )
+      return fail('CREATED_PERSON_INTEGRITY');
+  };
+  if (request.mode === 'create') {
+    if (identity.personId !== null) return fail('ALREADY_BOUND');
+    if (!nativePort.createPerson) return fail('CREATE_PERSON_PORT_REQUIRED');
+    personId = randomUUID();
+    createdPerson = request.command.person;
+    await nativePort.createPerson(personId, createdPerson);
+    await verifyCreatedPerson();
+  }
   const people = [
     ...new Set(
-      [identity.personId, command.personId].filter(
-        (id): id is string => id !== null,
-      ),
+      [identity.personId, personId].filter((id): id is string => id !== null),
     ),
   ].sort();
   const personRows = z
@@ -299,10 +442,8 @@ export const setOmniIdentityPerson = async (
     );
   if (
     personRows.length !== people.length ||
-    (command.personId !== null &&
-      !personRows.some(
-        (row) => row.id === command.personId && row.deletedAt === null,
-      ))
+    (personId !== null &&
+      !personRows.some((row) => row.id === personId && row.deletedAt === null))
   )
     return fail('PERSON_NOT_LIVE');
   const messages = z
@@ -347,7 +488,7 @@ export const setOmniIdentityPerson = async (
     history.assertBirth(author);
   }
   const targets =
-    identity.personId !== null && identity.personId !== command.personId
+    identity.personId !== null && identity.personId !== personId
       ? z
           .array(targetSchema)
           .parse(
@@ -393,12 +534,22 @@ export const setOmniIdentityPerson = async (
     ...principal,
     operationId,
   });
-  if (identity.personId !== command.personId)
+  if (createdPerson && personId)
+    audit.record({
+      resourceKind: 'omniPerson',
+      resourceId: personId,
+      action: 'create',
+      before: null,
+      after: createdPerson,
+      securityDescriptor: {
+        resourceKind: 'omniPerson',
+        resourceId: personId,
+        bindingId: identity.bindingId,
+      },
+    });
+  if (identity.personId !== personId)
     for (const participant of participants) {
-      await nativePort.updateParticipantPerson(
-        participant.id,
-        command.personId,
-      );
+      await nativePort.updateParticipantPerson(participant.id, personId);
       const conversationId = links.find(
         (link) => link.messageId === participant.messageId,
       )!.conversationId;
@@ -407,7 +558,7 @@ export const setOmniIdentityPerson = async (
         resourceId: participant.id,
         action: 'update',
         before: participant,
-        after: { ...participant, personId: command.personId },
+        after: { ...participant, personId: personId },
         securityDescriptor: {
           resourceKind: 'omniMessageParticipant',
           resourceId: participant.id,
@@ -469,12 +620,12 @@ export const setOmniIdentityPerson = async (
     identitySchema,
     await query(
       `WITH updated AS (UPDATE core."omniExternalIdentity" SET "personId"=$1,revision=revision+1,"updatedAt"=clock_timestamp() WHERE "workspaceId"=$2 AND id=$3 AND revision=$4 RETURNING id,"bindingId","personId",revision,"providerPeerId","verificationSource") SELECT * FROM updated`,
-      [command.personId, workspaceId, identity.id, identity.revision],
+      [personId, workspaceId, identity.id, identity.revision],
     ),
   );
   if (
     auditPayloadHash(updatedIdentity) !==
-    auditPayloadHash({ ...identity, personId: command.personId, revision })
+    auditPayloadHash({ ...identity, personId: personId, revision })
   )
     return fail('IDENTITY_UPDATE');
   const updatedState = one(
@@ -507,7 +658,7 @@ export const setOmniIdentityPerson = async (
   await audit.flush();
   const result = {
     externalIdentityId: identity.id,
-    personId: command.personId,
+    personId: personId,
     revision,
     policyEpoch: epoch,
   };
@@ -545,7 +696,7 @@ export const setOmniIdentityPerson = async (
   if (
     auditPayloadHash(finalParticipants) !==
     auditPayloadHash(
-      participants.map((row) => ({ ...row, personId: command.personId })),
+      participants.map((row) => ({ ...row, personId: personId })),
     )
   )
     return fail('FINAL_PARTICIPANTS');
@@ -613,19 +764,16 @@ export const setOmniIdentityPerson = async (
     return fail('FINAL_RECEIPT');
   (
     await loadOmniIdentityBindingHistory(scope, workspaceId, finalIdentity)
-  ).assertTransition(
-    operationId,
-    identity.revision,
-    revision,
-    command.personId,
-    epoch,
-  );
+  ).assertTransition(operationId, identity.revision, revision, personId, epoch);
+  await verifyCreatedPerson();
+  if (createdPerson && personId)
+    await verifyCreationAudit(operationId, personId);
   return { ...result, operationId, replayed: false };
 };
 
 export const appendOmniIdentityPersonFailure = async (
   scope: OmniHistoryApplyScope,
-  request: ReturnType<typeof snapshotOmniIdentityPersonRequest>,
+  request: OmniIdentityPersonRequest,
   operationId: string,
   denied: boolean,
 ) => {

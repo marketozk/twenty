@@ -28,6 +28,10 @@ import { appendOmniLocalCommandCancellationFailure } from 'src/modules/omnichann
 import { randomUUID } from 'node:crypto';
 import {
   setOmniIdentityPerson,
+  snapshotOmniIdentityCreatePersonRequest,
+  type OmniIdentityCreatePersonCommand,
+  type OmniIdentityCreatePersonAuthorizer,
+  type OmniIdentityPersonRequest,
   snapshotOmniIdentityPersonRequest,
   appendOmniIdentityPersonFailure,
   type OmniIdentityPersonPrincipal,
@@ -318,6 +322,22 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
       command,
       authorize,
     );
+    return this.executeOmniIdentityPersonRequest(request);
+  }
+
+  async createPersonForOmniIdentity(
+    principal: OmniIdentityPersonPrincipal,
+    command: OmniIdentityCreatePersonCommand,
+    authorize: OmniIdentityCreatePersonAuthorizer,
+  ) {
+    return this.executeOmniIdentityPersonRequest(
+      snapshotOmniIdentityCreatePersonRequest(principal, command, authorize),
+    );
+  }
+
+  private async executeOmniIdentityPersonRequest(
+    request: OmniIdentityPersonRequest,
+  ) {
     const operationId = randomUUID();
     return this.workspaceOrmManager.executeInWorkspaceContext(
       async () => {
@@ -337,20 +357,45 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
               entered = true;
               return setOmniIdentityPerson(
                 scope,
-                {
-                  ...request,
-                  authorize: async (...args) => {
-                    try {
-                      await request.authorize(...args);
-                    } catch (error) {
-                      denied = true;
-                      throw error;
+                request.mode === 'create'
+                  ? {
+                      ...request,
+                      authorize: async (
+                        ...args: Parameters<OmniIdentityCreatePersonAuthorizer>
+                      ) => {
+                        try {
+                          await request.authorize(...args);
+                        } catch (error) {
+                          denied = true;
+                          throw error;
+                        }
+                      },
                     }
-                  },
-                },
+                  : {
+                      ...request,
+                      authorize: async (
+                        ...args: Parameters<OmniIdentityPersonAuthorizer>
+                      ) => {
+                        try {
+                          await request.authorize(...args);
+                        } catch (error) {
+                          denied = true;
+                          throw error;
+                        }
+                      },
+                    },
                 personObjectMetadataId,
                 operationId,
                 {
+                  createPerson: async (id, fields) => {
+                    await scope
+                      .getRepository(
+                        'person',
+                        { shouldBypassPermissionChecks: true },
+                        { shouldSkipEventEmission: true },
+                      )
+                      .insert({ id, name: { ...fields.name } });
+                  },
                   updateParticipantPerson: async (id, personId) => {
                     const result = await withOmniRepositoryOptions(scope)
                       .getRepository<{

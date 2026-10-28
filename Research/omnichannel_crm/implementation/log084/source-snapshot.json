@@ -1,0 +1,12 @@
+{
+  "baseCommit": "c45cb0985aedcf9ae229e2f478bf7b7f41c34842",
+  "testSource": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "uploadedSourceHashesVerified": true,
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "5c6b43dfa83c762dadec83f86abe05f0082c1806fd541fe5fd359a85f5dbced1",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "abbbf67002aa1894001995554d912f48ca9bcc15f5f27f318cbb90b537cd9156",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts": "25b2910474ae232fc9945df8565d33dc6ee86ea6525e5f8211d58cf91054d639",
+    "packages/twenty-server/src/modules/omnichannel/services/set-omni-identity-person.ts": "00cdb6f9031fdd9e166fc7985cf9c6cf49b2d90cdf3f0abbd43c9f52de0bb4f4",
+    "packages/twenty-server/test/fork-migration/omni-identity-create-person.postgres-spec.ts": "b880318f4d8102caf3f2371d04cedcef9fc50e56da0f79569d51d75f3f2a4d90"
+  }
+}
