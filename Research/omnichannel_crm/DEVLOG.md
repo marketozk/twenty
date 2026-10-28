@@ -1963,3 +1963,5 @@ are not newly transactional; no full lifecycle or SQL/queue atomicity claim.
 Last full fork LOG0561881/71; no full server typecheck/full Claude review/ROB764 Done.
 Demo/SaleBot unchanged; no GitHub Actions. Skills: ai-dev-workflow,
 behavioral-guardrails, server-schrodinger, scoped read-only research/review.
+
+LOG066 publication: code c981f4951291ed55d012ac4d3810f7754cc9e9dc pushed; GitHub API ref verified. Linear comment 3cc03ec9-dd1c-4e74-84f8-127a11edbbd6, description/comment and all11 project states independently verified. ROB764 In Progress.
