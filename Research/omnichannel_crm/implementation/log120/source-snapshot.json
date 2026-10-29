@@ -1,0 +1,9 @@
+{
+  "baseCommit": "019c90b53b14c40622acb1138cd756aae63ccba2",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/admin-panel/services/admin-panel-server-admin.service.ts": "c6cd6eda1643ab88a70f316295f268322dae262eef7e707889373487f63ff2fe",
+    "packages/twenty-server/src/engine/core-modules/user/services/user.service.ts": "a6e66c01d147e519fbccbe4ed802a7f1edebd7c6c291b4695fd2e3a9d5403951",
+    "packages/twenty-server/test/fork-migration/crm-audit-active-core-user.postgres-spec.ts": "906353595cc0db236195243b735e3edbaf6801de34b3d6088bbf54263b766c8e"
+  },
+  "uploadedSourceHashesVerified": true
+}

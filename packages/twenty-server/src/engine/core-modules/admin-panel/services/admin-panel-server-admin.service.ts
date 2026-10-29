@@ -5,7 +5,8 @@ import { msg } from '@lingui/core/macro';
 import { ServerAdminAccessChangedEmail, renderEmail } from 'twenty-emails';
 import { SOURCE_LOCALE } from 'twenty-shared/translations';
 import { isDefined } from 'twenty-shared/utils';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
+import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
 
 import { CoreEntityCacheService } from 'src/engine/core-entity-cache/services/core-entity-cache.service';
 import { type ServerAdminDTO } from 'src/engine/core-modules/admin-panel/dtos/server-admin.dto';
@@ -63,11 +64,12 @@ export class AdminPanelServerAdminService {
       throw new UserInputError('No administrator access change was provided.');
     }
 
-    const targetUser = await this.userRepository.findOne({
+    actor = { ...actor };
+    const existingTarget = await this.userRepository.findOne({
       where: { id: targetUserId },
     });
 
-    if (!isDefined(targetUser)) {
+    if (!isDefined(existingTarget)) {
       throw new UserInputError('User not found.');
     }
 
@@ -85,54 +87,88 @@ export class AdminPanelServerAdminService {
       );
     }
 
-    const nextCanAccessFullAdminPanel =
-      canAccessFullAdminPanel ?? targetUser.canAccessFullAdminPanel;
-    const nextCanImpersonate = canImpersonate ?? targetUser.canImpersonate;
-
-    const hasChange =
-      nextCanAccessFullAdminPanel !== targetUser.canAccessFullAdminPanel ||
-      nextCanImpersonate !== targetUser.canImpersonate;
-
-    if (!hasChange) {
-      return this.toServerAdminDTO(targetUser);
-    }
-
-    const isRevokingFullAdmin =
-      targetUser.canAccessFullAdminPanel === true &&
-      nextCanAccessFullAdminPanel === false;
-
-    targetUser.canAccessFullAdminPanel = nextCanAccessFullAdminPanel;
-    targetUser.canImpersonate = nextCanImpersonate;
-
-    await this.userRepository.manager.transaction(async (manager) => {
-      if (isRevokingFullAdmin) {
-        const lockedFullAdmins = await manager.find(UserEntity, {
-          where: { canAccessFullAdminPanel: true },
-          lock: { mode: 'pessimistic_write' },
-        });
-
-        const otherFullAdmins = lockedFullAdmins.filter(
-          (admin) => admin.id !== targetUserId,
-        );
-
-        if (otherFullAdmins.length === 0) {
-          throw new UserInputError(
-            'You cannot revoke admin panel access from the last server administrator.',
+    let result: { targetUser: UserEntity; changed: boolean };
+    try {
+      result = await runInCoreAuditTransaction(
+        this.userRepository.manager.connection,
+        async (runner) => {
+          const lockedAdmins: {
+            id: string;
+            canAccessFullAdminPanel: boolean;
+          }[] = await runner.query(
+            'SELECT id, "canAccessFullAdminPanel" FROM core."user" WHERE "deletedAt" IS NULL AND ("canAccessFullAdminPanel"=true OR id=$1) ORDER BY id FOR UPDATE',
+            [targetUserId],
+          );
+          const targetUser = await runner.manager.findOne(UserEntity, {
+            where: { id: targetUserId },
+          });
+          if (
+            !targetUser ||
+            !lockedAdmins.some((admin) => admin.id === targetUser.id)
+          ) {
+            throw new UserInputError('User not found.');
+          }
+          const nextCanAccessFullAdminPanel =
+            canAccessFullAdminPanel ?? targetUser.canAccessFullAdminPanel;
+          const nextCanImpersonate =
+            canImpersonate ?? targetUser.canImpersonate;
+          if (
+            nextCanAccessFullAdminPanel ===
+              targetUser.canAccessFullAdminPanel &&
+            nextCanImpersonate === targetUser.canImpersonate
+          ) {
+            return { targetUser, changed: false };
+          }
+          if (
+            targetUser.canAccessFullAdminPanel &&
+            !nextCanAccessFullAdminPanel &&
+            !lockedAdmins.some(
+              (admin) =>
+                admin.id !== targetUser.id && admin.canAccessFullAdminPanel,
+            )
+          ) {
+            throw new UserInputError(
+              'You cannot revoke admin panel access from the last server administrator.',
+              {
+                userFriendlyMessage: msg`You cannot revoke admin panel access from the last server administrator.`,
+              },
+            );
+          }
+          const update = await runner.manager.update(
+            UserEntity,
+            { id: targetUserId, deletedAt: IsNull() },
             {
-              userFriendlyMessage: msg`You cannot revoke admin panel access from the last server administrator.`,
+              canAccessFullAdminPanel: nextCanAccessFullAdminPanel,
+              canImpersonate: nextCanImpersonate,
             },
           );
-        }
+          const updated = await runner.manager.findOne(UserEntity, {
+            where: { id: targetUserId },
+          });
+          if (
+            update.affected !== 1 ||
+            !updated ||
+            updated.canAccessFullAdminPanel !== nextCanAccessFullAdminPanel ||
+            updated.canImpersonate !== nextCanImpersonate
+          ) {
+            throw new Error('Server admin update effects mismatch');
+          }
+          return { targetUser: updated, changed: true };
+        },
+      );
+    } finally {
+      try {
+        await this.coreEntityCacheService.invalidate('user', targetUserId);
+      } catch {
+        this.logger.error('Server admin update cache invalidation failed');
       }
-
-      await manager.save(UserEntity, targetUser);
-    });
-
-    await this.coreEntityCacheService.invalidate('user', targetUserId);
+    }
+    const { targetUser, changed } = result;
+    if (!changed) return this.toServerAdminDTO(targetUser);
 
     this.logger.log(
       `Server admin access for user ${targetUserId} updated by ${actor.id}: ` +
-        `canAccessFullAdminPanel=${nextCanAccessFullAdminPanel}, canImpersonate=${nextCanImpersonate}`,
+        `canAccessFullAdminPanel=${targetUser.canAccessFullAdminPanel}, canImpersonate=${targetUser.canImpersonate}`,
     );
 
     this.emitServerAdminAccessChangedEvent({

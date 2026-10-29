@@ -1,0 +1,6 @@
+{"sshRecentMaxStartupsLines": 3, "sshRecentDropLines": 1}
+../../../source/packages/twenty-server/src/engine/core-modules/admin-panel/services/admin-panel-server-admin.service.ts 225ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/user/services/user.service.ts 140ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-active-core-user.postgres-spec.ts 167ms
+
+{"formattedFiles": 3, "singleSshSession": true}

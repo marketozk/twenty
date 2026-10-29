@@ -1,4 +1,6 @@
+import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
 import { deactivateCoreUserWithAudit } from 'src/engine/core-modules/crm-audit/deactivate-core-user-with-audit';
 import {
   copyMembershipCleanupIdentity,
@@ -63,6 +65,8 @@ import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/sta
 
 // oxlint-disable-next-line twenty/inject-workspace-repository
 export class UserService {
+  private readonly logger = new Logger(UserService.name);
+
   constructor(
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
@@ -553,36 +557,79 @@ export class UserService {
     return user;
   }
 
-  async markEmailAsVerified(userId: string, queryRunner?: QueryRunner) {
-    const user = await this.findUserByIdOrThrow(userId);
-
-    user.isEmailVerified = true;
-
-    const savedUser = queryRunner
-      ? await queryRunner.manager.save(UserEntity, user)
-      : await this.userRepository.save(user);
-
-    if (!queryRunner) {
-      await this.coreEntityCacheService.invalidate('user', userId);
+  private async updateActiveUser(
+    userId: string,
+    changes: Partial<Pick<UserEntity, 'email' | 'isEmailVerified'>>,
+    queryRunner?: QueryRunner,
+  ): Promise<UserEntity> {
+    const dataSource = this.userRepository.manager.connection;
+    const capturedChanges = { ...changes };
+    const update = async (runner: QueryRunner) => {
+      if (
+        runner.connection !== dataSource ||
+        runner.isReleased ||
+        !runner.isTransactionActive
+      ) {
+        throw new Error(
+          'User update requires an active transaction on its data source',
+        );
+      }
+      const result = await runner.manager.update(
+        UserEntity,
+        { id: userId, deletedAt: IsNull() },
+        capturedChanges,
+      );
+      if (result.affected !== 1) {
+        throw new AuthException(
+          'Active user not found',
+          AuthExceptionCode.USER_NOT_FOUND,
+        );
+      }
+      const updated = await runner.manager.findOne(UserEntity, {
+        where: { id: userId },
+      });
+      if (
+        !updated ||
+        Object.entries(capturedChanges).some(
+          ([key, value]) =>
+            updated[key as keyof typeof capturedChanges] !== value,
+        )
+      ) {
+        throw new Error('Active user update effects mismatch');
+      }
+      return updated;
+    };
+    try {
+      return queryRunner
+        ? await update(queryRunner)
+        : await runInCoreAuditTransaction(dataSource, update);
+    } finally {
+      if (!queryRunner) {
+        try {
+          await this.coreEntityCacheService.invalidate('user', userId);
+        } catch {
+          this.logger.error('Core user update cache invalidation failed');
+        }
+      }
     }
+  }
 
-    return savedUser;
+  async markEmailAsVerified(userId: string, queryRunner?: QueryRunner) {
+    return this.updateActiveUser(
+      userId,
+      { isEmailVerified: true },
+      queryRunner,
+    );
   }
 
   async updateEmailFromVerificationToken(userId: string, email: string) {
-    const user = await this.findUserByIdOrThrow(userId);
-
-    user.email = email;
-
-    const updatedUser = await this.userRepository.save(user);
-
-    await this.coreEntityCacheService.invalidate('user', user.id);
-
-    await this.enqueueWorkspaceMemberEmailUpdate({
-      userId: user.id,
-      email,
+    const updatedUser = await this.updateActiveUser(userId, {
+      email: email.toLowerCase(),
     });
-
+    await this.enqueueWorkspaceMemberEmailUpdate({
+      userId,
+      email: updatedUser.email,
+    });
     return updatedUser;
   }
 

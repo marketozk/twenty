@@ -983,3 +983,9 @@ Standalone использует strict core owner. Locale update меняет т
 active membership, не использует save старой entity. PostgreSQL проверяет обе
 очередности create/deactivate и hard/soft-delete locale race. Old coreUser saves
 в email/admin paths остаются [следующей границей](../implementation/log119/next-boundary.md).
+
+LOG120 заменяет эти три stale User save paths narrow active-row UPDATE и fresh
+readback. Standalone используют strict core owner и cache-finally; supplied runner
+остаётся у caller. Email сохраняет lowercase без нового trim; propagation получает
+actual committed адрес. Admin flags/no-op/last-admin вычисляются после OTP под ordered
+locks. Общая свежесть request.user не заявлена. Следом — [native member cleanup](../implementation/log120/next-boundary.md).

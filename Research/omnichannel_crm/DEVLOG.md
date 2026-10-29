@@ -3631,3 +3631,19 @@ coreUser updates для email verification и server-admin; [граница](imp
 LOG119 publication: 7bf8a4041874f6617321b523f7a20ac0e6df06a8 pushed/API verified.
 ROB765 description/comment 1ce28ded-f6a0-48e3-9774-82a9b31ca1c2 independently read back;
 all 11 issue states match. Implementation continues with active core user updates.
+
+## LOG-120 — narrow active updates вместо stale User saves
+
+Email verification/change обновляют только свои поля у active user и возвращают
+свежую entity. Lowercase сохранён; propagation получает actual committed email.
+Server-admin flags/no-op/last-admin проверяются после OTP под ordered row locks.
+Standalone owners strict; cache-finally при unknown COMMIT; job/event только после
+подтверждённого результата. Supplied runner сохраняет владение caller.
+
+1380 tests/45 suites PASS (209.814s); 69 targeted/3 suites PASS, 37 новых PG cases. 26 guards PASS; 10 migration checksums неизменны. Types 361/362 roots, 189/189 прежних диагностик, 0 новых/changed-file. 3 local/remote source hashes совпадают.
+[Результаты](implementation/log120/results.json), [ревью](implementation/log120/review.md).
+Concurrent-demotion тест подтверждает именно отказ снятия последнего администратора.
+Ошибки настройки нового PG fixture устранены до успешных прогонов.
+
+ROB765 In Progress. Это не общий freshness gate для request.user и не новая
+гарантия доставки уведомлений. Далее [private native member cleanup audit](implementation/log120/next-boundary.md).
