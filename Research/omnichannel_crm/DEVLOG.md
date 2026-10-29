@@ -3863,3 +3863,5 @@ Thread cascade; перед снимками следующей стадии те
 Также проверены actual FK refusal, protected-only первая страница, реальные блокировки
 account/channel и неизменность посторонних orphan-записей. При первом typecheck исправлены
 только два test fixture options с widened boolean. [Ревью](implementation/log135/review.md).
+
+LOG135 publication: code f00b6b559f02b07c6b0e3b447087470ad8742c15 pushed and GitHub API ref verified. Linear comment e451e22b-867b-4caf-beb6-12a7835e5614, description/comment/all 11 issue states independently read back. Continuing targeted cleanup caller integration; ROB765 remains In Progress.
