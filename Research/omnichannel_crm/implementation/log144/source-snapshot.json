@@ -1,0 +1,12 @@
+{
+  "baseCommit": "30a8f110e3d6280c277a0c3d918a1684955a2617",
+  "lfSha256": {
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-save-events.service.ts": "032f6262e6c410e28c66796a48efdc6bcb4225a1a882794f05259422a54feb53",
+    "packages/twenty-server/src/modules/calendar/calendar-event-participant-manager/services/calendar-event-participant.service.ts": "990a71aad9d730bc84e1bd1aaa2bd08b915942c5d3d65a8d75d433edafb30a27",
+    "packages/twenty-server/src/modules/match-participant/match-participant.service.ts": "83586ce656ddc1e799e4ab62b40f6d34f0df6488f17cf6d6c9a5a81b0755ac2f",
+    "packages/twenty-server/test/integration/google/calendar/transient-database-error.integration-spec.ts": "c5680850128201fc04300bb59a72c7ef3989618a4987374869f713a855235d27",
+    "packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts": "bd5262dd51d678777a4b87bf405220e80dcbd8ce0455a1c80ea61f4e00d43c22",
+    "packages/twenty-server/test/fork-migration/crm-audit-calendar-matching-entrypoints.spec.ts": "019df1e958f4044d4470bc641335d910fbfeb5d819a7e496de3c0b3247b9e426"
+  },
+  "uploadedSourceHashesVerified": true
+}

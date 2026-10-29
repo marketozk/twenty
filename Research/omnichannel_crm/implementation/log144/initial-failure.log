@@ -1,0 +1,1068 @@
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts (17.032 s)
+  ● audits actual Participant links and three target kinds in one operation while retaining the other graph
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:240:3)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:240:3)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:240:3)
+
+  ● prefers a newer primary-email match over an older additional-email match without changing original helper semantics
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:295:3)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:295:3)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:295:3)
+
+  ● uses normalized JSONB additional-email candidate containment, not a broader lowercase stored-email search
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:309:3)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:309:3)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:309:3)
+
+  ● matches an additional-only email selected by the existing JSONB query
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:326:3)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:326:3)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:326:3)
+
+  ● handles a null-only handle batch without inventing an empty email selector or retaining obsolete links
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:341:3)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:341:3)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:341:3)
+
+  ● preserves the existing Company target policy even when the linked Company is soft deleted
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:359:3)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:359:3)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:359:3)
+
+  ● matches a trashed Person but derives no targets from that Person
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:374:3)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:374:3)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:374:3)
+
+  ● matches live workspace members with exact handle case while Person matching remains case insensitive
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:395:3)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:395:3)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:395:3)
+
+  ● derives targets from unrequested live participants and linked events without rematching their links
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:413:3)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:413:3)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:413:3)
+
+  ● reconciles supplied events with no saved participant IDs and retains manual/tombstone policy
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:448:3)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:448:3)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:448:3)
+
+  ● uses actual links after a skipped Participant UPDATE instead of proposed match targets
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:478:3)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:478:3)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:478:3)
+
+  ● audits no target effect when the real target INSERT is skipped
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:507:5
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:507:5
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:507:5
+
+  ● audits no target effect when the real target UPDATE is skipped
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:497:7
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:497:7
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:497:7
+
+  ● audits no target effect when the real target DELETE is skipped
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:497:7
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:497:7
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:497:7
+
+  ● retains a requested Participant already moved outside the supplied event IDs without widening target parents
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:580:3)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:580:3)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:580:3)
+
+  ● keeps committed matching and audit on lost COMMIT acknowledgement and does not emit misleading success events
+
+    expect(received).rejects.toBeInstanceOf(expected)
+
+    Expected constructor: NativeTransactionOutcomeUnknownError
+    Received constructor: PostgresException
+
+      612 |     .spyOn(f.pool, 'connect')
+      613 |     .mockImplementationOnce(() => Promise.resolve(client));
+    > 614 |   await expect(match([s.participantId], [s.eventId])).rejects.toBeInstanceOf(
+          |                                                               ^
+      615 |     NativeTransactionOutcomeUnknownError,
+      616 |   );
+      617 |   expect(statements).not.toContain('ROLLBACK');
+
+      at Object.toBeInstanceOf (../../../tools/node_modules/@jest/expect/node_modules/expect/build/index.js:218:22)
+      at Object.toBeInstanceOf (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:614:63)
+
+  ● holds Person SHARE through finalization so a previously absent matching email cannot be inserted concurrently
+
+    Matching settled before Person SHARE lock
+
+      695 |       reached.promise,
+      696 |       work.then(() => {
+    > 697 |         throw new Error('Matching settled before Person SHARE lock');
+          |               ^
+      698 |       }),
+      699 |     ]);
+      700 |     mutation = capture(
+
+      at test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:697:15
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:694:5)
+
+  ● waits for an earlier Person writer and then matches its committed email
+
+    Expected PostgreSQL source-table blocker was not observed
+
+      646 |     await f.owner.query('SELECT pg_sleep(0.01)');
+      647 |   }
+    > 648 |   throw new Error('Expected PostgreSQL source-table blocker was not observed');
+          |         ^
+      649 | };
+      650 | const closeWriter = async (writer: QueryRunner) => {
+      651 |   if (writer.isTransactionActive) await writer.rollbackTransaction();
+
+      at waitForBlocker (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:648:9)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:747:5)
+
+  ● captures arrays and audit identity before awaiting the native transaction
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:886:3)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:886:3)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:886:3)
+
+  ● holds all four source tables in SHARE mode before graph rows are locked
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:939:3)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:939:3)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at MatchParticipantService.prepareCalendarMatching (src/modules/match-participant/match-participant.service.ts:415:25)
+      at workspaceOrmManager.runInWorkspaceTransaction.commitOutcome (src/modules/match-participant/match-participant.service.ts:178:27)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at MatchParticipantService.matchCalendarImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:174:5)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:939:3)
+
+[Nest] 1  - 10/29/2026, 12:54:40 PM   ERROR [CreateCalendarEventResolver] Failed to create calendar event: Error: identity unavailable
+[Nest] 1  - 10/29/2026, 12:54:40 PM   ERROR [CreateCalendarEventResolver] Failed to create calendar event: Error: provider rejected
+[Nest] 1  - 10/29/2026, 12:54:40 PM   ERROR [CreateCalendarEventTool] Failed to create calendar event: Error: Calendar creation requires authenticated tool audit identity
+[Nest] 1  - 10/29/2026, 12:54:40 PM   ERROR [CreateCalendarEventTool] Failed to create calendar event: Error: Calendar creation requires authenticated tool audit identity
+[Nest] 1  - 10/29/2026, 12:54:40 PM   ERROR [CreateCalendarEventTool] Failed to create calendar event: Error: Calendar creation requires authenticated tool audit identity
+[Nest] 1  - 10/29/2026, 12:54:40 PM   ERROR [CreateCalendarEventTool] Failed to create calendar event: Error: Calendar creation requires authenticated tool audit identity
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-save-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-matching-entrypoints.spec.ts
+[32m[Nest] 1  - [39m10/29/2026, 12:54:40 PM [32m    LOG[39m [38;5;3m[CreateCalendarEventTool] [39m[32mCalendar event created.[39m
+[32m[Nest] 1  - [39m10/29/2026, 12:54:40 PM [32m    LOG[39m [38;5;3m[CreateCalendarEventTool] [39m[32mCalendar event created.[39m
+[32m[Nest] 1  - [39m10/29/2026, 12:54:40 PM [32m    LOG[39m [38;5;3m[CreateCalendarEventTool] [39m[32mCalendar event created.[39m
+
+Test Suites: 1 failed, 2 passed, 3 total
+Tests:       20 failed, 48 passed, 68 total
+Snapshots:   0 total
+Time:        18.273 s
+Ran all test suites matching /calendar-import-matching-audit|crm-audit-calendar-matching-entrypoints|crm-audit-calendar-save-entrypoints/i.
+Traceback (most recent call last):
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log144-target.py", line 6, in <module>
+    m['node'](['/tools/node_modules/jest/bin/jest.js','--config','/source/packages/twenty-server/jest-fork-migration.config.mjs','--runInBand','--testPathPattern='+pattern],{'FORK_MIGRATION_TEST_REDIS_URL':'redis://redis:6379','FORK_MIGRATION_TEST_URL':'postgres://test_owner:isolated-test-only@postgres/'+s['database']})
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log144-run.py", line 16, in node
+    return ssh(cmd+['--entrypoint','node','marketozk/twenty:log088-server-fixed',*args])
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log144-run.py", line 4, in ssh
+    def ssh(args,**kw):return call(['ssh',HOST,shlex.join(args)],**kw)
+                              ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log144-run.py", line 3, in call
+    def call(args,**kw):return subprocess.run(args,check=True,**kw)
+                               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['ssh', 'root@176.114.84.194', "docker run --rm --user 0:0 --network twenty-rob764-3e371e20ab394c2b-net --memory 3g --cpus 2 -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source:/source:ro -v /opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools:/tools:ro -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/out:/out:rw -e NODE_PATH=/out/tools/node_modules:/tools/node_modules:/app/node_modules -e FORK_MIGRATION_TEST_REDIS_URL=redis://redis:6379 -e FORK_MIGRATION_TEST_URL=postgres://test_owner:isolated-test-only@postgres/twenty_rob764_test_3e371e20ab394c2b --entrypoint node marketozk/twenty:log088-server-fixed /tools/node_modules/jest/bin/jest.js --config /source/packages/twenty-server/jest-fork-migration.config.mjs --runInBand '--testPathPattern=calendar-import-matching-audit|crm-audit-calendar-matching-entrypoints|crm-audit-calendar-save-entrypoints'"]' returned non-zero exit status 1.

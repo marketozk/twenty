@@ -71,8 +71,10 @@ Event owner с фактическим каскадом и сохранением
 подтверждённого COMMIT, прежние права/ответ/коды ошибок сохранены. LOG143 объединяет
 provider Event/Association/Participant save с аудитом; фактические данные, источники,
 generated fields и late effects проверены. Ручной provider success сохранён.
-Matching/Targets/contact creation, свежесть import policy и durable cache открыты.
-Далее — [calendar matching и targets](../implementation/log143/next-boundary.md).
+LOG144 объединяет import matching Participant/CalendarEventTarget и аудит;
+source SHARE, actual effects и queue-before-matching сохранены. Фоновые rematch jobs,
+contact creation, свежесть import policy и durable cache открыты.
+Далее — [calendar rematch jobs](../implementation/log144/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

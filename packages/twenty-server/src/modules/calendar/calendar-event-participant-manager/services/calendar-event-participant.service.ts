@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 
 import chunk from 'lodash.chunk';
 import { FieldActorSource } from 'twenty-shared/types';
@@ -56,6 +58,7 @@ export class CalendarEventParticipantService {
     connectedAccount,
     workspaceId,
     calendarEventIds,
+    auditOperation,
   }: {
     savedParticipantIds: string[];
     participantsOfLinkedEvents: FetchedCalendarEventParticipant[];
@@ -63,7 +66,31 @@ export class CalendarEventParticipantService {
     connectedAccount: ConnectedAccountEntity;
     workspaceId: string;
     calendarEventIds: string[];
+    auditOperation: CrmAuditOperation;
   }): Promise<void> {
+    if (!auditOperation || auditOperation.workspaceId !== workspaceId)
+      throw new Error('Calendar matching requires scoped save audit operation');
+    const operation: CrmAuditOperation = {
+      ...auditOperation,
+      operationId: randomUUID(),
+      causationId: auditOperation.operationId,
+      actor: { ...auditOperation.actor },
+      ...(auditOperation.initiator
+        ? { initiator: { ...auditOperation.initiator } }
+        : {}),
+    };
+    savedParticipantIds = [...savedParticipantIds];
+    calendarEventIds = [...calendarEventIds];
+    participantsOfLinkedEvents = participantsOfLinkedEvents.map((row) => ({
+      ...row,
+    }));
+    calendarChannel = { ...calendarChannel };
+    connectedAccount = {
+      ...connectedAccount,
+      handleAliases: connectedAccount.handleAliases && [
+        ...connectedAccount.handleAliases,
+      ],
+    };
     const authContext = buildSystemAuthContext(workspaceId);
 
     await this.workspaceOrmManager.executeInWorkspaceContext(
@@ -107,12 +134,14 @@ export class CalendarEventParticipantService {
           );
         }
 
-        await this.matchParticipantService.matchParticipants({
-          participants: savedParticipants,
-          sourceRecordIds: calendarEventIds,
-          objectMetadataName: 'calendarEventParticipant',
-          matchWith: 'workspaceMemberAndPerson',
-        });
+        await this.matchParticipantService.matchCalendarImportParticipantsWithAudit(
+          {
+            workspaceId,
+            participantIds: savedParticipantIds,
+            eventIds: calendarEventIds,
+            operation,
+          },
+        );
       },
       authContext,
       { lite: true },

@@ -3973,3 +3973,13 @@ LOG143 объединяет сохранение Event, Association и Participa
 Первый прогон обнаружил неполную core.messageChannel тестовую проекцию и две регрессии stale-run; исправления не ослабляют прежние assertions. Исправлены type errors и DI-only изоляция тестов от несвязанного AI ESM. Broad regression прошла до усиления только трёх negative assertions; финальный targeted run и typecheck после них прошли. Расширение списка импортируемых корней добавило 22 существующие baseline диагностики: 247/247, новых нет. Full application transient-DB tests адаптированы и typechecked; запуск полного application suite не заявляется. [Ревью](implementation/log143/review.md).
 
 LOG143 publication: code 0ab3144bc3399e71fc0f3258d7a851ca69c5ee10 pushed and GitHub API ref verified. Linear comment 3e56c2f9-d46f-405f-8cca-726f9298669d, description/comment/all 11 issue states independently read back. Continuing calendar import matching and target reconciliation; ROB765 remains In Progress.
+
+
+## LOG144 — календарное сопоставление и цели
+
+undefined
+2733 tests/83 suites PASS (532.019s); 70 targeted/3 suites PASS (21.065s), 45 новых cases (37 PG и 8 entry). 26 guard tests PASS; 10 migration checksums неизменны. Types 424/426 roots, baseline/current 247 diagnostics, 0 новых/changed-file. 6 local/remote source hashes совпадают. [Результаты](implementation/log144/results.json). undefined
+
+Независимое ревью исправило границу старого integration observer; реальный matching сохранён. Первый прогон выявил недостающий UPDATE grant core.workspace тестовой роли (20 failed/48 passed). Все negative rollback assertions усилены точной cause-chain причиной и прошли. Проверены реальные generated Participant values и запрет incoming generated ON UPDATE CASCADE с предварительным raw PG доказательством. [Ревью](implementation/log144/review.md).
+
+Broad regression прошла до добавления двух generated tests; финальные targeted и typecheck включают их, production source не менялся. Следующий участок — [calendar rematch jobs](implementation/log144/next-boundary.md), включая подтверждённый stale-member-link bug. Linear publication ожидается после commit/push.

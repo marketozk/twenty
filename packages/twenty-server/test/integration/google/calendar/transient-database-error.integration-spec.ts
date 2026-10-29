@@ -48,6 +48,7 @@ describe('Calendar import transient database errors (integration)', () => {
       records: unknown,
     ) => Promise<void>,
   ) => {
+    let observedSaveScope: WorkspaceTransactionScope | undefined;
     const transaction =
       workspaceOrmManager.runInWorkspaceTransaction.bind(workspaceOrmManager);
     jest
@@ -57,8 +58,8 @@ describe('Calendar import transient database errors (integration)', () => {
         options?: WorkspaceTransactionOptions,
       ) =>
         transaction(async (scope) => {
-          // Keep the real issued scope and transaction. Matching's separate transactions
-          // are not the strict/exclusive calendar-save mutation being observed here.
+          // Both save and postcommit matching use strict/exclusive transactions.
+          // Inject only into the first participant-writing scope (the save).
           if (
             options?.commitOutcome === 'strict' &&
             options.nativeOwnershipLock === 'exclusive'
@@ -84,7 +85,9 @@ describe('Calendar import transient database errors (integration)', () => {
                   jest
                     .spyOn(writer, phase)
                     .mockImplementation(async (...values: unknown[]) => {
-                      await observe(scope, phase, values[0]);
+                      observedSaveScope ??= scope;
+                      if (scope === observedSaveScope)
+                        await observe(scope, phase, values[0]);
                       return perform(...values);
                     });
                 }

@@ -555,6 +555,7 @@ export class CalendarSaveEventsService {
           calendarChannel,
           connectedAccount,
           workspaceId,
+          auditOperation,
         },
       );
     } catch (error) {
