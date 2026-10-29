@@ -1,0 +1,11 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/src/engine/core-modules/auth/middlewares/__tests__/workspace-auth-context.middleware.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/src/engine/core-modules/application/application-install/services/__tests__/application-lifecycle-job.service.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/src/engine/core-modules/application/application-upgrade/jobs/__tests__/trigger-upgrade-application.job.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/src/engine/core-modules/application/application-install/jobs/__tests__/trigger-install-application.job.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/src/engine/core-modules/application/application-install/jobs/__tests__/trigger-uninstall-application.job.spec.ts
+
+Test Suites: 5 passed, 5 total
+Tests:       20 passed, 20 total
+Snapshots:   0 total
+Time:        5.034 s
+Ran all test suites.

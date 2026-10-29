@@ -94,11 +94,11 @@ stateless application JWT и concurrent-sign-in fencing ещё не объявл
 Просмотр/экспорт — ROB767 после ROB766; AI/workflow/connector добавляют свои события
 в ROB768/769. Полный HTTP/JWT и сборка/выкат изменений после LOG088 не выполнялись.
 
-Последние проверки: 1539 tests/48 suites PASS (235.622s); 151 targeted/3 suites PASS (23.958s), 17 новых cases (16 PG, 1 resolver). 26 guards PASS; 10 migration checksums неизменны. Types 364/364 roots, 189/189 прежних диагностик, 0 новых/changed-file. 7 local/remote source hashes совпадают.
-Full-server typecheck не чистый. [Проверки LOG123](../implementation/log123/results.json).
+Последние проверки: 1561 tests/49 suites PASS (236.658s); 22 новых targeted cases PASS. 26 guards PASS; 10 migration checksums неизменны. Types 370/372 roots, 211/210 прежних диагностик, 0 новых и 0 в изменённом коде; 2 diagnostics в неизменённом методе изменённого файла. 9 local/remote source hashes совпадают.
+Full-server typecheck не чистый. [Проверки LOG124](../implementation/log124/results.json).
 
-Следующий шаг — connected-account deletion audit и actual core FK graph;
-[граница](../implementation/log123/next-boundary.md).
+Следующий шаг — explicit OAuth/system attribution, затем connected-account deletion audit;
+[граница](../implementation/log124/next-boundary.md).
 LOG117 подключает известные API/jobs к core membership audit. LOG121 покрывает private native
 member deletion; LOG122/123 — connected-account transfer/disconnect. Real shares, весь public removal,
 in-flight fence и полный HTTP отзыв ещё не приняты.
@@ -110,3 +110,6 @@ owner; LOG122/123 — transfer/disconnect account/channels. Остальные m
 
 Демо остаётся прежним. При будущем выкате migration10 writers останавливаются на
 время построения индекса. GitHub Actions не используется.
+
+LOG124 добавляет immutable attribution context после server authentication и переносит identity через install/upgrade/uninstall queue. Параллельные запросы изолированы, impersonator и initiator сохранены, legacy job не заимствует ambient actor. Это attribution, не проверка полномочий. OAuth/system wrappers и account delete ещё впереди.
+Upstream middleware: 10 tests PASS; четыре application suites имеют одинаковый ESM load failure на baseline/current. С явными адаптерами несвязанных DI-зависимостей: 20 tests/5 suites PASS. Full HTTP и выкат не выполнены.

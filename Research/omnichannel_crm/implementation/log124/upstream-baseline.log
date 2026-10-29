@@ -1,0 +1,12 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/src/engine/core-modules/auth/middlewares/__tests__/workspace-auth-context.middleware.spec.ts
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/src/engine/core-modules/application/application-install/services/__tests__/application-lifecycle-job.service.spec.ts
+    SyntaxError: Cannot use import statement outside a module
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/src/engine/core-modules/application/application-upgrade/jobs/__tests__/trigger-upgrade-application.job.spec.ts
+    SyntaxError: Cannot use import statement outside a module
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/src/engine/core-modules/application/application-install/jobs/__tests__/trigger-install-application.job.spec.ts
+    SyntaxError: Cannot use import statement outside a module
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/src/engine/core-modules/application/application-install/jobs/__tests__/trigger-uninstall-application.job.spec.ts
+    SyntaxError: Cannot use import statement outside a module
+Test Suites: 4 failed, 1 passed, 5 total
+Tests:       10 passed, 10 total
+Time:        6.802 s

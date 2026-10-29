@@ -3734,3 +3734,13 @@ ROB765 In Progress. Provider effects уже выполнены до DB owner и 
 LOG123 publication: 9eab8c435e63093cc1a7c58db9201fe6b9606744 pushed/API verified.
 ROB765 description/comment 92df1f8d-e561-44f9-83f0-5bcfe7b658b2 independently read back;
 all 11 issue states match. Implementation continues with account deletion prerequisites.
+
+## LOG-124 — attribution request/queue prerequisite
+
+LOG124 добавляет immutable attribution context после server authentication и переносит identity через install/upgrade/uninstall queue. Параллельные запросы изолированы, impersonator и initiator сохранены, legacy job не заимствует ambient actor. Это attribution, не проверка полномочий. OAuth/system wrappers и account delete ещё впереди.
+
+1561 tests/49 suites PASS (236.658s); 22 новых targeted cases PASS. 26 guards PASS; 10 migration checksums неизменны. Types 370/372 roots, 211/210 прежних диагностик, 0 новых и 0 в изменённом коде; 2 diagnostics в неизменённом методе изменённого файла. 9 local/remote source hashes совпадают.
+[Проверки](implementation/log124/results.json), [ревью](implementation/log124/review.md).
+Штатные middleware tests: 10 PASS; 4 application suites не загружаются из-за ai ESM на исходном и изменённом снимке. С явными адаптерами unrelated DI: 20 tests/5 suites PASS. Это не полный HTTP и не чистый full-server typecheck.
+
+ROB765 In Progress. [Далее](implementation/log124/next-boundary.md) — OAuth/system entry points и strict delete. Выката и GitHub Actions нет.

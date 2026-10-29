@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { captureCurrentCrmAuditIdentity } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
 import { msg } from '@lingui/core/macro';
@@ -76,6 +77,16 @@ export class ApplicationService {
     private readonly workspaceEventBroadcaster: WorkspaceEventBroadcaster,
     private readonly applicationLookupService: ApplicationLookupService,
   ) {}
+
+  captureLifecycleAuditIdentity(workspaceId: string) {
+    return captureCurrentCrmAuditIdentity(workspaceId, async (membershipId) => {
+      const [member] = await this.coreDataSource.query(
+        'SELECT "userId" FROM core."userWorkspace" WHERE id=$1',
+        [membershipId],
+      );
+      return member?.userId;
+    });
+  }
 
   async findApplicationRoleId(
     applicationId: string,

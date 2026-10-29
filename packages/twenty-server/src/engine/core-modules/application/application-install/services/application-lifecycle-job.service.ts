@@ -89,6 +89,8 @@ export class ApplicationLifecycleJobService {
     universalIdentifier,
     workspaceId,
   }: LifecycleJobTarget): Promise<{ jobId: string }> {
+    const auditIdentity =
+      await this.applicationService.captureLifecycleAuditIdentity(workspaceId);
     const registration =
       await this.marketplaceQueryService.findRegistrationByUniversalIdentifier(
         universalIdentifier,
@@ -97,7 +99,11 @@ export class ApplicationLifecycleJobService {
     return this.triggerLifecycleJob<TriggerInstallApplicationJobData>({
       operation: 'install',
       jobName: TriggerInstallApplicationJob.name,
-      data: { applicationRegistrationId: registration.id, workspaceId },
+      data: {
+        applicationRegistrationId: registration.id,
+        workspaceId,
+        ...(auditIdentity ? { auditIdentity } : {}),
+      },
       universalIdentifier,
       workspaceId,
     });
@@ -107,6 +113,8 @@ export class ApplicationLifecycleJobService {
     universalIdentifier,
     workspaceId,
   }: LifecycleJobTarget): Promise<{ jobId: string }> {
+    const auditIdentity =
+      await this.applicationService.captureLifecycleAuditIdentity(workspaceId);
     const application =
       await this.applicationService.findOneApplicationWithRelationsOrThrow({
         universalIdentifier,
@@ -120,7 +128,11 @@ export class ApplicationLifecycleJobService {
     return this.triggerLifecycleJob<TriggerUninstallApplicationJobData>({
       operation: 'uninstall',
       jobName: TriggerUninstallApplicationJob.name,
-      data: { universalIdentifier, workspaceId },
+      data: {
+        universalIdentifier,
+        workspaceId,
+        ...(auditIdentity ? { auditIdentity } : {}),
+      },
       universalIdentifier,
       workspaceId,
     });
@@ -133,6 +145,8 @@ export class ApplicationLifecycleJobService {
   }: LifecycleJobTarget & { targetVersion: string }): Promise<{
     jobId: string;
   }> {
+    const auditIdentity =
+      await this.applicationService.captureLifecycleAuditIdentity(workspaceId);
     await this.applicationService.findOneApplicationWithRelationsOrThrow({
       universalIdentifier,
       workspaceId,
@@ -150,6 +164,7 @@ export class ApplicationLifecycleJobService {
         applicationRegistrationId: registration.id,
         targetVersion,
         workspaceId,
+        ...(auditIdentity ? { auditIdentity } : {}),
       },
       universalIdentifier,
       workspaceId,

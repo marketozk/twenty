@@ -1,0 +1,15 @@
+{
+  "baseCommit": "0487c81a8e44234d57eeeddef26383177db52e35",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/application/application-install/jobs/trigger-install-application.job.ts": "6d5787703aa92c9502d777dcd93aa3fa3f146553844afa69c4ff482b5b6dde3c",
+    "packages/twenty-server/src/engine/core-modules/application/application-install/jobs/trigger-uninstall-application.job.ts": "9a7863501f36d7740ed63f81e76b4a8f739f0a65f9376713f151378542433796",
+    "packages/twenty-server/src/engine/core-modules/application/application-install/services/__tests__/application-lifecycle-job.service.spec.ts": "96bbc6dae56c5aab1c6ac3bd8b1460ea6883a3b638650650f2b6ac6176f2ac44",
+    "packages/twenty-server/src/engine/core-modules/application/application-install/services/application-lifecycle-job.service.ts": "3bb8d49274b846290d985256f90fac197a7345d6a9f576b748edde836e499dcc",
+    "packages/twenty-server/src/engine/core-modules/application/application-upgrade/jobs/trigger-upgrade-application.job.ts": "6b7d56a01952e47fa1a2e2488acc38c6556731e9c8687ddabecbc130448107a2",
+    "packages/twenty-server/src/engine/core-modules/application/application.service.ts": "16320782fc24bf93f132b0ab1c9c2b1680cc8334a3b654664edca652b94c07f3",
+    "packages/twenty-server/src/engine/core-modules/auth/middlewares/workspace-auth-context.middleware.ts": "6626c8b63e067cbb0aff41b0850342fc175bd9ce89c9b3c61e771f5f83ad8d7d",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-attribution-context.ts": "40c0932e13f197fb17f91581fb0dbfca893dfa26dbb3fae53eadddaae97c49a5",
+    "packages/twenty-server/test/fork-migration/crm-audit-attribution-context.spec.ts": "b9cb2effaec61d282dba89a7a6a10ecdfd39971ef0068973a5d5a044046494fb"
+  },
+  "uploadedSourceHashesVerified": true
+}

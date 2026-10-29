@@ -1019,3 +1019,6 @@ actual effects; unknown COMMIT не вызывает автоматически�
 Delegated application и cross-workspace impersonator сохраняют правильного инициатора.
 Это не global role-cache freshness и не атомарный rollback уже выполненных HTTP вызовов.
 [Далее](../implementation/log123/next-boundary.md) — account delete и core FK graph.
+
+LOG124 добавляет immutable attribution context после server authentication и переносит identity через install/upgrade/uninstall queue. Параллельные запросы изолированы, impersonator и initiator сохранены, legacy job не заимствует ambient actor. Это attribution, не проверка полномочий. OAuth/system wrappers и account delete ещё впереди.
+[Граница следующего среза](../implementation/log124/next-boundary.md).

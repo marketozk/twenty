@@ -1,0 +1,37 @@
+{
+  "status": "pass-scoped-not-phase-complete",
+  "issue": "ROB-765",
+  "newCases": 22,
+  "targetedTests": 22,
+  "targetedSuites": 1,
+  "regressionTests": 1561,
+  "regressionSuites": 49,
+  "regressionSeconds": 236.658,
+  "guardUnitTests": 26,
+  "unchangedMigrations": 10,
+  "typecheck": {
+    "baselineRoots": 370,
+    "currentRoots": 372,
+    "baselineDiagnostics": 211,
+    "currentDiagnostics": 210,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0,
+    "unchangedMethodDiagnosticsInChangedFiles": 2,
+    "fullServerTypecheck": false
+  },
+  "upstreamDirect": {
+    "passedTests": 10,
+    "passedSuites": 1,
+    "loadFailedSuites": 4,
+    "baselineReproduced": true,
+    "reason": "ai/dist/index.js ESM import in Jest"
+  },
+  "upstreamWithExplicitUnrelatedDiAdapters": {"tests": 20, "suites": 5, "passed": true},
+  "uploadedSourceHashesVerified": 9,
+  "enterpriseBaselineChanged": false,
+  "accountDeletionAudit": false,
+  "oauthAttribution": false,
+  "fullHttpAcceptance": false,
+  "productionDeployment": false,
+  "githubActionsUsed": false
+}

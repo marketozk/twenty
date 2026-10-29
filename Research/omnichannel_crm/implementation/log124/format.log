@@ -1,0 +1,12 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/application/application-install/jobs/trigger-install-application.job.ts 110ms
+../../../source/packages/twenty-server/src/engine/core-modules/application/application-install/jobs/trigger-uninstall-application.job.ts 11ms
+../../../source/packages/twenty-server/src/engine/core-modules/application/application-install/services/__tests__/application-lifecycle-job.service.spec.ts 42ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/application/application-install/services/application-lifecycle-job.service.ts 88ms
+../../../source/packages/twenty-server/src/engine/core-modules/application/application-upgrade/jobs/trigger-upgrade-application.job.ts 5ms
+../../../source/packages/twenty-server/src/engine/core-modules/application/application.service.ts 122ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/auth/middlewares/workspace-auth-context.middleware.ts 5ms
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-attribution-context.ts 12ms
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-attribution-context.spec.ts 107ms
+
+{"formattedFiles": 9, "singleSshSession": true}

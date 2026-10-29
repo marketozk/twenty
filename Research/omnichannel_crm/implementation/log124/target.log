@@ -1,0 +1,29 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-attribution-context.spec.ts
+  ✓ isolates concurrent request workspaces and keeps one correlation per request (6 ms)
+  ✓ copies only primitive authentication and never stores request secrets or body actor (1 ms)
+  ✓ restores a parent request after a nested named system context throws (14 ms)
+  ✓ masks ambient attribution for a legacy job and refuses a foreign resolved identity (6 ms)
+  ✓ refuses foreign request scope and anonymous mutation attribution without changing middleware capture (2 ms)
+  ✓ resolves impersonation from the captured membership even after request mutation (1 ms)
+  ✓ captures application without substituting a target application (1 ms)
+  ✓ captures agent without substituting a target application
+  ✓ captures apiKey without substituting a target application (1 ms)
+  ✓ rejects ambiguous agent provenance at consumption, not unrelated middleware entry
+  ✓ actual middleware wraps next with both existing auth and immutable attribution
+  ✓ middleware preserves the old no-workspace and hydration-failure behavior (1 ms)
+  ✓ serializes install attribution through its real enqueue and handler (22 ms)
+  ✓ serializes upgrade attribution through its real enqueue and handler (1 ms)
+  ✓ serializes uninstall attribution through its real enqueue and handler
+  ✓ legacy install job cannot borrow an ambient caller
+  ✓ legacy upgrade job cannot borrow an ambient caller
+  ✓ legacy uninstall job cannot borrow an ambient caller
+  ✓ in-flight dedup does not replace the original job attribution (1 ms)
+  ✓ foreign serialized identity fails before a job reaches the application service (1 ms)
+  ✓ enqueue retains the first snapshot while registration lookup waits (1 ms)
+  ✓ running job copies serialized identity before yielding to its service
+
+Test Suites: 1 passed, 1 total
+Tests:       22 passed, 22 total
+Snapshots:   0 total
+Time:        3.891 s
+Ran all test suites matching /crm-audit-attribution-context/i.

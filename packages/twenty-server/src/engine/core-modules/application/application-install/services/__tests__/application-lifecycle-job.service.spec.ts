@@ -15,6 +15,7 @@ const buildJobId = (operation: string) =>
 
 describe('ApplicationLifecycleJobService', () => {
   const applicationService = {
+    captureLifecycleAuditIdentity: jest.fn().mockResolvedValue(undefined),
     findOneApplicationWithRelationsOrThrow: jest.fn(),
   } as unknown as ApplicationService;
 
