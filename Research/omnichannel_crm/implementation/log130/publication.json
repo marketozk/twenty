@@ -1,0 +1,13 @@
+{
+  "codeCommit": "86c8d341d416d1b73212981a452effb405edcfe0",
+  "githubApiRefVerified": true,
+  "linearCommentId": "beb866d2-997e-461f-9c66-d34e00b2d6cf",
+  "readback": {
+    "description": true,
+    "comment": true,
+    "all11IssueStates": true
+  },
+  "phaseComplete": false,
+  "productionDeployment": false,
+  "githubActionsUsed": false
+}
