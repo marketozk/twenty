@@ -3762,3 +3762,13 @@ ROB765 In Progress. Queue retryLimit=2 ещё повторяет unknown; [сл�
 LOG125 publication: 377fb3db07aaf3a10bce14c7f309e7abfa8c5316 pushed/API verified.
 ROB765 description/comment 52a47612-6205-4db5-8e95-6ac09e3e439b independently read back;
 all 11 issue states match. Implementation continues with queue unknown-outcome handling.
+
+## LOG-126 — no automatic retry after unsafe transaction failure
+
+LOG126 запрещает normal automatic queue retry для обоих unknown transaction errors и confirmed postcommit failure. Explorer не заменяет исходную ошибку при сбое telemetry. Install/upgrade не компенсируют confirmed committed effect. Actual Redis проверяет одну попытку, persisted failure, worker restart и ordinary retry; actual PG INSERT с падающим after-commit hook остаётся сохранённым.
+
+1616 tests/51 suites PASS (240.383s); 98 targeted/3 suites PASS (11.495s), 15 новых cases. 18 upstream driver tests PASS с штатными clearMocks/fakeTimers. 26 guards PASS; 10 migration checksums неизменны. Types 372/375 roots, 212/211 прежних диагностик, 0 новых/changed-file. 10 local/remote source hashes совпадают.
+[Проверки](implementation/log126/results.json), [ревью](implementation/log126/review.md).
+Повторное source-review выявило CoreAuditPostCommitError после подтверждённого COMMIT: выделен leaf с совместимым re-export, добавлен broader unsafe-to-retry predicate. Старое unknown-to-Error замечание explorer устранено narrowing. Штатные driver tests сначала имели одинаковые 2 failures на baseline/current из-за fork harness defaults; восстановлены их clearMocks/fakeTimers, 18 PASS.
+
+ROB765 In Progress. Crash/stall/manual retry и scheduled recurrence не закрыты. [Далее](implementation/log126/next-boundary.md) — строгий four-table deletion primitive и подключение callers. Full HTTP/build/deploy и GitHub Actions не выполнялись.

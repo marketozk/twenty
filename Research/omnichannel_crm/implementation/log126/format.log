@@ -1,0 +1,13 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/application/application-install/application-install.service.ts 291ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/application/application-upgrade/application-upgrade.service.ts 91ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/application/utils/is-application-transaction-outcome-unknown.ts 2ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/run-in-core-audit-transaction.ts 12ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/message-queue/drivers/bullmq.driver.ts 103ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/message-queue/message-queue.explorer.ts 67ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-application-sources.spec.ts 142ms
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/core-audit-post-commit.error.ts 3ms (unchanged)
+../../../source/packages/twenty-server/src/engine/twenty-orm/error-handling/is-transaction-outcome-unknown.ts 2ms
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-queue-outcome.spec.ts 79ms
+
+{"formattedFiles": 10, "singleSshSession": true}

@@ -3,15 +3,8 @@ import { type DataSource, type QueryRunner } from 'typeorm';
 
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 
-export class CoreAuditPostCommitError extends Error {
-  readonly commitConfirmed = true;
-  constructor(cause: unknown) {
-    super('Core audit transaction committed but its postcommit hook failed', {
-      cause,
-    });
-    this.name = 'CoreAuditPostCommitError';
-  }
-}
+import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
+export { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
 
 // Pinned PostgreSQL QueryRunner adapter. Unlike release(), this removes a broken
 // connection from the pool and also unregisters the runner from TypeORM.

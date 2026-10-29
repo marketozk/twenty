@@ -25,6 +25,7 @@ import { getQueueToken } from 'src/engine/core-modules/message-queue/utils/get-q
 import { shouldCreateWorkerForQueue } from 'src/engine/core-modules/message-queue/utils/should-create-worker-for-queue.util';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 import { shouldCaptureException } from 'src/engine/utils/global-exception-handler.util';
+import { isTransactionUnsafeToRetry } from 'src/engine/twenty-orm/error-handling/is-transaction-outcome-unknown';
 
 interface ProcessorGroup {
   instance: object;
@@ -273,8 +274,15 @@ export class MessageQueueExplorer implements OnModuleInit {
           updateProgress: job.updateProgress,
         });
       } catch (err) {
-        if (shouldCaptureException(err)) {
-          this.exceptionHandlerService.captureExceptions([err]);
+        try {
+          if (!(err instanceof Error) || shouldCaptureException(err)) {
+            this.exceptionHandlerService.captureExceptions([err]);
+          }
+        } catch (reportError) {
+          if (!isTransactionUnsafeToRetry(err)) throw reportError;
+          this.logger.warn(
+            'Exception reporting failed for a committed or unknown transaction outcome',
+          );
         }
         throw err;
       }

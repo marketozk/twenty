@@ -1,4 +1,4 @@
-import { isApplicationTransactionOutcomeUnknown } from 'src/engine/core-modules/application/utils/is-application-transaction-outcome-unknown';
+import { isTransactionUnsafeToRetry } from 'src/engine/core-modules/application/utils/is-application-transaction-outcome-unknown';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -206,7 +206,7 @@ export class ApplicationInstallService {
 
     await progressReporter.reportStepCompleted('RESOLVE_PACKAGE');
 
-    let outcomeUnknown = false;
+    let unsafeToRetry = false;
     try {
       return await this.runInstallWithMetrics({
         appRegistration,
@@ -217,7 +217,7 @@ export class ApplicationInstallService {
         progressReporter,
       });
     } catch (error) {
-      outcomeUnknown = isApplicationTransactionOutcomeUnknown(error);
+      unsafeToRetry = isTransactionUnsafeToRetry(error);
       throw error;
     } finally {
       try {
@@ -225,9 +225,9 @@ export class ApplicationInstallService {
           resolvedPackage.cleanupDir,
         );
       } catch (cleanupError) {
-        if (!outcomeUnknown) throw cleanupError;
+        if (!unsafeToRetry) throw cleanupError;
         this.logger.warn(
-          'Package cleanup failed after an unknown transaction outcome',
+          'Package cleanup failed after a committed or unknown transaction outcome',
         );
       }
     }
@@ -329,8 +329,8 @@ export class ApplicationInstallService {
 
       return true;
     } catch (error) {
-      // No compensating mutation or fallible telemetry after an ambiguous COMMIT.
-      if (isApplicationTransactionOutcomeUnknown(error)) throw error;
+      // No compensation or fallible telemetry if COMMIT may already have succeeded.
+      if (isTransactionUnsafeToRetry(error)) throw error;
       await this.eventLogEmitterService.recordApplicationPlatformEvents([
         buildApplicationLifecycleLogEntry({
           ...lifecycleLogContext,
@@ -589,8 +589,8 @@ export class ApplicationInstallService {
 
       return application;
     } catch (error) {
-      // No compensating mutation or fallible telemetry after an ambiguous COMMIT.
-      if (isApplicationTransactionOutcomeUnknown(error)) throw error;
+      // No compensation or fallible telemetry if COMMIT may already have succeeded.
+      if (isTransactionUnsafeToRetry(error)) throw error;
       this.logger.error(
         `Failed to install app ${appRegistration.universalIdentifier}: ${error}`,
       );

@@ -1,3 +1,4 @@
+import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
 import { randomUUID, createHash } from 'node:crypto';
 import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
 import { Logger } from '@nestjs/common';
@@ -921,12 +922,14 @@ it('automatic upgrade uses the actual worker identity and restores the parent', 
 const installFixture = (kind = 'native') => {
   const f = fixture(),
     error =
-      kind === 'omni'
-        ? new OmniCoreTransactionOutcomeUnknownError(new Error('lost ack'))
-        : new NativeTransactionOutcomeUnknownError(
-            'commit',
-            new Error('lost ack'),
-          );
+      kind === 'committed'
+        ? new CoreAuditPostCommitError(new Error('fixture post-commit failure'))
+        : kind === 'omni'
+          ? new OmniCoreTransactionOutcomeUnknownError(new Error('lost ack'))
+          : new NativeTransactionOutcomeUnknownError(
+              'commit',
+              new Error('lost ack'),
+            );
   const compensation = jest.fn().mockResolvedValue(undefined);
   const service = instance(ApplicationInstallService, {
     ensureApplicationExists: async () => ({ id: randomUUID(), version: null }),
@@ -957,7 +960,7 @@ const installFixture = (kind = 'native') => {
   };
   return { f, service, input, error, compensation };
 };
-it.each(['native', 'omni'])(
+it.each(['native', 'omni', 'committed'])(
   'real install catch does not compensate %s unknown outcome',
   async (kind) => {
     const f = installFixture(kind);
@@ -972,7 +975,7 @@ it('ordinary install failures retain their original compensation behavior', asyn
   await expect(f.service.runInstall(f.input)).rejects.toBe(error);
   expect(f.compensation).toHaveBeenCalledTimes(1);
 });
-it.each(['native', 'omni'])(
+it.each(['native', 'omni', 'committed'])(
   '%s unknown install outcome survives telemetry',
   async (kind) => {
     const f = installFixture(kind);
@@ -990,6 +993,8 @@ it.each([
   ['native', true],
   ['omni', false],
   ['omni', true],
+  ['committed', false],
+  ['committed', true],
 ] as const)(
   '%s outcome survives package cleanup failure=%s',
   async (kind, fails) => {
@@ -1017,17 +1022,21 @@ it.each([
     expect(f.compensation).not.toHaveBeenCalled();
   },
 );
-it.each(['native', 'omni'])(
+it.each(['native', 'omni', 'committed'])(
   'upgrade propagates the exact %s unknown outcome',
   async (kind) => {
     const f = fixture(),
       error =
-        kind === 'omni'
-          ? new OmniCoreTransactionOutcomeUnknownError(new Error('lost'))
-          : new NativeTransactionOutcomeUnknownError(
-              'rollback',
-              new Error('lost'),
-            );
+        kind === 'committed'
+          ? new CoreAuditPostCommitError(
+              new Error('fixture post-commit failure'),
+            )
+          : kind === 'omni'
+            ? new OmniCoreTransactionOutcomeUnknownError(new Error('lost'))
+            : new NativeTransactionOutcomeUnknownError(
+                'rollback',
+                new Error('lost'),
+              );
     const service = instance(ApplicationUpgradeService, {
       appRegistrationRepository: { findOneOrFail: async () => f.registration },
       applicationInstallService: {
@@ -1128,12 +1137,10 @@ it('manifest account-delete COMMIT ACK loss crosses install without compensation
       };
       return runner;
     };
-    const validate = jest
-      .fn()
-      .mockResolvedValue({
-        workspaceMigration: { actions: [] },
-        hasSchemaMetadataChanged: true,
-      });
+    const validate = jest.fn().mockResolvedValue({
+      workspaceMigration: { actions: [] },
+      hasSchemaMetadataChanged: true,
+    });
     const deletion = jest.fn(async () => {
       try {
         await withOmniNativeOwnershipTransaction(

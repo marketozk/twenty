@@ -1,0 +1,16 @@
+{
+  "baseCommit": "626a1619c3d158814a0f8046a6ec8936dc2a5023",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/application/application-install/application-install.service.ts": "45add1e95be0be594c9815196606ab67129000445fe33bdc1e721980585f12ee",
+    "packages/twenty-server/src/engine/core-modules/application/application-upgrade/application-upgrade.service.ts": "0ff969f204b7e8c16646e4d9ecc1801903a2afec7f3b3f887eb3bc4e15e0204f",
+    "packages/twenty-server/src/engine/core-modules/application/utils/is-application-transaction-outcome-unknown.ts": "496e602ecfa00d689899da5cf24052d62658e1307c42ee1aaa8c9893facfab90",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/run-in-core-audit-transaction.ts": "4226f8cb4efbd845ed25b846bfe1643aa4c388f0ca0d5dda17f2d42fe6dbb9cb",
+    "packages/twenty-server/src/engine/core-modules/message-queue/drivers/bullmq.driver.ts": "e5c38ea2e129ee2224a25186554a2e6b409d48b6a918830910a351ae0c65f912",
+    "packages/twenty-server/src/engine/core-modules/message-queue/message-queue.explorer.ts": "95bb23ea8da446e5aac2495f6a131e2143ea2f867f6aaac0aa99706a027a2b88",
+    "packages/twenty-server/test/fork-migration/crm-audit-application-sources.spec.ts": "b8ec1526a2e82f7dcf6fcad9c646119aa7f792345282eaf1ec5cd08ffc38c96e",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/core-audit-post-commit.error.ts": "540696775fa9f8424cb39528572906def721984eae50d6292df571b569ce8a05",
+    "packages/twenty-server/src/engine/twenty-orm/error-handling/is-transaction-outcome-unknown.ts": "49c1c90a792c76eb9fc3bb71664e3fc836ab4022ae535c8c31ceeee1a60ffe81",
+    "packages/twenty-server/test/fork-migration/crm-audit-queue-outcome.spec.ts": "43a10f0a4a4f27731d0c2ea14eb33b69a6000e92a7d11e31ce627b08215695fe"
+  },
+  "uploadedSourceHashesVerified": true
+}

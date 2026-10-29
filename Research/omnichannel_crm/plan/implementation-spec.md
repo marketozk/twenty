@@ -1025,3 +1025,6 @@ LOG124 добавляет immutable attribution context после server authen
 
 LOG125 фиксирует OAuth user/impersonator в одноразовом коде и проверяет membership до auto-install; packaged install больше не маскируется bare fallback. Preinstalled/backfill/CLI/automatic upgrade имеют явный system source. Оба unknown transaction outcome типа проходят через install/upgrade без compensation и telemetry replacement.
 Старые OAuth codes без identity требуют повторной авторизации (5 минут TTL); tokens не меняются. [Далее](../implementation/log125/next-boundary.md) — queue retry boundary и account delete.
+
+LOG126 запрещает normal automatic queue retry для обоих unknown transaction errors и confirmed postcommit failure. Explorer не заменяет исходную ошибку при сбое telemetry. Install/upgrade не компенсируют confirmed committed effect. Actual Redis проверяет одну попытку, persisted failure, worker restart и ordinary retry; actual PG INSERT с падающим after-commit hook остаётся сохранённым.
+Unknown и confirmed commit различаются exact classes; crash/stall/manual replay не объявлены защищёнными. [Далее](../implementation/log126/next-boundary.md) — strict account deletion owner.

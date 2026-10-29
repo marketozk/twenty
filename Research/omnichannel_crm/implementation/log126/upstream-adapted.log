@@ -1,0 +1,45 @@
+[32m[Nest] 1  - [39m10/29/2026, 4:12:25 AM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mProcessing job job-id with name job on queue workspace-queue[39m
+[32m[Nest] 1  - [39m10/29/2026, 4:12:25 AM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mJob job-id with name job processed on queue workspace-queue in 0.00ms[39m
+[32m[Nest] 1  - [39m10/29/2026, 4:12:25 AM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mProcessing job job-id with name job on queue workspace-queue[39m
+[32m[Nest] 1  - [39m10/29/2026, 4:12:25 AM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mJob job-id with name job processed on queue workspace-queue in 0.00ms[39m
+[32m[Nest] 1  - [39m10/29/2026, 4:12:25 AM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mProcessing job job-id with name job on queue workspace-queue[39m
+[32m[Nest] 1  - [39m10/29/2026, 4:12:25 AM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mJob job-id with name job processed on queue workspace-queue in 0.00ms[39m
+[32m[Nest] 1  - [39m11/14/2023, 10:13:20 PM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mProcessing job job-id with name job on queue workflow-queue[39m
+[32m[Nest] 1  - [39m11/14/2023, 10:13:20 PM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mJob job-id with name job processed on queue workflow-queue in 0.00ms[39m
+[32m[Nest] 1  - [39m11/14/2023, 10:13:20 PM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mProcessing job job-id with name job on queue workflow-queue[39m
+[32m[Nest] 1  - [39m11/14/2023, 10:13:20 PM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mJob job-id with name job processed on queue workflow-queue in 0.00ms[39m
+[32m[Nest] 1  - [39m11/14/2023, 10:13:20 PM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mProcessing job job-id with name job on queue workflow-queue[39m
+[32m[Nest] 1  - [39m11/14/2023, 10:13:20 PM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mJob job-id with name job processed on queue workflow-queue in 0.00ms[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/src/engine/core-modules/message-queue/drivers/__tests__/bullmq.driver.spec.ts
+  BullMQDriver deduplication
+    add
+      ✓ skips a job whose id prefix is already waiting (3 ms)
+      ✓ suffixes the id so a finished job never blocks the next one (1 ms)
+    bulkAdd
+      ✓ does not read the waiting jobs when no job carries an id (2 ms)
+      ✓ reads the waiting jobs once and drops the jobs already waiting (2 ms)
+      ✓ adds nothing when every job is already waiting
+      ✓ skips the deduplication when told not to check duplicates based on prefix
+  BullMQDriver progress
+    ✓ persists progress 0 through BullMQ and exposes it in job snapshots (5 ms)
+    ✓ persists progress 50 through BullMQ and exposes it in job snapshots
+    ✓ persists progress {"completed": 5, "total": 10} through BullMQ and exposes it in job snapshots
+  BullMQDriver job change events
+    ✓ forwards a progress update of a broadcast job as an active job change (1 ms)
+    ✓ ignores progress updates of jobs without recipients
+  BullMQDriver queue wait metric
+    ✓ records the wait net of the scheduled delay
+    ✓ records no wait for a job picked up before its scheduled delay elapsed (1 ms)
+    ✓ does not sample the wait of a re-run after a retry or a stall (1 ms)
+  BullMQDriver queue job count gauges
+    ✓ reports the runnable backlog without the delayed jobs (1 ms)
+    ✓ reports the delayed jobs on their own gauge
+  BullMQDriver global concurrency
+    ✓ sets the global concurrency when the queue declares one (1 ms)
+    ✓ removes the global concurrency when the queue declares none
+
+Test Suites: 1 passed, 1 total
+Tests:       18 passed, 18 total
+Snapshots:   0 total
+Time:        4.193 s
+Ran all test suites.

@@ -1,0 +1,127 @@
+BullMQ 5.78.0
+[32m[Nest] 1  - [39m10/29/2026, 4:11:13 AM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mProcessing job job-id with name job on queue workspace-queue[39m
+[32m[Nest] 1  - [39m10/29/2026, 4:11:13 AM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mJob job-id with name job processed on queue workspace-queue in 1.25ms[39m
+[32m[Nest] 1  - [39m10/29/2026, 4:11:13 AM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mProcessing job job-id with name job on queue workspace-queue[39m
+[32m[Nest] 1  - [39m10/29/2026, 4:11:13 AM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mJob job-id with name job processed on queue workspace-queue in 0.08ms[39m
+[32m[Nest] 1  - [39m10/29/2026, 4:11:13 AM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mProcessing job job-id with name job on queue workspace-queue[39m
+[32m[Nest] 1  - [39m10/29/2026, 4:11:13 AM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mJob job-id with name job processed on queue workspace-queue in 0.10ms[39m
+  console.warn
+    A function to advance timers was called but the timers APIs are not replaced with fake timers. Call `jest.useFakeTimers()` in this test file or enable fake timers for all tests by setting 'fakeTimers': {'enableGlobally': true} in Jest configuration file.
+    Stack Trace:
+    
+          315 |
+          316 |   beforeAll(() => {
+        > 317 |     jest.setSystemTime(1_700_000_000_000);
+              |          ^
+          318 |   });
+          319 |
+          320 |   it('records the wait net of the scheduled delay', async () => {
+    
+          Error: 
+          at FakeTimers._checkFakeTimers (../../../tools/node_modules/@jest/fake-timers/build/modernFakeTimers.js:158:13)
+          at FakeTimers.setSystemTime (../../../tools/node_modules/@jest/fake-timers/build/modernFakeTimers.js:131:14)
+          at Object.setSystemTime (src/engine/core-modules/message-queue/drivers/__tests__/bullmq.driver.spec.ts:317:10)
+
+      315 |
+      316 |   beforeAll(() => {
+    > 317 |     jest.setSystemTime(1_700_000_000_000);
+          |          ^
+      318 |   });
+      319 |
+      320 |   it('records the wait net of the scheduled delay', async () => {
+
+      at FakeTimers._checkFakeTimers (../../../tools/node_modules/@jest/fake-timers/build/modernFakeTimers.js:152:28)
+      at FakeTimers.setSystemTime (../../../tools/node_modules/@jest/fake-timers/build/modernFakeTimers.js:131:14)
+      at Object.setSystemTime (src/engine/core-modules/message-queue/drivers/__tests__/bullmq.driver.spec.ts:317:10)
+
+[32m[Nest] 1  - [39m10/29/2026, 4:11:13 AM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mProcessing job job-id with name job on queue workflow-queue[39m
+[32m[Nest] 1  - [39m10/29/2026, 4:11:13 AM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mJob job-id with name job processed on queue workflow-queue in 0.12ms[39m
+[32m[Nest] 1  - [39m10/29/2026, 4:11:13 AM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mProcessing job job-id with name job on queue workflow-queue[39m
+[32m[Nest] 1  - [39m10/29/2026, 4:11:13 AM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mJob job-id with name job processed on queue workflow-queue in 0.10ms[39m
+[32m[Nest] 1  - [39m10/29/2026, 4:11:13 AM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mProcessing job job-id with name job on queue workflow-queue[39m
+[32m[Nest] 1  - [39m10/29/2026, 4:11:13 AM [32m    LOG[39m [38;5;3m[BullMQDriver] [39m[32mJob job-id with name job processed on queue workflow-queue in 0.06ms[39m
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/src/engine/core-modules/message-queue/drivers/__tests__/bullmq.driver.spec.ts
+  BullMQDriver deduplication
+    add
+      ✓ skips a job whose id prefix is already waiting (3 ms)
+      ✓ suffixes the id so a finished job never blocks the next one (1 ms)
+    bulkAdd
+      ✓ does not read the waiting jobs when no job carries an id (1 ms)
+      ✓ reads the waiting jobs once and drops the jobs already waiting (2 ms)
+      ✓ adds nothing when every job is already waiting (1 ms)
+      ✓ skips the deduplication when told not to check duplicates based on prefix
+  BullMQDriver progress
+    ✓ persists progress 0 through BullMQ and exposes it in job snapshots (4 ms)
+    ✕ persists progress 50 through BullMQ and exposes it in job snapshots (1 ms)
+    ✕ persists progress {"completed": 5, "total": 10} through BullMQ and exposes it in job snapshots (1 ms)
+  BullMQDriver job change events
+    ✓ forwards a progress update of a broadcast job as an active job change (1 ms)
+    ✓ ignores progress updates of jobs without recipients (1 ms)
+  BullMQDriver queue wait metric
+    ✓ records the wait net of the scheduled delay (1 ms)
+    ✓ records no wait for a job picked up before its scheduled delay elapsed
+    ✓ does not sample the wait of a re-run after a retry or a stall
+  BullMQDriver queue job count gauges
+    ✓ reports the runnable backlog without the delayed jobs (1 ms)
+    ✓ reports the delayed jobs on their own gauge
+  BullMQDriver global concurrency
+    ✓ sets the global concurrency when the queue declares one (1 ms)
+    ✓ removes the global concurrency when the queue declares none
+
+  ● BullMQDriver progress › persists progress 50 through BullMQ and exposes it in job snapshots
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: 50
+    Received: 0
+
+    Number of calls: 1
+
+      194 |       await processor(job as Job);
+      195 |
+    > 196 |       expect(updateProgress).toHaveBeenCalledWith(progress);
+          |                              ^
+      197 |       const jobs = await driver.getJobs(MessageQueue.workspaceQueue, [
+      198 |         'job-id',
+      199 |       ]);
+
+      at toHaveBeenCalledWith (src/engine/core-modules/message-queue/drivers/__tests__/bullmq.driver.spec.ts:196:30)
+
+  ● BullMQDriver progress › persists progress {"completed": 5, "total": 10} through BullMQ and exposes it in job snapshots
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: {"completed": 5, "total": 10}
+    Received: 0
+
+    Number of calls: 1
+
+      194 |       await processor(job as Job);
+      195 |
+    > 196 |       expect(updateProgress).toHaveBeenCalledWith(progress);
+          |                              ^
+      197 |       const jobs = await driver.getJobs(MessageQueue.workspaceQueue, [
+      198 |         'job-id',
+      199 |       ]);
+
+      at toHaveBeenCalledWith (src/engine/core-modules/message-queue/drivers/__tests__/bullmq.driver.spec.ts:196:30)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 16 passed, 18 total
+Snapshots:   0 total
+Time:        4.386 s
+Ran all test suites.
+Traceback (most recent call last):
+  File "<stdin>", line 5, in <module>
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log126-run.py", line 16, in node
+    return ssh(cmd+['--entrypoint','node','marketozk/twenty:log088-server-fixed',*args])
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log126-run.py", line 4, in ssh
+    def ssh(args,**kw):return call(['ssh',HOST,shlex.join(args)],**kw)
+                              ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log126-run.py", line 3, in call
+    def call(args,**kw):return subprocess.run(args,check=True,**kw)
+                               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['ssh', 'root@176.114.84.194', "docker run --rm --user 0:0 --network twenty-rob764-3e371e20ab394c2b-net --memory 3g --cpus 2 -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source:/source:ro -v /opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools:/tools:ro -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/out:/out:rw -e NODE_PATH=/out/tools/node_modules:/tools/node_modules:/app/node_modules --entrypoint node marketozk/twenty:log088-server-fixed /tools/node_modules/jest/bin/jest.js --config /source/packages/twenty-server/jest-fork-migration.config.mjs --runInBand '--testMatch=**/message-queue/drivers/__tests__/bullmq.driver.spec.ts'"]' returned non-zero exit status 1.

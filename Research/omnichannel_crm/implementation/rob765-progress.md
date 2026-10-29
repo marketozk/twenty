@@ -16,8 +16,8 @@
 | Operation lookup index | LOG090: generated migration10, populated prefix upgrade/replay/down, real EXPLAIN, drift refusal; не выкатывалось |
 | Production rollout | Не выполнялся; нужны полная native coverage и согласованный выкат с остановленными writers при построении индекса |
 
-Последние проверки: 1601 tests/50 suites PASS (239.667s); 40 новых targeted cases PASS (7.176s), включая real PostgreSQL COMMIT ACK loss. 26 guards PASS; 10 migration checksums неизменны. Types 374/377 roots, 220/220 прежних диагностик, 0 новых/changed-code; 4 AST-identical imports и 1 unchanged method diagnostic. 12 local/remote source hashes совпадают.
-Это не чистый full-server typecheck. [LOG125 results](log125/results.json).
+Последние проверки: 1616 tests/51 suites PASS (240.383s); 98 targeted/3 suites PASS (11.495s), 15 новых cases. 18 upstream driver tests PASS с штатными clearMocks/fakeTimers. 26 guards PASS; 10 migration checksums неизменны. Types 372/375 roots, 212/211 прежних диагностик, 0 новых/changed-file. 10 local/remote source hashes совпадают.
+Это не чистый full-server typecheck. [LOG126 results](log126/results.json).
 
 [Индекс реализованных участков](../plan/phase_2_audit.md), [текущие ограничения](log113/README.md),
 [полная хронология](../DEVLOG.md). Исторические заявления «ещё не включено» внутри
@@ -71,4 +71,7 @@ LOG124 добавляет immutable attribution context после server authen
 Upstream middleware: 10 tests PASS; четыре application suites имеют одинаковый ESM load failure на baseline/current. С явными адаптерами несвязанных DI-зависимостей: 20 tests/5 suites PASS. Full HTTP и выкат не выполнены.
 
 LOG125 фиксирует OAuth user/impersonator в одноразовом коде и проверяет membership до auto-install; packaged install больше не маскируется bare fallback. Preinstalled/backfill/CLI/automatic upgrade имеют явный system source. Оба unknown transaction outcome типа проходят через install/upgrade без compensation и telemetry replacement.
-Следом — queue no-retry для recognized unknown outcomes. Crash/stall/manual retry этим ещё не защищены. Legacy OAuth codes без attribution требуют повторной авторизации; срок кода 5 минут. Выката нет.
+LOG126 добавляет queue no-retry для recognized unknown/confirmed-commit failures. Crash/stall/manual retry этим ещё не защищены. Legacy OAuth codes без attribution требуют повторной авторизации; срок кода 5 минут. Выката нет.
+
+LOG126 запрещает normal automatic queue retry для обоих unknown transaction errors и confirmed postcommit failure. Explorer не заменяет исходную ошибку при сбое telemetry. Install/upgrade не компенсируют confirmed committed effect. Actual Redis проверяет одну попытку, persisted failure, worker restart и ordinary retry; actual PG INSERT с падающим after-commit hook остаётся сохранённым.
+Crash до persisted failure, stalled redelivery, manual retry и новый scheduled run остаются отдельными границами. Далее — strict four-table account deletion primitive, затем callers. Выката нет.

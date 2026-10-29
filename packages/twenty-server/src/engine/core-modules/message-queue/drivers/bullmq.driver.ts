@@ -50,6 +50,7 @@ import { type MetricsService } from 'src/engine/core-modules/metrics/metrics.ser
 import { MetricsKeys } from 'src/engine/core-modules/metrics/types/metrics-keys.type';
 import { applyWorkspaceSentryContextFromJobData } from 'src/engine/core-modules/sentry/utils/apply-workspace-sentry-context-from-job-data.util';
 import { type TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
+import { isTransactionUnsafeToRetry } from 'src/engine/twenty-orm/error-handling/is-transaction-outcome-unknown';
 
 export type BullMQDriverOptions = QueueOptions;
 
@@ -300,15 +301,22 @@ export class BullMQDriver
           this.logger.log(
             `Processing job ${job.id} with name ${job.name} on queue ${queueName}${workspaceSuffix}`,
           );
-          await handler({
-            data: job.data,
-            id: job.id ?? '',
-            name: job.name,
-            retryLimit: Math.max(0, (job.opts.attempts ?? 1) - 1),
-            updateData: (data) => job.updateData(data),
-            updateProgress: (progress) => job.updateProgress(progress),
-            abortSignal,
-          });
+          try {
+            await handler({
+              data: job.data,
+              id: job.id ?? '',
+              name: job.name,
+              retryLimit: Math.max(0, (job.opts.attempts ?? 1) - 1),
+              updateData: (data) => job.updateData(data),
+              updateProgress: (progress) => job.updateProgress(progress),
+              abortSignal,
+            });
+          } catch (error) {
+            // A committed effect may already exist. Keep the original failure
+            // visible, but do not retry it just because attempts remain.
+            if (isTransactionUnsafeToRetry(error)) job.discard();
+            throw error;
+          }
           const timeEnd = performance.now();
           const executionTime = timeEnd - timeStart;
 
