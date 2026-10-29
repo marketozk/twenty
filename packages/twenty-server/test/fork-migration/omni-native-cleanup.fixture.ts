@@ -148,6 +148,9 @@ export const createOmniNativeCleanupFixture = () => {
   const initialize = async () => {
     await native.initialize();
     await native.owner.query(
+      `GRANT SELECT, UPDATE ("deletedAt") ON core.workspace TO "${native.roleName}"`,
+    );
+    await native.owner.query(
       `ALTER TABLE core."connectedAccount" ADD "handleAliases" text[] NOT NULL DEFAULT '{}'`,
     );
     await native.owner.query(

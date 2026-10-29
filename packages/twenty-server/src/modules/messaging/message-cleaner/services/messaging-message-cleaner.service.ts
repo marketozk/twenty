@@ -1,4 +1,6 @@
 import { lockNativeCleanupCandidates } from 'src/modules/omnichannel/services/lock-native-cleanup-candidates';
+import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
+import { deleteNativeMessageChannelAssociationsWithAudit } from 'src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit';
 import { lockOrdinaryNativeSyncRun } from 'src/modules/omnichannel/services/lock-ordinary-native-sync-run';
 import { type OrdinaryMetadataSyncRun } from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
 import {
@@ -309,64 +311,35 @@ export class MessagingMessageCleanerService {
   async deleteMessageChannelMessageAssociationsByChannelId({
     workspaceId,
     messageChannelId,
+    auditOperation,
   }: {
     workspaceId: string;
     messageChannelId: string;
+    auditOperation: CrmAuditOperation;
   }) {
+    if (!auditOperation || auditOperation.workspaceId !== workspaceId)
+      throw new Error('Native channel cleanup requires scoped audit operation');
+    const operation = {
+      ...auditOperation,
+      actor: { ...auditOperation.actor },
+      ...(auditOperation.initiator
+        ? { initiator: { ...auditOperation.initiator } }
+        : {}),
+    };
     const authContext = buildSystemAuthContext(workspaceId);
 
-    await this.workspaceOrmManager.executeInWorkspaceContext(
+    return this.workspaceOrmManager.executeInWorkspaceContext(
       async () => {
-        await this.workspaceOrmManager.runInWorkspaceTransaction(
+        return this.workspaceOrmManager.runInWorkspaceTransaction(
           async (transactionScope) => {
             this.assertWorkspaceScope(workspaceId, transactionScope);
-            const messageChannelMessageAssociationRepository =
-              transactionScope.getRepository<MessageChannelMessageAssociationWorkspaceEntity>(
-                'messageChannelMessageAssociation',
-                { shouldBypassPermissionChecks: true },
-              );
-
-            let cursor: string | undefined;
-
-            for (;;) {
-              const associations =
-                await messageChannelMessageAssociationRepository.find({
-                  where: {
-                    messageChannelId,
-                    ...(isDefined(cursor) ? { id: MoreThan(cursor) } : {}),
-                  },
-                  order: { id: 'ASC' },
-                  take: ORPHAN_CLEANUP_PAGE_SIZE,
-                  select: { id: true, messageId: true },
-                });
-
-              if (associations.length === 0) {
-                break;
-              }
-
-              // Protected rows remain, so progress must follow the full page.
-              cursor = associations[associations.length - 1].id;
-              const ownedMessageIds = await findOmniOwnedMessageIds(
-                transactionScope,
-                workspaceId,
-                associations.map(({ messageId }) => messageId),
-              );
-              const ids = associations
-                .filter(
-                  ({ messageId }) =>
-                    !ownedMessageIds.has(messageId.toLowerCase()),
-                )
-                .map(({ id }) => id);
-
-              if (ids.length === 0) continue;
-
-              this.logger.log(
-                `WorkspaceId: ${workspaceId} Deleting ${ids.length} message channel message associations for channel ${messageChannelId}`,
-              );
-
-              await messageChannelMessageAssociationRepository.delete(ids);
-            }
+            return deleteNativeMessageChannelAssociationsWithAudit({
+              scope: transactionScope,
+              messageChannelId,
+              operation,
+            });
           },
+          { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
         );
       },
       authContext,

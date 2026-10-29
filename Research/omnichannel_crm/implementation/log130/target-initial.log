@@ -1,0 +1,1167 @@
+[Nest] 1  - 10/29/2026, 5:49:19 AM   ERROR [WorkspaceDataSource] After-commit callback failed for workspace da3031dd-bf7b-410d-a3b0-57a896646de2
+[Nest] 1  - 10/29/2026, 5:49:19 AM   ERROR [WorkspaceDataSource] Error: native event dispatch failed after commit
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:210:19)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts (20.664 s)
+  ● journals only actual ordinary association and junction deletion with safe scoped identity
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:105:10)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:105:10)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:105:10)
+
+  ● preserves independent binding ownership and folder junctions
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:138:12
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:138:12
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:138:12
+
+  ● preserves independent link ownership and folder junctions
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:138:12
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:138:12
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:138:12
+
+  ● preserves independent conversation ownership and folder junctions
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:138:12
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:138:12
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:138:12
+
+  ● empty rerun creates no duplicate audit
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:146:3)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:146:3)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:146:3)
+
+  ● dispatches the actual root event only after deletion and audit are externally committed
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:161:3)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at f.dataSource.transaction.commitOutcome (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:165:11)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:161:3)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at f.dataSource.transaction.commitOutcome (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:165:11)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:161:3)
+
+  ● does not dispatch queued native events when the outer transaction rolls back
+
+    expect(received).rejects.toThrow(expected)
+
+    Expected substring: "rollback after successful cleanup callback"
+    Received message:   "Data validation error."
+
+          132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+          133 |     return withCause(
+        > 134 |       new PostgresException('Data validation error.', errorCode),
+              |       ^
+          135 |       error,
+          136 |     );
+          137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:187:3)
+      at Object.toThrow (../../../tools/node_modules/@jest/expect/node_modules/expect/build/index.js:218:22)
+      at Object.toThrow (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:202:13)
+
+  ● preserves the existing successful cleanup contract and logs a postcommit emitter failure
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:218:10)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:218:10)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:218:10)
+
+  ● preserves a soft-deleted ordinary association and its junction without events or audit
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:258:10)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:258:10)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:258:10)
+
+  ● audits recreated association and junction IDs in a fresh operation even when caller operation is reused
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:278:10)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:278:10)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:278:10)
+
+  ● journals and emits only actual deletion in a mixed trigger-skipped batch
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:338:10)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:338:10)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:338:10)
+
+  ● retains an ordinary association whose child references a folder on another bound channel
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:361:10)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:361:10)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:361:10)
+
+  ● refuses a missing workspace even for an empty channel cleanup
+
+    expect(received).rejects.toThrow(expected)
+
+    Expected substring: "Native channel cleanup requires active workspace"
+    Received message:   "Data validation error."
+
+          132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+          133 |     return withCause(
+        > 134 |       new PostgresException('Data validation error.', errorCode),
+              |       ^
+          135 |       error,
+          136 |     );
+          137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:386:3)
+      at Object.toThrow (../../../tools/node_modules/@jest/expect/node_modules/expect/build/index.js:218:22)
+      at Object.toThrow (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:386:46)
+
+  ● refuses a soft-deleted workspace without deleting native records
+
+    expect(received).rejects.toThrow(expected)
+
+    Expected substring: "Native channel cleanup requires active workspace"
+    Received message:   "Data validation error."
+
+          132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+          133 |     return withCause(
+        > 134 |       new PostgresException('Data validation error.', errorCode),
+              |       ^
+          135 |       error,
+          136 |     );
+          137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:400:3)
+      at Object.toThrow (../../../tools/node_modules/@jest/expect/node_modules/expect/build/index.js:218:22)
+      at Object.toThrow (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:400:48)
+
+  ● rolls back cleanup and audit-trigger workspace deactivation together
+
+    expect(received).rejects.toThrow(expected)
+
+    Expected substring: "Native channel cleanup workspace changed before commit"
+    Received message:   "Data validation error."
+
+          132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+          133 |     return withCause(
+        > 134 |       new PostgresException('Data validation error.', errorCode),
+              |       ^
+          135 |       error,
+          136 |     );
+          137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:416:3)
+      at Object.toThrow (../../../tools/node_modules/@jest/expect/node_modules/expect/build/index.js:218:22)
+      at Object.toThrow (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:416:48)
+
+  ● skipped root DELETE retains its junction and records no false deletion
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:460:10)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:460:10)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:460:10)
+
+  ● rolls back deletion when an audit trigger adds retained Omni ownership to the deleted association message
+
+    expect(received).rejects.toThrow(expected)
+
+    Expected substring: "Native channel cleanup ownership changed before commit"
+    Received message:   "Data validation error."
+
+          132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+          133 |     return withCause(
+        > 134 |       new PostgresException('Data validation error.', errorCode),
+              |       ^
+          135 |       error,
+          136 |     );
+          137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:525:3)
+      at Object.toThrow (../../../tools/node_modules/@jest/expect/node_modules/expect/build/index.js:218:22)
+      at Object.toThrow (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:525:48)
+
+  ● advances past a full protected first page and audits the ordinary later page
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:610:10)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:610:10)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:610:10)
+
+  ● reports lost COMMIT acknowledgement while keeping the committed deletion and journal
+
+    expect(received).rejects.toBeInstanceOf(expected)
+
+    Expected constructor: NativeTransactionOutcomeUnknownError
+    Received constructor: PostgresException
+
+      632 |     .spyOn(f.pool, 'connect')
+      633 |     .mockImplementationOnce(() => Promise.resolve(client));
+    > 634 |   await expect(remove(seed.channelId)).rejects.toBeInstanceOf(
+          |                                                ^
+      635 |     NativeTransactionOutcomeUnknownError,
+      636 |   );
+      637 |   expect(statements).not.toContain('ROLLBACK');
+
+      at Object.toBeInstanceOf (../../../tools/node_modules/@jest/expect/node_modules/expect/build/index.js:218:22)
+      at Object.toBeInstanceOf (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:634:48)
+
+  ● captures and audits a FK child insert committed before parent cleanup locks
+
+    Expected the exact cleanup/FK PostgreSQL lock wait
+
+      661 |     await new Promise((resolve) => setTimeout(resolve, 10));
+      662 |   }
+    > 663 |   throw new Error('Expected the exact cleanup/FK PostgreSQL lock wait');
+          |         ^
+      664 | };
+      665 | const closeWriter = async (runner: QueryRunner) => {
+      666 |   if (runner.isTransactionActive) await runner.rollbackTransaction();
+
+      at waitForBlocker (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:663:9)
+      at test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:722:7
+
+  ● captures and audits a FK child reparent committed before parent cleanup locks
+
+    Expected the exact cleanup/FK PostgreSQL lock wait
+
+      661 |     await new Promise((resolve) => setTimeout(resolve, 10));
+      662 |   }
+    > 663 |   throw new Error('Expected the exact cleanup/FK PostgreSQL lock wait');
+          |         ^
+      664 | };
+      665 | const closeWriter = async (runner: QueryRunner) => {
+      666 |   if (runner.isTransactionActive) await runner.rollbackTransaction();
+
+      at waitForBlocker (test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:663:9)
+      at test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:722:7
+
+  ● cleanup parent locks first, so later FK child insert fails after commit
+
+    Cleanup settled before the parent lock barrier
+
+      780 |         reached.promise,
+      781 |         deletion.then(() => {
+    > 782 |           throw new Error('Cleanup settled before the parent lock barrier');
+          |                 ^
+      783 |         }),
+      784 |       ]);
+      785 |       mutation = capture(race.write());
+
+      at test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:782:17
+      at test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:779:7
+
+  ● cleanup parent locks first, so later FK child reparent fails after commit
+
+    Cleanup settled before the parent lock barrier
+
+      780 |         reached.promise,
+      781 |         deletion.then(() => {
+    > 782 |           throw new Error('Cleanup settled before the parent lock barrier');
+          |                 ^
+      783 |         }),
+      784 |       ]);
+      785 |       mutation = capture(race.write());
+
+      at test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:782:17
+      at test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts:779:7
+
+[32m[Nest] 1  - [39m10/29/2026, 5:49:33 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616 Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:33 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616 Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:33 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616 Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 7d2629d2-86a7-48f9-bc9c-644b6da764be, FolderId: 9bd64869-88a2-4e6c-8470-6699d9fca298 - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 7d2629d2-86a7-48f9-bc9c-644b6da764be, FolderId: 9bd64869-88a2-4e6c-8470-6699d9fca298 - Deleting 1 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616 Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 7d2629d2-86a7-48f9-bc9c-644b6da764be, FolderId: 9bd64869-88a2-4e6c-8470-6699d9fca298 - Completed deleting 1 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 7d2629d2-86a7-48f9-bc9c-644b6da764be, FolderId: 9bd64869-88a2-4e6c-8470-6699d9fca298 - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 7d2629d2-86a7-48f9-bc9c-644b6da764be, FolderId: 9bd64869-88a2-4e6c-8470-6699d9fca298 - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 7d2629d2-86a7-48f9-bc9c-644b6da764be, FolderId: 9bd64869-88a2-4e6c-8470-6699d9fca298 - Completed deleting 0 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 261461a3-1c9d-48ec-abf8-ab877ad868b1, FolderId: 9a7e780b-1173-4a9a-9b55-92a0cea2d995 - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 261461a3-1c9d-48ec-abf8-ab877ad868b1, FolderId: 9a7e780b-1173-4a9a-9b55-92a0cea2d995 - Deleting 1 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616 Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 261461a3-1c9d-48ec-abf8-ab877ad868b1, FolderId: 9a7e780b-1173-4a9a-9b55-92a0cea2d995 - Completed deleting 1 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 261461a3-1c9d-48ec-abf8-ab877ad868b1, FolderId: 9a7e780b-1173-4a9a-9b55-92a0cea2d995 - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 261461a3-1c9d-48ec-abf8-ab877ad868b1, FolderId: 9a7e780b-1173-4a9a-9b55-92a0cea2d995 - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 261461a3-1c9d-48ec-abf8-ab877ad868b1, FolderId: 9a7e780b-1173-4a9a-9b55-92a0cea2d995 - Completed deleting 0 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 5b678cd1-7735-476b-820a-f6fc52429c46, FolderId: 1a2c1f9b-0734-4f1d-ae7e-85bcf25adfcf - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 5b678cd1-7735-476b-820a-f6fc52429c46, FolderId: 1a2c1f9b-0734-4f1d-ae7e-85bcf25adfcf - Deleting 1 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616 Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 5b678cd1-7735-476b-820a-f6fc52429c46, FolderId: 1a2c1f9b-0734-4f1d-ae7e-85bcf25adfcf - Completed deleting 1 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 5b678cd1-7735-476b-820a-f6fc52429c46, FolderId: 1a2c1f9b-0734-4f1d-ae7e-85bcf25adfcf - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 5b678cd1-7735-476b-820a-f6fc52429c46, FolderId: 1a2c1f9b-0734-4f1d-ae7e-85bcf25adfcf - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:34 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 5b678cd1-7735-476b-820a-f6fc52429c46, FolderId: 1a2c1f9b-0734-4f1d-ae7e-85bcf25adfcf - Completed deleting 0 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:36 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 0b8c3103-7cc2-486c-a77a-97c5d70ba068, FolderId: 1d32dd28-d092-4d14-a45a-ebcdceb6544b - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:36 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 0b8c3103-7cc2-486c-a77a-97c5d70ba068, FolderId: 1d32dd28-d092-4d14-a45a-ebcdceb6544b - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:36 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 0b8c3103-7cc2-486c-a77a-97c5d70ba068, FolderId: 1d32dd28-d092-4d14-a45a-ebcdceb6544b - Deleting 1 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:36 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616 Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:36 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 0b8c3103-7cc2-486c-a77a-97c5d70ba068, FolderId: 1d32dd28-d092-4d14-a45a-ebcdceb6544b - Completed deleting 1 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:36 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 0b8c3103-7cc2-486c-a77a-97c5d70ba068, FolderId: 1d32dd28-d092-4d14-a45a-ebcdceb6544b - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:36 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 0b8c3103-7cc2-486c-a77a-97c5d70ba068, FolderId: 1d32dd28-d092-4d14-a45a-ebcdceb6544b - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:36 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 0b8c3103-7cc2-486c-a77a-97c5d70ba068, FolderId: 1d32dd28-d092-4d14-a45a-ebcdceb6544b - Completed deleting 0 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:37 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 887545cd-6634-49a9-9621-58fe5d7b6071, FolderId: b26aebc4-3d2d-44d1-846c-33d68448716a - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:37 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 887545cd-6634-49a9-9621-58fe5d7b6071, FolderId: b26aebc4-3d2d-44d1-846c-33d68448716a - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:37 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: 887545cd-6634-49a9-9621-58fe5d7b6071, FolderId: b26aebc4-3d2d-44d1-846c-33d68448716a - Completed deleting 0 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:37 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: cb8dbd28-230b-43cc-bccf-d353910f2efc, FolderId: b88c02ba-3465-4840-9f6a-01934cfc7970 - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:37 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: cb8dbd28-230b-43cc-bccf-d353910f2efc, FolderId: b88c02ba-3465-4840-9f6a-01934cfc7970 - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:37 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616, MessageChannelId: cb8dbd28-230b-43cc-bccf-d353910f2efc, FolderId: b88c02ba-3465-4840-9f6a-01934cfc7970 - Completed deleting 0 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:37 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 04d7d1c5-65a3-4a39-92bf-ac377fcc5616 Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/29/2026, 5:49:38 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 58390f5a-c88c-4e73-8a22-1d5ad5aa8ba8, MessageChannelId: ff7815f9-0b52-416f-99c2-d43993a6d5ba, FolderId: 944612fd-3c06-4793-bc81-161c32bf1a47 - Deleting messages from folder: Fixture folder[39m
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-cleanup.postgres-spec.ts (9.296 s)
+  ● native cleanup preserves independently owned omni records › channel cleanup preserves binding-owned associations and their folder junctions
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at test/fork-migration/omni-native-cleanup.postgres-spec.ts:164:7
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at test/fork-migration/omni-native-cleanup.postgres-spec.ts:164:7
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at test/fork-migration/omni-native-cleanup.postgres-spec.ts:164:7
+
+  ● native cleanup preserves independently owned omni records › channel cleanup preserves link-owned associations and their folder junctions
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at test/fork-migration/omni-native-cleanup.postgres-spec.ts:164:7
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at test/fork-migration/omni-native-cleanup.postgres-spec.ts:164:7
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at test/fork-migration/omni-native-cleanup.postgres-spec.ts:164:7
+
+  ● native cleanup preserves independently owned omni records › channel cleanup preserves conversation-owned associations and their folder junctions
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at test/fork-migration/omni-native-cleanup.postgres-spec.ts:164:7
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at test/fork-migration/omni-native-cleanup.postgres-spec.ts:164:7
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at test/fork-migration/omni-native-cleanup.postgres-spec.ts:164:7
+
+  ● native cleanup preserves independently owned omni records › advances past 500 protected channel rows and deletes the ordinary next page
+
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:83:36)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/omni-native-cleanup.postgres-spec.ts:296:5)
+
+    Cause:
+    Data validation error.
+
+      132 |   if (KNOWN_POSTGRES_ERROR_CODES.includes(errorCode)) {
+      133 |     return withCause(
+    > 134 |       new PostgresException('Data validation error.', errorCode),
+          |       ^
+      135 |       error,
+      136 |     );
+      137 |   }
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:134:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/omni-native-cleanup.postgres-spec.ts:296:5)
+
+    Cause:
+    error: permission denied for table workspace
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at deleteNativeMessageChannelAssociationsWithAudit (src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts:123:23)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/omni-native-cleanup.postgres-spec.ts:296:5)
+
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-channel-cleanup-job.spec.ts
+
+Test Suites: 2 failed, 1 passed, 3 total
+Tests:       27 failed, 37 passed, 64 total
+Snapshots:   0 total
+Time:        30.233 s
+Ran all test suites matching /crm-audit-native-association-cleanup|crm-audit-message-channel-cleanup-job|omni-native-cleanup/i.
+[95m[Nest] 1  - [39m10/29/2026, 5:49:38 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: eb883d2d-1f54-46c2-8fa1-4207d265bf7d Cleaning up message channel message associations for channel 33ff320e-6b6b-4235-81a7-0560ba0b4f20[39m
+[95m[Nest] 1  - [39m10/29/2026, 5:49:38 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: 3a870578-58c9-4277-a181-dcea6bff0120 Cleaning up message channel message associations for channel 2a89e204-e9c4-4245-b609-af44d6bae4fd[39m
+[95m[Nest] 1  - [39m10/29/2026, 5:49:38 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: 2b2f99f5-dd53-4fb1-8240-d08e143bc960 Cleaning up message channel message associations for channel 81559c5f-174c-458b-99ec-fb61f0e937d3[39m
+[95m[Nest] 1  - [39m10/29/2026, 5:49:38 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: 27d39285-08df-4191-aabc-112d71b10ee2 Cleaning up message channel message associations for channel 16d88274-630e-4c10-b3b4-a52c53be8931[39m
+[95m[Nest] 1  - [39m10/29/2026, 5:49:38 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: 0ab22a77-8598-49d1-bf9a-066ad5685702 Cleaning up message channel message associations for channel 6d5be4c1-f4bb-404e-a625-611776c7db82[39m
+[95m[Nest] 1  - [39m10/29/2026, 5:49:38 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: 0ab22a77-8598-49d1-bf9a-066ad5685702 Cleaning up message channel message associations for channel 6d5be4c1-f4bb-404e-a625-611776c7db82[39m
+[95m[Nest] 1  - [39m10/29/2026, 5:49:38 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: 2c3d1d42-b355-4a05-b75d-a1591067316d Cleaning up message channel message associations for channel 334e902a-f245-4847-ba30-b4b3afc703c9[39m
+Traceback (most recent call last):
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log130-target.py", line 6, in <module>
+    m['node'](['/tools/node_modules/jest/bin/jest.js','--config','/source/packages/twenty-server/jest-fork-migration.config.mjs','--runInBand','--testPathPattern='+pattern],{'FORK_MIGRATION_TEST_REDIS_URL':'redis://redis:6379','FORK_MIGRATION_TEST_URL':'postgres://test_owner:isolated-test-only@postgres/'+s['database']})
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log130-run.py", line 16, in node
+    return ssh(cmd+['--entrypoint','node','marketozk/twenty:log088-server-fixed',*args])
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log130-run.py", line 4, in ssh
+    def ssh(args,**kw):return call(['ssh',HOST,shlex.join(args)],**kw)
+                              ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log130-run.py", line 3, in call
+    def call(args,**kw):return subprocess.run(args,check=True,**kw)
+                               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['ssh', 'root@176.114.84.194', "docker run --rm --user 0:0 --network twenty-rob764-3e371e20ab394c2b-net --memory 3g --cpus 2 -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source:/source:ro -v /opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools:/tools:ro -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/out:/out:rw -e NODE_PATH=/out/tools/node_modules:/tools/node_modules:/app/node_modules -e FORK_MIGRATION_TEST_REDIS_URL=redis://redis:6379 -e FORK_MIGRATION_TEST_URL=postgres://test_owner:isolated-test-only@postgres/twenty_rob764_test_3e371e20ab394c2b --entrypoint node marketozk/twenty:log088-server-fixed /tools/node_modules/jest/bin/jest.js --config /source/packages/twenty-server/jest-fork-migration.config.mjs --runInBand '--testPathPattern=crm-audit-native-association-cleanup|crm-audit-message-channel-cleanup-job|omni-native-cleanup'"]' returned non-zero exit status 1.

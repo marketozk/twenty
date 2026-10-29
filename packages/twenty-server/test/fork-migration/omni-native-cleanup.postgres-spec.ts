@@ -1,4 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import {
+  membershipCleanupOperation,
+  systemMembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 
 import {
   createOmniNativeCleanupFixture,
@@ -26,6 +30,14 @@ jest.mock(
 );
 
 const fixture = createOmniNativeCleanupFixture();
+const channelCleanupOperation = (workspaceId = fixture.workspaceId) =>
+  membershipCleanupOperation(
+    workspaceId,
+    systemMembershipCleanupIdentity(
+      workspaceId,
+      'MessagingMessageChannelDeletionCleanupJob',
+    ),
+  )!;
 type Seed = Awaited<ReturnType<typeof fixture.seed>>;
 const tables = [
   'message',
@@ -145,9 +157,14 @@ describe('native cleanup preserves independently owned omni records', () => {
     async (marker: CleanupMarker) => {
       const seed = await fixture.seed(marker);
       const before = await protectedSnapshot(seed);
+      await fixture.owner.query(
+        'DELETE FROM core."messageChannel" WHERE id=$1',
+        [seed.channelId],
+      );
       await fixture.cleaner.deleteMessageChannelMessageAssociationsByChannelId({
         workspaceId: fixture.workspaceId,
         messageChannelId: seed.channelId,
+        auditOperation: channelCleanupOperation(),
       });
       await fixture.cleaner.cleanOrphanMessagesAndThreads(fixture.workspaceId);
       await noEmail(seed);
@@ -273,9 +290,13 @@ describe('native cleanup preserves independently owned omni records', () => {
 
   it('advances past 500 protected channel rows and deletes the ordinary next page', async () => {
     const seed = await seedPages(500);
+    await fixture.owner.query('DELETE FROM core."messageChannel" WHERE id=$1', [
+      seed.channelId,
+    ]);
     await fixture.cleaner.deleteMessageChannelMessageAssociationsByChannelId({
       workspaceId: fixture.workspaceId,
       messageChannelId: seed.channelId,
+      auditOperation: channelCleanupOperation(),
     });
     expect(await fixture.read('messageChannelMessageAssociation')).toHaveLength(
       500,
@@ -380,7 +401,11 @@ describe('native cleanup preserves independently owned omni records', () => {
             )
           : entry === 'channel'
             ? fixture.cleaner.deleteMessageChannelMessageAssociationsByChannelId(
-                { workspaceId, messageChannelId: seed.channelId },
+                {
+                  workspaceId,
+                  messageChannelId: seed.channelId,
+                  auditOperation: channelCleanupOperation(workspaceId),
+                },
               )
             : entry === 'orphan'
               ? fixture.cleaner.cleanOrphanMessagesAndThreads(workspaceId)

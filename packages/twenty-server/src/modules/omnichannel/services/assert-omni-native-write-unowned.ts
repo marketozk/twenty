@@ -53,6 +53,7 @@ export const findOmniNativeWriteOwnedRecords = async (
   else if (name === 'messageParticipant') messageIds = ids('messageId');
   else if (name === 'messageChannelMessageAssociation') {
     messageIds = ids('messageId');
+    threadIds = ids('messageThreadId');
     channelIds = ids('messageChannelId');
   } else {
     ownedFolderIds = await findOmniOwnedMessageFolderIds(
@@ -63,7 +64,7 @@ export const findOmniNativeWriteOwnedRecords = async (
     const associationIds = ids('messageChannelMessageAssociationId');
     if (associationIds.length) {
       const associations = await query.executeRawQuery(
-        `SELECT id, "messageId", "messageChannelId" FROM "${schema}"."messageChannelMessageAssociation" WHERE id=ANY($1::uuid[])`,
+        `SELECT id, "messageId", "messageThreadId", "messageChannelId" FROM "${schema}"."messageChannelMessageAssociation" WHERE id=ANY($1::uuid[])`,
         [associationIds],
       );
       if (
@@ -127,6 +128,7 @@ export const findOmniNativeWriteOwnedRecords = async (
     if (name === 'messageChannelMessageAssociation')
       return (
         ownedMessages.has(value(row, 'messageId')) ||
+        ownedThreads.has(value(row, 'messageThreadId')) ||
         ownedChannels.has(value(row, 'messageChannelId'))
       );
     return (

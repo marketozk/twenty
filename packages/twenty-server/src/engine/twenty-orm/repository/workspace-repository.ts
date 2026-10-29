@@ -2212,7 +2212,7 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
               columnsToReturn,
               this.options.tableShape,
             )
-          : lifecycleAudit
+          : lifecycleAudit || kind === 'delete'
             ? [...new Set([...columnsToReturn, 'id'])]
             : columnsToReturn,
       setColumns,
@@ -2274,7 +2274,7 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
         kind === 'soft-delete' || kind === 'restore' ? kind : undefined,
       );
     const deletedIds =
-      nativeAudit && kind === 'delete'
+      kind === 'delete'
         ? new Set(mutationResult.generatedMaps.map((row) => row.id))
         : undefined;
     this.emitMutationEvent({
@@ -2286,7 +2286,8 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       inheritedReadabilityChildRecordsByRecordId,
     });
 
-    return lifecycleAudit && !columnsToReturn.includes('id')
+    return (lifecycleAudit || kind === 'delete') &&
+      !columnsToReturn.includes('id')
       ? mutationResult.generatedMaps.map(
           ({ id: _id, ...row }) => row as ObjectRecord,
         )

@@ -1,0 +1,12 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts 803ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-cleaner/jobs/messaging-message-channel-deletion-cleanup.job.ts 12ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service.ts 81ms (unchanged)
+../../../source/packages/twenty-server/src/modules/omnichannel/services/assert-omni-native-write-unowned.ts 13ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/omni-native-cleanup.fixture.ts 59ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/omni-native-cleanup.postgres-spec.ts 115ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts 80ms
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-channel-cleanup-job.spec.ts 14ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts 165ms
+
+{"formattedFiles": 9, "singleSshSession": true}

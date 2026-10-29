@@ -3809,3 +3809,9 @@ LOG129 подключает production account deletion к closed audit owner: c
 ROB765 In Progress. Внешние provider effects не откатываются с БД; async cleanup/event delivery отдельно. [Следующая реализация](implementation/log129/next-boundary.md). Full HTTP/build/deploy и GitHub Actions не выполнялись.
 
 LOG129 publication: code 70885c0c5e5d8bb1aca960be5ca0c9aa9b8946da pushed and GitHub API ref verified. Linear comment 00fb1cd8-d491-47bc-a85d-a6bd9c845dff, description/comment/all 11 issue states independently read back. Continuing native association cleanup; ROB765 remains In Progress.
+
+
+## LOG130 — аудит фоновой очистки связей канала
+
+LOG130 подключает аудит фактической очистки associations удалённого канала и их folder junctions: именованный worker actor, исходный strict/exclusive scope, active workspace, обязательный FK, exact snapshots/RETURNING и повторные проверки ownership. Сохранены soft-deleted roots и прежние after-commit события; исправлены ложные события при trigger-skipped DELETE. Общий guard учитывает прямую association.messageThreadId, в том числе при null messageId.
+1771 tests/57 suites PASS (270.446s); 162 targeted/5 suites PASS (49.856s), 42 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 379/382 roots, 225/225 прежних диагностик, 0 новых/changed-file. 9 local/remote source hashes совпадают. [Проверки](implementation/log130/results.json). ROB765 In Progress. Последующий orphan sweep, reconciliation, calendar cleanup и durable dispatch остаются открытыми. После LOG088 выкат не выполнялся; GitHub Actions не использовался. [Далее](implementation/log130/next-boundary.md).

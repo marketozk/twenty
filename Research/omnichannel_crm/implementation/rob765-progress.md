@@ -16,8 +16,8 @@
 | Operation lookup index | LOG090: generated migration10, populated prefix upgrade/replay/down, real EXPLAIN, drift refusal; не выкатывалось |
 | Production rollout | Не выполнялся; нужны полная native coverage и согласованный выкат с остановленными writers при построении индекса |
 
-Последние проверки: 1687 tests/53 suites PASS (257.674s); 71 targeted/2 suites PASS (19.02s), 30 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 373/376 roots, 211/211 прежних диагностик, 0 новых/changed-file. 7 local/remote source hashes совпадают.
-Это не чистый full-server typecheck. [LOG128 results](log128/results.json).
+Последние проверки: 1771 tests/57 suites PASS (270.446s); 162 targeted/5 suites PASS (49.856s), 42 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 379/382 roots, 225/225 прежних диагностик, 0 новых/changed-file. 9 local/remote source hashes совпадают.
+Это не чистый full-server typecheck. [LOG130 results](log130/results.json).
 
 [Индекс реализованных участков](../plan/phase_2_audit.md), [текущие ограничения](log113/README.md),
 [полная хронология](../DEVLOG.md). Исторические заявления «ещё не включено» внутри
@@ -82,3 +82,7 @@ LOG128 добавляет обязательные captured deletion boundaries 
 
 LOG129 подключает production account deletion к closed audit owner: caller/manifest/email-group/repair boundaries, сохранённый handle, fresh checks и фактические RETURNING IDs. Non-administrative deletion требует полного результата внутри транзакции; provider handler блокирует captured ID и отказывает при любых оставшихся account refs. Синхронный сбой событий после COMMIT сохраняет unsafe classification. Старый command не изменён.
 1729 tests/55 suites PASS (261.127s); 309 targeted/8 suites PASS (44.631s), 42 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 380/382 roots, 229/229 прежних диагностик, 0 новых/changed-file. 17 local/remote source hashes совпадают. [Проверки](log129/results.json). Production callers подключены; native cleanup и durable delivery ещё открыты. [Следующая граница](log129/next-boundary.md). ROB765 In Progress; выкат не выполнялся.
+
+
+LOG130 подключает аудит фактической очистки associations удалённого канала и их folder junctions: именованный worker actor, исходный strict/exclusive scope, active workspace, обязательный FK, exact snapshots/RETURNING и повторные проверки ownership. Сохранены soft-deleted roots и прежние after-commit события; исправлены ложные события при trigger-skipped DELETE. Общий guard учитывает прямую association.messageThreadId, в том числе при null messageId.
+1771 tests/57 suites PASS (270.446s); 162 targeted/5 suites PASS (49.856s), 42 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 379/382 roots, 225/225 прежних диагностик, 0 новых/changed-file. 9 local/remote source hashes совпадают. [Проверки](log130/results.json). ROB765 In Progress. Последующий orphan sweep, reconciliation, calendar cleanup и durable dispatch остаются открытыми. После LOG088 выкат не выполнялся; GitHub Actions не использовался. [Далее](log130/next-boundary.md).

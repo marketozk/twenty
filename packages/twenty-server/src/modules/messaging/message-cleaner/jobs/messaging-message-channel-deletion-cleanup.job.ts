@@ -1,4 +1,8 @@
 import { Logger, Scope } from '@nestjs/common';
+import {
+  membershipCleanupOperation,
+  systemMembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 
 import { Process } from 'src/engine/core-modules/message-queue/decorators/process.decorator';
 import { Processor } from 'src/engine/core-modules/message-queue/decorators/processor.decorator';
@@ -27,19 +31,26 @@ export class MessagingMessageChannelDeletionCleanupJob {
   async handle(
     data: MessagingMessageChannelDeletionCleanupJobData,
   ): Promise<void> {
+    const { workspaceId, messageChannelId } = data;
+    const auditOperation = membershipCleanupOperation(
+      workspaceId,
+      systemMembershipCleanupIdentity(
+        workspaceId,
+        MessagingMessageChannelDeletionCleanupJob.name,
+      ),
+    )!;
     this.logger.debug(
-      `WorkspaceId: ${data.workspaceId} Cleaning up message channel message associations for channel ${data.messageChannelId}`,
+      `WorkspaceId: ${workspaceId} Cleaning up message channel message associations for channel ${messageChannelId}`,
     );
 
     await this.messageCleanerService.deleteMessageChannelMessageAssociationsByChannelId(
       {
-        workspaceId: data.workspaceId,
-        messageChannelId: data.messageChannelId,
+        workspaceId,
+        messageChannelId,
+        auditOperation,
       },
     );
 
-    await this.messageCleanerService.cleanOrphanMessagesAndThreads(
-      data.workspaceId,
-    );
+    await this.messageCleanerService.cleanOrphanMessagesAndThreads(workspaceId);
   }
 }

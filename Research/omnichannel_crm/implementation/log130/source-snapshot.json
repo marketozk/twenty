@@ -1,0 +1,15 @@
+{
+  "baseCommit": "be549dc0718ec5aab2b990ba92f1d0422a575f50",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts": "9d8d9351046f51a0148cc42be23763b6497c8cfab552c7dc02638b043980dc9e",
+    "packages/twenty-server/src/modules/messaging/message-cleaner/jobs/messaging-message-channel-deletion-cleanup.job.ts": "c5336e324cedfcadfaad7aa7ed57974a548171043bb977b94f0c2e6dcf7ca008",
+    "packages/twenty-server/src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service.ts": "5aaab2a5f0dfa6cf506721aff6270bf451bae07ec982889ef596f921df7775b0",
+    "packages/twenty-server/src/modules/omnichannel/services/assert-omni-native-write-unowned.ts": "d04cf47d651cae552bb35212c9c7711d44427402d2b0a53eecb0414041b05dba",
+    "packages/twenty-server/test/fork-migration/omni-native-cleanup.fixture.ts": "4bc83bcd8dd8ab3b2fcb12010465acffd8df79c76d0a4373fef65af5854a9815",
+    "packages/twenty-server/test/fork-migration/omni-native-cleanup.postgres-spec.ts": "77a21bfc992d633235396be5da11f6a3c8dfe208da2636d2dc4e7ec780692d6b",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts": "1a19ab4aafefc142f4e55b726658b11bffd54a79a2704adf911a5d2de77b0c31",
+    "packages/twenty-server/test/fork-migration/crm-audit-message-channel-cleanup-job.spec.ts": "3a6f39a493e962572e18ceac2a8cab755dcfeaeba92e89882183262175872e9d",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts": "1c285d0edbc0ab28bc5834ce95888e852009b35f576c1374207280c13a558778"
+  },
+  "uploadedSourceHashesVerified": true
+}
