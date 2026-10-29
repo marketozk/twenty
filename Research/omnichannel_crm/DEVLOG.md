@@ -3921,3 +3921,5 @@ SET NULL без потери файлов/точности, unsupported FK и к
 двухсоединительные INSERT/reparent races, late audit/deferred changes и COMMIT ACK.
 Независимое чтение блокеров не выявило. Исправлен один UUID type mismatch
 в тесте; окончательная регрессия включает правку. [Ревью](implementation/log139/review.md).
+
+LOG139 publication: code cc30ff6df39ef20286c910f7fd7390129a915254 pushed and GitHub API ref verified. Linear comment b1c6c642-c0a0-4aca-985e-24fcec3ae4b6, description/comment/all 11 issue states independently read back. Continuing global CalendarEvent sweep and three production jobs; ROB765 remains In Progress.
