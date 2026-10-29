@@ -3673,3 +3673,7 @@ dependency без изменения baseline. Seed/type ошибки испра
 ROB765 In Progress. Адаптированные service tests не заменяют full HTTP; физическое
 удаление файлов, transfers и whole public removal остаются отдельными. Выката нет.
 Далее [connected-account transfer audit](implementation/log121/next-boundary.md).
+
+LOG121 publication: 43c5a472fcce74c7af4df28611d94f84665af08c pushed/API verified.
+ROB765 description/comment 45b4539f-5099-4627-a2a0-94ab3ba2f040 independently read back;
+all 11 issue states match. Implementation continues with connected-account transfer.
