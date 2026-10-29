@@ -3877,3 +3877,5 @@ page до первого удаления и type-only Enterprise dependency. Н
 legacy cleanup тестов вызваны общей защищённой тестовой папкой; обычная папка отделена
 без изменения assertions. [Ревью](implementation/log136/review.md) сохраняет причины
 и ограничения. Независимый проход по production callsites новых блокеров не обнаружил.
+
+LOG136 publication: code 89a43f1b9f2c0e55800b70e88b2c0d727132e63c pushed and GitHub API ref verified. Linear comment 11644dc1-22e4-486c-a64f-9fa823a1db0a, description/comment/all 11 issue states independently read back. Continuing blocklist cleanup; ROB765 remains In Progress.
