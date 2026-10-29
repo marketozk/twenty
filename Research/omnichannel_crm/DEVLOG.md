@@ -3758,3 +3758,7 @@ LOG125 фиксирует OAuth user/impersonator в одноразовом ко
 Ревью нашло второй unknown error class на реальном account-delete path: исправлены оба. Real PG case проверяет manifest orchestration и committed DELETE через явный adapter. Исходные module type declarations отсутствуют и на baseline; AST-проверка подтверждает 4 unchanged imports и unchanged method. Full-server typecheck не чистый.
 
 ROB765 In Progress. Queue retryLimit=2 ещё повторяет unknown; [следующий шаг](implementation/log125/next-boundary.md) — остановка этого retry до подключения нового strict delete owner. Full HTTP/build/deploy и GitHub Actions не выполнялись.
+
+LOG125 publication: 377fb3db07aaf3a10bce14c7f309e7abfa8c5316 pushed/API verified.
+ROB765 description/comment 52a47612-6205-4db5-8e95-6ac09e3e439b independently read back;
+all 11 issue states match. Implementation continues with queue unknown-outcome handling.
