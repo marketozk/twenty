@@ -3939,3 +3939,5 @@ Service/jobs сохраняют системную attribution, strict outcome �
 В STATUS исправлен оставшийся текст краткого описания LOG138, ошибочно
 переименованный при обновлении LOG139. Текущий обзор теперь описывает global
 sweep; исторические detailed evidence и результаты проверок не менялись.
+
+LOG140 publication: code 9ffd867a726a58f9b5a76e9c5a986bd7e4d432ac pushed and GitHub API ref verified. Linear comment bfec0218-0d0b-4972-bcaa-e3a2e64578aa, description/comment/all 11 issue states independently read back. Continuing provider expectedRun cleanup and unsafe outcomes; ROB765 remains In Progress.

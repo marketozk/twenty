@@ -32,10 +32,10 @@ ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.
 Описание ROB765 синхронизируется с [планом этапа](plan/phase_2_audit.md);
 подробный отчёт о каждой публикации сохраняется в комментарии задачи и DEVLOG.
 
-Последняя подтверждённая сверка — [LOG139 publication](implementation/log139/publication.json):
+Последняя подтверждённая сверка — [LOG140 publication](implementation/log140/publication.json):
 описание, комментарий и все 11 статусов прочитаны обратно; commit/push подтверждены GitHub API.
 LOG139 опубликован; описание и отчёт Linear прочитаны обратно после push.
-LOG140 проверен; описание и отчёт Linear будут синхронизированы после push.
+LOG140 опубликован; описание и отчёт Linear прочитаны обратно после push.
 Следующая работа — provider expectedRun cleanup; ROB765 остаётся In Progress.
 История прежних R13–R16/LOG-публикаций сохраняется в [DEVLOG](DEVLOG.md) и каталогах evidence.
 GitHub Actions не используется.
