@@ -3651,3 +3651,25 @@ ROB765 In Progress. Это не общий freshness gate для request.user и
 LOG120 publication: ddab6bfa9d6253d1a29be230bff3040a4024cba1 pushed/API verified.
 ROB765 description/comment 210b0cdd-cbac-4e83-ade1-d92777d242b0 independently read back;
 all 11 issue states match. Implementation continues with native member cleanup.
+
+## LOG-121 — private native member deletion и actual FK audit
+
+UserService фиксирует workspace/user/membership/member IDs и вызывает private
+DELETE owner на issued strict/exclusive scope. Точный стандартный metadata identity,
+real FK traversal, row locks и reread покрывают известные SET NULL/CASCADE, включая
+транзитивную цепочку agent threads/messages/turns/parts/reactions/attachments.
+Используется существующий безопасный field-ID snapshot. Mandatory verification
+остаётся вне audit savepoint; journal failure не отменяет удаление. Unknown commit
+не повторяется. Новый operationId сохраняет общую correlation/actor attribution.
+
+1398 tests/46 suites PASS (219.283s); 59 targeted/3 suites PASS, 18 новых PG cases. 26 guards PASS; 10 migration checksums неизменны. Types 362/364 roots, 189/189 прежних диагностик, 0 новых/changed-file. 7 local/remote source hashes совпадают.
+[Результаты](implementation/log121/results.json), [ревью](implementation/log121/review.md).
+
+Ревью обнаружило mixed CASCADE/SET NULL transitive UPDATE gap: исправлен и проверен
+composite FK regression. Dependency guard сначала отклонил imports полного ORM graph;
+structural port через существующий capability registry устранил новую Enterprise
+dependency без изменения baseline. Seed/type ошибки исправлены до финальных прогонов.
+
+ROB765 In Progress. Адаптированные service tests не заменяют full HTTP; физическое
+удаление файлов, transfers и whole public removal остаются отдельными. Выката нет.
+Далее [connected-account transfer audit](implementation/log121/next-boundary.md).

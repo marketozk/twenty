@@ -185,6 +185,25 @@ export class WorkspaceDataSource {
           executor,
           lifecycle,
           nativeOwnershipLock,
+          nativeCleanupMetadata: () => ({
+            authType: this.authContext.type,
+            authWorkspaceId: this.authContext.workspace.id,
+            memberObjectId:
+              this.internalContext.objectIdByNameSingular.workspaceMember,
+            objects: Object.values(
+              this.internalContext.flatObjectMetadataMaps.byUniversalIdentifier,
+            )
+              .filter(isDefined)
+              .filter(
+                (metadata) =>
+                  metadata.workspaceId === this.internalContext.workspaceId &&
+                  !metadata.isRemote,
+              )
+              .map((metadata) => ({
+                metadata: { ...metadata },
+                shape: this.getTableShape(metadata.id),
+              })),
+          }),
         });
         return nativeAuditOperation
           ? withNativeCrmAuditTransaction(

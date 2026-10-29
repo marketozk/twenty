@@ -266,7 +266,7 @@ export const readNativeCrmAuditRows = async (
   });
 };
 
-const snapshot = (
+export const captureNativeCrmAuditSnapshot = (
   shape: WorkspaceTableShape,
   row: ObjectRecord,
 ): Record<string, unknown> => {
@@ -323,7 +323,7 @@ export const recordNativeCrmCreates = async (
       resourceId: row.id,
       action: 'create',
       before: null,
-      after: snapshot(shape, row),
+      after: captureNativeCrmAuditSnapshot(shape, row),
       securityDescriptor: {
         resourceKind: 'crmRecord',
         resourceId: row.id,
@@ -364,7 +364,7 @@ export const recordNativeCrmDeletes = async (
       resourceKind: 'crmRecord',
       resourceId: id,
       action: 'delete',
-      before: snapshot(shape, previous),
+      before: captureNativeCrmAuditSnapshot(shape, previous),
       after: null,
       securityDescriptor: {
         resourceKind: 'crmRecord',
@@ -405,8 +405,8 @@ export const recordNativeCrmUpdates = async (
       resourceKind: 'crmRecord',
       resourceId: row.id,
       action: 'update',
-      before: snapshot(shape, previous),
-      after: snapshot(shape, row),
+      before: captureNativeCrmAuditSnapshot(shape, previous),
+      after: captureNativeCrmAuditSnapshot(shape, row),
       implicitUpdatedAtFieldId: explicitUpdatedAtIds.has(row.id)
         ? undefined
         : shape.columnShapeByColumnName.updatedAt?.fieldMetadataId,

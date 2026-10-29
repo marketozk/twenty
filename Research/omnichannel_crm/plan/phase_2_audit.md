@@ -83,6 +83,7 @@ ROB765 остаётся In Progress. Единственная текущая т�
 | Core user deactivation: strict owner, actual snapshots, security-first audit and cache-finally | [LOG118](../implementation/log118/README.md) |
 | Membership creation: active-user transaction fence and locale update without resurrection | [LOG119](../implementation/log119/README.md) |
 | Active core user email/admin updates, fresh last-admin lock and no stale full saves | [LOG120](../implementation/log120/README.md) |
+| Private native member deletion and transitive FK effects, security-first audit | [LOG121](../implementation/log121/README.md) |
 
 Открыто: остальные native/system writers и FK effects, real share writes, public
 DESTROY/MERGE, остальные metadata/role mutations, общий denied/failed audit после rollback и health/alert.
@@ -91,17 +92,17 @@ stateless application JWT и concurrent-sign-in fencing ещё не объявл
 Просмотр/экспорт — ROB767 после ROB766; AI/workflow/connector добавляют свои события
 в ROB768/769. Полный HTTP/JWT и сборка/выкат изменений после LOG088 не выполнялись.
 
-Последние проверки: 1380 tests/45 suites PASS (209.814s); 69 targeted/3 suites PASS, 37 новых PG cases. 26 guards PASS; 10 migration checksums неизменны. Types 361/362 roots, 189/189 прежних диагностик, 0 новых/changed-file. 3 local/remote source hashes совпадают.
-Full-server typecheck не чистый. [Проверки LOG120](../implementation/log120/results.json).
+Последние проверки: 1398 tests/46 suites PASS (219.283s); 59 targeted/3 suites PASS, 18 новых PG cases. 26 guards PASS; 10 migration checksums неизменны. Types 362/364 roots, 189/189 прежних диагностик, 0 новых/changed-file. 7 local/remote source hashes совпадают.
+Full-server typecheck не чистый. [Проверки LOG121](../implementation/log121/results.json).
 
-Следующий шаг — private native workspaceMember cleanup audit;
-[граница](../implementation/log120/next-boundary.md).
-LOG117 подключает известные API/jobs к core membership audit. Native member deletion,
-transfers, весь public removal, in-flight mutation fence и полный HTTP отзыв ещё не приняты.
+Следующий шаг — connected-account ownership transfer audit;
+[граница](../implementation/log121/next-boundary.md).
+LOG117 подключает известные API/jobs к core membership audit. LOG121 покрывает private native
+member deletion; transfers, весь public removal, in-flight fence и полный HTTP отзыв ещё не приняты.
 LOG118 аудирует core account deactivation; LOG119 связывает с ней production membership
 INSERT через user lock и active check. LOG120 заменяет три
-найденных старых coreUser saves на narrow active updates. Native member/transfer
-owners и общая свежесть полномочий request.user остаются отдельными.
+найденных старых coreUser saves на narrow active updates. LOG121 добавляет native deletion
+owner; transfer owners и общая свежесть полномочий request.user остаются отдельными.
 
 Демо остаётся прежним. При будущем выкате migration10 writers останавливаются на
 время построения индекса. GitHub Actions не используется.

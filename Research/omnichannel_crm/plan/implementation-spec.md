@@ -989,3 +989,13 @@ readback. Standalone используют strict core owner и cache-finally; su
 остаётся у caller. Email сохраняет lowercase без нового trim; propagation получает
 actual committed адрес. Admin flags/no-op/last-admin вычисляются после OTP под ordered
 locks. Общая свежесть request.user не заявлена. Следом — [native member cleanup](../implementation/log120/next-boundary.md).
+
+LOG121 реализует этот private DELETE owner на issued strict/exclusive workspace scope.
+Actual FK traversal собирает CASCADE/SET NULL, блокирует и повторно читает children;
+transitive UPDATE effects вне доказанного плана отклоняются. Metadata projection
+выдаёт существующий WorkspaceDataSource через private capability registry; новая
+Enterprise dependency не добавляется. Mandatory snapshots проверяются вне audit
+savepoint и после его rollback; journal failure не восстанавливает доступ, unknown
+COMMIT не повторяется. Ordinary public audit predicate не расширен.
+[Следующая граница](../implementation/log121/next-boundary.md): connected-account
+transfer; files/shares/whole removal atomicity и full HTTP остаются открытыми.

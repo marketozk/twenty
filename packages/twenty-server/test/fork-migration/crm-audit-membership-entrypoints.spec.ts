@@ -1,4 +1,10 @@
 import { randomUUID } from 'node:crypto';
+import { deleteNativeWorkspaceMemberWithAudit } from 'src/engine/core-modules/crm-audit/delete-native-workspace-member-with-audit';
+jest.mock(
+  'src/engine/core-modules/crm-audit/delete-native-workspace-member-with-audit',
+  () => ({ deleteNativeWorkspaceMemberWithAudit: jest.fn() }),
+);
+const deleteNativeMember = jest.mocked(deleteNativeWorkspaceMemberWithAudit);
 import { deactivateCoreUserWithAudit } from 'src/engine/core-modules/crm-audit/deactivate-core-user-with-audit';
 jest.mock(
   'src/engine/core-modules/crm-audit/deactivate-core-user-with-audit',
@@ -387,8 +393,21 @@ const fixture = () => {
   };
   const orm = {
     executeInWorkspaceContext: async (work: () => Promise<unknown>) => work(),
+    runInWorkspaceTransaction: jest.fn(
+      async (work: (scope: never) => Promise<unknown>, options: unknown) => {
+        expect(options).toEqual({
+          commitOutcome: 'strict',
+          nativeOwnershipLock: 'exclusive',
+        });
+        return work({} as never);
+      },
+    ),
     getRepository: () => nativeRepository,
   };
+  deleteNativeMember.mockImplementation(async () => {
+    nativeDeleted = true;
+    return true;
+  });
   const capture = jest.fn(
     (input: Parameters<typeof captureMembershipCleanupIdentity>[0]) =>
       captureMembershipCleanupIdentity(input, async () => actorId),
@@ -483,9 +502,12 @@ it.each([false, true])(
       viaApplication ? ({ id: applicationId } as never) : undefined,
       undefined,
     );
-    expect(f.nativeRepository.delete).toHaveBeenCalledWith({
-      userId: f.userId,
-    });
+    expect(deleteNativeMember).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: f.userId,
+        workspaceMemberId: f.nativeId,
+      }),
+    );
     const coreOperation = deactivateUser.mock.calls[0][0].auditOperations[0]!;
     expect(coreOperation).toMatchObject({
       workspaceId: f.workspaceId,

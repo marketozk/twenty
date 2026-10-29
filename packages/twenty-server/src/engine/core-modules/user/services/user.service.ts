@@ -2,6 +2,7 @@ import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
 import { deactivateCoreUserWithAudit } from 'src/engine/core-modules/crm-audit/deactivate-core-user-with-audit';
+import { deleteNativeWorkspaceMemberWithAudit } from 'src/engine/core-modules/crm-audit/delete-native-workspace-member-with-audit';
 import {
   copyMembershipCleanupIdentity,
   membershipCleanupOperation,
@@ -374,6 +375,8 @@ export class UserService {
     actingUserWorkspaceId?: string,
   ) {
     const workspaceId = userWorkspace.workspaceId;
+    const removedUserId = userWorkspace.userId;
+    const userWorkspaceId = userWorkspace.id;
     const auditOperation = membershipCleanupOperation(
       workspaceId,
       auditIdentity,
@@ -395,8 +398,6 @@ export class UserService {
         return workspaceMemberRepository.find();
       }, authContext);
 
-    const userWorkspaceId = userWorkspace.id;
-
     if (workspaceMembers.length === 1) {
       await this.workspaceService.suspendWorkspace(workspaceId);
       await this.workspaceService.deleteWorkspace(
@@ -413,7 +414,7 @@ export class UserService {
         await this.userRoleService.validateUserWorkspaceIsNotUniqueAdminOrThrow(
           {
             workspaceId,
-            userWorkspaceId: userWorkspace.id,
+            userWorkspaceId,
           },
         );
       } catch (error) {
@@ -435,10 +436,11 @@ export class UserService {
 
     const workspaceMember = workspaceMembers.find(
       (member: WorkspaceMemberWorkspaceEntity) =>
-        member.userId === userWorkspace.userId,
+        member.userId === removedUserId,
     );
 
     assert(workspaceMember, 'WorkspaceMember not found');
+    const workspaceMemberId = workspaceMember.id;
 
     await this.connectedAccountOwnershipTransferService.transferConnectedAccountsOwnershipToCustodian(
       {
@@ -450,7 +452,7 @@ export class UserService {
     await this.recordShareOwnershipTransferService.transferRecordSharesToCustodian(
       {
         removedUserWorkspace: userWorkspace,
-        removedWorkspaceMemberId: workspaceMember.id,
+        removedWorkspaceMemberId: workspaceMemberId,
         actingUserWorkspaceId,
       },
     );
@@ -464,26 +466,29 @@ export class UserService {
       threadRepository: this.agentChatThreadRepository,
       flatFieldMetadataMaps,
       workspaceId,
-      workspaceMemberId: workspaceMember.id,
+      workspaceMemberId,
     });
 
-    await this.workspaceOrmManager.executeInWorkspaceContext(async () => {
-      const workspaceMemberRepository =
-        this.workspaceOrmManager.getRepository<WorkspaceMemberWorkspaceEntity>(
-          'workspaceMember',
-          { shouldBypassPermissionChecks: true },
-        );
-
-      await workspaceMemberRepository.delete({
-        userId: userWorkspace.userId,
-      });
-    }, authContext);
+    await this.workspaceOrmManager.executeInWorkspaceContext(
+      () =>
+        this.workspaceOrmManager.runInWorkspaceTransaction(
+          (scope) =>
+            deleteNativeWorkspaceMemberWithAudit({
+              scope,
+              workspaceMemberId,
+              userId: removedUserId,
+              operation: auditOperation,
+            }),
+          { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
+        ),
+      authContext,
+    );
 
     await this.userWorkspaceService.deleteUserWorkspace({
       userWorkspaceId,
       workspaceId,
       auditOperation,
-      expectedUserId: userWorkspace.userId,
+      expectedUserId: removedUserId,
     });
 
     await this.workspaceCacheService.invalidateAndRecompute(workspaceId, [
@@ -492,7 +497,7 @@ export class UserService {
 
     // After the membership is gone, so a failed removal keeps the history and threads created meanwhile are cleaned.
     await this.agentChatThreadRepository.delete(workspaceId, {
-      workspaceMemberId: workspaceMember.id,
+      workspaceMemberId,
     });
   }
 

@@ -16,8 +16,8 @@
 | Operation lookup index | LOG090: generated migration10, populated prefix upgrade/replay/down, real EXPLAIN, drift refusal; не выкатывалось |
 | Production rollout | Не выполнялся; нужны полная native coverage и согласованный выкат с остановленными writers при построении индекса |
 
-Последние проверки: 1380 tests/45 suites PASS (209.814s); 69 targeted/3 suites PASS, 37 новых PG cases. 26 guards PASS; 10 migration checksums неизменны. Types 361/362 roots, 189/189 прежних диагностик, 0 новых/changed-file. 3 local/remote source hashes совпадают.
-Это не чистый full-server typecheck. [LOG120 results](log120/results.json).
+Последние проверки: 1398 tests/46 suites PASS (219.283s); 59 targeted/3 suites PASS, 18 новых PG cases. 26 guards PASS; 10 migration checksums неизменны. Types 362/364 roots, 189/189 прежних диагностик, 0 новых/changed-file. 7 local/remote source hashes совпадают.
+Это не чистый full-server typecheck. [LOG121 results](log121/results.json).
 
 [Индекс реализованных участков](../plan/phase_2_audit.md), [текущие ограничения](log113/README.md),
 [полная хронология](../DEVLOG.md). Исторические заявления «ещё не включено» внутри
@@ -53,4 +53,7 @@ LOG119 закрывает production membership creation/deactivation race share
 и active validation в INSERT transaction; locale-only UPDATE не восстанавливает
 удалённое членство. LOG120 заменяет три старых coreUser saves
 в email verification/server-admin и проверяет fresh admin flags под lock.
-[Следующая граница](log120/next-boundary.md) — private native member writer.
+LOG121: private native member writer имеет issued strict/exclusive scope, actual
+transitive FK audit и mandatory verification вне security-first savepoint. Полное
+public removal, physical file cleanup и отдельные transfers этим не приняты.
+[Следующая граница](log121/next-boundary.md) — connected-account transfer audit.

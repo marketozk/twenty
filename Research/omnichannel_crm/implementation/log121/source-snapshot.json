@@ -1,0 +1,13 @@
+{
+  "baseCommit": "e7ab50ffd04decc5977100fd44820575f27b006a",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-record.ts": "513714a48bf2cdd815d60bf91bbf2bd4e900b031d47dad29911def1ae82eb485",
+    "packages/twenty-server/src/engine/core-modules/user/services/user.service.ts": "d1e43b7bdb5b4ae6cfe3cb1955723688d2a769ae7fa28637715929d73f65540c",
+    "packages/twenty-server/src/engine/twenty-orm/datasource/workspace-data-source.ts": "c5ce7b0927c537c7d66ede5cbe781926028e98efd91b4ec0fd86d0791326a865",
+    "packages/twenty-server/src/engine/twenty-orm/repository/omni-native-write-capability.ts": "32dcb3f97d3ffd67c19048d8f3f4481680791e5335512eeb32e1694ed1cae2d2",
+    "packages/twenty-server/test/fork-migration/crm-audit-membership-entrypoints.spec.ts": "be65a6345ef2bc11fb50ca16496cc3205a0ab5a37e423a241920a3b35f261a82",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-native-workspace-member-with-audit.ts": "42492b8edc77f52c620c5b172c3977b9910ef9b0eb57e18458cb75812f3d2b45",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-member.postgres-spec.ts": "37fb6e8ce6c0619fc239e8fe17e8812ebae8b32910e0923a8c696a1e42aa9298"
+  },
+  "uploadedSourceHashesVerified": true
+}

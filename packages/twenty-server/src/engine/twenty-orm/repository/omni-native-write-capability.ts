@@ -5,12 +5,27 @@ import {
 } from 'src/modules/omnichannel/services/verify-omni-detached-parent';
 import { type OmniNativeOwnershipQuery } from 'src/modules/omnichannel/services/lock-omni-native-ownership';
 import { type WorkspaceTransactionLifecycle } from 'src/engine/twenty-orm/types/workspace-transaction-lifecycle.type';
+import {
+  type NativeCrmAuditObjectMetadata,
+  type NativeCrmAuditTableShape,
+} from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
+
+type NativeCleanupMetadata = {
+  authType: string;
+  authWorkspaceId: string;
+  memberObjectId: string | undefined;
+  objects: {
+    metadata: NativeCrmAuditObjectMetadata;
+    shape: NativeCrmAuditTableShape;
+  }[];
+};
 
 type Transaction = {
   workspaceId: string;
   executor: object;
   lifecycle: WorkspaceTransactionLifecycle;
   nativeOwnershipLock: 'shared' | 'exclusive';
+  nativeCleanupMetadata?: () => NativeCleanupMetadata;
 };
 
 // Internal issuance, not a permission option: a caller-created scope, a copied
@@ -65,6 +80,15 @@ export const assertIssuedOmniNativeScope = (scope: object): void => {
     Reflect.get(scope, 'transactionLifecycle') !== transaction.lifecycle
   )
     throw new Error('OMNI_ALTERED_NATIVE_WRITE_SCOPE');
+};
+
+export const getIssuedNativeCleanupMetadata = (
+  scope: object,
+): NativeCleanupMetadata => {
+  assertIssuedOmniNativeScope(scope);
+  const metadata = scopes.get(scope)?.nativeCleanupMetadata;
+  if (!metadata) throw new Error('OMNI_NATIVE_CLEANUP_METADATA_REQUIRED');
+  return metadata();
 };
 
 export const grantOmniNativeRepositoryWrite = (

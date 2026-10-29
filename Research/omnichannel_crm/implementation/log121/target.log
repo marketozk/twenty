@@ -1,0 +1,9 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-member.postgres-spec.ts (8.661 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-scope.spec.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       59 passed, 59 total
+Snapshots:   0 total
+Time:        13.262 s
+Ran all test suites matching /crm-audit-native-member|crm-audit-membership-entrypoints|omni-native-scope/i.
