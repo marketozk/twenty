@@ -8,7 +8,6 @@ import { type RolePermissionConfig } from 'src/engine/twenty-orm/types/role-perm
 import { type WorkspaceTransactionScope } from 'src/engine/twenty-orm/types/workspace-transaction-scope.type';
 import { type WorkspaceTransactionOptions } from 'src/engine/twenty-orm/types/workspace-transaction-lifecycle.type';
 import { type WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
-import { ParticipantTargetReconciliationService } from 'src/modules/match-participant/participant-target-reconciliation.service';
 import { BlocklistItemDeleteMessagesJob } from 'src/modules/messaging/blocklist-manager/jobs/messaging-blocklist-item-delete-messages.job';
 import { MessagingMessageCleanerService } from 'src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service';
 import { MessagingDeleteFolderMessagesService } from 'src/modules/messaging/message-import-manager/services/messaging-delete-folder-messages.service';
@@ -90,16 +89,8 @@ export const createOmniNativeCleanupFixture = () => {
     getRepository: (name: string, options?: RolePermissionConfig) =>
       native.dataSource.getRepository(name, options),
   } as unknown as WorkspaceOrmManager;
-  const targets = new ParticipantTargetReconciliationService(
-    manager,
-    coreReader,
-  );
-  const cleaner = new MessagingMessageCleanerService(manager, targets);
-  const folders = new MessagingDeleteFolderMessagesService(
-    cleaner,
-    manager,
-    coreReader,
-  );
+  const cleaner = new MessagingMessageCleanerService(manager);
+  const folders = new MessagingDeleteFolderMessagesService(manager);
   const blocklist = new BlocklistItemDeleteMessagesJob(
     cleaner,
     manager,

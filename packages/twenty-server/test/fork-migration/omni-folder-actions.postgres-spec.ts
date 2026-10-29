@@ -368,36 +368,52 @@ it('native commit unknown exits worker before metadata finalization', async () =
   expect((await folder()).pendingSyncAction).toBe('FOLDER_DELETION');
 });
 it('junction SQL failure rolls back cleaner and orphan graph in the same page', async () => {
-  const expected = await capture(),
-    client = await fixture.pool.connect(),
-    query = client.query.bind(client);
-  let injected = false;
-  jest.spyOn(client, 'query').mockImplementation((async (
-    sql: string | { text: string; values?: unknown[] },
-    values?: unknown[],
-  ) => {
-    const text = typeof sql === 'string' ? sql : sql.text;
-    if (
-      text.startsWith('DELETE FROM') &&
-      text.includes('"messageChannelMessageAssociationMessageFolder"')
-    ) {
-      injected = true;
-      await query('SELECT 1/0');
+  const expected = await capture();
+  // A real child DELETE trigger also observes cascades; intercepting an explicit
+  // child DELETE statement would miss the closed owner's parent cascade.
+  await fixture.owner.query(
+    `CREATE FUNCTION "${fixture.schemaName}".refuse_folder_junction() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'fixture folder junction refusal'; END $$`,
+  );
+  await fixture.owner.query(
+    `CREATE TRIGGER refuse_folder_junction BEFORE DELETE ON "${fixture.schemaName}"."messageChannelMessageAssociationMessageFolder" FOR EACH ROW EXECUTE FUNCTION "${fixture.schemaName}".refuse_folder_junction()`,
+  );
+  try {
+    const failure = await clean(expected).then(
+      () => {
+        throw new Error('Expected folder junction failure');
+      },
+      (error: unknown) => error,
+    );
+    let cause: unknown = failure;
+    const messages: string[] = [];
+    for (let depth = 0; depth < 5 && cause instanceof Error; depth++) {
+      messages.push(cause.message);
+      cause = cause.cause;
     }
-    return query(sql, values);
-  }) as PoolClient['query']);
-  jest
-    .spyOn(fixture.pool, 'connect')
-    .mockImplementationOnce(async () => client);
-  await expect(clean(expected)).rejects.toThrow();
-  expect(injected).toBe(true);
-  expect(await exists()).toBe(true);
-  expect(
-    (await fixture.read('messageChannelMessageAssociation')).some(
-      (row: { id: string }) => row.id === seed.email.associationId,
-    ),
-  ).toBe(true);
-  expect((await folder()).pendingSyncAction).toBe('FOLDER_DELETION');
+    expect(messages.join(' | ')).toContain('fixture folder junction refusal');
+    expect(await exists()).toBe(true);
+    expect(
+      (await fixture.read('messageChannelMessageAssociation')).some(
+        (row: { id: string }) => row.id === seed.email.associationId,
+      ),
+    ).toBe(true);
+    expect(
+      (
+        await fixture.read('messageChannelMessageAssociationMessageFolder')
+      ).some((row: { id: string }) => row.id === seed.email.junctionId),
+    ).toBe(true);
+    expect((await folder()).pendingSyncAction).toBe('FOLDER_DELETION');
+    expect(
+      await fixture.owner.query('SELECT id FROM crm_audit."crmAuditEntry"'),
+    ).toEqual([]);
+  } finally {
+    await fixture.owner.query(
+      `DROP TRIGGER refuse_folder_junction ON "${fixture.schemaName}"."messageChannelMessageAssociationMessageFolder"`,
+    );
+    await fixture.owner.query(
+      `DROP FUNCTION "${fixture.schemaName}".refuse_folder_junction()`,
+    );
+  }
 });
 
 it('unknown import finalizer commit never returns fetched IDs', async () => {

@@ -13,7 +13,7 @@
 | Role lifecycle | LOG111/112: public/AI CREATE/UPDATE; LOG113: public member assignment и serialized demotions. Role delete, bulk/agent/API-key assignments и остальные metadata writers открыты |
 | Membership / core user lifecycle | LOG114–121: core cleanup с durable workflow-share recovery intent, API/job attribution, stale JWT/cookie checks, core deactivation, creation/deactivation race, narrow email/admin updates и private native member deletion. Полный public removal, real shares и общая last-admin защита всех путей не приняты |
 | Connected accounts | [LOG122](log122/README.md)/[LOG123](log123/README.md): transfer/disconnect; [LOG127](log127/README.md)–[LOG129](log129/README.md): four-table delete owner и production callers с fresh authorization, actual FK graph и exact retained checks. Внешние provider effects не откатываются транзакцией БД |
-| Native messaging cleanup | [LOG130](log130/README.md): associations удалённого канала и folder junctions. [LOG131](log131/README.md)–[LOG134](log134/README.md): общий orphan sweep, Message/Participant, target reconciliation и empty-thread effects; jobs/CLI, dry-run и unsafe outcome проверены. [LOG135](log135/README.md): внутренний адресный owner проверен, production callers ещё не переключены. Folder/provider/group/draft/blocklist paths и calendar cleanup остаются открытыми |
+| Native messaging cleanup | [LOG130](log130/README.md): associations удалённого канала и folder junctions. [LOG131](log131/README.md)–[LOG134](log134/README.md): общий orphan sweep, Message/Participant, target reconciliation и empty-thread effects; jobs/CLI, dry-run и unsafe outcome проверены. [LOG135](log135/README.md)–[LOG136](log136/README.md): адресный owner и реальные sync/group/folder/draft callers с актуальными proofs, exact sent target и общим аудитом. Blocklist и calendar cleanup остаются открытыми |
 | Background delivery / retries | [LOG126](log126/README.md): recognized unknown/confirmed-commit failure не вызывает automatic queue retry. Crash до сохранения failure, stalled redelivery, manual retry, новый scheduled run и надёжная доставка фоновых событий остаются открытыми |
 | File hard-delete | Covered FILES create/update используют тот же executor (LOG092/093/096). Физическое удаление требует audit/durable cleanup owner: штатный DESTROYED listener только ставит FilesFieldDeletionJob после commit |
 | Denied/failed audit и health | Omni имеет отдельные attempts; general native post-rollback audit и alert предстоят |
@@ -21,9 +21,9 @@
 | Operation lookup index | LOG090: migration10, populated upgrade/replay/down, real EXPLAIN и drift refusal. 10 fork migrations неизменны; при будущем построении индекса writers останавливаются |
 | Build / deployment / acceptance | Последний собранный кандидат LOG088. Полные HTTP/JWT проверки и выкат последующих изменений не выполнены; isolated tests не закрывают эту строку |
 
-Последние проверенные результаты — в [STATUS](../STATUS.md) и [LOG135 results](log135/results.json).
+Последние проверенные результаты — в [STATUS](../STATUS.md) и [LOG136 results](log136/results.json).
 Full-server typecheck не чистый; новые/changed-file диагностики проверяются отдельно от baseline.
-Следующая работа — [подключение адресного owner](log135/next-boundary.md).
+Следующая работа — [blocklist cleanup](log136/next-boundary.md).
 Просмотр/экспорт ROB767 и собственные права ROB766 остаются Backlog.
 
 [Нормативный план этапа](../plan/phase_2_audit.md) · [история](../DEVLOG.md).

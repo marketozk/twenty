@@ -21,10 +21,11 @@ import { type EncryptedString } from 'src/engine/core-modules/secret-encryption/
 import { WasIntroducedInUpgrade } from 'src/engine/core-modules/upgrade/decorators/was-introduced-in-upgrade.decorator';
 import { type CalendarChannelEntity } from 'src/engine/metadata-modules/calendar-channel/entities/calendar-channel.entity';
 import { EXTERNAL_ACCOUNT_ID_MAX_LENGTH } from 'src/engine/metadata-modules/connected-account/constants/external-account-id-max-length.constant';
+import { type ConnectedAccountScope } from 'src/engine/metadata-modules/connected-account/types/connected-account-scope';
 import { type MessageChannelEntity } from 'src/engine/metadata-modules/message-channel/entities/message-channel.entity';
 import { WorkspaceRelatedEntity } from 'src/engine/workspace-manager/types/workspace-related-entity.type';
 
-export type ConnectedAccountScope = 'USER' | 'WORKSPACE';
+export { type ConnectedAccountScope } from 'src/engine/metadata-modules/connected-account/types/connected-account-scope';
 
 @Entity({ name: 'connectedAccount', schema: 'core' })
 @Index('IDX_CONNECTED_ACCOUNT_CONNECTION_PROVIDER_ID', ['connectionProviderId'])

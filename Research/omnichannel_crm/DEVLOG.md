@@ -3865,3 +3865,15 @@ account/channel и неизменность посторонних orphan-зап
 только два test fixture options с widened boolean. [Ревью](implementation/log135/review.md).
 
 LOG135 publication: code f00b6b559f02b07c6b0e3b447087470ad8742c15 pushed and GitHub API ref verified. Linear comment e451e22b-867b-4caf-beb6-12a7835e5614, description/comment/all 11 issue states independently read back. Continuing targeted cleanup caller integration; ROB765 remains In Progress.
+
+
+## LOG136 — адресная очистка в реальных точках вызова
+
+LOG136 подключает аудируемую адресную очистку к синхронизации, групповым письмам, папкам и отправленным черновикам. Проверяются актуальные основания операции и точные исходные строки; подтверждённая отправка сохраняет успех при сбое последующей очистки.
+2032 tests/67 suites PASS (380.84s); 194 targeted/6 suites PASS (74.066s), 47 новых cases. Дополнительно 9 upstream tests/2 suites PASS (25.907s). 26 guard tests PASS; 10 migration checksums неизменны. Types 397/406 roots, baseline/current 225 diagnostics, 0 новых/changed-file. 26 local/remote source hashes совпадают. [Проверки](implementation/log136/results.json). ROB765 In Progress. Blocklist, calendar и остальные открытые writers ещё не покрыты. Код после LOG088 не выкатывался; полная HTTP/JWT приёмка и GitHub Actions не выполнялись. [Далее](implementation/log136/next-boundary.md).
+
+Исправлены повторный выбор draft association после provider await, проверка folder
+page до первого удаления и type-only Enterprise dependency. Начальные четыре падения
+legacy cleanup тестов вызваны общей защищённой тестовой папкой; обычная папка отделена
+без изменения assertions. [Ревью](implementation/log136/review.md) сохраняет причины
+и ограничения. Независимый проход по production callsites новых блокеров не обнаружил.

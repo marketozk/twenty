@@ -1,3 +1,5 @@
+import { type SentDraftCleanupTarget } from 'src/engine/core-modules/crm-audit/delete-sent-draft-message-with-audit';
+import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { type ComposedEmail } from 'src/engine/core-modules/tool/tools/email-tool/types/composed-email.type';
@@ -29,7 +31,10 @@ export class SendEmailService {
     data: ComposedEmail,
     draftMessageId: string,
     workspaceId: string,
-  ): Promise<SendMessageResult> {
+  ): Promise<{
+    sendResult: SendMessageResult;
+    cleanupTarget: SentDraftCleanupTarget;
+  }> {
     return this.messagingDraftSendService.sendDraftMessage({
       draftMessageId,
       sendMessageInput: this.toSendMessageInput(data),
@@ -38,15 +43,29 @@ export class SendEmailService {
     });
   }
 
+  async captureDraftCleanupAuditOperation(
+    workspaceId: string,
+  ): Promise<CrmAuditOperation> {
+    return this.messagingDraftSendService.captureDraftCleanupAuditOperation(
+      workspaceId,
+    );
+  }
+
   async deleteSentDraft(
     draftMessageId: string,
     connectedAccountId: string,
     workspaceId: string,
+    caller: { userWorkspaceId: string; userId: string },
+    auditOperation: CrmAuditOperation,
+    target: SentDraftCleanupTarget,
   ): Promise<void> {
     await this.messagingDraftSendService.deleteSentDraft({
       draftMessageId,
       connectedAccountId,
       workspaceId,
+      caller,
+      auditOperation,
+      target,
     });
   }
 

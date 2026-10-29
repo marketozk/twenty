@@ -1,3 +1,6 @@
+import { type SentDraftCleanupTarget } from 'src/engine/core-modules/crm-audit/delete-sent-draft-message-with-audit';
+import { type SendMessageResult } from 'src/modules/messaging/message-outbound-manager/types/send-message-result.type';
+import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { EmailOperation } from 'twenty-shared/types';
 import {
   ForbiddenException,
@@ -68,11 +71,34 @@ export class SendEmailResolver {
     @AuthUserWorkspaceId() userWorkspaceId: string,
     @Context() context: I18nContext,
   ): Promise<SendEmailOutputDTO> {
+    // Capture request values before composing or awaiting the external provider.
+    input = { ...input };
+    const workspaceId = workspace.id;
+    const connectedAccountId = input.connectedAccountId;
+    const draftMessageId = input.draftMessageId;
+    let cleanupCaller: { userWorkspaceId: string; userId: string } | undefined;
+    let cleanupOperation: CrmAuditOperation | undefined;
     try {
+      if (isDefined(draftMessageId)) {
+        const authentication = getWorkspaceAuthContext();
+        if (
+          authentication.type !== 'user' ||
+          authentication.workspace.id !== workspaceId ||
+          authentication.userWorkspaceId !== userWorkspaceId
+        )
+          throw new ForbiddenException(
+            'Draft cleanup requires the authenticated workspace member.',
+          );
+        cleanupCaller = { userWorkspaceId, userId: authentication.user.id };
+        cleanupOperation =
+          await this.sendEmailService.captureDraftCleanupAuditOperation(
+            workspaceId,
+          );
+      }
       await this.connectedAccountMetadataService.verifyUsableByCaller({
-        id: input.connectedAccountId,
+        id: connectedAccountId,
         userWorkspaceId,
-        workspaceId: workspace.id,
+        workspaceId,
       });
 
       const result = await this.emailComposerService.composeEmail({
@@ -84,12 +110,12 @@ export class SendEmailResolver {
           },
           subject: input.subject,
           body: input.body,
-          connectedAccountId: input.connectedAccountId,
+          connectedAccountId,
           fromHandle: input.fromHandle,
           files: input.files ?? [],
           inReplyTo: input.inReplyTo,
         },
-        context: { workspaceId: workspace.id },
+        context: { workspaceId },
         operation: EmailOperation.SEND,
       });
 
@@ -104,13 +130,19 @@ export class SendEmailResolver {
 
       const { data } = result;
 
-      const sendResult = isDefined(input.draftMessageId)
-        ? await this.sendEmailService.sendComposedDraft(
-            data,
-            input.draftMessageId,
-            workspace.id,
-          )
-        : await this.sendEmailService.sendComposedEmail(data);
+      let sendResult: SendMessageResult;
+      let cleanupTarget: SentDraftCleanupTarget | undefined;
+      if (isDefined(draftMessageId)) {
+        const sentDraft = await this.sendEmailService.sendComposedDraft(
+          data,
+          draftMessageId,
+          workspaceId,
+        );
+        sendResult = sentDraft.sendResult;
+        cleanupTarget = { ...sentDraft.cleanupTarget };
+      } else {
+        sendResult = await this.sendEmailService.sendComposedEmail(data);
+      }
 
       let messageThreadId: string | undefined;
 
@@ -119,15 +151,18 @@ export class SendEmailResolver {
           ? await this.sendEmailService.persistSentMessage(
               sendResult,
               data,
-              workspace.id,
+              workspaceId,
             )
           : undefined;
 
-        if (isDefined(input.draftMessageId)) {
+        if (isDefined(draftMessageId)) {
           await this.sendEmailService.deleteSentDraft(
-            input.draftMessageId,
-            input.connectedAccountId,
-            workspace.id,
+            draftMessageId,
+            connectedAccountId,
+            workspaceId,
+            cleanupCaller!,
+            cleanupOperation!,
+            cleanupTarget!,
           );
         }
 
@@ -135,11 +170,10 @@ export class SendEmailResolver {
           sendResult.messageExternalId ?? sendResult.headerMessageId;
 
         messageThreadId =
-          isDefined(input.draftMessageId) &&
-          isNonEmptyString(sentMessageExternalId)
+          isDefined(draftMessageId) && isNonEmptyString(sentMessageExternalId)
             ? await this.sendEmailService.getSentMessageThreadId(
                 sentMessageExternalId,
-                workspace.id,
+                workspaceId,
               )
             : undefined;
 
@@ -148,7 +182,7 @@ export class SendEmailResolver {
         if (attachmentFileIds.length > 0) {
           await this.fileEmailAttachmentService.deleteFiles({
             fileIds: attachmentFileIds,
-            workspaceId: workspace.id,
+            workspaceId,
           });
         }
 
@@ -165,10 +199,13 @@ export class SendEmailResolver {
             },
           );
         }
-      } catch (postSendError) {
-        this.logger.warn(
-          `Email sent but post-send cleanup failed (sync will recover): ${postSendError}`,
-        );
+      } catch {
+        // Provider success is irreversible. Cleanup and logging failures must not invite another send.
+        try {
+          this.logger.warn('Email sent but post-send cleanup failed.');
+        } catch {
+          // Preserve the confirmed provider result even when logging is unavailable.
+        }
       }
 
       return { success: true, messageThreadId };

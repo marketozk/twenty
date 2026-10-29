@@ -1,0 +1,118 @@
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-cleanup.postgres-spec.ts (16.743 s)
+  native cleanup preserves independently owned omni records
+    ✕ lower targeted owner keeps binding-owned full graph and deletes ordinary email by native cascades (258 ms)
+    ✕ lower targeted owner keeps link-owned full graph and deletes ordinary email by native cascades (186 ms)
+    ✕ lower targeted owner keeps conversation-owned full graph and deletes ordinary email by native cascades (173 ms)
+    ✓ channel cleanup preserves binding-owned associations and their folder junctions (470 ms)
+    ✓ channel cleanup preserves link-owned associations and their folder junctions (398 ms)
+    ✓ channel cleanup preserves conversation-owned associations and their folder junctions (296 ms)
+    ✓ higher folder admission refuses mixed binding-owned account without changing either graph (181 ms)
+    ✓ higher folder admission refuses mixed link-owned account without changing either graph (200 ms)
+    ✓ higher folder admission refuses mixed conversation-owned account without changing either graph (170 ms)
+    ✓ direct blocklist job skips binding-owned graph while ordinary sender is removed (304 ms)
+    ✓ direct blocklist job skips link-owned graph while ordinary sender is removed (274 ms)
+    ✓ direct blocklist job skips conversation-owned graph while ordinary sender is removed (279 ms)
+    ✓ orphan sweep preserves link-owned message after every channel association is missing (280 ms)
+    ✓ orphan sweep preserves conversation-owned message after every channel association is missing (246 ms)
+    ✓ preserves an empty conversation-owned thread while removing an empty ordinary thread (184 ms)
+    ✓ advances past 500 protected channel rows and deletes the ordinary next page (1277 ms)
+    ✓ higher folder admission refuses an owned first page before processing ordinary later rows (414 ms)
+    ✓ higher folder admission retains foreign-channel junctions in a mixed-owned account (196 ms)
+    ✓ higher folder admission retains soft-deleted ordinary and owned junctions on a mixed-owned account (200 ms)
+    ✕ rolls back earlier deletion when a later ownership SQL query fails (229 ms)
+    ✓ rejects workspace mismatch at targeted entry without any mutations (186 ms)
+    ✓ rejects workspace mismatch at channel entry without any mutations (142 ms)
+    ✓ rejects workspace mismatch at orphan entry without any mutations (176 ms)
+    ✓ rejects workspace mismatch at folder entry without any mutations (175 ms)
+    ✓ rejects workspace mismatch at blocklist entry without any mutations (171 ms)
+
+  ● native cleanup preserves independently owned omni records › lower targeted owner keeps binding-owned full graph and deletes ordinary email by native cascades
+
+    expect(received).toBeUndefined()
+
+    Received: {"createdAt": 2026-10-29T08:47:30.024Z, "createdByContext": null, "createdByName": "System", "createdBySource": "MANUAL", "createdByWorkspaceMemberId": null, "deletedAt": null, "headerMessageId": "b39fbf30-1892-4cad-afe0-83f17df658c1", "id": "1ee94f68-053b-4a47-9da1-2cbb665cfdfe", "isDraft": false, "messageCampaignId": null, "messageThreadId": "abaedd8a-3281-4303-8507-1f3481bf8904", "position": 0, "receivedAt": 2026-10-27T00:00:00.000Z, "searchVector": null, "subject": "email subject", "text": "email body", "updatedAt": 2026-10-29T08:47:30.024Z, "updatedByContext": null, "updatedByName": "System", "updatedBySource": "MANUAL", "updatedByWorkspaceMemberId": null}
+
+      111 |       (row: { id: string }) => row.id === seed.email.messageId,
+      112 |     ),
+    > 113 |   ).toBeUndefined();
+          |     ^
+      114 |   expect(
+      115 |     (await fixture.read('messageThread')).find(
+      116 |       (row: { id: string }) => row.id === seed.email.threadId,
+
+      at toBeUndefined (test/fork-migration/omni-native-cleanup.postgres-spec.ts:113:5)
+      at test/fork-migration/omni-native-cleanup.postgres-spec.ts:211:7
+
+  ● native cleanup preserves independently owned omni records › lower targeted owner keeps link-owned full graph and deletes ordinary email by native cascades
+
+    expect(received).toBeUndefined()
+
+    Received: {"createdAt": 2026-10-29T08:47:30.279Z, "createdByContext": null, "createdByName": "System", "createdBySource": "MANUAL", "createdByWorkspaceMemberId": null, "deletedAt": null, "headerMessageId": "2e3fc1c2-3cee-425e-9720-a726d20f8c3a", "id": "2a983a3b-ccbb-4a8e-97eb-c4fe3d93777d", "isDraft": false, "messageCampaignId": null, "messageThreadId": "05e0212a-e9b6-46fb-b188-de515703de6f", "position": 0, "receivedAt": 2026-10-27T00:00:00.000Z, "searchVector": null, "subject": "email subject", "text": "email body", "updatedAt": 2026-10-29T08:47:30.279Z, "updatedByContext": null, "updatedByName": "System", "updatedBySource": "MANUAL", "updatedByWorkspaceMemberId": null}
+
+      111 |       (row: { id: string }) => row.id === seed.email.messageId,
+      112 |     ),
+    > 113 |   ).toBeUndefined();
+          |     ^
+      114 |   expect(
+      115 |     (await fixture.read('messageThread')).find(
+      116 |       (row: { id: string }) => row.id === seed.email.threadId,
+
+      at toBeUndefined (test/fork-migration/omni-native-cleanup.postgres-spec.ts:113:5)
+      at test/fork-migration/omni-native-cleanup.postgres-spec.ts:211:7
+
+  ● native cleanup preserves independently owned omni records › lower targeted owner keeps conversation-owned full graph and deletes ordinary email by native cascades
+
+    expect(received).toBeUndefined()
+
+    Received: {"createdAt": 2026-10-29T08:47:30.449Z, "createdByContext": null, "createdByName": "System", "createdBySource": "MANUAL", "createdByWorkspaceMemberId": null, "deletedAt": null, "headerMessageId": "ea67fc5e-bb7b-426f-879e-8963d8c7b476", "id": "246ae655-5de9-421a-88ce-d3ec9d970efb", "isDraft": false, "messageCampaignId": null, "messageThreadId": "83729d24-7958-488a-b2a5-30d491911654", "position": 0, "receivedAt": 2026-10-27T00:00:00.000Z, "searchVector": null, "subject": "email subject", "text": "email body", "updatedAt": 2026-10-29T08:47:30.449Z, "updatedByContext": null, "updatedByName": "System", "updatedBySource": "MANUAL", "updatedByWorkspaceMemberId": null}
+
+      111 |       (row: { id: string }) => row.id === seed.email.messageId,
+      112 |     ),
+    > 113 |   ).toBeUndefined();
+          |     ^
+      114 |   expect(
+      115 |     (await fixture.read('messageThread')).find(
+      116 |       (row: { id: string }) => row.id === seed.email.threadId,
+
+      at toBeUndefined (test/fork-migration/omni-native-cleanup.postgres-spec.ts:113:5)
+      at test/fork-migration/omni-native-cleanup.postgres-spec.ts:211:7
+
+  ● native cleanup preserves independently owned omni records › rolls back earlier deletion when a later ownership SQL query fails
+
+    expect(received).rejects.toThrow()
+
+    Received promise resolved instead of rejected
+    Resolved to value: {"affectedThreadIds": [], "createdTargetIds": [], "deletedAssociationIds": [], "deletedJunctionIds": [], "deletedMessageIds": [], "deletedTargetIds": [], "deletedThreadIds": [], "updatedTargetIds": []}
+
+      443 |     );
+      444 |     try {
+    > 445 |       await expect(targeted(seed)).rejects.toThrow();
+          |             ^
+      446 |       expect(await allSnapshot()).toEqual(before);
+      447 |       expect(fixture.eventEmitter).not.toHaveBeenCalled();
+      448 |     } finally {
+
+      at expect (../../../tools/node_modules/@jest/expect/node_modules/expect/build/index.js:113:15)
+      at Object.expect (test/fork-migration/omni-native-cleanup.postgres-spec.ts:445:13)
+
+Test Suites: 1 failed, 1 total
+Tests:       4 failed, 21 passed, 25 total
+Snapshots:   0 total
+Time:        16.843 s
+Ran all test suites matching /omni-native-cleanup/i.
+Traceback (most recent call last):
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log136-target.py", line 6, in <module>
+    m['node'](['/tools/node_modules/jest/bin/jest.js','--config','/source/packages/twenty-server/jest-fork-migration.config.mjs','--runInBand','--testPathPattern='+pattern],{'FORK_MIGRATION_TEST_REDIS_URL':'redis://redis:6379','FORK_MIGRATION_TEST_URL':'postgres://test_owner:isolated-test-only@postgres/'+s['database']})
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log136-run.py", line 16, in node
+    return ssh(cmd+['--entrypoint','node','marketozk/twenty:log088-server-fixed',*args])
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log136-run.py", line 4, in ssh
+    def ssh(args,**kw):return call(['ssh',HOST,shlex.join(args)],**kw)
+                              ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log136-run.py", line 3, in call
+    def call(args,**kw):return subprocess.run(args,check=True,**kw)
+                               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['ssh', 'root@176.114.84.194', 'docker run --rm --user 0:0 --network twenty-rob764-3e371e20ab394c2b-net --memory 3g --cpus 2 -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source:/source:ro -v /opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools:/tools:ro -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/out:/out:rw -e NODE_PATH=/out/tools/node_modules:/tools/node_modules:/app/node_modules -e FORK_MIGRATION_TEST_REDIS_URL=redis://redis:6379 -e FORK_MIGRATION_TEST_URL=postgres://test_owner:isolated-test-only@postgres/twenty_rob764_test_3e371e20ab394c2b --entrypoint node marketozk/twenty:log088-server-fixed /tools/node_modules/jest/bin/jest.js --config /source/packages/twenty-server/jest-fork-migration.config.mjs --runInBand --testPathPattern=omni-native-cleanup']' returned non-zero exit status 1.

@@ -1,0 +1,40 @@
+{
+  "status": "pass-scoped-not-phase-complete",
+  "issue": "ROB-765",
+  "newCases": 47,
+  "targetedTests": 194,
+  "targetedSuites": 6,
+  "targetedSeconds": 74.066,
+  "regressionTests": 2032,
+  "regressionSuites": 67,
+  "regressionSeconds": 380.84,
+  "upstreamUnitTests": 9,
+  "upstreamUnitSuites": 2,
+  "upstreamUnitSeconds": 25.907,
+  "guardUnitTests": 26,
+  "unchangedMigrations": 10,
+  "typecheck": {
+    "baselineRoots": 397,
+    "currentRoots": 406,
+    "baselineDiagnostics": 225,
+    "currentDiagnostics": 225,
+    "newDiagnostics": 0,
+    "changedFileDiagnostics": 0,
+    "fullServerTypecheck": false
+  },
+  "uploadedSourceHashesVerified": 26,
+  "targetedCallerWiring": [
+    "sync",
+    "group",
+    "folder",
+    "sent-draft"
+  ],
+  "exactSentTargetVerified": true,
+  "initialFolderDiscoveryRaceVerified": true,
+  "blocklistCallerAudited": false,
+  "calendarCleanupAudited": false,
+  "fullHttpAcceptance": false,
+  "productionDeployment": false,
+  "enterpriseBaselineChanged": false,
+  "githubActionsUsed": false
+}

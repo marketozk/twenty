@@ -1,3 +1,7 @@
+import { captureCurrentCrmAuditIdentity } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
+import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
+import { type SentDraftCleanupTarget } from 'src/engine/core-modules/crm-audit/delete-sent-draft-message-with-audit';
+import { membershipCleanupOperation } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -35,7 +39,10 @@ export class MessagingDraftSendService {
     sendMessageInput: SendMessageInput;
     connectedAccount: ConnectedAccountEntity;
     workspaceId: string;
-  }): Promise<SendMessageResult> {
+  }): Promise<{
+    sendResult: SendMessageResult;
+    cleanupTarget: SentDraftCleanupTarget;
+  }> {
     const draftAssociation = await this.resolveDraftAssociation(
       draftMessageId,
       connectedAccount.id,
@@ -48,11 +55,13 @@ export class MessagingDraftSendService {
       );
     }
 
-    return this.messageOutboundService.sendDraft(
-      draftAssociation.messageExternalId,
+    const cleanupTarget = Object.freeze({ ...draftAssociation });
+    const sendResult = await this.messageOutboundService.sendDraft(
+      cleanupTarget.messageExternalId,
       sendMessageInput,
       connectedAccount,
     );
+    return { sendResult, cleanupTarget };
   }
 
   async getSentMessageThreadId({
@@ -85,32 +94,51 @@ export class MessagingDraftSendService {
     );
   }
 
+  async captureDraftCleanupAuditOperation(
+    workspaceId: string,
+  ): Promise<CrmAuditOperation> {
+    const identity = await captureCurrentCrmAuditIdentity(
+      workspaceId,
+      async (membershipId) => {
+        const [member] = await this.messageChannelRepository.manager.query(
+          'SELECT "userId" FROM core."userWorkspace" WHERE id=$1',
+          [membershipId],
+        );
+        return member?.userId;
+      },
+    );
+    const operation = membershipCleanupOperation(workspaceId, identity);
+    if (!operation)
+      throw new Error('Native draft cleanup requires request audit identity');
+    return operation;
+  }
+
   async deleteSentDraft({
     draftMessageId,
     connectedAccountId,
     workspaceId,
+    caller,
+    auditOperation,
+    target,
   }: {
     draftMessageId: string;
     connectedAccountId: string;
     workspaceId: string;
+    caller: { userWorkspaceId: string; userId: string };
+    auditOperation: CrmAuditOperation;
+    target: SentDraftCleanupTarget;
   }): Promise<void> {
-    const draftAssociation = await this.resolveDraftAssociation(
+    await this.messageCleanerService.deleteSentDraft({
+      workspaceId,
       draftMessageId,
       connectedAccountId,
-      workspaceId,
-    );
-
-    if (!isDefined(draftAssociation)) {
-      return;
-    }
-
-    await this.messageCleanerService.deleteMessagesChannelMessageAssociationsAndRelatedOrphans(
-      {
-        workspaceId,
-        messageExternalIds: [draftAssociation.messageExternalId],
-        messageChannelId: draftAssociation.messageChannelId,
+      caller: {
+        userWorkspaceId: caller.userWorkspaceId,
+        userId: caller.userId,
       },
-    );
+      auditOperation,
+      target: { ...target },
+    });
   }
 
   // Scoped to the caller's own channels so a member cannot act on another
@@ -119,7 +147,7 @@ export class MessagingDraftSendService {
     draftMessageId: string,
     connectedAccountId: string,
     workspaceId: string,
-  ): Promise<{ messageExternalId: string; messageChannelId: string } | null> {
+  ): Promise<SentDraftCleanupTarget | null> {
     const channels = await this.messageChannelRepository.find({
       where: { connectedAccountId, workspaceId },
     });
@@ -161,6 +189,7 @@ export class MessagingDraftSendService {
     }
 
     return {
+      associationId: association.id,
       messageExternalId: association.messageExternalId,
       messageChannelId: association.messageChannelId,
     };

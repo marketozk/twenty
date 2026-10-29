@@ -111,6 +111,8 @@ jest.mock(
 const fixture = createOmniNativeMessageFixture({
   useStandardForeignKeyActions: true,
   additionalTables: [
+    'company',
+    'opportunity',
     'calendarEvent',
     'calendarEventParticipant',
     'calendarChannelEventAssociation',
@@ -749,16 +751,20 @@ const cleanup = (kind: 'message' | 'calendar', proof = run(kind)) => {
   if (kind === 'message')
     return makeService(MessagingMessageCleanerService.prototype, {
       workspaceOrmManager: manager,
-      participantTargetReconciliationService: {
-        reconcileMessageThreadTargets: jest.fn(),
-      },
       logger: { log: jest.fn() },
-    }).deleteMessagesChannelMessageAssociationsAndRelatedOrphans({
-      workspaceId: fixture.workspaceId,
-      messageChannelId: messageChannel.id,
-      messageExternalIds: [email().externalId],
-      expectedRun: proof,
-    });
+    })
+      .deleteMessagesChannelMessageAssociationsAndRelatedOrphans({
+        workspaceId: fixture.workspaceId,
+        messageChannelId: messageChannel.id,
+        messageExternalIds: [email().externalId],
+        expectedRun: proof,
+        auditOperation: {
+          workspaceId: fixture.workspaceId,
+          operationId: randomUUID(),
+          actor: { kind: 'system', id: 'MessagingMessageCleanerService' },
+        },
+      })
+      .then((result) => result !== null);
   return new CalendarEventCleanerService(
     manager,
   ).deleteCalendarChannelEventAssociationsAndRelatedOrphans({
@@ -825,7 +831,19 @@ describe.each(['message', 'calendar'] as const)(
       );
       fixture.eventEmitter.mockClear();
       try {
-        await expect(cleanup(kind)).rejects.toThrow('Data validation error.');
+        const failure = await cleanup(kind).then(
+          () => {
+            throw new Error('Expected cleanup failure');
+          },
+          (error: unknown) => error,
+        );
+        let cause: unknown = failure;
+        const messages: string[] = [];
+        for (let depth = 0; depth < 5 && cause instanceof Error; depth++) {
+          messages.push(cause.message);
+          cause = cause.cause;
+        }
+        expect(messages.join(' | ')).toContain('fixture cleanup refusal');
         expect(await snapshot()).toEqual(before);
         expect(fixture.eventEmitter).not.toHaveBeenCalled();
       } finally {

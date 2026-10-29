@@ -1,144 +1,83 @@
-import { type OrdinaryGroupEmailAction } from 'src/modules/omnichannel/services/ordinary-group-email-action';
-import { Injectable, Logger } from '@nestjs/common';
-
-import { isNonEmptyString } from '@sniptt/guards';
-import chunk from 'lodash.chunk';
-import { In, MoreThan } from 'typeorm';
-import { MessageParticipantRole } from 'twenty-shared/types';
-import { isDefined } from 'twenty-shared/utils';
-
+import { Injectable } from '@nestjs/common';
+import { MoreThan } from 'typeorm';
+import {
+  membershipCleanupOperation,
+  systemMembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
+import { deleteOrdinaryGroupEmailMessageAssociationsWithAudit } from 'src/engine/core-modules/crm-audit/delete-ordinary-group-email-message-associations-with-audit';
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
-import { MessageChannelMessageAssociationWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-channel-message-association.workspace-entity';
-import { MessageParticipantWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-participant.workspace-entity';
-import { MessagingMessageCleanerService } from 'src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service';
-import { isGroupEmail } from 'src/modules/messaging/message-import-manager/utils/is-group-email';
+import { type MessageChannelMessageAssociationWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-channel-message-association.workspace-entity';
+import { type OrdinaryGroupEmailAction } from 'src/modules/omnichannel/services/ordinary-group-email-action';
 
-const MESSAGE_CHANNEL_MESSAGE_ASSOCIATION_BATCH_SIZE = 500;
-const MESSAGE_EXTERNAL_ID_DELETION_CHUNK_SIZE = 200;
+const PAGE_SIZE = 200;
 
 @Injectable()
 export class MessagingDeleteGroupEmailMessagesService {
-  private readonly logger = new Logger(
-    MessagingDeleteGroupEmailMessagesService.name,
-  );
-
-  constructor(
-    private readonly workspaceOrmManager: WorkspaceOrmManager,
-    private readonly messagingMessageCleanerService: MessagingMessageCleanerService,
-  ) {}
+  constructor(private readonly workspaceOrmManager: WorkspaceOrmManager) {}
 
   async deleteGroupEmailMessages(
     workspaceId: string,
     messageChannelId: string,
     action: OrdinaryGroupEmailAction,
   ): Promise<number | null> {
+    if (
+      !action ||
+      action.workspaceId !== workspaceId ||
+      action.messageChannelId !== messageChannelId ||
+      action.action !== 'GROUP_EMAILS_DELETION'
+    )
+      throw new Error('OMNI_INVALID_GROUP_ACTION_SCOPE');
     const expected = { ...action };
-    this.logger.log(
-      `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannelId} - Deleting messages from group email addresses`,
+    const identity = systemMembershipCleanupIdentity(
+      workspaceId,
+      MessagingDeleteGroupEmailMessagesService.name,
     );
-
-    const authContext = buildSystemAuthContext(workspaceId);
-
     return this.workspaceOrmManager.executeInWorkspaceContext(
       async () => {
-        const messageChannelMessageAssociationRepository =
+        if (this.workspaceOrmManager.getWorkspaceId() !== workspaceId)
+          throw new Error('OMNI_NATIVE_OWNERSHIP_WORKSPACE_MISMATCH');
+        const repository =
           this.workspaceOrmManager.getRepository<MessageChannelMessageAssociationWorkspaceEntity>(
             'messageChannelMessageAssociation',
             { shouldBypassPermissionChecks: true },
           );
-
-        const messageParticipantRepository =
-          this.workspaceOrmManager.getRepository<MessageParticipantWorkspaceEntity>(
-            'messageParticipant',
-            { shouldBypassPermissionChecks: true },
-          );
-
-        let cursorId: string | undefined;
-        let totalDeletedCount = 0;
-
+        let cursor: string | undefined;
+        let deleted = 0;
         for (;;) {
-          const associations =
-            await messageChannelMessageAssociationRepository.find({
-              where: {
-                messageChannelId,
-                ...(isDefined(cursorId) ? { id: MoreThan(cursorId) } : {}),
-              },
-              order: { id: 'ASC' },
-              take: MESSAGE_CHANNEL_MESSAGE_ASSOCIATION_BATCH_SIZE,
-            });
-
-          if (associations.length === 0) {
-            break;
-          }
-
-          const messageIds = [
-            ...new Set(
-              associations
-                .map((association) => association.messageId)
-                .filter(isNonEmptyString),
-            ),
-          ];
-
-          const senders = await messageParticipantRepository.find({
+          // Candidate discovery conveys no authority; sender classification and action validation happen inside the owner.
+          const rows = await repository.find({
             where: {
-              messageId: In(messageIds),
-              role: MessageParticipantRole.FROM,
+              messageChannelId,
+              ...(cursor ? { id: MoreThan(cursor) } : {}),
             },
+            select: { id: true },
+            order: { id: 'ASC' },
+            take: PAGE_SIZE,
           });
-
-          const groupEmailMessageIds = new Set(
-            senders
-              .filter(
-                (sender) =>
-                  isNonEmptyString(sender.handle) &&
-                  isGroupEmail(sender.handle),
-              )
-              .map((sender) => sender.messageId),
-          );
-
-          const messageExternalIdsToDelete = associations
-            .filter((association) =>
-              groupEmailMessageIds.has(association.messageId),
-            )
-            .map((association) => association.messageExternalId)
-            .filter(isNonEmptyString);
-
-          for (const messageExternalIdsChunk of chunk(
-            messageExternalIdsToDelete,
-            MESSAGE_EXTERNAL_ID_DELETION_CHUNK_SIZE,
-          )) {
-            const applied =
-              await this.messagingMessageCleanerService.deleteMessagesChannelMessageAssociationsAndRelatedOrphans(
-                {
-                  workspaceId,
-                  messageExternalIds: messageExternalIdsChunk,
-                  groupEmailAction: expected,
-                  messageChannelId,
-                },
-              );
-
-            if (!applied) return null;
-
-            totalDeletedCount += messageExternalIdsChunk.length;
-          }
-
-          if (
-            associations.length < MESSAGE_CHANNEL_MESSAGE_ASSOCIATION_BATCH_SIZE
-          ) {
-            break;
-          }
-
-          cursorId = associations[associations.length - 1].id;
+          const candidateAssociationIds = rows.map((row) => row.id);
+          const operation = membershipCleanupOperation(workspaceId, identity)!;
+          const result =
+            await this.workspaceOrmManager.runInWorkspaceTransaction(
+              async (scope) => {
+                if (scope.workspaceId !== workspaceId)
+                  throw new Error('OMNI_NATIVE_OWNERSHIP_WORKSPACE_MISMATCH');
+                return deleteOrdinaryGroupEmailMessageAssociationsWithAudit({
+                  scope,
+                  operation,
+                  action: expected,
+                  candidateAssociationIds,
+                });
+              },
+              { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
+            );
+          if (result === null) return null;
+          deleted += result.primaryDeletedAssociationIds.length;
+          if (rows.length < PAGE_SIZE) return deleted;
+          cursor = rows[rows.length - 1].id;
         }
-
-        this.logger.log(
-          `WorkspaceId: ${workspaceId}, MessageChannelId: ${messageChannelId} - Completed deleting ${totalDeletedCount} group email messages`,
-        );
-
-        return totalDeletedCount;
       },
-      authContext,
+      buildSystemAuthContext(workspaceId),
       { lite: true },
     );
   }

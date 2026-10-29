@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { deleteNativeMessageAssociationsAndRelatedOrphansWithAudit } from 'src/engine/core-modules/crm-audit/delete-native-message-associations-and-related-orphans-with-audit';
+import { type OrdinaryFolderAction } from 'src/modules/omnichannel/services/ordinary-folder-action';
 import {
   membershipCleanupOperation,
   systemMembershipCleanupIdentity,
@@ -38,7 +40,55 @@ const channelCleanupOperation = (workspaceId = fixture.workspaceId) =>
       'MessagingMessageChannelDeletionCleanupJob',
     ),
   )!;
-type Seed = Awaited<ReturnType<typeof fixture.seed>>;
+const actionVersion = '2026-10-28T00:00:00.123456Z';
+// The lower owner admits ordinary account authority and retains independently
+// owned records. Higher sync/folder gates deliberately reject this mixed graph.
+const seedWithOrdinaryAccount = async (
+  marker: CleanupMarker = 'binding',
+  separateOrdinaryFolder = false,
+) => {
+  const seeded = await fixture.seed(marker);
+  const ordinaryAccountId = await fixture.coreInsert('connectedAccount', {
+    workspaceId: fixture.workspaceId,
+    provider: 'google',
+  });
+  await fixture.owner.query(
+    'UPDATE core."messageChannel" SET "connectedAccountId"=$2 WHERE id=$1',
+    [seeded.channelId, ordinaryAccountId],
+  );
+  await fixture.coreInsert('messageFolder', {
+    id: seeded.folderId,
+    workspaceId: fixture.workspaceId,
+    messageChannelId: seeded.channelId,
+    pendingSyncAction: 'FOLDER_DELETION',
+    isSynced: true,
+    externalId: 'fixture-folder',
+    name: 'Fixture folder',
+    parentFolderId: null,
+    updatedAt: actionVersion,
+  });
+  if (separateOrdinaryFolder) {
+    // A shared real folder is itself protected through its omni junction.
+    // Lower per-record tests need an ordinary child container as well as an
+    // ordinary account; higher mixed-folder admission tests keep it shared.
+    const ordinaryFolderId = await fixture.coreInsert('messageFolder', {
+      workspaceId: fixture.workspaceId,
+      messageChannelId: seeded.channelId,
+      pendingSyncAction: 'FOLDER_DELETION',
+      isSynced: true,
+      externalId: 'ordinary-folder',
+      name: 'Ordinary folder',
+      parentFolderId: null,
+      updatedAt: actionVersion,
+    });
+    await fixture.owner.query(
+      `UPDATE "${fixture.schemaName}"."messageChannelMessageAssociationMessageFolder" SET "messageFolderId"=$2 WHERE id=$1`,
+      [seeded.email.junctionId, ordinaryFolderId],
+    );
+  }
+  return { ...seeded, ordinaryAccountId };
+};
+type Seed = Awaited<ReturnType<typeof seedWithOrdinaryAccount>>;
 const tables = [
   'message',
   'messageThread',
@@ -109,13 +159,35 @@ const targeted = (
   seed: Seed,
   externalIds = [seed.omni.externalId, seed.email.externalId],
 ) =>
-  fixture.cleaner.deleteMessagesChannelMessageAssociationsAndRelatedOrphans({
-    workspaceId: fixture.workspaceId,
+  fixture.withContext(() =>
+    fixture.dataSource.transaction(
+      (scope) =>
+        deleteNativeMessageAssociationsAndRelatedOrphansWithAudit({
+          scope,
+          operation: channelCleanupOperation(),
+          messageChannelId: seed.channelId,
+          messageExternalIds: externalIds,
+        }),
+      { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
+    ),
+  );
+const folder = (seed: Seed, workspaceId = fixture.workspaceId) => {
+  // The metadata values match; this proof cannot grant authority over a mixed-owned account.
+  const action: OrdinaryFolderAction = {
+    workspaceId,
     messageChannelId: seed.channelId,
-    messageExternalIds: externalIds,
-  });
-const folder = (seed: Seed, workspaceId = fixture.workspaceId) =>
-  fixture.folders.deleteFolderMessages(
+    connectedAccountId: seed.ordinaryAccountId,
+    messageFolderId: seed.folderId,
+    action: 'FOLDER_DELETION',
+    isSynced: true,
+    externalId: 'fixture-folder',
+    name: 'Fixture folder',
+    parentFolderId: null,
+    updatedAt: actionVersion,
+    channelUpdatedAt: actionVersion,
+    hierarchy: [],
+  };
+  return fixture.folders.deleteFolderMessages(
     workspaceId,
     { id: seed.channelId } as Parameters<
       typeof fixture.folders.deleteFolderMessages
@@ -123,23 +195,39 @@ const folder = (seed: Seed, workspaceId = fixture.workspaceId) =>
     { id: seed.folderId, name: 'Fixture folder' } as Parameters<
       typeof fixture.folders.deleteFolderMessages
     >[2],
+    action,
   );
+};
 const blocklist = (seed: Seed, workspaceId = fixture.workspaceId) =>
   fixture.blocklist.handle({
     workspaceId,
     events: [{ recordId: seed.blocklistId }],
   } as Parameters<typeof fixture.blocklist.handle>[0]);
 
-beforeAll(() => fixture.initialize());
+beforeAll(async () => {
+  await fixture.initialize();
+  await fixture.owner.query(
+    'ALTER TABLE core."connectedAccount" ADD "workspaceId" uuid, ADD provider text, ADD "applicationId" uuid, ADD "connectionProviderId" uuid',
+  );
+  await fixture.owner.query(
+    'ALTER TABLE core."messageChannel" ADD "pendingGroupEmailsAction" text, ADD "excludeGroupEmails" boolean, ADD "updatedAt" timestamptz NOT NULL DEFAULT \'2026-10-28T00:00:00.123456Z\'',
+  );
+  await fixture.owner.query(
+    'ALTER TABLE core."messageFolder" ADD "pendingSyncAction" text, ADD "isSynced" boolean, ADD "externalId" text, ADD name text, ADD "parentFolderId" text, ADD "updatedAt" timestamptz NOT NULL DEFAULT now()',
+  );
+  await fixture.owner.query(
+    `GRANT SELECT, UPDATE ON core."connectedAccount", core."messageChannel", core."messageFolder" TO "${fixture.roleName}"`,
+  );
+});
 beforeEach(() => fixture.reset());
 afterEach(() => jest.restoreAllMocks());
 afterAll(() => fixture.dispose());
 
 describe('native cleanup preserves independently owned omni records', () => {
   it.each(['binding', 'link', 'conversation'] as const)(
-    'targeted cleanup keeps %s-owned full graph and deletes ordinary email by native cascades',
+    'lower targeted owner keeps %s-owned full graph and deletes ordinary email by native cascades',
     async (marker: CleanupMarker) => {
-      const seed = await fixture.seed(marker);
+      const seed = await seedWithOrdinaryAccount(marker, true);
       const before = await protectedSnapshot(seed);
       await targeted(seed);
       await noEmail(seed);
@@ -158,7 +246,7 @@ describe('native cleanup preserves independently owned omni records', () => {
   it.each(['binding', 'link', 'conversation'] as const)(
     'channel cleanup preserves %s-owned associations and their folder junctions',
     async (marker: CleanupMarker) => {
-      const seed = await fixture.seed(marker);
+      const seed = await seedWithOrdinaryAccount(marker);
       const before = await protectedSnapshot(seed);
       await fixture.owner.query(
         'DELETE FROM core."messageChannel" WHERE id=$1',
@@ -179,21 +267,21 @@ describe('native cleanup preserves independently owned omni records', () => {
   );
 
   it.each(['binding', 'link', 'conversation'] as const)(
-    'folder deletion skips %s-owned graph and counts only ordinary records',
+    'higher folder admission refuses mixed %s-owned account without changing either graph',
     async (marker: CleanupMarker) => {
-      const seed = await fixture.seed(marker);
-      const before = await protectedSnapshot(seed);
-      expect(await folder(seed)).toBe(1);
-      await noEmail(seed);
-      expect(await protectedSnapshot(seed)).toEqual(before);
-      expect(await folder(seed)).toBe(0);
+      const seed = await seedWithOrdinaryAccount(marker);
+      const before = await allSnapshot();
+      expect(await folder(seed)).toBeNull();
+      expect(await allSnapshot()).toEqual(before);
+      expect(await folder(seed)).toBeNull();
+      expect(await allSnapshot()).toEqual(before);
     },
   );
 
   it.each(['binding', 'link', 'conversation'] as const)(
     'direct blocklist job skips %s-owned graph while ordinary sender is removed',
     async (marker: CleanupMarker) => {
-      const seed = await fixture.seed(marker);
+      const seed = await seedWithOrdinaryAccount(marker);
       const before = await protectedSnapshot(seed);
       await blocklist(seed);
       await noEmail(seed);
@@ -204,7 +292,7 @@ describe('native cleanup preserves independently owned omni records', () => {
   it.each(['link', 'conversation'] as const)(
     'orphan sweep preserves %s-owned message after every channel association is missing',
     async (marker) => {
-      const seed = await fixture.seed(marker);
+      const seed = await seedWithOrdinaryAccount(marker);
       await fixture.owner.query(
         `DELETE FROM "${fixture.schemaName}"."messageChannelMessageAssociation" WHERE "messageId" IN ($1,$2)`,
         [seed.omni.messageId, seed.email.messageId],
@@ -220,7 +308,7 @@ describe('native cleanup preserves independently owned omni records', () => {
   );
 
   it('preserves an empty conversation-owned thread while removing an empty ordinary thread', async () => {
-    const seed = await fixture.seed('conversation');
+    const seed = await seedWithOrdinaryAccount('conversation');
     await fixture.owner.query(
       `DELETE FROM "${fixture.schemaName}"."message" WHERE id IN ($1,$2)`,
       [seed.omni.messageId, seed.email.messageId],
@@ -239,7 +327,7 @@ describe('native cleanup preserves independently owned omni records', () => {
   });
 
   const seedPages = async (count: number) => {
-    const seed = await fixture.seed('conversation');
+    const seed = await seedWithOrdinaryAccount('conversation');
     await fixture.owner.query(
       `DELETE FROM "${fixture.schemaName}"."messageChannelMessageAssociation" WHERE "messageChannelId"=$1`,
       [seed.channelId],
@@ -329,54 +417,45 @@ describe('native cleanup preserves independently owned omni records', () => {
     await noEmail(seed);
   });
 
-  it('advances past 200 protected folder rows and deletes the ordinary next page without starvation', async () => {
+  it('higher folder admission refuses an owned first page before processing ordinary later rows', async () => {
     const seed = await seedPages(200);
-    expect(await folder(seed)).toBe(1);
+    const before = await allSnapshot();
+    expect(await folder(seed)).toBeNull();
+    expect(await allSnapshot()).toEqual(before);
     expect(await fixture.read('messageChannelMessageAssociation')).toHaveLength(
-      200,
+      201,
     );
-    expect(
-      await fixture.read('messageChannelMessageAssociationMessageFolder'),
-    ).toHaveLength(200);
-    await noEmail(seed);
-    expect(await folder(seed)).toBe(0);
+    expect(await folder(seed)).toBeNull();
+    expect(await allSnapshot()).toEqual(before);
   });
 
-  it('retains a junction belonging to a different channel in the same folder', async () => {
-    const seed = await fixture.seed('conversation');
+  it('higher folder admission retains foreign-channel junctions in a mixed-owned account', async () => {
+    const seed = await seedWithOrdinaryAccount('conversation');
     await fixture.owner.query(
       `UPDATE "${fixture.schemaName}"."messageChannelMessageAssociation" SET "messageChannelId"=$1 WHERE id=$2`,
       [seed.protectedChannelId, seed.email.associationId],
     );
     const before = await allSnapshot();
-    expect(await folder(seed)).toBe(0);
+    expect(await folder(seed)).toBeNull();
     expect(await allSnapshot()).toEqual(before);
   });
 
-  it('removes ordinary soft-deleted association junctions while retaining owned soft-deleted junctions', async () => {
-    const seed = await fixture.seed('conversation');
+  it('higher folder admission retains soft-deleted ordinary and owned junctions on a mixed-owned account', async () => {
+    const seed = await seedWithOrdinaryAccount('conversation');
     await fixture.owner.query(
       `UPDATE "${fixture.schemaName}"."messageChannelMessageAssociation" SET "deletedAt"=clock_timestamp() WHERE id IN ($1,$2)`,
       [seed.omni.associationId, seed.email.associationId],
     );
-    const before = await protectedSnapshot(seed);
-    expect(await folder(seed)).toBe(0);
-    expect(await protectedSnapshot(seed)).toEqual(before);
+    const before = await allSnapshot();
+    expect(await folder(seed)).toBeNull();
+    expect(await allSnapshot()).toEqual(before);
     expect(
-      (await fixture.read('messageChannelMessageAssociationMessageFolder')).map(
-        (row: { id: string }) => row.id,
-      ),
-    ).toEqual([seed.omni.junctionId]);
-    // Native cleaner ignores already deleted associations; this asserts junction cleanup only.
-    expect(
-      (await fixture.read('messageChannelMessageAssociation')).find(
-        (row: { id: string }) => row.id === seed.email.associationId,
-      ),
-    ).toBeDefined();
+      await fixture.read('messageChannelMessageAssociationMessageFolder'),
+    ).toHaveLength(2);
   });
 
   it('rolls back earlier deletion when a later ownership SQL query fails', async () => {
-    const seed = await fixture.seed('conversation');
+    const seed = await seedWithOrdinaryAccount('conversation', true);
     const before = await allSnapshot();
     await fixture.owner.query(
       `CREATE FUNCTION core.log034_revoke_ownership() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$ BEGIN REVOKE SELECT ON core."omniMessageLink" FROM "${fixture.roleName}"; RETURN OLD; END $$`,
@@ -402,7 +481,7 @@ describe('native cleanup preserves independently owned omni records', () => {
   it.each(['targeted', 'channel', 'orphan', 'folder', 'blocklist'] as const)(
     'rejects workspace mismatch at %s entry without any mutations',
     async (entry) => {
-      const seed = await fixture.seed();
+      const seed = await seedWithOrdinaryAccount();
       const before = await allSnapshot();
       const workspaceId = randomUUID();
       const work =
@@ -412,6 +491,15 @@ describe('native cleanup preserves independently owned omni records', () => {
                 workspaceId,
                 messageChannelId: seed.channelId,
                 messageExternalIds: ['omni', 'email'],
+                expectedRun: {
+                  workspaceId,
+                  channelId: seed.channelId,
+                  connectedAccountId: seed.ordinaryAccountId,
+                  kind: 'message',
+                  stage: 'MESSAGE_LIST_FETCH_ONGOING',
+                  startedAt: actionVersion,
+                },
+                auditOperation: channelCleanupOperation(workspaceId),
               },
             )
           : entry === 'channel'

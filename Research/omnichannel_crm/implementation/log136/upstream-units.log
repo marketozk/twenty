@@ -1,0 +1,9 @@
+[Nest] 1  - 10/29/2026, 9:00:55 AM   ERROR [SendEmailResolver] Failed to send email: Error: No connected account in this workspace can send email
+[Nest] 1  - 10/29/2026, 9:00:55 AM   ERROR [SendEmailResolver] Failed to send email: Error: connect ECONNREFUSED 10.0.0.1
+PASS twenty-server ../../../source/packages/twenty-server/src/modules/messaging/message-outbound-manager/resolvers/__tests__/send-email.resolver.spec.ts (25.705 s)
+PASS twenty-server ../../../source/packages/twenty-server/src/engine/metadata-modules/connected-account/utils/__tests__/is-connected-account-usable-by-caller.util.spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       9 passed, 9 total
+Snapshots:   0 total
+Time:        25.907 s

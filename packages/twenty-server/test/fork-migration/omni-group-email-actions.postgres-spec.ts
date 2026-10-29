@@ -52,16 +52,8 @@ const capture = async () => {
   expect(result).not.toBeNull();
   return result!;
 };
-const clean = (
-  expected: OrdinaryGroupEmailAction,
-  ids = [seed.email.externalId],
-) =>
-  fixture.cleaner.deleteMessagesChannelMessageAssociationsAndRelatedOrphans({
-    workspaceId: fixture.workspaceId,
-    messageChannelId: channelId,
-    messageExternalIds: ids,
-    groupEmailAction: expected,
-  });
+const clean = (expected: OrdinaryGroupEmailAction) =>
+  deletion.deleteGroupEmailMessages(fixture.workspaceId, channelId, expected);
 const exists = async () =>
   (await fixture.read('message')).some(
     (row: Record<string, string>) => row.id === seed.email.messageId,
@@ -137,10 +129,7 @@ beforeEach(async () => {
     `UPDATE "${fixture.schemaName}"."messageParticipant" SET handle='support@example.test' WHERE id=$1`,
     [seed.email.participantId],
   );
-  deletion = new MessagingDeleteGroupEmailMessagesService(
-    fixture.manager,
-    fixture.cleaner,
-  );
+  deletion = new MessagingDeleteGroupEmailMessagesService(fixture.manager);
   worker = new MessagingProcessGroupEmailActionsService(
     { manager: fixture.coreReader.manager } as never,
     deletion,
@@ -191,7 +180,7 @@ it.each([
           ? false
           : '2026-10-28T00:00:00.123457Z',
   );
-  expect(await clean(expected)).toBe(false);
+  expect(await clean(expected)).toBeNull();
   expect(
     await finishOrdinaryGroupEmailAction(fixture.coreReader.manager, expected),
   ).toBe(false);
@@ -213,7 +202,7 @@ it('action ABA with one microsecond difference never accepts old work', async ()
   await change('pendingGroupEmailsAction', 'GROUP_EMAILS_IMPORT');
   await change('pendingGroupEmailsAction', 'GROUP_EMAILS_DELETION');
   await change('updatedAt', '2026-10-28T00:00:00.123457Z');
-  expect(await clean(expected)).toBe(false);
+  expect(await clean(expected)).toBeNull();
   expect(await exists()).toBe(true);
 });
 it('ordinary settings mismatch cancels capture', async () => {
@@ -237,7 +226,7 @@ it.each(['native', 'retained'])(
         'UPDATE core."omniAccountBinding" SET "connectedAccountId"=$1 WHERE id=$2',
         [accountId, seed.bindingId],
       );
-    expect(await clean(expected)).toBe(false);
+    expect(await clean(expected)).toBeNull();
     expect(
       await finishOrdinaryGroupEmailAction(
         fixture.coreReader.manager,
@@ -308,16 +297,12 @@ it('final channel SQL failure rolls back earlier folder reset', async () => {
   );
 });
 it('actual worker does not finalize after a lost native COMMIT acknowledgement', async () => {
-  const original =
-    fixture.cleaner.deleteMessagesChannelMessageAssociationsAndRelatedOrphans.bind(
-      fixture.cleaner,
-    );
+  const original = fixture.manager.runInWorkspaceTransaction.bind(
+    fixture.manager,
+  );
   jest
-    .spyOn(
-      fixture.cleaner,
-      'deleteMessagesChannelMessageAssociationsAndRelatedOrphans',
-    )
-    .mockImplementationOnce(async (args) => {
+    .spyOn(fixture.manager, 'runInWorkspaceTransaction')
+    .mockImplementationOnce(async (...args) => {
       const client = await fixture.pool.connect(),
         query = client.query.bind(client);
       jest.spyOn(client, 'query').mockImplementation((async (
@@ -331,7 +316,7 @@ it('actual worker does not finalize after a lost native COMMIT acknowledgement',
       jest
         .spyOn(fixture.pool, 'connect')
         .mockImplementationOnce(async () => client);
-      return original(args);
+      return original(...args);
     });
   await expect(
     worker.processGroupEmailActions(await channel(), fixture.workspaceId),
@@ -383,18 +368,14 @@ it('stops later destructive chunks when settings change after the first commit',
     `INSERT INTO "${fixture.schemaName}"."messageParticipant"(id,"messageId",role,handle) SELECT gen_random_uuid(),id,'FROM','support@example.test' FROM unnest($1::uuid[]) row(id)`,
     [addedIds],
   );
-  const original =
-    fixture.cleaner.deleteMessagesChannelMessageAssociationsAndRelatedOrphans.bind(
-      fixture.cleaner,
-    );
+  const original = fixture.manager.runInWorkspaceTransaction.bind(
+    fixture.manager,
+  );
   let batches = 0;
   jest
-    .spyOn(
-      fixture.cleaner,
-      'deleteMessagesChannelMessageAssociationsAndRelatedOrphans',
-    )
-    .mockImplementation(async (args) => {
-      const result = await original(args);
+    .spyOn(fixture.manager, 'runInWorkspaceTransaction')
+    .mockImplementation(async (...args) => {
+      const result = await original(...args);
       if (++batches === 1) {
         await change('pendingGroupEmailsAction', 'GROUP_EMAILS_IMPORT');
         await change('excludeGroupEmails', false);
@@ -421,12 +402,12 @@ it('stops later destructive chunks when settings change after the first commit',
     'GROUP_EMAILS_IMPORT',
   );
 });
-it('shared cleaner waits for exclusive ownership enrollment and rechecks after it', async () => {
+it('exclusive cleanup waits for exclusive ownership enrollment and rechecks after it', async () => {
   const expected = await capture(),
     runner = fixture.owner.createQueryRunner();
   await runner.connect();
   await runner.startTransaction();
-  let pending: Promise<boolean> | undefined;
+  let pending: Promise<number | null> | undefined;
   try {
     await runner.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
       'twenty:omni-native:' + fixture.workspaceId,
@@ -450,7 +431,7 @@ it('shared cleaner waits for exclusive ownership enrollment and rechecks after i
       [accountId, 'app'],
     );
     await runner.commitTransaction();
-    expect(await pending).toBe(false);
+    expect(await pending).toBeNull();
     expect(await exists()).toBe(true);
   } finally {
     if (runner.isTransactionActive) await runner.rollbackTransaction();

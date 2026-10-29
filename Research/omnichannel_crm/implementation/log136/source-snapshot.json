@@ -1,0 +1,32 @@
+{
+  "baseCommit": "3e354ffbf2f54d49d12e503fd6ea4b13dca1f93c",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts": "caaf0764926974edbdd3edf867ecee454a698008965f7b3a72f4581d98c16751",
+    "packages/twenty-server/src/engine/metadata-modules/connected-account/entities/connected-account.entity.ts": "7efe3649231682517eff1bc652a85e1b5317b16bce73da62ac6e6bc172192a76",
+    "packages/twenty-server/src/engine/metadata-modules/connected-account/utils/is-connected-account-usable-by-caller.util.ts": "061e4267336c8b8ff27e5612af73759979e528d5b17c820e60f5b5037c711acd",
+    "packages/twenty-server/src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service.ts": "674a0b2f12f440c03ceec0eaf2e3d8618dd17dcd3f6989118478d705ae52deae",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-delete-folder-messages.service.ts": "4664d5fe895bb2af4f6c04ea08daae0e9f7256ba95d4be302c4425105d47e1af",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-delete-group-email-messages.service.ts": "67bc11868f8146149eb49bd17ca4e41f58031ae44ef6886a8f1e213622f4cdf2",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-message-list-fetch.service.ts": "de4905ad5bb01ec2de668c6905705ece05a3edc9cb9408c67929ff433960b7a1",
+    "packages/twenty-server/src/modules/messaging/message-outbound-manager/resolvers/send-email.resolver.ts": "30d8611c4047321db6cb913bfaf04ddb9199482a0a7db62aa7d3ccdfce4a715f",
+    "packages/twenty-server/src/modules/messaging/message-outbound-manager/services/messaging-draft-send.service.ts": "b467a0dee578a65ce1c3721854ce60aeaf05b9a04b6dd7deecd427ea8b5199e0",
+    "packages/twenty-server/src/modules/messaging/message-outbound-manager/services/send-email.service.ts": "16e08eeef930e68287622620857f56878c8d87e558da860fa00cc01c3e52ca5f",
+    "packages/twenty-server/src/modules/omnichannel/services/ordinary-folder-action.ts": "f6cdeffaff6154fa74d949071101ec7bffbe8f7282f3a02503c9eb13a3c1c583",
+    "packages/twenty-server/src/modules/omnichannel/services/ordinary-group-email-action.ts": "19da6c45c04a00c17c4a4fa6cda2d43f303759373bae8873c191d33104681169",
+    "packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts": "34cad32b8e9d9f24a6c42f4c81f426ba9e012a595400eb58c6e5ec4fcce6081b",
+    "packages/twenty-server/test/fork-migration/omni-group-email-actions.postgres-spec.ts": "2d2121199d5134198ef9fcdd341c0200c4fba1d5a89bfea9e14e54b1241b2d85",
+    "packages/twenty-server/test/fork-migration/omni-native-cleanup.fixture.ts": "59aa0e4ea7095138069573d14cba2a52eac06e5d38d65e86425e5555a3659906",
+    "packages/twenty-server/test/fork-migration/omni-native-cleanup.postgres-spec.ts": "14582f74ff3b126e3211776f5409a116ffab56043e8b19f52dd110065c19fe75",
+    "packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts": "8655a93385654127fc87651c16a67b7fcbc18e10262ea874dc9ff436909ae80c",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-ordinary-folder-message-page-with-audit.ts": "5ce6942f2fba5671a47a960bebb5d479a0e73aad2a39d577f7ffc3f3b06c8d39",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-ordinary-group-email-message-associations-with-audit.ts": "c41808fe990cbc25028750d337db3123d018b6673df2cbc35dcd42fef74513ea",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-ordinary-sync-message-associations-with-audit.ts": "540173a091ce6c93e6f5338b94bf249ceeb717b8ee4910873a706568c41ea941",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-sent-draft-message-with-audit.ts": "4cc3c3256cf5ba9a304b04ed4a5049cdfce0152f9067c2cd34b7b27992c2fee3",
+    "packages/twenty-server/src/engine/metadata-modules/connected-account/types/connected-account-scope.ts": "c3a89d097ad47deae7f023b193bc0937a1ffb50b76e20f24026e7e7d993c86d6",
+    "packages/twenty-server/src/modules/omnichannel/services/lock-current-folder-action.ts": "f333a95024cc85acd38adb021ca368c468385a3fd5a7fce7840764827147a6d5",
+    "packages/twenty-server/src/modules/omnichannel/services/lock-current-group-email-action.ts": "496d19790a389da59203a447092a733c3603fe7e7f5f370704a3eb7dd566e606",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-cleanup-boundaries.postgres-spec.ts": "1b812a3bd54392ca3b3370e06cc1c6dbdfc270d0fdc9eee42d1ef93c8c15a9fa",
+    "packages/twenty-server/test/fork-migration/crm-audit-sent-draft-entrypoints.spec.ts": "f53c3b33e09761622c86f77169ad87d0660ae58fd58403b827216a29bf1f1fb9"
+  },
+  "uploadedSourceHashesVerified": true
+}

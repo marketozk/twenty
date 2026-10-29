@@ -34,6 +34,7 @@ ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.
 
 Последняя подтверждённая сверка — [LOG135 publication](implementation/log135/publication.json):
 описание, комментарий и все 11 статусов прочитаны обратно; commit/push подтверждены GitHub API.
-Продолжается подключение адресной очистки; ROB765 остаётся In Progress.
+LOG136 проверен локально; описание и отчёт Linear будут синхронизированы после push.
+Следующая работа — blocklist cleanup; ROB765 остаётся In Progress.
 История прежних R13–R16/LOG-публикаций сохраняется в [DEVLOG](DEVLOG.md) и каталогах evidence.
 GitHub Actions не используется.

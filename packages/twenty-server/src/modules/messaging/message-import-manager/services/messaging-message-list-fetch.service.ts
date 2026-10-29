@@ -1,3 +1,8 @@
+import { isTransactionUnsafeToRetry } from 'src/engine/twenty-orm/error-handling/is-transaction-outcome-unknown';
+import {
+  membershipCleanupOperation,
+  systemMembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { messageImportCacheKeys } from 'src/modules/messaging/common/utils/message-import-cache-keys';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -61,15 +66,21 @@ export class MessagingMessageListFetchService {
     messageChannel: MessageChannelEntity,
     workspaceId: string,
   ) {
+    const channelId = messageChannel.id;
+    const connectedAccountId = messageChannel.connectedAccountId;
+    const cleanupIdentity = systemMembershipCleanupIdentity(
+      workspaceId,
+      MessagingMessageListFetchService.name,
+    );
     const admitted =
       await this.messageChannelSyncStatusService.beginMessagesListFetch(
-        messageChannel.id,
+        channelId,
         workspaceId,
-        messageChannel.connectedAccountId,
+        connectedAccountId,
       );
     if (!admitted) return;
     messageChannel = admitted.channel;
-    const expectedRun = admitted.run;
+    const expectedRun = { ...admitted.run };
     const authContext = buildSystemAuthContext(workspaceId);
 
     await this.workspaceOrmManager.executeInWorkspaceContext(
@@ -242,9 +253,13 @@ export class MessagingMessageListFetchService {
                     messageExternalIds: toDeleteChunk,
                     messageChannelId: freshMessageChannel.id,
                     expectedRun,
+                    auditOperation: membershipCleanupOperation(
+                      workspaceId,
+                      cleanupIdentity,
+                    )!,
                   },
                 );
-              if (!cleaned) return;
+              if (cleaned === null) return;
             }
           }
 
@@ -306,6 +321,7 @@ export class MessagingMessageListFetchService {
             workspaceId,
           );
         } catch (error) {
+          if (isTransactionUnsafeToRetry(error)) throw error;
           await this.messageImportErrorHandlerService.handleDriverException(
             error,
             MessageImportSyncStep.MESSAGE_LIST_FETCH,

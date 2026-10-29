@@ -1,0 +1,108 @@
+....................
+----------------------------------------------------------------------
+Ran 20 tests in 0.002s
+
+OK
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.040s
+
+OK
+Verified 10 fork migration source(s)
+{
+  "status": "fail",
+  "counts": {
+    "code_files": 34705,
+    "runtime_files": 21430,
+    "edges": 136283
+  },
+  "violations": {
+    "runtime_enterprise_reachable": [
+      "packages/twenty-server/src/engine/core-modules/crm-audit/clean-orphan-native-messages-and-threads-with-audit.ts",
+      "packages/twenty-server/src/engine/core-modules/crm-audit/delete-empty-native-message-threads-with-audit.ts",
+      "packages/twenty-server/src/engine/core-modules/crm-audit/delete-native-message-associations-and-related-orphans-with-audit.ts",
+      "packages/twenty-server/src/engine/core-modules/crm-audit/delete-ordinary-folder-message-page-with-audit.ts",
+      "packages/twenty-server/src/engine/core-modules/crm-audit/delete-ordinary-group-email-message-associations-with-audit.ts",
+      "packages/twenty-server/src/engine/core-modules/crm-audit/delete-ordinary-sync-message-associations-with-audit.ts",
+      "packages/twenty-server/src/engine/core-modules/crm-audit/delete-orphan-native-messages-with-audit.ts",
+      "packages/twenty-server/src/engine/core-modules/crm-audit/delete-sent-draft-message-with-audit.ts",
+      "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts",
+      "packages/twenty-server/src/engine/core-modules/crm-audit/reconcile-native-message-thread-targets-with-audit.ts"
+    ],
+    "enterprise_edges": [
+      [
+        "packages/twenty-server/src/engine/core-modules/crm-audit/clean-orphan-native-messages-and-threads-with-audit.ts",
+        "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts"
+      ],
+      [
+        "packages/twenty-server/src/engine/core-modules/crm-audit/delete-empty-native-message-threads-with-audit.ts",
+        "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts"
+      ],
+      [
+        "packages/twenty-server/src/engine/core-modules/crm-audit/delete-native-message-associations-and-related-orphans-with-audit.ts",
+        "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts"
+      ],
+      [
+        "packages/twenty-server/src/engine/core-modules/crm-audit/delete-ordinary-folder-message-page-with-audit.ts",
+        "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts"
+      ],
+      [
+        "packages/twenty-server/src/engine/core-modules/crm-audit/delete-ordinary-group-email-message-associations-with-audit.ts",
+        "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts"
+      ],
+      [
+        "packages/twenty-server/src/engine/core-modules/crm-audit/delete-ordinary-sync-message-associations-with-audit.ts",
+        "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts"
+      ],
+      [
+        "packages/twenty-server/src/engine/core-modules/crm-audit/delete-orphan-native-messages-with-audit.ts",
+        "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts"
+      ],
+      [
+        "packages/twenty-server/src/engine/core-modules/crm-audit/delete-sent-draft-message-with-audit.ts",
+        "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts"
+      ],
+      [
+        "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts",
+        "packages/twenty-server/src/engine/metadata-modules/connected-account/utils/is-connected-account-usable-by-caller.util.ts"
+      ],
+      [
+        "packages/twenty-server/src/engine/core-modules/crm-audit/reconcile-native-message-thread-targets-with-audit.ts",
+        "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts"
+      ],
+      [
+        "packages/twenty-server/src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service.ts",
+        "packages/twenty-server/src/engine/core-modules/crm-audit/clean-orphan-native-messages-and-threads-with-audit.ts"
+      ],
+      [
+        "packages/twenty-server/src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service.ts",
+        "packages/twenty-server/src/engine/core-modules/crm-audit/delete-ordinary-sync-message-associations-with-audit.ts"
+      ],
+      [
+        "packages/twenty-server/src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service.ts",
+        "packages/twenty-server/src/engine/core-modules/crm-audit/delete-sent-draft-message-with-audit.ts"
+      ],
+      [
+        "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-delete-folder-messages.service.ts",
+        "packages/twenty-server/src/engine/core-modules/crm-audit/delete-ordinary-folder-message-page-with-audit.ts"
+      ],
+      [
+        "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-delete-group-email-messages.service.ts",
+        "packages/twenty-server/src/engine/core-modules/crm-audit/delete-ordinary-group-email-message-associations-with-audit.ts"
+      ],
+      [
+        "packages/twenty-server/src/modules/messaging/message-outbound-manager/resolvers/send-email.resolver.ts",
+        "packages/twenty-server/src/engine/core-modules/crm-audit/delete-sent-draft-message-with-audit.ts"
+      ],
+      [
+        "packages/twenty-server/src/modules/messaging/message-outbound-manager/services/messaging-draft-send.service.ts",
+        "packages/twenty-server/src/engine/core-modules/crm-audit/delete-sent-draft-message-with-audit.ts"
+      ],
+      [
+        "packages/twenty-server/src/modules/messaging/message-outbound-manager/services/send-email.service.ts",
+        "packages/twenty-server/src/engine/core-modules/crm-audit/delete-sent-draft-message-with-audit.ts"
+      ]
+    ]
+  },
+  "runtime_license_proof": false
+}
