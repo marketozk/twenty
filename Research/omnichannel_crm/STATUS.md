@@ -3,27 +3,29 @@
 ROB764 завершена по [приёмке LOG088](implementation/rob764-acceptance.md).
 ROB765 — In Progress: общий аудит действий ещё не принят.
 
-Проверенное покрытие к LOG115:
+Проверенное покрытие к LOG119:
 
-- Native audit owner, реальные snapshots и атомарный audit для Company/Person/Opportunity и покрытых local custom objects; create/update, FILES, soft-delete/restore.
-- Public CREATE/upsert, UPDATE и soft-delete/restore используют этот owner. Вложенный CREATE проверяет исходный граф и каждый дочерний вызов после prehook; права и общий rollback сохранены. Графы с неподдерживаемыми объектами или реальными share writes пока остаются на прежнем пути.
-- Workspace user-session CREATE и revoke используют core owner; отзыв доступа сохраняется при отказе журнала с явным сигналом. Устаревший cache проверяется по DB revocation. LOG109 добавляет немедленный security revoke предъявленного refresh token при logout и его audit; audit failure не восстанавливает credential. LOG110 добавляет атомарные выпуск и ротацию workspace refresh tokens: старый и новый токены имеют общий operation/commit; ошибка журнала отменяет выдачу.
-- Role CREATE/UPDATE из GraphQL/AI tool имеет strict metadata owner, actual DB snapshots и audit; ROLES/self-lockout сохранены. LOG113 добавляет публичное назначение роли сотруднику, actual membership/assignment, сериализацию concurrent demotions и fresh application tenant check. Role delete, bulk/agent/API-key assignments и membership removal ещё открыты.
-- LOG114 объединяет core membership/roleTarget cleanup в одну транзакцию и сохраняет workflow-share recovery intent. LOG115 добавляет audit primitive с явной operation: учитывает фактические CASCADE/SET NULL и вложенное меню; ошибка журнала сохраняет DB-отзыв и recovery, известный чужой scope отменяет cleanup. Автоматическая передача автора из API/jobs и весь public removal ещё открыты.
-- Десятая fork migration добавляет индекс audit по workspace/operation. При будущем выкате построение индекса требует остановленных writers.
+- Native audit для covered Company/Person/Opportunity и local custom objects: create/update, FILES, soft-delete/restore и внутренний hard-delete с покрытыми прямыми FK effects.
+- Workspace sessions, предъявленный refresh signOut и workspace refresh issuance/rotation; security-first отзыв и DB recheck вместо доверия stale cache.
+- Public/AI role CREATE/UPDATE и public member assignment с сериализацией demotions.
+- Core membership cleanup с trusted API/job attribution, exact targets, actual FK effects и durable workflow-share recovery intent.
+- Core account deactivation с fresh membership check, strict owner, audit savepoint и cache-finally.
+- LOG119: production membership INSERT блокирует и проверяет active user в своей транзакции; обе очередности create/deactivate проверены. Locale UPDATE не восстанавливает удалённое членство.
+- 10 неизменённых fork migrations; audit operation index при будущем выкате требует остановки writers.
 
-1216 tests/38 suites PASS (205.942s); 103 targeted/3 suites PASS, 25 новых cases. 26 guards PASS; 10 migration checksums неизменны. Types 351/353 roots, 188/188 прежних диагностик, 0 новых/changed-code. 5 local/remote source hashes совпадают.
+1343 tests/44 suites PASS (209.429s); 45 targeted/2 suites PASS, 23 новых PG cases. 26 guards PASS; 10 migration checksums неизменны. Types 359/360 roots, 189/189 прежних диагностик, 0 новых/changed-code; одна прежняя диагностика в неизменённом методе того же файла. 2 local/remote source hashes совпадают.
+Это целевые проверки кода, не чистый full-server typecheck и не полный HTTP/signup тест.
 
-Это целевые проверки кода. Полный server typecheck не чистый из-за 188 прежних диагностик в расширенном metadata/auth графе. Полные HTTP/JWT/private-sharing проверки и новая сборка образа этим срезом не выполнялись.
+Далее — устранение stale coreUser saves в email verification и server-admin:
+[следующая граница](implementation/log119/next-boundary.md).
+Открыты native member/transfers, real shares, public DESTROY/MERGE, остальные metadata/role/system writers, общий denied/failed audit и health/alert. Общая безопасность всех уже принятых запросов этим срезом не заявлена.
 
-Открыто: public DESTROY/MERGE и FK side effects, остальные native/system writers и real shares, остальные metadata/role mutations, отрицательные события после rollback и health/alert. Внутреннее leaf hard-delete покрыто LOG105; direct SET_NULL covered children — LOG106, direct CASCADE — LOG108. LOG107 закрывает неаудированные ON UPDATE effects защитным отказом. Остаются остальные FK effects и безопасное подключение публичных destroy/merge owners.
+ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.
+Собственные права, интерфейс чатов, коннекторы, ИИ и автоматизация ещё не приняты.
 
-ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog. Собственные права, рабочий интерфейс чатов, коннекторы, ИИ и автоматизация ещё не приняты.
+Демо остаётся прежним. Последний собранный изолированный кандидат — LOG088;
+код LOG089–119 не выкатывался. Клиентские сообщения не отправлялись. GitHub Actions не используется.
 
-Далее — trusted attribution API/jobs и обязательная DB-проверка membership в JWT path: source-review нашёл stale-cache gap после soft-delete при failed invalidation. Это не объявлено закрытым тестами LOG115; [следующая граница](implementation/log115/next-boundary.md).
-
-Демо остаётся прежним. Последний собранный и проверенный изолированный кандидат — LOG088; код LOG089–115 не выкатывался. Клиентские сообщения не отправлялись. GitHub Actions не используется.
-
-- [Текущие доказательства LOG115](implementation/log115/README.md).
+- [Проверки LOG119](implementation/log119/README.md).
 - [Критерии и остаток ROB765](implementation/rob765-progress.md).
-- [Журнал всех шагов](DEVLOG.md).
+- [Журнал разработки](DEVLOG.md).

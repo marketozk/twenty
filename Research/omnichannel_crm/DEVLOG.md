@@ -3612,3 +3612,18 @@ Source review также нашёл coreUser full saves в email verification/se
 LOG118 publication: 767fcd82dd2fbca632c804ac8467e21531ef5ac2 pushed/API verified.
 ROB765 description/comment 895cb43c-04d1-4b47-9578-e258230f5de1 independently read back;
 all 11 issue states match. Next: membership creation and locale resurrection fence.
+
+## LOG-119 — создание членства не восстанавливает отключённый аккаунт
+
+Production create проверяет active user под FOR SHARE в той же транзакции, что INSERT;
+actual id/user/workspace/deletedAt подтверждаются после записи. Самостоятельный вызов
+использует strict owner; signup сохраняет свой runner и caller-owned COMMIT.
+Locale-only UPDATE не вставляет заново и не восстанавливает удалённое членство.
+
+1343 tests/44 suites PASS (209.429s); 45 targeted/2 suites PASS, 23 новых PG cases. 26 guards PASS; 10 migration checksums неизменны. Types 359/360 roots, 189/189 прежних диагностик, 0 новых/changed-code; одна прежняя диагностика в неизменённом методе того же файла. 2 local/remote source hashes совпадают.
+[Результаты](implementation/log119/results.json), [ревью](implementation/log119/review.md).
+Typecheck сначала выявил три неверных fixture locale literals; заменены на ru-RU,
+целевой набор и typecheck повторно прошли. Runtime diff после общего прогона не менялся.
+
+ROB765 In Progress; HTTP/signup целиком и выкат не заявлены. Далее — narrow active
+coreUser updates для email verification и server-admin; [граница](implementation/log119/next-boundary.md).

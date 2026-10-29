@@ -975,3 +975,11 @@ savepoint и cache invalidation finally. Корреляция общая, operat
 Нет email/password в журнале и выдуманной workspace для workspace-less account.
 Это не двусторонний create/deactivate fence: требуется active user lock в INSERT
 owner и устранение old full-entity saves, способных восстановить deletedAt.
+
+LOG119 реализует membership INSERT fence: active user FOR SHARE и INSERT на одном
+runner, actual id/user/workspace/deletedAt readback. Supplied runner должен быть
+активным, не released и от того же data source; его commit остаётся у caller.
+Standalone использует strict core owner. Locale update меняет только locale у
+active membership, не использует save старой entity. PostgreSQL проверяет обе
+очередности create/deactivate и hard/soft-delete locale race. Old coreUser saves
+в email/admin paths остаются [следующей границей](../implementation/log119/next-boundary.md).

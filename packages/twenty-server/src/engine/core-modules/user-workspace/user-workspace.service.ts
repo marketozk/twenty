@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -43,6 +44,7 @@ import {
   type MembershipCleanupAuthentication,
 } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
+import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
 import { RoleTargetEntity } from 'src/engine/metadata-modules/role-target/role-target.entity';
 import { InjectMessageQueue } from 'src/engine/core-modules/message-queue/decorators/message-queue.decorator';
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
@@ -110,18 +112,14 @@ export class UserWorkspaceService {
     locale: UserWorkspaceEntity['locale'];
     userWorkspaceId: string;
   }): Promise<void> {
-    const userWorkspace = await this.userWorkspaceRepository.findOne({
-      where: {
-        id: userWorkspaceId,
-      },
-    });
+    const result = await this.userWorkspaceRepository.update(
+      { id: userWorkspaceId, deletedAt: IsNull() },
+      { locale },
+    );
 
-    if (!isDefined(userWorkspace)) {
+    if (!result.affected) {
       return;
     }
-
-    userWorkspace.locale = locale;
-    await this.userWorkspaceRepository.save(userWorkspace);
 
     await this.coreEntityCacheService.invalidate(
       'userWorkspaceEntity',
@@ -147,6 +145,20 @@ export class UserWorkspaceService {
     },
     queryRunner?: QueryRunner,
   ): Promise<UserWorkspaceEntity> {
+    const dataSource = this.userWorkspaceRepository.manager.connection;
+    const assertRunner = (runner: QueryRunner) => {
+      if (
+        runner.connection !== dataSource ||
+        runner.isReleased ||
+        !runner.isTransactionActive
+      ) {
+        throw new Error(
+          'Membership creation requires an active transaction on its data source',
+        );
+      }
+    };
+    if (queryRunner) assertRunner(queryRunner);
+
     const defaultAvatarUrl = await this.computeDefaultAvatarUrl(
       userId,
       workspaceId,
@@ -156,16 +168,44 @@ export class UserWorkspaceService {
       queryRunner,
     );
 
-    const userWorkspace = this.userWorkspaceRepository.create({
-      userId,
-      workspaceId,
-      defaultAvatarUrl,
-      locale: locale ?? SOURCE_LOCALE,
-    });
+    const createMembership = async (runner: QueryRunner) => {
+      assertRunner(runner);
+      const users: { id: string; deletedAt: string | null }[] =
+        await runner.query(
+          'SELECT id, "deletedAt" FROM core."user" WHERE id=$1 FOR SHARE',
+          [userId],
+        );
+      if (users.length !== 1 || users[0].deletedAt !== null) {
+        throw new AuthException(
+          'Active user not found',
+          AuthExceptionCode.USER_NOT_FOUND,
+        );
+      }
+      const id = randomUUID();
+      const userWorkspace = this.userWorkspaceRepository.create({
+        id,
+        userId,
+        workspaceId,
+        defaultAvatarUrl,
+        locale: locale ?? SOURCE_LOCALE,
+      });
+      const saved = await runner.manager.save(
+        UserWorkspaceEntity,
+        userWorkspace,
+      );
+      const inserted: { id: string }[] = await runner.query(
+        'SELECT membership.id FROM core."userWorkspace" membership JOIN core."user" account ON account.id=membership."userId" WHERE membership.id=$1 AND membership."userId"=$2 AND membership."workspaceId"=$3 AND membership."deletedAt" IS NULL AND account."deletedAt" IS NULL',
+        [id, userId, workspaceId],
+      );
+      if (saved.id !== id || inserted.length !== 1) {
+        throw new Error('Membership creation effects mismatch');
+      }
+      return saved;
+    };
 
     return queryRunner
-      ? queryRunner.manager.save(UserWorkspaceEntity, userWorkspace)
-      : this.userWorkspaceRepository.save(userWorkspace);
+      ? createMembership(queryRunner)
+      : runInCoreAuditTransaction(dataSource, createMembership);
   }
 
   async createWorkspaceMember(

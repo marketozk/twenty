@@ -16,8 +16,8 @@
 | Operation lookup index | LOG090: generated migration10, populated prefix upgrade/replay/down, real EXPLAIN, drift refusal; не выкатывалось |
 | Production rollout | Не выполнялся; нужны полная native coverage и согласованный выкат с остановленными writers при построении индекса |
 
-Последние проверки: 1320 tests/43 suites PASS (209.159s); 52 targeted/3 suites PASS, 24 новых cases. 26 guards PASS; 10 migration checksums неизменны. Types 357/359 roots, 189/189 прежних диагностик, 0 новых/changed-file. 8 local/remote source hashes совпадают.
-Это не чистый full-server typecheck. [LOG118 results](log118/results.json).
+Последние проверки: 1343 tests/44 suites PASS (209.429s); 45 targeted/2 suites PASS, 23 новых PG cases. 26 guards PASS; 10 migration checksums неизменны. Types 359/360 roots, 189/189 прежних диагностик, 0 новых/changed-code; одна прежняя диагностика в неизменённом методе того же файла. 2 local/remote source hashes совпадают.
+Это не чистый full-server typecheck. [LOG119 results](log119/results.json).
 
 [Индекс реализованных участков](../plan/phase_2_audit.md), [текущие ограничения](log113/README.md),
 [полная хронология](../DEVLOG.md). Исторические заявления «ещё не включено» внутри
@@ -49,5 +49,7 @@ actual strategy/cookie bridge проверены с PostgreSQL и отказав
 Полный HTTP и fence уже принятых запросов этим не заявлены.
 LOG118 подключает три coreUser softDelete callers к strict owner с actual audit,
 fresh remaining-membership check, security-first savepoint и cache-finally.
-[Следующая граница](log118/next-boundary.md): membership creation fence и locale update;
-old coreUser full saves и отдельный native member writer остаются открытыми.
+LOG119 закрывает production membership creation/deactivation race shared user lock
+и active validation в INSERT transaction; locale-only UPDATE не восстанавливает
+удалённое членство. [Следующая граница](log119/next-boundary.md): old coreUser full saves
+в email verification/server-admin. Отдельный native member writer остаётся открытым.

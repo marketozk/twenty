@@ -1,0 +1,8 @@
+{
+  "baseCommit": "c93b849f6cf3a971c6e903ef701d2da4cc27c4e4",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/user-workspace/user-workspace.service.ts": "5c68ee51d3392c94743079c4860a4bf632909e510f0065fc68d59dfadae1355f",
+    "packages/twenty-server/test/fork-migration/crm-audit-membership-create.postgres-spec.ts": "0ccdc262553d7919a07c169ca277ff59dc9e53c5bb1a64d665a3dbb719052a35"
+  },
+  "uploadedSourceHashesVerified": true
+}
