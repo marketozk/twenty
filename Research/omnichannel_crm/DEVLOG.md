@@ -3744,3 +3744,7 @@ LOG124 добавляет immutable attribution context после server authen
 Штатные middleware tests: 10 PASS; 4 application suites не загружаются из-за ai ESM на исходном и изменённом снимке. С явными адаптерами unrelated DI: 20 tests/5 suites PASS. Это не полный HTTP и не чистый full-server typecheck.
 
 ROB765 In Progress. [Далее](implementation/log124/next-boundary.md) — OAuth/system entry points и strict delete. Выката и GitHub Actions нет.
+
+LOG124 publication: 0f98ea40e813087cf543a01189871408e8ba0e53 pushed/API verified.
+ROB765 description/comment be639913-2aab-4681-a57d-b96a2ae57bdf independently read back;
+all 11 issue states match. Implementation continues with application source wrappers.
