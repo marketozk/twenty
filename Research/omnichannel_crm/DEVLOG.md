@@ -3892,3 +3892,5 @@ nullable external IDs, member scope по текущему custodian и separate 
 устранён dependency barrel из константы без изменения значений. Общая регрессия
 стартовала до последней правки зависимости; окончательные target/types проверяют
 её. [Подробности](implementation/log137/review.md).
+
+LOG137 publication: code 5f085ed72755a763b8a5ba11d70e876915a37da1 pushed and GitHub API ref verified. Linear comment e56e322f-3af2-4ec0-8277-7813125452c1, description/comment/all 11 issue states independently read back. Continuing calendar association cleanup; ROB765 remains In Progress.
