@@ -3985,3 +3985,12 @@ LOG144 объединяет календарное сопоставление Pa
 Broad regression прошла до добавления двух generated tests; финальные targeted и typecheck включают их, production source не менялся. Следующий участок — [calendar rematch jobs](implementation/log144/next-boundary.md), включая подтверждённый stale-member-link bug.
 
 LOG144 publication: code 596815da3ae92a9d50ac808e9063648b8991d3d6 pushed and GitHub API ref verified. Linear comment 42225c67-868d-4962-9546-84ad0c35a093, description/comment/all 11 issue states independently read back. Publication pass corrected stale summary/statistics and two missing template values in tracking documents; runtime evidence unchanged. ROB765 remains In Progress; continuing calendar rematch.
+
+## LOG145 — фоновые страницы календарного rematch
+
+LOG145 подключает календарный rematch job к закрытым страницам по 200 участников с отдельным аудитом каждой страницы. Person-only и member-only сохраняют противоположные связи; цели пропущенных событий не меняются. Исправлен подтверждённый баг сохранения устаревшей связи сотрудника при отсутствии нового совпадения.
+2756 tests/84 suites PASS (539.3s); 85 targeted/4 suites PASS (33.949s), 21 новый case (11 PG и 10 job entry). 26 guard tests PASS; 10 migration checksums неизменны. Types 424/425 roots, baseline/current 225 diagnostics, 0 новых/changed-file. 4 local/remote source hashes совпадают. [Результаты](implementation/log145/results.json). ROB765 In Progress. Person-company target job, создание контактов, durable postcommit delivery, свежесть import policy и остальные writers ещё открыты. Пагинация не гарантирует единый снимок всего задания; raw matches позади курсора могут потребовать нового запуска. Код после LOG088 не выкатывался; full-server typecheck, полная HTTP/JWT приёмка и GitHub Actions не выполнялись.
+
+Первый targeted run прошёл без падений. Независимое ревью не нашло blockers; legacy generic suffix проверен побайтно. Реальные PG тесты показывают старый stale-member bug, его исправление, 201 кандидата, полностью пропущенную страницу, сохранение первого commit при отказе второй страницы и точную причину late-effect отказа. Семь adapter-страниц не являются 1000-event PG performance приёмкой. Type baseline снизился из-за другого набора импортируемых корней, а не исправления прежних application errors. [Ревью](implementation/log145/review.md).
+
+Следующий участок — [person-company targets](implementation/log145/next-boundary.md). Публикация Linear ожидается после commit/push.

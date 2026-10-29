@@ -1,0 +1,10 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts (25.818 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-reconciliation.postgres-spec.ts (7.543 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-matching-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-rematch-entrypoints.spec.ts
+
+Test Suites: 4 passed, 4 total
+Tests:       85 passed, 85 total
+Snapshots:   0 total
+Time:        33.949 s
+Ran all test suites matching /calendar-import-matching-audit|crm-audit-calendar-rematch-entrypoints|crm-audit-calendar-matching-entrypoints|omni-native-reconciliation/i.

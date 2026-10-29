@@ -99,6 +99,15 @@ export type MatchParticipantsArgs<
   transactionScope?: WorkspaceTransactionScope;
 };
 
+export type CalendarParticipantRematchSelector =
+  | { kind: 'personOnly'; personEmails: readonly string[] }
+  | { kind: 'workspaceMemberOnly'; workspaceMemberIds: readonly string[] };
+
+type CalendarRematchSelection = {
+  selector: CalendarParticipantRematchSelector;
+  discovered: { id: string; calendarEventId: string }[];
+};
+
 const MATCHING_SOURCE_TABLES = [
   'person',
   'workspaceMember',
@@ -181,192 +190,368 @@ export class MatchParticipantService<
               [...eventIds],
               [...participantIds],
             );
-            for (const name of CALENDAR_SAVE_TABLES) {
-              const rows = await this.readMatchingGraph(state, name, true);
-              state.before.set(name, rows);
-              state.expected.set(name, rows);
-            }
-            const requested = new Map(
-              state.before
-                .get('calendarEventParticipant')!
-                .map((row) => [row.id, row]),
-            );
-            const participants = participantIds
-              .map((id) => requested.get(id))
-              .filter(
-                (row): row is CalendarSaveSnapshot =>
-                  !!row &&
-                  row.deletedAt === 'null' &&
-                  eventIds.includes(JSON.parse(String(row.calendarEventId))),
-              );
-            state.handleBatches = chunk(participants, 200).map((rows) => [
-              ...new Set(
-                rows
-                  .map((row) => JSON.parse(String(row.handle)) as string | null)
-                  .filter((handle): handle is string => handle !== null),
-              ),
-            ]);
-            const candidates = await this.readMatchingCandidates(state);
-            state.personIds = [
-              ...new Set([
-                ...candidates.flatMap((batch) =>
-                  batch.people.map((person) => person.id),
-                ),
-                ...state.before
-                  .get('calendarEventParticipant')!
-                  .flatMap((row) =>
-                    row.personId === 'null'
-                      ? []
-                      : [JSON.parse(String(row.personId)) as string],
-                  ),
-              ]),
-            ];
-            state.memberIds = [
-              ...new Set([
-                ...candidates.flatMap((batch) =>
-                  batch.members.map((member) => member.id),
-                ),
-                ...state.before
-                  .get('calendarEventParticipant')!
-                  .flatMap((row) =>
-                    row.workspaceMemberId === 'null'
-                      ? []
-                      : [JSON.parse(String(row.workspaceMemberId)) as string],
-                  ),
-              ]),
-            ];
-            state.sources = await this.readMatchingSources(state);
-            for (const name of MATCHING_SOURCE_TABLES)
-              state.originalSourceIds.set(
-                name,
-                state.sources.get(name)!.map((row) => row.id),
-              );
-            await this.verifyMatchingGraph(state);
-            const updates: {
-              criteria: string;
-              partialEntity: Record<string, unknown>;
-            }[] = [];
-            for (const [index, batch] of chunk(participants, 200).entries()) {
-              for (const participant of batch) {
-                const handle =
-                  (JSON.parse(String(participant.handle)) as string | null) ??
-                  '';
-                const person = findPersonByPrimaryOrAdditionalEmail({
-                  people: candidates[index].people,
-                  email: handle,
-                });
-                const member = candidates[index].members.find(
-                  (candidate) => candidate.userEmail === handle,
-                );
-                const personId = person?.id ?? null;
-                const workspaceMemberId = member?.id ?? null;
-                if (
-                  participant.personId !== JSON.stringify(personId) ||
-                  participant.workspaceMemberId !==
-                    JSON.stringify(workspaceMemberId)
-                )
-                  updates.push({
-                    criteria: participant.id,
-                    partialEntity: { personId, workspaceMemberId },
-                  });
-              }
-            }
-            await this.updateMatchingRecords(
-              state,
-              'calendarEventParticipant',
-              updates,
-            );
-            // Plan from actual RETURNING effects, including unrequested live participants.
-            const personById = new Map(
-              state.sources
-                .get('person')!
-                .filter((row) => row.deletedAt === 'null')
-                .map((row) => [row.id, row]),
-            );
-            const opportunities = state.sources
-              .get('opportunity')!
-              .filter((row) => row.deletedAt === 'null');
-            const desiredTargets: TargetIdentity[] = [];
-            for (const row of state.expected.get('calendarEventParticipant')!) {
-              if (row.deletedAt !== 'null' || row.personId === 'null') continue;
-              const parentId = JSON.parse(
-                String(row.calendarEventId),
-              ) as string;
-              if (!eventIds.includes(parentId)) continue;
-              const personId = JSON.parse(String(row.personId)) as string;
-              const person = personById.get(personId);
-              if (!person) continue;
-              desiredTargets.push({
-                parentId,
-                targetPersonId: personId,
-                targetCompanyId: null,
-                targetOpportunityId: null,
-              });
-              if (person.companyId !== 'null')
-                desiredTargets.push({
-                  parentId,
-                  targetPersonId: null,
-                  targetCompanyId: JSON.parse(String(person.companyId)),
-                  targetOpportunityId: null,
-                });
-              for (const opportunity of opportunities)
-                if (opportunity.pointOfContactId === JSON.stringify(personId))
-                  desiredTargets.push({
-                    parentId,
-                    targetPersonId: null,
-                    targetCompanyId: null,
-                    targetOpportunityId: opportunity.id,
-                  });
-            }
-            const existingTargets: ExistingTarget[] = state.expected
-              .get('calendarEventTarget')!
-              .map((row) => ({
-                id: row.id,
-                parentId: JSON.parse(String(row.calendarEventId)),
-                targetPersonId: JSON.parse(String(row.targetPersonId)),
-                targetCompanyId: JSON.parse(String(row.targetCompanyId)),
-                targetOpportunityId: JSON.parse(
-                  String(row.targetOpportunityId),
-                ),
-                deletedAt: JSON.parse(String(row.deletedAt)),
-                isAutomaticallyAssigned: JSON.parse(
-                  String(row.isAutomaticallyAssigned),
-                ),
-                isManuallyAssigned: JSON.parse(String(row.isManuallyAssigned)),
-              }));
-            const plan = computeTargetReconciliationOperations({
-              desiredTargets,
-              existingTargets,
+            await this.runCalendarMatchingStage(state, {
+              participantIds: [...participantIds],
+              eventIds: [...eventIds],
+              matchWith: 'both',
             });
-            await this.insertMatchingTargets(
-              state,
-              plan.targetsToCreate.map(({ parentId, ...target }) => ({
-                id: randomUUID(),
-                calendarEventId: parentId,
-                ...target,
-                isAutomaticallyAssigned: true,
-                isManuallyAssigned: false,
-              })),
-            );
-            await this.updateMatchingRecords(state, 'calendarEventTarget', [
-              ...plan.targetsToMarkAutomatic.map((id) => ({
-                criteria: id,
-                partialEntity: { isAutomaticallyAssigned: true },
-              })),
-              ...plan.targetsToMarkNotAutomatic.map((id) => ({
-                criteria: id,
-                partialEntity: { isAutomaticallyAssigned: false },
-              })),
-            ]);
-            for (const ids of chunk(plan.targetIdsToDelete, 200))
-              await this.deleteMatchingTargets(state, ids);
-            await this.finishMatchingAudit(state);
           },
           { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
         ),
       buildSystemAuthContext(workspaceId),
       { lite: true },
     );
+  }
+
+  public async rematchCalendarParticipantsWithAudit({
+    workspaceId,
+    operation,
+    selector,
+    afterParticipantId,
+  }: {
+    workspaceId: string;
+    operation: CrmAuditOperation;
+    selector: CalendarParticipantRematchSelector;
+    afterParticipantId?: string;
+  }): Promise<{ nextCursor: string | null }> {
+    if (
+      !isUUID(workspaceId) ||
+      !operation ||
+      operation.workspaceId !== workspaceId ||
+      !isUUID(operation.operationId) ||
+      (afterParticipantId !== undefined && !isUUID(afterParticipantId)) ||
+      !selector ||
+      (selector.kind !== 'personOnly' &&
+        selector.kind !== 'workspaceMemberOnly')
+    )
+      throw new Error(
+        'Calendar rematch requires scoped input and audit identity',
+      );
+    if (selector.kind === 'personOnly') {
+      if (
+        !Array.isArray(selector.personEmails) ||
+        selector.personEmails.some((email) => typeof email !== 'string')
+      )
+        throw new Error('Calendar rematch requires email selection');
+      selector = {
+        kind: 'personOnly',
+        personEmails: [
+          ...new Set(selector.personEmails.map((email) => email.toLowerCase())),
+        ],
+      };
+    } else {
+      if (
+        !Array.isArray(selector.workspaceMemberIds) ||
+        selector.workspaceMemberIds.some(
+          (id) => typeof id !== 'string' || !isUUID(id),
+        )
+      )
+        throw new Error('Calendar rematch requires member selection');
+      selector = {
+        kind: 'workspaceMemberOnly',
+        workspaceMemberIds: [
+          ...new Set(selector.workspaceMemberIds.map((id) => id.toLowerCase())),
+        ],
+      };
+    }
+    operation = {
+      ...operation,
+      operationId: randomUUID(),
+      actor: { ...operation.actor },
+      ...(operation.initiator ? { initiator: { ...operation.initiator } } : {}),
+    };
+    const capturedSelector = selector;
+    const criteria =
+      capturedSelector.kind === 'personOnly'
+        ? capturedSelector.personEmails
+        : capturedSelector.workspaceMemberIds;
+    const cursor = afterParticipantId?.toLowerCase() ?? null;
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      () =>
+        this.workspaceOrmManager.runInWorkspaceTransaction(
+          async (scope) => {
+            const state = await this.prepareCalendarMatching(
+              scope,
+              operation,
+              [],
+              [],
+            );
+            const predicate =
+              capturedSelector.kind === 'personOnly'
+                ? 'LOWER("handle")=ANY($1::text[])'
+                : '"workspaceMemberId"=ANY($1::uuid[])';
+            const discoveredRows = await scope.executeRawQuery(
+              `SELECT id,"calendarEventId" FROM ${calendarSaveTableSql(state.shapes.get('calendarEventParticipant')!)} WHERE "deletedAt" IS NULL AND ${predicate} AND ($2::uuid IS NULL OR id>$2::uuid) ORDER BY id LIMIT 200`,
+              [[...criteria], cursor],
+            );
+            const discovered = discoveredRows.map((row) => {
+              if (
+                typeof row.id !== 'string' ||
+                !isUUID(row.id) ||
+                typeof row.calendarEventId !== 'string' ||
+                !isUUID(row.calendarEventId)
+              )
+                throw new Error(
+                  'Calendar rematch requires participant parent identity',
+                );
+              return { id: row.id, calendarEventId: row.calendarEventId };
+            });
+            state.rootIds = [
+              ...new Set(discovered.map((row) => row.calendarEventId)),
+            ];
+            state.participantIds = discovered.map((row) => row.id);
+            await this.runCalendarMatchingStage(state, {
+              participantIds: state.participantIds,
+              eventIds: state.rootIds,
+              matchWith: capturedSelector.kind,
+              selection: { selector: capturedSelector, discovered },
+            });
+            return {
+              nextCursor:
+                discovered.length === 200
+                  ? discovered[discovered.length - 1].id
+                  : null,
+            };
+          },
+          { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
+        ),
+      buildSystemAuthContext(workspaceId),
+      { lite: true },
+    );
+  }
+
+  private async runCalendarMatchingStage(
+    state: CalendarMatchingState,
+    {
+      participantIds,
+      eventIds,
+      matchWith,
+      selection,
+    }: {
+      participantIds: readonly string[];
+      eventIds: readonly string[];
+      matchWith: 'both' | 'personOnly' | 'workspaceMemberOnly';
+      selection?: CalendarRematchSelection;
+    },
+  ): Promise<void> {
+    for (const name of CALENDAR_SAVE_TABLES) {
+      const rows = await this.readMatchingGraph(state, name, true);
+      state.before.set(name, rows);
+      state.expected.set(name, rows);
+    }
+    const requested = new Map(
+      state.before.get('calendarEventParticipant')!.map((row) => [row.id, row]),
+    );
+    let participants = participantIds
+      .map((id) => requested.get(id))
+      .filter(
+        (row): row is CalendarSaveSnapshot =>
+          !!row &&
+          row.deletedAt === 'null' &&
+          eventIds.includes(JSON.parse(String(row.calendarEventId))),
+      );
+    if (selection) {
+      const parents = new Map(
+        selection.discovered.map((row) => [row.id, row.calendarEventId]),
+      );
+      participants = participants.filter((row) => {
+        const parentId = JSON.parse(String(row.calendarEventId)) as string;
+        if (parents.get(row.id) !== parentId) return false;
+        if (selection.selector.kind === 'personOnly') {
+          const handle = JSON.parse(String(row.handle)) as string | null;
+          return (
+            handle !== null &&
+            selection.selector.personEmails.includes(handle.toLowerCase())
+          );
+        }
+        const memberId = JSON.parse(String(row.workspaceMemberId)) as
+          | string
+          | null;
+        return (
+          memberId !== null &&
+          selection.selector.workspaceMemberIds.includes(memberId)
+        );
+      });
+      eventIds = [
+        ...new Set(
+          participants.map(
+            (row) => JSON.parse(String(row.calendarEventId)) as string,
+          ),
+        ),
+      ];
+    }
+    state.handleBatches = chunk(participants, 200).map((rows) => [
+      ...new Set(
+        rows
+          .map((row) => JSON.parse(String(row.handle)) as string | null)
+          .filter((handle): handle is string => handle !== null),
+      ),
+    ]);
+    const candidates = await this.readMatchingCandidates(state);
+    state.personIds = [
+      ...new Set([
+        ...candidates.flatMap((batch) =>
+          batch.people.map((person) => person.id),
+        ),
+        ...state.before
+          .get('calendarEventParticipant')!
+          .flatMap((row) =>
+            row.personId === 'null'
+              ? []
+              : [JSON.parse(String(row.personId)) as string],
+          ),
+      ]),
+    ];
+    state.memberIds = [
+      ...new Set([
+        ...candidates.flatMap((batch) =>
+          batch.members.map((member) => member.id),
+        ),
+        ...state.before
+          .get('calendarEventParticipant')!
+          .flatMap((row) =>
+            row.workspaceMemberId === 'null'
+              ? []
+              : [JSON.parse(String(row.workspaceMemberId)) as string],
+          ),
+      ]),
+    ];
+    state.sources = await this.readMatchingSources(state);
+    for (const name of MATCHING_SOURCE_TABLES)
+      state.originalSourceIds.set(
+        name,
+        state.sources.get(name)!.map((row) => row.id),
+      );
+    await this.verifyMatchingGraph(state);
+    const updates: {
+      criteria: string;
+      partialEntity: Record<string, unknown>;
+    }[] = [];
+    for (const [index, batch] of chunk(participants, 200).entries()) {
+      for (const participant of batch) {
+        const handle =
+          (JSON.parse(String(participant.handle)) as string | null) ?? '';
+        const person = findPersonByPrimaryOrAdditionalEmail({
+          people: candidates[index].people,
+          email: handle,
+        });
+        const member = candidates[index].members.find(
+          (candidate) => candidate.userEmail === handle,
+        );
+        const personId =
+          matchWith === 'workspaceMemberOnly'
+            ? (JSON.parse(String(participant.personId)) as string | null)
+            : (person?.id ?? null);
+        const workspaceMemberId =
+          matchWith === 'personOnly'
+            ? (JSON.parse(String(participant.workspaceMemberId)) as
+                | string
+                | null)
+            : (member?.id ?? null);
+        if (
+          participant.personId !== JSON.stringify(personId) ||
+          participant.workspaceMemberId !== JSON.stringify(workspaceMemberId)
+        )
+          updates.push({
+            criteria: participant.id,
+            partialEntity: {
+              ...(matchWith !== 'workspaceMemberOnly' ? { personId } : {}),
+              ...(matchWith !== 'personOnly' ? { workspaceMemberId } : {}),
+            },
+          });
+      }
+    }
+    await this.updateMatchingRecords(
+      state,
+      'calendarEventParticipant',
+      updates,
+    );
+    if (matchWith !== 'workspaceMemberOnly') {
+      // Plan from actual RETURNING effects, including unrequested live participants.
+      const personById = new Map(
+        state.sources
+          .get('person')!
+          .filter((row) => row.deletedAt === 'null')
+          .map((row) => [row.id, row]),
+      );
+      const opportunities = state.sources
+        .get('opportunity')!
+        .filter((row) => row.deletedAt === 'null');
+      const desiredTargets: TargetIdentity[] = [];
+      for (const row of state.expected.get('calendarEventParticipant')!) {
+        if (row.deletedAt !== 'null' || row.personId === 'null') continue;
+        const parentId = JSON.parse(String(row.calendarEventId)) as string;
+        if (!eventIds.includes(parentId)) continue;
+        const personId = JSON.parse(String(row.personId)) as string;
+        const person = personById.get(personId);
+        if (!person) continue;
+        desiredTargets.push({
+          parentId,
+          targetPersonId: personId,
+          targetCompanyId: null,
+          targetOpportunityId: null,
+        });
+        if (person.companyId !== 'null')
+          desiredTargets.push({
+            parentId,
+            targetPersonId: null,
+            targetCompanyId: JSON.parse(String(person.companyId)),
+            targetOpportunityId: null,
+          });
+        for (const opportunity of opportunities)
+          if (opportunity.pointOfContactId === JSON.stringify(personId))
+            desiredTargets.push({
+              parentId,
+              targetPersonId: null,
+              targetCompanyId: null,
+              targetOpportunityId: opportunity.id,
+            });
+      }
+      const existingTargets: ExistingTarget[] = state.expected
+        .get('calendarEventTarget')!
+        .filter((row) =>
+          eventIds.includes(JSON.parse(String(row.calendarEventId))),
+        )
+        .map((row) => ({
+          id: row.id,
+          parentId: JSON.parse(String(row.calendarEventId)),
+          targetPersonId: JSON.parse(String(row.targetPersonId)),
+          targetCompanyId: JSON.parse(String(row.targetCompanyId)),
+          targetOpportunityId: JSON.parse(String(row.targetOpportunityId)),
+          deletedAt: JSON.parse(String(row.deletedAt)),
+          isAutomaticallyAssigned: JSON.parse(
+            String(row.isAutomaticallyAssigned),
+          ),
+          isManuallyAssigned: JSON.parse(String(row.isManuallyAssigned)),
+        }));
+      const plan = computeTargetReconciliationOperations({
+        desiredTargets,
+        existingTargets,
+      });
+      await this.insertMatchingTargets(
+        state,
+        plan.targetsToCreate.map(({ parentId, ...target }) => ({
+          id: randomUUID(),
+          calendarEventId: parentId,
+          ...target,
+          isAutomaticallyAssigned: true,
+          isManuallyAssigned: false,
+        })),
+      );
+      await this.updateMatchingRecords(state, 'calendarEventTarget', [
+        ...plan.targetsToMarkAutomatic.map((id) => ({
+          criteria: id,
+          partialEntity: { isAutomaticallyAssigned: true },
+        })),
+        ...plan.targetsToMarkNotAutomatic.map((id) => ({
+          criteria: id,
+          partialEntity: { isAutomaticallyAssigned: false },
+        })),
+      ]);
+      for (const ids of chunk(plan.targetIdsToDelete, 200))
+        await this.deleteMatchingTargets(state, ids);
+    }
+    await this.finishMatchingAudit(state);
   }
 
   private async prepareCalendarMatching(

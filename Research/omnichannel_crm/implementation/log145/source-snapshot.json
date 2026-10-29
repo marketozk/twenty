@@ -1,0 +1,10 @@
+{
+  "baseCommit": "648eb52be9060c0dabfb758320f6067dd17bad3c",
+  "lfSha256": {
+    "packages/twenty-server/src/modules/calendar/calendar-event-participant-manager/jobs/calendar-event-participant-match-participant.job.ts": "d9c6905c232607e2d7dcae143c8398dfba2b5dc4f0a211db5db288f7d86fa481",
+    "packages/twenty-server/src/modules/match-participant/match-participant.service.ts": "cdfde5808c6b2ca393a9c9643d2af43f9e79801046f5fba656bddcf702b6fc3f",
+    "packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts": "c103ce8e2387d5e9f0f356c6bb678696d8b8c1d74eaf69dd023c7c08eb8bd48a",
+    "packages/twenty-server/test/fork-migration/crm-audit-calendar-rematch-entrypoints.spec.ts": "14b82cd69fc20043dc12e89d851296423f365346e026ea8b55e16726c5893d72"
+  },
+  "uploadedSourceHashesVerified": true
+}

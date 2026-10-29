@@ -1,0 +1,7 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/modules/calendar/calendar-event-participant-manager/jobs/calendar-event-participant-match-participant.job.ts 126ms
+../../../source/packages/twenty-server/src/modules/match-participant/match-participant.service.ts 372ms
+../../../source/packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts 287ms
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-rematch-entrypoints.spec.ts 26ms
+
+{"formattedFiles": 4, "singleSshSession": true}

@@ -57,7 +57,7 @@
 ## Текущая реализация
 
 ROB764 принята по [LOG088](Research/omnichannel_crm/implementation/rob764-acceptance.md).
-ROB765 остаётся In Progress: LOG144 объединяет календарное сопоставление Participant и обновление CalendarEventTarget с аудитом в одной strict/exclusive транзакции. Сохранены прежние email-поиск и правила целей; фактический RETURNING, источники и поздние эффекты проверяются до COMMIT. Coordinator сохраняет автора и порядок enqueue → matching.
+ROB765 остаётся In Progress: LOG145 подключает календарный rematch job к закрытым страницам по 200 участников с отдельным аудитом каждой страницы. Person-only и member-only сохраняют противоположные связи; цели пропущенных событий не меняются. Исправлен подтверждённый баг сохранения устаревшей связи сотрудника при отсутствии нового совпадения.
 
 Актуальные проверки и ближайшая работа — в [STATUS](Research/omnichannel_crm/STATUS.md);
 единственная таблица приёмки аудита — [rob765-progress](Research/omnichannel_crm/implementation/rob765-progress.md).

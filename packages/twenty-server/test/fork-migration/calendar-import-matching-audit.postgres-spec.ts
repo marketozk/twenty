@@ -1125,3 +1125,347 @@ it('refuses an incoming generated Participant searchVector ON UPDATE cascade bef
     expect(await readExact('calendar_match_child')).toEqual(childBefore);
   });
 });
+
+type RematchSelector =
+  | { kind: 'personOnly'; personEmails: string[] }
+  | { kind: 'workspaceMemberOnly'; workspaceMemberIds: string[] };
+const rematch = (
+  selector: RematchSelector,
+  afterParticipantId?: string,
+  op = operation(),
+) =>
+  matcher.rematchCalendarParticipantsWithAudit({
+    workspaceId: f.workspaceId,
+    operation: op,
+    selector,
+    afterParticipantId,
+  });
+const personRematch = () =>
+  rematch({ kind: 'personOnly', personEmails: ['CLIENT@example.test'] });
+
+it('calendar member rematch fixes the demonstrated legacy synthetic-null stale-link bug', async () => {
+  const s = await seed();
+  await f.owner.query(
+    `UPDATE ${table(PART)} SET "workspaceMemberId"=$1,"personId"=$2 WHERE id=$3`,
+    [s.memberId, s.personId, s.participantId],
+  );
+  await f.owner.query(
+    `UPDATE ${table('workspaceMember')} SET "userEmail"='changed@example.test' WHERE id=$1`,
+    [s.memberId],
+  );
+  await newTarget(s.eventId, s.personId);
+  const targetBefore = await readExact(TARGET);
+  await matcher.matchParticipantsForWorkspaceMembers({
+    workspaceId: f.workspaceId,
+    objectMetadataName: 'calendarEventParticipant',
+    participantMatching: { workspaceMemberIds: [s.memberId] },
+  });
+  expect((await rows(PART))[0].workspaceMemberId).toBe(s.memberId);
+  expect(await audit()).toEqual([]);
+  await rematch({
+    kind: 'workspaceMemberOnly',
+    workspaceMemberIds: [s.memberId],
+  });
+  expect((await rows(PART))[0]).toMatchObject({
+    workspaceMemberId: null,
+    personId: s.personId,
+  });
+  expect(await readExact(TARGET)).toEqual(targetBefore);
+  expect(await audit()).toEqual([
+    expect.objectContaining({ resourceId: s.participantId, action: 'update' }),
+  ]);
+});
+
+it('calendar member rematch keeps equal actual links and does not discover unlinked same-email participants', async () => {
+  const s = await seed();
+  await f.owner.query(
+    `UPDATE ${table(PART)} SET "workspaceMemberId"=$1 WHERE id=$2`,
+    [s.memberId, s.participantId],
+  );
+  const unlinked = await newParticipant(s.eventId);
+  const before = await graph();
+  expect(
+    await rematch({
+      kind: 'workspaceMemberOnly',
+      workspaceMemberIds: [s.memberId],
+    }),
+  ).toEqual({ nextCursor: null });
+  expect(await graph()).toEqual(before);
+  expect(await audit()).toEqual([]);
+  expect(
+    (await rows(PART)).find((row) => row.id === unlinked)?.workspaceMemberId,
+  ).toBeNull();
+});
+
+it('calendar person rematch preserves the opposite member link and targets all live event participants', async () => {
+  const s = await seed(),
+    otherPerson = await newPerson('other@example.test');
+  const oppositeMember = await insert('workspaceMember', {
+    userId: randomUUID(),
+    userEmail: 'not-current@example.test',
+  });
+  await f.owner.query(
+    `UPDATE ${table(PART)} SET "workspaceMemberId"=$1 WHERE id=$2`,
+    [oppositeMember, s.participantId],
+  );
+  const untouched = await newParticipant(s.eventId, {
+    handle: 'other@example.test',
+    personId: otherPerson,
+  });
+  await personRematch();
+  expect(
+    (await rows(PART)).find((row) => row.id === s.participantId),
+  ).toMatchObject({ personId: s.personId, workspaceMemberId: oppositeMember });
+  expect((await rows(PART)).find((row) => row.id === untouched)).toMatchObject({
+    personId: otherPerson,
+    workspaceMemberId: null,
+  });
+  expect(await rows(TARGET)).toHaveLength(4);
+  expect((await audit()).some((row) => row.resourceId === untouched)).toBe(
+    false,
+  );
+});
+
+it('calendar person rematch selects old and new email handles without selecting by old personId', async () => {
+  const s = await seed();
+  await f.owner.query(`UPDATE ${table(PART)} SET "personId"=$1 WHERE id=$2`, [
+    s.personId,
+    s.participantId,
+  ]);
+  const retained = await newParticipant(s.eventId, {
+    handle: 'manual@example.test',
+    personId: s.personId,
+  });
+  await f.owner.query(
+    `UPDATE ${table('person')} SET "emailsPrimaryEmail"='new@example.test' WHERE id=$1`,
+    [s.personId],
+  );
+  const newlyMatching = await newParticipant(s.eventId, {
+    handle: 'NEW@example.test',
+  });
+  await rematch({
+    kind: 'personOnly',
+    personEmails: ['client@example.test', 'new@example.test'],
+  });
+  const actual = await rows(PART);
+  expect(actual.find((row) => row.id === s.participantId)?.personId).toBeNull();
+  expect(actual.find((row) => row.id === newlyMatching)?.personId).toBe(
+    s.personId,
+  );
+  expect(actual.find((row) => row.id === retained)?.personId).toBe(s.personId);
+});
+
+const seedRematchPage = async (
+  count: number,
+  memberId: string,
+  eventId: string,
+) => {
+  const ids = Array.from(
+    { length: count },
+    (_, index) =>
+      `20000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+  );
+  await f.withContext(() =>
+    f.dataSource.transaction(
+      async (scope) => {
+        await scope
+          .getRepository(PART, permissions)
+          .insert(
+            ids.map((id) => ({
+              id,
+              calendarEventId: eventId,
+              handle: 'client@example.test',
+              workspaceMemberId: memberId,
+              personId: null,
+            })),
+          );
+      },
+      { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
+    ),
+  );
+  return ids;
+};
+
+it('calendar rematch advances a full unchanged 200-row page and reaches the 201st participant', async () => {
+  const s = await seed();
+  await f.owner.query(`DELETE FROM ${table(PART)}`);
+  const ids = await seedRematchPage(201, s.memberId, s.eventId);
+  await f.owner.query(
+    `UPDATE ${table(PART)} SET handle='unmatched@example.test' WHERE id=$1`,
+    [ids[200]],
+  );
+  const selector: RematchSelector = {
+    kind: 'workspaceMemberOnly',
+    workspaceMemberIds: [s.memberId],
+  };
+  const first = await rematch(selector);
+  expect(first).toEqual({ nextCursor: ids[199] });
+  expect(await audit()).toEqual([]);
+  expect(await rematch(selector, first.nextCursor!)).toEqual({
+    nextCursor: null,
+  });
+  expect(
+    (await rows(PART)).find((row) => row.id === ids[200])?.workspaceMemberId,
+  ).toBeNull();
+  expect(await audit()).toEqual([
+    expect.objectContaining({ resourceId: ids[200], action: 'update' }),
+  ]);
+});
+
+it('calendar rematch retains a committed first page when a later page audit fails', async () => {
+  const s = await seed();
+  await f.owner.query(`DELETE FROM ${table(PART)}`);
+  const ids = await seedRematchPage(201, s.memberId, s.eventId);
+  await f.owner.query(
+    `UPDATE ${table('workspaceMember')} SET "userEmail"='changed@example.test' WHERE id=$1`,
+    [s.memberId],
+  );
+  const selector: RematchSelector = {
+    kind: 'workspaceMemberOnly',
+    workspaceMemberIds: [s.memberId],
+  };
+  const first = await rematch(selector);
+  expect(first.nextCursor).toBe(ids[199]);
+  const before = await graph(),
+    auditBefore = await audit();
+  expect(auditBefore).toHaveLength(200);
+  await auditTrigger("RAISE EXCEPTION 'rematch second page audit refused';");
+  f.eventEmitter.mockClear();
+  const outcome = await capture(rematch(selector, first.nextCursor!));
+  expect(outcome.ok).toBe(false);
+  if (!outcome.ok)
+    expect(causeMessages(outcome.error).join(' | ')).toContain(
+      'rematch second page audit refused',
+    );
+  expect(await graph()).toEqual(before);
+  expect(await audit()).toEqual(auditBefore);
+  expect(f.eventEmitter).not.toHaveBeenCalled();
+});
+
+const afterRematchDiscovery = async (work: () => Promise<void>) => {
+  const client = await f.pool.connect(),
+    original = client.query.bind(client);
+  let observed = false;
+  jest.spyOn(client, 'query').mockImplementation((async (
+    statement: string | { text: string },
+    values?: unknown[],
+  ) => {
+    const text = typeof statement === 'string' ? statement : statement.text;
+    const result = await original(statement as string, values);
+    if (
+      !observed &&
+      text.includes(table(PART)) &&
+      /LIMIT\s+200/i.test(text) &&
+      !/FOR UPDATE/i.test(text)
+    ) {
+      observed = true;
+      await work();
+    }
+    return result;
+  }) as typeof client.query);
+  jest
+    .spyOn(f.pool, 'connect')
+    .mockImplementationOnce(() => Promise.resolve(client));
+  return () => expect(observed).toBe(true);
+};
+
+it.each(['parent', 'selector'] as const)(
+  'calendar rematch skips %s drift before parent locks without pruning old-parent targets',
+  async (kind) => {
+    const s = await seed(),
+      otherEvent = await newEvent();
+    await newTarget(s.eventId, s.personId);
+    const targetBefore = await readExact(TARGET);
+    const observed = await afterRematchDiscovery(async () => {
+      await f.owner.query(
+        kind === 'parent'
+          ? `UPDATE ${table(PART)} SET "calendarEventId"=$1 WHERE id=$2`
+          : `UPDATE ${table(PART)} SET handle=$1 WHERE id=$2`,
+        [
+          kind === 'parent' ? otherEvent : 'outside@example.test',
+          s.participantId,
+        ],
+      );
+    });
+    expect(await personRematch()).toEqual({ nextCursor: null });
+    observed();
+    expect((await rows(PART))[0].personId).toBeNull();
+    expect(await readExact(TARGET)).toEqual(targetBefore);
+    expect(await audit()).toEqual([]);
+  },
+);
+
+it('calendar rematch advances over a full page skipped after discovery', async () => {
+  const s = await seed();
+  await f.owner.query(`DELETE FROM ${table(PART)}`);
+  const ids = await seedRematchPage(201, s.memberId, s.eventId);
+  const observed = await afterRematchDiscovery(async () => {
+    await f.owner.query(
+      `UPDATE ${table(PART)} SET handle='outside@example.test' WHERE id=ANY($1::uuid[])`,
+      [ids.slice(0, 200)],
+    );
+  });
+  const first = await personRematch();
+  observed();
+  expect(first.nextCursor).toBe(ids[199]);
+  expect(await audit()).toEqual([]);
+  jest.restoreAllMocks();
+  await rematch(
+    { kind: 'personOnly', personEmails: ['client@example.test'] },
+    first.nextCursor!,
+  );
+  expect((await rows(PART)).find((row) => row.id === ids[200])?.personId).toBe(
+    s.personId,
+  );
+  expect((await audit()).filter((row) => row.action === 'update')).toHaveLength(
+    1,
+  );
+});
+
+it('calendar rematch refuses late selector rewrites after actual matching starts', async () => {
+  const s = await seed(),
+    before = await graph();
+  await nativeTrigger(
+    PART,
+    'BEFORE',
+    'UPDATE',
+    "NEW.handle:='changed-by-trigger@example.test'; RETURN NEW;",
+  );
+  await rollbackProof(
+    personRematch(),
+    before,
+    'Calendar matching graph effects mismatch',
+  );
+});
+
+it('calendar rematch captures selector and audit identity before opening the transaction', async () => {
+  const s = await seed(),
+    selector: RematchSelector = {
+      kind: 'personOnly',
+      personEmails: ['client@example.test'],
+    },
+    op = operation(),
+    actor = { ...op.actor };
+  const client = await f.pool.connect(),
+    original = client.query.bind(client);
+  let changed = false;
+  jest.spyOn(client, 'query').mockImplementation((async (
+    statement: string | { text: string },
+    values?: unknown[],
+  ) => {
+    const text = typeof statement === 'string' ? statement : statement.text;
+    if (!changed && text === 'BEGIN') {
+      changed = true;
+      selector.personEmails.splice(0);
+      op.actor.id = 'Untrusted';
+    }
+    return original(statement as string, values);
+  }) as typeof client.query);
+  jest
+    .spyOn(f.pool, 'connect')
+    .mockImplementationOnce(() => Promise.resolve(client));
+  await rematch(selector, undefined, op);
+  expect(changed).toBe(true);
+  expect((await rows(PART))[0].personId).toBe(s.personId);
+  for (const entry of await audit()) expect(entry.actor).toEqual(actor);
+});
