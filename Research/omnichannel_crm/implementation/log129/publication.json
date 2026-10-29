@@ -1,0 +1,12 @@
+{
+  "codeCommit": "70885c0c5e5d8bb1aca960be5ca0c9aa9b8946da",
+  "gitPushVerifiedByGithubApi": true,
+  "linearIssue": "ROB-765",
+  "commentId": "00fb1cd8-d491-47bc-a85d-a6bd9c845dff",
+  "descriptionReadback": true,
+  "commentReadback": true,
+  "allElevenIssueStatesReadback": true,
+  "phaseComplete": false,
+  "productionDeployment": false,
+  "githubActionsUsed": false
+}

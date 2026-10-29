@@ -3807,3 +3807,5 @@ LOG129 подключает production account deletion к closed audit owner: c
 Два initial targeted failures были устаревшими error-message expectations. Исходный standalone type harness не включал штатный @types/jest.d.ts; подключён один и тот же файл baseline/current, baseline source не изменён. Full-server typecheck не чистый.
 
 ROB765 In Progress. Внешние provider effects не откатываются с БД; async cleanup/event delivery отдельно. [Следующая реализация](implementation/log129/next-boundary.md). Full HTTP/build/deploy и GitHub Actions не выполнялись.
+
+LOG129 publication: code 70885c0c5e5d8bb1aca960be5ca0c9aa9b8946da pushed and GitHub API ref verified. Linear comment 00fb1cd8-d491-47bc-a85d-a6bd9c845dff, description/comment/all 11 issue states independently read back. Continuing native association cleanup; ROB765 remains In Progress.
