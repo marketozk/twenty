@@ -3783,3 +3783,5 @@ LOG127 реализует closed four-table delete owner: account/messageChannel
 На независимом ревью устранена дедупликация второго удаления после recreate через свежий operationId. Проверены partial/all-skipped DELETE, folder-only ownership, composite FK, JSONB >2^53, audit corruption/failure, оба порядка bootstrap и child races, FK DDL lock wait, lost COMMIT ACK и postcommit hook failure.
 
 ROB765 In Progress. Caller authorization/wiring, external provider effects, native cleanup, full HTTP/build/deploy остаются открытыми. GitHub Actions не выполнялся.
+
+LOG127 publication: code dcb6a123c9f1a4b341c31cea21cf02ab20437310 pushed and GitHub API ref verified; Linear comment 86aa0cd4-d0ab-4957-b857-451f3173f5b2, description/comment/all 11 issue states independently read back. Continuing caller integration; ROB-765 remains In Progress.
