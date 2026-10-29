@@ -59,6 +59,17 @@ const { MessagingMessageCleanerRemoveOrphansCommand } =
   require('src/modules/messaging/message-cleaner/commands/messaging-message-clearner-remove-orphans.command') as typeof import('src/modules/messaging/message-cleaner/commands/messaging-message-clearner-remove-orphans.command');
 const { MessagingResetChannelCommand } =
   require('src/modules/messaging/message-cleaner/commands/messaging-reset-channel.command') as typeof import('src/modules/messaging/message-cleaner/commands/messaging-reset-channel.command');
+// This suite checks the real job boundary; PostgreSQL owner semantics are
+// exercised separately in crm-audit-blocklist-cleanup.postgres-spec.ts.
+jest.doMock(
+  'src/engine/core-modules/crm-audit/delete-ordinary-blocklisted-message-associations-with-audit',
+  () => ({ deleteOrdinaryBlocklistedMessageAssociationsWithAudit: jest.fn() }),
+);
+const blocklistOwner =
+  require('src/engine/core-modules/crm-audit/delete-ordinary-blocklisted-message-associations-with-audit')
+    .deleteOrdinaryBlocklistedMessageAssociationsWithAudit as jest.Mock;
+beforeEach(() => blocklistOwner.mockReset());
+
 const { BlocklistItemDeleteMessagesJob } =
   require('src/modules/messaging/blocklist-manager/jobs/messaging-blocklist-item-delete-messages.job') as typeof import('src/modules/messaging/blocklist-manager/jobs/messaging-blocklist-item-delete-messages.job');
 const { WorkspaceIteratorService } =
@@ -309,3 +320,152 @@ it('ordinary workspace failure remains an iterator report and subsequent work st
   expect(f.repository.exists).toHaveBeenCalledTimes(1);
   expect(f.evict).toHaveBeenCalledTimes(2);
 });
+
+const blocklistBoundary = (eventCount = 1) => {
+  const service = cleaner();
+  const workspaceId = randomUUID();
+  const eventIds = Array.from({ length: eventCount }, () => randomUUID());
+  const channelIds = [randomUUID(), randomUUID()];
+  const candidateId = randomUUID();
+  const findRules = jest.fn().mockResolvedValue(
+    eventIds.map((id) => ({
+      id,
+      scope: 'WORKSPACE',
+      handle: 'blocked@example.test',
+    })),
+  );
+  const findAssociations = jest.fn().mockResolvedValue([{ id: candidateId }]);
+  const scope = { workspaceId };
+  const transaction = jest.fn(
+    async (
+      work: (issued: typeof scope) => Promise<unknown>,
+      _options?: unknown,
+    ) => work(scope),
+  );
+  const manager = {
+    getWorkspaceId: () => workspaceId,
+    getRepository: (name: string) =>
+      name === 'blocklist' ? { find: findRules } : { find: findAssociations },
+    executeInWorkspaceContext: (work: () => Promise<void>) => work(),
+    runInWorkspaceTransaction: transaction,
+  };
+  const channelRepository = {
+    find: jest.fn().mockResolvedValue(channelIds.map((id) => ({ id }))),
+  };
+  const job = new BlocklistItemDeleteMessagesJob(
+    service as never,
+    manager as never,
+    channelRepository as never,
+    {} as never,
+    {} as never,
+    {} as never,
+  );
+  blocklistOwner.mockResolvedValue({ primaryDeletedAssociationIds: [] });
+  const data = {
+    workspaceId,
+    events: eventIds.map((recordId) => ({ recordId })),
+  };
+  return {
+    service,
+    workspaceId,
+    eventIds,
+    channelIds,
+    candidateId,
+    findRules,
+    findAssociations,
+    scope,
+    transaction,
+    manager,
+    channelRepository,
+    job,
+    data,
+  };
+};
+
+it('blocklist pages capture event IDs and system identity, then use a separate correlated sweep', async () => {
+  const f = blocklistBoundary();
+  f.channelRepository.find.mockResolvedValue([{ id: f.channelIds[0] }]);
+  f.findRules.mockImplementationOnce(async () => {
+    f.data.workspaceId = randomUUID();
+    f.data.events[0].recordId = randomUUID();
+    return [
+      { id: f.eventIds[0], scope: 'WORKSPACE', handle: 'blocked@example.test' },
+    ];
+  });
+  await f.job.handle(f.data as never);
+  expect(blocklistOwner).toHaveBeenCalledTimes(1);
+  const owner = blocklistOwner.mock.calls[0][0];
+  expect(owner.scope).toBe(f.scope);
+  expect(owner.messageChannelId).toBe(f.channelIds[0]);
+  expect(owner.blocklistItemIds).toEqual(f.eventIds);
+  expect(owner.candidateAssociationIds).toEqual([f.candidateId]);
+  expectOperation(
+    owner.operation,
+    f.workspaceId,
+    BlocklistItemDeleteMessagesJob.name,
+  );
+  expect(f.transaction.mock.calls[0][1]).toEqual({
+    commitOutcome: 'strict',
+    nativeOwnershipLock: 'exclusive',
+  });
+  const [workspaceId, sweep] =
+    f.service.cleanOrphanMessagesAndThreads.mock.calls[0];
+  expect(workspaceId).toBe(f.workspaceId);
+  expectOperation(sweep, f.workspaceId, BlocklistItemDeleteMessagesJob.name);
+  expect(sweep.operationId).not.toBe(owner.operation.operationId);
+  expect(sweep.correlationId).toBe(owner.operation.correlationId);
+});
+
+it('blocklist advances through full nonmatching pages and passes all candidate IDs to the owner', async () => {
+  const f = blocklistBoundary();
+  f.channelRepository.find.mockResolvedValue([{ id: f.channelIds[0] }]);
+  const first = Array.from({ length: 200 }, (_, index) => ({
+    id: `00000000-0000-4000-8000-${(index + 1).toString(16).padStart(12, '0')}`,
+  }));
+  f.findAssociations
+    .mockResolvedValueOnce(first)
+    .mockResolvedValueOnce([{ id: f.candidateId }]);
+  await f.job.handle(f.data as never);
+  expect(blocklistOwner).toHaveBeenCalledTimes(2);
+  expect(blocklistOwner.mock.calls[0][0].candidateAssociationIds).toEqual(
+    first.map(({ id }) => id),
+  );
+  expect(blocklistOwner.mock.calls[1][0].candidateAssociationIds).toEqual([
+    f.candidateId,
+  ]);
+  expect(f.findAssociations.mock.calls[1][0].where.id.value).toBe(
+    first[199].id,
+  );
+  expect(f.findAssociations.mock.calls[0][0].where).toEqual({
+    messageChannelId: f.channelIds[0],
+  });
+  expect(f.service.cleanOrphanMessagesAndThreads).toHaveBeenCalledTimes(1);
+});
+
+it('blocklist stale first rule chunk does not discard later rule chunks', async () => {
+  const f = blocklistBoundary(201);
+  f.channelRepository.find.mockResolvedValue([{ id: f.channelIds[0] }]);
+  blocklistOwner.mockResolvedValueOnce(null);
+  await f.job.handle(f.data as never);
+  expect(blocklistOwner).toHaveBeenCalledTimes(2);
+  expect(blocklistOwner.mock.calls[0][0].blocklistItemIds).toEqual(
+    f.eventIds.slice(0, 200),
+  );
+  expect(blocklistOwner.mock.calls[1][0].blocklistItemIds).toEqual(
+    f.eventIds.slice(200),
+  );
+  expect(f.service.cleanOrphanMessagesAndThreads).toHaveBeenCalledTimes(1);
+});
+
+it.each(errors())(
+  'blocklist preserves unsafe page failure and skips every later channel and final sweep: %s',
+  async (error) => {
+    const f = blocklistBoundary();
+    blocklistOwner.mockRejectedValueOnce(error);
+    await expect(f.job.handle(f.data as never)).rejects.toBe(error);
+    expect(blocklistOwner).toHaveBeenCalledTimes(1);
+    expect(f.transaction).toHaveBeenCalledTimes(1);
+    expect(f.findAssociations).toHaveBeenCalledTimes(1);
+    expect(f.service.cleanOrphanMessagesAndThreads).not.toHaveBeenCalled();
+  },
+);

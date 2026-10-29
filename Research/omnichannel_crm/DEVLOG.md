@@ -3879,3 +3879,16 @@ legacy cleanup тестов вызваны общей защищённой те�
 и ограничения. Независимый проход по production callsites новых блокеров не обнаружил.
 
 LOG136 publication: code 89a43f1b9f2c0e55800b70e88b2c0d727132e63c pushed and GitHub API ref verified. Linear comment 11644dc1-22e4-486c-a64f-9fa823a1db0a, description/comment/all 11 issue states independently read back. Continuing blocklist cleanup; ROB765 remains In Progress.
+
+
+## LOG137 — аудит удаления по блок-листу
+
+LOG137 подключает удаление переписки по блок-листу к общей транзакции аудита. Правила, участники, текущий владелец аккаунта и адреса канала проверяются заново; удаляются точные associations с фактическими зависимостями, защищённые записи сохраняются.
+2072 tests/68 suites PASS (393.496s); окончательные 75 targeted/3 suites PASS (32.227s), 40 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 401/403 roots, baseline/current 225 diagnostics, 0 новых/changed-file. 7 local/remote source hashes совпадают. [Проверки](implementation/log137/results.json). ROB765 In Progress. Calendar cleanup и остальные открытые writers ещё не покрыты. Общий orphan sweep остаётся отдельной транзакцией; whole-job atomicity и durable queue delivery не заявляются. Код после LOG088 не выкатывался; полная HTTP/JWT приёмка и GitHub Actions не выполнялись. [Далее](implementation/log137/next-boundary.md).
+
+Сохранены exact/domain SQL semantics, собственные alias exclusions только для доменов,
+nullable external IDs, member scope по текущему custodian и separate orphan sweep.
+Независимое ревью не обнаружило новых блокеров. Исправлен async test helper и
+устранён dependency barrel из константы без изменения значений. Общая регрессия
+стартовала до последней правки зависимости; окончательные target/types проверяют
+её. [Подробности](implementation/log137/review.md).

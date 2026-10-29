@@ -207,7 +207,7 @@ const blocklist = (seed: Seed, workspaceId = fixture.workspaceId) =>
 beforeAll(async () => {
   await fixture.initialize();
   await fixture.owner.query(
-    'ALTER TABLE core."connectedAccount" ADD "workspaceId" uuid, ADD provider text, ADD "applicationId" uuid, ADD "connectionProviderId" uuid',
+    'ALTER TABLE core."connectedAccount" ADD "workspaceId" uuid, ADD provider text, ADD "applicationId" uuid, ADD "connectionProviderId" uuid, ADD "userWorkspaceId" uuid',
   );
   await fixture.owner.query(
     'ALTER TABLE core."messageChannel" ADD "pendingGroupEmailsAction" text, ADD "excludeGroupEmails" boolean, ADD "updatedAt" timestamptz NOT NULL DEFAULT \'2026-10-28T00:00:00.123456Z\'',
@@ -281,11 +281,28 @@ describe('native cleanup preserves independently owned omni records', () => {
   it.each(['binding', 'link', 'conversation'] as const)(
     'direct blocklist job skips %s-owned graph while ordinary sender is removed',
     async (marker: CleanupMarker) => {
-      const seed = await seedWithOrdinaryAccount(marker);
+      const seed = await seedWithOrdinaryAccount(marker, true);
       const before = await protectedSnapshot(seed);
       await blocklist(seed);
       await noEmail(seed);
       expect(await protectedSnapshot(seed)).toEqual(before);
+      const associationAudit = await fixture.owner.query(
+        'SELECT "resourceId", "operationId", actor FROM crm_audit."crmAuditEntry" WHERE "resourceId"=ANY($1::text[])',
+        [[seed.email.associationId, seed.email.junctionId]],
+      );
+      expect(associationAudit).toHaveLength(2);
+      expect(
+        new Set(
+          associationAudit.map(
+            (row: { operationId: string }) => row.operationId,
+          ),
+        ).size,
+      ).toBe(1);
+      for (const row of associationAudit)
+        expect(row.actor).toEqual({
+          kind: 'system',
+          id: 'BlocklistItemDeleteMessagesJob',
+        });
     },
   );
 

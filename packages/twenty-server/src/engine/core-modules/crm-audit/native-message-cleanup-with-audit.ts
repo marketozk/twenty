@@ -9,6 +9,7 @@ import {
   type OrdinaryFolderAction,
 } from 'src/modules/omnichannel/services/lock-current-folder-action';
 import { isGroupEmail } from 'src/modules/messaging/message-import-manager/utils/is-group-email';
+import { BLOCKLISTED_PARTICIPANT_ROLES } from 'src/modules/messaging/blocklist-manager/constants/blocklisted-participant-roles.constant';
 import { isConnectedAccountUsableByCaller } from 'src/engine/metadata-modules/connected-account/utils/is-connected-account-usable-by-caller.util';
 import { randomUUID } from 'node:crypto';
 import { isUUID } from 'class-validator';
@@ -122,7 +123,9 @@ const TARGET_RECONCILIATION_TABLES = [
 type CleanupTableName =
   | (typeof EMPTY_THREAD_TABLES)[number]
   | (typeof ORPHAN_MESSAGE_TABLES)[number]
-  | (typeof TARGET_RECONCILIATION_TABLES)[number];
+  | (typeof TARGET_RECONCILIATION_TABLES)[number]
+  | 'blocklist'
+  | 'workspaceMember';
 type CleanupSession<TScope extends NativeDeleteCleanupScope> = {
   scope: TScope;
   operation: CrmAuditOperation;
@@ -1569,6 +1572,259 @@ export const deleteOrphanNativeMessagesWithAudit = async ({
   const session = createSession(scope, operation, ORPHAN_MESSAGE_TABLES);
   await prepareSession(session);
   const result = await deleteOrphanMessagesStage(session, ids);
+  await finalizeSession(session);
+  return result;
+};
+
+export const deleteOrdinaryBlocklistedMessageAssociationsWithAudit = async ({
+  scope,
+  operation,
+  messageChannelId,
+  blocklistItemIds,
+  candidateAssociationIds,
+}: {
+  scope: TargetReconciliationScope;
+  operation: CrmAuditOperation;
+  messageChannelId: string;
+  blocklistItemIds: readonly string[];
+  candidateAssociationIds: readonly string[];
+}): Promise<NativeMessageCleanupResult | null> => {
+  const channelId = captureChannelId(messageChannelId);
+  const ruleIds = captureActionCandidates(blocklistItemIds);
+  const candidateIds = captureActionCandidates(candidateAssociationIds);
+  // Only this boundary requires policy metadata; existing cleanup owners keep their exact object requirements.
+  const session = createSession(scope, operation, [
+    ...EMPTY_THREAD_TABLES,
+    ...ORPHAN_MESSAGE_TABLES,
+    ...TARGET_RECONCILIATION_TABLES,
+    'blocklist',
+    'workspaceMember',
+  ]);
+  await prepareSession(session);
+  await requireSourceForeignKey(
+    session,
+    'workspaceMember',
+    'blocklist',
+    'workspaceMemberId',
+    true,
+  );
+  const [discoveredChannel] = await scope.executeRawQuery(
+    'SELECT "connectedAccountId" FROM core."messageChannel" WHERE id=$1 AND "workspaceId"=$2',
+    [channelId, scope.workspaceId],
+  );
+  const accountId = discoveredChannel?.connectedAccountId;
+  if (typeof accountId !== 'string' || !isUUID(accountId)) return null;
+
+  const discoveredRules = await snapshotRows(
+    session,
+    'blocklist',
+    'id=ANY($1::uuid[])',
+    [ruleIds],
+  );
+  // The legacy grouping helper treats every non-WORKSPACE row with a member as member-scoped.
+  const memberIds = referenceIds(
+    discoveredRules.filter((row) => decode(row).scope !== 'WORKSPACE'),
+    'workspaceMemberId',
+  );
+  const discoveredMembers = await snapshotRows(
+    session,
+    'workspaceMember',
+    'id=ANY($1::uuid[])',
+    [memberIds],
+  );
+  const userIds = referenceIds(discoveredMembers, 'userId');
+  const readMemberships = async (lock = false) => {
+    if (!userIds.length) return [];
+    return scope.executeRawQuery(
+      'SELECT id,"userId","workspaceId",to_jsonb("deletedAt")::text AS "deletedAt" FROM core."userWorkspace" ' +
+        'WHERE "workspaceId"=$1 AND "userId"=ANY($2::uuid[]) ORDER BY id' +
+        (lock ? ' FOR SHARE' : ''),
+      [scope.workspaceId, userIds],
+    );
+  };
+  // Workspace fence first, then core membership prerequisites before account/channel. SHARE keeps FK KEY SHARE compatible.
+  const memberships = await readMemberships(true);
+  if (memberIds.length)
+    await scope.executeRawQuery(
+      'SELECT id FROM ' +
+        tableExpression(session.shapes.get('workspaceMember')!) +
+        ' WHERE id=ANY($1::uuid[]) ORDER BY id FOR SHARE',
+      [memberIds],
+    );
+  const members = await snapshotRows(
+    session,
+    'workspaceMember',
+    'id=ANY($1::uuid[])',
+    [memberIds],
+  );
+  const rules = await snapshotRows(
+    session,
+    'blocklist',
+    'id=ANY($1::uuid[])',
+    [ruleIds],
+    true,
+  );
+  if (
+    canonicalAuditJson(members) !== canonicalAuditJson(discoveredMembers) ||
+    canonicalAuditJson(rules) !== canonicalAuditJson(discoveredRules)
+  )
+    throw new Error(
+      'Native blocklist cleanup policy sources changed while locking',
+    );
+
+  const readAccount = async (lock = false) =>
+    (
+      await scope.executeRawQuery(
+        'SELECT id,"workspaceId","userWorkspaceId","handleAliases",provider,"applicationId","connectionProviderId" ' +
+          'FROM core."connectedAccount" WHERE id=$1 AND "workspaceId"=$2' +
+          (lock ? ' FOR SHARE' : ''),
+        [accountId, scope.workspaceId],
+      )
+    )[0];
+  const readChannel = async (lock = false) =>
+    (
+      await scope.executeRawQuery(
+        'SELECT id,"workspaceId","connectedAccountId",handle FROM core."messageChannel" ' +
+          'WHERE id=$1 AND "workspaceId"=$2' +
+          (lock ? ' FOR UPDATE' : ''),
+        [channelId, scope.workspaceId],
+      )
+    )[0];
+  const account = await readAccount(true),
+    channel = await readChannel(true);
+  if (
+    !account ||
+    !channel ||
+    channel.connectedAccountId !== accountId ||
+    typeof account.provider !== 'string' ||
+    (account.provider === 'app' &&
+      account.applicationId === null &&
+      account.connectionProviderId === null) ||
+    (
+      await scope.executeRawQuery(
+        'SELECT id FROM core."omniAccountBinding" WHERE "workspaceId"=$1 AND ("connectedAccountId"=$2 OR "messageChannelId"=$3) LIMIT 1',
+        [scope.workspaceId, accountId, channelId],
+      )
+    ).length
+  )
+    return null;
+  await lockTargetedChannelAuthority(session, channelId);
+  const aliases = account.handleAliases ?? [];
+  if (
+    !Array.isArray(aliases) ||
+    aliases.some((alias) => alias !== null && typeof alias !== 'string') ||
+    (channel.handle !== null && typeof channel.handle !== 'string')
+  )
+    throw new Error('Native blocklist cleanup invalid channel policy source');
+  const ownHandles = [channel.handle, ...aliases];
+  const verifyPolicySources = async () => {
+    const currentRules = await snapshotRows(
+      session,
+      'blocklist',
+      'id=ANY($1::uuid[])',
+      [ruleIds],
+    );
+    const currentMembers = await snapshotRows(
+      session,
+      'workspaceMember',
+      'id=ANY($1::uuid[])',
+      [memberIds],
+    );
+    if (
+      canonicalAuditJson(currentRules) !== canonicalAuditJson(rules) ||
+      canonicalAuditJson(currentMembers) !== canonicalAuditJson(members) ||
+      canonicalAuditJson(await readMemberships()) !==
+        canonicalAuditJson(memberships)
+    )
+      throw new Error('Native blocklist cleanup policy sources changed');
+    const currentAccount = await readAccount(),
+      currentChannel = await readChannel();
+    if (
+      !currentAccount ||
+      !currentChannel ||
+      canonicalAuditJson(currentAccount) !== canonicalAuditJson(account) ||
+      canonicalAuditJson(currentChannel) !== canonicalAuditJson(channel)
+    )
+      throw new Error('Native blocklist cleanup channel policy changed');
+  };
+  // Includes tombstoned/missing requested rules and memberships, so a later resurrection is not silently accepted.
+  await verifyPolicySources();
+  session.validators.push(verifyPolicySources);
+  const applicableHandles: string[] = [];
+  for (const snapshot of rules) {
+    const rule = decode(snapshot);
+    if (rule.deletedAt !== null || rule.handle === null) continue;
+    if (typeof rule.handle !== 'string')
+      throw new Error('Native blocklist cleanup invalid policy source');
+    if (rule.scope === 'WORKSPACE') {
+      applicableHandles.push(rule.handle);
+      continue;
+    }
+    const member = members.find((row) => row.id === rule.workspaceMemberId);
+    if (!member || decode(member).deletedAt !== null) continue;
+    const memberUserId = decode(member).userId;
+    const activeMemberships = memberships.filter(
+      (row) => row.userId === memberUserId && row.deletedAt === null,
+    );
+    if (activeMemberships.length > 1)
+      throw new Error(
+        'Native blocklist cleanup ambiguous member policy source',
+      );
+    if (
+      activeMemberships.length === 1 &&
+      activeMemberships[0].id === account.userWorkspaceId
+    )
+      applicableHandles.push(rule.handle);
+  }
+  if (!applicableHandles.length) return null;
+
+  const sources = await captureAssociationSources(
+    session,
+    channelId,
+    candidateIds,
+  );
+  const exactHandles = [
+    ...new Set(applicableHandles.filter((handle) => !handle.startsWith('@'))),
+  ];
+  const domainPatterns = [
+    ...new Set(
+      applicableHandles
+        .filter((handle) => handle.startsWith('@'))
+        .flatMap((handle) => ['%' + handle, '%.' + handle.slice(1)]),
+    ),
+  ];
+  // Keep PostgreSQL equality, ILIKE wildcard/escape and NOT IN NULL semantics. Self-exclusion applies only to domains.
+  const matching = await scope.executeRawQuery(
+    'SELECT DISTINCT "messageId" FROM ' +
+      tableExpression(session.shapes.get('messageParticipant')!) +
+      ' WHERE id=ANY($1::uuid[]) AND "deletedAt" IS NULL AND role=ANY($5)' +
+      ' AND (handle=ANY($2::text[]) OR (handle ILIKE ANY($3::text[]) AND handle<>ALL($4::text[])))',
+    [
+      sources.participants.map((row) => row.id),
+      exactHandles,
+      domainPatterns,
+      ownHandles,
+      [...BLOCKLISTED_PARTICIPANT_ROLES],
+    ],
+  );
+  const matchingMessageIds = new Set(
+    matching.map((row) => String(row.messageId)),
+  );
+  const selectedIds = sources.roots
+    .filter((row) => {
+      const root = decode(row);
+      return (
+        root.deletedAt === null &&
+        matchingMessageIds.has(String(root.messageId))
+      );
+    })
+    .map((row) => row.id);
+  const associations = await deleteTargetedAssociationsStage(
+    session,
+    channelId,
+    { associationIds: selectedIds },
+  );
+  const result = await cleanupRelatedOrphansStage(session, associations);
   await finalizeSession(session);
   return result;
 };

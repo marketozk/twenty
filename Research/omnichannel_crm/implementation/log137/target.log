@@ -1,0 +1,41 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-blocklist-cleanup.postgres-spec.ts (19.326 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-cleanup.postgres-spec.ts (12.26 s)
+[Nest] 1  - 10/29/2026, 9:29:20 AM   ERROR [WorkspaceIteratorService] Error in workspace 6534638b-916e-4714-9a93-f43eed0246f1: ordinary failure
+Error: ordinary failure
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/crm-audit-orphan-sweep-entrypoints.spec.ts:316:13)
+    at Promise.then.completed (/tools/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (/tools/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (/tools/node_modules/jest-circus/build/run.js:316:40)
+    at _runTest (/tools/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/tools/node_modules/jest-circus/build/run.js:126:9)
+    at run (/tools/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/tools/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/tools/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/tools/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/tools/node_modules/jest-runner/build/runTest.js:444:34)
+[Nest] 1  - 10/29/2026, 9:29:20 AM   ERROR [MessagingMessageCleanerRemoveOrphansCommand] Command failed
+[Nest] 1  - 10/29/2026, 9:29:20 AM   ERROR [MessagingMessageCleanerRemoveOrphansCommand] undefined
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-orphan-sweep-entrypoints.spec.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       75 passed, 75 total
+Snapshots:   0 total
+Time:        32.227 s
+Ran all test suites matching /crm-audit-blocklist-cleanup|crm-audit-orphan-sweep-entrypoints|omni-native-cleanup/i.
+[95m[Nest] 1  - [39m10/29/2026, 9:29:20 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: fe57cfe6-f07b-4ab3-9cba-10bdded9bf0d Cleaning up message channel message associations for channel 2ce5f932-9bff-4d98-bf56-9c9e5849c3bb[39m
+[32m[Nest] 1  - [39m10/29/2026, 9:29:20 AM [32m    LOG[39m [38;5;3m[MessagingResetChannelCommand] [39m[32mNo message channel ID provided, resetting all message channels in workspace c5921830-2b9d-49a7-8561-9637c9768f4b[39m
+[32m[Nest] 1  - [39m10/29/2026, 9:29:20 AM [32m    LOG[39m [38;5;3m[MessagingResetChannelCommand] [39m[32mFound 2 message channels to reset[39m
+[32m[Nest] 1  - [39m10/29/2026, 9:29:20 AM [32m    LOG[39m [38;5;3m[MessagingResetChannelCommand] [39m[32mSuccessfully reset all 2 message channels in workspace c5921830-2b9d-49a7-8561-9637c9768f4b[39m
+[32m[Nest] 1  - [39m10/29/2026, 9:29:20 AM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mDry run mode: No changes will be applied[39m
+[32m[Nest] 1  - [39m10/29/2026, 9:29:20 AM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mRunning on workspace 9f1bde9a-b4d4-4632-b07d-ceb8b3a14c89 1/2[39m
+[32m[Nest] 1  - [39m10/29/2026, 9:29:20 AM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mRunning on workspace 50fb30fd-76e6-4ad8-a4e1-5826e531db59 2/2[39m
+[32m[Nest] 1  - [39m10/29/2026, 9:29:20 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerRemoveOrphansCommand] [39m[32mCommand completed![39m
+[32m[Nest] 1  - [39m10/29/2026, 9:29:20 AM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mRunning on workspace 924f0db5-ac54-4b27-96ac-ff04b3900855 1/2[39m
+[32m[Nest] 1  - [39m10/29/2026, 9:29:20 AM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mRunning on workspace b99f4c22-6179-4dae-913e-2fa9f3147dcc 2/2[39m
+[32m[Nest] 1  - [39m10/29/2026, 9:29:20 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerRemoveOrphansCommand] [39m[32mCommand completed![39m
+[32m[Nest] 1  - [39m10/29/2026, 9:29:20 AM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mRunning on workspace 084a8b73-8b9c-43c9-800e-8fadb61d268d 1/2[39m
+[32m[Nest] 1  - [39m10/29/2026, 9:29:20 AM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mRunning on workspace 2eb98e74-6653-4e07-b5fb-116e97613e80 1/2[39m
+[32m[Nest] 1  - [39m10/29/2026, 9:29:20 AM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mRunning on workspace 5debad83-3847-4c4b-903b-ee74a6599701 1/2[39m
+[32m[Nest] 1  - [39m10/29/2026, 9:29:20 AM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mRunning on workspace 6534638b-916e-4714-9a93-f43eed0246f1 1/2[39m
+[32m[Nest] 1  - [39m10/29/2026, 9:29:20 AM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mRunning on workspace 5e759945-1de6-468b-9a6e-1e0b1c6071b1 2/2[39m

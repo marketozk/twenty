@@ -1,0 +1,13 @@
+{
+  "baseCommit": "66f767978f6f41b46dc7803e48a869a6fc63cfc5",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts": "18d1c57226eab017321be513cb3065b7f771afd077e3d0369581c3b97da00fa1",
+    "packages/twenty-server/src/modules/messaging/blocklist-manager/constants/blocklisted-participant-roles.constant.ts": "5122e4e5a92181fcb27591616dccbc93c5e783792858aee5dee84e72bea39a80",
+    "packages/twenty-server/src/modules/messaging/blocklist-manager/jobs/messaging-blocklist-item-delete-messages.job.ts": "f3098dc47becebee9d8e34eac75204f2260de14e7a1b345d4b5b31c4be9e448a",
+    "packages/twenty-server/test/fork-migration/crm-audit-orphan-sweep-entrypoints.spec.ts": "0f2ccee0270a29391c32db38484b5643dea56b7d31a69dfd8cff4622592c5b50",
+    "packages/twenty-server/test/fork-migration/omni-native-cleanup.postgres-spec.ts": "74fd85f98a2deba0d4c0fa13edac0e2dbd17f13e66118c92d323c0517d7f672a",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-ordinary-blocklisted-message-associations-with-audit.ts": "c74f795dcd51fc3f4a81736d7d19bd2eef39581296ce0d4b43336761ad608420",
+    "packages/twenty-server/test/fork-migration/crm-audit-blocklist-cleanup.postgres-spec.ts": "2cecfe402ec46927089b9b4457dfbe54ac0217c6c0ba78b31bae080e6a7454b4"
+  },
+  "uploadedSourceHashesVerified": true
+}

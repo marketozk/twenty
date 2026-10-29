@@ -1,0 +1,10 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts 749ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/blocklist-manager/constants/blocklisted-participant-roles.constant.ts 3ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/blocklist-manager/jobs/messaging-blocklist-item-delete-messages.job.ts 34ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-orphan-sweep-entrypoints.spec.ts 67ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/omni-native-cleanup.postgres-spec.ts 139ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/delete-ordinary-blocklisted-message-associations-with-audit.ts 2ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-blocklist-cleanup.postgres-spec.ts 126ms (unchanged)
+
+{"formattedFiles": 7, "singleSshSession": true}
