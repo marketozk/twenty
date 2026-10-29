@@ -1,0 +1,9 @@
+{
+  "baseCommit": "d8d0d3d66e3edb2c9895ca336f7c439f9cdb1358",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts": "c9de52c158bad60bfe3347f4a3aa243b238f37e441a9b940a0caef2fad5d4f34",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-native-message-associations-and-related-orphans-with-audit.ts": "859c21f0d82cb122c98c719730cdc41f5ea4875a67e3c0b9b6413956b1dbc145",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-targeted-cleanup.postgres-spec.ts": "0e617e556ab44faf8372e0ae4ab70ee347ee9819ebb0973b2070b0495783525d"
+  },
+  "uploadedSourceHashesVerified": true
+}

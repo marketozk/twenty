@@ -1,0 +1,19 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-targeted-cleanup.postgres-spec.ts (18.577 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-whole-sweep.postgres-spec.ts (12.464 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-target-reconciliation.postgres-spec.ts (10.275 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-empty-thread-cleanup.postgres-spec.ts (11.375 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-orphan-message.postgres-spec.ts (9.105 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-channel-cleanup-job.spec.ts
+
+Test Suites: 6 passed, 6 total
+Tests:       153 passed, 153 total
+Snapshots:   0 total
+Time:        62.083 s
+Ran all test suites matching /crm-audit-native-targeted-cleanup|crm-audit-native-whole-sweep|crm-audit-native-target-reconciliation|crm-audit-native-orphan-message|crm-audit-native-empty-thread-cleanup|crm-audit-message-channel-cleanup/i.
+[95m[Nest] 1  - [39m10/29/2026, 8:01:14 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: 7457ade5-6f85-4e93-96fc-4fe4967df892 Cleaning up message channel message associations for channel 19535e73-6edb-4cc4-8121-60be20ccc7bf[39m
+[95m[Nest] 1  - [39m10/29/2026, 8:01:14 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: 31702f0f-76ad-443a-92f6-66e7afbedabc Cleaning up message channel message associations for channel 6db3560e-297a-477b-856c-6e1624e1bb65[39m
+[95m[Nest] 1  - [39m10/29/2026, 8:01:14 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: 8f5dc6aa-846a-4f21-b216-7aab3a22827a Cleaning up message channel message associations for channel c2c63383-513f-4946-8567-1b4f4aa77f93[39m
+[95m[Nest] 1  - [39m10/29/2026, 8:01:14 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: e8d276a3-5b87-4f11-95b2-4704602909ef Cleaning up message channel message associations for channel 4d547e32-d960-4ea1-9e32-4ea793bfa213[39m
+[95m[Nest] 1  - [39m10/29/2026, 8:01:14 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: 60f67294-b1af-4dc4-b271-1f5a88251a1f Cleaning up message channel message associations for channel 8b9fcb40-65f0-4b91-9392-35a8fe4fb706[39m
+[95m[Nest] 1  - [39m10/29/2026, 8:01:14 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: 60f67294-b1af-4dc4-b271-1f5a88251a1f Cleaning up message channel message associations for channel 8b9fcb40-65f0-4b91-9392-35a8fe4fb706[39m
+[95m[Nest] 1  - [39m10/29/2026, 8:01:14 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: 8ce883e8-1772-4cc8-a6ac-91b7a85c8519 Cleaning up message channel message associations for channel db816a32-d0a8-43bf-8f61-89a890e00d0e[39m

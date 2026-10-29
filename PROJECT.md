@@ -57,7 +57,7 @@
 ## Текущая реализация
 
 ROB764 принята по [LOG088](Research/omnichannel_crm/implementation/rob764-acceptance.md).
-ROB765 остаётся In Progress: LOG134 объединяет очистку orphan messages, пересчёт связей CRM и удаление пустых threads в одной закрытой транзакции с общим аудитом. Подключены реальные jobs/CLI с server-derived identity; dry-run не меняет данные, а unsafe transaction outcome останавливает CLI без повторов и подмены исходной ошибки.
+ROB765 остаётся In Progress: LOG135 добавляет внутренний owner адресной очистки associations и связанной переписки с единым аудитом фактического графа. Проверены живой канал/аккаунт, смешанная защищённая выборка, пагинация, откат, lost COMMIT ACK и контроль исходных снимков перед последующим каскадом.
 
 Актуальные проверки и ближайшая работа — в [STATUS](Research/omnichannel_crm/STATUS.md);
 единственная таблица приёмки аудита — [rob765-progress](Research/omnichannel_crm/implementation/rob765-progress.md).

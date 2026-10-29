@@ -118,6 +118,8 @@ type CleanupSession<TScope extends NativeDeleteCleanupScope> = {
   validators: (() => Promise<void>)[];
   shapes: Map<CleanupTableName, NativeCrmAuditTableShape>;
   actualDeletedThreadIds: Set<string>;
+  actualDeletedAssociationIds: Set<string>;
+  actualDeletedJunctionIds: Set<string>;
 };
 
 const captureCandidates = (
@@ -191,6 +193,8 @@ const createSession = <TScope extends NativeDeleteCleanupScope>(
     validators: [],
     shapes,
     actualDeletedThreadIds: new Set(),
+    actualDeletedAssociationIds: new Set(),
+    actualDeletedJunctionIds: new Set(),
   };
 };
 
@@ -260,6 +264,8 @@ const deleteEmptyThreadsStage = async (
   const ids = [
     ...new Set(candidateThreadIds.map((id) => id.toLowerCase())),
   ].sort();
+  // A later cascade may remove retained records, but must not adopt changes hidden from earlier stages.
+  for (const verify of session.validators) await verify();
   const shapeFor = (name: Table | typeof MESSAGE) => {
     const candidates = context.objects.filter(
       ({ metadata }) =>
@@ -577,6 +583,10 @@ const deleteEmptyThreadsStage = async (
       });
   }
   for (const id of deletedIds) session.actualDeletedThreadIds.add(id);
+  for (const row of deleted.get(ASSOCIATION)!)
+    session.actualDeletedAssociationIds.add(row.id);
+  for (const row of deleted.get(JUNCTION)!)
+    session.actualDeletedJunctionIds.add(row.id);
   session.validators.push(verify);
   return {
     deletedThreadIds: [...deletedIds].sort(),
@@ -1792,3 +1802,449 @@ export const cleanOrphanNativeMessagesAndThreadsWithAudit = async ({
     deletedTargetIds: [...deletedTargets].sort(),
   };
 };
+
+const lockTargetedChannelAuthority = async (
+  session: CleanupSession<NativeDeleteCleanupScope>,
+  messageChannelId: string,
+): Promise<void> => {
+  const { scope } = session;
+  const [discovered] = await scope.executeRawQuery(
+    'SELECT "connectedAccountId" FROM core."messageChannel" WHERE "workspaceId"=$1 AND id=$2',
+    [scope.workspaceId, messageChannelId],
+  );
+  const connectedAccountId = discovered?.connectedAccountId;
+  if (typeof connectedAccountId !== 'string' || !isUUID(connectedAccountId))
+    throw new Error(
+      'Native targeted cleanup requires live ordinary channel authority',
+    );
+  const readAccount = async (lock = false) => {
+    const rows = await scope.executeRawQuery(
+      'SELECT id,"workspaceId",provider,"applicationId","connectionProviderId" FROM core."connectedAccount" WHERE "workspaceId"=$1 AND id=$2' +
+        (lock ? ' FOR SHARE' : ''),
+      [scope.workspaceId, connectedAccountId],
+    );
+    return rows[0];
+  };
+  const readChannel = async (lock = false) => {
+    const rows = await scope.executeRawQuery(
+      'SELECT id,"workspaceId","connectedAccountId" FROM core."messageChannel" WHERE "workspaceId"=$1 AND id=$2' +
+        (lock ? ' FOR UPDATE' : ''),
+      [scope.workspaceId, messageChannelId],
+    );
+    return rows[0];
+  };
+  const directlyBound = async () =>
+    (
+      await scope.executeRawQuery(
+        'SELECT id FROM core."omniAccountBinding" WHERE "workspaceId"=$1 AND ("connectedAccountId"=$2 OR "messageChannelId"=$3) LIMIT 1',
+        [scope.workspaceId, connectedAccountId, messageChannelId],
+      )
+    ).length > 0;
+  const account = await readAccount(true);
+  const channel = await readChannel(true);
+  if (
+    !account ||
+    !channel ||
+    account.id !== connectedAccountId ||
+    account.workspaceId !== scope.workspaceId ||
+    channel.id !== messageChannelId ||
+    channel.workspaceId !== scope.workspaceId ||
+    channel.connectedAccountId !== connectedAccountId ||
+    typeof account.provider !== 'string' ||
+    (account.provider === 'app' &&
+      account.applicationId === null &&
+      account.connectionProviderId === null) ||
+    (await directlyBound())
+  )
+    throw new Error(
+      'Native targeted cleanup requires live ordinary channel authority',
+    );
+  // This mutation boundary excludes direct bindings; caller run/action eligibility remains a separate stricter gate.
+  session.validators.push(async () => {
+    const currentAccount = await readAccount();
+    const currentChannel = await readChannel();
+    if (
+      !currentAccount ||
+      !currentChannel ||
+      canonicalAuditJson(currentAccount) !== canonicalAuditJson(account) ||
+      canonicalAuditJson(currentChannel) !== canonicalAuditJson(channel) ||
+      (await directlyBound())
+    )
+      throw new Error('Native targeted cleanup channel authority changed');
+  });
+};
+
+const deleteTargetedAssociationsStage = async (
+  session: CleanupSession<NativeDeleteCleanupScope>,
+  messageChannelId: string,
+  externalIds: readonly string[],
+): Promise<{
+  deletedAssociationIds: string[];
+  deletedJunctionIds: string[];
+  candidateMessageIds: string[];
+}> => {
+  const { scope, audit } = session;
+  const ROOT = 'messageChannelMessageAssociation';
+  const CHILD = 'messageChannelMessageAssociationMessageFolder';
+  const PARENT_COLUMN = 'messageChannelMessageAssociationId';
+  const PAGE_SIZE = 500;
+  const rootShape = session.shapes.get(ROOT)!;
+  const childShape = session.shapes.get(CHILD)!;
+  const sql = {
+    execute: ({ text, values }: { text: string; values: unknown[] }) =>
+      scope.executeRawQuery(text, values),
+  };
+  const rootIds: string[] = [];
+  let cursor: string | undefined;
+  for (;;) {
+    const page = await scope.executeRawQuery(
+      'SELECT id FROM ' +
+        tableExpression(rootShape) +
+        ' WHERE "messageChannelId"=$1 AND "messageExternalId"=ANY($2::text[])' +
+        (cursor ? ' AND id>$3::uuid' : '') +
+        ' ORDER BY id LIMIT ' +
+        PAGE_SIZE +
+        ' FOR UPDATE',
+      cursor
+        ? [messageChannelId, externalIds, cursor]
+        : [messageChannelId, externalIds],
+    );
+    if (!page.length) break;
+    for (const row of page) {
+      if (typeof row.id !== 'string' || !isUUID(row.id))
+        throw new Error('Invalid cleanup root identity');
+      rootIds.push(row.id);
+    }
+    cursor = String(page[page.length - 1].id);
+  }
+  const childIds = (
+    await scope.executeRawQuery(
+      'SELECT id FROM ' +
+        tableExpression(childShape) +
+        ' WHERE ' +
+        quote(PARENT_COLUMN) +
+        '=ANY($1::uuid[]) ORDER BY id FOR UPDATE',
+      [rootIds],
+    )
+  ).map((row) => {
+    if (typeof row.id !== 'string' || !isUUID(row.id))
+      throw new Error('Invalid cleanup child identity');
+    return row.id;
+  });
+  const roots = await readNativeCrmAuditRows(sql, rootShape, rootIds);
+  const children = await readNativeCrmAuditRows(sql, childShape, childIds);
+  if (roots.length !== rootIds.length || children.length !== childIds.length)
+    throw new Error('Native targeted cleanup graph changed');
+  const ownedRoots = await findOmniNativeWriteOwnedRecords(
+    scope,
+    scope.workspaceId,
+    ROOT,
+    roots.map(decode),
+  );
+  const ownedChildren = await findOmniNativeWriteOwnedRecords(
+    scope,
+    scope.workspaceId,
+    CHILD,
+    children.map(decode),
+  );
+  const retainedIds = new Set([
+    ...ownedRoots.map((row) => String(row.id)),
+    ...ownedChildren.map((row) => String(row[PARENT_COLUMN])),
+  ]);
+  const selected = roots.filter(
+    (row) => !retainedIds.has(row.id) && decode(row).deletedAt === null,
+  );
+  const selectedIds = selected.map((row) => row.id);
+  const selectedSet = new Set(selectedIds);
+  const selectedChildren = children.filter((row) =>
+    selectedSet.has(String(decode(row)[PARENT_COLUMN])),
+  );
+  assertNativeCrmDeleteFilesEmpty(rootShape, selected);
+  assertNativeCrmDeleteFilesEmpty(childShape, selectedChildren);
+  for (const [shape, records] of [
+    [rootShape, selected],
+    [childShape, selectedChildren],
+  ] as const) {
+    const references = await getIncomingRecordForeignKeys(
+      scope,
+      shape.schemaName,
+      shape.tableName,
+    );
+    const isExpectedJunctionCascade = (
+      reference: (typeof references)[number],
+    ) =>
+      shape === rootShape &&
+      reference.schemaName === childShape.schemaName &&
+      reference.tableName === childShape.tableName &&
+      reference.deleteAction === 'c' &&
+      canonicalAuditJson(reference.parentColumns) === '["id"]' &&
+      canonicalAuditJson(reference.childColumns) ===
+        canonicalAuditJson([PARENT_COLUMN]);
+    if (shape === rootShape && !references.some(isExpectedJunctionCascade))
+      throw new Error(
+        'Native targeted cleanup requires the folder junction cascade',
+      );
+    for (const reference of references) {
+      if (!['c', 'n', 'd'].includes(reference.deleteAction)) continue;
+      if (isExpectedJunctionCascade(reference)) continue;
+      const predicate = reference.childColumns
+        .map(
+          (column, index) =>
+            'child.' +
+            quote(column) +
+            '=parent.' +
+            quote(reference.parentColumns[index]),
+        )
+        .join(' AND ');
+      if (
+        (
+          await scope.executeRawQuery(
+            'SELECT 1 FROM ' +
+              quote(reference.schemaName) +
+              '.' +
+              quote(reference.tableName) +
+              ' child JOIN ' +
+              tableExpression(shape) +
+              ' parent ON ' +
+              predicate +
+              ' WHERE parent.id=ANY($1::uuid[]) LIMIT 1',
+            [records.map((row) => row.id)],
+          )
+        ).length
+      )
+        throw new Error(
+          'Native targeted cleanup excludes unsupported cascade effects',
+        );
+    }
+  }
+  const repository = scope.getRepository(ROOT, {
+    shouldBypassPermissionChecks: true,
+  });
+  const actualIds = new Set<string>();
+  for (let index = 0; index < selectedIds.length; index += PAGE_SIZE) {
+    const ids = selectedIds.slice(index, index + PAGE_SIZE);
+    const result = await repository.delete(ids, { columnsToReturn: ['id'] });
+    const returned: unknown = result.raw;
+    if (
+      !Array.isArray(returned) ||
+      result.affected !== returned.length ||
+      returned.some(
+        (row) => !row || typeof row.id !== 'string' || !ids.includes(row.id),
+      ) ||
+      new Set(returned.map((row) => row.id)).size !== returned.length
+    )
+      throw new Error('Native targeted cleanup returned unexpected records');
+    for (const row of returned) actualIds.add(row.id);
+  }
+  const deletedRoots = roots.filter((row) => actualIds.has(row.id));
+  const deletedChildren = children.filter((row) =>
+    actualIds.has(String(decode(row)[PARENT_COLUMN])),
+  );
+  const deletedChildIds = new Set(deletedChildren.map((row) => row.id));
+  const verify = async () => {
+    for (const [name, records] of [
+      [ROOT, deletedRoots],
+      [CHILD, deletedChildren],
+    ] as const) {
+      if (
+        (
+          await findOmniNativeWriteOwnedRecords(
+            scope,
+            scope.workspaceId,
+            name,
+            records.map(decode),
+          )
+        ).length
+      )
+        throw new Error(
+          'Native targeted cleanup ownership changed before commit',
+        );
+    }
+    const currentRootIds = (
+      await scope.executeRawQuery(
+        'SELECT id FROM ' +
+          tableExpression(rootShape) +
+          ' WHERE ("messageChannelId"=$1 AND "messageExternalId"=ANY($2::text[])) OR id=ANY($3::uuid[]) ORDER BY id',
+        [messageChannelId, externalIds, rootIds],
+      )
+    ).map((row) => String(row.id));
+    const currentChildIds = (
+      await scope.executeRawQuery(
+        'SELECT id FROM ' +
+          tableExpression(childShape) +
+          ' WHERE ' +
+          quote(PARENT_COLUMN) +
+          '=ANY($1::uuid[]) OR id=ANY($2::uuid[]) ORDER BY id',
+        [rootIds, childIds],
+      )
+    ).map((row) => String(row.id));
+    const currentRoots = await readNativeCrmAuditRows(
+      sql,
+      rootShape,
+      currentRootIds,
+    );
+    const currentChildren = await readNativeCrmAuditRows(
+      sql,
+      childShape,
+      currentChildIds,
+    );
+    if (
+      canonicalAuditJson(currentRoots) !==
+        canonicalAuditJson(
+          roots.filter(
+            (row) =>
+              !actualIds.has(row.id) &&
+              !session.actualDeletedAssociationIds.has(row.id),
+          ),
+        ) ||
+      canonicalAuditJson(currentChildren) !==
+        canonicalAuditJson(
+          children.filter(
+            (row) =>
+              !deletedChildIds.has(row.id) &&
+              !session.actualDeletedJunctionIds.has(row.id),
+          ),
+        )
+    )
+      throw new Error('Native targeted cleanup effects mismatch');
+  };
+  await verify();
+  for (const [shape, records] of [
+    [rootShape, deletedRoots],
+    [childShape, deletedChildren],
+  ] as const)
+    for (const row of records)
+      audit.record({
+        resourceKind: 'crmRecord',
+        resourceId: row.id,
+        action: 'delete',
+        before: captureNativeCrmAuditSnapshot(shape, row),
+        after: null,
+        securityDescriptor: {
+          resourceKind: 'crmRecord',
+          resourceId: row.id,
+          objectMetadataId: shape.objectMetadataId,
+          deletedRecord: { access: 'currentWorkspaceAdministration' },
+        },
+      });
+  session.validators.push(verify);
+  const candidateMessageIds = referenceIds(deletedRoots, 'messageId');
+  return {
+    deletedAssociationIds: [...actualIds].sort(),
+    deletedJunctionIds: [...deletedChildIds].sort(),
+    candidateMessageIds,
+  };
+};
+
+export const deleteNativeMessageAssociationsAndRelatedOrphansWithAudit =
+  async ({
+    scope,
+    operation,
+    messageChannelId,
+    messageExternalIds,
+  }: {
+    scope: TargetReconciliationScope;
+    operation: CrmAuditOperation;
+    messageChannelId: string;
+    messageExternalIds: readonly string[];
+  }): Promise<{
+    deletedAssociationIds: string[];
+    deletedJunctionIds: string[];
+    deletedMessageIds: string[];
+    affectedThreadIds: string[];
+    deletedThreadIds: string[];
+    createdTargetIds: string[];
+    updatedTargetIds: string[];
+    deletedTargetIds: string[];
+  }> => {
+    if (
+      !isUUID(messageChannelId) ||
+      !Array.isArray(messageExternalIds) ||
+      messageExternalIds.some((id) => typeof id !== 'string' || id.length === 0)
+    )
+      throw new Error(
+        'Native targeted cleanup requires exact channel and external identifiers',
+      );
+    const channelId = messageChannelId.toLowerCase();
+    const externalIds = Object.freeze([...new Set(messageExternalIds)].sort());
+    const session = createSession(scope, operation, [
+      ...EMPTY_THREAD_TABLES,
+      ...ORPHAN_MESSAGE_TABLES,
+      ...TARGET_RECONCILIATION_TABLES,
+    ]);
+    await prepareSession(session);
+    await lockTargetedChannelAuthority(session, channelId);
+    const associations = await deleteTargetedAssociationsStage(
+      session,
+      channelId,
+      externalIds,
+    );
+    const deletedMessages = new Set<string>();
+    const affectedThreads = new Set<string>();
+    const deletedThreads = new Set<string>();
+    const createdTargets = new Set<string>();
+    const updatedTargets = new Set<string>();
+    const deletedTargets = new Set<string>();
+    const messageIds = [...new Set(associations.candidateMessageIds)].sort();
+    for (
+      let offset = 0;
+      offset < messageIds.length;
+      offset += MESSAGE_PAGE_SIZE
+    ) {
+      const result = await deleteOrphanMessagesStage(
+        session,
+        messageIds.slice(offset, offset + MESSAGE_PAGE_SIZE),
+      );
+      for (const id of result.deletedMessageIds) deletedMessages.add(id);
+      for (const id of result.affectedThreadIds) affectedThreads.add(id);
+    }
+    const affectedThreadIds = [...affectedThreads].sort();
+    for (
+      let offset = 0;
+      offset < affectedThreadIds.length;
+      offset += MESSAGE_PAGE_SIZE
+    ) {
+      const liveThreadIds = await lockLiveAffectedThreads(
+        session,
+        affectedThreadIds.slice(offset, offset + MESSAGE_PAGE_SIZE),
+      );
+      if (!liveThreadIds.length) continue;
+      const result = await reconcileTargetsStage(session, liveThreadIds);
+      for (const id of result.createdTargetIds) createdTargets.add(id);
+      for (const id of result.updatedTargetIds) updatedTargets.add(id);
+      for (const id of result.deletedTargetIds) deletedTargets.add(id);
+    }
+    for (
+      let offset = 0;
+      offset < affectedThreadIds.length;
+      offset += MESSAGE_PAGE_SIZE
+    ) {
+      const result = await deleteEmptyThreadsStage(
+        session,
+        affectedThreadIds.slice(offset, offset + MESSAGE_PAGE_SIZE),
+      );
+      for (const id of result.deletedThreadIds) deletedThreads.add(id);
+      for (const id of result.deletedTargetIds) deletedTargets.add(id);
+    }
+    await finalizeSession(session);
+    return {
+      deletedAssociationIds: [
+        ...new Set([
+          ...associations.deletedAssociationIds,
+          ...session.actualDeletedAssociationIds,
+        ]),
+      ].sort(),
+      deletedJunctionIds: [
+        ...new Set([
+          ...associations.deletedJunctionIds,
+          ...session.actualDeletedJunctionIds,
+        ]),
+      ].sort(),
+      deletedMessageIds: [...deletedMessages].sort(),
+      affectedThreadIds,
+      deletedThreadIds: [...deletedThreads].sort(),
+      createdTargetIds: [...createdTargets].sort(),
+      updatedTargetIds: [...updatedTargets].sort(),
+      deletedTargetIds: [...deletedTargets].sort(),
+    };
+  };

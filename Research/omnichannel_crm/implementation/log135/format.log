@@ -1,0 +1,6 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts 708ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/delete-native-message-associations-and-related-orphans-with-audit.ts 4ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-targeted-cleanup.postgres-spec.ts 274ms
+
+{"formattedFiles": 3, "singleSshSession": true}

@@ -3851,3 +3851,15 @@ STATUS содержит один актуальный блок проверок,
 и исправление literal permission type описаны в [ревью](implementation/log134/review.md).
 
 LOG134 publication: code 497c8a914330dcb903a3171eeeefed1c093400ce pushed and GitHub API ref verified. Linear comment a59431c6-5fd7-4cd8-aff7-e3babcab2ab3, description/comment/all 11 issue states independently read back. Continuing targeted native cleanup; ROB765 remains In Progress.
+
+## LOG135 — адресная очистка переписки
+
+LOG135 добавляет внутренний owner адресной очистки associations и связанной переписки с единым аудитом фактического графа. Проверены живой канал/аккаунт, смешанная защищённая выборка, пагинация, откат, lost COMMIT ACK и контроль исходных снимков перед последующим каскадом.
+1928 tests/63 suites PASS (332.401s); 153 targeted/6 suites PASS (62.083s), 36 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 390/392 roots, baseline/current 225 diagnostics, 0 новых/changed-file. 3 local/remote source hashes совпадают. [Проверки](implementation/log135/results.json). ROB765 In Progress. Новый адресный owner пока не подключён к production callers; provider/group/folder/draft wiring выполняется следующим шагом. Blocklist и calendar cleanup остаются открытыми. Код после LOG088 не выкатывался; GitHub Actions не использовался. [Далее](implementation/log135/next-boundary.md).
+
+Независимое ревью обнаружило изменение retained association/junction перед поздним
+Thread cascade; перед снимками следующей стадии теперь проверяются предыдущие
+снимки. Два негативных и один допустимый overlap-сценарий прошли на PostgreSQL.
+Также проверены actual FK refusal, protected-only первая страница, реальные блокировки
+account/channel и неизменность посторонних orphan-записей. При первом typecheck исправлены
+только два test fixture options с widened boolean. [Ревью](implementation/log135/review.md).
