@@ -3908,3 +3908,5 @@ owner удерживает фиксированный SHARE table lock; оба �
 Первый typecheck исправлен явным async у test wrapper; окончательная регрессия
 включает исправление. Независимое ревью новых блокеров не выявило.
 [Ревью и ограничения](implementation/log138/review.md).
+
+LOG138 publication: code 3fd759afa7c3ba19f68e51a9dcc63624aa7d37bb pushed and GitHub API ref verified. Linear comment 1e21d4b9-df9f-4bc2-bd35-e8136b28b54d, description/comment/all 11 issue states independently read back. Continuing bounded orphan CalendarEvent owner; ROB765 remains In Progress.
