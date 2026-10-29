@@ -27,6 +27,31 @@ const CATALOG: Record<
   CrmAuditResourceKind,
   { values: string[]; redacted: string[] }
 > = {
+  connectedAccount: {
+    values: [
+      'userWorkspaceId',
+      'hasAccessToken',
+      'hasRefreshToken',
+      'hasConnectionParameters',
+    ],
+    redacted: ['archivedAt'],
+  },
+  messageChannel: {
+    values: [
+      'connectedAccountId',
+      'isSyncEnabled',
+      'webhookSubscriptionStatus',
+    ],
+    redacted: [],
+  },
+  calendarChannel: {
+    values: [
+      'connectedAccountId',
+      'isSyncEnabled',
+      'webhookSubscriptionStatus',
+    ],
+    redacted: [],
+  },
   coreUser: { values: [], redacted: ['deletedAt'] },
   userWorkspace: { values: ['userId'], redacted: ['deletedAt'] },
   applicationAuthorization: {
@@ -375,6 +400,9 @@ const principal = (value: CrmAuditPrincipal): CrmAuditPrincipal => {
 const ADMINISTRATIVE_ACTIONS: Partial<
   Record<CrmAuditResourceKind, readonly CrmAuditAction[]>
 > = {
+  connectedAccount: ['update'],
+  messageChannel: ['update'],
+  calendarChannel: ['update'],
   coreUser: ['update'],
   role: ['create', 'update'],
   roleTarget: ['create', 'delete'],

@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { transferConnectedAccountsWithAudit } from 'src/engine/core-modules/crm-audit/transfer-connected-accounts-with-audit';
+import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { type EntityManager, In, IsNull, Repository } from 'typeorm';
@@ -428,11 +430,22 @@ export class ConnectedAccountMetadataService {
     fromUserWorkspaceId,
     toUserWorkspaceId,
     workspaceId,
+    auditOperation,
   }: {
     fromUserWorkspaceId: string;
     toUserWorkspaceId: string;
     workspaceId: string;
+    auditOperation?: CrmAuditOperation;
   }): Promise<void> {
+    const capturedOperation = auditOperation
+      ? {
+          ...auditOperation,
+          actor: { ...auditOperation.actor },
+          ...(auditOperation.initiator
+            ? { initiator: { ...auditOperation.initiator } }
+            : {}),
+        }
+      : undefined;
     const connectedAccounts = await this.repository.find({
       where: { userWorkspaceId: fromUserWorkspaceId, workspaceId },
     });
@@ -470,16 +483,17 @@ export class ConnectedAccountMetadataService {
       ),
     );
 
-    await withOmniMetadataMutation(
-      this.repository.manager,
+    if (this.repository.manager.queryRunner?.isTransactionActive)
+      throw new Error('OMNI_METADATA_REQUIRES_FRESH_TRANSACTION');
+    await transferConnectedAccountsWithAudit({
+      dataSource: this.repository.manager.connection,
       workspaceId,
-      async (entityManager) => {
-        await lockOmniMetadataAccounts(
-          entityManager,
-          workspaceId,
-          connectedAccountIds,
-          'write',
-        );
+      fromUserWorkspaceId,
+      toUserWorkspaceId,
+      accountIds: connectedAccountIds,
+      operation: capturedOperation,
+      mutate: async (runner) => {
+        const entityManager = runner.manager;
         await this.assertOrdinaryAccounts(
           workspaceId,
           connectedAccountIds,
@@ -541,7 +555,7 @@ export class ConnectedAccountMetadataService {
           { webhookSubscriptionStatus: WebhookSubscriptionStatus.EXPIRED },
         );
       },
-    );
+    });
 
     for (const connectedAccount of connectedAccounts) {
       if (!isNativeMessengerAccount(connectedAccount)) {

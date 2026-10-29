@@ -16,8 +16,8 @@
 | Operation lookup index | LOG090: generated migration10, populated prefix upgrade/replay/down, real EXPLAIN, drift refusal; не выкатывалось |
 | Production rollout | Не выполнялся; нужны полная native coverage и согласованный выкат с остановленными writers при построении индекса |
 
-Последние проверки: 1398 tests/46 suites PASS (219.283s); 59 targeted/3 suites PASS, 18 новых PG cases. 26 guards PASS; 10 migration checksums неизменны. Types 362/364 roots, 189/189 прежних диагностик, 0 новых/changed-file. 7 local/remote source hashes совпадают.
-Это не чистый full-server typecheck. [LOG121 results](log121/results.json).
+Последние проверки: 1478 tests/47 suites PASS (233.545s); 90 targeted/2 suites PASS, 17 новых cases (15 PG, 2 service/caller). 26 guards PASS; 10 migration checksums неизменны. Types 365/366 roots, 189/189 прежних диагностик, 0 новых/changed-file. 9 local/remote source hashes совпадают.
+Это не чистый full-server typecheck. [LOG122 results](log122/results.json).
 
 [Индекс реализованных участков](../plan/phase_2_audit.md), [текущие ограничения](log113/README.md),
 [полная хронология](../DEVLOG.md). Исторические заявления «ещё не включено» внутри
@@ -56,4 +56,7 @@ LOG119 закрывает production membership creation/deactivation race share
 LOG121: private native member writer имеет issued strict/exclusive scope, actual
 transitive FK audit и mandatory verification вне security-first savepoint. Полное
 public removal, physical file cleanup и отдельные transfers этим не приняты.
-[Следующая граница](log121/next-boundary.md) — connected-account transfer audit.
+LOG122 добавляет connected-account transfer audit вместе с обоими channel types,
+active membership locks, exact JSONB snapshots и unknown COMMIT. Внешние hooks/revoke
+не становятся атомарными с БД; real shares остаются открытыми.
+[Следующая граница](log122/next-boundary.md) — account disconnection audit.

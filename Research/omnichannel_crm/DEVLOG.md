@@ -3677,3 +3677,25 @@ ROB765 In Progress. Адаптированные service tests не заменя
 LOG121 publication: 43c5a472fcce74c7af4df28611d94f84665af08c pushed/API verified.
 ROB765 description/comment 45b4539f-5099-4627-a2a0-94ab3ba2f040 independently read back;
 all 11 issue states match. Implementation continues with connected-account transfer.
+
+## LOG-122 — connected-account transfer и аудит каналов
+
+Final DB transfer использует strict core owner, native shared fence и свежие locks
+workspace/memberships/accounts/channels. Проверяются actual credential clear,
+custodian/archive, channel sync/subscription state и неизменность остальных полей.
+Audit savepoint сохраняет security cleanup при journal failure; mandatory checks
+вне fallback. UserService и post-query hook передают captured identity через
+custodian service; operationId отдельный, correlation общий. Секреты не журналируются.
+
+1478 tests/47 suites PASS (233.545s); 90 targeted/2 suites PASS, 17 новых cases (15 PG, 2 service/caller). 26 guards PASS; 10 migration checksums неизменны. Types 365/366 roots, 189/189 прежних диагностик, 0 новых/changed-file. 9 local/remote source hashes совпадают.
+[Результаты](implementation/log122/results.json), [ревью](implementation/log122/review.md).
+
+Ревью нашло precision gap parsed JSONB: теперь unchanged projection и final rows
+сравниваются по точному DB text; два trigger regressions проверяют числа >2^53.
+Пустой semantic channel audit устранён. Сохранение archive date, обе очередности
+membership revoke, отсутствие OAuth retry при lost COMMIT и оба caller проверены.
+Сообщения AUDIT_UNAVAILABLE в тестовом логе ожидаемы для fault/legacy identity cases.
+
+ROB765 In Progress. External hooks/revoke не атомарны с БД; весь public removal,
+shares/files, account disconnect/delete и полный HTTP не приняты. Выката нет.
+Далее [account disconnection audit](implementation/log122/next-boundary.md).

@@ -5,6 +5,9 @@ jest.mock(
 );
 import { CalendarChannelEntity } from 'src/engine/metadata-modules/calendar-channel/entities/calendar-channel.entity';
 import { randomUUID } from 'node:crypto';
+import { Logger } from '@nestjs/common';
+import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { DataSource, EntitySchema, type QueryRunner } from 'typeorm';
 import {
   WebhookSubscriptionStatus,
@@ -16,6 +19,10 @@ import {
 import { ConnectedAccountEntity } from 'src/engine/metadata-modules/connected-account/entities/connected-account.entity';
 import { MessageChannelEntity } from 'src/engine/metadata-modules/message-channel/entities/message-channel.entity';
 import { ConnectedAccountMetadataService } from 'src/engine/metadata-modules/connected-account/connected-account-metadata.service';
+import { ConnectedAccountOwnershipTransferService } from 'src/engine/metadata-modules/connected-account/services/connected-account-ownership-transfer.service';
+jest.mock('src/engine/metadata-modules/user-role/user-role.service', () => ({
+  UserRoleService: class {},
+}));
 import { MessageChannelMetadataService } from 'src/engine/metadata-modules/message-channel/message-channel-metadata.service';
 import { ApplicationMessageChannelsService } from 'src/engine/metadata-modules/message-channel/services/application-message-channels.service';
 import { bootstrapOmniAccountBinding } from 'src/modules/omnichannel/services/omni-binding-bootstrap';
@@ -96,6 +103,7 @@ const accountSchema = new EntitySchema<ConnectedAccountEntity>({
     scope: { type: 'text' },
     userWorkspaceId: { type: 'uuid' },
     handle: { type: 'text' },
+    updatedAt: { type: 'timestamptz', updateDate: true },
     accessToken: { type: 'text', nullable: true },
     refreshToken: { type: 'text', nullable: true },
     connectionParameters: { type: 'jsonb', nullable: true },
@@ -115,6 +123,7 @@ const channelSchema = new EntitySchema<MessageChannelEntity>({
     type: { type: 'text' },
     handle: { type: 'text' },
     displayName: { type: 'text', nullable: true },
+    updatedAt: { type: 'timestamptz', updateDate: true },
     visibility: { type: 'text' },
     isSyncEnabled: { type: 'boolean', default: true },
     webhookSubscriptionStatus: { type: 'text', nullable: true },
@@ -137,6 +146,7 @@ const calendarSchema = new EntitySchema<CalendarChannelEntity>({
     workspaceId: { type: 'uuid' },
     connectedAccountId: { type: 'uuid' },
     isSyncEnabled: { type: 'boolean' },
+    updatedAt: { type: 'timestamptz', updateDate: true },
     webhookSubscriptionStatus: { type: 'text', nullable: true },
   },
 });
@@ -159,6 +169,7 @@ let accounts: ConnectedAccountMetadataService;
 let channels: MessageChannelMetadataService;
 let app: ApplicationMessageChannelsService;
 let accountId: string, channelId: string, memberId: string, appId: string;
+const custodianId = randomUUID();
 const actor = { kind: 'system' as const, id: 'metadata-fixture' };
 const bootstrap = (
   authorize: Parameters<typeof bootstrapOmniAccountBinding>[3] = async () =>
@@ -246,6 +257,9 @@ const pauseNextRunner = (matches: (sql: string) => boolean) => {
 beforeAll(async () => {
   await fixture.initialize();
   await fixture.owner.query(
+    'CREATE TABLE core."userWorkspace" (id uuid PRIMARY KEY,"workspaceId" uuid NOT NULL REFERENCES core.workspace(id),"deletedAt" timestamptz)',
+  );
+  await fixture.owner.query(
     'ALTER TABLE core."connectedAccount" ADD "workspaceId" uuid, ADD "archivedAt" timestamptz, ADD "applicationId" uuid, ADD "connectionProviderId" uuid, ADD provider text, ADD scope text, ADD "userWorkspaceId" uuid, ADD handle text',
   );
   await fixture.owner.query(
@@ -261,6 +275,9 @@ beforeAll(async () => {
     'ALTER TABLE core."connectedAccount" ADD "accessToken" text,ADD "refreshToken" text,ADD "connectionParameters" jsonb,ADD "authFailedAt" timestamptz,ADD "authFailedReason" text',
   );
   await fixture.owner.query(
+    'ALTER TABLE core."connectedAccount" ADD "oidcTokenClaims" jsonb',
+  );
+  await fixture.owner.query(
     'ALTER TABLE core."messageChannel" ADD "webhookSubscriptionStatus" text',
   );
   await fixture.owner.query(
@@ -269,6 +286,12 @@ beforeAll(async () => {
   await fixture.owner.query(
     `GRANT SELECT, INSERT, UPDATE, DELETE ON core."calendarChannel" TO "${fixture.roleName}"`,
   );
+  for (const table of ['connectedAccount', 'messageChannel', 'calendarChannel'])
+    await fixture.owner.query(
+      'ALTER TABLE core."' +
+        table +
+        '" ADD "updatedAt" timestamptz NOT NULL DEFAULT now()',
+    );
   await runtime.initialize();
   type AccountDependencies = ConstructorParameters<
     typeof ConnectedAccountMetadataService
@@ -319,6 +342,10 @@ beforeEach(async () => {
   accountId = randomUUID();
   channelId = randomUUID();
   memberId = randomUUID();
+  await fixture.owner.query(
+    'INSERT INTO core."userWorkspace" (id,"workspaceId") VALUES($1,$3),($2,$3)',
+    [memberId, custodianId, fixture.workspaceId],
+  );
   appId = randomUUID();
   await runtime.getRepository(ConnectedAccountEntity).insert({
     id: accountId,
@@ -917,14 +944,18 @@ const pauseLifecycleMutation = (matches: (sql: string) => boolean) => {
 };
 describe('account lifecycle final core transaction', () => {
   const methods = ['disconnect', 'transfer', 'deleteMany'] as const;
-  const invoke = (method: (typeof methods)[number]) =>
+  const invoke = (
+    method: (typeof methods)[number],
+    auditOperation?: CrmAuditOperation,
+  ) =>
     method === 'disconnect'
       ? accounts.disconnect({ id: accountId, workspaceId: fixture.workspaceId })
       : method === 'transfer'
         ? accounts.transferOwnership({
             fromUserWorkspaceId: memberId,
-            toUserWorkspaceId: randomUUID(),
+            toUserWorkspaceId: custodianId,
             workspaceId: fixture.workspaceId,
+            auditOperation,
           })
         : accounts.deleteMany({
             ids: [accountId],
@@ -947,6 +978,406 @@ describe('account lifecycle final core transaction', () => {
       webhookSubscriptionStatus: WebhookSubscriptionStatus.PENDING,
     });
   };
+  const auditIdentity = (): CrmAuditOperation => ({
+    workspaceId: fixture.workspaceId,
+    operationId: randomUUID(),
+    actor: { kind: 'coreUser', id: randomUUID() },
+    correlationId: randomUUID(),
+  });
+  const readTransferAudit = () =>
+    fixture.owner.query('SELECT * FROM crm_audit."crmAuditEntry"');
+  it('transfer audits actual account and both channels without credential material', async () => {
+    await setupCredentials();
+    const identity = auditIdentity();
+    await invoke('transfer', identity);
+    const rows = await readTransferAudit();
+    expect(
+      rows.map((row: { resourceKind: string }) => row.resourceKind).sort(),
+    ).toEqual(['calendarChannel', 'connectedAccount', 'messageChannel']);
+    for (const row of rows)
+      expect(row).toMatchObject({
+        actor: identity.actor,
+        correlationId: identity.correlationId,
+        action: 'update',
+      });
+    expect(
+      new Set(rows.map((row: { operationId: string }) => row.operationId)).size,
+    ).toBe(1);
+    expect(rows[0].operationId).not.toBe(identity.operationId);
+    expect(JSON.stringify(rows)).not.toContain('encrypted-fixture');
+    expect(JSON.stringify(rows)).not.toContain('connectionParameters');
+    expect(
+      await runtime
+        .getRepository(ConnectedAccountEntity)
+        .findOneByOrFail({ id: accountId }),
+    ).toMatchObject({
+      userWorkspaceId: custodianId,
+      accessToken: null,
+      refreshToken: null,
+      connectionParameters: null,
+    });
+    await invoke('transfer', identity);
+    expect(await readTransferAudit()).toHaveLength(3);
+  });
+  it.each(['deleted', 'foreign', 'missing'] as const)(
+    'rejects %s destination membership before any DB transfer',
+    async (kind) => {
+      await setupCredentials();
+      if (kind === 'deleted')
+        await fixture.owner.query(
+          'UPDATE core."userWorkspace" SET "deletedAt"=now() WHERE id=$1',
+          [custodianId],
+        );
+      if (kind === 'missing')
+        await fixture.owner.query(
+          'DELETE FROM core."userWorkspace" WHERE id=$1',
+          [custodianId],
+        );
+      if (kind === 'foreign') {
+        const other = randomUUID();
+        await fixture.owner.query('INSERT INTO core.workspace(id) VALUES($1)', [
+          other,
+        ]);
+        await fixture.owner.query(
+          'UPDATE core."userWorkspace" SET "workspaceId"=$1 WHERE id=$2',
+          [other, custodianId],
+        );
+      }
+      await expect(invoke('transfer', auditIdentity())).rejects.toThrow(
+        'active workspace memberships',
+      );
+      expect(
+        (
+          await runtime
+            .getRepository(ConnectedAccountEntity)
+            .findOneByOrFail({ id: accountId })
+        ).accessToken,
+      ).toBe('encrypted-fixture');
+      expect(await readTransferAudit()).toEqual([]);
+    },
+  );
+  it('journal denial keeps the credential revocation and transferred owner', async () => {
+    await setupCredentials();
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => {});
+    await fixture.owner.query(
+      'REVOKE INSERT ON crm_audit."crmAuditEntry" FROM "' +
+        fixture.roleName +
+        '"',
+    );
+    try {
+      await invoke('transfer', auditIdentity());
+      expect(await readTransferAudit()).toEqual([]);
+      expect(
+        (
+          await runtime
+            .getRepository(ConnectedAccountEntity)
+            .findOneByOrFail({ id: accountId })
+        ).accessToken,
+      ).toBeNull();
+      expect(error).toHaveBeenCalledWith(
+        'CONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE',
+      );
+    } finally {
+      await fixture.owner.query(
+        'GRANT INSERT ON crm_audit."crmAuditEntry" TO "' +
+          fixture.roleName +
+          '"',
+      );
+      error.mockRestore();
+    }
+  });
+  it.each(['mutation', 'journal'] as const)(
+    'detects %s corruption with the correct rollback boundary',
+    async (phase) => {
+      await setupCredentials();
+      const triggerTable =
+        phase === 'mutation'
+          ? 'core."connectedAccount"'
+          : 'crm_audit."crmAuditEntry"';
+      await fixture.owner.query(
+        'CREATE FUNCTION core.corrupt_transfer() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN UPDATE core."messageChannel" SET "displayName"=\'Corrupt\' WHERE id=\'' +
+          channelId +
+          "'; RETURN NULL; END $$",
+      );
+      await fixture.owner.query(
+        'CREATE TRIGGER corrupt_transfer AFTER ' +
+          (phase === 'mutation' ? 'UPDATE' : 'INSERT') +
+          ' ON ' +
+          triggerTable +
+          ' FOR EACH ROW EXECUTE FUNCTION core.corrupt_transfer()',
+      );
+      try {
+        if (phase === 'mutation')
+          await expect(invoke('transfer', auditIdentity())).rejects.toThrow(
+            'effects mismatch',
+          );
+        else await invoke('transfer', auditIdentity());
+        expect((await readChannel()).displayName).toBe('Before');
+        expect(
+          (
+            await runtime
+              .getRepository(ConnectedAccountEntity)
+              .findOneByOrFail({ id: accountId })
+          ).accessToken,
+        ).toBe(phase === 'mutation' ? 'encrypted-fixture' : null);
+        expect(await readTransferAudit()).toEqual([]);
+      } finally {
+        await fixture.owner.query(
+          'DROP TRIGGER corrupt_transfer ON ' + triggerTable,
+        );
+        await fixture.owner.query('DROP FUNCTION core.corrupt_transfer()');
+      }
+    },
+  );
+  it('refuses mutation-triggered recipient deactivation even when audit is available', async () => {
+    await fixture.owner.query(
+      'CREATE FUNCTION core.corrupt_recipient() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN UPDATE core."userWorkspace" SET "deletedAt"=now() WHERE id=\'' +
+        custodianId +
+        "'; RETURN NULL; END $$",
+    );
+    await fixture.owner.query(
+      'CREATE TRIGGER corrupt_recipient AFTER UPDATE ON core."connectedAccount" FOR EACH ROW EXECUTE FUNCTION core.corrupt_recipient()',
+    );
+    try {
+      await expect(invoke('transfer', auditIdentity())).rejects.toThrow(
+        'membership changed',
+      );
+      expect(
+        (
+          await fixture.owner.query(
+            'SELECT "deletedAt" FROM core."userWorkspace" WHERE id=$1',
+            [custodianId],
+          )
+        )[0].deletedAt,
+      ).toBeNull();
+      expect(await readTransferAudit()).toEqual([]);
+    } finally {
+      await fixture.owner.query(
+        'DROP TRIGGER corrupt_recipient ON core."connectedAccount"',
+      );
+      await fixture.owner.query('DROP FUNCTION core.corrupt_recipient()');
+    }
+  });
+  it('membership removal first prevents transfer after the actual lock wait', async () => {
+    const writer = fixture.owner.createQueryRunner();
+    await writer.connect();
+    await writer.startTransaction();
+    let pending: ReturnType<typeof capture> | undefined;
+    try {
+      await writer.query(
+        'UPDATE core."userWorkspace" SET "deletedAt"=now() WHERE id=$1',
+        [custodianId],
+      );
+      pending = capture(invoke('transfer', auditIdentity()));
+      await blocked();
+      await writer.commitTransaction();
+      expect(await pending).toMatchObject({
+        error: {
+          message:
+            'Connected account transfer requires active workspace memberships',
+        },
+      });
+      expect(await readTransferAudit()).toEqual([]);
+    } finally {
+      if (writer.isTransactionActive) await writer.rollbackTransaction();
+      await pending;
+      await writer.release();
+    }
+  });
+  it('transfer first holds the recipient fence until commit and copies caller identity', async () => {
+    const pause = pauseLifecycleMutation(
+      (sql) =>
+        sql.startsWith('SELECT to_jsonb(member)') && sql.endsWith('FOR SHARE'),
+    );
+    const identity = auditIdentity(),
+      actor = { ...identity.actor };
+    const first = capture(invoke('transfer', identity));
+    await pause.reached;
+    identity.actor.id = randomUUID();
+    const second = capture(
+      fixture.owner.query(
+        'UPDATE core."userWorkspace" SET "deletedAt"=now() WHERE id=$1',
+        [custodianId],
+      ),
+    );
+    try {
+      await blocked();
+    } finally {
+      pause.resume();
+    }
+    expect(await first).toHaveProperty('value');
+    expect(await second).toHaveProperty('value');
+    expect((await readTransferAudit())[0].actor).toEqual(actor);
+  });
+  it('custodian service captures attribution and source identity before lookup', async () => {
+    const pause = barrier(),
+      reached = barrier(),
+      transfer = jest.fn().mockResolvedValue(undefined);
+    const service = new ConnectedAccountOwnershipTransferService(
+      {
+        resolveCustodianUserWorkspace: async () => {
+          reached.release();
+          await pause.promise;
+          return { id: custodianId };
+        },
+      } as never,
+      { transferOwnership: transfer } as never,
+    );
+    const identity = auditIdentity(),
+      actor = { ...identity.actor },
+      removed = { id: memberId, workspaceId: fixture.workspaceId };
+    const pending = service.transferConnectedAccountsOwnershipToCustodian({
+      removedUserWorkspace: removed as never,
+      auditOperation: identity,
+    });
+    await reached.promise;
+    removed.id = randomUUID();
+    removed.workspaceId = randomUUID();
+    identity.actor.id = randomUUID();
+    pause.release();
+    await pending;
+    expect(transfer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fromUserWorkspaceId: memberId,
+        workspaceId: fixture.workspaceId,
+        toUserWorkspaceId: custodianId,
+        auditOperation: expect.objectContaining({ actor }),
+      }),
+    );
+  });
+  it('preserves an existing archive date and non-pending channel state', async () => {
+    const date = new Date('2026-01-02T03:04:05.000Z');
+    await runtime
+      .getRepository(ConnectedAccountEntity)
+      .update(accountId, { archivedAt: date });
+    await runtime.getRepository(MessageChannelEntity).update(channelId, {
+      isSyncEnabled: false,
+      webhookSubscriptionStatus: WebhookSubscriptionStatus.EXPIRED,
+    });
+    await invoke('transfer', auditIdentity());
+    expect(
+      (
+        await runtime
+          .getRepository(ConnectedAccountEntity)
+          .findOneByOrFail({ id: accountId })
+      ).archivedAt,
+    ).toEqual(date);
+    const rows = await readTransferAudit();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].resourceKind).toBe('connectedAccount');
+  });
+  it.each(['mutation', 'journal'] as const)(
+    'preserves JSONB precision when %s changes an unchanged claim',
+    async (phase) => {
+      await setupCredentials();
+      await fixture.owner.query(
+        'UPDATE core."connectedAccount" SET "oidcTokenClaims"=$1::jsonb WHERE id=$2',
+        ['{"claim":9007199254740992}', accountId],
+      );
+      const table =
+        phase === 'mutation'
+          ? 'core."connectedAccount"'
+          : 'crm_audit."crmAuditEntry"';
+      const body =
+        phase === 'mutation'
+          ? 'NEW."oidcTokenClaims"=\'{"claim":9007199254740993}\'::jsonb; RETURN NEW;'
+          : 'UPDATE core."connectedAccount" SET "oidcTokenClaims"=\'{"claim":9007199254740993}\'::jsonb WHERE id=\'' +
+            accountId +
+            "'; RETURN NULL;";
+      await fixture.owner.query(
+        'CREATE FUNCTION core.precision_transfer() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN ' +
+          body +
+          ' END $$',
+      );
+      await fixture.owner.query(
+        'CREATE TRIGGER precision_transfer ' +
+          (phase === 'mutation' ? 'BEFORE UPDATE' : 'AFTER INSERT') +
+          ' ON ' +
+          table +
+          ' FOR EACH ROW EXECUTE FUNCTION core.precision_transfer()',
+      );
+      try {
+        if (phase === 'mutation')
+          await expect(invoke('transfer', auditIdentity())).rejects.toThrow(
+            'effects mismatch',
+          );
+        else await invoke('transfer', auditIdentity());
+        const [row] = await fixture.owner.query(
+          'SELECT "oidcTokenClaims"::text AS claims,"userWorkspaceId" FROM core."connectedAccount" WHERE id=$1',
+          [accountId],
+        );
+        expect(row.claims).toContain('9007199254740992');
+        expect(row.userWorkspaceId).toBe(
+          phase === 'mutation' ? memberId : custodianId,
+        );
+        expect(await readTransferAudit()).toEqual([]);
+      } finally {
+        await fixture.owner.query(
+          'DROP TRIGGER precision_transfer ON ' + table,
+        );
+        await fixture.owner.query('DROP FUNCTION core.precision_transfer()');
+      }
+    },
+  );
+  it('refuses a foreign operation scope before DB mutation', async () => {
+    await expect(
+      invoke('transfer', { ...auditIdentity(), workspaceId: randomUUID() }),
+    ).rejects.toThrow('audit workspace mismatch');
+    expect(
+      (
+        await runtime
+          .getRepository(ConnectedAccountEntity)
+          .findOneByOrFail({ id: accountId })
+      ).userWorkspaceId,
+    ).toBe(memberId);
+  });
+  it('unknown COMMIT keeps the actual transfer but does not retry OAuth revocation', async () => {
+    await setupCredentials();
+    await runtime
+      .getRepository(ConnectedAccountEntity)
+      .update(accountId, { provider: ConnectedAccountProvider.GOOGLE });
+    const create = runtime.createQueryRunner.bind(runtime);
+    let commits = 0;
+    jest.spyOn(runtime, 'createQueryRunner').mockImplementation((mode) => {
+      const runner = create(mode),
+        connect = runner.connect.bind(runner);
+      if (mode !== 'master') return runner;
+      let wrapped = false;
+      jest.spyOn(runner, 'connect').mockImplementation(async () => {
+        const client = await connect();
+        if (!wrapped) {
+          wrapped = true;
+          const query = client.query.bind(client);
+          client.query = async (sql: string, ...args: unknown[]) => {
+            const result = await query(sql, ...args);
+            if (sql === 'COMMIT') {
+              commits++;
+              throw new Error('lost acknowledgement');
+            }
+            return result;
+          };
+        }
+        return client;
+      });
+      return runner;
+    });
+    await expect(invoke('transfer', auditIdentity())).rejects.toBeInstanceOf(
+      NativeTransactionOutcomeUnknownError,
+    );
+    expect(commits).toBe(1);
+    expect(external.revoke).not.toHaveBeenCalled();
+    expect(
+      (
+        await fixture.owner.query(
+          'SELECT "userWorkspaceId","accessToken" FROM core."connectedAccount" WHERE id=$1',
+          [accountId],
+        )
+      )[0],
+    ).toEqual({ userWorkspaceId: custodianId, accessToken: null });
+    expect(await readTransferAudit()).toHaveLength(3);
+  });
   it.each(methods)(
     'native unbound %s needs no ordinary provider effects',
     async (method) => {
@@ -1216,16 +1647,14 @@ describe('account lifecycle final core transaction', () => {
     async (order) => {
       await setupCredentials();
       const destination = randomUUID();
-      await runtime
-        .getRepository(ConnectedAccountEntity)
-        .insert({
-          id: destination,
-          workspaceId: fixture.workspaceId,
-          provider: ConnectedAccountProvider.GOOGLE,
-          userWorkspaceId: memberId,
-          scope: 'USER',
-          handle: 'other',
-        });
+      await runtime.getRepository(ConnectedAccountEntity).insert({
+        id: destination,
+        workspaceId: fixture.workspaceId,
+        provider: ConnectedAccountProvider.GOOGLE,
+        userWorkspaceId: memberId,
+        scope: 'USER',
+        handle: 'other',
+      });
       const [calendar] = await runtime
         .getRepository(CalendarChannelEntity)
         .findBy({ connectedAccountId: accountId });

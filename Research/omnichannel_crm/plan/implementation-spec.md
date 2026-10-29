@@ -999,3 +999,12 @@ savepoint и после его rollback; journal failure не восстанав
 COMMIT не повторяется. Ordinary public audit predicate не расширен.
 [Следующая граница](../implementation/log121/next-boundary.md): connected-account
 transfer; files/shares/whole removal atomicity и full HTTP остаются открытыми.
+
+LOG122 реализует final DB transfer owner: strict core transaction, native shared
+fence, workspace/membership/account/channel locks и fresh recipient validation.
+Actual effects и memberships проверяются до/после audit; journal rollback не
+отменяет credential revocation. Exact DB JSONB text сохраняет precision >2^53.
+Два production callers передают captured actor/initiator/correlation. Credential
+material в журнал не попадает. External webhook/OAuth effects не атомарны с БД.
+[Далее](../implementation/log122/next-boundary.md) — account disconnection audit;
+остальные writers, shares/files и full HTTP остаются открытыми.

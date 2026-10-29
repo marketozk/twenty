@@ -354,6 +354,10 @@ const adapters: [string, string[]][] = [
   ['src/engine/metadata-modules/view/dtos/view.dto', ['ViewDTO']],
   ['src/engine/metadata-modules/view/services/view.service', ['ViewService']],
   ['src/utils/extract-request', ['getRequest']],
+  [
+    'src/engine/api/graphql/workspace-query-runner/workspace-query-hook/decorators/workspace-query-hook.decorator',
+    ['WorkspaceQueryHook'],
+  ],
 ];
 for (const [path, names] of adapters)
   jest.doMock(path, () =>
@@ -372,6 +376,8 @@ const { UserService } =
   require('src/engine/core-modules/user/services/user.service') as typeof import('src/engine/core-modules/user/services/user.service');
 const { WorkspaceResolver } =
   require('src/engine/core-modules/workspace/workspace.resolver') as typeof import('src/engine/core-modules/workspace/workspace.resolver');
+const { WorkspaceMemberDeleteOnePostQueryHook } =
+  require('src/modules/workspace-member/query-hooks/workspace-member-delete-one.post-query.hook') as typeof import('src/modules/workspace-member/query-hooks/workspace-member-delete-one.post-query.hook');
 
 const fixture = () => {
   const workspaceId = randomUUID(),
@@ -467,9 +473,19 @@ const fixture = () => {
     workspaceOrmManager: orm,
     permissionsService: { userHasWorkspaceSettingPermission: async () => true },
   });
+  const postHook = Object.create(
+    WorkspaceMemberDeleteOnePostQueryHook.prototype,
+  ) as InstanceType<typeof WorkspaceMemberDeleteOnePostQueryHook>;
+  Object.assign(postHook, service, {
+    userWorkspaceRepository: { findOne: async () => membership },
+  });
   return {
+    postHook,
     resolver,
     service,
+    transfer:
+      service['connectedAccountOwnershipTransferService']
+        .transferConnectedAccountsOwnershipToCustodian,
     capture,
     cleanup,
     nativeRepository,
@@ -509,6 +525,14 @@ it.each([false, true])(
       }),
     );
     const coreOperation = deactivateUser.mock.calls[0][0].auditOperations[0]!;
+    expect(f.transfer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auditOperation: expect.objectContaining({
+          actor: coreOperation.actor,
+          correlationId: coreOperation.correlationId,
+        }),
+      }),
+    );
     expect(coreOperation).toMatchObject({
       workspaceId: f.workspaceId,
       actor: {
@@ -550,6 +574,28 @@ it('actual self-account deletion captures impersonator before service reads memb
   );
   expect(f.capture.mock.invocationCallOrder[0]).toBeLessThan(
     f.coreUserRepository.findOne.mock.invocationCallOrder[0],
+  );
+});
+it('actual post-query hook forwards the same trusted actor to transfer and core cleanup', async () => {
+  const f = fixture();
+  await f.nativeRepository.delete();
+  await f.postHook.execute(
+    {
+      type: 'user',
+      workspace: { id: f.workspaceId },
+      user: { id: f.actorId },
+      userWorkspaceId: randomUUID(),
+    } as never,
+    'workspaceMember',
+    [{ id: f.nativeId, userId: f.userId }] as never,
+  );
+  const transfer = jest.mocked(f.transfer).mock.calls[0][0];
+  expect(transfer.auditOperation).toMatchObject({
+    workspaceId: f.workspaceId,
+    actor: { kind: 'coreUser', id: f.actorId },
+  });
+  expect(f.cleanup).toHaveBeenCalledWith(
+    expect.objectContaining({ auditOperation: transfer.auditOperation }),
   );
 });
 it('self-account caller reports active-membership refusal rather than successful deletion', async () => {

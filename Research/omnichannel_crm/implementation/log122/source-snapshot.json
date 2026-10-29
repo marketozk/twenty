@@ -1,0 +1,15 @@
+{
+  "baseCommit": "f2a765177212978e200a9776a115f31cb7d59c62",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "03fa813aeef6d7c20940e64377fa0f9ecb1b8f7b3c4d247f9b2582bbf2f039f2",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "a4b09516e7c896f4e0ffa307045649cfc851b87985244b31476eb7ebac6456a1",
+    "packages/twenty-server/src/engine/core-modules/user/services/user.service.ts": "7d71257de918f7c9aee89c6af866936785ac3abbe78db7d3d74ebc0d066ddcd4",
+    "packages/twenty-server/src/engine/metadata-modules/connected-account/connected-account-metadata.service.ts": "d3e93d0381b14eceb7a78bb807f93222abc7f8e90b143fe4ea13228441e9093c",
+    "packages/twenty-server/src/engine/metadata-modules/connected-account/services/connected-account-ownership-transfer.service.ts": "406b329c687889516036e4b46809463fccf207ee0a58daa0c8be8f69eee8c583",
+    "packages/twenty-server/src/modules/workspace-member/query-hooks/workspace-member-delete-one.post-query.hook.ts": "e78459dd1d4282e33d6095fbe4064f8d24f26302cf8c79e79c541cf09bc8a55f",
+    "packages/twenty-server/test/fork-migration/crm-audit-membership-entrypoints.spec.ts": "f7285f5763aa34090f6f10ae697d679b28989d453b2f5a5f4d631cd0b1af2026",
+    "packages/twenty-server/test/fork-migration/omni-metadata-transaction.postgres-spec.ts": "ec1440bc2c6e1d9faedd29ee8576f168a916cf82fffac642670a7d04bd151e8e",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/transfer-connected-accounts-with-audit.ts": "30596a605fb0702572896a20f8459d70228c7b1b35dd996e139fc30a140e5ffb"
+  },
+  "uploadedSourceHashesVerified": true
+}

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 
 import { isDefined } from 'twenty-shared/utils';
 
@@ -20,10 +21,23 @@ export class ConnectedAccountOwnershipTransferService {
   async transferConnectedAccountsOwnershipToCustodian({
     removedUserWorkspace,
     actingUserWorkspaceId,
+    auditOperation,
   }: {
     removedUserWorkspace: UserWorkspaceEntity;
     actingUserWorkspaceId?: string;
+    auditOperation?: CrmAuditOperation;
   }) {
+    const fromUserWorkspaceId = removedUserWorkspace.id;
+    const workspaceId = removedUserWorkspace.workspaceId;
+    const capturedOperation = auditOperation
+      ? {
+          ...auditOperation,
+          actor: { ...auditOperation.actor },
+          ...(auditOperation.initiator
+            ? { initiator: { ...auditOperation.initiator } }
+            : {}),
+        }
+      : undefined;
     const custodianUserWorkspace =
       await this.userRoleService.resolveCustodianUserWorkspace({
         removedUserWorkspace,
@@ -32,9 +46,10 @@ export class ConnectedAccountOwnershipTransferService {
 
     if (isDefined(custodianUserWorkspace)) {
       await this.connectedAccountMetadataService.transferOwnership({
-        fromUserWorkspaceId: removedUserWorkspace.id,
+        fromUserWorkspaceId,
         toUserWorkspaceId: custodianUserWorkspace.id,
-        workspaceId: removedUserWorkspace.workspaceId,
+        workspaceId,
+        auditOperation: capturedOperation,
       });
     }
   }

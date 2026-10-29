@@ -11,6 +11,9 @@ export type CrmAuditPrincipal = {
 };
 
 export type CrmAuditResourceKind =
+  | 'connectedAccount'
+  | 'messageChannel'
+  | 'calendarChannel'
   | 'coreUser'
   | 'userWorkspace'
   | 'applicationAuthorization'

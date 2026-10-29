@@ -108,6 +108,7 @@ export class WorkspaceMemberDeleteOnePostQueryHook
     await this.connectedAccountOwnershipTransferService.transferConnectedAccountsOwnershipToCustodian(
       {
         removedUserWorkspace: userWorkspace,
+        auditOperation,
         actingUserWorkspaceId:
           'userWorkspaceId' in authContext
             ? authContext.userWorkspaceId
