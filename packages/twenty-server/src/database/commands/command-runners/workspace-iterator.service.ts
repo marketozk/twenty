@@ -1,3 +1,4 @@
+import { isTransactionUnsafeToRetry } from 'src/engine/twenty-orm/error-handling/is-transaction-outcome-unknown';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
@@ -111,6 +112,7 @@ export class WorkspaceIteratorService {
         `Running on workspace ${workspaceId} ${index + 1}/${workspaceIdsToProcess.length}`,
       );
 
+      let hasUnsafeOutcome = false;
       try {
         const workspace = await this.workspaceRepository.findOne({
           // TypeORM discards a row when every explicitly selected value is null.
@@ -150,6 +152,10 @@ export class WorkspaceIteratorService {
 
         report.success.push({ workspaceId });
       } catch (error: unknown) {
+        if (isTransactionUnsafeToRetry(error)) {
+          hasUnsafeOutcome = true;
+          throw error;
+        }
         // Deletion can also race a command or its migration-history write.
         const workspaceStillExists = await this.workspaceRepository.exists({
           where: { id: workspaceId },
@@ -163,9 +169,21 @@ export class WorkspaceIteratorService {
 
         report.fail.push({ error: error as Error, workspaceId });
       } finally {
-        await this.workspaceCacheService.evictWorkspaceFromLocalCache(
-          workspaceId,
-        );
+        try {
+          await this.workspaceCacheService.evictWorkspaceFromLocalCache(
+            workspaceId,
+          );
+        } catch (cleanupError) {
+          if (!hasUnsafeOutcome) throw cleanupError;
+          // Secondary reporting must not erase a committed or unknown outcome.
+          try {
+            this.logger.warn(
+              'Workspace cache eviction failed after an unsafe transaction outcome',
+            );
+          } catch {
+            /* Preserve the original transaction failure. */
+          }
+        }
       }
     }
 

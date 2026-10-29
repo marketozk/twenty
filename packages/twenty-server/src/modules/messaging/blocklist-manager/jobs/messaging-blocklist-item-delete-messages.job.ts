@@ -1,3 +1,7 @@
+import {
+  membershipCleanupOperation,
+  systemMembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { Scope } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
@@ -48,6 +52,14 @@ export class BlocklistItemDeleteMessagesJob {
   @Process(BlocklistItemDeleteMessagesJob.name)
   async handle(data: BlocklistItemDeleteMessagesJobData): Promise<void> {
     const workspaceId = data.workspaceId;
+    const blocklistItemIds = data.events.map(({ recordId }) => recordId);
+    const auditOperation = membershipCleanupOperation(
+      workspaceId,
+      systemMembershipCleanupIdentity(
+        workspaceId,
+        BlocklistItemDeleteMessagesJob.name,
+      ),
+    )!;
 
     const authContext = buildSystemAuthContext(workspaceId);
 
@@ -56,9 +68,6 @@ export class BlocklistItemDeleteMessagesJob {
         if (this.workspaceOrmManager.getWorkspaceId() !== workspaceId) {
           throw new Error('OMNI_NATIVE_OWNERSHIP_WORKSPACE_MISMATCH');
         }
-        const blocklistItemIds = data.events.map(
-          (eventPayload) => eventPayload.recordId,
-        );
 
         const blocklistRepository =
           this.workspaceOrmManager.getRepository<BlocklistWorkspaceEntity>(
@@ -95,6 +104,7 @@ export class BlocklistItemDeleteMessagesJob {
 
         await this.threadCleanerService.cleanOrphanMessagesAndThreads(
           workspaceId,
+          auditOperation,
         );
       },
       authContext,

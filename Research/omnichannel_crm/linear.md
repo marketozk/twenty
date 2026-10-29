@@ -24,73 +24,16 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 
 Актуальные статусы — в Linear. Первоначальный снимок статусов — [DEVLOG, запись LOG-002](DEVLOG.md). Описание задачи содержит критерии и ссылку на документ; при изменении плана обновлять соответствующую задачу. Отчёты о работе — в DEVLOG и комментариях задачи, а не только в чате Codex.
 
-## Сверка текущего состояния — 28.10.2026
+## Текущее состояние
 
-ROB764 завершена по LOG088; ROB765 In Progress. LOG089 добавил первый внутренний native audit owner для Company updates; общий аудит CRM пока не готов. Актуальные проверки, ограничения и следующий шаг — в [STATUS](STATUS.md).
-[Доказательства и ограничения](implementation/log088/README.md).
+ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.
+Актуальные проверки и ближайшая работа — в [STATUS](STATUS.md);
+критерии аудита — в [rob765-progress](implementation/rob765-progress.md).
+Описание ROB765 синхронизируется с [планом этапа](plan/phase_2_audit.md);
+подробный отчёт о каждой публикации сохраняется в комментарии задачи и DEVLOG.
 
-### Предыдущая порция
-
-LOG-022 / ROB-764 In Progress: добавлены минимальный audit writer, две таблицы
-и атомарный bootstrap неактивного подключения с авторизацией и безопасным replay.
-113 выполненных тестов, focused typecheck и официальный image build прошли;
-проверены runtime privilege gate и полный native+fork migrator replay.
-Чаты и приём/отправка ещё не реализованы, live deployment не выполнялся.
-ROB-772 Done как планирование; R16 остаётся историческим, нового полного pass
-не заявлено. [Проверки LOG-022](implementation/log022/README.md).
-
-[Итог R16](plan/cross-review/review-result.md). ROB-762/763 Done; ROB-772 Done по решению владельца начать реализацию; ROB-764 Done; ROB-765 In Progress; ROB-766–771 Backlog. Зависимость ROB-772 → ROB-764 сохраняется как выполненная предпосылка. [Ход реализации](implementation/rob764-progress.md) · [Проверки LOG-021](implementation/log021/README.md).
-
-Предыдущая публикация R13: `183039a3c16b0e4b4a3495805ba42bf9e0d51e76`, [комментарий LOG-015](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-1df99847); read-back всех11 описаний и прежних статусов подтверждён.
-
-
-Публикация R14: `be6f6cf93ad834fdade377f01ca98201850477c2`, [отчёт LOG-016](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-a1e260b1); read-back11 descriptions/unchanged states и dependency подтверждены.
-
-
-Публикация R15: `41e3b3667d006c1651dc2a7e72925c06ae53fd24`, [отчёт LOG-017](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-bd21f234). Проверены11 описаний, прежние статусы и зависимость ROB-772 blocks ROB-764.
-
-
-Публикация R16: `f5d806119250cdf589de20cd755da1552e079b14`, [отчёт LOG-018](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-5cfabfd8). Проверены все 11 описаний, неизменные статусы и зависимость ROB-772 blocks ROB-764. [Метаданные публикации](plan/cross-review/publication-r16.json).
-
-
-Публикация LOG-019: `28cdc295b69103074e95ce93d67117950815db83`; read-back11 задач подтвердил ROB-772 Done и ROB-764 In Progress, остальные статусы сохранены. [ROB-764 отчёт](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-8753ea7f) и [ROB-772 отчёт](https://linear.app/robotrts/issue/ROB-772/podrobnyj-plan-vsego-twenty-crm-i-krossrevyu-s-claude-code#comment-a06f566a). GitHub CI не запустился из-за billing block аккаунта; выполненные16 PG/20 guard checks и focused typecheck проходят. [Evidence](implementation/publication-log019.json).
-
-Публикация LOG-020: `ab0402f3fddd890fb31fb504ad4502ad9b7caa2a`; [отчёт ROB-764](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-4b311d13).
-Описание/комментарий проверены чтением, ROB-764 In Progress; статусы11 задач
-сохранены. 9 entities и generated migration реализованы,35 PG/25 Python tests
-прошли. Оба GitHub job вновь блокированы billing до запуска. [Evidence](implementation/log020/publication.json).
-
-Публикация LOG-021: `bf044eb6fddb535cec0b958d689e5e714ce9443d`;
-[отчёт ROB-764](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-6822fa04).
-Описание/единственный комментарий прочитаны обратно, In Progress и статусы11 задач
-сохранены. 85 выполненных тестов прошли; оба GitHub job заблокированы billing
-до запуска. [Публикация и аннотации](implementation/log021/publication.json).
-
-Публикация LOG-022: `128a3526daa143bdd7b69d5bdff4fbc3f5c27c97`;
-[отчёт ROB-764](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-d5d606e7).
-Описание и единственный комментарий проверены чтением; In Progress и статусы11
-задач сохранены. 113 выполненных тестов прошли; оба GitHub job вновь заблокированы
-billing до запуска. [Публикация и аннотации](implementation/log022/publication.json).
-
-Сверка LOG-023: документы `05af4f4e9ec87c09814871c692d9d5fa52c7e943`.
-Обновлены устаревшие вводные сводки десяти задач; ROB-764 уже был актуален.
-ROB-765 уточнён по существующему audit writer и оставшейся интеграции. Все11
-описаний и неизменные статусы проверены чтением; дубли задач не создавались.
-[Отчёт](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-a3d32f51) ·
-[Метаданные](implementation/publication-log023.json). Код и сервисы не менялись.
-
-Публикация LOG-024: `161269d6b166cc4fe34ea85fefc47162342381d8`;
-[отчёт ROB-764](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-a5c2ec75).
-Описание/единственный комментарий проверены чтением, статусы11 задач сохранены.
-Оба CI job вновь заблокированы billing до запуска. [Метаданные](implementation/log024/publication.json).
-
-Публикация LOG-027: `306e2522fd11b316bfbf668fe365edd9fc104e91`;
-[отчёт ROB-764](https://linear.app/robotrts/issue/ROB-764/1-realizovat-model-obsheniya-i-nadyozhnoe-sohranenie#comment-82f2637b).
-Описание и единственный комментарий прочитаны обратно; статусы 11 задач сохранены.
-292 теста и focused strict typecheck прошли. GitHub API подтвердил публикацию;
-Actions не запускались и не ожидались. [Метаданные](implementation/log027/publication.json).
-
-Текущий implementation slice — [LOG133](implementation/log133/README.md): внутренний owner target reconciliation; 1863 regression tests PASS. ROB765 In Progress; ROB762/763/764/772 Done, ROB766–771 Backlog. После commit/push описание и отчёт синхронизируются с ROB765 и проверяются обратным чтением; publication evidence сохраняется в LOG133.
-
-LOG133 добавляет внутренний owner target reconciliation с существующей manual/tombstone policy, actual INSERT/UPDATE/DELETE effects и финальной проверкой sources/targets. Устранена реальная Company/Person deadlock в гонке вставки Opportunity: Company использует FOR SHARE. Убраны новые зависимости от Enterprise-reachable barrels без расширения baseline.
-1863 tests/60 suites PASS (306.722s); 115 targeted/4 suites PASS (41.605s), 27 новых cases; 6 existing policy tests PASS (2.944s). 26 guard tests PASS; 10 migration checksums неизменны. Types 385/387 roots, 225/225 прежних диагностик, 0 новых/changed-file. 3 local/remote source hashes совпадают. [Проверки](implementation/log133/results.json). ROB765 In Progress. Три внутренних owner готовы к подключению в общий orphan sweep; его транзакция, точки вызова и CLI ещё не приняты. Код после LOG088 не выкатывался; GitHub Actions не использовался. [Далее](implementation/log133/next-boundary.md).
+Последняя подтверждённая сверка — [LOG133 publication](implementation/log133/publication.json):
+описание, комментарий и все 11 статусов прочитаны обратно.
+LOG134 проверен локально и в изолированной среде; публикация и синхронизация фиксируются следующим шагом.
+История прежних R13–R16/LOG-публикаций сохраняется в [DEVLOG](DEVLOG.md) и каталогах evidence.
+GitHub Actions не используется.

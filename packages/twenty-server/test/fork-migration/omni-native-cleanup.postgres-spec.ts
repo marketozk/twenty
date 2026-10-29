@@ -146,7 +146,10 @@ describe('native cleanup preserves independently owned omni records', () => {
       expect(await protectedSnapshot(seed)).toEqual(before);
       fixture.eventEmitter.mockClear();
       await targeted(seed);
-      await fixture.cleaner.cleanOrphanMessagesAndThreads(fixture.workspaceId);
+      await fixture.cleaner.cleanOrphanMessagesAndThreads(
+        fixture.workspaceId,
+        channelCleanupOperation(),
+      );
       expect(await protectedSnapshot(seed)).toEqual(before);
       expect(fixture.eventEmitter).not.toHaveBeenCalled();
     },
@@ -166,7 +169,10 @@ describe('native cleanup preserves independently owned omni records', () => {
         messageChannelId: seed.channelId,
         auditOperation: channelCleanupOperation(),
       });
-      await fixture.cleaner.cleanOrphanMessagesAndThreads(fixture.workspaceId);
+      await fixture.cleaner.cleanOrphanMessagesAndThreads(
+        fixture.workspaceId,
+        channelCleanupOperation(),
+      );
       await noEmail(seed);
       expect(await protectedSnapshot(seed)).toEqual(before);
     },
@@ -204,7 +210,10 @@ describe('native cleanup preserves independently owned omni records', () => {
         [seed.omni.messageId, seed.email.messageId],
       );
       const before = await protectedSnapshot(seed);
-      await fixture.cleaner.cleanOrphanMessagesAndThreads(fixture.workspaceId);
+      await fixture.cleaner.cleanOrphanMessagesAndThreads(
+        fixture.workspaceId,
+        channelCleanupOperation(),
+      );
       await noEmail(seed);
       expect(await protectedSnapshot(seed)).toEqual(before);
     },
@@ -217,7 +226,10 @@ describe('native cleanup preserves independently owned omni records', () => {
       [seed.omni.messageId, seed.email.messageId],
     );
     const before = await protectedSnapshot(seed);
-    await fixture.cleaner.cleanOrphanMessagesAndThreads(fixture.workspaceId);
+    await fixture.cleaner.cleanOrphanMessagesAndThreads(
+      fixture.workspaceId,
+      channelCleanupOperation(),
+    );
     expect(await protectedSnapshot(seed)).toEqual(before);
     expect(
       (await fixture.read('messageThread')).map(
@@ -310,7 +322,10 @@ describe('native cleanup preserves independently owned omni records', () => {
           seed.protectedMessageIds.includes(row.messageId),
       ),
     ).toBe(true);
-    await fixture.cleaner.cleanOrphanMessagesAndThreads(fixture.workspaceId);
+    await fixture.cleaner.cleanOrphanMessagesAndThreads(
+      fixture.workspaceId,
+      channelCleanupOperation(),
+    );
     await noEmail(seed);
   });
 
@@ -408,7 +423,10 @@ describe('native cleanup preserves independently owned omni records', () => {
                 },
               )
             : entry === 'orphan'
-              ? fixture.cleaner.cleanOrphanMessagesAndThreads(workspaceId)
+              ? fixture.cleaner.cleanOrphanMessagesAndThreads(
+                  workspaceId,
+                  channelCleanupOperation(workspaceId),
+                )
               : entry === 'folder'
                 ? folder(seed, workspaceId)
                 : blocklist(seed, workspaceId);

@@ -1,0 +1,23 @@
+{
+  "baseCommit": "c26f31576825bd242d5c8f1cb964d2c9005cb349",
+  "lfSha256": {
+    "packages/twenty-server/src/database/commands/command-runners/workspace-iterator.service.ts": "65f1c6c14ca1ab5e64ba41c86fd11ba332a5cd47f6459a8045d424d3d9752ce8",
+    "packages/twenty-server/src/database/commands/command-runners/workspace.command-runner.ts": "84ae2b1b447797067531a7ee845770df49f3e7cff78b2489c72b68193509e8f9",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-empty-native-message-threads-with-audit.ts": "72b6efef892406ad088bd33c320fd02134dd5c0993f25deb94c05e4412c5029f",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-orphan-native-messages-with-audit.ts": "8728b4d0e3331b9d85d367a88e69f8b984507fa1add948c40db4d7096539272e",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/reconcile-native-message-thread-targets-with-audit.ts": "1b9e0ad78029f7048637426593ee4820f22bc1cede8cfd87264702b078f095ad",
+    "packages/twenty-server/src/modules/messaging/blocklist-manager/jobs/messaging-blocklist-item-delete-messages.job.ts": "6e94163904acb5fb3a997ea08f3289b2019002b626e1212c283e801a4a2132db",
+    "packages/twenty-server/src/modules/messaging/message-cleaner/commands/messaging-message-clearner-remove-orphans.command.ts": "6bdd3c384f99e5f93820508ceee1559523be2ac8b34ac1fedc46e80d07d45ad8",
+    "packages/twenty-server/src/modules/messaging/message-cleaner/commands/messaging-reset-channel.command.ts": "957827c174bfcc1b4fa0e24ceac6e2aaabf9eb7f8846c3f005d44bfd23d3bc03",
+    "packages/twenty-server/src/modules/messaging/message-cleaner/jobs/messaging-connected-account-deletion-cleanup.job.ts": "8dd2ba0c6af6ad4a1e5a8612f74a62db01effe7fdd3e8b0f44ed4953281f1f96",
+    "packages/twenty-server/src/modules/messaging/message-cleaner/jobs/messaging-message-channel-deletion-cleanup.job.ts": "669360281dde1da0084e12e4d94f16ba57104bd3da93f3588d0c73a42ce4c076",
+    "packages/twenty-server/src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service.ts": "6dd7b8f4f4bbcead0118742f7402cf65c8c5bf355c182caf2bdabaa0ada5b5ae",
+    "packages/twenty-server/test/fork-migration/crm-audit-message-channel-cleanup-job.spec.ts": "de0ec5137dd344d21b60ea17ed141eeb7d16f9a294eea0eab34c8ba34ecb9b8b",
+    "packages/twenty-server/test/fork-migration/omni-native-cleanup.postgres-spec.ts": "9efd6a4b5a06bed1366257d76ca53166150ae26dfddd1a4f7f50b84a85de9aad",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/clean-orphan-native-messages-and-threads-with-audit.ts": "b6a84b53a027b8e8b3e91a5d83d7adaa2152c0dee1c5b0535dd35149bbb23a52",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts": "cee068cc0c89b519902f8a0a9fd0c7d98c48e2b7eeb5584a0518617f5c7ea4fa",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-whole-sweep.postgres-spec.ts": "062f0e639e1be422c3490ce1420cc86aecc1547981fd52fba8045f44d04bd27e",
+    "packages/twenty-server/test/fork-migration/crm-audit-orphan-sweep-entrypoints.spec.ts": "85d70a35a65e5fb7362a68c5a97a8b5baa2ff7309767188724a61edbe7e4bc19"
+  },
+  "uploadedSourceHashesVerified": true
+}

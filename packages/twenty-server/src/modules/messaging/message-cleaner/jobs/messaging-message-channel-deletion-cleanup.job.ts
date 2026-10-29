@@ -32,13 +32,12 @@ export class MessagingMessageChannelDeletionCleanupJob {
     data: MessagingMessageChannelDeletionCleanupJobData,
   ): Promise<void> {
     const { workspaceId, messageChannelId } = data;
-    const auditOperation = membershipCleanupOperation(
+    const identity = systemMembershipCleanupIdentity(
       workspaceId,
-      systemMembershipCleanupIdentity(
-        workspaceId,
-        MessagingMessageChannelDeletionCleanupJob.name,
-      ),
-    )!;
+      MessagingMessageChannelDeletionCleanupJob.name,
+    );
+    const auditOperation = membershipCleanupOperation(workspaceId, identity)!;
+    const sweepOperation = membershipCleanupOperation(workspaceId, identity)!;
     this.logger.debug(
       `WorkspaceId: ${workspaceId} Cleaning up message channel message associations for channel ${messageChannelId}`,
     );
@@ -51,6 +50,9 @@ export class MessagingMessageChannelDeletionCleanupJob {
       },
     );
 
-    await this.messageCleanerService.cleanOrphanMessagesAndThreads(workspaceId);
+    await this.messageCleanerService.cleanOrphanMessagesAndThreads(
+      workspaceId,
+      sweepOperation,
+    );
   }
 }

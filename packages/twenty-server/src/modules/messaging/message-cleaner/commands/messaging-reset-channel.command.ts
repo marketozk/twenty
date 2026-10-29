@@ -1,3 +1,7 @@
+import {
+  membershipCleanupOperation,
+  systemMembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -39,6 +43,10 @@ export class MessagingResetChannelCommand extends CommandRunner {
     options: MessagingResetChannelCommandOptions,
   ): Promise<void> {
     const { workspaceId, messageChannelId } = options;
+    const identity = systemMembershipCleanupIdentity(
+      workspaceId,
+      MessagingResetChannelCommand.name,
+    );
 
     const authContext = buildSystemAuthContext(workspaceId);
 
@@ -74,6 +82,7 @@ export class MessagingResetChannelCommand extends CommandRunner {
           );
           await this.messagingMessageCleanerService.cleanOrphanMessagesAndThreads(
             workspaceId,
+            membershipCleanupOperation(workspaceId, identity)!,
           );
         }
 

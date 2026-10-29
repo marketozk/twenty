@@ -28,7 +28,7 @@ query service/resolvers; front `src/modules/crm-audit/{pages/,components/,hooks/
 
 ## 2a. Сбор и достоверность
 
-Точные стыки — [integration-map](../implementation/integration-map.md) и [source audit](../implementation/transactions-audit-source.md). Audit entity в `crm_audit`; workspace writes должны использовать тот же pg executor через scope.executeRawQuery. Адаптер к workspace scope уже реализован в LOG028 и используется omni writers; автоматическое native покрытие частично реализовано; точный остаток — в таблице приёмки ниже. Metadata/roles — QueryRunner migration runner до commit; session create/revoke — core transaction owner. FilesFieldSync для covered native CREATE/UPDATE использует тот же executor (LOG092/096); это не покрывает последующее физическое удаление файлов. Не использовать afterCommit/EventEmitter как долговечный writer.
+Точные стыки — [integration-map](../implementation/integration-map.md) и [source audit](../implementation/transactions-audit-source.md). Audit entity в `crm_audit`; workspace writes должны использовать тот же pg executor через scope.executeRawQuery. Адаптер к workspace scope уже реализован в LOG028 и используется omni writers; автоматическое native покрытие частично реализовано; точный остаток — в [единственной таблице приёмки](../implementation/rob765-progress.md). Metadata/roles — QueryRunner migration runner до commit; session create/revoke — core transaction owner. FilesFieldSync для covered native CREATE/UPDATE использует тот же executor (LOG092/096); это не покрывает последующее физическое удаление файлов. Не использовать afterCommit/EventEmitter как долговечный writer.
 
 - Writer принимает server-derived actor/context и transaction scope. Успешные mutations пишут audit в том же commit; при невозможности аудита критичная операция не подтверждается.
 - Для session/core/metadata операций отдельно использовать их transaction owner; интерфейс writer не должен обещать атомарность через две connections. Отказ фиксировать после rollback, не терять событие вместе с отменённой mutation.
@@ -56,82 +56,13 @@ LOG087 adds bounded parent delete audit and retained current-administrative dele
 
 ## Актуальное покрытие и оставшиеся критерии
 
-ROB765 остаётся In Progress. Единственная текущая таблица приёмки —
-[rob765-progress](../implementation/rob765-progress.md). История результатов и
-ограничений каждого среза сохранена в [DEVLOG](../DEVLOG.md), а не дублируется здесь.
+ROB765 остаётся In Progress. Подтверждённые участки и остаток перечислены только
+в [rob765-progress](../implementation/rob765-progress.md).
+Последние результаты и текущий шаг — в [STATUS](../STATUS.md);
+история реализации, проверок и публикаций — в [DEVLOG](../DEVLOG.md).
 
-| Реализованный участок | Доказательства |
-|---|---|
-| Native owner, actor, snapshots, precision, rollback/unknown и operation reuse | [LOG089](../implementation/log089/README.md) |
-| Индекс операций, migration10 и populated upgrade/replay/down | [LOG090](../implementation/log090/README.md) |
-| Standard updates, FILES same-executor и public input parity | [LOG091](../implementation/log091/README.md), [LOG092](../implementation/log092/README.md), [LOG093](../implementation/log093/README.md) |
-| Public UPDATE, native CREATE/FILES и local custom metadata | [LOG094](../implementation/log094/README.md), [LOG095](../implementation/log095/README.md), [LOG096](../implementation/log096/README.md), [LOG097](../implementation/log097/README.md) |
-| Soft-delete/restore | [LOG098](../implementation/log098/README.md) |
-| Workspace user-session CREATE и revoke/cache check | [LOG099](../implementation/log099/README.md), [LOG100](../implementation/log100/README.md) |
-| Public CREATE/upsert, custom UPDATE/lifecycle, bounded nested CREATE | [LOG101](../implementation/log101/README.md), [LOG102](../implementation/log102/README.md), [LOG103](../implementation/log103/README.md), [LOG104](../implementation/log104/README.md) |
-| Internal hard-delete и direct covered SET_NULL; retained guards, actual effects | [LOG105](../implementation/log105/README.md), [LOG106](../implementation/log106/README.md) |
-| Guard неаудированных ON UPDATE effects: composite keys, timestamps, BEFORE triggers | [LOG107](../implementation/log107/README.md) |
-| Direct covered ON DELETE CASCADE с retained child guards и actual-effects audit | [LOG108](../implementation/log108/README.md) |
-| Refresh signOut: immediate security revoke, auth fence и security-first audit | [LOG109](../implementation/log109/README.md) |
-| Workspace refresh issuance/rotation: strict owner, actual snapshots, common operation | [LOG110](../implementation/log110/README.md) |
-| Public/AI role CREATE/UPDATE: metadata owner, actual snapshots, conservative cache invalidation | [LOG111](../implementation/log111/README.md), [LOG112](../implementation/log112/README.md) |
-| Public member role assignment, serialized demotions, fresh application tenant checks | [LOG113](../implementation/log113/README.md) |
-| Core membership cleanup: shared fence, atomic deletion, durable workflow-share recovery prerequisite | [LOG114](../implementation/log114/README.md) |
-| Explicit-operation membership audit primitive: fixed FK effects, recursive navigation, security-first savepoint | [LOG115](../implementation/log115/README.md) |
-| Fresh active membership check for JWT/cookie and delegated application despite stale caches | [LOG116](../implementation/log116/README.md) |
-| Trusted API/job membership attribution, exact retained targets and locked user-rebind check | [LOG117](../implementation/log117/README.md) |
-| Core user deactivation: strict owner, actual snapshots, security-first audit and cache-finally | [LOG118](../implementation/log118/README.md) |
-| Membership creation: active-user transaction fence and locale update without resurrection | [LOG119](../implementation/log119/README.md) |
-| Active core user email/admin updates, fresh last-admin lock and no stale full saves | [LOG120](../implementation/log120/README.md) |
-| Private native member deletion and transitive FK effects, security-first audit | [LOG121](../implementation/log121/README.md) |
-| Connected-account ownership transfer and channel audit, exact snapshots, fresh memberships | [LOG122](../implementation/log122/README.md) |
-| Account disconnection, fresh administration after provider work, safe authentication failure diff | [LOG123](../implementation/log123/README.md) |
-
-Открыто: остальные native/system writers и FK effects, real share writes, public
-DESTROY/MERGE, остальные metadata/role mutations, общий denied/failed audit после rollback и health/alert.
-LOG109 покрывает signOut предъявленного refresh token; LOG110 — workspace выпуск/rotation. Family revoke,
-stateless application JWT и concurrent-sign-in fencing ещё не объявлены покрытыми.
-Просмотр/экспорт — ROB767 после ROB766; AI/workflow/connector добавляют свои события
-в ROB768/769. Полный HTTP/JWT и сборка/выкат изменений после LOG088 не выполнялись.
-
-Последние проверки: 1616 tests/51 suites PASS (240.383s); 98 targeted/3 suites PASS (11.495s), 15 новых cases. 18 upstream driver tests PASS с штатными clearMocks/fakeTimers. 26 guards PASS; 10 migration checksums неизменны. Types 372/375 roots, 212/211 прежних диагностик, 0 новых/changed-file. 10 local/remote source hashes совпадают.
-Full-server typecheck не чистый. [Проверки LOG126](../implementation/log126/results.json).
-
-Следующий шаг — closed connected-account deletion audit owner;
-[граница](../implementation/log126/next-boundary.md).
-LOG117 подключает известные API/jobs к core membership audit. LOG121 покрывает private native
-member deletion; LOG122/123 — connected-account transfer/disconnect. Real shares, весь public removal,
-in-flight fence и полный HTTP отзыв ещё не приняты.
-LOG118 аудирует core account deactivation; LOG119 связывает с ней production membership
-INSERT через user lock и active check. LOG120 заменяет три
-найденных старых coreUser saves на narrow active updates. LOG121 добавляет native deletion
-owner; LOG122/123 — transfer/disconnect account/channels. Остальные metadata writers и общая
-свежесть полномочий request.user остаются отдельными.
-
-Демо остаётся прежним. При будущем выкате migration10 writers останавливаются на
-время построения индекса. GitHub Actions не используется.
-
-LOG124 добавляет immutable attribution context после server authentication и переносит identity через install/upgrade/uninstall queue. Параллельные запросы изолированы, impersonator и initiator сохранены, legacy job не заимствует ambient actor. Это attribution, не проверка полномочий. OAuth/system wrappers добавлены в LOG125; account delete ещё впереди.
-Upstream middleware: 10 tests PASS; четыре application suites имеют одинаковый ESM load failure на baseline/current. С явными адаптерами несвязанных DI-зависимостей: 20 tests/5 suites PASS. Full HTTP и выкат не выполнены.
-
-LOG125 фиксирует OAuth user/impersonator в одноразовом коде и проверяет membership до auto-install; packaged install больше не маскируется bare fallback. Preinstalled/backfill/CLI/automatic upgrade имеют явный system source. Оба unknown transaction outcome типа проходят через install/upgrade без compensation и telemetry replacement.
-LOG126 добавляет queue no-retry для recognized unknown/confirmed-commit failures. Crash/stall/manual retry этим ещё не защищены. Legacy OAuth codes без attribution требуют повторной авторизации; срок кода 5 минут. Выката нет.
-
-LOG126 запрещает normal automatic queue retry для обоих unknown transaction errors и confirmed postcommit failure. Explorer не заменяет исходную ошибку при сбое telemetry. Install/upgrade не компенсируют confirmed committed effect. Actual Redis проверяет одну попытку, persisted failure, worker restart и ordinary retry; actual PG INSERT с падающим after-commit hook остаётся сохранённым.
-Crash до persisted failure, stalled redelivery, manual retry и новый scheduled run остаются отдельными границами. Далее — strict four-table account deletion primitive, затем callers. Выката нет.
-
-LOG127 реализует closed four-table delete owner: account/messageChannel/calendarChannel/messageFolder, actual FK inventory, retained account и folder-only guards, exact DB snapshots, actual DELETE RETURNING и readback после audit. Сбой журнала откатывает удаление; повторное удаление recreated IDs получает новую operation. Production callers пока не переключены; далее их authorization/selection boundaries и wiring.
-1657 tests/52 suites PASS (249.238s); 41 новых целевых PG cases/1 suite PASS (15.902s). 26 guard tests PASS; 10 migration checksums неизменны. Types 369/371 roots, 211/211 прежних диагностик, 0 новых/changed-file. 4 local/remote source hashes совпадают. [Проверки](../implementation/log127/results.json), [далее](../implementation/log127/next-boundary.md). Выката нет.
-
-LOG128 добавляет обязательные captured deletion boundaries для administration/emailGroup/manifest/providerScopeRepair и locked membership/provider prerequisites. Actual CLI/upgrade runners дают исторической команде одноразовый scoped source по точной registered metadata; detached work лишается source после завершения. Старый command не изменён. Account service callers ещё не переключены; финальный provider cascade guard и require-all effects входят в ближайшее wiring.
-1687 tests/53 suites PASS (257.674s); 71 targeted/2 suites PASS (19.02s), 30 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 373/376 roots, 211/211 прежних диагностик, 0 новых/changed-file. 7 local/remote source hashes совпадают. [Проверки](../implementation/log128/results.json), [далее](../implementation/log128/next-boundary.md). Выката нет.
-
-LOG129 подключает production account deletion к closed audit owner: caller/manifest/email-group/repair boundaries, сохранённый handle, fresh checks и фактические RETURNING IDs. Non-administrative deletion требует полного результата внутри транзакции; provider handler блокирует captured ID и отказывает при любых оставшихся account refs. Синхронный сбой событий после COMMIT сохраняет unsafe classification. Старый command не изменён.
-1729 tests/55 suites PASS (261.127s); 309 targeted/8 suites PASS (44.631s), 42 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 380/382 roots, 229/229 прежних диагностик, 0 новых/changed-file. 17 local/remote source hashes совпадают. [Проверки](../implementation/log129/results.json). Production callers подключены; native cleanup и durable delivery ещё открыты. [Следующая граница](../implementation/log129/next-boundary.md). ROB765 In Progress; выкат не выполнялся.
-
-
-LOG130 подключает аудит фактической очистки associations удалённого канала и их folder junctions: именованный worker actor, исходный strict/exclusive scope, active workspace, обязательный FK, exact snapshots/RETURNING и повторные проверки ownership. Сохранены soft-deleted roots и прежние after-commit события; исправлены ложные события при trigger-skipped DELETE. Общий guard учитывает прямую association.messageThreadId, в том числе при null messageId.
-1771 tests/57 suites PASS (270.446s); 162 targeted/5 suites PASS (49.856s), 42 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 379/382 roots, 225/225 прежних диагностик, 0 новых/changed-file. 9 local/remote source hashes совпадают. [Проверки](../implementation/log130/results.json). ROB765 In Progress. Последующий orphan sweep, reconciliation, calendar cleanup и durable dispatch остаются открытыми. После LOG088 выкат не выполнялся; GitHub Actions не использовался. [Далее](../implementation/log130/next-boundary.md).
-
-LOG133 добавляет внутренний owner target reconciliation с существующей manual/tombstone policy, actual INSERT/UPDATE/DELETE effects и финальной проверкой sources/targets. Устранена реальная Company/Person deadlock в гонке вставки Opportunity: Company использует FOR SHARE. Убраны новые зависимости от Enterprise-reachable barrels без расширения baseline.
-1863 tests/60 suites PASS (306.722s); 115 targeted/4 suites PASS (41.605s), 27 новых cases; 6 existing policy tests PASS (2.944s). 26 guard tests PASS; 10 migration checksums неизменны. Types 385/387 roots, 225/225 прежних диагностик, 0 новых/changed-file. 3 local/remote source hashes совпадают. [Проверки](../implementation/log133/results.json). ROB765 In Progress. Три внутренних owner готовы к подключению в общий orphan sweep; его транзакция, точки вызова и CLI ещё не приняты. Код после LOG088 не выкатывался; GitHub Actions не использовался. [Далее](../implementation/log133/next-boundary.md).
+В LOG134 подключён общий orphan sweep с единым аудитом и реальные jobs/CLI.
+Следующая работа — [адресная очистка сообщений и её точки входа](../implementation/log134/next-boundary.md).
+Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
+Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
+дополняют события в ROB768/769. GitHub Actions не используется.

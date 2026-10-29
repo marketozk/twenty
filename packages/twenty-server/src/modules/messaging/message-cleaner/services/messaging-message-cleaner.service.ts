@@ -1,3 +1,4 @@
+import { cleanOrphanNativeMessagesAndThreadsWithAudit } from 'src/engine/core-modules/crm-audit/clean-orphan-native-messages-and-threads-with-audit';
 import { lockNativeCleanupCandidates } from 'src/modules/omnichannel/services/lock-native-cleanup-candidates';
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { deleteNativeMessageChannelAssociationsWithAudit } from 'src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit';
@@ -11,7 +12,7 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import chunk from 'lodash.chunk';
 import { isDefined } from 'twenty-shared/utils';
-import { In, MoreThan } from 'typeorm';
+import { In } from 'typeorm';
 
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
 import { type WorkspaceRepository } from 'src/engine/twenty-orm/repository/workspace-repository';
@@ -28,8 +29,6 @@ import {
 type CleanupTransactionScope = Parameters<
   Parameters<WorkspaceOrmManager['runInWorkspaceTransaction']>[0]
 >[0];
-
-const ORPHAN_CLEANUP_PAGE_SIZE = 500;
 
 @Injectable()
 export class MessagingMessageCleanerService {
@@ -347,108 +346,31 @@ export class MessagingMessageCleanerService {
     );
   }
 
-  public async cleanOrphanMessagesAndThreads(workspaceId: string) {
+  public async cleanOrphanMessagesAndThreads(
+    workspaceId: string,
+    auditOperation: CrmAuditOperation,
+  ): Promise<void> {
+    if (!auditOperation || auditOperation.workspaceId !== workspaceId)
+      throw new Error('Native orphan cleanup requires scoped audit operation');
+    const operation = {
+      ...auditOperation,
+      actor: { ...auditOperation.actor },
+      ...(auditOperation.initiator
+        ? { initiator: { ...auditOperation.initiator } }
+        : {}),
+    };
     const authContext = buildSystemAuthContext(workspaceId);
-
     await this.workspaceOrmManager.executeInWorkspaceContext(
       async () => {
         await this.workspaceOrmManager.runInWorkspaceTransaction(
           async (transactionScope) => {
             this.assertWorkspaceScope(workspaceId, transactionScope);
-            const messageThreadRepository =
-              transactionScope.getRepository<MessageThreadWorkspaceEntity>(
-                'messageThread',
-                { shouldBypassPermissionChecks: true },
-              );
-            const messageRepository =
-              transactionScope.getRepository<MessageWorkspaceEntity>(
-                'message',
-                { shouldBypassPermissionChecks: true },
-              );
-            const messageChannelMessageAssociationRepository =
-              transactionScope.getRepository<MessageChannelMessageAssociationWorkspaceEntity>(
-                'messageChannelMessageAssociation',
-                { shouldBypassPermissionChecks: true },
-              );
-
-            await this.deleteOrphansByKeyset(
-              async (cursor) => {
-                const page = await messageRepository.find({
-                  where: isDefined(cursor) ? { id: MoreThan(cursor) } : {},
-                  order: { id: 'ASC' },
-                  take: ORPHAN_CLEANUP_PAGE_SIZE,
-                  select: { id: true },
-                });
-
-                return page.map(({ id }) => id);
-              },
-              async (ids) => {
-                const messagesToDelete = await messageRepository.find({
-                  where: { id: In(ids) },
-                  select: { messageThreadId: true },
-                });
-                const candidateThreadIds = [
-                  ...new Set(
-                    messagesToDelete
-                      .map(({ messageThreadId }) => messageThreadId)
-                      .filter(isDefined),
-                  ),
-                ];
-
-                await messageRepository.delete(ids);
-
-                const survivingThreadIds = await this.findReferencedThreadIds(
-                  messageRepository,
-                  candidateThreadIds,
-                );
-
-                await this.participantTargetReconciliationService.reconcileMessageThreadTargets(
-                  {
-                    messageThreadIds: survivingThreadIds,
-                    transactionScope,
-                  },
-                );
-              },
-              (pageIds) =>
-                this.filterOrphans(pageIds, async (ids) => [
-                  ...(await this.findReferencedMessageIds(
-                    messageChannelMessageAssociationRepository,
-                    ids,
-                  )),
-                  ...(await findOmniOwnedMessageIds(
-                    transactionScope,
-                    workspaceId,
-                    ids,
-                  )),
-                ]),
-            );
-
-            await this.deleteOrphansByKeyset(
-              async (cursor) => {
-                const page = await messageThreadRepository.find({
-                  where: isDefined(cursor) ? { id: MoreThan(cursor) } : {},
-                  order: { id: 'ASC' },
-                  take: ORPHAN_CLEANUP_PAGE_SIZE,
-                  select: { id: true },
-                });
-
-                return page.map(({ id }) => id);
-              },
-              (ids) => messageThreadRepository.delete(ids),
-              (pageIds) =>
-                this.filterOrphans(pageIds, async (ids) => [
-                  ...(await this.findReferencedThreadIds(
-                    messageRepository,
-                    ids,
-                  )),
-                  ...(await findOmniOwnedMessageThreadIds(
-                    transactionScope,
-                    workspaceId,
-                    ids,
-                  )),
-                ]),
-            );
+            return cleanOrphanNativeMessagesAndThreadsWithAudit({
+              scope: transactionScope,
+              operation,
+            });
           },
+          { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
         );
       },
       authContext,
@@ -511,29 +433,5 @@ export class MessagingMessageCleanerService {
     );
 
     return parentIds.filter((parentId) => !referencedParentIds.has(parentId));
-  }
-
-  private async deleteOrphansByKeyset(
-    fetchPageIds: (cursor: string | undefined) => Promise<string[]>,
-    deleteByIds: (ids: string[]) => Promise<unknown>,
-    findOrphanIds: (pageIds: string[]) => Promise<string[]>,
-  ): Promise<void> {
-    let cursor: string | undefined;
-
-    for (;;) {
-      const pageIds = await fetchPageIds(cursor);
-
-      if (pageIds.length === 0) {
-        break;
-      }
-
-      cursor = pageIds[pageIds.length - 1];
-
-      const orphanIds = await findOrphanIds(pageIds);
-
-      if (orphanIds.length > 0) {
-        await deleteByIds(orphanIds);
-      }
-    }
   }
 }

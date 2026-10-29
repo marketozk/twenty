@@ -3838,3 +3838,14 @@ LOG133 добавляет внутренний owner target reconciliation с с
 1863 tests/60 suites PASS (306.722s); 115 targeted/4 suites PASS (41.605s), 27 новых cases; 6 existing policy tests PASS (2.944s). 26 guard tests PASS; 10 migration checksums неизменны. Types 385/387 roots, 225/225 прежних диагностик, 0 новых/changed-file. 3 local/remote source hashes совпадают. [Проверки](implementation/log133/results.json). ROB765 In Progress. Три внутренних owner готовы к подключению в общий orphan sweep; его транзакция, точки вызова и CLI ещё не приняты. Код после LOG088 не выкатывался; GitHub Actions не использовался. [Далее](implementation/log133/next-boundary.md).
 
 LOG133 publication: code a035139504fc93ecbda94eaff5261eb8f7a408d6 pushed and GitHub API ref verified. Linear comment aad7a347-6f2c-4c46-8386-a74d26a5a6e0, description/comment/all 11 issue states independently read back. Continuing closed orphan sweep; ROB765 remains In Progress.
+
+## LOG134 — единая очистка переписки и точки запуска
+
+LOG134 объединяет очистку orphan messages, пересчёт связей CRM и удаление пустых threads в одной закрытой транзакции с общим аудитом. Подключены реальные jobs/CLI с server-derived identity; dry-run не меняет данные, а unsafe transaction outcome останавливает CLI без повторов и подмены исходной ошибки.
+1892 tests/62 suites PASS (321.604s); 152 targeted/7 suites PASS (60.786s), 29 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 392/396 roots, baseline 226/current 225 diagnostics, 0 новых/changed-file. 17 local/remote source hashes совпадают. [Проверки](implementation/log134/results.json). ROB765 In Progress. Адресная очистка associations, folder/provider/group/blocklist paths и calendar cleanup ещё требуют подключения аудита. Код после LOG088 не выкатывался; GitHub Actions не использовался. [Далее](implementation/log134/next-boundary.md).
+
+Пять текущих документов очищены от дублирующей хронологии и устаревших «следующих шагов».
+STATUS содержит один актуальный блок проверок, rob765-progress — единственную таблицу
+приёмки; PROJECT, план этапа и карта Linear ссылаются на них. Нормативные требования
+плана сохранены, история DEVLOG/LOG-каталогов не переписана. Исходные падения тестов
+и исправление literal permission type описаны в [ревью](implementation/log134/review.md).

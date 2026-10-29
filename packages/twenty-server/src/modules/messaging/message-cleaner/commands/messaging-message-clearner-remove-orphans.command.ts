@@ -1,3 +1,7 @@
+import {
+  membershipCleanupOperation,
+  systemMembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { Command } from 'nest-commander';
 
 import { ProvisionedWorkspaceCommandRunner } from 'src/database/commands/command-runners/provisioned-workspace.command-runner';
@@ -19,13 +23,19 @@ export class MessagingMessageCleanerRemoveOrphansCommand extends ProvisionedWork
 
   override async runOnWorkspace({
     workspaceId,
+    options,
   }: RunOnWorkspaceArgs): Promise<void> {
-    try {
-      await this.messagingMessageCleanerService.cleanOrphanMessagesAndThreads(
+    if (options.dryRun) return;
+    const auditOperation = membershipCleanupOperation(
+      workspaceId,
+      systemMembershipCleanupIdentity(
         workspaceId,
-      );
-    } catch (error) {
-      this.logger.error('Error while deleting workflowRun', error);
-    }
+        MessagingMessageCleanerRemoveOrphansCommand.name,
+      ),
+    )!;
+    await this.messagingMessageCleanerService.cleanOrphanMessagesAndThreads(
+      workspaceId,
+      auditOperation,
+    );
   }
 }

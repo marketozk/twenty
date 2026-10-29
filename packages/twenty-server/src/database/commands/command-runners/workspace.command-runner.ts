@@ -1,3 +1,4 @@
+import { isTransactionUnsafeToRetry } from 'src/engine/twenty-orm/error-handling/is-transaction-outcome-unknown';
 import chalk from 'chalk';
 import { isNonEmptyArray } from 'twenty-shared/utils';
 import { CommandRunner, Option } from 'nest-commander';
@@ -149,6 +150,10 @@ export abstract class WorkspaceCommandRunner<
       }
 
       if (isNonEmptyArray(report.fail)) {
+        const unsafeFailure = report.fail.find(({ error }) =>
+          isTransactionUnsafeToRetry(error),
+        );
+        if (unsafeFailure) throw unsafeFailure.error;
         throw new Error(
           `Command failed for ${report.fail.length} workspace(s). See the workspace errors above.`,
         );
@@ -158,7 +163,11 @@ export abstract class WorkspaceCommandRunner<
         this.logger.log(chalk.blue('Command completed!'));
       }
     } catch (error) {
-      this.logger.error(chalk.red(`Command failed`));
+      try {
+        this.logger.error(chalk.red(`Command failed`));
+      } catch (reportError) {
+        if (!isTransactionUnsafeToRetry(error)) throw reportError;
+      }
       throw error;
     }
   }

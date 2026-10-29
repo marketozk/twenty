@@ -1,0 +1,20 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/database/commands/command-runners/workspace-iterator.service.ts 224ms (unchanged)
+../../../source/packages/twenty-server/src/database/commands/command-runners/workspace.command-runner.ts 62ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/delete-empty-native-message-threads-with-audit.ts 2ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/delete-orphan-native-messages-with-audit.ts 1ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/reconcile-native-message-thread-targets-with-audit.ts 1ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/blocklist-manager/jobs/messaging-blocklist-item-delete-messages.job.ts 63ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-cleaner/commands/messaging-message-clearner-remove-orphans.command.ts 5ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-cleaner/commands/messaging-reset-channel.command.ts 8ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-cleaner/jobs/messaging-connected-account-deletion-cleanup.job.ts 3ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-cleaner/jobs/messaging-message-channel-deletion-cleanup.job.ts 4ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service.ts 67ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-channel-cleanup-job.spec.ts 22ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/omni-native-cleanup.postgres-spec.ts 100ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/clean-orphan-native-messages-and-threads-with-audit.ts 2ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts 314ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-whole-sweep.postgres-spec.ts 189ms
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-orphan-sweep-entrypoints.spec.ts 31ms (unchanged)
+
+{"formattedFiles": 17, "singleSshSession": true}

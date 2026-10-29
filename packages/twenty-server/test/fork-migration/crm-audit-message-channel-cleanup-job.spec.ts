@@ -58,7 +58,16 @@ it('captures scope and creates a worker identity before awaiting association cle
   expect(input.auditOperation.initiator).toBeUndefined();
   expect(isUUID(input.auditOperation.operationId)).toBe(true);
   expect(isUUID(input.auditOperation.correlationId)).toBe(true);
-  expect(f.orphan).toHaveBeenCalledWith(workspaceId);
+  expect(f.orphan).toHaveBeenCalledWith(
+    workspaceId,
+    expect.objectContaining({
+      workspaceId,
+      actor: {
+        kind: 'system',
+        id: 'MessagingMessageChannelDeletionCleanupJob',
+      },
+    }),
+  );
   expect(f.cleanup.mock.invocationCallOrder[0]).toBeLessThan(
     f.orphan.mock.invocationCallOrder[0],
   );

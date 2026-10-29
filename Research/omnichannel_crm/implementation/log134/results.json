@@ -1,0 +1,32 @@
+{
+  "status": "pass-scoped-not-phase-complete",
+  "issue": "ROB-765",
+  "newCases": 29,
+  "targetedTests": 152,
+  "targetedSuites": 7,
+  "targetedSeconds": 60.786,
+  "regressionTests": 1892,
+  "regressionSuites": 62,
+  "regressionSeconds": 321.604,
+  "guardUnitTests": 26,
+  "unchangedMigrations": 10,
+  "typecheck": {
+    "baselineRoots": 392,
+    "currentRoots": 396,
+    "baselineDiagnostics": 226,
+    "currentDiagnostics": 225,
+    "newDiagnostics": 0,
+    "changedFileDiagnostics": 0,
+    "fullServerTypecheck": false
+  },
+  "uploadedSourceHashesVerified": 17,
+  "orphanSweepAudited": true,
+  "actualJobAndCliEntrypointsVerified": true,
+  "dryRunVerified": true,
+  "unsafeOutcomePreserved": true,
+  "targetedCleanupAudited": false,
+  "fullHttpAcceptance": false,
+  "productionDeployment": false,
+  "enterpriseBaselineChanged": false,
+  "githubActionsUsed": false
+}
