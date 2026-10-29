@@ -3699,3 +3699,7 @@ membership revoke, отсутствие OAuth retry при lost COMMIT и оба
 ROB765 In Progress. External hooks/revoke не атомарны с БД; весь public removal,
 shares/files, account disconnect/delete и полный HTTP не приняты. Выката нет.
 Далее [account disconnection audit](implementation/log122/next-boundary.md).
+
+LOG122 publication: d5e690efe4c54fe6bc79dba3aa5a9dc905417d36 pushed/API verified.
+ROB765 description/comment a156aae4-74e7-412f-b081-5f4f29991063 independently read back;
+all 11 issue states match. Implementation continues with account disconnection.
