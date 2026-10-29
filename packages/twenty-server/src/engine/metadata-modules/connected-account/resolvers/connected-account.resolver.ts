@@ -1,5 +1,6 @@
 import { UseGuards, UseInterceptors, UseFilters } from '@nestjs/common';
-import { Args, Mutation, Query } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query } from '@nestjs/graphql';
+import { type MembershipCleanupAuthentication } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 
 import { PermissionFlagType } from 'twenty-shared/constants';
 
@@ -123,19 +124,45 @@ export class ConnectedAccountResolver {
     @Args('id', { type: () => UUIDScalarType }) id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
     @AuthUserWorkspaceId() userWorkspaceId: string,
+    @Context()
+    context: {
+      req: Pick<
+        MembershipCleanupAuthentication,
+        'user' | 'apiKey' | 'application'
+      > & {
+        impersonationContext?: Pick<
+          MembershipCleanupAuthentication,
+          'impersonatorUserWorkspaceId'
+        >;
+      };
+    },
     @AuthApplication({ allowUndefined: true }) application?: FlatApplication,
   ): Promise<ConnectedAccountPublicDTO> {
+    const workspaceId = workspace.id;
+    const caller = { userWorkspaceId, applicationId: application?.id };
+    const auditOperation =
+      await this.connectedAccountMetadataService.captureDisconnectionAuditOperation(
+        {
+          workspaceId,
+          user: context.req.user,
+          apiKey: context.req.apiKey,
+          application: context.req.application,
+          impersonatorUserWorkspaceId:
+            context.req.impersonationContext?.impersonatorUserWorkspaceId,
+        },
+      );
     await this.connectedAccountMetadataService.verifyAdministrableByCaller({
       id,
-      userWorkspaceId,
-      workspaceId: workspace.id,
-      applicationId: application?.id,
+      workspaceId,
+      ...caller,
       agentId: undefined,
     });
 
     const disconnected = await this.connectedAccountMetadataService.disconnect({
       id,
-      workspaceId: workspace.id,
+      workspaceId,
+      caller,
+      auditOperation,
     });
 
     return buildPublicConnectedAccount(disconnected);

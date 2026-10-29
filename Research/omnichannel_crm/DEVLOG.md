@@ -3703,3 +3703,30 @@ shares/files, account disconnect/delete и полный HTTP не приняты
 LOG122 publication: d5e690efe4c54fe6bc79dba3aa5a9dc905417d36 pushed/API verified.
 ROB765 description/comment a156aae4-74e7-412f-b081-5f4f29991063 independently read back;
 all 11 issue states match. Implementation continues with account disconnection.
+
+## LOG-123 — отключение аккаунта, fresh authorization и аудит
+
+Disconnect использует общий с transfer strict owner в отдельном закрытом режиме.
+Resolver фиксирует server-derived identity/caller до awaits; service проверяет
+administration до provider effects и повторяет её на свежем locked account после.
+Active workspace/caller membership, ordinary ownership и actual effects обязательны.
+Журнал содержит changed-field names для auth failures, но не их текст и не credentials.
+Archive date/custodian сохраняются; результат возвращается после confirmed COMMIT.
+
+1539 tests/48 suites PASS (235.622s); 151 targeted/3 suites PASS (23.958s), 17 новых cases (16 PG, 1 resolver). 26 guards PASS; 10 migration checksums неизменны. Types 364/364 roots, 189/189 прежних диагностик, 0 новых/changed-file. 7 local/remote source hashes совпадают.
+[Результаты](implementation/log123/results.json), [ревью](implementation/log123/review.md).
+В общий прогон дополнительно включён прежний metadata preflight suite: 44 случая.
+После общего прогона изменена только type-only аннотация контекста запроса;
+targeted 151 и type differential повторно прошли на конечных исходниках.
+
+Ревью выявило потерянный active-manager guard — восстановлен до внешних effects
+и проверен настоящим transaction-bound repository. Адаптирован старый unit owner;
+реальные транзакции проверены PG suite. Исправлены redaction assertion и четыре
+type diagnostics plain Express Request: используется проекция существующего audit
+authentication type. RawAuthContext import отклонён dependency guard из-за связи
+с Enterprise graph и удалён; baseline не расширялся.
+Фиксация инициатора server impersonation работает между workspace.
+
+ROB765 In Progress. Provider effects уже выполнены до DB owner и не откатываются
+вместе с ним; глобальная свежесть role cache и полный HTTP не заявлены. Выката нет.
+Далее [core account deletion](implementation/log123/next-boundary.md).

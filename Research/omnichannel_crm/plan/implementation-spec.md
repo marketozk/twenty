@@ -1008,3 +1008,14 @@ Actual effects и memberships проверяются до/после audit; jour
 material в журнал не попадает. External webhook/OAuth effects не атомарны с БД.
 [Далее](../implementation/log122/next-boundary.md) — account disconnection audit;
 остальные writers, shares/files и full HTTP остаются открытыми.
+
+LOG123 подключает disconnect к тому же strict owner в отдельном закрытом режиме.
+Caller и server-derived audit identity фиксируются до awaits; свежий locked account
+повторно проходит существующую administration policy после provider work.
+Workspace и caller membership должны быть active под lock. Active caller-runner
+отклоняется до внешних effects. Auth failures очищаются и отмечаются в redacted diff;
+archive date и custodian сохраняются. Exact snapshots и audit savepoint проверяют
+actual effects; unknown COMMIT не вызывает автоматический повтор provider effects.
+Delegated application и cross-workspace impersonator сохраняют правильного инициатора.
+Это не global role-cache freshness и не атомарный rollback уже выполненных HTTP вызовов.
+[Далее](../implementation/log123/next-boundary.md) — account delete и core FK graph.

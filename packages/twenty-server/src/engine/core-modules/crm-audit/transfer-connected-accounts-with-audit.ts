@@ -18,10 +18,15 @@ const tables: Table[] = [
   'calendarChannel',
 ];
 const quote = (name: string) => '"' + name.replaceAll('"', '""') + '"';
-const changedColumns = (table: Table) =>
+type Boundary =
+  | { kind: 'transfer'; fromUserWorkspaceId: string; toUserWorkspaceId: string }
+  | { kind: 'disconnect'; userWorkspaceId: string };
+const changedColumns = (table: Table, boundary: Boundary) =>
   table === 'connectedAccount'
     ? [
-        'userWorkspaceId',
+        ...(boundary.kind === 'transfer'
+          ? ['userWorkspaceId']
+          : ['authFailedAt', 'authFailedReason']),
         'accessToken',
         'refreshToken',
         'connectionParameters',
@@ -30,34 +35,59 @@ const changedColumns = (table: Table) =>
       ]
     : ['isSyncEnabled', 'webhookSubscriptionStatus', 'updatedAt'];
 
-export const transferConnectedAccountsWithAudit = async ({
+type Options<T> = {
+  dataSource: DataSource;
+  workspaceId: string;
+  accountIds: readonly string[];
+  operation: CrmAuditOperation | undefined;
+  mutate: (runner: QueryRunner) => Promise<T>;
+};
+
+export const transferConnectedAccountsWithAudit = (
+  options: Options<void> & {
+    fromUserWorkspaceId: string;
+    toUserWorkspaceId: string;
+  },
+): Promise<void> =>
+  mutateConnectedAccountsWithAudit({
+    ...options,
+    boundary: {
+      kind: 'transfer',
+      fromUserWorkspaceId: options.fromUserWorkspaceId,
+      toUserWorkspaceId: options.toUserWorkspaceId,
+    },
+  });
+
+export const disconnectConnectedAccountWithAudit = <T>(
+  options: Options<T> & { userWorkspaceId: string },
+): Promise<T> =>
+  mutateConnectedAccountsWithAudit({
+    ...options,
+    boundary: { kind: 'disconnect', userWorkspaceId: options.userWorkspaceId },
+  });
+
+const mutateConnectedAccountsWithAudit = async <T>({
   dataSource,
   workspaceId,
-  fromUserWorkspaceId,
-  toUserWorkspaceId,
+  boundary,
   accountIds,
   operation,
   mutate,
-}: {
-  dataSource: DataSource;
-  workspaceId: string;
-  fromUserWorkspaceId: string;
-  toUserWorkspaceId: string;
-  accountIds: readonly string[];
-  operation: CrmAuditOperation | undefined;
-  mutate: (runner: QueryRunner) => Promise<void>;
-}): Promise<void> => {
+}: Options<T> & { boundary: Boundary }): Promise<T> => {
   const ids = [...new Set(accountIds.map((id) => id.toLowerCase()))].sort();
+  const memberIds =
+    boundary.kind === 'transfer'
+      ? [boundary.fromUserWorkspaceId, boundary.toUserWorkspaceId].map((id) =>
+          id.toLowerCase(),
+        )
+      : [boundary.userWorkspaceId.toLowerCase()];
   if (
-    ![workspaceId, fromUserWorkspaceId, toUserWorkspaceId, ...ids].every((id) =>
-      isUUID(id),
-    ) ||
-    fromUserWorkspaceId.toLowerCase() === toUserWorkspaceId.toLowerCase()
+    ![workspaceId, ...memberIds, ...ids].every((id) => isUUID(id)) ||
+    (boundary.kind === 'transfer' && memberIds[0] === memberIds[1]) ||
+    (boundary.kind === 'disconnect' && ids.length !== 1)
   )
     throw new Error('Connected account transfer identity invalid');
   workspaceId = workspaceId.toLowerCase();
-  fromUserWorkspaceId = fromUserWorkspaceId.toLowerCase();
-  toUserWorkspaceId = toUserWorkspaceId.toLowerCase();
   const captured = operation
     ? {
         ...operation,
@@ -70,8 +100,9 @@ export const transferConnectedAccountsWithAudit = async ({
     : undefined;
   if (captured && captured.workspaceId !== workspaceId)
     throw new Error('Connected account transfer audit workspace mismatch');
-  if (!ids.length) return;
-  await runInCoreAuditTransaction(dataSource, async (runner) => {
+  // Transfer can discover no accounts; there is no mutation result in that mode.
+  if (!ids.length) return undefined as T;
+  return runInCoreAuditTransaction(dataSource, async (runner) => {
     const rawSnapshots = new WeakMap<Row, string>();
     const stableSnapshots = new WeakMap<Row, string>();
     const decode = ({
@@ -106,14 +137,14 @@ export const transferConnectedAccountsWithAudit = async ({
         await runner.query(
           'SELECT to_jsonb(member)::text AS snapshot FROM core."userWorkspace" member WHERE id=ANY($1::uuid[]) ORDER BY id' +
             (lock ? ' FOR SHARE' : ''),
-          [[fromUserWorkspaceId, toUserWorkspaceId]],
+          [memberIds],
         )
       ).map(decode);
     const members = await readMembers(true);
     if (
       !workspace ||
       workspace.deletedAt !== null ||
-      members.length !== 2 ||
+      members.length !== memberIds.length ||
       members.some(
         (row) => row.workspaceId !== workspaceId || row.deletedAt !== null,
       )
@@ -132,7 +163,7 @@ export const transferConnectedAccountsWithAudit = async ({
             quote(column) +
             '=ANY($1::uuid[]) ORDER BY id' +
             (lock ? ' FOR UPDATE' : ''),
-          [ids, changedColumns(table)],
+          [ids, changedColumns(table, boundary)],
         )
       ).map(decode);
     };
@@ -144,7 +175,8 @@ export const transferConnectedAccountsWithAudit = async ({
       if (
         table === 'connectedAccount' &&
         (rows.length !== ids.length ||
-          rows.some((row) => row.userWorkspaceId !== fromUserWorkspaceId))
+          (boundary.kind === 'transfer' &&
+            rows.some((row) => row.userWorkspaceId !== memberIds[0])))
       )
         throw new Error('CONNECTED_ACCOUNT_CUSTODIAN_CHANGED_RETRY');
       if (
@@ -153,7 +185,7 @@ export const transferConnectedAccountsWithAudit = async ({
           'core',
           table,
           rows.map((row) => row.id),
-          new Set(changedColumns(table)),
+          new Set(changedColumns(table, boundary)),
         )
       )
         throw new Error(
@@ -161,7 +193,7 @@ export const transferConnectedAccountsWithAudit = async ({
         );
       before.set(table, rows);
     }
-    await mutate(runner);
+    const result = await mutate(runner);
     const after = new Map<Table, Row[]>();
     for (const table of tables) {
       const rows = await read(table),
@@ -175,7 +207,9 @@ export const transferConnectedAccountsWithAudit = async ({
           table === 'connectedAccount'
             ? {
                 ...old,
-                userWorkspaceId: toUserWorkspaceId,
+                ...(boundary.kind === 'transfer'
+                  ? { userWorkspaceId: memberIds[1] }
+                  : { authFailedAt: null, authFailedReason: null }),
                 accessToken: null,
                 refreshToken: null,
                 connectionParameters: null,
@@ -227,6 +261,12 @@ export const transferConnectedAccountsWithAudit = async ({
             hasAccessToken: row.accessToken !== null,
             hasRefreshToken: row.refreshToken !== null,
             hasConnectionParameters: row.connectionParameters !== null,
+            ...(boundary.kind === 'disconnect'
+              ? {
+                  authFailedAt: row.authFailedAt,
+                  authFailedReason: row.authFailedReason,
+                }
+              : {}),
           }
         : {
             connectedAccountId: row.connectedAccountId,
@@ -273,7 +313,10 @@ export const transferConnectedAccountsWithAudit = async ({
     await verify();
     if (unavailable)
       new Logger('ConnectedAccountTransfer').error(
-        'CONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE',
+        boundary.kind === 'transfer'
+          ? 'CONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE'
+          : 'CONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE',
       );
+    return result;
   });
 };

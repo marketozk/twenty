@@ -1,0 +1,10 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts 321ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/transfer-connected-accounts-with-audit.ts 116ms (unchanged)
+../../../source/packages/twenty-server/src/engine/metadata-modules/connected-account/connected-account-metadata.service.ts 187ms (unchanged)
+../../../source/packages/twenty-server/src/engine/metadata-modules/connected-account/resolvers/connected-account.resolver.ts 19ms
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-entrypoints.spec.ts 100ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/omni-metadata-mutation-guard.spec.ts 141ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/omni-metadata-transaction.postgres-spec.ts 259ms (unchanged)
+
+{"formattedFiles": 7, "singleSshSession": true}

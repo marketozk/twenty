@@ -21,6 +21,35 @@ import {
 // Real entrypoint and orchestration methods; unrelated DI and decorators are adapters.
 const adapters: [string, string[]][] = [
   [
+    'src/engine/core-modules/application/application-exception-filter',
+    ['ApplicationExceptionFilter'],
+  ],
+  [
+    'src/engine/decorators/auth/application-target-arg.decorator',
+    ['ApplicationTargetArg'],
+  ],
+  ['src/engine/guards/application-target.guard', ['ApplicationTargetGuard']],
+  [
+    'src/engine/metadata-modules/connected-account/connected-account-metadata.service',
+    ['ConnectedAccountMetadataService'],
+  ],
+  [
+    'src/engine/metadata-modules/connected-account/dtos/connected-account.dto',
+    ['ConnectedAccountDTO'],
+  ],
+  [
+    'src/engine/metadata-modules/connected-account/dtos/connected-account-public.dto',
+    ['ConnectedAccountPublicDTO'],
+  ],
+  [
+    'src/engine/metadata-modules/connected-account/dtos/application-connected-account.dto',
+    ['ApplicationConnectedAccountDTO'],
+  ],
+  [
+    'src/engine/metadata-modules/connected-account/interceptors/connected-account-graphql-api-exception.interceptor',
+    ['ConnectedAccountGraphqlApiExceptionInterceptor'],
+  ],
+  [
     'src/engine/core-modules/twenty-config/interfaces/support.interface',
     ['SupportDriver'],
   ],
@@ -378,6 +407,75 @@ const { WorkspaceResolver } =
   require('src/engine/core-modules/workspace/workspace.resolver') as typeof import('src/engine/core-modules/workspace/workspace.resolver');
 const { WorkspaceMemberDeleteOnePostQueryHook } =
   require('src/modules/workspace-member/query-hooks/workspace-member-delete-one.post-query.hook') as typeof import('src/modules/workspace-member/query-hooks/workspace-member-delete-one.post-query.hook');
+const { ConnectedAccountResolver } =
+  require('src/engine/metadata-modules/connected-account/resolvers/connected-account.resolver') as typeof import('src/engine/metadata-modules/connected-account/resolvers/connected-account.resolver');
+
+it('account disconnect resolver captures server identity and caller before the first await', async () => {
+  const workspaceId = randomUUID(),
+    userId = randomUUID(),
+    memberId = randomUUID(),
+    applicationId = randomUUID(),
+    id = randomUUID();
+  const workspace = { id: workspaceId },
+    application = { id: applicationId },
+    request = {
+      user: { id: userId },
+      application: { id: applicationId },
+      body: { actor: { kind: 'system', id: 'spoof' } },
+    };
+  let release!: () => void;
+  const pause = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const operation = {
+    workspaceId,
+    operationId: randomUUID(),
+    correlationId: randomUUID(),
+    actor: { kind: 'application', id: applicationId },
+    initiator: { kind: 'coreUser', id: userId },
+  };
+  const capture = jest.fn(async (authentication) => {
+    const identity = await captureMembershipCleanupIdentity(
+      authentication,
+      async () => undefined,
+    );
+    await pause;
+    expect(identity.actor).toEqual(operation.actor);
+    expect(identity.initiator).toEqual(operation.initiator);
+    return operation;
+  });
+  const verify = jest.fn().mockResolvedValue(undefined),
+    disconnect = jest
+      .fn()
+      .mockResolvedValue({ id, scope: 'USER', connectionParameters: null });
+  const resolver = new ConnectedAccountResolver({
+    captureDisconnectionAuditOperation: capture,
+    verifyAdministrableByCaller: verify,
+    disconnect,
+  } as never);
+  const result = resolver.disconnectConnectedAccount(
+    id,
+    workspace as never,
+    memberId,
+    { req: request } as never,
+    application as never,
+  );
+  workspace.id = randomUUID();
+  application.id = randomUUID();
+  request.user.id = randomUUID();
+  request.application.id = randomUUID();
+  release();
+  expect(await result).toMatchObject({ id });
+  expect(disconnect).toHaveBeenCalledWith({
+    id,
+    workspaceId,
+    caller: { userWorkspaceId: memberId, applicationId },
+    auditOperation: operation,
+  });
+  expect(verify.mock.invocationCallOrder[0]).toBeLessThan(
+    disconnect.mock.invocationCallOrder[0],
+  );
+});
 
 const fixture = () => {
   const workspaceId = randomUUID(),

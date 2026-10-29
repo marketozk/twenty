@@ -85,6 +85,7 @@ ROB765 остаётся In Progress. Единственная текущая т�
 | Active core user email/admin updates, fresh last-admin lock and no stale full saves | [LOG120](../implementation/log120/README.md) |
 | Private native member deletion and transitive FK effects, security-first audit | [LOG121](../implementation/log121/README.md) |
 | Connected-account ownership transfer and channel audit, exact snapshots, fresh memberships | [LOG122](../implementation/log122/README.md) |
+| Account disconnection, fresh administration after provider work, safe authentication failure diff | [LOG123](../implementation/log123/README.md) |
 
 Открыто: остальные native/system writers и FK effects, real share writes, public
 DESTROY/MERGE, остальные metadata/role mutations, общий denied/failed audit после rollback и health/alert.
@@ -93,18 +94,18 @@ stateless application JWT и concurrent-sign-in fencing ещё не объявл
 Просмотр/экспорт — ROB767 после ROB766; AI/workflow/connector добавляют свои события
 в ROB768/769. Полный HTTP/JWT и сборка/выкат изменений после LOG088 не выполнялись.
 
-Последние проверки: 1478 tests/47 suites PASS (233.545s); 90 targeted/2 suites PASS, 17 новых cases (15 PG, 2 service/caller). 26 guards PASS; 10 migration checksums неизменны. Types 365/366 roots, 189/189 прежних диагностик, 0 новых/changed-file. 9 local/remote source hashes совпадают.
-Full-server typecheck не чистый. [Проверки LOG122](../implementation/log122/results.json).
+Последние проверки: 1539 tests/48 suites PASS (235.622s); 151 targeted/3 suites PASS (23.958s), 17 новых cases (16 PG, 1 resolver). 26 guards PASS; 10 migration checksums неизменны. Types 364/364 roots, 189/189 прежних диагностик, 0 новых/changed-file. 7 local/remote source hashes совпадают.
+Full-server typecheck не чистый. [Проверки LOG123](../implementation/log123/results.json).
 
-Следующий шаг — connected-account disconnection audit;
-[граница](../implementation/log122/next-boundary.md).
+Следующий шаг — connected-account deletion audit и actual core FK graph;
+[граница](../implementation/log123/next-boundary.md).
 LOG117 подключает известные API/jobs к core membership audit. LOG121 покрывает private native
-member deletion; LOG122 — connected-account transfer. Real shares, весь public removal,
+member deletion; LOG122/123 — connected-account transfer/disconnect. Real shares, весь public removal,
 in-flight fence и полный HTTP отзыв ещё не приняты.
 LOG118 аудирует core account deactivation; LOG119 связывает с ней production membership
 INSERT через user lock и active check. LOG120 заменяет три
 найденных старых coreUser saves на narrow active updates. LOG121 добавляет native deletion
-owner; LOG122 — transfer account/channels. Остальные metadata writers и общая
+owner; LOG122/123 — transfer/disconnect account/channels. Остальные metadata writers и общая
 свежесть полномочий request.user остаются отдельными.
 
 Демо остаётся прежним. При будущем выкате migration10 writers останавливаются на

@@ -34,7 +34,7 @@ const CATALOG: Record<
       'hasRefreshToken',
       'hasConnectionParameters',
     ],
-    redacted: ['archivedAt'],
+    redacted: ['archivedAt', 'authFailedAt', 'authFailedReason'],
   },
   messageChannel: {
     values: [

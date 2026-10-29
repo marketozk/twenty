@@ -156,6 +156,7 @@ const external = {
   message: jest.fn(),
   calendar: jest.fn(),
 };
+const accountPermission = jest.fn();
 const runtime = new DataSource({
   type: 'postgres',
   url: fixture.runtimeDatabaseUrl,
@@ -257,7 +258,7 @@ const pauseNextRunner = (matches: (sql: string) => boolean) => {
 beforeAll(async () => {
   await fixture.initialize();
   await fixture.owner.query(
-    'CREATE TABLE core."userWorkspace" (id uuid PRIMARY KEY,"workspaceId" uuid NOT NULL REFERENCES core.workspace(id),"deletedAt" timestamptz)',
+    'CREATE TABLE core."userWorkspace" (id uuid PRIMARY KEY,"workspaceId" uuid NOT NULL REFERENCES core.workspace(id),"userId" uuid,"deletedAt" timestamptz)',
   );
   await fixture.owner.query(
     'ALTER TABLE core."connectedAccount" ADD "workspaceId" uuid, ADD "archivedAt" timestamptz, ADD "applicationId" uuid, ADD "connectionProviderId" uuid, ADD provider text, ADD scope text, ADD "userWorkspaceId" uuid, ADD handle text',
@@ -302,7 +303,9 @@ beforeAll(async () => {
     runtime.getRepository(MessageChannelEntity),
     { revokeIfApp: external.revoke } as unknown as AccountDependencies[3],
     { runOnDisconnect: external.hooks } as unknown as AccountDependencies[4],
-    {} as AccountDependencies[5],
+    {
+      userHasWorkspaceSettingPermission: accountPermission,
+    } as unknown as AccountDependencies[5],
     events as unknown as AccountDependencies[6],
     {
       deleteSubscription: external.calendar,
@@ -368,6 +371,7 @@ beforeEach(async () => {
   Object.values(external).forEach((fn) =>
     fn.mockReset().mockResolvedValue(undefined),
   );
+  accountPermission.mockReset().mockResolvedValue(false);
 });
 afterEach(() => jest.restoreAllMocks());
 afterAll(async () => {
@@ -949,7 +953,12 @@ describe('account lifecycle final core transaction', () => {
     auditOperation?: CrmAuditOperation,
   ) =>
     method === 'disconnect'
-      ? accounts.disconnect({ id: accountId, workspaceId: fixture.workspaceId })
+      ? accounts.disconnect({
+          id: accountId,
+          workspaceId: fixture.workspaceId,
+          caller: { userWorkspaceId: memberId },
+          auditOperation,
+        })
       : method === 'transfer'
         ? accounts.transferOwnership({
             fromUserWorkspaceId: memberId,
@@ -986,6 +995,260 @@ describe('account lifecycle final core transaction', () => {
   });
   const readTransferAudit = () =>
     fixture.owner.query('SELECT * FROM crm_audit."crmAuditEntry"');
+  it('disconnect returns committed account and audits credential and authentication failure cleanup', async () => {
+    await setupCredentials();
+    await runtime.getRepository(ConnectedAccountEntity).update(accountId, {
+      authFailedAt: new Date(),
+      authFailedReason: 'provider-secret-diagnostic',
+    });
+    const identity = auditIdentity();
+    const result = await invoke('disconnect', identity);
+    expect(result).toMatchObject({
+      id: accountId,
+      userWorkspaceId: memberId,
+      accessToken: null,
+      refreshToken: null,
+      connectionParameters: null,
+      authFailedAt: null,
+      authFailedReason: null,
+      archivedAt: expect.any(Date),
+    });
+    const rows = await readTransferAudit();
+    expect(
+      rows.map((row: { resourceKind: string }) => row.resourceKind).sort(),
+    ).toEqual(['calendarChannel', 'connectedAccount', 'messageChannel']);
+    expect(JSON.stringify(rows)).not.toMatch(
+      /encrypted-fixture|provider-secret-diagnostic/,
+    );
+    expect(
+      rows.every(
+        (row: { correlationId: string }) =>
+          row.correlationId === identity.correlationId,
+      ),
+    ).toBe(true);
+    expect(rows[0].actor).toEqual(identity.actor);
+    const account = rows.find(
+      (row: { resourceKind: string }) =>
+        row.resourceKind === 'connectedAccount',
+    );
+    expect(account.redactedDiff.changedFields).toContain('authFailedReason');
+    expect(account.redactedDiff.values).not.toHaveProperty('authFailedReason');
+    await invoke('disconnect', identity);
+    expect(await readTransferAudit()).toHaveLength(3);
+  });
+  it.each(['custodian', 'scope', 'membership'] as const)(
+    'disconnect rejects fresh %s changes during external work',
+    async (change) => {
+      await setupCredentials();
+      await runtime.getRepository(ConnectedAccountEntity).update(accountId, {
+        provider: ConnectedAccountProvider.GOOGLE,
+        scope: change === 'scope' ? 'WORKSPACE' : 'USER',
+        userWorkspaceId: change === 'scope' ? custodianId : memberId,
+      });
+      accountPermission.mockResolvedValue(true);
+      const reached = barrier(),
+        resume = barrier();
+      external.message.mockImplementationOnce(async () => {
+        reached.release();
+        await resume.promise;
+      });
+      const pending = capture(invoke('disconnect', auditIdentity()));
+      await reached.promise;
+      try {
+        if (change === 'membership')
+          await fixture.owner.query(
+            'UPDATE core."userWorkspace" SET "deletedAt"=now() WHERE id=$1',
+            [memberId],
+          );
+        else
+          await runtime
+            .getRepository(ConnectedAccountEntity)
+            .update(
+              accountId,
+              change === 'scope'
+                ? { scope: 'USER' }
+                : { userWorkspaceId: custodianId },
+            );
+      } finally {
+        resume.release();
+      }
+      expect(await pending).toHaveProperty('error');
+      expect(
+        (
+          await runtime
+            .getRepository(ConnectedAccountEntity)
+            .findOneByOrFail({ id: accountId })
+        ).accessToken,
+      ).toBe('encrypted-fixture');
+      expect(await readTransferAudit()).toEqual([]);
+      // Already completed provider revocation is outside the DB rollback boundary.
+      expect(external.revoke).toHaveBeenCalledTimes(1);
+    },
+  );
+  it('disconnect allows current workspace administrator and preserves captured caller and identity', async () => {
+    await setupCredentials();
+    await runtime.getRepository(ConnectedAccountEntity).update(accountId, {
+      provider: ConnectedAccountProvider.GOOGLE,
+      scope: 'WORKSPACE',
+      userWorkspaceId: custodianId,
+    });
+    accountPermission.mockResolvedValue(true);
+    const identity = auditIdentity(),
+      actor = { ...identity.actor },
+      caller = { userWorkspaceId: memberId, applicationId: randomUUID() },
+      capturedCaller = { ...caller };
+    const reached = barrier(),
+      resume = barrier();
+    external.message.mockImplementationOnce(async () => {
+      reached.release();
+      await resume.promise;
+    });
+    const pending = accounts.disconnect({
+      id: accountId,
+      workspaceId: fixture.workspaceId,
+      caller,
+      auditOperation: identity,
+    });
+    await reached.promise;
+    caller.userWorkspaceId = randomUUID();
+    caller.applicationId = randomUUID();
+    identity.actor.id = randomUUID();
+    resume.release();
+    expect(await pending).toMatchObject({
+      userWorkspaceId: custodianId,
+      accessToken: null,
+    });
+    expect(accountPermission).toHaveBeenLastCalledWith(
+      expect.objectContaining(capturedCaller),
+    );
+    expect((await readTransferAudit())[0].actor).toEqual(actor);
+  });
+  it('disconnect denies a non-owner before provider effects', async () => {
+    await runtime.getRepository(ConnectedAccountEntity).update(accountId, {
+      provider: ConnectedAccountProvider.GOOGLE,
+      scope: 'USER',
+      userWorkspaceId: custodianId,
+    });
+    await expect(invoke('disconnect', auditIdentity())).rejects.toThrow(
+      'cannot be administered',
+    );
+    for (const fn of Object.values(external)) expect(fn).not.toHaveBeenCalled();
+    expect(await readTransferAudit()).toEqual([]);
+  });
+  it('disconnect refuses a transaction-bound repository before external effects', async () => {
+    await setupCredentials();
+    const runner = runtime.createQueryRunner();
+    await runner.connect();
+    await runner.startTransaction();
+    const service = Object.create(accounts) as ConnectedAccountMetadataService;
+    Object.defineProperty(service, 'repository', {
+      value: runner.manager.getRepository(ConnectedAccountEntity),
+    });
+    try {
+      await expect(
+        service.disconnect({
+          id: accountId,
+          workspaceId: fixture.workspaceId,
+          caller: { userWorkspaceId: memberId },
+          auditOperation: auditIdentity(),
+        }),
+      ).rejects.toThrow('OMNI_METADATA_REQUIRES_FRESH_TRANSACTION');
+      expect(runner.isTransactionActive).toBe(true);
+      for (const fn of Object.values(external))
+        expect(fn).not.toHaveBeenCalled();
+    } finally {
+      await runner.rollbackTransaction();
+      await runner.release();
+    }
+    expect(
+      (
+        await runtime
+          .getRepository(ConnectedAccountEntity)
+          .findOneByOrFail({ id: accountId })
+      ).accessToken,
+    ).toBe('encrypted-fixture');
+    expect(await readTransferAudit()).toEqual([]);
+  });
+  it('disconnect holds caller membership until the final commit', async () => {
+    const pause = pauseLifecycleMutation(
+      (sql) =>
+        sql.startsWith('SELECT to_jsonb(member)') && sql.endsWith('FOR SHARE'),
+    );
+    const first = capture(invoke('disconnect', auditIdentity()));
+    await pause.reached;
+    const second = capture(
+      fixture.owner.query(
+        'UPDATE core."userWorkspace" SET "deletedAt"=now() WHERE id=$1',
+        [memberId],
+      ),
+    );
+    try {
+      await blocked();
+    } finally {
+      pause.resume();
+    }
+    expect(await first).toHaveProperty('value');
+    expect(await second).toHaveProperty('value');
+    expect(await readTransferAudit()).toHaveLength(2);
+  });
+  it('disconnect preserves archive date and audits only remaining authentication failure', async () => {
+    const archivedAt = new Date('2026-01-02T03:04:05Z');
+    await runtime.getRepository(ConnectedAccountEntity).update(accountId, {
+      archivedAt,
+      authFailedAt: new Date(),
+      authFailedReason: 'private',
+    });
+    await runtime.getRepository(MessageChannelEntity).update(channelId, {
+      isSyncEnabled: false,
+      webhookSubscriptionStatus: WebhookSubscriptionStatus.EXPIRED,
+    });
+    expect(await invoke('disconnect', auditIdentity())).toMatchObject({
+      archivedAt,
+      authFailedReason: null,
+    });
+    const rows = await readTransferAudit();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].resourceKind).toBe('connectedAccount');
+    expect(JSON.stringify(rows)).not.toContain('private');
+  });
+  it('disconnect captures cross-workspace impersonation and delegated application attribution', async () => {
+    const other = randomUUID(),
+      impersonator = randomUUID(),
+      initiator = randomUUID(),
+      user = randomUUID(),
+      application = randomUUID();
+    await fixture.owner.query('INSERT INTO core.workspace(id) VALUES($1)', [
+      other,
+    ]);
+    await fixture.owner.query(
+      'INSERT INTO core."userWorkspace"(id,"workspaceId","userId") VALUES($1,$2,$3)',
+      [impersonator, other, initiator],
+    );
+    const operation = await accounts.captureDisconnectionAuditOperation({
+      workspaceId: fixture.workspaceId,
+      user: { id: user },
+      impersonatorUserWorkspaceId: impersonator,
+    });
+    expect(operation).toMatchObject({
+      workspaceId: fixture.workspaceId,
+      actor: { kind: 'coreUser', id: user },
+      initiator: { kind: 'coreUser', id: initiator },
+    });
+    await invoke('disconnect', operation);
+    expect((await readTransferAudit())[0]).toMatchObject({
+      actor: operation.actor,
+      initiator: operation.initiator,
+    });
+    const delegated = await accounts.captureDisconnectionAuditOperation({
+      workspaceId: fixture.workspaceId,
+      user: { id: user },
+      application: { id: application },
+    });
+    expect(delegated).toMatchObject({
+      actor: { kind: 'application', id: application },
+      initiator: { kind: 'coreUser', id: user },
+    });
+  });
   it('transfer audits actual account and both channels without credential material', async () => {
     await setupCredentials();
     const identity = auditIdentity();
@@ -1056,41 +1319,51 @@ describe('account lifecycle final core transaction', () => {
       expect(await readTransferAudit()).toEqual([]);
     },
   );
-  it('journal denial keeps the credential revocation and transferred owner', async () => {
-    await setupCredentials();
-    const error = jest
-      .spyOn(Logger.prototype, 'error')
-      .mockImplementation(() => {});
-    await fixture.owner.query(
-      'REVOKE INSERT ON crm_audit."crmAuditEntry" FROM "' +
-        fixture.roleName +
-        '"',
-    );
-    try {
-      await invoke('transfer', auditIdentity());
-      expect(await readTransferAudit()).toEqual([]);
-      expect(
-        (
-          await runtime
-            .getRepository(ConnectedAccountEntity)
-            .findOneByOrFail({ id: accountId })
-        ).accessToken,
-      ).toBeNull();
-      expect(error).toHaveBeenCalledWith(
-        'CONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE',
-      );
-    } finally {
+  it.each(['transfer', 'disconnect'] as const)(
+    '%s journal denial keeps credential revocation',
+    async (method) => {
+      await setupCredentials();
+      const error = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => {});
       await fixture.owner.query(
-        'GRANT INSERT ON crm_audit."crmAuditEntry" TO "' +
+        'REVOKE INSERT ON crm_audit."crmAuditEntry" FROM "' +
           fixture.roleName +
           '"',
       );
-      error.mockRestore();
-    }
-  });
-  it.each(['mutation', 'journal'] as const)(
-    'detects %s corruption with the correct rollback boundary',
-    async (phase) => {
+      try {
+        await invoke(method, auditIdentity());
+        expect(await readTransferAudit()).toEqual([]);
+        expect(
+          (
+            await runtime
+              .getRepository(ConnectedAccountEntity)
+              .findOneByOrFail({ id: accountId })
+          ).accessToken,
+        ).toBeNull();
+        expect(error).toHaveBeenCalledWith(
+          method === 'transfer'
+            ? 'CONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE'
+            : 'CONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE',
+        );
+      } finally {
+        await fixture.owner.query(
+          'GRANT INSERT ON crm_audit."crmAuditEntry" TO "' +
+            fixture.roleName +
+            '"',
+        );
+        error.mockRestore();
+      }
+    },
+  );
+  it.each([
+    ['transfer', 'mutation'],
+    ['transfer', 'journal'],
+    ['disconnect', 'mutation'],
+    ['disconnect', 'journal'],
+  ] as const)(
+    'detects %s %s corruption with the correct rollback boundary',
+    async (method, phase) => {
       await setupCredentials();
       const triggerTable =
         phase === 'mutation'
@@ -1110,10 +1383,10 @@ describe('account lifecycle final core transaction', () => {
       );
       try {
         if (phase === 'mutation')
-          await expect(invoke('transfer', auditIdentity())).rejects.toThrow(
+          await expect(invoke(method, auditIdentity())).rejects.toThrow(
             'effects mismatch',
           );
-        else await invoke('transfer', auditIdentity());
+        else await invoke(method, auditIdentity());
         expect((await readChannel()).displayName).toBe('Before');
         expect(
           (
@@ -1268,9 +1541,14 @@ describe('account lifecycle final core transaction', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].resourceKind).toBe('connectedAccount');
   });
-  it.each(['mutation', 'journal'] as const)(
-    'preserves JSONB precision when %s changes an unchanged claim',
-    async (phase) => {
+  it.each([
+    ['transfer', 'mutation'],
+    ['transfer', 'journal'],
+    ['disconnect', 'mutation'],
+    ['disconnect', 'journal'],
+  ] as const)(
+    'preserves JSONB precision for %s when %s changes an unchanged claim',
+    async (method, phase) => {
       await setupCredentials();
       await fixture.owner.query(
         'UPDATE core."connectedAccount" SET "oidcTokenClaims"=$1::jsonb WHERE id=$2',
@@ -1300,17 +1578,19 @@ describe('account lifecycle final core transaction', () => {
       );
       try {
         if (phase === 'mutation')
-          await expect(invoke('transfer', auditIdentity())).rejects.toThrow(
+          await expect(invoke(method, auditIdentity())).rejects.toThrow(
             'effects mismatch',
           );
-        else await invoke('transfer', auditIdentity());
+        else await invoke(method, auditIdentity());
         const [row] = await fixture.owner.query(
           'SELECT "oidcTokenClaims"::text AS claims,"userWorkspaceId" FROM core."connectedAccount" WHERE id=$1',
           [accountId],
         );
         expect(row.claims).toContain('9007199254740992');
         expect(row.userWorkspaceId).toBe(
-          phase === 'mutation' ? memberId : custodianId,
+          phase === 'mutation' || method === 'disconnect'
+            ? memberId
+            : custodianId,
         );
         expect(await readTransferAudit()).toEqual([]);
       } finally {
@@ -1333,51 +1613,59 @@ describe('account lifecycle final core transaction', () => {
       ).userWorkspaceId,
     ).toBe(memberId);
   });
-  it('unknown COMMIT keeps the actual transfer but does not retry OAuth revocation', async () => {
-    await setupCredentials();
-    await runtime
-      .getRepository(ConnectedAccountEntity)
-      .update(accountId, { provider: ConnectedAccountProvider.GOOGLE });
-    const create = runtime.createQueryRunner.bind(runtime);
-    let commits = 0;
-    jest.spyOn(runtime, 'createQueryRunner').mockImplementation((mode) => {
-      const runner = create(mode),
-        connect = runner.connect.bind(runner);
-      if (mode !== 'master') return runner;
-      let wrapped = false;
-      jest.spyOn(runner, 'connect').mockImplementation(async () => {
-        const client = await connect();
-        if (!wrapped) {
-          wrapped = true;
-          const query = client.query.bind(client);
-          client.query = async (sql: string, ...args: unknown[]) => {
-            const result = await query(sql, ...args);
-            if (sql === 'COMMIT') {
-              commits++;
-              throw new Error('lost acknowledgement');
-            }
-            return result;
-          };
-        }
-        return client;
+  it.each(['transfer', 'disconnect'] as const)(
+    'unknown COMMIT keeps actual %s and does not retry OAuth revocation',
+    async (method) => {
+      await setupCredentials();
+      await runtime
+        .getRepository(ConnectedAccountEntity)
+        .update(accountId, { provider: ConnectedAccountProvider.GOOGLE });
+      const create = runtime.createQueryRunner.bind(runtime);
+      let commits = 0;
+      jest.spyOn(runtime, 'createQueryRunner').mockImplementation((mode) => {
+        const runner = create(mode),
+          connect = runner.connect.bind(runner);
+        if (mode !== 'master') return runner;
+        let wrapped = false;
+        jest.spyOn(runner, 'connect').mockImplementation(async () => {
+          const client = await connect();
+          if (!wrapped) {
+            wrapped = true;
+            const query = client.query.bind(client);
+            client.query = async (sql: string, ...args: unknown[]) => {
+              const result = await query(sql, ...args);
+              if (sql === 'COMMIT') {
+                commits++;
+                throw new Error('lost acknowledgement');
+              }
+              return result;
+            };
+          }
+          return client;
+        });
+        return runner;
       });
-      return runner;
-    });
-    await expect(invoke('transfer', auditIdentity())).rejects.toBeInstanceOf(
-      NativeTransactionOutcomeUnknownError,
-    );
-    expect(commits).toBe(1);
-    expect(external.revoke).not.toHaveBeenCalled();
-    expect(
-      (
-        await fixture.owner.query(
-          'SELECT "userWorkspaceId","accessToken" FROM core."connectedAccount" WHERE id=$1',
-          [accountId],
-        )
-      )[0],
-    ).toEqual({ userWorkspaceId: custodianId, accessToken: null });
-    expect(await readTransferAudit()).toHaveLength(3);
-  });
+      await expect(invoke(method, auditIdentity())).rejects.toBeInstanceOf(
+        NativeTransactionOutcomeUnknownError,
+      );
+      expect(commits).toBe(1);
+      expect(external.revoke).toHaveBeenCalledTimes(
+        method === 'disconnect' ? 1 : 0,
+      );
+      expect(
+        (
+          await fixture.owner.query(
+            'SELECT "userWorkspaceId","accessToken" FROM core."connectedAccount" WHERE id=$1',
+            [accountId],
+          )
+        )[0],
+      ).toEqual({
+        userWorkspaceId: method === 'disconnect' ? memberId : custodianId,
+        accessToken: null,
+      });
+      expect(await readTransferAudit()).toHaveLength(3);
+    },
+  );
   it.each(methods)(
     'native unbound %s needs no ordinary provider effects',
     async (method) => {

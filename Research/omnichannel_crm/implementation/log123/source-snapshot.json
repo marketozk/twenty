@@ -1,0 +1,13 @@
+{
+  "baseCommit": "b669a37ba7dc6447464aa39e1067e64faccc4d07",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "2347f4ac32964309f2df033ef05c31119d0254cff6cb155ee74c8396b0e2ff96",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/transfer-connected-accounts-with-audit.ts": "2d48449fa820d042b5f05963786cdeaf552f758c611ba4f9f2a67d2e3a8cd104",
+    "packages/twenty-server/src/engine/metadata-modules/connected-account/connected-account-metadata.service.ts": "9d4d8927a3880902c426553b0fcaf8e6ba4efa48a4af48b16d355590abde038d",
+    "packages/twenty-server/src/engine/metadata-modules/connected-account/resolvers/connected-account.resolver.ts": "680015eac3815bcef78195359ab7640f844dbf6a352c56b4a247e3efe2a25521",
+    "packages/twenty-server/test/fork-migration/crm-audit-membership-entrypoints.spec.ts": "92ee893bc7fac810576fa394614aada9abf69e7dc3897201212039496542bfd3",
+    "packages/twenty-server/test/fork-migration/omni-metadata-mutation-guard.spec.ts": "fcd91082eec5c19f2dea96c78f91cf5fe6df1e2f538d8ea92c1e9f9a671d20dd",
+    "packages/twenty-server/test/fork-migration/omni-metadata-transaction.postgres-spec.ts": "ec973c90fdd6fa18609e7ff26e1f39f5a287e7a894dc421e1212bac4f2e7b34c"
+  },
+  "uploadedSourceHashesVerified": true
+}

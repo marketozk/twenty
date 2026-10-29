@@ -1,5 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { transferConnectedAccountsWithAudit } from 'src/engine/core-modules/crm-audit/transfer-connected-accounts-with-audit';
+import {
+  transferConnectedAccountsWithAudit,
+  disconnectConnectedAccountWithAudit,
+} from 'src/engine/core-modules/crm-audit/transfer-connected-accounts-with-audit';
+import {
+  captureMembershipCleanupIdentity,
+  membershipCleanupOperation,
+  type MembershipCleanupAuthentication,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -564,15 +572,55 @@ export class ConnectedAccountMetadataService {
     }
   }
 
+  async captureDisconnectionAuditOperation(
+    authentication: MembershipCleanupAuthentication & { workspaceId: string },
+  ): Promise<CrmAuditOperation> {
+    const workspaceId = authentication.workspaceId;
+    const identity = await captureMembershipCleanupIdentity(
+      authentication,
+      async (membershipId) => {
+        const [member] = await this.repository.manager.query(
+          'SELECT "userId" FROM core."userWorkspace" WHERE id=$1',
+          [membershipId],
+        );
+        return member?.userId;
+      },
+    );
+    return membershipCleanupOperation(workspaceId, identity)!;
+  }
+
   async disconnect({
     id,
     workspaceId,
+    caller,
+    auditOperation,
   }: {
     id: string;
     workspaceId: string;
+    caller: { userWorkspaceId: string; applicationId?: string };
+    auditOperation?: CrmAuditOperation;
   }): Promise<ConnectedAccountEntity> {
-    const connectedAccount = await this.repository.findOneOrFail({
-      where: { id, workspaceId },
+    if (this.repository.manager.queryRunner?.isTransactionActive)
+      throw new Error('OMNI_METADATA_REQUIRES_FRESH_TRANSACTION');
+    const capturedCaller = {
+      userWorkspaceId: caller.userWorkspaceId,
+      applicationId: caller.applicationId,
+    };
+    const operation = auditOperation
+      ? {
+          ...auditOperation,
+          actor: { ...auditOperation.actor },
+          ...(auditOperation.initiator
+            ? { initiator: { ...auditOperation.initiator } }
+            : {}),
+        }
+      : undefined;
+    if (operation && operation.workspaceId !== workspaceId)
+      throw new Error('Connected account disconnect audit workspace mismatch');
+    const connectedAccount = await this.verifyAdministrableByCaller({
+      id,
+      workspaceId,
+      ...capturedCaller,
     });
 
     await this.assertOrdinaryAccounts(workspaceId, [connectedAccount.id]);
@@ -614,17 +662,29 @@ export class ConnectedAccountMetadataService {
       ),
     );
 
-    return withOmniMetadataMutation(
-      this.repository.manager,
+    return disconnectConnectedAccountWithAudit({
+      dataSource: this.repository.manager.connection,
       workspaceId,
-      async (entityManager) => {
-        await lockOmniMetadataAccounts(
-          entityManager,
-          workspaceId,
-          [id],
-          'write',
-        );
+      userWorkspaceId: capturedCaller.userWorkspaceId,
+      accountIds: [id],
+      operation,
+      mutate: async (runner) => {
+        const entityManager = runner.manager;
         await this.assertOrdinaryAccounts(workspaceId, [id], entityManager);
+        const fresh = await entityManager
+          .getRepository(ConnectedAccountEntity)
+          .findOneOrFail({ where: { id, workspaceId } });
+        if (
+          !(await this.isAdministrableByCaller({
+            connectedAccount: fresh,
+            workspaceId,
+            ...capturedCaller,
+          }))
+        )
+          throw new ConnectedAccountException(
+            `Connected account ${id} cannot be administered by user workspace ${capturedCaller.userWorkspaceId}`,
+            ConnectedAccountExceptionCode.CONNECTED_ACCOUNT_OWNERSHIP_VIOLATION,
+          );
         await entityManager.update(
           ConnectedAccountEntity,
           { id, workspaceId },
@@ -678,7 +738,7 @@ export class ConnectedAccountMetadataService {
           .getRepository(ConnectedAccountEntity)
           .findOneOrFail({ where: { id, workspaceId } });
       },
-    );
+    });
   }
 
   async deleteManyByConnectionProviderIds({

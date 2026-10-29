@@ -11,6 +11,25 @@ import { ConnectedAccountMetadataService } from 'src/engine/metadata-modules/con
 import { MessageChannelMetadataService } from 'src/engine/metadata-modules/message-channel/message-channel-metadata.service';
 import { ApplicationMessageChannelsService } from 'src/engine/metadata-modules/message-channel/services/application-message-channels.service';
 
+// These tests cover entrypoint preflight; strict owners run against PostgreSQL
+// in omni-metadata-transaction.postgres-spec.ts.
+jest.mock(
+  'src/engine/core-modules/crm-audit/transfer-connected-accounts-with-audit',
+  () => {
+    const run = ({
+      dataSource,
+      mutate,
+    }: {
+      dataSource: { createQueryRunner: () => unknown };
+      mutate: (runner: unknown) => Promise<unknown>;
+    }) => mutate(dataSource.createQueryRunner());
+    return {
+      transferConnectedAccountsWithAudit: run,
+      disconnectConnectedAccountWithAudit: run,
+    };
+  },
+);
+
 jest.mock(
   'src/engine/metadata-modules/connected-account/entities/connected-account.entity',
   () => ({ ConnectedAccountEntity: class {} }),
@@ -136,6 +155,7 @@ const accountFixture = () => {
     save: jest.fn().mockResolvedValue(account),
     find: jest.fn().mockResolvedValue([account]),
     findOneOrFail: jest.fn().mockResolvedValue(account),
+    findOne: jest.fn().mockResolvedValue(account),
     update: jest.fn().mockResolvedValue({ affected: 1 }),
     delete: jest.fn().mockResolvedValue({ affected: 1 }),
     manager: { query, transaction },
@@ -191,7 +211,11 @@ const accountFixture = () => {
           data: { handle: 'changed@example.test' },
         });
       case 'disconnect':
-        return service.disconnect({ id: account.id, workspaceId });
+        return service.disconnect({
+          id: account.id,
+          workspaceId,
+          caller: { userWorkspaceId: account.userWorkspaceId },
+        });
       case 'deleteMany':
         return service.deleteMany({ ids: [account.id], workspaceId });
       case 'transferOwnership':
@@ -414,10 +438,12 @@ describe('metadata mutation entry points respect persisted omni ownership', () =
       const fixture = accountFixture();
       const notFound = new Error('account not found');
       fixture.repository.findOneOrFail.mockRejectedValue(notFound);
+      fixture.repository.findOne.mockRejectedValue(notFound);
       await expect(
         fixture.service[action]({
           id: fixture.account.id,
           workspaceId: fixture.workspaceId,
+          caller: { userWorkspaceId: fixture.account.userWorkspaceId },
         }),
       ).rejects.toBe(notFound);
       expect(fixture.query).not.toHaveBeenCalled();
