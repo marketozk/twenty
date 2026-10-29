@@ -12,9 +12,9 @@ ROB765 — In Progress: общий аудит действий ещё не пр�
 - OAuth/application attribution и отказ от automatic queue retry для распознанных unsafe outcomes.
 - Очистка associations удалённого канала; общий orphan sweep с message/participant, target reconciliation и empty-thread audit. Реальные jobs/CLI подключены.
 
-LOG144 объединяет сохранение Event, Association и Participant календаря с аудитом в одной strict/exclusive транзакции. Сохранены прежние планировщики sharing; проверяются фактический RETURNING, источники, вычисляемые поля и поздние эффекты. Ручное создание захватывает автора до вызова провайдера и сохраняет его успешный результат при локальном postcommit сбое.
+LOG144 объединяет календарное сопоставление Participant и обновление CalendarEventTarget с аудитом в одной strict/exclusive транзакции. Сохранены прежние email-поиск и правила целей; фактический RETURNING, источники и поздние эффекты проверяются до COMMIT. Coordinator сохраняет автора и порядок enqueue → matching.
 
-2690 tests/81 suites PASS (517.813s); 145 targeted/4 suites PASS (40.133s), 80 новых cases. 3 upstream unit cases PASS. 26 guard tests PASS; 10 migration checksums неизменны. Types 425/429 roots, baseline/current 247 diagnostics, 0 новых/changed-file. 13 local/remote source hashes совпадают.
+2733 tests/83 suites PASS (532.019s); 70 targeted/3 suites PASS (21.065s), 45 новых cases (37 PG и 8 entry). 26 guard tests PASS; 10 migration checksums неизменны. Types 424/426 roots, baseline/current 247 diagnostics, 0 новых/changed-file. 6 local/remote source hashes совпадают.
 Это целевые проверки кода, не чистый full-server typecheck и не полный HTTP/JWT тест.
 [Результаты LOG144](implementation/log144/results.json) · [исходники и ревью](implementation/log144/README.md).
 

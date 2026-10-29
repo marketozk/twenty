@@ -3977,9 +3977,11 @@ LOG143 publication: code 0ab3144bc3399e71fc0f3258d7a851ca69c5ee10 pushed and Git
 
 ## LOG144 — календарное сопоставление и цели
 
-undefined
-2733 tests/83 suites PASS (532.019s); 70 targeted/3 suites PASS (21.065s), 45 новых cases (37 PG и 8 entry). 26 guard tests PASS; 10 migration checksums неизменны. Types 424/426 roots, baseline/current 247 diagnostics, 0 новых/changed-file. 6 local/remote source hashes совпадают. [Результаты](implementation/log144/results.json). undefined
+LOG144 объединяет календарное сопоставление Participant и обновление CalendarEventTarget с аудитом в одной strict/exclusive транзакции. Сохранены прежние email-поиск и правила целей; фактический RETURNING, источники и поздние эффекты проверяются до COMMIT. Coordinator сохраняет автора и порядок enqueue → matching.
+2733 tests/83 suites PASS (532.019s); 70 targeted/3 suites PASS (21.065s), 45 новых cases (37 PG и 8 entry). 26 guard tests PASS; 10 migration checksums неизменны. Types 424/426 roots, baseline/current 247 diagnostics, 0 новых/changed-file. 6 local/remote source hashes совпадают. [Результаты](implementation/log144/results.json). ROB765 In Progress. Calendar rematch jobs, создание контактов, person-company targets, durable postcommit delivery, свежесть import policy и остальные writers ещё открыты. Full application integration test адаптирован и typechecked, но не запускался. Код после LOG088 не выкатывался; full-server typecheck, полная HTTP/JWT приёмка и GitHub Actions не выполнялись.
 
 Независимое ревью исправило границу старого integration observer; реальный matching сохранён. Первый прогон выявил недостающий UPDATE grant core.workspace тестовой роли (20 failed/48 passed). Все negative rollback assertions усилены точной cause-chain причиной и прошли. Проверены реальные generated Participant values и запрет incoming generated ON UPDATE CASCADE с предварительным raw PG доказательством. [Ревью](implementation/log144/review.md).
 
-Broad regression прошла до добавления двух generated tests; финальные targeted и typecheck включают их, production source не менялся. Следующий участок — [calendar rematch jobs](implementation/log144/next-boundary.md), включая подтверждённый stale-member-link bug. Linear publication ожидается после commit/push.
+Broad regression прошла до добавления двух generated tests; финальные targeted и typecheck включают их, production source не менялся. Следующий участок — [calendar rematch jobs](implementation/log144/next-boundary.md), включая подтверждённый stale-member-link bug.
+
+LOG144 publication: code 596815da3ae92a9d50ac808e9063648b8991d3d6 pushed and GitHub API ref verified. Linear comment 42225c67-868d-4962-9546-84ad0c35a093, description/comment/all 11 issue states independently read back. Publication pass corrected stale summary/statistics and two missing template values in tracking documents; runtime evidence unchanged. ROB765 remains In Progress; continuing calendar rematch.

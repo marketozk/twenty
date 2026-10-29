@@ -57,7 +57,7 @@
 ## Текущая реализация
 
 ROB764 принята по [LOG088](Research/omnichannel_crm/implementation/rob764-acceptance.md).
-ROB765 остаётся In Progress: LOG143 объединяет сохранение Event, Association и Participant календаря с аудитом в одной strict/exclusive транзакции. Сохранены прежние планировщики sharing; проверяются фактический RETURNING, источники, вычисляемые поля и поздние эффекты. Ручное создание захватывает автора до вызова провайдера и сохраняет его успешный результат при локальном postcommit сбое.
+ROB765 остаётся In Progress: LOG144 объединяет календарное сопоставление Participant и обновление CalendarEventTarget с аудитом в одной strict/exclusive транзакции. Сохранены прежние email-поиск и правила целей; фактический RETURNING, источники и поздние эффекты проверяются до COMMIT. Coordinator сохраняет автора и порядок enqueue → matching.
 
 Актуальные проверки и ближайшая работа — в [STATUS](Research/omnichannel_crm/STATUS.md);
 единственная таблица приёмки аудита — [rob765-progress](Research/omnichannel_crm/implementation/rob765-progress.md).
