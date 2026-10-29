@@ -3772,4 +3772,14 @@ LOG126 запрещает normal automatic queue retry для обоих unknown
 Повторное source-review выявило CoreAuditPostCommitError после подтверждённого COMMIT: выделен leaf с совместимым re-export, добавлен broader unsafe-to-retry predicate. Старое unknown-to-Error замечание explorer устранено narrowing. Штатные driver tests сначала имели одинаковые 2 failures на baseline/current из-за fork harness defaults; восстановлены их clearMocks/fakeTimers, 18 PASS.
 
 ROB765 In Progress. Crash/stall/manual retry и scheduled recurrence не закрыты. [Далее](implementation/log126/next-boundary.md) — строгий four-table deletion primitive и подключение callers. Full HTTP/build/deploy и GitHub Actions не выполнялись.
-`nLOG126 publication: code faa4e6c4374283cbfe32004bae7156a05726460c pushed and GitHub API ref verified; Linear comment 5d414854-3e56-4e1e-b07d-7c0cf3c542bb, description/comment/all 11 states read back. ROB-765 In Progress; continuing LOG127 closed deletion owner.
+LOG126 publication: code faa4e6c4374283cbfe32004bae7156a05726460c pushed and GitHub API ref verified; Linear comment 5d414854-3e56-4e1e-b07d-7c0cf3c542bb, description/comment/all 11 states read back. ROB-765 In Progress; continuing LOG127 closed deletion owner.
+
+## LOG127 — атомарное удаление core account graph
+
+LOG127 реализует closed four-table delete owner: account/messageChannel/calendarChannel/messageFolder, actual FK inventory, retained account и folder-only guards, exact DB snapshots, actual DELETE RETURNING и readback после audit. Сбой журнала откатывает удаление; повторное удаление recreated IDs получает новую operation. Production callers пока не переключены; далее их authorization/selection boundaries и wiring.
+
+1657 tests/52 suites PASS (249.238s); 41 новых целевых PG cases/1 suite PASS (15.902s). 26 guard tests PASS; 10 migration checksums неизменны. Types 369/371 roots, 211/211 прежних диагностик, 0 новых/changed-file. 4 local/remote source hashes совпадают.
+[Проверки](implementation/log127/results.json), [ревью](implementation/log127/review.md).
+На независимом ревью устранена дедупликация второго удаления после recreate через свежий operationId. Проверены partial/all-skipped DELETE, folder-only ownership, composite FK, JSONB >2^53, audit corruption/failure, оба порядка bootstrap и child races, FK DDL lock wait, lost COMMIT ACK и postcommit hook failure.
+
+ROB765 In Progress. Caller authorization/wiring, external provider effects, native cleanup, full HTTP/build/deploy остаются открытыми. GitHub Actions не выполнялся.

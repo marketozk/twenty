@@ -53,6 +53,15 @@ const CATALOG: Record<
     redacted: [],
   },
   coreUser: { values: [], redacted: ['deletedAt'] },
+  messageFolder: {
+    values: [
+      'messageChannelId',
+      'isSentFolder',
+      'isSynced',
+      'pendingSyncAction',
+    ],
+    redacted: [],
+  },
   userWorkspace: { values: ['userId'], redacted: ['deletedAt'] },
   applicationAuthorization: {
     values: ['userId', 'userWorkspaceId', 'applicationId'],
@@ -400,9 +409,10 @@ const principal = (value: CrmAuditPrincipal): CrmAuditPrincipal => {
 const ADMINISTRATIVE_ACTIONS: Partial<
   Record<CrmAuditResourceKind, readonly CrmAuditAction[]>
 > = {
-  connectedAccount: ['update'],
-  messageChannel: ['update'],
-  calendarChannel: ['update'],
+  connectedAccount: ['update', 'delete'],
+  messageChannel: ['update', 'delete'],
+  calendarChannel: ['update', 'delete'],
+  messageFolder: ['delete'],
   coreUser: ['update'],
   role: ['create', 'update'],
   roleTarget: ['create', 'delete'],

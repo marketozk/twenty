@@ -14,6 +14,7 @@ export type CrmAuditResourceKind =
   | 'connectedAccount'
   | 'messageChannel'
   | 'calendarChannel'
+  | 'messageFolder'
   | 'coreUser'
   | 'userWorkspace'
   | 'applicationAuthorization'

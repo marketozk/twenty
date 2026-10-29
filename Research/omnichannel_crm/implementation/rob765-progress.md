@@ -16,8 +16,8 @@
 | Operation lookup index | LOG090: generated migration10, populated prefix upgrade/replay/down, real EXPLAIN, drift refusal; не выкатывалось |
 | Production rollout | Не выполнялся; нужны полная native coverage и согласованный выкат с остановленными writers при построении индекса |
 
-Последние проверки: 1616 tests/51 suites PASS (240.383s); 98 targeted/3 suites PASS (11.495s), 15 новых cases. 18 upstream driver tests PASS с штатными clearMocks/fakeTimers. 26 guards PASS; 10 migration checksums неизменны. Types 372/375 roots, 212/211 прежних диагностик, 0 новых/changed-file. 10 local/remote source hashes совпадают.
-Это не чистый full-server typecheck. [LOG126 results](log126/results.json).
+Последние проверки: 1657 tests/52 suites PASS (249.238s); 41 новых целевых PG cases/1 suite PASS (15.902s). 26 guard tests PASS; 10 migration checksums неизменны. Types 369/371 roots, 211/211 прежних диагностик, 0 новых/changed-file. 4 local/remote source hashes совпадают.
+Это не чистый full-server typecheck. [LOG127 results](log127/results.json).
 
 [Индекс реализованных участков](../plan/phase_2_audit.md), [текущие ограничения](log113/README.md),
 [полная хронология](../DEVLOG.md). Исторические заявления «ещё не включено» внутри
@@ -75,3 +75,5 @@ LOG126 добавляет queue no-retry для recognized unknown/confirmed-com
 
 LOG126 запрещает normal automatic queue retry для обоих unknown transaction errors и confirmed postcommit failure. Explorer не заменяет исходную ошибку при сбое telemetry. Install/upgrade не компенсируют confirmed committed effect. Actual Redis проверяет одну попытку, persisted failure, worker restart и ordinary retry; actual PG INSERT с падающим after-commit hook остаётся сохранённым.
 Crash до persisted failure, stalled redelivery, manual retry и новый scheduled run остаются отдельными границами. Далее — strict four-table account deletion primitive, затем callers. Выката нет.
+
+LOG127 реализует closed four-table delete owner: account/messageChannel/calendarChannel/messageFolder, actual FK inventory, retained account и folder-only guards, exact DB snapshots, actual DELETE RETURNING и readback после audit. Сбой журнала откатывает удаление; повторное удаление recreated IDs получает новую operation. Production callers пока не переключены; далее их authorization/selection boundaries и wiring. [Следующая граница](log127/next-boundary.md).

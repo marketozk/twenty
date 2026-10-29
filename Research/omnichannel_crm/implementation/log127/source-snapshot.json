@@ -1,0 +1,10 @@
+{
+  "baseCommit": "e586b39a9dff303f8963bcd8aec4a870ba606eca",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "54295ee85342985f93cb8bc8540f60c43f511d73f6bb9d1d61a1c9b0af9f4cf9",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "ddecc84029764086e44b7ef9672abe5e0fa0c8dd035eb337b46bdede792a0ae7",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-connected-accounts-with-audit.ts": "fdda3613e7a1b013560caba21b54a9ea0e3faf0afd35c454746cf4b18a5a19ee",
+    "packages/twenty-server/test/fork-migration/crm-audit-connected-account-delete.postgres-spec.ts": "ee3d40989d55de49805207f792a42552c9849672f468510a13c8c85437f8e96c"
+  },
+  "uploadedSourceHashesVerified": true
+}

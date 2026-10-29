@@ -1,0 +1,7 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts 308ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts 14ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/delete-connected-accounts-with-audit.ts 50ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-connected-account-delete.postgres-spec.ts 151ms
+
+{"formattedFiles": 4, "singleSshSession": true}
