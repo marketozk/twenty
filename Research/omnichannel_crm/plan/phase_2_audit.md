@@ -78,6 +78,7 @@ ROB765 остаётся In Progress. Единственная текущая т�
 | Public member role assignment, serialized demotions, fresh application tenant checks | [LOG113](../implementation/log113/README.md) |
 | Core membership cleanup: shared fence, atomic deletion, durable workflow-share recovery prerequisite | [LOG114](../implementation/log114/README.md) |
 | Explicit-operation membership audit primitive: fixed FK effects, recursive navigation, security-first savepoint | [LOG115](../implementation/log115/README.md) |
+| Fresh active membership check for JWT/cookie and delegated application despite stale caches | [LOG116](../implementation/log116/README.md) |
 
 Открыто: остальные native/system writers и FK effects, real share writes, public
 DESTROY/MERGE, остальные metadata/role mutations, общий denied/failed audit после rollback и health/alert.
@@ -86,12 +87,13 @@ stateless application JWT и concurrent-sign-in fencing ещё не объявл
 Просмотр/экспорт — ROB767 после ROB766; AI/workflow/connector добавляют свои события
 в ROB768/769. Полный HTTP/JWT и сборка/выкат изменений после LOG088 не выполнялись.
 
-Последние проверки: 1216 tests/38 suites PASS (205.942s); 103 targeted/3 suites PASS, 25 новых cases. 26 guards PASS; 10 migration checksums неизменны. Types 351/353 roots, 188/188 прежних диагностик, 0 новых/changed-code. 5 local/remote source hashes совпадают.
-Full-server typecheck не чистый. [Проверки LOG115](../implementation/log115/results.json).
+Последние проверки: 1237 tests/39 suites PASS (203.9s); 182 targeted/5 suites и 29 auth unit tests PASS, 21 новый case. 26 guards PASS; 10 migration checksums неизменны. Types 354/355 roots, 190 baseline / 184 current диагностик, 0 новых/changed-file. 3 local/remote source hashes совпадают.
+Full-server typecheck не чистый. [Проверки LOG116](../implementation/log116/results.json).
 
-Следующий шаг — автоматическая trusted attribution из API/jobs и DB membership recheck
-для JWT после soft-delete при stale cache; [граница](../implementation/log115/next-boundary.md).
-LOG115 покрывает primitive с явной operation, не весь public removal и не полный HTTP отзыв.
+Следующий шаг — автоматическая trusted attribution из API/jobs и exact retained
+membership cleanup при hard teardown; [граница](../implementation/log116/next-boundary.md).
+LOG116 закрывает cache gap fresh DB lookup; весь public removal, in-flight mutation
+fence и полный HTTP отзыв ещё не приняты.
 
 Демо остаётся прежним. При будущем выкате migration10 writers останавливаются на
 время построения индекса. GitHub Actions не используется.

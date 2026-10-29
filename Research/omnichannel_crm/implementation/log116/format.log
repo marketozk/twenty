@@ -1,0 +1,6 @@
+{"sshRecentMaxStartupsLines": 1, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/auth/strategies/jwt.auth.strategy.spec.ts 331ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/auth/strategies/jwt.auth.strategy.ts 115ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-auth.postgres-spec.ts 73ms (unchanged)
+
+{"formattedFiles": 3, "singleSshSession": true}

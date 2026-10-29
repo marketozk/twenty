@@ -1,0 +1,9 @@
+{
+  "baseCommit": "dea7b825281f2f6eb684b385114e1d7d01e29fa1",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/auth/strategies/jwt.auth.strategy.spec.ts": "c1173e0007cf9b3e916684767c8d71988fcfee84520dabe965a4f5a0718f54b1",
+    "packages/twenty-server/src/engine/core-modules/auth/strategies/jwt.auth.strategy.ts": "664c5c508430327315c1b62f07198801f4ae524dd1c5b3dd014993b6f280f157",
+    "packages/twenty-server/test/fork-migration/crm-audit-membership-auth.postgres-spec.ts": "f3f735879369a344a4a4e1b5185b7a0307ffd60a7d91b41d527fd1bba3318466"
+  },
+  "uploadedSourceHashesVerified": true
+}

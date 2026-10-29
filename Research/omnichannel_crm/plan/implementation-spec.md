@@ -952,3 +952,11 @@ cleanup/reconciliation intent сохраняются вместе. Первый 
 фиксирован, включая microsecond timestamps. Автоматические request/job entrypoints
 ещё не подключены. Soft-delete JWT stale-cache gap требует прямого active membership
 recheck; [следующий шаг](../implementation/log115/next-boundary.md).
+
+LOG116 реализует этот recheck в JwtAuthStrategy.resolveUserContext: cached user и
+membership должны совпадать с token scope, затем existing repository подтверждает
+активный membership по id/userId/workspaceId. DB failure не подменяется cache hit.
+Покрывает ACCESS/PLAYGROUND и delegated application with user; workspace-agnostic
+и application-without-user paths сохраняются. Это проверка при разрешении auth,
+не общий transaction fence для уже принятых запросов. Следом — trusted cleanup
+attribution из API/jobs, включая soft-deleted memberships в hard teardown.

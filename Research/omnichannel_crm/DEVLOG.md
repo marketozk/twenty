@@ -3538,3 +3538,25 @@ ROB765 In Progress; демо, образ, клиентские сообщени�
 LOG115 publication: 54d88543970732a2439c31729aa5a74d64ceb5b3 pushed/API verified.
 ROB765 description/comment 7310a199-5af8-422d-92d0-dfc2ccad368f independently read back;
 all 11 issue states match. Implementation continues with membership authentication checks.
+
+## LOG-116 — отзыв доступа независимо от устаревшего membership cache
+
+JwtAuthStrategy проверяет cached identity и активный core membership через уже
+имеющийся repository по точным id/user/workspace. Soft/hard removal и неудачная
+инвалидация больше не допускают следующий ACCESS/PLAYGROUND или application-with-user
+запрос по старому cache. Недоступность DB не превращается в разрешение.
+
+1237 tests/39 suites PASS (203.9s); 182 targeted/5 suites и 29 auth unit tests PASS,
+21 новый PostgreSQL case. 26 guards PASS; 10 migration checksums неизменны.
+Types 354/355 roots: 190 baseline / 184 current diagnostics, 0 новых/changed-file.
+Все 3 uploaded source hashes совпадают. Изолированный checker дополнен уже
+закреплённым @types/passport-jwt 3.0.13; шесть прежних catch errors уточнены в тестах.
+
+[Результаты](implementation/log116/results.json), [ревью](implementation/log116/review.md).
+Actual strategy/cookie bridge проверены с PG; подпись JWT и session resolver в
+fixture заменены adapters. Полный HTTP, in-flight mutation fence и deployment не
+заявлены. ROB765 In Progress. Демо, пользовательские сообщения и Actions не менялись.
+
+Продолжаем automatic trusted attribution API/jobs. Readonly разбор выявил
+hard-workspace teardown gap: retained soft-deleted memberships должны поступать в
+cleanup по точному ID; активные остальные memberships считаются отдельно.

@@ -1,0 +1,19 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-refresh-logout.postgres-spec.ts (6.577 s)
+[Nest] 1  - 10/28/2026, 11:55:30 PM   ERROR [UserSessionService] Failed to issue a required session: SESSION_AUDIT_FAILURE
+[Nest] 1  - 10/28/2026, 11:55:30 PM   ERROR [UserSessionService] Failed to issue a required session: Session persisted credential or scope does not match
+[Nest] 1  - 10/28/2026, 11:55:30 PM   ERROR [UserSessionService] Failed to issue a required session: Session persisted lifecycle does not match
+[Nest] 1  - 10/28/2026, 11:55:30 PM   ERROR [UserSessionService] Failed to issue a required session: Session persisted lifecycle does not match
+[Nest] 1  - 10/28/2026, 11:55:30 PM   ERROR [UserSessionService] Failed to issue a required session: Session audit snapshot changed during flush
+[Nest] 1  - 10/28/2026, 11:55:30 PM   ERROR [UserSessionService] Failed to issue a required session: Native transaction outcome is unknown after commit
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-user-session.postgres-spec.ts
+[Nest] 1  - 10/28/2026, 11:55:32 PM   ERROR [DeferredWorkspaceMigrationActionRunnerService] Failed to enqueue deferred workspace migration actions for workspace 1ea99305-9b4d-4e1e-9b3b-a33c236ef593: redis unavailable
+[32m[Nest] 1  - [39m10/28/2026, 11:55:32 PM [32m    LOG[39m [38;5;3m[DeferredWorkspaceMigrationActionRunnerService] [39m[32mDeferred action sync_workflowRunShares de09ade4-cb85-4ece-8212-df36468c65f8 completed for workspace 1ea99305-9b4d-4e1e-9b3b-a33c236ef593 in 4ms[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-cleanup.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-owner.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-auth.postgres-spec.ts
+
+Test Suites: 5 passed, 5 total
+Tests:       182 passed, 182 total
+Snapshots:   0 total
+Time:        13.053 s
+Ran all test suites matching /crm-audit-membership|crm-audit-user-session|crm-audit-refresh/i.

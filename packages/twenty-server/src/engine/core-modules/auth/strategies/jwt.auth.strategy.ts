@@ -231,7 +231,13 @@ export class JwtAuthStrategy extends PassportStrategy(Strategy, 'jwt') {
       params.userWorkspaceId,
     );
 
-    if (!isDefined(userWorkspace)) {
+    if (
+      !isDefined(userWorkspace) ||
+      isDefined(userWorkspace.deletedAt) ||
+      userWorkspace.id !== params.userWorkspaceId ||
+      userWorkspace.userId !== params.userId ||
+      user.id !== params.userId
+    ) {
       return null;
     }
 
@@ -241,6 +247,17 @@ export class JwtAuthStrategy extends PassportStrategy(Strategy, 'jwt') {
     ) {
       return null;
     }
+
+    // Cache invalidation can fail after removal; live sessions must not restore access.
+    const activeMembership = await this.userWorkspaceRepository.findOne({
+      select: { id: true },
+      where: {
+        id: params.userWorkspaceId,
+        userId: params.userId,
+        workspaceId: userWorkspace.workspaceId,
+      },
+    });
+    if (!isDefined(activeMembership)) return null;
 
     return { user, userWorkspace };
   }

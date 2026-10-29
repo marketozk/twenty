@@ -302,6 +302,7 @@ describe('JwtAuthStrategy', () => {
       try {
         await strategy.validate(payload as JwtPayload);
       } catch (e) {
+        if (!(e instanceof AuthException)) throw e;
         expect(e.code).toBe(AuthExceptionCode.USER_NOT_FOUND);
       }
     });
@@ -338,6 +339,7 @@ describe('JwtAuthStrategy', () => {
       try {
         await strategy.validate(payload as JwtPayload);
       } catch (e) {
+        if (!(e instanceof AuthException)) throw e;
         expect(e.code).toBe(AuthExceptionCode.USER_NOT_FOUND);
       }
     });
@@ -355,6 +357,7 @@ describe('JwtAuthStrategy', () => {
       };
 
       workspaceStore[validWorkspaceId] = new WorkspaceEntity();
+      workspaceStore[validWorkspaceId].id = validWorkspaceId;
       userStore[validUserId] = {
         id: validUserId,
         lastName: 'lastNameDefault',
@@ -373,6 +376,8 @@ describe('JwtAuthStrategy', () => {
           if (keyName === 'userWorkspaceEntity') {
             return {
               id: validUserWorkspaceId,
+              userId: validUserId,
+              workspaceId: validWorkspaceId,
               user: { id: validUserId, lastName: 'lastNameDefault' },
               workspace: { id: validWorkspaceId },
             };
@@ -382,6 +387,9 @@ describe('JwtAuthStrategy', () => {
         },
       );
 
+      userWorkspaceRepository.findOne.mockResolvedValue({
+        id: validUserWorkspaceId,
+      });
       strategy = createStrategy();
 
       const user = await strategy.validate(payload as JwtPayload);
@@ -551,6 +559,7 @@ describe('JwtAuthStrategy', () => {
       try {
         await strategy.validate(payload as JwtPayload);
       } catch (e) {
+        if (!(e instanceof AuthException)) throw e;
         expect(e.code).toBe(AuthExceptionCode.APPLICATION_NOT_FOUND);
       }
     });
@@ -608,6 +617,7 @@ describe('JwtAuthStrategy', () => {
         await strategy.validate(payload as JwtPayload);
         throw new Error('Expected validate to reject');
       } catch (e) {
+        if (!(e instanceof AuthException)) throw e;
         expect(e.code).toBe(AuthExceptionCode.USER_NOT_FOUND);
       }
     });
@@ -650,6 +660,7 @@ describe('JwtAuthStrategy', () => {
           if (keyName === 'userWorkspaceEntity') {
             return {
               id: validUserWorkspaceId,
+              userId: validUserId,
               workspaceId: validWorkspaceId,
               user: { id: validUserId },
               workspace: { id: validWorkspaceId },
@@ -660,12 +671,16 @@ describe('JwtAuthStrategy', () => {
         },
       );
 
+      userWorkspaceRepository.findOne.mockResolvedValue({
+        id: validUserWorkspaceId,
+      });
       strategy = createStrategy();
 
       try {
         await strategy.validate(payload as JwtPayload);
         throw new Error('Expected validate to reject');
       } catch (e) {
+        if (!(e instanceof AuthException)) throw e;
         expect(e.code).toBe(AuthExceptionCode.FORBIDDEN_EXCEPTION);
       }
     });
@@ -736,6 +751,7 @@ describe('JwtAuthStrategy', () => {
           if (keyName === 'userWorkspaceEntity') {
             return {
               id: validUserWorkspaceId,
+              userId: validUserId,
               workspaceId: validWorkspaceId,
               user: { id: validUserId },
               workspace: { id: validWorkspaceId },
@@ -746,12 +762,16 @@ describe('JwtAuthStrategy', () => {
         },
       );
 
+      userWorkspaceRepository.findOne.mockResolvedValue({
+        id: validUserWorkspaceId,
+      });
       strategy = createStrategy();
 
       try {
         await strategy.validate(payload as JwtPayload);
         throw new Error('Expected validate to reject');
       } catch (e) {
+        if (!(e instanceof AuthException)) throw e;
         expect(e.code).toBe(AuthExceptionCode.FORBIDDEN_EXCEPTION);
       }
     });
@@ -1220,6 +1240,7 @@ describe('JwtAuthStrategy', () => {
           if (keyName === 'userWorkspaceEntity') {
             return {
               id: validUserWorkspaceId,
+              userId: validUserId,
               workspaceId: validWorkspaceId,
               user: mockUser,
               workspace: mockWorkspace,
@@ -1246,6 +1267,9 @@ describe('JwtAuthStrategy', () => {
         true,
       );
 
+      userWorkspaceRepository.findOne.mockResolvedValue({
+        id: validUserWorkspaceId,
+      });
       strategy = createStrategy();
 
       const result = await strategy.validate(payload as JwtPayload);
@@ -1301,6 +1325,7 @@ describe('JwtAuthStrategy', () => {
           if (keyName === 'userWorkspaceEntity') {
             return {
               id: validUserWorkspaceId,
+              userId: validUserId,
               workspaceId: validWorkspaceId,
               user: mockUser,
               workspace: mockWorkspace,
@@ -1323,6 +1348,9 @@ describe('JwtAuthStrategy', () => {
           workspace: mockWorkspace,
         });
 
+      userWorkspaceRepository.findOne.mockResolvedValue({
+        id: validUserWorkspaceId,
+      });
       strategy = createStrategy();
 
       const result = await strategy.validate(payload as JwtPayload);
@@ -1355,6 +1383,7 @@ describe('JwtAuthStrategy', () => {
       };
 
       workspaceStore[validWorkspaceId] = new WorkspaceEntity();
+      workspaceStore[validWorkspaceId].id = validWorkspaceId;
       userStore[validUserId] = { id: validUserId, lastName: 'lastNameDefault' };
 
       coreEntityCacheService.get.mockImplementation(
@@ -1370,6 +1399,8 @@ describe('JwtAuthStrategy', () => {
           if (keyName === 'userWorkspaceEntity') {
             return {
               id: validUserWorkspaceId,
+              userId: validUserId,
+              workspaceId: validWorkspaceId,
               user: { id: validUserId, lastName: 'lastNameDefault' },
               workspace: { id: validWorkspaceId },
             };
@@ -1379,6 +1410,9 @@ describe('JwtAuthStrategy', () => {
         },
       );
 
+      userWorkspaceRepository.findOne.mockResolvedValue({
+        id: validUserWorkspaceId,
+      });
       strategy = createStrategy();
 
       const result = await strategy.validate(payload as JwtPayload);

@@ -1,0 +1,14 @@
+● Validation Warning:
+
+  Unknown option "silent" with value true was found.
+  This is probably a typing mistake. Fixing it will remove this message.
+
+  Configuration Documentation:
+  https://jestjs.io/docs/configuration
+
+PASS twenty-server ../../../source/packages/twenty-server/src/engine/core-modules/auth/strategies/jwt.auth.strategy.spec.ts (17.08 s)
+
+Test Suites: 1 passed, 1 total
+Tests:       29 passed, 29 total
+Snapshots:   0 total
+Time:        17.197 s
