@@ -1,0 +1,13 @@
+{
+  "codeCommit": "7bf8a4041874f6617321b523f7a20ac0e6df06a8",
+  "pushVerifiedViaGitHubApi": true,
+  "linearIssue": "ROB-765",
+  "commentId": "1ce28ded-f6a0-48e3-9774-82a9b31ca1c2",
+  "independentReadback": {
+    "description": true,
+    "comment": true,
+    "states": true,
+    "issueCount": 11
+  },
+  "phaseComplete": false
+}

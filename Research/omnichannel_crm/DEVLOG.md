@@ -3627,3 +3627,7 @@ Typecheck сначала выявил три неверных fixture locale lit
 
 ROB765 In Progress; HTTP/signup целиком и выкат не заявлены. Далее — narrow active
 coreUser updates для email verification и server-admin; [граница](implementation/log119/next-boundary.md).
+
+LOG119 publication: 7bf8a4041874f6617321b523f7a20ac0e6df06a8 pushed/API verified.
+ROB765 description/comment 1ce28ded-f6a0-48e3-9774-82a9b31ca1c2 independently read back;
+all 11 issue states match. Implementation continues with active core user updates.
