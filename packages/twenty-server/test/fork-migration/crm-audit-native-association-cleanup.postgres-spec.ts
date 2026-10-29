@@ -40,6 +40,8 @@ const operation = (): CrmAuditOperation => ({
   operationId: randomUUID(),
   actor: { kind: 'system', id: 'MessagingMessageChannelDeletionCleanupJob' },
 });
+// The owner is the terminal transaction callback: callers must not issue later
+// writes after its constraint drain and final graph verification.
 const remove = async (id: string, audit = operation()) =>
   f.withContext(() =>
     f.dataSource.transaction(
@@ -515,6 +517,29 @@ it('audit insertion refusal rolls back both root and junction', async () => {
       `GRANT INSERT ON crm_audit."crmAuditEntry" TO "${f.roleName}"`,
     );
   }
+  expect(await snapshots()).toEqual(before);
+  expect(await audit()).toEqual([]);
+  expect(f.eventEmitter).not.toHaveBeenCalled();
+});
+
+it('rolls back association resurrection from a deferred AFTER DELETE constraint trigger before commit', async () => {
+  const seed = await seedDeletedChannel(),
+    before = await snapshots();
+  await f.owner
+    .query(`CREATE FUNCTION "${f.schemaName}".association_test() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$ BEGIN
+    INSERT INTO ${table(ROOT)} SELECT OLD.*;
+    RETURN OLD; END $$;
+    CREATE CONSTRAINT TRIGGER association_skip AFTER DELETE ON ${table(ROOT)}
+      DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION "${f.schemaName}".association_test()`);
+  expect(
+    await f.owner.query(
+      `SELECT tgdeferrable AS deferrable, tginitdeferred AS deferred FROM pg_trigger WHERE tgrelid=$1::regclass AND tgname='association_skip'`,
+      [table(ROOT)],
+    ),
+  ).toEqual([{ deferrable: true, deferred: true }]);
+  await expect(remove(seed.channelId)).rejects.toThrow(
+    'Native channel cleanup effects mismatch',
+  );
   expect(await snapshots()).toEqual(before);
   expect(await audit()).toEqual([]);
   expect(f.eventEmitter).not.toHaveBeenCalled();

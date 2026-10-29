@@ -1,0 +1,10 @@
+{
+  "baseCommit": "198062c697d026d4a906833193350d055735ad91",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts": "f14e475599d89608e6e10b5904be451c8bd0254423d5b05235bf376d29ca08c7",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts": "7d915a20574bf29fae5df427e0cbbbb60b25bf928701512f3c4979ed8af87e64",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-empty-native-message-threads-with-audit.ts": "3251f29c766bb3ce00b3ac18a891babd76fb8769853eed9e091b77711cc6687b",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-empty-thread-cleanup.postgres-spec.ts": "7def5de9c9b4bbe80a9168fa6d73df2b5010b55c41ba61f34cd4b0ab4bb2ef84"
+  },
+  "uploadedSourceHashesVerified": true
+}

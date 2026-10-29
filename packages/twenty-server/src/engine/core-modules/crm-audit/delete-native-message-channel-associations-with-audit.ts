@@ -47,6 +47,7 @@ const decode = (row: Snapshot): Record<string, unknown> =>
     ]),
   );
 
+// Terminal mutation: the transaction owner must propagate errors and preserve the verified graph.
 export const deleteNativeMessageChannelAssociationsWithAudit = async ({
   scope,
   messageChannelId,
@@ -364,6 +365,7 @@ export const deleteNativeMessageChannelAssociationsWithAudit = async ({
         },
       });
   await audit.flush();
+  await scope.executeRawQuery('SET CONSTRAINTS ALL IMMEDIATE');
   await verify();
   return actualIds.size;
 };

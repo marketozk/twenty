@@ -1,0 +1,7 @@
+{"sshRecentMaxStartupsLines": 3, "sshRecentDropLines": 1}
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/delete-native-message-channel-associations-with-audit.ts 222ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts 227ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/delete-empty-native-message-threads-with-audit.ts 102ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-empty-thread-cleanup.postgres-spec.ts 183ms (unchanged)
+
+{"formattedFiles": 4, "singleSshSession": true}

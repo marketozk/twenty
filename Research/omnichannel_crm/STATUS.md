@@ -3,7 +3,7 @@
 ROB764 завершена по [приёмке LOG088](implementation/rob764-acceptance.md).
 ROB765 — In Progress: общий аудит действий ещё не принят.
 
-Проверенное покрытие к LOG130:
+Проверенное покрытие к LOG131:
 
 - Native audit для covered Company/Person/Opportunity и local custom objects: create/update, FILES, soft-delete/restore и внутренний hard-delete с покрытыми прямыми FK effects.
 - Workspace sessions, предъявленный refresh signOut и workspace refresh issuance/rotation; security-first отзыв и DB recheck вместо доверия stale cache.
@@ -17,20 +17,20 @@ ROB765 — In Progress: общий аудит действий ещё не пр�
 - LOG123: отключение аккаунта сохраняет тот же strict owner, повторно проверяет caller на свежем account после внешних awaits; active membership, redaction authentication failures, cross-workspace impersonation и отсутствие отдельного nested commit проверены.
 - 10 неизменённых fork migrations; audit operation index при будущем выкате требует остановки writers.
 
-1771 tests/57 suites PASS (270.446s); 162 targeted/5 suites PASS (49.856s), 42 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 379/382 roots, 225/225 прежних диагностик, 0 новых/changed-file. 9 local/remote source hashes совпадают.
+1806 tests/58 suites PASS (283.825s); 95 targeted/3 suites PASS (38.247s), 35 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 380/382 roots, 225/225 прежних диагностик, 0 новых/changed-file. 4 local/remote source hashes совпадают.
 Это целевые проверки кода, не чистый full-server typecheck и не полный HTTP/signup тест.
 
-Далее — аудит удаления пустых native threads с каскадами, затем сообщений и reconciliation:
-[следующая граница](implementation/log130/next-boundary.md).
+Далее — аудит сообщений без связей с каналами и reconciliation, затем общий transaction owner:
+[следующая граница](implementation/log131/next-boundary.md).
 Открыты native cleanup и остальные native/system writers, real shares, public DESTROY/MERGE, остальные metadata/role/system writers, общий denied/failed audit и health/alert. Общая безопасность всех уже принятых запросов этим срезом не заявлена.
 
 ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.
 Собственные права, интерфейс чатов, коннекторы, ИИ и автоматизация ещё не приняты.
 
 Демо остаётся прежним. Последний собранный изолированный кандидат — LOG088;
-код LOG089–130 не выкатывался. Клиентские сообщения не отправлялись. GitHub Actions не используется.
+код LOG089–131 не выкатывался. Клиентские сообщения не отправлялись. GitHub Actions не используется.
 
-- [Проверки LOG130](implementation/log130/README.md).
+- [Проверки LOG131](implementation/log131/README.md).
 - [Критерии и остаток ROB765](implementation/rob765-progress.md).
 - [Журнал разработки](DEVLOG.md).
 
@@ -53,3 +53,6 @@ Native cleanup, durable event delivery, full HTTP/build/deploy остаются 
 
 LOG130 подключает аудит фактической очистки associations удалённого канала и их folder junctions: именованный worker actor, исходный strict/exclusive scope, active workspace, обязательный FK, exact snapshots/RETURNING и повторные проверки ownership. Сохранены soft-deleted roots и прежние after-commit события; исправлены ложные события при trigger-skipped DELETE. Общий guard учитывает прямую association.messageThreadId, в том числе при null messageId.
 1771 tests/57 suites PASS (270.446s); 162 targeted/5 suites PASS (49.856s), 42 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 379/382 roots, 225/225 прежних диагностик, 0 новых/changed-file. 9 local/remote source hashes совпадают. [Проверки](implementation/log130/results.json). ROB765 In Progress. Последующий orphan sweep, reconciliation, calendar cleanup и durable dispatch остаются открытыми. После LOG088 выкат не выполнялся; GitHub Actions не использовался. [Далее](implementation/log130/next-boundary.md).
+
+LOG131 добавляет внутренний owner удаления пустых native threads с actual target/association/junction cascades. Любое Message, включая soft-deleted, и любой защищённый ребёнок сохраняют thread. Проверяются обязательные FK, точные снимки, partial RETURNING, workspace и late ownership. Deferred constraint triggers теперь выполняются до финальной проверки в LOG130/131, чтобы эффект при COMMIT не обходил аудит.
+1806 tests/58 suites PASS (283.825s); 95 targeted/3 suites PASS (38.247s), 35 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 380/382 roots, 225/225 прежних диагностик, 0 новых/changed-file. 4 local/remote source hashes совпадают. [Проверки](implementation/log131/results.json). ROB765 In Progress. Thread owner пока не подключён к полному orphan sweep: нужны message/participant audit, target reconciliation и закрытый общий transaction owner. Код после LOG088 не выкатывался; GitHub Actions не использовался. [Далее](implementation/log131/next-boundary.md).

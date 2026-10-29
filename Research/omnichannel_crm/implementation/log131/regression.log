@@ -1,0 +1,183 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-public-update.postgres-spec.ts (14.607 s)
+[32m[Nest] 1  - [39m10/29/2026, 6:27:04 AM [32m    LOG[39m [38;5;3m[DeleteConnectedAccountsOutsideProviderScopeCommand] [39m[32m[DRY RUN] Workspace c1800501-4c2d-48ce-a55c-daed3dd8a9fb: 1 connected account(s) outside their provider scope would be deleted[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:27:04 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: c1800501-4c2d-48ce-a55c-daed3dd8a9fb Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:27:04 AM [32m    LOG[39m [38;5;3m[DeleteConnectedAccountsOutsideProviderScopeCommand] [39m[32mWorkspace c1800501-4c2d-48ce-a55c-daed3dd8a9fb: 1 connected account(s) outside their provider scope deleted[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:27:04 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: c1800501-4c2d-48ce-a55c-daed3dd8a9fb Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:27:04 AM [32m    LOG[39m [38;5;3m[DeleteConnectedAccountsOutsideProviderScopeCommand] [39m[32mWorkspace c1800501-4c2d-48ce-a55c-daed3dd8a9fb: 1 connected account(s) outside their provider scope deleted[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:27:04 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: c1800501-4c2d-48ce-a55c-daed3dd8a9fb Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:27:09 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: c1800501-4c2d-48ce-a55c-daed3dd8a9fb Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:27:10 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: c1800501-4c2d-48ce-a55c-daed3dd8a9fb Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:27:10 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: c1800501-4c2d-48ce-a55c-daed3dd8a9fb Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:27:10 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: c1800501-4c2d-48ce-a55c-daed3dd8a9fb Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:27:10 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: c1800501-4c2d-48ce-a55c-daed3dd8a9fb Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[Nest] 1  - 10/29/2026, 6:27:13 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE
+[Nest] 1  - 10/29/2026, 6:27:13 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE
+[Nest] 1  - 10/29/2026, 6:27:14 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE
+[Nest] 1  - 10/29/2026, 6:27:15 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE
+[Nest] 1  - 10/29/2026, 6:27:15 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE
+[Nest] 1  - 10/29/2026, 6:27:15 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE
+[32m[Nest] 1  - [39m10/29/2026, 6:27:16 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: c1800501-4c2d-48ce-a55c-daed3dd8a9fb Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:27:16 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: c1800501-4c2d-48ce-a55c-daed3dd8a9fb Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[Nest] 1  - 10/29/2026, 6:27:16 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE
+[Nest] 1  - 10/29/2026, 6:27:17 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE
+[32m[Nest] 1  - [39m10/29/2026, 6:27:17 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: c1800501-4c2d-48ce-a55c-daed3dd8a9fb Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[Nest] 1  - 10/29/2026, 6:27:17 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE
+[Nest] 1  - 10/29/2026, 6:27:17 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE
+[32m[Nest] 1  - [39m10/29/2026, 6:27:17 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: c1800501-4c2d-48ce-a55c-daed3dd8a9fb Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[Nest] 1  - 10/29/2026, 6:27:18 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE
+[32m[Nest] 1  - [39m10/29/2026, 6:27:18 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: c1800501-4c2d-48ce-a55c-daed3dd8a9fb Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:27:19 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: c1800501-4c2d-48ce-a55c-daed3dd8a9fb Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:27:19 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: c1800501-4c2d-48ce-a55c-daed3dd8a9fb Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:27:19 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: c1800501-4c2d-48ce-a55c-daed3dd8a9fb Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:27:19 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: c1800501-4c2d-48ce-a55c-daed3dd8a9fb Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:27:19 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: c1800501-4c2d-48ce-a55c-daed3dd8a9fb Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-metadata-transaction.postgres-spec.ts (20.095 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts (14.343 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-application-sources.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-role-update.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-connected-account-delete.postgres-spec.ts (13.182 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-role-assignment.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-refresh-logout.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-files.postgres-spec.ts
+[Nest] 1  - 10/29/2026, 6:28:02 AM   ERROR [UserSessionService] Failed to issue a required session: SESSION_AUDIT_FAILURE
+[Nest] 1  - 10/29/2026, 6:28:02 AM   ERROR [UserSessionService] Failed to issue a required session: Session persisted credential or scope does not match
+[Nest] 1  - 10/29/2026, 6:28:02 AM   ERROR [UserSessionService] Failed to issue a required session: Session persisted lifecycle does not match
+[Nest] 1  - 10/29/2026, 6:28:02 AM   ERROR [UserSessionService] Failed to issue a required session: Session persisted lifecycle does not match
+[Nest] 1  - 10/29/2026, 6:28:02 AM   ERROR [UserSessionService] Failed to issue a required session: Session audit snapshot changed during flush
+[Nest] 1  - 10/29/2026, 6:28:02 AM   ERROR [UserSessionService] Failed to issue a required session: Native transaction outcome is unknown after commit
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-user-session.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts (11.017 s)
+[Nest] 1  - 10/29/2026, 6:28:16 AM   ERROR [DeferredWorkspaceMigrationActionRunnerService] Failed to enqueue deferred workspace migration actions for workspace 56047da4-b9cb-4a65-a71b-56bc0611afb7: redis unavailable
+[32m[Nest] 1  - [39m10/29/2026, 6:28:16 AM [32m    LOG[39m [38;5;3m[DeferredWorkspaceMigrationActionRunnerService] [39m[32mDeferred action sync_workflowRunShares 911e5179-e95d-4c87-8169-36e3713204cf completed for workspace 56047da4-b9cb-4a65-a71b-56bc0611afb7 in 3ms[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-cleanup.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-active-core-user.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-delete-set-null.postgres-spec.ts (7.705 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-owner.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-metadata-mutation-guard.spec.ts
+[32m[Nest] 1  - [39m10/29/2026, 6:28:29 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 0efe14f1-7069-4169-85d8-8f3194beebd7 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-empty-thread-cleanup.postgres-spec.ts (10.55 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-mutation-guard.postgres-spec.ts (15.242 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-company.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-parent-destroy.postgres-spec.ts (15.292 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-workspace-lifecycle-owners.spec.ts
+[32m[Nest] 1  - [39m10/29/2026, 6:29:14 AM [32m    LOG[39m [38;5;3m[DestroySoftDeletedWorkspaceJob] [39m[32mDestroying workspace 150184c6-16d5-4ad7-a686-ac192df8f467[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-reconciliation.postgres-spec.ts (7.324 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-conversation-target.postgres-spec.ts (13.066 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-auto-create-person.postgres-spec.ts (14.512 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-detached-parent-delete.postgres-spec.ts (11.829 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-delete.postgres-spec.ts (5.892 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-create.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-member.postgres-spec.ts (7.309 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-create.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-message.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-attribution-context.spec.ts
+[32m[Nest] 1  - [39m10/29/2026, 6:30:27 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2 Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:28 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2 Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:28 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2 Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:29 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 854bacce-3f7f-40c8-af1c-1513d6cd9478, FolderId: d222b49a-0943-4c5d-b703-c13ce81beb3f - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:29 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 854bacce-3f7f-40c8-af1c-1513d6cd9478, FolderId: d222b49a-0943-4c5d-b703-c13ce81beb3f - Deleting 1 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:29 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2 Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:29 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 854bacce-3f7f-40c8-af1c-1513d6cd9478, FolderId: d222b49a-0943-4c5d-b703-c13ce81beb3f - Completed deleting 1 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:29 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 854bacce-3f7f-40c8-af1c-1513d6cd9478, FolderId: d222b49a-0943-4c5d-b703-c13ce81beb3f - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:29 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 854bacce-3f7f-40c8-af1c-1513d6cd9478, FolderId: d222b49a-0943-4c5d-b703-c13ce81beb3f - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:29 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 854bacce-3f7f-40c8-af1c-1513d6cd9478, FolderId: d222b49a-0943-4c5d-b703-c13ce81beb3f - Completed deleting 0 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:29 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 758251f5-f124-4381-b2f2-d4bba956307a, FolderId: 243ecc80-1e71-40e3-8300-6c827d4eab96 - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:29 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 758251f5-f124-4381-b2f2-d4bba956307a, FolderId: 243ecc80-1e71-40e3-8300-6c827d4eab96 - Deleting 1 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:29 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2 Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:29 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 758251f5-f124-4381-b2f2-d4bba956307a, FolderId: 243ecc80-1e71-40e3-8300-6c827d4eab96 - Completed deleting 1 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:29 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 758251f5-f124-4381-b2f2-d4bba956307a, FolderId: 243ecc80-1e71-40e3-8300-6c827d4eab96 - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:29 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 758251f5-f124-4381-b2f2-d4bba956307a, FolderId: 243ecc80-1e71-40e3-8300-6c827d4eab96 - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:29 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 758251f5-f124-4381-b2f2-d4bba956307a, FolderId: 243ecc80-1e71-40e3-8300-6c827d4eab96 - Completed deleting 0 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:29 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 4aaeb12b-10b2-432f-b596-9aaaec20e882, FolderId: eeba9709-ae67-4e9c-ab26-67fe4f803b3e - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:29 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 4aaeb12b-10b2-432f-b596-9aaaec20e882, FolderId: eeba9709-ae67-4e9c-ab26-67fe4f803b3e - Deleting 1 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:29 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2 Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:29 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 4aaeb12b-10b2-432f-b596-9aaaec20e882, FolderId: eeba9709-ae67-4e9c-ab26-67fe4f803b3e - Completed deleting 1 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:30 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 4aaeb12b-10b2-432f-b596-9aaaec20e882, FolderId: eeba9709-ae67-4e9c-ab26-67fe4f803b3e - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:30 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 4aaeb12b-10b2-432f-b596-9aaaec20e882, FolderId: eeba9709-ae67-4e9c-ab26-67fe4f803b3e - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:30 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 4aaeb12b-10b2-432f-b596-9aaaec20e882, FolderId: eeba9709-ae67-4e9c-ab26-67fe4f803b3e - Completed deleting 0 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:31 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: fabf6957-8962-4885-b17a-b4628551be4e, FolderId: 0050c1cb-2c1c-460d-a958-a90afbabf7c3 - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:31 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: fabf6957-8962-4885-b17a-b4628551be4e, FolderId: 0050c1cb-2c1c-460d-a958-a90afbabf7c3 - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:31 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: fabf6957-8962-4885-b17a-b4628551be4e, FolderId: 0050c1cb-2c1c-460d-a958-a90afbabf7c3 - Deleting 1 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:31 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2 Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:31 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: fabf6957-8962-4885-b17a-b4628551be4e, FolderId: 0050c1cb-2c1c-460d-a958-a90afbabf7c3 - Completed deleting 1 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:31 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: fabf6957-8962-4885-b17a-b4628551be4e, FolderId: 0050c1cb-2c1c-460d-a958-a90afbabf7c3 - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:32 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: fabf6957-8962-4885-b17a-b4628551be4e, FolderId: 0050c1cb-2c1c-460d-a958-a90afbabf7c3 - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:32 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: fabf6957-8962-4885-b17a-b4628551be4e, FolderId: 0050c1cb-2c1c-460d-a958-a90afbabf7c3 - Completed deleting 0 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:32 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: cc5f0570-74ef-495a-97e8-05164f4d6309, FolderId: 3a416593-d297-4c18-acb0-43b93116680f - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:32 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: cc5f0570-74ef-495a-97e8-05164f4d6309, FolderId: 3a416593-d297-4c18-acb0-43b93116680f - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:32 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: cc5f0570-74ef-495a-97e8-05164f4d6309, FolderId: 3a416593-d297-4c18-acb0-43b93116680f - Completed deleting 0 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:32 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 5768b03a-94bc-4fcd-8929-7e19a854ad1c, FolderId: 6908f3a6-ce0d-4dfa-90fe-c241648e0070 - Deleting messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:32 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 5768b03a-94bc-4fcd-8929-7e19a854ad1c, FolderId: 6908f3a6-ce0d-4dfa-90fe-c241648e0070 - Deleting 0 messages[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:32 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2, MessageChannelId: 5768b03a-94bc-4fcd-8929-7e19a854ad1c, FolderId: 6908f3a6-ce0d-4dfa-90fe-c241648e0070 - Completed deleting 0 messages from folder: Fixture folder[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:32 AM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerService] [39m[32mWorkspaceId: 6393fd04-3934-4720-be6b-29c1c4b97ee2 Deleting 1 message channel message associations[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:33 AM [32m    LOG[39m [38;5;3m[MessagingDeleteFolderMessagesService] [39m[32mWorkspaceId: 0d71a599-3f74-4eac-b9b7-016b16b337b2, MessageChannelId: 8655a6a4-6664-4dd1-a8ac-8a3b7b0eeb94, FolderId: 2ae4c311-9c5c-48ef-8145-0c8fa7c45930 - Deleting messages from folder: Fixture folder[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-cleanup.postgres-spec.ts (9.265 s)
+[Nest] 1  - 10/29/2026, 6:30:38 AM   ERROR [WorkspaceDataSource] After-commit callback failed for workspace 56e868a1-aee6-43ca-92eb-1589e70fed63
+[Nest] 1  - 10/29/2026, 6:30:38 AM   ERROR [WorkspaceDataSource] Error: STOCK_CALLBACK_FAILURE
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-identity-create-person.postgres-spec.ts:176:7)
+    at Promise.then.completed (/tools/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (/tools/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (/tools/node_modules/jest-circus/build/run.js:316:40)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at _runTest (/tools/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/tools/node_modules/jest-circus/build/run.js:126:9)
+    at _runTestsForDescribeBlock (/tools/node_modules/jest-circus/build/run.js:121:9)
+    at run (/tools/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/tools/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/tools/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/tools/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/tools/node_modules/jest-runner/build/runTest.js:444:34)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-identity-create-person.postgres-spec.ts (9.75 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-update-fk.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-provider-deletion.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-core-user-deactivation.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-records.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-binding-config-event.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-transaction.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-auth.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-queue-outcome.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-account-scope-execution.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-scope.spec.ts
+[32m[Nest] 1  - [39m10/29/2026, 6:30:55 AM [32m    LOG[39m [38;5;3m[WorkspaceCommandRunnerService] [39m[32mUpgrading workspace b5001806-90d9-4980-864c-3f55bbc138aa 1/1
+[upgrade] event=workspace.start workspaceId=b5001806-90d9-4980-864c-3f55bbc138aa index=1 total=1 dryRun=false[39m
+[33m[Nest] 1  - [39m10/29/2026, 6:30:55 AM [33m   WARN[39m [38;5;3m[WorkspaceCommandRunnerService] [39m[33mFailed to record upgrade failure after an unsafe transaction outcome[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:55 AM [32m    LOG[39m [38;5;3m[WorkspaceCommandRunnerService] [39m[32mUpgrading workspace b5001806-90d9-4980-864c-3f55bbc138aa 1/1
+[upgrade] event=workspace.start workspaceId=b5001806-90d9-4980-864c-3f55bbc138aa index=1 total=1 dryRun=false[39m
+[33m[Nest] 1  - [39m10/29/2026, 6:30:55 AM [33m   WARN[39m [38;5;3m[WorkspaceCommandRunnerService] [39m[33mFailed to record upgrade failure after an unsafe transaction outcome[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:55 AM [32m    LOG[39m [38;5;3m[WorkspaceCommandRunnerService] [39m[32mUpgrading workspace b5001806-90d9-4980-864c-3f55bbc138aa 1/1
+[upgrade] event=workspace.start workspaceId=b5001806-90d9-4980-864c-3f55bbc138aa index=1 total=1 dryRun=false[39m
+[33m[Nest] 1  - [39m10/29/2026, 6:30:55 AM [33m   WARN[39m [38;5;3m[WorkspaceCommandRunnerService] [39m[33mFailed to record upgrade failure after an unsafe transaction outcome[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:55 AM [32m    LOG[39m [38;5;3m[ActualCommand] [39m[32mCommand completed![39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:55 AM [32m    LOG[39m [38;5;3m[WorkspaceCommandRunnerService] [39m[32mUpgrading workspace b5001806-90d9-4980-864c-3f55bbc138aa 1/1
+[upgrade] event=workspace.start workspaceId=b5001806-90d9-4980-864c-3f55bbc138aa index=1 total=1 dryRun=false[39m
+[32m[Nest] 1  - [39m10/29/2026, 6:30:55 AM [32m    LOG[39m [38;5;3m[WorkspaceCommandRunnerService] [39m[32mUpgrade for workspace b5001806-90d9-4980-864c-3f55bbc138aa completed.
+[upgrade] event=workspace.success workspaceId=b5001806-90d9-4980-864c-3f55bbc138aa executedByVersion=2.52.0 dryRun=false[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-lifecycle.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-identity.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-operation-index.postgres-spec.ts (28.085 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-custom-record.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-human-text-command.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-sent-receipt.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-email-group-deletion.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-ownership-log032.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-channel-cleanup-job.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-nullable-participant.spec.ts
+[95m[Nest] 1  - [39m10/29/2026, 6:31:28 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: be059e3d-627e-4fdf-ae7a-10770ad0e1e4 Cleaning up message channel message associations for channel 811de3ff-9f5a-4e0f-8527-457df5f365e4[39m
+[95m[Nest] 1  - [39m10/29/2026, 6:31:28 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: a418fdca-d225-426e-8578-516e82086e28 Cleaning up message channel message associations for channel a94b9691-6288-4aa3-bf96-c29a198f0653[39m
+[95m[Nest] 1  - [39m10/29/2026, 6:31:28 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: fadc0633-64f6-4b65-beb8-e3f900ba4606 Cleaning up message channel message associations for channel c388404f-84f6-41d7-a9e0-7c575b671568[39m
+[95m[Nest] 1  - [39m10/29/2026, 6:31:28 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: 59b20ecb-edac-4a04-8f3a-f1758527e70d Cleaning up message channel message associations for channel fec63f82-6d7c-46fe-977c-b59432121f3b[39m
+[95m[Nest] 1  - [39m10/29/2026, 6:31:28 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: eeb5d371-0792-459f-9a0d-ebb703f13e71 Cleaning up message channel message associations for channel 0e17b8f4-e1a8-4117-bd40-d47201e8d2e1[39m
+[95m[Nest] 1  - [39m10/29/2026, 6:31:28 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: eeb5d371-0792-459f-9a0d-ebb703f13e71 Cleaning up message channel message associations for channel 0e17b8f4-e1a8-4117-bd40-d47201e8d2e1[39m
+[95m[Nest] 1  - [39m10/29/2026, 6:31:28 AM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: e8584671-4845-48ee-9f40-dd1f61ab224c Cleaning up message channel message associations for channel 26d7327a-2a35-4153-a773-297c55d6d2e3[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-human-command-lease.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-connector-acceptance.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-sent-apply-failure.spec.ts
+
+Test Suites: 58 passed, 58 total
+Tests:       1806 passed, 1806 total
+Snapshots:   0 total
+Time:        283.825 s
+Ran all test suites matching /crm-audit|omni-native-|omni-metadata-transaction|omni-metadata-mutation-guard|omni-detached-parent-delete|omni-parent-destroy|ordinary-native|omni-conversation-target|omni-identity-create-person|omni-auto-create-person|omni-workspace-lifecycle-owners/i.
