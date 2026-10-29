@@ -3585,3 +3585,7 @@ Dependency guard потребовал узкий structural impersonation type; 
 ROB765 In Progress. Демо/сообщения/Actions не менялись. Продолжаем
 [coreUser softDelete audit](implementation/log117/next-boundary.md); native member
 с его system/transitive FK effects требует отдельного security-first owner.
+
+LOG117 publication: 651c6e4cd82b2705666277fa66d6e982b5ca1739 pushed/API verified.
+ROB765 description/comment ecbe25a3-a55f-4cd4-8e5a-ebe0d91e7235 independently read back;
+all 11 issue states match. Implementation continues with core account deactivation audit.
