@@ -3647,3 +3647,7 @@ Concurrent-demotion тест подтверждает именно отказ с
 
 ROB765 In Progress. Это не общий freshness gate для request.user и не новая
 гарантия доставки уведомлений. Далее [private native member cleanup audit](implementation/log120/next-boundary.md).
+
+LOG120 publication: ddab6bfa9d6253d1a29be230bff3040a4024cba1 pushed/API verified.
+ROB765 description/comment 210b0cdd-cbac-4e83-ade1-d92777d242b0 independently read back;
+all 11 issue states match. Implementation continues with native member cleanup.
