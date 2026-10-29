@@ -1,0 +1,16 @@
+{
+  "baseCommit": "2267a8fcb8768a62692940f92f9c6dfad7230090",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-orphan-native-calendar-events-with-audit.ts": "4b42a28d54bab09a91e15ddf0bd963d184629624f26a88c33a14527322e8df53",
+    "packages/twenty-server/src/modules/calendar/blocklist-manager/jobs/blocklist-item-delete-calendar-events.job.ts": "dc65b03a6d1dd4117158d7520bcef017ee5fe83098696d0a19fd9b7a6914eb75",
+    "packages/twenty-server/src/modules/calendar/calendar-event-cleaner/jobs/calendar-channel-deletion-cleanup.job.ts": "eecea6dd4fb7dd62226e8108426c8c05ecdc568f3327ae8845e64c892e24e94d",
+    "packages/twenty-server/src/modules/calendar/calendar-event-cleaner/jobs/delete-connected-account-associated-calendar-data.job.ts": "a27c01eeabc9069067286af2881d3fdbac5a3f85630cd272a3522f21cdc3d776",
+    "packages/twenty-server/src/modules/calendar/calendar-event-cleaner/services/calendar-event-cleaner.service.ts": "459f089b8979c4a58fe15cae9910574ab566a4483e483c6aa08134e590f68503",
+    "packages/twenty-server/test/fork-migration/crm-audit-calendar-cleanup-entrypoints.spec.ts": "acb31aa299321a26ee44b3b5a88a45804b602c4253477d278e50d6e7938efb2a",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/clean-workspace-native-calendar-events-with-audit.ts": "bac04e139d6882b555a085b79d89b31902f43123b576bd2d2a6fc5dc0a13079a",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-calendar-cleanup-with-audit.ts": "6c846bab44b260696585d1fb6bf3f40c50baaf9aab245831ca285b37e16d30e7",
+    "packages/twenty-server/test/fork-migration/crm-audit-calendar-sweep-entrypoints.spec.ts": "c4fb4253ef4d7f2f1b26cd92d5c70acfe5567c2efb94cd4dad02b7311ae4ebdd",
+    "packages/twenty-server/test/fork-migration/crm-audit-calendar-workspace-cleanup.postgres-spec.ts": "d0a37a96ca9186a204bebb4a626e9f2877f8a9d966569e0b6b13104b9407d377"
+  },
+  "uploadedSourceHashesVerified": true
+}

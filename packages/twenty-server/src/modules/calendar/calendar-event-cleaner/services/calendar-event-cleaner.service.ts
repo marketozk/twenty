@@ -1,3 +1,4 @@
+import { cleanWorkspaceNativeCalendarEventsWithAudit } from 'src/engine/core-modules/crm-audit/clean-workspace-native-calendar-events-with-audit';
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { deleteNativeCalendarChannelAssociationsWithAudit } from 'src/engine/core-modules/crm-audit/delete-native-calendar-channel-associations-with-audit';
 import { lockNativeCleanupCandidates } from 'src/modules/omnichannel/services/lock-native-cleanup-candidates';
@@ -5,8 +6,7 @@ import { lockOrdinaryNativeSyncRun } from 'src/modules/omnichannel/services/lock
 import { type OrdinaryMetadataSyncRun } from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
 import { Injectable } from '@nestjs/common';
 
-import { isDefined } from 'twenty-shared/utils';
-import { In, MoreThan } from 'typeorm';
+import { In } from 'typeorm';
 
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
@@ -243,64 +243,38 @@ export class CalendarEventCleanerService {
     );
   }
 
-  public async cleanWorkspaceCalendarEvents(workspaceId: string) {
-    const authContext = buildSystemAuthContext(workspaceId);
-
+  public async cleanWorkspaceCalendarEvents(
+    workspaceId: string,
+    auditOperation: CrmAuditOperation,
+  ): Promise<void> {
+    if (!auditOperation || auditOperation.workspaceId !== workspaceId)
+      throw new Error(
+        'Native calendar cleanup requires scoped audit operation',
+      );
+    const operation = {
+      ...auditOperation,
+      actor: { ...auditOperation.actor },
+      ...(auditOperation.initiator
+        ? { initiator: { ...auditOperation.initiator } }
+        : {}),
+    };
     await this.workspaceOrmManager.executeInWorkspaceContext(
       async () => {
+        if (this.workspaceOrmManager.getWorkspaceId() !== workspaceId)
+          throw new Error('OMNI_NATIVE_OWNERSHIP_WORKSPACE_MISMATCH');
         await this.workspaceOrmManager.runInWorkspaceTransaction(
-          async (transactionScope) => {
-            const calendarEventRepository =
-              transactionScope.getRepository<CalendarEventWorkspaceEntity>(
-                'calendarEvent',
-                { shouldBypassPermissionChecks: true },
-              );
-            const calendarChannelEventAssociationRepository =
-              transactionScope.getRepository<CalendarChannelEventAssociationWorkspaceEntity>(
-                'calendarChannelEventAssociation',
-                { shouldBypassPermissionChecks: true },
-              );
-
-            let cursor: string | undefined;
-
-            for (;;) {
-              const page = await calendarEventRepository.find({
-                where: isDefined(cursor) ? { id: MoreThan(cursor) } : {},
-                order: { id: 'ASC' },
-                take: CALENDAR_CLEANUP_PAGE_SIZE,
-                select: { id: true },
-              });
-
-              if (page.length === 0) {
-                break;
-              }
-
-              cursor = page[page.length - 1].id;
-
-              const pageIds = page.map(({ id }) => id);
-
-              const associations =
-                await calendarChannelEventAssociationRepository.find({
-                  where: { calendarEventId: In(pageIds) },
-                  select: { calendarEventId: true },
-                });
-
-              const referencedEventIds = new Set(
-                associations.map(({ calendarEventId }) => calendarEventId),
-              );
-
-              const orphanEventIds = pageIds.filter(
-                (eventId) => !referencedEventIds.has(eventId),
-              );
-
-              if (orphanEventIds.length > 0) {
-                await calendarEventRepository.delete(orphanEventIds);
-              }
-            }
+          async (scope) => {
+            if (scope.workspaceId !== workspaceId)
+              throw new Error('OMNI_NATIVE_OWNERSHIP_WORKSPACE_MISMATCH');
+            await cleanWorkspaceNativeCalendarEventsWithAudit({
+              scope,
+              operation,
+            });
           },
+          { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
         );
       },
-      authContext,
+      buildSystemAuthContext(workspaceId),
       { lite: true },
     );
   }

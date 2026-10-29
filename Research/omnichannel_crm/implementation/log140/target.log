@@ -1,0 +1,20 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-orphan-cleanup.postgres-spec.ts (15.548 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-association-cleanup.postgres-spec.ts (7.476 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-workspace-cleanup.postgres-spec.ts (11.666 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-sweep-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-cleanup-entrypoints.spec.ts
+[95m[Nest] 1  - [39m10/29/2026, 10:21:36 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 7970c2ae-f064-49b5-8eba-0c0b852f1698 Cleaning up calendar channel event associations for channel b83d3c05-ff2d-438d-82b6-3d8287db24ef[39m
+[95m[Nest] 1  - [39m10/29/2026, 10:21:36 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 6f63a110-2157-496f-af62-bf47fb9ada48 Cleaning up calendar channel event associations for channel 030a7b68-d679-4dae-ae2d-d8cde1cd37ad[39m
+[95m[Nest] 1  - [39m10/29/2026, 10:21:36 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 323ee27e-b052-4cbb-826a-0126f5ffbb09 Cleaning up calendar channel event associations for channel d5b2c6ec-43a9-4af8-9285-4000beb5edf0[39m
+[95m[Nest] 1  - [39m10/29/2026, 10:21:36 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 2f140960-1d2f-4b81-81af-8fb573c66c28 Cleaning up calendar channel event associations for channel 6957cc8c-8010-460e-b8b6-9b0c6a1e37e9[39m
+[95m[Nest] 1  - [39m10/29/2026, 10:21:36 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 47119a99-849b-48b4-9c7d-044c2190531b Cleaning up calendar channel event associations for channel 66e6a54b-1b25-4f43-8bde-b7b410a250ef[39m
+[95m[Nest] 1  - [39m10/29/2026, 10:21:36 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: d9f7261e-23e1-4e7e-80f3-f749b914bf25 Cleaning up calendar channel event associations for channel cd1c4ae4-1aee-49e3-894a-c36e8f03b27f[39m
+[95m[Nest] 1  - [39m10/29/2026, 10:21:36 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 4d6e49af-24e5-49dd-9eb9-0b335bec6e81 Cleaning up calendar channel event associations for channel d712681e-58b0-446d-954d-71561555cf6e[39m
+[95m[Nest] 1  - [39m10/29/2026, 10:21:36 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 1ae1e514-da3c-4dc0-9337-121282816e1d Cleaning up calendar channel event associations for channel e9503292-9b35-40ef-a755-bac0b412f44b[39m
+[95m[Nest] 1  - [39m10/29/2026, 10:21:36 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 7dc666bc-7565-430a-936f-fbddf7dfdf6d Cleaning up calendar channel event associations for channel b1976fc9-d19b-4132-a4d2-3c935bcf3790[39m
+
+Test Suites: 5 passed, 5 total
+Tests:       88 passed, 88 total
+Snapshots:   0 total
+Time:        35.255 s
+Ran all test suites matching /crm-audit-calendar-/i.

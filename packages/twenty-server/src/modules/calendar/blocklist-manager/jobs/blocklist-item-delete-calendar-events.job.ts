@@ -1,3 +1,7 @@
+import {
+  membershipCleanupOperation,
+  systemMembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { Scope } from '@nestjs/common';
 
 import { type ObjectRecordCreateEvent } from 'twenty-shared/database-events';
@@ -24,12 +28,21 @@ export class BlocklistItemDeleteCalendarEventsJob {
 
   @Process(BlocklistItemDeleteCalendarEventsJob.name)
   async handle(data: BlocklistItemDeleteCalendarEventsJobData): Promise<void> {
+    const workspaceId = data.workspaceId;
+    const auditOperation = membershipCleanupOperation(
+      workspaceId,
+      systemMembershipCleanupIdentity(
+        workspaceId,
+        BlocklistItemDeleteCalendarEventsJob.name,
+      ),
+    )!;
     // Blocking a handle deletes their messages but deliberately leaves calendar
     // events alone: an event the blocked handle merely attended is still the
     // workspace's own meeting, so it is not swept up with them. We only clean up
     // events that were orphaned by other means.
     await this.calendarEventCleanerService.cleanWorkspaceCalendarEvents(
-      data.workspaceId,
+      workspaceId,
+      auditOperation,
     );
   }
 }

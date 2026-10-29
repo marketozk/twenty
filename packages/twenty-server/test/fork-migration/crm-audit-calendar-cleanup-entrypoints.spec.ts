@@ -17,6 +17,11 @@ jest.mock(
   () => ({ deleteNativeCalendarChannelAssociationsWithAudit: jest.fn() }),
 );
 
+jest.mock(
+  'src/engine/core-modules/crm-audit/clean-workspace-native-calendar-events-with-audit',
+  () => ({ cleanWorkspaceNativeCalendarEventsWithAudit: jest.fn() }),
+);
+
 import { deleteNativeCalendarChannelAssociationsWithAudit } from 'src/engine/core-modules/crm-audit/delete-native-calendar-channel-associations-with-audit';
 import { CalendarEventCleanerService } from 'src/modules/calendar/calendar-event-cleaner/services/calendar-event-cleaner.service';
 import { CalendarChannelDeletionCleanupJob } from 'src/modules/calendar/calendar-event-cleaner/jobs/calendar-channel-deletion-cleanup.job';
@@ -179,7 +184,14 @@ it('actual job pins IDs and attributes the owner to itself, then retains the sep
   expect(isUUID(called.operation.operationId)).toBe(true);
   expect(isUUID(called.operation.correlationId)).toBe(true);
   expect(f.sweep).toHaveBeenCalledTimes(1);
-  expect(f.sweep).toHaveBeenCalledWith(f.workspaceId);
+  const [sweepWorkspaceId, sweepOperation] = f.sweep.mock.calls[0];
+  expect(sweepWorkspaceId).toBe(f.workspaceId);
+  expect(sweepOperation).toMatchObject({
+    workspaceId: f.workspaceId,
+    actor: { kind: 'system', id: 'CalendarChannelDeletionCleanupJob' },
+  });
+  expect(sweepOperation.operationId).not.toBe(called.operation.operationId);
+  expect(sweepOperation.correlationId).toBe(called.operation.correlationId);
   expect(owner.mock.invocationCallOrder[0]).toBeLessThan(
     f.sweep.mock.invocationCallOrder[0],
   );

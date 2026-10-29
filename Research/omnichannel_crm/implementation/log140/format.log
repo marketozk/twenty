@@ -1,0 +1,13 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/delete-orphan-native-calendar-events-with-audit.ts 78ms (unchanged)
+../../../source/packages/twenty-server/src/modules/calendar/blocklist-manager/jobs/blocklist-item-delete-calendar-events.job.ts 37ms (unchanged)
+../../../source/packages/twenty-server/src/modules/calendar/calendar-event-cleaner/jobs/calendar-channel-deletion-cleanup.job.ts 18ms (unchanged)
+../../../source/packages/twenty-server/src/modules/calendar/calendar-event-cleaner/jobs/delete-connected-account-associated-calendar-data.job.ts 6ms (unchanged)
+../../../source/packages/twenty-server/src/modules/calendar/calendar-event-cleaner/services/calendar-event-cleaner.service.ts 89ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-cleanup-entrypoints.spec.ts 91ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/clean-workspace-native-calendar-events-with-audit.ts 2ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/native-calendar-cleanup-with-audit.ts 99ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-sweep-entrypoints.spec.ts 34ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-workspace-cleanup.postgres-spec.ts 120ms
+
+{"formattedFiles": 10, "singleSshSession": true}

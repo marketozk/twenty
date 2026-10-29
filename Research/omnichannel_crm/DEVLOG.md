@@ -3923,3 +3923,19 @@ SET NULL без потери файлов/точности, unsupported FK и к
 в тесте; окончательная регрессия включает правку. [Ревью](implementation/log139/review.md).
 
 LOG139 publication: code cc30ff6df39ef20286c910f7fd7390129a915254 pushed and GitHub API ref verified. Linear comment b1c6c642-c0a0-4aca-985e-24fcec3ae4b6, description/comment/all 11 issue states independently read back. Continuing global CalendarEvent sweep and three production jobs; ROB765 remains In Progress.
+
+## LOG140 — единый календарный sweep и три фоновых задания
+
+LOG140 подключает global CalendarEvent sweep к одному аудиту на все страницы и трём реальным заданиям. Live-only discovery, точные каскады и сохранность CallRecording проверены; ошибка поздней страницы откатывает весь sweep.
+2160 tests/73 suites PASS (420.276s); 88 targeted/5 suites PASS (35.255s), 30 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 411/415 roots, baseline/current 225 diagnostics, 0 новых/changed-file. 10 local/remote source hashes совпадают. [Проверки](implementation/log140/results.json). ROB765 In Progress. Provider expectedRun cleanup, старый candidate service wrapper и core calendar metadata audit открыты. Association cleanup канала и следующий sweep остаются разными транзакциями. Снимки и блокировки удерживаются до конца sweep. Код после LOG088 не выкатывался; полная HTTP/JWT приёмка и GitHub Actions не выполнялись. [Далее](implementation/log140/next-boundary.md).
+
+Один audit context проверен на 501 корне через то же DB-соединение: раннего
+flush нет. Проверены пропуски защищённой/trigger-skipped страницы, поздний
+отказ, межстраничные изменения, deferred resurrection и COMMIT ACK. Новая
+двухсоединительная soft-delete race подтверждает live-only discovery.
+Service/jobs сохраняют системную attribution, strict outcome и календарные
+правила. Независимое ревью блокеров не выявило. [Ревью](implementation/log140/review.md).
+
+В STATUS исправлен оставшийся текст краткого описания LOG138, ошибочно
+переименованный при обновлении LOG139. Текущий обзор теперь описывает global
+sweep; исторические detailed evidence и результаты проверок не менялись.

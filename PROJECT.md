@@ -57,7 +57,7 @@
 ## Текущая реализация
 
 ROB764 принята по [LOG088](Research/omnichannel_crm/implementation/rob764-acceptance.md).
-ROB765 остаётся In Progress: LOG139 реализует закрытый аудит удаления orphan CalendarEvent: фактические каскады Association/Participant/Target и SET NULL у сохранённого CallRecording. Записи звонков, файлы, точность JSON и timestamps сохраняются; production sweep/provider callers ещё не подключены.
+ROB765 остаётся In Progress: LOG140 подключает global CalendarEvent sweep к одному аудиту на все страницы и трём реальным заданиям. Live-only discovery, точные каскады и сохранность CallRecording проверены; ошибка поздней страницы откатывает весь sweep.
 
 Актуальные проверки и ближайшая работа — в [STATUS](Research/omnichannel_crm/STATUS.md);
 единственная таблица приёмки аудита — [rob765-progress](Research/omnichannel_crm/implementation/rob765-progress.md).

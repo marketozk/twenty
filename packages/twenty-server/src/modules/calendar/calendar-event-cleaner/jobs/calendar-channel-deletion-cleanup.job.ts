@@ -29,12 +29,14 @@ export class CalendarChannelDeletionCleanupJob {
   async handle(data: CalendarChannelDeletionCleanupJobData): Promise<void> {
     const workspaceId = data.workspaceId;
     const calendarChannelId = data.calendarChannelId;
-    const auditOperation = membershipCleanupOperation(
+    const identity = systemMembershipCleanupIdentity(
       workspaceId,
-      systemMembershipCleanupIdentity(
-        workspaceId,
-        CalendarChannelDeletionCleanupJob.name,
-      ),
+      CalendarChannelDeletionCleanupJob.name,
+    );
+    const auditOperation = membershipCleanupOperation(workspaceId, identity)!;
+    const sweepAuditOperation = membershipCleanupOperation(
+      workspaceId,
+      identity,
     )!;
     this.logger.debug(
       `WorkspaceId: ${workspaceId} Cleaning up calendar channel event associations for channel ${calendarChannelId}`,
@@ -48,10 +50,11 @@ export class CalendarChannelDeletionCleanupJob {
       },
     );
 
-    // Compatibility sweep remains a separate, unaudited transaction in this slice.
+    // The audited orphan sweep remains a separate transaction; the two stages share correlation, not atomicity.
     // Any association-owner failure propagates before reaching it.
     await this.calendarEventCleanerService.cleanWorkspaceCalendarEvents(
       workspaceId,
+      sweepAuditOperation,
     );
   }
 }
