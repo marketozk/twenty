@@ -3894,3 +3894,17 @@ nullable external IDs, member scope по текущему custodian и separate 
 её. [Подробности](implementation/log137/review.md).
 
 LOG137 publication: code 5f085ed72755a763b8a5ba11d70e876915a37da1 pushed and GitHub API ref verified. Linear comment e56e322f-3af2-4ec0-8277-7813125452c1, description/comment/all 11 issue states independently read back. Continuing calendar association cleanup; ROB765 remains In Progress.
+
+
+## LOG138 — аудит связей удалённого календарного канала
+
+LOG138 подключает аудит удаления календарных associations для удалённого канала. Удаляются и журналируются только фактические строки; проверены пагинация, частичный DELETE, откат и конкурентное создание канала. Само событие и его участники этим owner не удаляются.
+2100 tests/70 suites PASS (398.537s); 28 targeted/2 suites PASS (13.933s), 28 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 404/407 roots, baseline/current 225 diagnostics, 0 новых/changed-file. 5 local/remote source hashes совпадают. [Проверки](implementation/log138/results.json). ROB765 In Progress. Calendar orphan sweep, sync cleanup и core metadata audit остаются открытыми. SHARE lock временно блокирует core.calendarChannel DML всех workspace до COMMIT; lock_timeout owner — 8s. Код после LOG088 не выкатывался; полная HTTP/JWT приёмка и GitHub Actions не выполнялись. [Далее](implementation/log138/next-boundary.md).
+
+Core calendar writers ещё не используют общий ownership fence, поэтому закрытый
+owner удерживает фиксированный SHARE table lock; оба порядка реального INSERT
+проверены. Tombstones сохранены, trigger-skipped строки не зацикливают страницы,
+проверены actual audit, unsupported FK, deferred mutations и lost COMMIT ACK.
+Первый typecheck исправлен явным async у test wrapper; окончательная регрессия
+включает исправление. Независимое ревью новых блокеров не выявило.
+[Ревью и ограничения](implementation/log138/review.md).

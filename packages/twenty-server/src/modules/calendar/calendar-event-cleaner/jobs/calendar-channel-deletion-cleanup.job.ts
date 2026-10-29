@@ -1,3 +1,7 @@
+import {
+  membershipCleanupOperation,
+  systemMembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { Logger, Scope } from '@nestjs/common';
 
 import { Process } from 'src/engine/core-modules/message-queue/decorators/process.decorator';
@@ -23,19 +27,31 @@ export class CalendarChannelDeletionCleanupJob {
 
   @Process(CalendarChannelDeletionCleanupJob.name)
   async handle(data: CalendarChannelDeletionCleanupJobData): Promise<void> {
+    const workspaceId = data.workspaceId;
+    const calendarChannelId = data.calendarChannelId;
+    const auditOperation = membershipCleanupOperation(
+      workspaceId,
+      systemMembershipCleanupIdentity(
+        workspaceId,
+        CalendarChannelDeletionCleanupJob.name,
+      ),
+    )!;
     this.logger.debug(
-      `WorkspaceId: ${data.workspaceId} Cleaning up calendar channel event associations for channel ${data.calendarChannelId}`,
+      `WorkspaceId: ${workspaceId} Cleaning up calendar channel event associations for channel ${calendarChannelId}`,
     );
 
     await this.calendarEventCleanerService.deleteCalendarChannelEventAssociationsByChannelId(
       {
-        workspaceId: data.workspaceId,
-        calendarChannelId: data.calendarChannelId,
+        workspaceId,
+        calendarChannelId,
+        auditOperation,
       },
     );
 
+    // Compatibility sweep remains a separate, unaudited transaction in this slice.
+    // Any association-owner failure propagates before reaching it.
     await this.calendarEventCleanerService.cleanWorkspaceCalendarEvents(
-      data.workspaceId,
+      workspaceId,
     );
   }
 }

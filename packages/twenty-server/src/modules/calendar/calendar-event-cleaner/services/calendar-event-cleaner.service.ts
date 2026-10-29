@@ -1,7 +1,9 @@
+import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
+import { deleteNativeCalendarChannelAssociationsWithAudit } from 'src/engine/core-modules/crm-audit/delete-native-calendar-channel-associations-with-audit';
 import { lockNativeCleanupCandidates } from 'src/modules/omnichannel/services/lock-native-cleanup-candidates';
 import { lockOrdinaryNativeSyncRun } from 'src/modules/omnichannel/services/lock-ordinary-native-sync-run';
 import { type OrdinaryMetadataSyncRun } from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { isDefined } from 'twenty-shared/utils';
 import { In, MoreThan } from 'typeorm';
@@ -19,53 +21,46 @@ const CALENDAR_CLEANUP_PAGE_SIZE = 500;
 
 @Injectable()
 export class CalendarEventCleanerService {
-  private readonly logger = new Logger(CalendarEventCleanerService.name);
-
   constructor(private readonly workspaceOrmManager: WorkspaceOrmManager) {}
 
   async deleteCalendarChannelEventAssociationsByChannelId({
     workspaceId,
     calendarChannelId,
+    auditOperation,
   }: {
     workspaceId: string;
     calendarChannelId: string;
-  }) {
-    const authContext = buildSystemAuthContext(workspaceId);
-
-    await this.workspaceOrmManager.executeInWorkspaceContext(
-      async () => {
-        await this.workspaceOrmManager.runInWorkspaceTransaction(
-          async (transactionScope) => {
-            const calendarChannelEventAssociationRepository =
-              transactionScope.getRepository<CalendarChannelEventAssociationWorkspaceEntity>(
-                'calendarChannelEventAssociation',
-                { shouldBypassPermissionChecks: true },
-              );
-
-            for (;;) {
-              const associations =
-                await calendarChannelEventAssociationRepository.find({
-                  where: { calendarChannelId },
-                  take: CALENDAR_CLEANUP_PAGE_SIZE,
-                  select: { id: true },
-                });
-
-              if (associations.length === 0) {
-                break;
-              }
-
-              const ids = associations.map(({ id }) => id);
-
-              this.logger.log(
-                `WorkspaceId: ${workspaceId} Deleting ${ids.length} calendar channel event associations for channel ${calendarChannelId}`,
-              );
-
-              await calendarChannelEventAssociationRepository.delete(ids);
-            }
+    auditOperation: CrmAuditOperation;
+  }): Promise<number> {
+    if (!auditOperation || auditOperation.workspaceId !== workspaceId)
+      throw new Error(
+        'Native calendar cleanup requires scoped audit operation',
+      );
+    const operation = {
+      ...auditOperation,
+      actor: { ...auditOperation.actor },
+      ...(auditOperation.initiator
+        ? { initiator: { ...auditOperation.initiator } }
+        : {}),
+    };
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      () => {
+        if (this.workspaceOrmManager.getWorkspaceId() !== workspaceId)
+          throw new Error('OMNI_NATIVE_OWNERSHIP_WORKSPACE_MISMATCH');
+        return this.workspaceOrmManager.runInWorkspaceTransaction(
+          (scope) => {
+            if (scope.workspaceId !== workspaceId)
+              throw new Error('OMNI_NATIVE_OWNERSHIP_WORKSPACE_MISMATCH');
+            return deleteNativeCalendarChannelAssociationsWithAudit({
+              scope,
+              operation,
+              calendarChannelId,
+            });
           },
+          { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
         );
       },
-      authContext,
+      buildSystemAuthContext(workspaceId),
       { lite: true },
     );
   }

@@ -1,0 +1,11 @@
+{
+  "baseCommit": "967b536da48b23f9ea877c9d493c2a05d9273e90",
+  "lfSha256": {
+    "packages/twenty-server/src/modules/calendar/calendar-event-cleaner/jobs/calendar-channel-deletion-cleanup.job.ts": "124e8fece9c3abcb1d130f02e44df50afdfb38b404d0cecb0f12b18c2b5763ab",
+    "packages/twenty-server/src/modules/calendar/calendar-event-cleaner/services/calendar-event-cleaner.service.ts": "fa74be7bfb2159a93a1acfd5b60275703af19d51b8193415cbaf66d2fa99ec0b",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-native-calendar-channel-associations-with-audit.ts": "e0ec3bd19595b67967d95f72e13ee431f6d5aff9cb96e43584cb9eb46778336f",
+    "packages/twenty-server/test/fork-migration/crm-audit-calendar-association-cleanup.postgres-spec.ts": "22eb07365fb9cdc7335acfd06c17d99d034a5cbe2b3170817193f5ace314b092",
+    "packages/twenty-server/test/fork-migration/crm-audit-calendar-cleanup-entrypoints.spec.ts": "09fde6045476a0649b5df771beaef704fb3f1520c9b5e4e86a548822a2fe37b2"
+  },
+  "uploadedSourceHashesVerified": true
+}

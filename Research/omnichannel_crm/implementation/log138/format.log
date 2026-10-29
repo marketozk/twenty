@@ -1,0 +1,8 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/modules/calendar/calendar-event-cleaner/jobs/calendar-channel-deletion-cleanup.job.ts 116ms (unchanged)
+../../../source/packages/twenty-server/src/modules/calendar/calendar-event-cleaner/services/calendar-event-cleaner.service.ts 117ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/delete-native-calendar-channel-associations-with-audit.ts 84ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-association-cleanup.postgres-spec.ts 135ms
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-cleanup-entrypoints.spec.ts 37ms (unchanged)
+
+{"formattedFiles": 5, "singleSshSession": true}

@@ -1,0 +1,12 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-association-cleanup.postgres-spec.ts (13.486 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-cleanup-entrypoints.spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       28 passed, 28 total
+Snapshots:   0 total
+Time:        13.933 s
+Ran all test suites matching /crm-audit-calendar-association-cleanup|crm-audit-calendar-cleanup-entrypoints/i.
+[95m[Nest] 1  - [39m10/29/2026, 9:35:38 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 4b2280e3-c427-4876-8f80-85590091ac26 Cleaning up calendar channel event associations for channel 0db0523f-91d9-44a3-a5f4-3d3ae042c0a1[39m
+[95m[Nest] 1  - [39m10/29/2026, 9:35:38 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 38d2f7b6-aa9c-46b8-ac72-91aa0cabb37e Cleaning up calendar channel event associations for channel 07b2f521-a725-4ac6-b8b9-c6a3d29ad551[39m
+[95m[Nest] 1  - [39m10/29/2026, 9:35:38 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 6ad0b4d8-9046-4199-a6ca-abeb20442314 Cleaning up calendar channel event associations for channel ac196ed7-d67a-45ab-a11a-8eecfc4fa6e1[39m
+[95m[Nest] 1  - [39m10/29/2026, 9:35:38 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: bd873a34-77df-447c-95a1-2e6d159ea20e Cleaning up calendar channel event associations for channel 48100e19-7968-483a-9a01-9293b1f1c158[39m
