@@ -960,3 +960,11 @@ membership должны совпадать с token scope, затем existing r
 и application-without-user paths сохраняются. Это проверка при разрешении auth,
 не общий transaction fence для уже принятых запросов. Следом — trusted cleanup
 attribution из API/jobs, включая soft-deleted memberships в hard teardown.
+
+LOG117 подключает trusted attribution из трёх public roots и всех найденных
+system callers. Identity копируется до await; coreUser сохраняет автора после
+native member deletion, application сохраняет user initiator, impersonation разрешает
+инициатора заранее. Отсутствующая runtime legacy identity явно сигнализируется;
+невалидная/foreign identity не понижается до unaudited fallback. Hard teardown
+передаёт exact retained membership ID; expectedUserId проверяется под FOR UPDATE.
+Core user softDelete и native member/transfer writers остаются отдельными owners.

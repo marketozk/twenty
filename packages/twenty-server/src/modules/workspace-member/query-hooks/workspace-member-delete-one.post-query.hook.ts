@@ -1,4 +1,8 @@
 import { InjectRepository } from '@nestjs/typeorm';
+import {
+  membershipCleanupIdentityFromWorkspaceAuth,
+  membershipCleanupOperation,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 
 import { assertIsDefinedOrThrow, isDefined } from 'twenty-shared/utils';
 import { Repository } from 'typeorm';
@@ -29,7 +33,9 @@ import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/sta
   key: `workspaceMember.deleteOne`,
   type: WorkspaceQueryHookType.POST_HOOK,
 })
-export class WorkspaceMemberDeleteOnePostQueryHook implements WorkspacePostQueryHookInstance {
+export class WorkspaceMemberDeleteOnePostQueryHook
+  implements WorkspacePostQueryHookInstance
+{
   constructor(
     private readonly workspaceOrmManager: WorkspaceOrmManager,
     @InjectRepository(UserWorkspaceEntity)
@@ -57,6 +63,10 @@ export class WorkspaceMemberDeleteOnePostQueryHook implements WorkspacePostQuery
     const workspace = authContext.workspace;
 
     assertIsDefinedOrThrow(workspace, WorkspaceNotFoundDefaultError);
+    const auditOperation = membershipCleanupOperation(
+      workspace.id,
+      membershipCleanupIdentityFromWorkspaceAuth(authContext),
+    );
 
     const workspaceMember =
       await this.workspaceOrmManager.executeInWorkspaceContext(async () => {
@@ -119,6 +129,8 @@ export class WorkspaceMemberDeleteOnePostQueryHook implements WorkspacePostQuery
     await this.userWorkspaceService.deleteUserWorkspace({
       userWorkspaceId: userWorkspace.id,
       workspaceId: workspace.id,
+      auditOperation,
+      expectedUserId: userWorkspace.userId,
     });
 
     await this.workspaceCacheService.invalidateAndRecompute(workspace.id, [

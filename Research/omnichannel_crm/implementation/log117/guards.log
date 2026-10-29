@@ -1,0 +1,21 @@
+....................
+----------------------------------------------------------------------
+Ran 20 tests in 0.002s
+
+OK
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.031s
+
+OK
+Verified 10 fork migration source(s)
+{
+  "status": "pass",
+  "counts": {
+    "code_files": 34660,
+    "runtime_files": 21406,
+    "edges": 136013
+  },
+  "violations": {},
+  "runtime_license_proof": false
+}

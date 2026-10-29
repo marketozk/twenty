@@ -1,0 +1,15 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-entrypoints.spec.ts
+  ✓ actual member removal retains actor after native deletion (application=false) (6 ms)
+  ✓ actual member removal retains actor after native deletion (application=true) (1 ms)
+  ✓ actual self-account deletion captures impersonator before service reads memberships (1 ms)
+  ✓ last-member path carries caller attribution into workspace teardown (1 ms)
+  ✓ capture failure stops public removal before target reads or side effects (11 ms)
+  ✓ workspace resolver preserves trusted user actor before suspend (1 ms)
+  ✓ workspace resolver preserves trusted application actor before suspend (1 ms)
+  ✓ workspace resolver preserves trusted apiKey actor before suspend
+
+Test Suites: 1 passed, 1 total
+Tests:       8 passed, 8 total
+Snapshots:   0 total
+Time:        4.485 s
+Ran all test suites matching /crm-audit-membership-entrypoints/i.

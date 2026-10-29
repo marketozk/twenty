@@ -411,8 +411,18 @@ export class UserResolver {
     NoPermissionGuard,
   )
   @AllowSuspendedWorkspace()
-  async deleteUser(@AuthUser() { id: userId }: AuthContextUser) {
-    return this.userService.deleteUser(userId);
+  async deleteUser(
+    @AuthUser() { id: userId }: AuthContextUser,
+    @AuthImpersonationContext()
+    impersonationContext: RawAuthContext['impersonationContext'],
+  ) {
+    const auditIdentity =
+      await this.userWorkspaceService.captureCleanupAuditIdentity({
+        user: { id: userId },
+        impersonatorUserWorkspaceId:
+          impersonationContext?.impersonatorUserWorkspaceId,
+      });
+    return this.userService.deleteUser(userId, auditIdentity);
   }
 
   @Mutation(() => UserWorkspaceEntity)
@@ -436,6 +446,8 @@ export class UserResolver {
     @AuthIsUserSession() isUserSession: boolean,
     @AuthApplication({ allowUndefined: true })
     application: FlatApplication | undefined,
+    @AuthImpersonationContext()
+    impersonationContext: RawAuthContext['impersonationContext'],
   ) {
     if (!workspace) {
       throw new AuthException(
@@ -444,6 +456,15 @@ export class UserResolver {
       );
     }
 
+    const auditIdentity =
+      await this.userWorkspaceService.captureCleanupAuditIdentity({
+        workspaceId: workspace.id,
+        user: { id: userId },
+        application,
+        apiKey,
+        impersonatorUserWorkspaceId:
+          impersonationContext?.impersonatorUserWorkspaceId,
+      });
     const authContext = buildSystemAuthContext(workspace.id);
 
     const workspaceMemberToDelete =
@@ -500,6 +521,7 @@ export class UserResolver {
       userId: workspaceMemberToDelete.userId,
       workspaceId: workspace.id,
       actingUserWorkspaceId: userWorkspaceId,
+      auditIdentity,
     });
   }
 

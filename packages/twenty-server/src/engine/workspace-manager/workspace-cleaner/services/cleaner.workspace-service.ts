@@ -1,3 +1,4 @@
+import { systemMembershipCleanupIdentity } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -267,7 +268,14 @@ export class CleanerWorkspaceService {
         );
       }
 
-      await this.workspaceService.deleteWorkspace(workspace.id, true);
+      await this.workspaceService.deleteWorkspace(
+        workspace.id,
+        true,
+        systemMembershipCleanupIdentity(
+          workspace.id,
+          'CleanerWorkspaceService.inactive',
+        ),
+      );
     }
     this.logger.log(
       `${dryRun ? 'DRY RUN - ' : ''}Soft deleting Workspace ${workspace.id} ${workspace.displayName}`,
@@ -302,7 +310,14 @@ export class CleanerWorkspaceService {
           );
 
           if (!dryRun) {
-            await this.workspaceService.deleteWorkspace(workspace.id, true);
+            await this.workspaceService.deleteWorkspace(
+              workspace.id,
+              true,
+              systemMembershipCleanupIdentity(
+                workspace.id,
+                'CleanerWorkspaceService.empty',
+              ),
+            );
           }
         } else {
           this.logger.log(
@@ -495,7 +510,14 @@ export class CleanerWorkspaceService {
       );
 
       if (!dryRun) {
-        await this.workspaceService.deleteWorkspace(workspace.id);
+        await this.workspaceService.deleteWorkspace(
+          workspace.id,
+          false,
+          systemMembershipCleanupIdentity(
+            workspace.id,
+            'CleanerWorkspaceService.destroy',
+          ),
+        );
       }
 
       this.logger.log(

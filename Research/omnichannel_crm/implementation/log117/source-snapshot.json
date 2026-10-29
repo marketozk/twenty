@@ -1,0 +1,23 @@
+{
+  "baseCommit": "5578fff4189c09deb47c0d0fd981a4e6a023d525",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/billing-webhook/services/billing-webhook-subscription.service.ts": "909d2a8bd79a1c7a13e95444c159859fcf9d796deaee0670bf2964a0b55092e6",
+    "packages/twenty-server/src/engine/core-modules/user-workspace/delete-user-workspace-transaction.ts": "baa77f3318f274770fecd0a5da0c02878d73184ffd4ca0ef5017075e5507987b",
+    "packages/twenty-server/src/engine/core-modules/user-workspace/user-workspace.service.ts": "562aa400d788a612e05784c3dec21542b806600d76720628700771943ff73145",
+    "packages/twenty-server/src/engine/core-modules/user/services/user.service.ts": "f077fc486e0b4a0247c5303c5beec09bbb99f670c1863459936824200a20c4bb",
+    "packages/twenty-server/src/engine/core-modules/user/user.resolver.ts": "364379f91495f3010e4405d83958418535ef3b75fc20e5f0bc8038be7cde85d0",
+    "packages/twenty-server/src/engine/core-modules/workspace/handle-workspace-member-deleted.job.ts": "1ea332b2928c72372bed52aaa640fa21da6470e6e6c2cb408a9fd08c3aae8c2b",
+    "packages/twenty-server/src/engine/core-modules/workspace/services/workspace.service.ts": "96d5dd4667e001a7a4dbac8b238a5c490065fe4fa027d221fceadcd457fa32df",
+    "packages/twenty-server/src/engine/core-modules/workspace/workspace.resolver.ts": "53b16f7bd77bae03b91da0a3b1eb06ded4b53d724726391e2bbba47a17cfe0fb",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-cleaner/jobs/destroy-soft-deleted-workspace.job.ts": "13f56d1ff5a74f8e2654bc2ee3f4c49a8fa9fb236ec17327a96472e44492b4b1",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-cleaner/services/cleaner.workspace-service.ts": "7d25cfa500eb436bd0a14c503f04abe6acc6986a8731dd161c6b0b3720e26157",
+    "packages/twenty-server/src/modules/workspace-member/query-hooks/workspace-member-delete-one.post-query.hook.ts": "69d8d4d3a8223d04d58375ba976240e1ccf2db93d63c7fb7a427286cdf43a974",
+    "packages/twenty-server/test/fork-migration/crm-audit-membership-cleanup.postgres-spec.ts": "ba1fc311105c670ecf70b9ba0d6c16691d0d6ab130de1ac8713473b236d01030",
+    "packages/twenty-server/test/fork-migration/crm-audit-membership-owner.postgres-spec.ts": "8f41a8f8dca654b862a15a226c495c58bc6a35ce24420836dbfafb50343d7c60",
+    "packages/twenty-server/test/fork-migration/omni-workspace-lifecycle-owners.spec.ts": "0cbf0eed47ea523af47ac04c58f5ee746b443868c3ef5074eb968c10eebeaf57",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/membership-cleanup-identity.ts": "122af4d703b3725ac3d3dbcbb96b53eabff36d1b4a24ab7e1f8837f2f6298001",
+    "packages/twenty-server/test/fork-migration/crm-audit-membership-entrypoints.spec.ts": "a94593bac7fa5feee6ca45039eb7e9b0d6f16a2211651f8a43fd37759338f08e",
+    "packages/twenty-server/test/fork-migration/crm-audit-membership-identity.spec.ts": "dc4a58d8b2d3afe66f97b1f9523dfcd346fcecce02c16043732a4c91167481a1"
+  },
+  "uploadedSourceHashesVerified": true
+}

@@ -1,3 +1,4 @@
+import { systemMembershipCleanupIdentity } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { WorkspaceService } from 'src/engine/core-modules/workspace/services/workspace.service';
 import { Processor } from 'src/engine/core-modules/message-queue/decorators/processor.decorator';
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
@@ -23,6 +24,11 @@ export class HandleWorkspaceMemberDeletedJob {
     await this.workspaceService.handleRemoveWorkspaceMember(
       workspaceId,
       userId,
+      false,
+      systemMembershipCleanupIdentity(
+        workspaceId,
+        HandleWorkspaceMemberDeletedJob.name,
+      ),
     );
 
     await this.workspaceCacheService.invalidateAndRecompute(workspaceId, [

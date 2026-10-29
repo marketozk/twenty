@@ -1,4 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import {
+  copyMembershipCleanupIdentity,
+  membershipCleanupOperation,
+  type MembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
@@ -715,7 +720,15 @@ export class WorkspaceService {
     return hasBeenReactivated;
   }
 
-  async deleteWorkspace(id: string, softDelete = false) {
+  async deleteWorkspace(
+    id: string,
+    softDelete: boolean,
+    auditIdentity: MembershipCleanupIdentity | undefined,
+  ) {
+    const capturedAuditIdentity = copyMembershipCleanupIdentity(
+      auditIdentity,
+      id,
+    );
     const workspace = await this.workspaceRepository.findOne({
       where: { id },
       withDeleted: true,
@@ -746,7 +759,10 @@ export class WorkspaceService {
     await this.coreEntityCacheService.invalidate('workspaceEntity', id);
 
     if (!softDelete) {
-      return this.hardDeleteWorkspaceWithApplicationUninstallLock(workspace);
+      return this.hardDeleteWorkspaceWithApplicationUninstallLock(
+        workspace,
+        capturedAuditIdentity,
+      );
     }
 
     if (this.billingService.isBillingEnabled()) {
@@ -757,11 +773,16 @@ export class WorkspaceService {
       where: {
         workspaceId: id,
       },
-      withDeleted: true,
     });
 
     for (const userWorkspace of userWorkspaces) {
-      await this.handleRemoveWorkspaceMember(id, userWorkspace.userId, true);
+      await this.handleRemoveWorkspaceMember(
+        id,
+        userWorkspace.userId,
+        true,
+        capturedAuditIdentity,
+        userWorkspace.id,
+      );
     }
     this.logger.log(`workspace ${id} user workspaces deleted`);
 
@@ -780,6 +801,7 @@ export class WorkspaceService {
 
   private async hardDeleteWorkspaceWithApplicationUninstallLock(
     workspace: WorkspaceEntity,
+    auditIdentity: MembershipCleanupIdentity | undefined,
   ): Promise<WorkspaceEntity> {
     const advisoryLockResult =
       await this.postgresAdvisoryLockService.tryWithLock(
@@ -802,6 +824,8 @@ export class WorkspaceService {
               workspace.id,
               userWorkspace.userId,
               false,
+              auditIdentity,
+              userWorkspace.id,
             );
           }
           this.logger.log(`workspace ${workspace.id} user workspaces deleted`);
@@ -1040,24 +1064,37 @@ export class WorkspaceService {
   async handleRemoveWorkspaceMember(
     workspaceId: string,
     userId: string,
-    softDelete = false,
+    softDelete: boolean,
+    auditIdentity: MembershipCleanupIdentity | undefined,
+    userWorkspaceId?: string,
   ) {
+    const auditOperation = membershipCleanupOperation(
+      workspaceId,
+      auditIdentity,
+    );
     const userWorkspaces = await this.userWorkspaceRepository.find({
       where: {
         userId,
       },
     });
 
-    const userWorkspaceOfRemovedWorkspaceMember = userWorkspaces?.find(
-      (userWorkspace: UserWorkspaceEntity) =>
-        userWorkspace.workspaceId === workspaceId,
-    );
+    const userWorkspaceOfRemovedWorkspaceMember = userWorkspaceId
+      ? await this.userWorkspaceRepository.findOne({
+          where: { id: userWorkspaceId, userId, workspaceId },
+          withDeleted: !softDelete,
+        })
+      : userWorkspaces?.find(
+          (userWorkspace: UserWorkspaceEntity) =>
+            userWorkspace.workspaceId === workspaceId,
+        );
 
     if (isDefined(userWorkspaceOfRemovedWorkspaceMember)) {
       await this.userWorkspaceService.deleteUserWorkspace({
         userWorkspaceId: userWorkspaceOfRemovedWorkspaceMember.id,
         workspaceId,
         softDelete,
+        auditOperation,
+        expectedUserId: userId,
       });
       await this.coreEntityCacheService.invalidate(
         'userWorkspaceEntity',
@@ -1065,11 +1102,10 @@ export class WorkspaceService {
       );
     }
 
-    const hasOtherUserWorkspaces = isDefined(
-      userWorkspaceOfRemovedWorkspaceMember,
-    )
-      ? userWorkspaces.length > 1
-      : userWorkspaces.length > 0;
+    const hasOtherUserWorkspaces = userWorkspaces.some(
+      (membership) =>
+        membership.id !== userWorkspaceOfRemovedWorkspaceMember?.id,
+    );
 
     if (!hasOtherUserWorkspaces) {
       await this.userRepository.softDelete(userId);

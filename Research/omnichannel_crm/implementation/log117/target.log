@@ -1,0 +1,14 @@
+[Nest] 1  - 10/29/2026, 12:21:42 AM   ERROR [DeferredWorkspaceMigrationActionRunnerService] Failed to enqueue deferred workspace migration actions for workspace 662df9e6-5a72-45e0-bf9d-8af4c1f3b6ff: redis unavailable
+[32m[Nest] 1  - [39m10/29/2026, 12:21:42 AM [32m    LOG[39m [38;5;3m[DeferredWorkspaceMigrationActionRunnerService] [39m[32mDeferred action sync_workflowRunShares 7f03b762-b2b6-4c92-a4df-e3a2de51194a completed for workspace 662df9e6-5a72-45e0-bf9d-8af4c1f3b6ff in 3ms[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-cleanup.postgres-spec.ts (5.37 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-owner.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-workspace-lifecycle-owners.spec.ts
+[32m[Nest] 1  - [39m10/29/2026, 12:21:45 AM [32m    LOG[39m [38;5;3m[DestroySoftDeletedWorkspaceJob] [39m[32mDestroying workspace 3800cd5d-ac4b-4d2e-a9e2-7c47e83ea8ac[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-auth.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-identity.spec.ts
+
+Test Suites: 5 passed, 5 total
+Tests:       134 passed, 134 total
+Snapshots:   0 total
+Time:        9.599 s
+Ran all test suites matching /crm-audit-membership|omni-workspace-lifecycle-owners/i.

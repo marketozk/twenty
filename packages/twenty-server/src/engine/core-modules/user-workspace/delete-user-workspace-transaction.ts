@@ -15,6 +15,7 @@ export const deleteUserWorkspaceTransaction = async ({
   softDelete,
   persistReconciliation,
   auditOperation,
+  expectedUserId,
 }: {
   dataSource: DataSource;
   entities: {
@@ -28,6 +29,7 @@ export const deleteUserWorkspaceTransaction = async ({
   userWorkspaceId: string;
   softDelete: boolean;
   auditOperation?: CrmAuditOperation;
+  expectedUserId?: string;
   persistReconciliation: (args: {
     queryRunner: QueryRunner;
     coreWorkflowId: string;
@@ -38,6 +40,11 @@ export const deleteUserWorkspaceTransaction = async ({
     throw new Error('Membership deletion identity invalid');
   workspaceId = workspaceId.toLowerCase();
   userWorkspaceId = userWorkspaceId.toLowerCase();
+  if (expectedUserId !== undefined) {
+    if (!isUUID(expectedUserId))
+      throw new Error('Membership target user invalid');
+    expectedUserId = expectedUserId.toLowerCase();
+  }
   const operation = auditOperation
     ? {
         ...auditOperation,
@@ -62,10 +69,12 @@ export const deleteUserWorkspaceTransaction = async ({
         [workspaceId],
       );
       const [membership] = await queryRunner.query(
-        'SELECT "workspaceId" FROM core."userWorkspace" WHERE id=$1 FOR UPDATE',
+        'SELECT "workspaceId",to_jsonb(membership)->>\'userId\' AS "userId" FROM core."userWorkspace" AS membership WHERE id=$1 FOR UPDATE',
         [userWorkspaceId],
       );
       if (!membership) return [];
+      if (expectedUserId !== undefined && membership.userId !== expectedUserId)
+        throw new Error('Membership target user changed');
       if (!workspace || membership.workspaceId !== workspaceId)
         throw new Error('Membership deletion workspace mismatch');
 

@@ -3564,3 +3564,24 @@ cleanup по точному ID; активные остальные memberships 
 LOG116 publication: c2b2c5085608641d59321111668a319f4fba067f pushed/API verified.
 ROB765 description/comment 6ace0d87-3c50-4dec-a813-564d2506ea1f independently read back;
 all 11 issue states match. Implementation continues with trusted cleanup attribution.
+
+## LOG-117 — автор удаления доступа и точная цель cleanup
+
+Public self/admin/workspace deletion и известные jobs передают trusted identity
+в LOG115 owner: coreUser, application+user initiator, API key, impersonation,
+именованный system. Legacy absence явно логируется без поддельного автора.
+Hard teardown обрабатывает retained memberships по точным IDs; активные остальные
+membership считаются отдельно. Review нашёл user-rebind race, теперь expectedUserId
+сверяется под membership lock; реальный PG interleaving подтверждает отказ.
+
+1296 tests/42 suites PASS (208.326s); 134 targeted/5 suites и 8 root tests PASS,
+46 новых cases. Actual core service пишет audit и не повторяет lost-COMMIT mutation.
+26 guards PASS; 10 migration checksums неизменны. Types 363/366 roots, 190/190 прежних
+диагностик; 0 новых/changed-code, 6 в неизменённых baseline methods. 17 hashes совпадают.
+Dependency guard потребовал узкий structural impersonation type; baseline не ослаблялся.
+
+[Результаты](implementation/log117/results.json), [ревью](implementation/log117/review.md).
+Не заявлены full HTTP, real shares, атомарность всего public removal или выкат.
+ROB765 In Progress. Демо/сообщения/Actions не менялись. Продолжаем
+[coreUser softDelete audit](implementation/log117/next-boundary.md); native member
+с его system/transitive FK effects требует отдельного security-first owner.

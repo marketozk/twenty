@@ -1,0 +1,20 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/billing-webhook/services/billing-webhook-subscription.service.ts 214ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/user-workspace/delete-user-workspace-transaction.ts 84ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/user-workspace/user-workspace.service.ts 117ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/user/services/user.service.ts 98ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/user/user.resolver.ts 107ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/workspace/handle-workspace-member-deleted.job.ts 4ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/workspace/services/workspace.service.ts 133ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/workspace/workspace.resolver.ts 60ms (unchanged)
+../../../source/packages/twenty-server/src/engine/workspace-manager/workspace-cleaner/jobs/destroy-soft-deleted-workspace.job.ts 6ms (unchanged)
+../../../source/packages/twenty-server/src/engine/workspace-manager/workspace-cleaner/services/cleaner.workspace-service.ts 31ms (unchanged)
+../../../source/packages/twenty-server/src/modules/workspace-member/query-hooks/workspace-member-delete-one.post-query.hook.ts 8ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-cleanup.postgres-spec.ts 109ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-owner.postgres-spec.ts 108ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/omni-workspace-lifecycle-owners.spec.ts 80ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/membership-cleanup-identity.ts 12ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-entrypoints.spec.ts 29ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-identity.spec.ts 13ms (unchanged)
+
+{"formattedFiles": 17, "singleSshSession": true}

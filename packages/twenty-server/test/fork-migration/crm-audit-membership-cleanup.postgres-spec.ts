@@ -513,7 +513,12 @@ it('lost COMMIT acknowledgement retains committed intent for recovery', async ()
   });
   const { service, invalidate } = serviceFixture();
   await expect(
-    service.deleteUserWorkspace({ workspaceId, userWorkspaceId: membershipId }),
+    service.deleteUserWorkspace({
+      auditOperation: undefined,
+      expectedUserId: undefined,
+      workspaceId,
+      userWorkspaceId: membershipId,
+    }),
   ).rejects.toBeInstanceOf(NativeTransactionOutcomeUnknownError);
   jest.restoreAllMocks();
   expect(sql.filter((s) => s === 'COMMIT')).toHaveLength(1);
@@ -541,6 +546,8 @@ it('actual service persists before queue and immediate share reconciliation, inv
     expect(await deferredRows()).toHaveLength(1);
   });
   await service.deleteUserWorkspace({
+    auditOperation: undefined,
+    expectedUserId: undefined,
     workspaceId,
     userWorkspaceId: membershipId,
   });
@@ -559,7 +566,12 @@ it('actual service reports share failure with deletion committed and recovery in
   const { service, invalidate } = serviceFixture();
   sync.mockRejectedValueOnce(new Error('immediate share failure'));
   await expect(
-    service.deleteUserWorkspace({ workspaceId, userWorkspaceId: membershipId }),
+    service.deleteUserWorkspace({
+      auditOperation: undefined,
+      expectedUserId: undefined,
+      workspaceId,
+      userWorkspaceId: membershipId,
+    }),
   ).rejects.toThrow('immediate share failure');
   expect(await membershipRows()).toEqual([]);
   expect(await deferredRows()).toHaveLength(1);
@@ -573,6 +585,8 @@ it('actual service refuses an intent INSERT silently skipped by a trigger', asyn
   try {
     await expect(
       serviceFixture().service.deleteUserWorkspace({
+        auditOperation: undefined,
+        expectedUserId: undefined,
         workspaceId,
         userWorkspaceId: membershipId,
       }),
@@ -599,6 +613,8 @@ it.each([
     try {
       await expect(
         serviceFixture().service.deleteUserWorkspace({
+          auditOperation: undefined,
+          expectedUserId: undefined,
           workspaceId,
           userWorkspaceId: membershipId,
         }),
@@ -619,6 +635,8 @@ it('actual service rechecks durable intent after membership DELETE triggers', as
   try {
     await expect(
       serviceFixture().service.deleteUserWorkspace({
+        auditOperation: undefined,
+        expectedUserId: undefined,
         workspaceId,
         userWorkspaceId: membershipId,
       }),
@@ -689,6 +707,8 @@ it('actual module providers inject the existing share service and the registry d
 it('actual service soft-delete neither dispatches nor reconciles and preserves role targets', async () => {
   const { service, invalidate } = serviceFixture();
   await service.deleteUserWorkspace({
+    auditOperation: undefined,
+    expectedUserId: undefined,
     workspaceId,
     userWorkspaceId: membershipId,
     softDelete: true,
@@ -703,6 +723,8 @@ it('cache failure is reported without masking the original transaction failure',
   invalidate.mockRejectedValueOnce(new Error('cache offline'));
   await expect(
     service.deleteUserWorkspace({
+      auditOperation: undefined,
+      expectedUserId: undefined,
       workspaceId: foreignWorkspaceId,
       userWorkspaceId: membershipId,
     }),

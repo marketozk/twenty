@@ -38,6 +38,11 @@ import {
   PermissionsExceptionMessage,
 } from 'src/engine/metadata-modules/permissions/permissions.exception';
 import { deleteUserWorkspaceTransaction } from 'src/engine/core-modules/user-workspace/delete-user-workspace-transaction';
+import {
+  captureMembershipCleanupIdentity,
+  type MembershipCleanupAuthentication,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
+import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { RoleTargetEntity } from 'src/engine/metadata-modules/role-target/role-target.entity';
 import { InjectMessageQueue } from 'src/engine/core-modules/message-queue/decorators/message-queue.decorator';
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
@@ -353,15 +358,31 @@ export class UserWorkspaceService {
     return await this.userWorkspaceRepository.count({ where: { userId } });
   }
 
+  captureCleanupAuditIdentity(authentication: MembershipCleanupAuthentication) {
+    return captureMembershipCleanupIdentity(authentication, async (id) => {
+      const membership = await this.userWorkspaceRepository.findOne({
+        select: { userId: true },
+        where: { id },
+      });
+      return membership?.userId;
+    });
+  }
+
   async deleteUserWorkspace({
     userWorkspaceId,
     workspaceId,
     softDelete = false,
+    auditOperation,
+    expectedUserId,
   }: {
     userWorkspaceId: string;
     workspaceId: string;
     softDelete?: boolean;
+    auditOperation: CrmAuditOperation | undefined;
+    expectedUserId: string | undefined;
   }): Promise<void> {
+    if (auditOperation === undefined)
+      this.logger.error('MEMBERSHIP_CLEANUP_AUDIT_IDENTITY_UNAVAILABLE');
     try {
       const createdCoreWorkflowIds = await deleteUserWorkspaceTransaction({
         dataSource: this.userWorkspaceRepository.manager.connection,
@@ -372,6 +393,8 @@ export class UserWorkspaceService {
         workspaceId,
         userWorkspaceId,
         softDelete,
+        auditOperation,
+        expectedUserId,
         persistReconciliation: async ({
           queryRunner,
           coreWorkflowId,

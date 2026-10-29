@@ -1,4 +1,9 @@
 import { InjectRepository } from '@nestjs/typeorm';
+import {
+  copyMembershipCleanupIdentity,
+  membershipCleanupOperation,
+  type MembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 
 import assert from 'assert';
 
@@ -260,7 +265,11 @@ export class UserService {
     }, authContext);
   }
 
-  async deleteUser(userId: string) {
+  async deleteUser(
+    userId: string,
+    auditIdentity: MembershipCleanupIdentity | undefined,
+  ) {
+    const capturedAuditIdentity = copyMembershipCleanupIdentity(auditIdentity);
     const user = await this.userRepository.findOne({
       where: {
         id: userId,
@@ -273,6 +282,7 @@ export class UserService {
     for (const userWorkspace of user.userWorkspaces) {
       await this.removeUserFromWorkspaceAndPotentiallyDeleteWorkspace(
         userWorkspace,
+        capturedAuditIdentity,
       );
     }
 
@@ -291,11 +301,17 @@ export class UserService {
     userId,
     workspaceId,
     actingUserWorkspaceId,
+    auditIdentity,
   }: {
     userId: string;
     workspaceId: string;
     actingUserWorkspaceId?: string;
+    auditIdentity: MembershipCleanupIdentity | undefined;
   }) {
+    const capturedAuditIdentity = copyMembershipCleanupIdentity(
+      auditIdentity,
+      workspaceId,
+    );
     const user = await this.userRepository.findOne({
       where: {
         id: userId,
@@ -315,6 +331,7 @@ export class UserService {
 
     await this.removeUserFromWorkspaceAndPotentiallyDeleteWorkspace(
       userWorkspace,
+      capturedAuditIdentity,
       actingUserWorkspaceId,
     );
 
@@ -328,9 +345,18 @@ export class UserService {
 
   async removeUserFromWorkspaceAndPotentiallyDeleteWorkspace(
     userWorkspace: UserWorkspaceEntity,
+    auditIdentity: MembershipCleanupIdentity | undefined,
     actingUserWorkspaceId?: string,
   ) {
     const workspaceId = userWorkspace.workspaceId;
+    const auditOperation = membershipCleanupOperation(
+      workspaceId,
+      auditIdentity,
+    );
+    const capturedAuditIdentity = copyMembershipCleanupIdentity(
+      auditIdentity,
+      workspaceId,
+    );
     const authContext = buildSystemAuthContext(workspaceId);
 
     const workspaceMembers =
@@ -348,7 +374,11 @@ export class UserService {
 
     if (workspaceMembers.length === 1) {
       await this.workspaceService.suspendWorkspace(workspaceId);
-      await this.workspaceService.deleteWorkspace(workspaceId, true);
+      await this.workspaceService.deleteWorkspace(
+        workspaceId,
+        true,
+        capturedAuditIdentity,
+      );
 
       return;
     }
@@ -427,6 +457,8 @@ export class UserService {
     await this.userWorkspaceService.deleteUserWorkspace({
       userWorkspaceId,
       workspaceId,
+      auditOperation,
+      expectedUserId: userWorkspace.userId,
     });
 
     await this.workspaceCacheService.invalidateAndRecompute(workspaceId, [

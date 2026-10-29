@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { systemMembershipCleanupIdentity } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { WorkspaceService } from 'src/engine/core-modules/workspace/services/workspace.service';
 import { WorkspaceSchemaService } from 'src/engine/workspace-datasource/workspace-schema.service';
 import { DestroySoftDeletedWorkspaceJob } from 'src/engine/workspace-manager/workspace-cleaner/jobs/destroy-soft-deleted-workspace.job';
@@ -236,7 +237,9 @@ const fixture = () => {
       assertSubscriptionCanceledOrNone: effect('billingAssert'),
     },
     userWorkspaceRepository: {
-      find: jest.fn().mockResolvedValue([{ userId: randomUUID() }]),
+      find: jest
+        .fn()
+        .mockResolvedValue([{ id: randomUUID(), userId: randomUUID() }]),
     },
     handleRemoveWorkspaceMember: effect('member'),
     eventEmitter: { emit: effect('event') },
@@ -268,6 +271,207 @@ const fixture = () => {
 };
 beforeEach(() => jest.resetAllMocks());
 
+describe('membership cleanup attribution and exact teardown targets', () => {
+  const cleanupFixture = () => {
+    const userWorkspaceRepository = {
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+    const userWorkspaceService = {
+      deleteUserWorkspace: jest.fn().mockResolvedValue(undefined),
+    };
+    const userRepository = {
+      softDelete: jest.fn().mockResolvedValue(undefined),
+    };
+    const coreEntityCacheService = {
+      invalidate: jest.fn().mockResolvedValue(undefined),
+    };
+    const service = Object.create(
+      WorkspaceService.prototype,
+    ) as WorkspaceService;
+    Object.assign(service, {
+      userWorkspaceRepository,
+      userWorkspaceService,
+      userRepository,
+      coreEntityCacheService,
+    });
+    return {
+      service,
+      userWorkspaceRepository,
+      userWorkspaceService,
+      userRepository,
+    };
+  };
+  it('hard teardown forwards every retained membership ID and captured actor', async () => {
+    const f = fixture();
+    const userId = randomUUID(),
+      firstId = randomUUID(),
+      secondId = randomUUID();
+    f.userWorkspaceRepository.find.mockResolvedValue([
+      { id: firstId, userId },
+      { id: secondId, userId },
+    ]);
+    const identity = systemMembershipCleanupIdentity(
+      f.workspace.id,
+      'retained-test',
+    );
+    await f.service.deleteWorkspace(f.workspace.id, false, identity);
+    expect(f.userWorkspaceRepository.find).toHaveBeenCalledWith({
+      where: { workspaceId: f.workspace.id },
+      withDeleted: true,
+    });
+    expect(f.handleRemoveWorkspaceMember).toHaveBeenNthCalledWith(
+      1,
+      f.workspace.id,
+      userId,
+      false,
+      identity,
+      firstId,
+    );
+    expect(f.handleRemoveWorkspaceMember).toHaveBeenNthCalledWith(
+      2,
+      f.workspace.id,
+      userId,
+      false,
+      identity,
+      secondId,
+    );
+  });
+  it('soft teardown only enumerates active memberships', async () => {
+    const f = fixture();
+    await f.service.deleteWorkspace(
+      f.workspace.id,
+      true,
+      systemMembershipCleanupIdentity(f.workspace.id, 'soft-test'),
+    );
+    expect(f.userWorkspaceRepository.find).toHaveBeenCalledWith({
+      where: { workspaceId: f.workspace.id },
+    });
+  });
+  it('removes exact retained target without disabling a user active elsewhere', async () => {
+    const f = cleanupFixture();
+    const workspaceId = randomUUID(),
+      userId = randomUUID(),
+      id = randomUUID();
+    f.userWorkspaceRepository.find.mockResolvedValue([
+      { id: randomUUID(), workspaceId: randomUUID(), userId },
+    ]);
+    f.userWorkspaceRepository.findOne.mockResolvedValue({
+      id,
+      workspaceId,
+      userId,
+      deletedAt: new Date(),
+    });
+    await f.service.handleRemoveWorkspaceMember(
+      workspaceId,
+      userId,
+      false,
+      systemMembershipCleanupIdentity(workspaceId, 'destroy-test'),
+      id,
+    );
+    expect(f.userWorkspaceRepository.findOne).toHaveBeenCalledWith({
+      where: { id, userId, workspaceId },
+      withDeleted: true,
+    });
+    expect(f.userWorkspaceService.deleteUserWorkspace).toHaveBeenCalledWith({
+      workspaceId,
+      userWorkspaceId: id,
+      softDelete: false,
+      expectedUserId: userId,
+      auditOperation: expect.objectContaining({
+        workspaceId,
+        actor: { kind: 'system', id: 'destroy-test' },
+      }),
+    });
+    expect(f.userRepository.softDelete).not.toHaveBeenCalled();
+  });
+  it('disables the core user after removing their last retained target', async () => {
+    const f = cleanupFixture();
+    const workspaceId = randomUUID(),
+      userId = randomUUID(),
+      id = randomUUID();
+    f.userWorkspaceRepository.findOne.mockResolvedValue({
+      id,
+      workspaceId,
+      userId,
+      deletedAt: new Date(),
+    });
+    await f.service.handleRemoveWorkspaceMember(
+      workspaceId,
+      userId,
+      false,
+      systemMembershipCleanupIdentity(workspaceId, 'destroy-test'),
+      id,
+    );
+    expect(f.userRepository.softDelete).toHaveBeenCalledWith(userId);
+  });
+  it('legacy job lookup remains active-only instead of sweeping historical rows', async () => {
+    const f = cleanupFixture();
+    const workspaceId = randomUUID(),
+      userId = randomUUID(),
+      id = randomUUID();
+    f.userWorkspaceRepository.find.mockResolvedValue([
+      { id, workspaceId, userId },
+    ]);
+    await f.service.handleRemoveWorkspaceMember(
+      workspaceId,
+      userId,
+      false,
+      systemMembershipCleanupIdentity(workspaceId, 'job-test'),
+    );
+    expect(f.userWorkspaceRepository.find).toHaveBeenCalledWith({
+      where: { userId },
+    });
+    expect(f.userWorkspaceRepository.findOne).not.toHaveBeenCalled();
+    expect(f.userWorkspaceService.deleteUserWorkspace).toHaveBeenCalledWith(
+      expect.objectContaining({ userWorkspaceId: id, expectedUserId: userId }),
+    );
+  });
+  it('pins the actor before target lookup awaits', async () => {
+    const f = cleanupFixture();
+    const workspaceId = randomUUID(),
+      userId = randomUUID(),
+      id = randomUUID(),
+      actorId = randomUUID();
+    const identity = {
+      workspaceId,
+      actor: { kind: 'coreUser' as const, id: actorId },
+      correlationId: randomUUID(),
+    };
+    f.userWorkspaceRepository.find.mockImplementation(async () => {
+      identity.actor.id = randomUUID();
+      identity.workspaceId = randomUUID();
+      return [{ id, workspaceId, userId }];
+    });
+    await f.service.handleRemoveWorkspaceMember(
+      workspaceId,
+      userId,
+      false,
+      identity,
+    );
+    expect(f.userWorkspaceService.deleteUserWorkspace).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auditOperation: expect.objectContaining({
+          workspaceId,
+          actor: { kind: 'coreUser', id: actorId },
+        }),
+      }),
+    );
+  });
+  it('rejects foreign attribution before workspace deletion admission or target reads', async () => {
+    const f = fixture();
+    await expect(
+      f.service.deleteWorkspace(
+        f.workspace.id,
+        false,
+        systemMembershipCleanupIdentity(randomUUID(), 'foreign-test'),
+      ),
+    ).rejects.toThrow('workspace mismatch');
+    expect(admission).not.toHaveBeenCalled();
+    expect(f.workspaceRepository.findOne).not.toHaveBeenCalled();
+  });
+});
+
 describe('workspace lifecycle owners', () => {
   it.each([true, false])(
     'refuses retained state before all effects (soft=%s)',
@@ -277,7 +481,11 @@ describe('workspace lifecycle owners', () => {
         new Error('OMNI_WORKSPACE_DELETE_REQUIRES_CONTROLLED_PURGE'),
       );
       await expect(
-        f.service.deleteWorkspace(f.workspace.id, soft),
+        f.service.deleteWorkspace(
+          f.workspace.id,
+          soft,
+          systemMembershipCleanupIdentity(f.workspace.id, 'test'),
+        ),
       ).rejects.toThrow('CONTROLLED_PURGE');
       expect(f.effects).toEqual([]);
       expect(f.userWorkspaceRepository.find).not.toHaveBeenCalled();
@@ -286,9 +494,13 @@ describe('workspace lifecycle owners', () => {
   );
   it('invalidates and cancels billing before members and queues on soft deletion', async () => {
     const f = fixture();
-    expect(await f.service.deleteWorkspace(f.workspace.id, true)).toBe(
-      f.workspace,
-    );
+    expect(
+      await f.service.deleteWorkspace(
+        f.workspace.id,
+        true,
+        systemMembershipCleanupIdentity(f.workspace.id, 'test'),
+      ),
+    ).toBe(f.workspace);
     expect(f.workspace.deletedAt).toEqual(f.timestamp);
     expect(f.effects).toEqual([
       'admit',
@@ -302,7 +514,11 @@ describe('workspace lifecycle owners', () => {
   });
   it('uses the admitted timestamp for hard-delete hooks before schema removal', async () => {
     const f = fixture();
-    await f.service.deleteWorkspace(f.workspace.id);
+    await f.service.deleteWorkspace(
+      f.workspace.id,
+      false,
+      systemMembershipCleanupIdentity(f.workspace.id, 'test'),
+    );
     expect(f.effects).toEqual([
       'admit',
       'invalidate',
@@ -335,7 +551,11 @@ describe('workspace lifecycle owners', () => {
         : f.billingSubscriptionService.assertSubscriptionCanceledOrNone;
       billing.mockRejectedValueOnce(new Error('billing unavailable'));
       await expect(
-        f.service.deleteWorkspace(f.workspace.id, soft),
+        f.service.deleteWorkspace(
+          f.workspace.id,
+          soft,
+          systemMembershipCleanupIdentity(f.workspace.id, 'test'),
+        ),
       ).rejects.toThrow('billing unavailable');
       expect(f.effects).toEqual(['admit', 'invalidate']);
       expect(f.workspace.deletedAt).toEqual(f.timestamp);
@@ -347,9 +567,13 @@ describe('workspace lifecycle owners', () => {
     f.applicationUninstallService.runUninstallHooksForWorkspaceDeletionBestEffort.mockRejectedValueOnce(
       new Error('hooks unavailable'),
     );
-    await expect(f.service.deleteWorkspace(f.workspace.id)).rejects.toThrow(
-      'hooks unavailable',
-    );
+    await expect(
+      f.service.deleteWorkspace(
+        f.workspace.id,
+        false,
+        systemMembershipCleanupIdentity(f.workspace.id, 'test'),
+      ),
+    ).rejects.toThrow('hooks unavailable');
     expect(f.effects).toEqual([
       'admit',
       'invalidate',
@@ -364,9 +588,13 @@ describe('workspace lifecycle owners', () => {
       new Error('lost ACK'),
     );
     admission.mockRejectedValueOnce(unknown);
-    await expect(f.service.deleteWorkspace(f.workspace.id)).rejects.toBe(
-      unknown,
-    );
+    await expect(
+      f.service.deleteWorkspace(
+        f.workspace.id,
+        false,
+        systemMembershipCleanupIdentity(f.workspace.id, 'test'),
+      ),
+    ).rejects.toBe(unknown);
     expect(f.effects).toEqual(['invalidate']);
     expect(f.userWorkspaceRepository.find).not.toHaveBeenCalled();
   });
@@ -379,7 +607,11 @@ describe('workspace lifecycle owners', () => {
     admission.mockRejectedValueOnce(unknown);
     f.coreEntityCacheService.invalidate.mockRejectedValueOnce(cacheError);
     const result = await f.service
-      .deleteWorkspace(f.workspace.id)
+      .deleteWorkspace(
+        f.workspace.id,
+        false,
+        systemMembershipCleanupIdentity(f.workspace.id, 'test'),
+      )
       .catch((error: unknown) => error);
     expect(result).toBeInstanceOf(OmniWorkspaceLifecycleOutcomeUnknownError);
     expect((result as Error).cause).toMatchObject({
@@ -393,9 +625,13 @@ describe('workspace lifecycle owners', () => {
     f.coreEntityCacheService.invalidate.mockRejectedValueOnce(
       new Error('cache unavailable'),
     );
-    await expect(f.service.deleteWorkspace(f.workspace.id)).rejects.toThrow(
-      'cache unavailable',
-    );
+    await expect(
+      f.service.deleteWorkspace(
+        f.workspace.id,
+        false,
+        systemMembershipCleanupIdentity(f.workspace.id, 'test'),
+      ),
+    ).rejects.toThrow('cache unavailable');
     expect(f.effects).toEqual(['admit']);
     expect(f.workspace.deletedAt).toEqual(f.timestamp);
   });

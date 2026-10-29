@@ -16,8 +16,8 @@
 | Operation lookup index | LOG090: generated migration10, populated prefix upgrade/replay/down, real EXPLAIN, drift refusal; не выкатывалось |
 | Production rollout | Не выполнялся; нужны полная native coverage и согласованный выкат с остановленными writers при построении индекса |
 
-Последние проверки: 1237 tests/39 suites PASS (203.9s); 182 targeted/5 suites и 29 auth unit tests PASS, 21 новый case. 26 guards PASS; 10 migration checksums неизменны. Types 354/355 roots, 190 baseline / 184 current диагностик, 0 новых/changed-file. 3 local/remote source hashes совпадают.
-Это не чистый full-server typecheck. [LOG116 results](log116/results.json).
+Последние проверки: 1296 tests/42 suites PASS (208.326s); 134 targeted/5 suites и 8 entrypoint tests PASS, 46 новых cases. 26 guards PASS; 10 migration checksums неизменны. Types 363/366 roots, 190/190 прежних диагностик, 0 новых/changed-code; 6 ошибок находятся в неизменённых методах baseline. 17 local/remote source hashes совпадают.
+Это не чистый full-server typecheck. [LOG117 results](log117/results.json).
 
 [Индекс реализованных участков](../plan/phase_2_audit.md), [текущие ограничения](log113/README.md),
 [полная хронология](../DEVLOG.md). Исторические заявления «ещё не включено» внутри
@@ -41,9 +41,11 @@ LOG114 добавляет core membership cleanup под общим с LOG113 wo
 creator FK. Полный public removal включает native member и transfers до этого owner.
 LOG115 добавляет membership/FK audit primitive с явной operation и security-first
 savepoint. Известные scope/effect checks сохраняются при отказе journal coverage.
-Автоматическая attribution API/jobs, общая last-admin защита и real native share
-integration остаются открытыми. LOG116 закрывает soft-delete/JWT stale-cache gap:
+LOG117 подключает trusted attribution известных API/jobs, включая impersonation
+и delegated application; exact retained IDs и user под lock исключают подмену цели.
+Общая last-admin защита и real native share integration открыты.
+LOG116 закрывает soft-delete/JWT stale-cache gap:
 actual strategy/cookie bridge проверены с PostgreSQL и отказавшей инвалидацией.
 Полный HTTP и fence уже принятых запросов этим не заявлены.
-[Следующая граница](log116/next-boundary.md): trusted API/job attribution и точный
-cleanup исторических membership при hard workspace teardown.
+[Следующая граница](log117/next-boundary.md): coreUser softDelete audit, затем отдельный
+native workspaceMember writer с реальными FK effects и security-first ordering.

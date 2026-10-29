@@ -1,3 +1,4 @@
+import { systemMembershipCleanupIdentity } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 /* @license Enterprise */
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -241,7 +242,14 @@ export class BillingWebhookSubscriptionService {
       if (!isDefined(refreshedWorkspace.deletedAt)) {
         switch (refreshedWorkspace.activationStatus) {
           case WorkspaceActivationStatus.PENDING_CREATION:
-            await this.workspaceService.deleteWorkspace(workspaceId, true);
+            await this.workspaceService.deleteWorkspace(
+              workspaceId,
+              true,
+              systemMembershipCleanupIdentity(
+                workspaceId,
+                'BillingWebhookSubscriptionService',
+              ),
+            );
             break;
           case WorkspaceActivationStatus.ACTIVE:
             await this.workspaceService.suspendWorkspace(workspaceId);

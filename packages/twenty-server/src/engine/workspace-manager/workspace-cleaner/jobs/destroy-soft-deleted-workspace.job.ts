@@ -1,3 +1,4 @@
+import { systemMembershipCleanupIdentity } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -44,7 +45,14 @@ export class DestroySoftDeletedWorkspaceJob {
 
     this.logger.log(`Destroying workspace ${workspaceId}`);
 
-    await this.workspaceService.deleteWorkspace(workspaceId);
+    await this.workspaceService.deleteWorkspace(
+      workspaceId,
+      false,
+      systemMembershipCleanupIdentity(
+        workspaceId,
+        DestroySoftDeletedWorkspaceJob.name,
+      ),
+    );
 
     void this.metricsService.incrementCounterForEvent({
       key: MetricsKeys.CronJobDeletedWorkspace,

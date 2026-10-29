@@ -22,6 +22,7 @@ import { type FlatApplication } from 'src/engine/core-modules/application/types/
 import { fromFlatApplicationToApplicationDto } from 'src/engine/core-modules/application/utils/from-flat-application-to-application-dto.util';
 import { getScopedCallingApplication } from 'src/engine/core-modules/application/utils/get-scoped-calling-application.util';
 import { type AuthContextUser } from 'src/engine/core-modules/auth/types/auth-context.type';
+import { AuthImpersonationContext } from 'src/engine/decorators/auth/auth-impersonation-context.decorator';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
 import { BillingEntitlementDTO } from 'src/engine/core-modules/billing/dtos/billing-entitlement.dto';
 import { BillingCustomerEntity } from 'src/engine/core-modules/billing/entities/billing-customer.entity';
@@ -251,9 +252,26 @@ export class WorkspaceResolver {
     SettingsPermissionGuard(PermissionFlagType.WORKSPACE),
   )
   @AllowSuspendedWorkspace()
-  async deleteCurrentWorkspace(@AuthWorkspace() { id }: WorkspaceEntity) {
+  async deleteCurrentWorkspace(
+    @AuthWorkspace() { id }: WorkspaceEntity,
+    @AuthUser({ allowUndefined: true }) user: AuthContextUser | undefined,
+    @AuthApiKey() apiKey: ApiKeyEntity | undefined,
+    @AuthApplication({ allowUndefined: true })
+    application: FlatApplication | undefined,
+    @AuthImpersonationContext()
+    impersonationContext: { impersonatorUserWorkspaceId?: string } | undefined,
+  ) {
+    const auditIdentity =
+      await this.userWorkspaceService.captureCleanupAuditIdentity({
+        workspaceId: id,
+        user,
+        apiKey,
+        application,
+        impersonatorUserWorkspaceId:
+          impersonationContext?.impersonatorUserWorkspaceId,
+      });
     await this.workspaceService.suspendWorkspace(id);
-    return this.workspaceService.deleteWorkspace(id, true);
+    return this.workspaceService.deleteWorkspace(id, true, auditIdentity);
   }
 
   @ResolveField(() => [BillingSubscriptionEntity])
