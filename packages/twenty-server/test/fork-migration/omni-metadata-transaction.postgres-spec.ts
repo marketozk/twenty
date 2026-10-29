@@ -1,4 +1,3 @@
-import { CalendarChannelMetadataService } from 'src/engine/metadata-modules/calendar-channel/calendar-channel-metadata.service';
 jest.mock(
   'src/engine/metadata-modules/calendar-channel/dtos/calendar-channel.dto',
   () => ({ CalendarChannelDTO: class {} }),
@@ -2295,17 +2294,17 @@ describe('account lifecycle final core transaction', () => {
       const [calendar] = await runtime
         .getRepository(CalendarChannelEntity)
         .findBy({ connectedAccountId: accountId });
-      const service = new CalendarChannelMetadataService(
-        runtime.getRepository(CalendarChannelEntity),
-        accounts,
-        events as never,
-      );
-      const reparent = () =>
-        service.update({
-          id: calendar.id,
-          workspaceId: fixture.workspaceId,
-          data: { connectedAccountId: destination },
+      // Simulate an independent core writer; public settings do not accept reparenting.
+      const reparent = async () => {
+        const repository = runtime.getRepository(CalendarChannelEntity);
+        await repository.update(
+          { id: calendar.id, workspaceId: fixture.workspaceId },
+          { connectedAccountId: destination },
+        );
+        return repository.findOneOrFail({
+          where: { id: calendar.id, workspaceId: fixture.workspaceId },
         });
+      };
       if (order === 'delete-first') {
         const pause = pauseLifecycleMutation((sql) =>
           sql.startsWith(

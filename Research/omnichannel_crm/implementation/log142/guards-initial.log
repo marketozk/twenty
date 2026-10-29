@@ -1,0 +1,51 @@
+....................
+----------------------------------------------------------------------
+Ran 20 tests in 0.003s
+
+OK
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.039s
+
+OK
+Verified 10 fork migration source(s)
+{
+  "status": "fail",
+  "counts": {
+    "code_files": 34723,
+    "runtime_files": 21438,
+    "edges": 136393
+  },
+  "violations": {
+    "runtime_enterprise_reachable": [
+      "packages/twenty-server/src/engine/core-modules/crm-audit/update-calendar-channel-settings-with-audit.ts"
+    ],
+    "enterprise_edges": [
+      [
+        "packages/twenty-server/src/engine/core-modules/crm-audit/update-calendar-channel-settings-with-audit.ts",
+        "packages/twenty-server/src/engine/metadata-modules/calendar-channel/calendar-channel.exception.ts"
+      ],
+      [
+        "packages/twenty-server/src/engine/core-modules/crm-audit/update-calendar-channel-settings-with-audit.ts",
+        "packages/twenty-shared/src/types/index.ts"
+      ],
+      [
+        "packages/twenty-server/src/engine/metadata-modules/calendar-channel/calendar-channel-metadata.service.ts",
+        "packages/twenty-server/src/engine/core-modules/crm-audit/update-calendar-channel-settings-with-audit.ts"
+      ],
+      [
+        "packages/twenty-server/src/engine/metadata-modules/calendar-channel/calendar-channel-metadata.service.ts",
+        "packages/twenty-server/src/engine/metadata-modules/calendar-channel/dtos/update-calendar-channel.input.ts"
+      ],
+      [
+        "packages/twenty-server/src/engine/metadata-modules/calendar-channel/calendar-channel-metadata.service.ts",
+        "packages/twenty-server/src/modules/calendar/common/services/calendar-channel-sync-status.service.ts"
+      ],
+      [
+        "packages/twenty-server/src/engine/metadata-modules/calendar-channel/resolvers/calendar-channel.resolver.ts",
+        "packages/twenty-server/src/engine/core-modules/auth/types/auth-context.type.ts"
+      ]
+    ]
+  },
+  "runtime_license_proof": false
+}

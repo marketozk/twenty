@@ -1,9 +1,6 @@
 import { UseGuards, UseInterceptors, UseFilters } from '@nestjs/common';
 import { Args, Mutation, Query } from '@nestjs/graphql';
 
-import { CalendarChannelSyncStage } from 'twenty-shared/types';
-import { isDefined } from 'twenty-shared/utils';
-
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
@@ -17,6 +14,8 @@ import { CalendarChannelDTO } from 'src/engine/metadata-modules/calendar-channel
 import { UpdateCalendarChannelInput } from 'src/engine/metadata-modules/calendar-channel/dtos/update-calendar-channel.input';
 import { CalendarChannelGraphqlApiExceptionInterceptor } from 'src/engine/metadata-modules/calendar-channel/interceptors/calendar-channel-graphql-api-exception.interceptor';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
+import { AuthUser } from 'src/engine/decorators/auth/auth-user.decorator';
+import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
 import { CalendarChannelSyncStatusService } from 'src/modules/calendar/common/services/calendar-channel-sync-status.service';
 
 @UseGuards(
@@ -75,37 +74,29 @@ export class CalendarChannelResolver {
     @Args('input') input: UpdateCalendarChannelInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
     @AuthUserWorkspaceId() userWorkspaceId: string,
+    @AuthUser() user: { id: string },
   ): Promise<CalendarChannelDTO> {
-    const calendarChannel =
-      await this.calendarChannelMetadataService.verifyOwnership({
-        id: input.id,
-        userWorkspaceId,
-        workspaceId: workspace.id,
-      });
-
-    const updatedCalendarChannel =
-      await this.calendarChannelMetadataService.update({
-        id: input.id,
-        workspaceId: workspace.id,
-        data: input.update,
-      });
-
-    const hasStartedSyncing =
-      calendarChannel.syncStage !==
-      CalendarChannelSyncStage.PENDING_CONFIGURATION;
-
-    const hasExcludePrivateEventsChanged =
-      isDefined(input.update.excludePrivateEvents) &&
-      input.update.excludePrivateEvents !==
-        calendarChannel.excludePrivateEvents;
-
-    if (hasStartedSyncing && hasExcludePrivateEventsChanged) {
-      await this.calendarChannelSyncStatusService.resetAndMarkAsCalendarEventListFetchPending(
-        [calendarChannel.id],
-        workspace.id,
-      );
+    const id = input.id;
+    const workspaceId = workspace.id;
+    const data = { ...input.update };
+    const caller = { userWorkspaceId, userId: user.id };
+    const result = await this.calendarChannelMetadataService.update({
+      id,
+      workspaceId,
+      data,
+      caller,
+    });
+    // Reset is already committed. Only invalidate its pinned current cache key.
+    if (result.resetChannel) {
+      try {
+        await this.calendarChannelSyncStatusService.flushImportCache(
+          [result.resetChannel],
+          workspaceId,
+        );
+      } catch (error) {
+        throw new CoreAuditPostCommitError(error);
+      }
     }
-
-    return updatedCalendarChannel;
+    return result.calendarChannel as unknown as CalendarChannelDTO;
   }
 }

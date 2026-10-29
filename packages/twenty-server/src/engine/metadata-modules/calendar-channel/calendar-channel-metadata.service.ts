@@ -1,3 +1,11 @@
+import { captureCurrentCrmAuditIdentity } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
+import { membershipCleanupOperation } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
+import {
+  CalendarChannelSettingsError,
+  type CalendarChannelSettingsUpdates,
+  type CalendarChannelSettingsResult,
+  updateCalendarChannelSettingsWithAudit,
+} from 'src/engine/core-modules/crm-audit/update-calendar-channel-settings-with-audit';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -161,17 +169,50 @@ export class CalendarChannelMetadataService {
     id,
     workspaceId,
     data,
+    caller,
   }: {
     id: string;
     workspaceId: string;
-    data: Partial<CalendarChannelEntity>;
-  }): Promise<CalendarChannelDTO> {
-    await this.repository.update(
-      { id, workspaceId },
-      data as Record<string, unknown>,
+    data: CalendarChannelSettingsUpdates;
+    caller: { userWorkspaceId: string; userId: string };
+  }): Promise<CalendarChannelSettingsResult> {
+    const updates = { ...data };
+    const capturedCaller = {
+      userWorkspaceId: caller.userWorkspaceId,
+      userId: caller.userId,
+    };
+    if (this.repository.manager.queryRunner?.isTransactionActive)
+      throw new Error('OMNI_METADATA_REQUIRES_FRESH_TRANSACTION');
+    const identity = await captureCurrentCrmAuditIdentity(
+      workspaceId,
+      async (membershipId) => {
+        const [member] = await this.repository.manager.query(
+          'SELECT "userId" FROM core."userWorkspace" WHERE id=$1',
+          [membershipId],
+        );
+        return member?.userId;
+      },
     );
-
-    return this.repository.findOneOrFail({ where: { id, workspaceId } });
+    const operation = membershipCleanupOperation(workspaceId, identity);
+    if (!operation)
+      throw new Error('Calendar channel settings require audit identity');
+    try {
+      return await updateCalendarChannelSettingsWithAudit({
+        dataSource: this.repository.manager.connection,
+        workspaceId,
+        calendarChannelId: id,
+        caller: capturedCaller,
+        updates,
+        operation,
+      });
+    } catch (error) {
+      if (error instanceof CalendarChannelSettingsError)
+        throw new CalendarChannelException(
+          error.message,
+          CalendarChannelExceptionCode[error.code],
+        );
+      throw error;
+    }
   }
 
   async delete({

@@ -630,11 +630,18 @@ export class CalendarChannelSyncStatusService {
     return true;
   }
 
-  private async flushImportCache(
-    channels: OrdinaryMetadataChannel[],
+  public async flushImportCache(
+    channels: readonly Pick<
+      OrdinaryMetadataChannel,
+      'id' | 'connectedAccountId'
+    >[],
     workspaceId: string,
-  ) {
-    for (const { id, connectedAccountId } of channels)
+  ): Promise<void> {
+    const capturedChannels = channels.map(({ id, connectedAccountId }) => ({
+      id,
+      connectedAccountId,
+    }));
+    for (const { id, connectedAccountId } of capturedChannels)
       await this.cacheStorage.del(
         calendarImportCacheKey({
           workspaceId,

@@ -66,9 +66,11 @@ LOG136/137 подключают адресные messaging callers и blocklist.
 calendar-channel association owner и первый job call. LOG139 проверяет closed candidate
 Event owner с фактическим каскадом и сохранением CallRecording; LOG140 подключает
 единый global sweep и три jobs. LOG141 подключает оба provider/import cleanup caller
-к общему аудиту Association и orphan Event, сохраняя unsafe outcomes. Provider save,
-matching и свежесть import policy этим не покрываются.
-Далее — [настройки канала и условный сброс](../implementation/log141/next-boundary.md).
+к общему аудиту Association и orphan Event, сохраняя unsafe outcomes. LOG142
+объединяет public settings/reset и audit; cache-only действие выполняется после
+подтверждённого COMMIT, прежние права/ответ/коды ошибок сохранены. Provider save,
+matching, свежесть import policy и durable cache этим не покрываются.
+Далее — [provider calendar save](../implementation/log142/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

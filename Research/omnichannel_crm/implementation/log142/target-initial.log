@@ -1,0 +1,88 @@
+[32m[Nest] 1  - [39m10/29/2026, 11:23:18 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggering message list fetch for workspace 00180049-2868-45ab-9117-b4e940769ee1 (all pending channels)[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:23:18 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mFound 2 message channel(s) to process[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:23:18 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggered fetch for message channel 89529544-8d45-43b9-98dc-9491c641ef40[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:23:18 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mSuccessfully triggered 1 message list fetch job(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:23:18 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggering message list fetch for workspace 00180049-2868-45ab-9117-b4e940769ee1 (all pending channels)[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:23:18 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mFound 2 message channel(s) to process[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:23:35 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel 8a658ea5-8ddd-4122-a3d0-291cc98ed437, a sync is already in progress[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:23:35 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel 05de281f-0280-4344-8d06-208349129457, a sync is already in progress[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:23:35 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel 779b9d0f-1150-4b3c-9890-ba1cd3057afd, a sync is already in progress[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:23:35 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel ef3bdad0-a81b-4143-bf9d-12a2f013c4cb, a sync is already in progress[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:23:36 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mDeferring 100000 calendar events to the import cron for calendar channel 18394db9-cea9-4158-ad79-ac6712a8df24[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:23:37 AM [32m    LOG[39m [38;5;3m[MessagingMessageWebhookSyncService] [39m[32mSkipping webhook sync for message channel a6dac894-1ae7-4460-b8b4-89e2b05ed083, a sync is already in progress[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts (59.594 s)
+[32m[Nest] 1  - [39m10/29/2026, 11:23:59 AM [32m    LOG[39m [38;5;3m[DeleteConnectedAccountsOutsideProviderScopeCommand] [39m[32m[DRY RUN] Workspace 4e964641-2675-4366-b11d-d24378991f04: 1 connected account(s) outside their provider scope would be deleted[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:23:59 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 4e964641-2675-4366-b11d-d24378991f04 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:23:59 AM [32m    LOG[39m [38;5;3m[DeleteConnectedAccountsOutsideProviderScopeCommand] [39m[32mWorkspace 4e964641-2675-4366-b11d-d24378991f04: 1 connected account(s) outside their provider scope deleted[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:23:59 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 4e964641-2675-4366-b11d-d24378991f04 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:23:59 AM [32m    LOG[39m [38;5;3m[DeleteConnectedAccountsOutsideProviderScopeCommand] [39m[32mWorkspace 4e964641-2675-4366-b11d-d24378991f04: 1 connected account(s) outside their provider scope deleted[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:23:59 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 4e964641-2675-4366-b11d-d24378991f04 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:24:05 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 4e964641-2675-4366-b11d-d24378991f04 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:24:05 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 4e964641-2675-4366-b11d-d24378991f04 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:24:05 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 4e964641-2675-4366-b11d-d24378991f04 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:24:05 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 4e964641-2675-4366-b11d-d24378991f04 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:24:05 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 4e964641-2675-4366-b11d-d24378991f04 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[Nest] 1  - 10/29/2026, 11:24:08 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE
+[Nest] 1  - 10/29/2026, 11:24:08 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE
+[Nest] 1  - 10/29/2026, 11:24:09 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE
+[Nest] 1  - 10/29/2026, 11:24:10 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE
+[Nest] 1  - 10/29/2026, 11:24:10 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE
+[Nest] 1  - 10/29/2026, 11:24:11 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE
+[32m[Nest] 1  - [39m10/29/2026, 11:24:11 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 4e964641-2675-4366-b11d-d24378991f04 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:24:11 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 4e964641-2675-4366-b11d-d24378991f04 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[Nest] 1  - 10/29/2026, 11:24:11 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE
+[Nest] 1  - 10/29/2026, 11:24:12 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE
+[32m[Nest] 1  - [39m10/29/2026, 11:24:12 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 4e964641-2675-4366-b11d-d24378991f04 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[Nest] 1  - 10/29/2026, 11:24:12 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE
+[Nest] 1  - 10/29/2026, 11:24:12 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE
+[32m[Nest] 1  - [39m10/29/2026, 11:24:12 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 4e964641-2675-4366-b11d-d24378991f04 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[Nest] 1  - 10/29/2026, 11:24:13 AM   ERROR [ConnectedAccountTransfer] CONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE
+[32m[Nest] 1  - [39m10/29/2026, 11:24:13 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 4e964641-2675-4366-b11d-d24378991f04 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:24:14 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 4e964641-2675-4366-b11d-d24378991f04 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:24:14 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 4e964641-2675-4366-b11d-d24378991f04 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:24:14 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 4e964641-2675-4366-b11d-d24378991f04 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:24:14 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 4e964641-2675-4366-b11d-d24378991f04 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:24:14 AM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 4e964641-2675-4366-b11d-d24378991f04 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-metadata-transaction.postgres-spec.ts (19.619 s)
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-settings.postgres-spec.ts (8.362 s)
+  ● preserves legacy reset after a skipped primary setting UPDATE and audits only its actual effects
+
+    expect(received).not.toContain(expected) // indexOf
+
+    Matcher error: received value must not be null nor undefined
+
+    Received has value: undefined
+
+      456 |   const entries = await audits();
+      457 |   expect(entries).toHaveLength(1);
+    > 458 |   expect(entries[0].changedFields).not.toContain('excludePrivateEvents');
+          |                                        ^
+      459 |   expect(entries[0].changedFields).toContain('syncStage');
+      460 | });
+      461 |
+
+      at Object.toContain (test/fork-migration/crm-audit-calendar-settings.postgres-spec.ts:458:40)
+
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-settings-entrypoints.spec.ts
+
+Test Suites: 1 failed, 3 passed, 4 total
+Tests:       1 failed, 512 passed, 513 total
+Snapshots:   0 total
+Time:        88.214 s
+Ran all test suites matching /crm-audit-calendar-settings|omni-metadata-transaction|omni-sync-status/i.
+Traceback (most recent call last):
+  File "C:\Users\regis\AppData\Local\Temp/twenty-log142-target.py", line 6, in <module>
+    m['node'](['/tools/node_modules/jest/bin/jest.js','--config','/source/packages/twenty-server/jest-fork-migration.config.mjs','--runInBand','--testPathPattern='+pattern],{'FORK_MIGRATION_TEST_REDIS_URL':'redis://redis:6379','FORK_MIGRATION_TEST_URL':'postgres://test_owner:isolated-test-only@postgres/'+s['database']})
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log142-run.py", line 16, in node
+    return ssh(cmd+['--entrypoint','node','marketozk/twenty:log088-server-fixed',*args])
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log142-run.py", line 4, in ssh
+    def ssh(args,**kw):return call(['ssh',HOST,shlex.join(args)],**kw)
+                              ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log142-run.py", line 3, in call
+    def call(args,**kw):return subprocess.run(args,check=True,**kw)
+                               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['ssh', 'root@176.114.84.194', "docker run --rm --user 0:0 --network twenty-rob764-3e371e20ab394c2b-net --memory 3g --cpus 2 -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source:/source:ro -v /opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools:/tools:ro -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/out:/out:rw -e NODE_PATH=/out/tools/node_modules:/tools/node_modules:/app/node_modules -e FORK_MIGRATION_TEST_REDIS_URL=redis://redis:6379 -e FORK_MIGRATION_TEST_URL=postgres://test_owner:isolated-test-only@postgres/twenty_rob764_test_3e371e20ab394c2b --entrypoint node marketozk/twenty:log088-server-fixed /tools/node_modules/jest/bin/jest.js --config /source/packages/twenty-server/jest-fork-migration.config.mjs --runInBand '--testPathPattern=crm-audit-calendar-settings|omni-metadata-transaction|omni-sync-status'"]' returned non-zero exit status 1.

@@ -1,0 +1,11 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts 340ms (unchanged)
+../../../source/packages/twenty-server/src/engine/metadata-modules/calendar-channel/calendar-channel-metadata.service.ts 82ms (unchanged)
+../../../source/packages/twenty-server/src/engine/metadata-modules/calendar-channel/resolvers/calendar-channel.resolver.ts 14ms (unchanged)
+../../../source/packages/twenty-server/src/modules/calendar/common/services/calendar-channel-sync-status.service.ts 99ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/omni-metadata-transaction.postgres-spec.ts 476ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/update-calendar-channel-settings-with-audit.ts 92ms
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-settings-entrypoints.spec.ts 87ms
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-settings.postgres-spec.ts 87ms
+
+{"formattedFiles": 8, "singleSshSession": true}

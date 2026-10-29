@@ -35,6 +35,7 @@ ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.
 Последняя подтверждённая сверка — [LOG141 publication](implementation/log141/publication.json):
 описание, комментарий и все 11 статусов прочитаны обратно; commit/push подтверждены GitHub API.
 LOG141 опубликован; описание и отчёт Linear прочитаны обратно после push.
-Следующая работа — настройки календарного канала; ROB765 остаётся In Progress.
+LOG142: код и проверки готовятся к публикации; синхронизация Linear ожидает commit/push.
+Следующая работа — provider calendar save; ROB765 остаётся In Progress.
 История прежних R13–R16/LOG-публикаций сохраняется в [DEVLOG](DEVLOG.md) и каталогах evidence.
 GitHub Actions не используется.

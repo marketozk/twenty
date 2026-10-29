@@ -57,7 +57,7 @@
 ## Текущая реализация
 
 ROB764 принята по [LOG088](Research/omnichannel_crm/implementation/rob764-acceptance.md).
-ROB765 остаётся In Progress: LOG141 подключает оба provider/import cleanup caller к одной транзакции аудита Association и orphan Event. Проверяются текущий expectedRun и исходный граф; раннее переназначение связи безопасно пропускается, позднее изменение откатывается. Unsafe outcomes сохраняются до логирования и изменения статусов.
+ROB765 остаётся In Progress: LOG142 объединяет публичные настройки календарного канала, условный сброс синхронизации и аудит в одной core транзакции. Проверяются текущий владелец и точные фактические изменения; сохранены прежние права, pre-reset ответ и публичные коды ошибок. Кэш очищается только после подтверждённого COMMIT.
 
 Актуальные проверки и ближайшая работа — в [STATUS](Research/omnichannel_crm/STATUS.md);
 единственная таблица приёмки аудита — [rob765-progress](Research/omnichannel_crm/implementation/rob765-progress.md).

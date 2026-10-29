@@ -1,0 +1,14 @@
+{
+  "baseCommit": "05373ca646ddbf49490183b3f6665ea883450530",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "7d02c228cd1d31947333997da9909b635fb5c81d58597ea2e06541edd1cee3d4",
+    "packages/twenty-server/src/engine/metadata-modules/calendar-channel/calendar-channel-metadata.service.ts": "c7d37bc250680105dd64e48c1583851a3dd00ddb0b50cdbf5784cc21a571cab7",
+    "packages/twenty-server/src/engine/metadata-modules/calendar-channel/resolvers/calendar-channel.resolver.ts": "e90524fff568a56e7400735319f6259a0d0940237b31134c5a92332575933854",
+    "packages/twenty-server/src/modules/calendar/common/services/calendar-channel-sync-status.service.ts": "4faeae1afbfb5346d0d878c73e74e6465593c919058ee40d2283bc08bbb398f5",
+    "packages/twenty-server/test/fork-migration/omni-metadata-transaction.postgres-spec.ts": "3b02fd1cb87e75eb47ccff55a17b4c5f078927a30ccece45133fc0f015293562",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/update-calendar-channel-settings-with-audit.ts": "e7544c0fbf0e8e89e7a686abcbcc5dc8742a75bc3dcd0ea192c753e9fc87f97f",
+    "packages/twenty-server/test/fork-migration/crm-audit-calendar-settings-entrypoints.spec.ts": "2bde5f7a7473779bf3dd0673193377a1658ea7a59d2396fd9e17e3dddf38e7f3",
+    "packages/twenty-server/test/fork-migration/crm-audit-calendar-settings.postgres-spec.ts": "5d051212c8c45b4c99ddab7fda495119750d5ef0007b83683467ff3567cf33dd"
+  },
+  "uploadedSourceHashesVerified": true
+}
