@@ -1,0 +1,8 @@
+{
+  "baseCommit": "47a100632ae91152b51b734619314a0643deff5b",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-orphan-native-messages-with-audit.ts": "327df3da779a0c5495358199d2b7df4f1e25851681c117b42c10ad7289287e06",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-orphan-message.postgres-spec.ts": "5ceaa9e54b28089d1115896eac3a4ef73bc291a9584c5a3b4542ab66638a9005"
+  },
+  "uploadedSourceHashesVerified": true
+}

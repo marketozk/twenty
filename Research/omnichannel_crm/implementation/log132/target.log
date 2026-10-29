@@ -1,0 +1,9 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts (16.684 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-empty-thread-cleanup.postgres-spec.ts (11.443 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-orphan-message.postgres-spec.ts (9.322 s)
+
+Test Suites: 3 passed, 3 total
+Tests:       100 passed, 100 total
+Snapshots:   0 total
+Time:        37.568 s
+Ran all test suites matching /crm-audit-native-orphan-message|crm-audit-native-empty-thread-cleanup|crm-audit-native-association-cleanup/i.
