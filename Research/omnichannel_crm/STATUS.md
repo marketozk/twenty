@@ -3,7 +3,7 @@
 ROB764 завершена по [приёмке LOG088](implementation/rob764-acceptance.md).
 ROB765 — In Progress: общий аудит действий ещё не принят.
 
-Проверенное покрытие к LOG140:
+Проверенное покрытие к LOG141:
 
 - Covered native CRM create/update/FILES/soft-delete/restore и внутренний hard-delete с проверенными FK effects.
 - Workspace sessions и refresh lifecycle; public/AI role CREATE/UPDATE и public member assignment.
@@ -12,18 +12,18 @@ ROB765 — In Progress: общий аудит действий ещё не пр�
 - OAuth/application attribution и отказ от automatic queue retry для распознанных unsafe outcomes.
 - Очистка associations удалённого канала; общий orphan sweep с message/participant, target reconciliation и empty-thread audit. Реальные jobs/CLI подключены.
 
-LOG140 подключает global CalendarEvent sweep к одному аудиту на все страницы и трём реальным заданиям. Live-only discovery, точные каскады и сохранность CallRecording проверены; ошибка поздней страницы откатывает весь sweep.
+LOG141 подключает оба provider/import cleanup caller к одной транзакции аудита Association и orphan Event. Проверяются текущий expectedRun и исходный граф; раннее переназначение связи безопасно пропускается, позднее изменение откатывается. Unsafe outcomes сохраняются до логирования и изменения статусов.
 
-2160 tests/73 suites PASS (420.276s); 88 targeted/5 suites PASS (35.255s), 30 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 411/415 roots, baseline/current 225 diagnostics, 0 новых/changed-file. 10 local/remote source hashes совпадают.
+2557 tests/76 suites PASS (493.096s); 462 targeted/4 suites PASS (91.02s), 46 новых cases. 3 upstream unit cases PASS. 26 guard tests PASS; 10 migration checksums неизменны. Types 413/416 roots, baseline/current 225 diagnostics, 0 новых/changed-file. 10 local/remote source hashes совпадают.
 Это целевые проверки кода, не чистый full-server typecheck и не полный HTTP/JWT тест.
-[Результаты LOG140](implementation/log140/results.json) · [исходники и ревью](implementation/log140/README.md).
+[Результаты LOG141](implementation/log141/results.json) · [исходники и ревью](implementation/log141/README.md).
 
-Global sweep подключён к трём jobs. Весь проход использует одну транзакцию;
-предшествующий channel association cleanup остаётся отдельной операцией.
-LOG138 сохраняет SHARE lock core.calendarChannel только для absent-channel proof.
+Оба provider cleanup caller используют общий audit owner. Проверены 501 Association
+на один external ID, раннее переназначение, сохранность tombstones и unsafe outcomes.
+Provider save/matching и свежесть ранее прочитанной import policy остаются открыты.
 
-Далее — provider expectedRun cleanup и сохранение unsafe outcomes:
-[следующая граница](implementation/log140/next-boundary.md).
+Далее — публичные настройки календарного канала и условный сброс:
+[следующая граница](implementation/log141/next-boundary.md).
 Остальные открытые критерии и ограничения находятся в единственной
 [таблице приёмки ROB765](implementation/rob765-progress.md).
 
@@ -31,7 +31,7 @@ ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.
 Собственные права, интерфейс чатов, коннекторы, ИИ и автоматизация ещё не приняты.
 
 Демо остаётся прежним. Последний собранный изолированный кандидат — LOG088;
-код LOG089–140 не выкатывался. Клиентские сообщения не отправлялись.
+код LOG089–141 не выкатывался. Клиентские сообщения не отправлялись.
 При будущем построении индекса migration10 writers останавливаются.
 GitHub Actions не используется.
 

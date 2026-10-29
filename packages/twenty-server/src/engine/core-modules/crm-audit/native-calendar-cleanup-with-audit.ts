@@ -1,3 +1,5 @@
+import { lockOrdinaryNativeSyncRun } from 'src/modules/omnichannel/services/lock-ordinary-native-sync-run';
+import { type OrdinaryMetadataSyncRun } from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
 import { randomUUID } from 'node:crypto';
 import { isUUID } from 'class-validator';
 import {
@@ -504,4 +506,320 @@ export const cleanWorkspaceNativeCalendarEventsWithAudit = async ({
     deletedTargetIds: [...effects.deletedTargetIds].sort(),
     updatedCallRecordingIds: [...effects.updatedCallRecordingIds].sort(),
   };
+};
+
+type SyncCalendarSourceProof = {
+  candidateEventIds: string[];
+  verifiedDeletedEventIds: Set<string>;
+};
+
+const lockCalendarSyncAuthority = async (
+  session: CalendarCleanupSession,
+  run: OrdinaryMetadataSyncRun,
+): Promise<boolean> => {
+  const { scope } = session;
+  if (!(await lockOrdinaryNativeSyncRun(scope, run))) return false;
+  // Capture only authority fields, never provider credentials or unrelated timestamps.
+  const read = async () => {
+    const accounts = await scope.executeRawQuery(
+      'SELECT id,provider,"applicationId","connectionProviderId" FROM core."connectedAccount" WHERE "workspaceId"=$1 AND id=$2',
+      [scope.workspaceId, run.connectedAccountId],
+    );
+    const channels = await scope.executeRawQuery(
+      'SELECT id,"connectedAccountId","isSyncEnabled","syncStage",to_char("syncStageStartedAt" AT TIME ZONE \'UTC\',\'YYYY-MM-DD"T"HH24:MI:SS.US"Z"\') AS "startedAt" FROM core."calendarChannel" WHERE "workspaceId"=$1 AND id=$2',
+      [scope.workspaceId, run.channelId],
+    );
+    return { accounts, channels };
+  };
+  const before = await read();
+  if (before.accounts.length !== 1 || before.channels.length !== 1)
+    throw new Error('Native sync calendar cleanup authority changed');
+  session.validators.push(async () => {
+    if (
+      !(await lockOrdinaryNativeSyncRun(scope, run)) ||
+      canonicalAuditJson(await read()) !== canonicalAuditJson(before)
+    )
+      throw new Error('Native sync calendar cleanup authority changed');
+  });
+  return true;
+};
+
+const deleteSyncCalendarAssociationsStage = async (
+  session: CalendarCleanupSession,
+  channelId: string,
+  externalIds: readonly string[],
+): Promise<SyncCalendarSourceProof> => {
+  const { scope, audit, shapes, referencesByTable } = session;
+  const rootShape = shapes.get(ASSOCIATION)!;
+  const sql = {
+    execute: ({ text, values }: { text: string; values: unknown[] }) =>
+      scope.executeRawQuery(text, values),
+  };
+  // Discover without child locks so all Event parents are locked before Associations.
+  const discovered = new Map<string, string>();
+  let cursor: string | undefined;
+  for (;;) {
+    const rows = await scope.executeRawQuery(
+      'SELECT id,"calendarEventId" FROM ' +
+        table(rootShape) +
+        ' WHERE "calendarChannelId"=$1 AND "eventExternalId"=ANY($2::text[])' +
+        (cursor ? ' AND id>$3::uuid' : '') +
+        ' ORDER BY id LIMIT 500',
+      cursor ? [channelId, externalIds, cursor] : [channelId, externalIds],
+    );
+    if (!rows.length) break;
+    for (const row of rows) {
+      if (
+        typeof row.id !== 'string' ||
+        !isUUID(row.id) ||
+        typeof row.calendarEventId !== 'string' ||
+        !isUUID(row.calendarEventId) ||
+        discovered.has(row.id)
+      )
+        throw new Error('Native sync calendar cleanup invalid record identity');
+      discovered.set(row.id, row.calendarEventId);
+    }
+    cursor = String(rows[rows.length - 1].id);
+  }
+  const rootIds = [...discovered.keys()];
+  const parentIds = [...new Set(discovered.values())].sort();
+  const before = new Map<Table, Snapshot[]>();
+  const readGraph = async (name: Table, lock = false): Promise<Snapshot[]> => {
+    const shape = shapes.get(name)!;
+    const parentColumn = name === EVENT ? 'id' : 'calendarEventId';
+    const originalIds = [
+      ...new Set([
+        ...(before.get(name)?.map((row) => row.id) ?? []),
+        ...(name === ASSOCIATION ? rootIds : []),
+      ]),
+    ];
+    const ids: string[] = [];
+    let pageCursor: string | undefined;
+    for (;;) {
+      const rows = await scope.executeRawQuery(
+        'SELECT id FROM ' +
+          table(shape) +
+          ' WHERE (' +
+          quote(parentColumn) +
+          '=ANY($1::uuid[]) OR id=ANY($2::uuid[]))' +
+          (pageCursor ? ' AND id>$3::uuid' : '') +
+          ' ORDER BY id LIMIT 500' +
+          (lock ? ' FOR UPDATE' : ''),
+        pageCursor
+          ? [parentIds, originalIds, pageCursor]
+          : [parentIds, originalIds],
+      );
+      if (!rows.length) break;
+      for (const row of rows) {
+        if (typeof row.id !== 'string' || !isUUID(row.id))
+          throw new Error(
+            'Native sync calendar cleanup invalid record identity',
+          );
+        ids.push(row.id);
+      }
+      pageCursor = String(rows[rows.length - 1].id);
+    }
+    const snapshots = await readNativeCrmAuditRows(sql, shape, ids);
+    if (snapshots.length !== ids.length)
+      throw new Error('Native sync calendar cleanup graph changed');
+    return snapshots;
+  };
+  // Fix the full five-table source graph before Association effects. A DELETE trigger
+  // must not rewrite a later orphan-stage before-image and thereby escape the audit.
+  for (const name of TABLES) before.set(name, await readGraph(name, true));
+  const rootMap = new Map(before.get(ASSOCIATION)!.map((row) => [row.id, row]));
+  for (const [id, parentId] of discovered) {
+    const row = rootMap.get(id);
+    // A committed removal or selector reassignment before this locked baseline
+    // is skipped, matching the previous provider cleanup contract. A different
+    // Event parent is still rejected: that parent was not part of our lock proof.
+    if (row && eventId(ASSOCIATION, row) !== parentId)
+      throw new Error('Native sync calendar cleanup reference changed');
+  }
+  const capturedRoots = rootIds.flatMap((id) => {
+    const row = rootMap.get(id);
+    return row ? [row] : [];
+  });
+  const selected = capturedRoots.filter(
+    (row) =>
+      JSON.parse(String(row.deletedAt)) === null &&
+      JSON.parse(String(row.calendarChannelId)) === channelId &&
+      externalIds.includes(JSON.parse(String(row.eventExternalId))),
+  );
+  const selectedIds = selected.map((row) => row.id);
+  const actualAssociationIds = new Set<string>();
+  const verifiedDeletedEventIds = new Set<string>();
+  const verify = async () => {
+    for (const name of TABLES) {
+      const expected = before.get(name)!.flatMap((row) => {
+        const parentDeleted = verifiedDeletedEventIds.has(eventId(name, row));
+        if (name === RECORDING)
+          return [
+            { ...row, ...(parentDeleted ? { calendarEventId: 'null' } : {}) },
+          ];
+        if (
+          parentDeleted ||
+          (name === ASSOCIATION && actualAssociationIds.has(row.id))
+        )
+          return [];
+        return [row];
+      });
+      if (
+        canonicalAuditJson(await readGraph(name)) !==
+        canonicalAuditJson(expected)
+      )
+        throw new Error('Native sync calendar cleanup effects mismatch');
+    }
+    // Include the full requested selector and original IDs; source rows must not
+    // move out, appear late, or be hidden by a later verified Event cascade.
+    const currentIds = (
+      await scope.executeRawQuery(
+        'SELECT id FROM ' +
+          table(rootShape) +
+          ' WHERE ("calendarChannelId"=$1 AND "eventExternalId"=ANY($2::text[])) OR id=ANY($3::uuid[]) ORDER BY id',
+        [channelId, externalIds, rootIds],
+      )
+    ).map((row) => {
+      if (typeof row.id !== 'string' || !isUUID(row.id))
+        throw new Error('Native sync calendar cleanup invalid record identity');
+      return row.id;
+    });
+    const current = await readNativeCrmAuditRows(sql, rootShape, currentIds);
+    const expected = capturedRoots.filter(
+      (row) =>
+        !actualAssociationIds.has(row.id) &&
+        !verifiedDeletedEventIds.has(eventId(ASSOCIATION, row)),
+    );
+    if (
+      current.length !== currentIds.length ||
+      canonicalAuditJson(current) !== canonicalAuditJson(expected)
+    )
+      throw new Error('Native sync calendar cleanup effects mismatch');
+  };
+  session.validators.push(verify);
+  // Validate discovery again under all source locks, before a deletion can mask stale selection.
+  for (const validate of session.validators) await validate();
+  assertNativeCrmDeleteFilesEmpty(rootShape, selected);
+  for (const reference of referencesByTable.get(ASSOCIATION)!) {
+    if (!['c', 'n', 'd'].includes(reference.deleteAction)) continue;
+    const predicate = reference.childColumns
+      .map(
+        (column, index) =>
+          'child.' +
+          quote(column) +
+          '=parent.' +
+          quote(reference.parentColumns[index]),
+      )
+      .join(' AND ');
+    if (
+      (
+        await scope.executeRawQuery(
+          'SELECT 1 FROM ' +
+            quote(reference.schemaName) +
+            '.' +
+            quote(reference.tableName) +
+            ' child JOIN ' +
+            table(rootShape) +
+            ' parent ON ' +
+            predicate +
+            ' WHERE parent.id=ANY($1::uuid[]) LIMIT 1',
+          [selectedIds],
+        )
+      ).length
+    )
+      throw new Error(
+        'Native sync calendar cleanup excludes unsupported cascade effects',
+      );
+  }
+  const repository = scope.getRepository(ASSOCIATION, {
+    shouldBypassPermissionChecks: true,
+  });
+  for (let offset = 0; offset < selectedIds.length; offset += 500) {
+    for (const validate of session.validators) await validate();
+    const ids = selectedIds.slice(offset, offset + 500);
+    const result = await repository.delete(ids, { columnsToReturn: ['id'] });
+    const returned: unknown = result.raw;
+    if (
+      !Array.isArray(returned) ||
+      result.affected !== returned.length ||
+      returned.some(
+        (row) => !row || typeof row.id !== 'string' || !ids.includes(row.id),
+      ) ||
+      new Set(returned.map((row) => row.id)).size !== returned.length
+    )
+      throw new Error(
+        'Native sync calendar cleanup returned unexpected records',
+      );
+    for (const row of returned) actualAssociationIds.add(row.id);
+    for (const validate of session.validators) await validate();
+  }
+  const deleted = selected.filter((row) => actualAssociationIds.has(row.id));
+  for (const row of deleted)
+    audit.record({
+      resourceKind: 'crmRecord',
+      resourceId: row.id,
+      action: 'delete',
+      before: captureNativeCrmAuditSnapshot(rootShape, row),
+      after: null,
+      securityDescriptor: {
+        resourceKind: 'crmRecord',
+        resourceId: row.id,
+        objectMetadataId: rootShape.objectMetadataId,
+        deletedRecord: { access: 'currentWorkspaceAdministration' },
+      },
+    });
+  return {
+    candidateEventIds: [
+      ...new Set(deleted.map((row) => eventId(ASSOCIATION, row))),
+    ].sort(),
+    verifiedDeletedEventIds,
+  };
+};
+
+// The external-ID command is produced by the existing provider/import classification.
+// This terminal owner revalidates lifecycle authority, not a new blocklist/private policy.
+export const deleteOrdinarySyncCalendarAssociationsWithAudit = async ({
+  scope,
+  operation,
+  expectedRun,
+  eventExternalIds,
+}: {
+  scope: NativeCalendarEventCleanupScope;
+  operation: CrmAuditOperation;
+  expectedRun: OrdinaryMetadataSyncRun;
+  eventExternalIds: readonly string[];
+}): Promise<boolean> => {
+  const run = Object.freeze({ ...expectedRun });
+  if (
+    run.kind !== 'calendar' ||
+    run.workspaceId !== scope.workspaceId ||
+    !Array.isArray(eventExternalIds) ||
+    eventExternalIds.some((id) => typeof id !== 'string')
+  )
+    throw new Error('Native sync calendar cleanup invalid command');
+  const externalIds = Object.freeze([...new Set(eventExternalIds)].sort());
+  const session = createCalendarCleanupSession(scope, operation);
+  await prepareCalendarCleanupSession(session);
+  if (!(await lockCalendarSyncAuthority(session, run))) return false;
+  const source = await deleteSyncCalendarAssociationsStage(
+    session,
+    run.channelId,
+    externalIds,
+  );
+  for (
+    let offset = 0;
+    offset < source.candidateEventIds.length;
+    offset += 500
+  ) {
+    // The orphan stage verifies every prior source before taking new snapshots.
+    const result = await deleteOrphanCalendarEventsStage(
+      session,
+      source.candidateEventIds.slice(offset, offset + 500),
+    );
+    // Only verified actual Event RETURNING admits its known child CASCADE / SET NULL.
+    for (const id of result.deletedEventIds)
+      source.verifiedDeletedEventIds.add(id);
+  }
+  await finalizeCalendarCleanupSession(session);
+  return true;
 };

@@ -1,6 +1,5 @@
-import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
+import { isTransactionUnsafeToRetry } from 'src/engine/twenty-orm/error-handling/is-transaction-outcome-unknown';
 import { type OrdinaryMetadataSyncRun } from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
-import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { ExceptionHandlerService } from 'src/engine/core-modules/exception-handler/exception-handler.service';
@@ -40,11 +39,7 @@ export class CalendarEventImportErrorHandlerService {
     expectedRun?: OrdinaryMetadataSyncRun,
   ): Promise<void> {
     expectedRun = expectedRun && { ...expectedRun };
-    if (
-      exception instanceof OmniCoreTransactionOutcomeUnknownError ||
-      exception instanceof NativeTransactionOutcomeUnknownError
-    )
-      throw exception;
+    if (isTransactionUnsafeToRetry(exception)) throw exception;
     const error =
       exception instanceof Error ? exception : new Error(String(exception));
 

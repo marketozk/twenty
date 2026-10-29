@@ -1,0 +1,16 @@
+{
+  "baseCommit": "17c0a056a55455de8fc1a46f59c0745058167802",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-calendar-cleanup-with-audit.ts": "429d40e3be261cbb5ac8891b5488268d1049c294901f60389a00e69a612c8de7",
+    "packages/twenty-server/src/modules/calendar/calendar-event-cleaner/services/calendar-event-cleaner.service.ts": "2decdc9d9e53758ddafb03144c9e8ca6c1f9e06322710c1904a9b8a7af20abe0",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-event-import-exception-handler.service.ts": "983d98db74d87455ded9092e898a13b4820e7bf134411fce1f404d4282d53ca2",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-events-import.service.ts": "cabda096748a0efcbc9cfc867f58b3e8dc2874e820afe0ddfd038a87741a6050",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-fetch-events.service.ts": "44c9d3afa98520ee670a8b075bcfee7dbe36810faff0531f63b3564edf7ea4c3",
+    "packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts": "0deb79a522b47cb09dcf1e505146f10d36cd6e79c78af5bfcd0e7a1cc09ee6cf",
+    "packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts": "015475a66f0db942749da33c526ce7f4ed8980ba98998342daafdb30f3676c24",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-ordinary-sync-calendar-associations-with-audit.ts": "56cdc36d5b0d58061bb62b05e2c108b87d161a93ba48971da5cb4757f44bed65",
+    "packages/twenty-server/test/fork-migration/crm-audit-calendar-sync-cleanup.postgres-spec.ts": "7b9664fd7238c327c3efc48fbeb116128b6b9e4ba5f02d31e7ba72970916171f",
+    "packages/twenty-server/test/fork-migration/crm-audit-calendar-sync-entrypoints.spec.ts": "97d049a96a51844018adc5628278cbe43e4dc17b9045e6995104c356ff9b1d58"
+  },
+  "uploadedSourceHashesVerified": true
+}

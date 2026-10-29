@@ -1,3 +1,8 @@
+import { isTransactionUnsafeToRetry } from 'src/engine/twenty-orm/error-handling/is-transaction-outcome-unknown';
+import {
+  membershipCleanupOperation,
+  systemMembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { calendarImportCacheKey } from 'src/modules/calendar/common/utils/calendar-import-cache-key';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -53,6 +58,10 @@ export class CalendarEventsImportService {
     connectedAccount: ConnectedAccountEntity,
     workspaceId: string,
   ): Promise<void> {
+    const cleanupIdentity = systemMembershipCleanupIdentity(
+      workspaceId,
+      CalendarEventsImportService.name,
+    );
     calendarChannel = { ...calendarChannel };
     connectedAccount = { ...connectedAccount };
     if (calendarChannel.connectedAccountId !== connectedAccount.id)
@@ -71,7 +80,7 @@ export class CalendarEventsImportService {
     if (!admitted) return;
     calendarChannel = admitted.channel;
     connectedAccount = admitted.channel.connectedAccount;
-    const expectedRun = admitted.run;
+    const expectedRun = { ...admitted.run };
     if (
       await this.calendarChannelSyncStatusService.recoverLegacyCalendarImport(
         calendarChannel.id,
@@ -190,6 +199,10 @@ export class CalendarEventsImportService {
                   calendarChannelId: calendarChannel.id,
                   eventExternalIds: eventExternalIdsToRemove,
                   expectedRun,
+                  auditOperation: membershipCleanupOperation(
+                    workspaceId,
+                    cleanupIdentity,
+                  )!,
                 },
               );
             if (!cleaned) return;
@@ -210,6 +223,7 @@ export class CalendarEventsImportService {
             );
           }
         } catch (error) {
+          if (isTransactionUnsafeToRetry(error)) throw error;
           await this.calendarEventImportErrorHandlerService.handleDriverException(
             error,
             CalendarEventImportSyncStep.CALENDAR_EVENTS_IMPORT,

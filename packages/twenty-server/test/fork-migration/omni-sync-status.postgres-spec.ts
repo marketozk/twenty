@@ -1,4 +1,5 @@
 import { MessagingCursorService } from 'src/modules/messaging/message-import-manager/services/messaging-cursor.service';
+import { type NativeMessageCleanupResult } from 'src/engine/core-modules/crm-audit/delete-ordinary-sync-message-associations-with-audit';
 import { type OrdinaryMetadataSyncRun } from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
 // Provider network behavior is supplied explicitly by each calendar fetch test.
 jest.mock(
@@ -4597,11 +4598,26 @@ it.each(['declined', 'unknown', 'second-chunk'] as const)(
       (_, index) => 'deleted-' + index,
     );
     let cleanupCalls = 0;
-    const cleanup = jest.fn().mockImplementation(async () => {
-      cleanupCalls += 1;
-      if (outcome === 'unknown') throw error;
-      return outcome === 'second-chunk' && cleanupCalls === 1;
-    });
+    const cleanup = jest
+      .fn()
+      .mockImplementation(
+        async (): Promise<NativeMessageCleanupResult | null> => {
+          cleanupCalls += 1;
+          if (outcome === 'unknown') throw error;
+          if (outcome !== 'second-chunk' || cleanupCalls !== 1) return null;
+          return {
+            primaryDeletedAssociationIds: [],
+            deletedAssociationIds: [],
+            deletedJunctionIds: [],
+            deletedMessageIds: [],
+            affectedThreadIds: [],
+            deletedThreadIds: [],
+            createdTargetIds: [],
+            updatedTargetIds: [],
+            deletedTargetIds: [],
+          };
+        },
+      );
     const updateCursor = jest.fn().mockResolvedValue(true);
     const owner = makeService(MessagingMessageListFetchService.prototype, {
       cacheStorage: cache,

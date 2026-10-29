@@ -115,6 +115,8 @@ const fixture = createOmniNativeMessageFixture({
     'opportunity',
     'calendarEvent',
     'calendarEventParticipant',
+    'calendarEventTarget',
+    'callRecording',
     'calendarChannelEventAssociation',
     'messageChannelMessageAssociationMessageFolder',
   ],
@@ -772,6 +774,11 @@ const cleanup = (kind: 'message' | 'calendar', proof = run(kind)) => {
     calendarChannelId: calendarChannel.id,
     eventExternalIds: [event().id],
     expectedRun: proof,
+    auditOperation: {
+      workspaceId: fixture.workspaceId,
+      operationId: randomUUID(),
+      actor: { kind: 'system', id: 'CalendarEventCleanerService' },
+    },
   });
 };
 describe.each(['message', 'calendar'] as const)(

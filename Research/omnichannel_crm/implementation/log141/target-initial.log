@@ -1,0 +1,69 @@
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts (22.572 s)
+  ● calendar channel reassignment before-child-lock is serialized with cleanup
+
+    Native sync calendar cleanup reference changed
+
+      632 |       !externalIds.includes(JSON.parse(String(row.eventExternalId)))
+      633 |     )
+    > 634 |       throw new Error('Native sync calendar cleanup reference changed');
+          |             ^
+      635 |   }
+      636 |   const selected = rootIds
+      637 |     .map((id) => rootMap.get(id)!)
+
+      at deleteSyncCalendarAssociationsStage (src/engine/core-modules/crm-audit/native-calendar-cleanup-with-audit.ts:634:13)
+      at deleteOrdinarySyncCalendarAssociationsWithAudit (src/engine/core-modules/crm-audit/native-calendar-cleanup-with-audit.ts:796:18)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/ordinary-native-sync-run.postgres-spec.ts:1160:18)
+
+  ● calendar external-id reassignment before-child-lock is serialized with cleanup
+
+    Native sync calendar cleanup reference changed
+
+      632 |       !externalIds.includes(JSON.parse(String(row.eventExternalId)))
+      633 |     )
+    > 634 |       throw new Error('Native sync calendar cleanup reference changed');
+          |             ^
+      635 |   }
+      636 |   const selected = rootIds
+      637 |     .map((id) => rootMap.get(id)!)
+
+      at deleteSyncCalendarAssociationsStage (src/engine/core-modules/crm-audit/native-calendar-cleanup-with-audit.ts:634:13)
+      at deleteOrdinarySyncCalendarAssociationsWithAudit (src/engine/core-modules/crm-audit/native-calendar-cleanup-with-audit.ts:796:18)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/ordinary-native-sync-run.postgres-spec.ts:1160:18)
+
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-sync-cleanup.postgres-spec.ts (11.819 s)
+  ● keeps the existing retained binding exclusion even if the account provider now looks ordinary
+
+    QueryFailedError: column "archivedAt" does not exist
+
+      at PostgresQueryRunner.query (../../../app/src/driver/postgres/PostgresQueryRunner.ts:325:19)
+      at bootstrapOmniAccountBinding (src/modules/omnichannel/services/omni-binding-bootstrap.ts:303:40)
+      at Object.<anonymous> (test/fork-migration/crm-audit-calendar-sync-cleanup.postgres-spec.ts:319:3)
+
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-sync-entrypoints.spec.ts
+
+Test Suites: 2 failed, 1 passed, 3 total
+Tests:       3 failed, 105 passed, 108 total
+Snapshots:   0 total
+Time:        34.856 s
+Ran all test suites matching /crm-audit-calendar-sync|ordinary-native-sync-run/i.
+Traceback (most recent call last):
+  File "C:\Users\regis\AppData\Local\Temp/twenty-log141-target.py", line 6, in <module>
+    m['node'](['/tools/node_modules/jest/bin/jest.js','--config','/source/packages/twenty-server/jest-fork-migration.config.mjs','--runInBand','--testPathPattern='+pattern],{'FORK_MIGRATION_TEST_REDIS_URL':'redis://redis:6379','FORK_MIGRATION_TEST_URL':'postgres://test_owner:isolated-test-only@postgres/'+s['database']})
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log141-run.py", line 16, in node
+    return ssh(cmd+['--entrypoint','node','marketozk/twenty:log088-server-fixed',*args])
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log141-run.py", line 4, in ssh
+    def ssh(args,**kw):return call(['ssh',HOST,shlex.join(args)],**kw)
+                              ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log141-run.py", line 3, in call
+    def call(args,**kw):return subprocess.run(args,check=True,**kw)
+                               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['ssh', 'root@176.114.84.194', "docker run --rm --user 0:0 --network twenty-rob764-3e371e20ab394c2b-net --memory 3g --cpus 2 -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source:/source:ro -v /opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools:/tools:ro -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/out:/out:rw -e NODE_PATH=/out/tools/node_modules:/tools/node_modules:/app/node_modules -e FORK_MIGRATION_TEST_REDIS_URL=redis://redis:6379 -e FORK_MIGRATION_TEST_URL=postgres://test_owner:isolated-test-only@postgres/twenty_rob764_test_3e371e20ab394c2b --entrypoint node marketozk/twenty:log088-server-fixed /tools/node_modules/jest/bin/jest.js --config /source/packages/twenty-server/jest-fork-migration.config.mjs --runInBand '--testPathPattern=crm-audit-calendar-sync|ordinary-native-sync-run'"]' returned non-zero exit status 1.

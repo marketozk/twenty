@@ -1,0 +1,48 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts (23.772 s)
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-sync-cleanup.postgres-spec.ts (12.863 s)
+  ● pages more than 500 source Associations sharing one requested external ID
+
+    expect(received).toEqual(expected) // deep equality
+
+    Expected: ["one-external-id"]
+    Received: undefined
+
+      642 |       !sql.includes('FOR UPDATE')
+      643 |     ) {
+    > 644 |       expect(values?.[1]).toEqual(['one-external-id']);
+          |                           ^
+      645 |       if (result.rows.length) sourcePageSizes.push(result.rows.length);
+      646 |     }
+      647 |     return result;
+
+      at Client.toEqual (test/fork-migration/crm-audit-calendar-sync-cleanup.postgres-spec.ts:644:27)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at deleteSyncCalendarAssociationsStage (src/engine/core-modules/crm-audit/native-calendar-cleanup-with-audit.ts:562:18)
+      at deleteOrdinarySyncCalendarAssociationsWithAudit (src/engine/core-modules/crm-audit/native-calendar-cleanup-with-audit.ts:804:18)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at Object.<anonymous> (test/fork-migration/crm-audit-calendar-sync-cleanup.postgres-spec.ts:653:10)
+
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-sync-entrypoints.spec.ts
+
+Test Suites: 1 failed, 2 passed, 3 total
+Tests:       1 failed, 110 passed, 111 total
+Snapshots:   0 total
+Time:        37.16 s
+Ran all test suites matching /crm-audit-calendar-sync|ordinary-native-sync-run/i.
+Traceback (most recent call last):
+  File "C:\Users\regis\AppData\Local\Temp/twenty-log141-target.py", line 6, in <module>
+    m['node'](['/tools/node_modules/jest/bin/jest.js','--config','/source/packages/twenty-server/jest-fork-migration.config.mjs','--runInBand','--testPathPattern='+pattern],{'FORK_MIGRATION_TEST_REDIS_URL':'redis://redis:6379','FORK_MIGRATION_TEST_URL':'postgres://test_owner:isolated-test-only@postgres/'+s['database']})
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log141-run.py", line 16, in node
+    return ssh(cmd+['--entrypoint','node','marketozk/twenty:log088-server-fixed',*args])
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log141-run.py", line 4, in ssh
+    def ssh(args,**kw):return call(['ssh',HOST,shlex.join(args)],**kw)
+                              ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log141-run.py", line 3, in call
+    def call(args,**kw):return subprocess.run(args,check=True,**kw)
+                               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['ssh', 'root@176.114.84.194', "docker run --rm --user 0:0 --network twenty-rob764-3e371e20ab394c2b-net --memory 3g --cpus 2 -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source:/source:ro -v /opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools:/tools:ro -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/out:/out:rw -e NODE_PATH=/out/tools/node_modules:/tools/node_modules:/app/node_modules -e FORK_MIGRATION_TEST_REDIS_URL=redis://redis:6379 -e FORK_MIGRATION_TEST_URL=postgres://test_owner:isolated-test-only@postgres/twenty_rob764_test_3e371e20ab394c2b --entrypoint node marketozk/twenty:log088-server-fixed /tools/node_modules/jest/bin/jest.js --config /source/packages/twenty-server/jest-fork-migration.config.mjs --runInBand '--testPathPattern=crm-audit-calendar-sync|ordinary-native-sync-run'"]' returned non-zero exit status 1.

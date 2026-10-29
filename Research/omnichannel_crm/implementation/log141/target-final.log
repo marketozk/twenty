@@ -1,0 +1,22 @@
+[32m[Nest] 1  - [39m10/29/2026, 11:07:27 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggering message list fetch for workspace 3fe9dc08-b6ea-46aa-91f6-e9588666fe42 (all pending channels)[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:07:27 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mFound 2 message channel(s) to process[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:07:27 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggered fetch for message channel 7eb2bc63-822b-4094-a1a1-8fefe6ddf55d[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:07:27 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mSuccessfully triggered 1 message list fetch job(s)[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:07:28 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggering message list fetch for workspace 3fe9dc08-b6ea-46aa-91f6-e9588666fe42 (all pending channels)[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:07:28 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mFound 2 message channel(s) to process[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:07:45 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel e889ab2d-a8c3-4d79-9762-8c54f06d28f3, a sync is already in progress[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:07:45 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel f7c9013d-f892-4968-a3df-93db901cb13e, a sync is already in progress[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:07:45 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel bb0c9040-6266-4fdd-a7da-3078d5ff8541, a sync is already in progress[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:07:45 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel 3cc6bb12-e62c-4ba4-93ac-dc761902deaf, a sync is already in progress[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:07:46 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mDeferring 100000 calendar events to the import cron for calendar channel afc54310-d909-4642-bc36-f35e7fc8b8e5[39m
+[32m[Nest] 1  - [39m10/29/2026, 11:07:47 AM [32m    LOG[39m [38;5;3m[MessagingMessageWebhookSyncService] [39m[32mSkipping webhook sync for message channel 406fc1f5-7ec4-4558-afc0-d8dc6e8818a2, a sync is already in progress[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts (59.889 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts (17.261 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-sync-cleanup.postgres-spec.ts (13.426 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-sync-entrypoints.spec.ts
+
+Test Suites: 4 passed, 4 total
+Tests:       462 passed, 462 total
+Snapshots:   0 total
+Time:        91.02 s
+Ran all test suites matching /omni-sync-status|crm-audit-calendar-sync|ordinary-native-sync-run/i.

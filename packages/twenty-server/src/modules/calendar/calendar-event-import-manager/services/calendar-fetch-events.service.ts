@@ -1,3 +1,8 @@
+import { isTransactionUnsafeToRetry } from 'src/engine/twenty-orm/error-handling/is-transaction-outcome-unknown';
+import {
+  membershipCleanupOperation,
+  systemMembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { calendarImportCacheKey } from 'src/modules/calendar/common/utils/calendar-import-cache-key';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -39,6 +44,10 @@ export class CalendarFetchEventsService {
     connectedAccount: ConnectedAccountEntity,
     workspaceId: string,
   ): Promise<boolean> {
+    const cleanupIdentity = systemMembershipCleanupIdentity(
+      workspaceId,
+      CalendarFetchEventsService.name,
+    );
     calendarChannel = { ...calendarChannel };
     connectedAccount = { ...connectedAccount };
     if (calendarChannel.connectedAccountId !== connectedAccount.id)
@@ -52,7 +61,7 @@ export class CalendarFetchEventsService {
     if (!admitted) return false;
     calendarChannel = admitted.channel;
     connectedAccount = admitted.channel.connectedAccount;
-    const expectedRun = admitted.run;
+    const expectedRun = { ...admitted.run };
     const importKey = calendarImportCacheKey({
       workspaceId,
       calendarChannelId: calendarChannel.id,
@@ -91,6 +100,10 @@ export class CalendarFetchEventsService {
                   calendarChannelId: calendarChannel.id,
                   eventExternalIds: calendarEventIdsToDelete,
                   expectedRun,
+                  auditOperation: membershipCleanupOperation(
+                    workspaceId,
+                    cleanupIdentity,
+                  )!,
                 },
               );
             if (!cleaned) return false;
@@ -104,6 +117,7 @@ export class CalendarFetchEventsService {
             calendarEventIds.length > 0,
           );
         } catch (error) {
+          if (isTransactionUnsafeToRetry(error)) throw error;
           this.logger.error(
             `WorkspaceId: ${workspaceId}, CalendarChannelId: ${calendarChannel.id} - Calendar event fetch error: ${error instanceof Error ? error.message : String(error)}`,
           );

@@ -1,0 +1,13 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/native-calendar-cleanup-with-audit.ts 367ms (unchanged)
+../../../source/packages/twenty-server/src/modules/calendar/calendar-event-cleaner/services/calendar-event-cleaner.service.ts 20ms (unchanged)
+../../../source/packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-event-import-exception-handler.service.ts 73ms (unchanged)
+../../../source/packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-events-import.service.ts 19ms (unchanged)
+../../../source/packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-fetch-events.service.ts 12ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts 825ms
+../../../source/packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts 131ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/delete-ordinary-sync-calendar-associations-with-audit.ts 2ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-sync-cleanup.postgres-spec.ts 126ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-sync-entrypoints.spec.ts 76ms (unchanged)
+
+{"formattedFiles": 10, "singleSshSession": true}

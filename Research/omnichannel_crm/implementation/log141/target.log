@@ -1,0 +1,9 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts (22.694 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-sync-cleanup.postgres-spec.ts (14.002 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-sync-entrypoints.spec.ts
+
+Test Suites: 3 passed, 3 total
+Tests:       111 passed, 111 total
+Snapshots:   0 total
+Time:        37.179 s
+Ran all test suites matching /crm-audit-calendar-sync|ordinary-native-sync-run/i.

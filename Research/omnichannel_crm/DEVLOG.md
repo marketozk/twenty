@@ -3941,3 +3941,11 @@ Service/jobs сохраняют системную attribution, strict outcome �
 sweep; исторические detailed evidence и результаты проверок не менялись.
 
 LOG140 publication: code 9ffd867a726a58f9b5a76e9c5a986bd7e4d432ac pushed and GitHub API ref verified. Linear comment bfec0218-0d0b-4972-bcaa-e3a2e64578aa, description/comment/all 11 issue states independently read back. Continuing provider expectedRun cleanup and unsafe outcomes; ROB765 remains In Progress.
+
+
+## LOG141 — provider/import cleanup календаря с общим аудитом
+
+LOG141 подключает оба provider/import cleanup caller к одной транзакции аудита Association и orphan Event. Проверяются текущий expectedRun и исходный граф; раннее переназначение связи безопасно пропускается, позднее изменение откатывается. Unsafe outcomes сохраняются до логирования и изменения статусов.
+2557 tests/76 suites PASS (493.096s); 462 targeted/4 suites PASS (91.02s), 46 новых cases. 3 upstream unit cases PASS. 26 guard tests PASS; 10 migration checksums неизменны. Types 413/416 roots, baseline/current 225 diagnostics, 0 новых/changed-file. 10 local/remote source hashes совпадают. [Проверки](implementation/log141/results.json). ROB765 In Progress. Предшествующие cache pop/provider saves не входят в cleanup транзакцию; свежесть ранее прочитанных import-policy данных не доказана. Provider save/matching и оставшиеся core calendar writers ещё открыты. Снимки удерживаются на весь command. Код после LOG088 не выкатывался; полная HTTP/JWT приёмка и GitHub Actions не выполнялись. [Далее](implementation/log141/next-boundary.md).
+
+Сохранено прежнее поведение раннего переназначения канала/external ID; legacy assertions не ослаблены. Проверены 501 Association на один external ID, matching tombstone и промежуточное изменение до orphan-stage. Дополнительно проверен upstream import filter. В расширенную регрессию включены 351 существующий случай omni-sync-status. Два устаревших boolean test doubles исправлены на действующий тип Result | null; production messaging caller не менялся. После исправления все 2557 проверок прошли. Первоначальные падения сохранены в evidence. [Ревью](implementation/log141/review.md).

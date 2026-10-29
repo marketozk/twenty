@@ -57,7 +57,7 @@
 ## Текущая реализация
 
 ROB764 принята по [LOG088](Research/omnichannel_crm/implementation/rob764-acceptance.md).
-ROB765 остаётся In Progress: LOG140 подключает global CalendarEvent sweep к одному аудиту на все страницы и трём реальным заданиям. Live-only discovery, точные каскады и сохранность CallRecording проверены; ошибка поздней страницы откатывает весь sweep.
+ROB765 остаётся In Progress: LOG141 подключает оба provider/import cleanup caller к одной транзакции аудита Association и orphan Event. Проверяются текущий expectedRun и исходный граф; раннее переназначение связи безопасно пропускается, позднее изменение откатывается. Unsafe outcomes сохраняются до логирования и изменения статусов.
 
 Актуальные проверки и ближайшая работа — в [STATUS](Research/omnichannel_crm/STATUS.md);
 единственная таблица приёмки аудита — [rob765-progress](Research/omnichannel_crm/implementation/rob765-progress.md).

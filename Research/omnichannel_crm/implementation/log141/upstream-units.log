@@ -1,0 +1,6 @@
+PASS twenty-server ../../../source/packages/twenty-server/src/modules/calendar/calendar-event-import-manager/utils/__tests__/filter-events-and-return-events-to-remove.util.spec.ts
+
+Test Suites: 1 passed, 1 total
+Tests:       3 passed, 3 total
+Snapshots:   0 total
+Time:        2.955 s
