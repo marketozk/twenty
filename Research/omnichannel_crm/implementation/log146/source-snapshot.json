@@ -1,0 +1,15 @@
+{
+  "baseCommit": "3e907b1a32723aefbb3f87e5356a562547c30456",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "6154931449f83cbdffb2d12be1e8fcc78cd7a09a448c48728a0e42d1400d96c8",
+    "packages/twenty-server/src/modules/match-participant/jobs/reconcile-person-company-targets.job.ts": "7d39e63dda6bccd4fc12e1b151754efbc25cc271b1e695347bbb6c142ec0e2bf",
+    "packages/twenty-server/src/modules/match-participant/match-participant.service.ts": "a79778a5ca2c6a99831b67fa77c67451bc42f15bba414e2e1702b85b608a2062",
+    "packages/twenty-server/src/modules/match-participant/participant-target-reconciliation.service.ts": "ee409dec2f3baf2f39c2790fbe370d50d765e8360c819afeae99f3b9905a398b",
+    "packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts": "2e374d72c717b41c8b2dcd5748169c98f8eb695f2f1ac62078e2bfa99fc5ada3",
+    "packages/twenty-server/test/fork-migration/omni-native-reconciliation.fixture.ts": "3f3444a4c5531f1d44de0602d1616e67de4d32a755bc68bb8eab986ff247e783",
+    "packages/twenty-server/test/fork-migration/omni-native-reconciliation.postgres-spec.ts": "198b79cfb4c2c9743b38676082467329af042c5f399b4b471626067ca8693de2",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/calendar-target-proof.ts": "c356ac97ea521b169f50030114cd59afcc95c1edd57f670c99747e5ee970fec6",
+    "packages/twenty-server/test/fork-migration/crm-audit-calendar-target-enrichment-entrypoints.spec.ts": "5e0f6677f9cc9295ce76410282836054a91ebbf8415482a16a49ff9c3d9f6317"
+  },
+  "uploadedSourceHashesVerified": true
+}

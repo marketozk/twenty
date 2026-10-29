@@ -496,6 +496,11 @@ describe('native mixed email and omnichannel participant/target reconciliation',
     await fixture.targets.reconcileTargetsForPeople({
       personIds: [seed.personId],
       workspaceId: fixture.workspaceId,
+      operation: {
+        workspaceId: fixture.workspaceId,
+        operationId: randomUUID(),
+        actor: { kind: 'system', id: 'NativeReconciliationTest' },
+      },
     });
     expect(await omniSnapshot()).toEqual(before);
     await expectEmailTargets();

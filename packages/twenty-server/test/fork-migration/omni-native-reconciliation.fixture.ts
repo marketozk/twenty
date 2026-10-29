@@ -4,7 +4,10 @@ import { DataSource, EntitySchema, type Repository } from 'typeorm';
 
 import { type MessageChannelEntity } from 'src/engine/metadata-modules/message-channel/entities/message-channel.entity';
 import { type RolePermissionConfig } from 'src/engine/twenty-orm/types/role-permission-config.type';
-import { type WorkspaceTransactionScope } from 'src/engine/twenty-orm/types/workspace-transaction-scope.type';
+import {
+  type WorkspaceTransactionScope,
+  type WorkspaceTransactionOptions,
+} from 'src/engine/twenty-orm/types/workspace-transaction-scope.type';
 import { getWorkspaceContext } from 'src/engine/twenty-orm/storage/orm-workspace-context.storage';
 import { type CalendarEventParticipantWorkspaceEntity } from 'src/modules/calendar/common/standard-objects/calendar-event-participant.workspace-entity';
 import { type WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
@@ -39,6 +42,8 @@ export const createOmniNativeReconciliationFixture = () => {
       'calendarEvent',
       'calendarEventParticipant',
       'calendarEventTarget',
+      'calendarChannelEventAssociation',
+      'callRecording',
     ],
   });
   const coreReader = new DataSource({
@@ -56,8 +61,12 @@ export const createOmniNativeReconciliationFixture = () => {
       native.withContext(work),
     runInWorkspaceTransaction: async <T>(
       work: (scope: WorkspaceTransactionScope) => Promise<T>,
+      options?: WorkspaceTransactionOptions,
     ): Promise<T> =>
-      native.dataSource.transaction(work, { commitOutcome: 'strict' }),
+      native.dataSource.transaction(work, {
+        commitOutcome: 'strict',
+        ...options,
+      }),
     getRepository: (name: string, permissions?: RolePermissionConfig) =>
       native.dataSource.getRepository(name, permissions),
   } as unknown as WorkspaceOrmManager;
@@ -160,6 +169,9 @@ export const createOmniNativeReconciliationFixture = () => {
     });
   const initialize = async () => {
     await native.initialize();
+    await native.owner.query(
+      `GRANT UPDATE ON core.workspace TO "${native.roleName}"`,
+    );
     await coreReader.initialize();
   };
   const reset = async () => {

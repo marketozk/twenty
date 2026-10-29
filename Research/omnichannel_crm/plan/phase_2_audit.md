@@ -74,8 +74,10 @@ generated fields и late effects проверены. Ручной provider succe
 LOG144 объединяет import matching Participant/CalendarEventTarget и аудит;
 source SHARE, actual effects и queue-before-matching сохранены. LOG145 подключает
 фоновые rematch pages и исправляет stale-member-link; режимы сохраняют противоположные связи.
-Person-company targets, contact creation, свежесть import policy и durable cache открыты.
-Далее — [person-company targets](../implementation/log145/next-boundary.md).
+LOG146 закрывает календарные person-company targets с current source/parent proof,
+actual effects и generated/FK проверками. Messaging-ветка, contact creation,
+свежесть import policy и durable cache открыты.
+Далее — [messaging person-company targets](../implementation/log146/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

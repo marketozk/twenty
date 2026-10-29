@@ -1,0 +1,187 @@
+Exception in PromiseRejectCallback:
+/source/packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1303
+                return result;
+
+RangeError: Maximum call stack size exceeded
+
+Exception in PromiseRejectCallback:
+/source/packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1301
+                const result = await original(statement, values);
+                                     ^
+
+RangeError: Maximum call stack size exceeded
+
+Exception in PromiseRejectCallback:
+/source/packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1303
+                return result;
+
+RangeError: Maximum call stack size exceeded
+
+Exception in PromiseRejectCallback:
+/source/packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1301
+                const result = await original(statement, values);
+                                     ^
+
+RangeError: Maximum call stack size exceeded
+
+Exception in PromiseRejectCallback:
+/source/packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1303
+                return result;
+
+RangeError: Maximum call stack size exceeded
+
+Exception in PromiseRejectCallback:
+/source/packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1301
+                const result = await original(statement, values);
+                                     ^
+
+RangeError: Maximum call stack size exceeded
+
+Exception in PromiseRejectCallback:
+/source/packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1303
+                return result;
+
+RangeError: Maximum call stack size exceeded
+
+Exception in PromiseRejectCallback:
+/source/packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1301
+                const result = await original(statement, values);
+                                     ^
+
+RangeError: Maximum call stack size exceeded
+
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts (31.291 s)
+  ● company enrichment advances past 200 skipped hints and reconciles the final event
+
+    NativeTransactionOutcomeUnknownError: Native transaction outcome is unknown after rollback
+
+      69 |
+      70 |       if (commitOutcome === 'strict') {
+    > 71 |         throw new NativeTransactionOutcomeUnknownError('rollback', error);
+         |               ^
+      72 |       }
+      73 |
+      74 |       logger.warn(
+
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:71:15)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at ParticipantTargetReconciliationService.reconcileTargetsForPeople (src/modules/match-participant/participant-target-reconciliation.service.ts:164:32)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1696:3)
+
+    Cause:
+    RangeError: Maximum call stack size exceeded
+
+      1500 |       ) => {
+      1501 |         const sql = typeof statement === 'string' ? statement : statement.text;
+    > 1502 |         const result = await original(statement as string, values);
+           |                              ^
+      1503 |         await observe(sql);
+      1504 |         return result;
+      1505 |       }) as typeof client.query);
+
+      at ../../../tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:366:31
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+
+  ● company enrichment fences a concurrent new opportunity until the audited calendar page commits
+
+    NativeTransactionOutcomeUnknownError: Native transaction outcome is unknown after rollback
+
+      69 |
+      70 |       if (commitOutcome === 'strict') {
+    > 71 |         throw new NativeTransactionOutcomeUnknownError('rollback', error);
+         |               ^
+      72 |       }
+      73 |
+      74 |       logger.warn(
+
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:71:15)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at ParticipantTargetReconciliationService.reconcileTargetsForPeople (src/modules/match-participant/participant-target-reconciliation.service.ts:164:32)
+      at Object.<anonymous> (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1812:5)
+
+    Cause:
+    RangeError: Maximum call stack size exceeded
+
+      1500 |       ) => {
+      1501 |         const sql = typeof statement === 'string' ? statement : statement.text;
+    > 1502 |         const result = await original(statement as string, values);
+           |                              ^
+      1503 |         await observe(sql);
+      1504 |         return result;
+      1505 |       }) as typeof client.query);
+
+      at ../../../tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:366:31
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+      at Client.original (test/fork-migration/calendar-import-matching-audit.postgres-spec.ts:1502:30)
+
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-rematch-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-target-enrichment-entrypoints.spec.ts
+
+Test Suites: 1 failed, 2 passed, 3 total
+Tests:       2 failed, 83 passed, 85 total
+Snapshots:   0 total
+Time:        31.777 s
+Ran all test suites matching /calendar-import-matching-audit|crm-audit-calendar-target-enrichment-entrypoints|crm-audit-calendar-rematch-entrypoints/i.
+Traceback (most recent call last):
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log146-target.py", line 6, in <module>
+    m['node'](['/tools/node_modules/jest/bin/jest.js','--config','/source/packages/twenty-server/jest-fork-migration.config.mjs','--runInBand','--testPathPattern='+pattern],{'FORK_MIGRATION_TEST_REDIS_URL':'redis://redis:6379','FORK_MIGRATION_TEST_URL':'postgres://test_owner:isolated-test-only@postgres/'+s['database']})
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log146-run.py", line 16, in node
+    return ssh(cmd+['--entrypoint','node','marketozk/twenty:log088-server-fixed',*args])
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log146-run.py", line 4, in ssh
+    def ssh(args,**kw):return call(['ssh',HOST,shlex.join(args)],**kw)
+                              ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log146-run.py", line 3, in call
+    def call(args,**kw):return subprocess.run(args,check=True,**kw)
+                               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['ssh', 'root@176.114.84.194', "docker run --rm --user 0:0 --network twenty-rob764-3e371e20ab394c2b-net --memory 3g --cpus 2 -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source:/source:ro -v /opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools:/tools:ro -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/out:/out:rw -e NODE_PATH=/out/tools/node_modules:/tools/node_modules:/app/node_modules -e FORK_MIGRATION_TEST_REDIS_URL=redis://redis:6379 -e FORK_MIGRATION_TEST_URL=postgres://test_owner:isolated-test-only@postgres/twenty_rob764_test_3e371e20ab394c2b --entrypoint node marketozk/twenty:log088-server-fixed /tools/node_modules/jest/bin/jest.js --config /source/packages/twenty-server/jest-fork-migration.config.mjs --runInBand '--testPathPattern=calendar-import-matching-audit|crm-audit-calendar-target-enrichment-entrypoints|crm-audit-calendar-rematch-entrypoints'"]' returned non-zero exit status 1.

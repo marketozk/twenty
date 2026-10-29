@@ -3996,3 +3996,19 @@ LOG145 подключает календарный rematch job к закрыты
 Следующий участок — [person-company targets](implementation/log145/next-boundary.md).
 
 LOG145 publication: code cade648f6d730a878fab89e1fcde9aa91ff92d6c pushed and GitHub API ref verified. Linear comment b13fec02-5a0f-4975-bd10-b650101a1028, description/comment/all 11 issue states independently read back. ROB765 remains In Progress; continuing person-company targets.
+
+## LOG146 — календарные цели после привязки компании
+
+LOG146 добавляет аудит календарных целей после привязки компании к контакту. Закрытые страницы по 200 участников повторно проверяют исходные Person/Event, сохраняют цели пропущенных событий и учитывают фактические изменения PostgreSQL. Связи участников не меняются.
+2785 tests/85 suites PASS (545.438s); 106 targeted/4 suites PASS (40.19s), 29 новых cases (24 PG и 5 job entry). 26 guard tests PASS; 10 migration checksums неизменны. Types 425/427 roots, baseline/current 225 diagnostics, 0 новых/changed-file. 9 local/remote source hashes совпадают.
+Каждая страница атомарна отдельно; прежняя messaging-ветка пока не аудируется этим owner. Ранее сохранённые страницы и messaging не откатываются при позднем отказе календаря. Durable delivery, полный HTTP/JWT тест и выкат не выполнены. ROB765 остаётся In Progress; GitHub Actions не используется.
+
+[Проверки](implementation/log146/results.json), [ревью](implementation/log146/review.md).
+Проверка операции выделена без изменения прежней семантики и выполняется до
+legacy messaging writes. Общий helper читает граф/вычисляет PostgreSQL image,
+не открывает DML или session. Новых EE edges и изменений migration нет.
+Первый target run имел 2 падения из-за рекурсивного test spy pooled connection;
+spy восстанавливается после каждой транзакции. Исправленная фикстура передаёт
+transaction options и содержит недостающие calendar tables/grant; production
+не ослаблен. Real generated target update и incoming cascade refusal проверены.
+Публикация/Linear фиксируются после commit/push. Далее — [messaging targets](implementation/log146/next-design.md).

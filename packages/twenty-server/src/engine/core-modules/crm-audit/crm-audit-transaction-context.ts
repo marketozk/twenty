@@ -739,6 +739,25 @@ const redactedDiff = (mutation: CapturedMutation) => {
   return { changedFields, values };
 };
 
+export const captureCrmAuditOperation = (
+  operation: CrmAuditOperation,
+): CrmAuditOperation => {
+  return {
+    workspaceId: requireUuid(operation.workspaceId),
+    operationId: requireUuid(operation.operationId),
+    actor: principal(operation.actor),
+    ...(operation.initiator
+      ? { initiator: principal(operation.initiator) }
+      : {}),
+    ...(operation.correlationId
+      ? { correlationId: requireIdentifier(operation.correlationId) }
+      : {}),
+    ...(operation.causationId
+      ? { causationId: requireIdentifier(operation.causationId) }
+      : {}),
+  };
+};
+
 export class CrmAuditTransactionContext {
   private readonly mutations = new Map<string, CapturedMutation>();
   private readonly operation: CrmAuditOperation;
@@ -748,20 +767,7 @@ export class CrmAuditTransactionContext {
     private readonly queryRunner: CrmAuditTransactionExecutor,
     operation: CrmAuditOperation,
   ) {
-    this.operation = {
-      workspaceId: requireUuid(operation.workspaceId),
-      operationId: requireUuid(operation.operationId),
-      actor: principal(operation.actor),
-      ...(operation.initiator
-        ? { initiator: principal(operation.initiator) }
-        : {}),
-      ...(operation.correlationId
-        ? { correlationId: requireIdentifier(operation.correlationId) }
-        : {}),
-      ...(operation.causationId
-        ? { causationId: requireIdentifier(operation.causationId) }
-        : {}),
-    };
+    this.operation = captureCrmAuditOperation(operation);
     if (
       queryRunner.workspaceId !== undefined &&
       requireUuid(queryRunner.workspaceId) !== this.operation.workspaceId

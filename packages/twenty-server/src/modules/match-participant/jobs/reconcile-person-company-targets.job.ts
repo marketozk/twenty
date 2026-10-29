@@ -1,3 +1,7 @@
+import {
+  membershipCleanupOperation,
+  systemMembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { Scope } from '@nestjs/common';
 
 import { Process } from 'src/engine/core-modules/message-queue/decorators/process.decorator';
@@ -18,8 +22,15 @@ export class ReconcilePersonCompanyTargetsJob {
 
   @Process(ReconcilePersonCompanyTargetsJob.name)
   async handle(data: ReconcilePersonCompanyTargetsJobData): Promise<void> {
+    const workspaceId = data.workspaceId;
+    const personIds = [...data.personIds];
+    const identity = systemMembershipCleanupIdentity(
+      workspaceId,
+      ReconcilePersonCompanyTargetsJob.name,
+    );
+    const operation = membershipCleanupOperation(workspaceId, identity)!;
     await this.participantTargetReconciliationService.reconcileTargetsForPeople(
-      data,
+      { workspaceId, personIds, operation },
     );
   }
 }

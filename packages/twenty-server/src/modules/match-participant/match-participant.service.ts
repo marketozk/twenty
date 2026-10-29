@@ -1,3 +1,7 @@
+import {
+  readCalendarProofGraph,
+  castCalendarProofImage,
+} from 'src/engine/core-modules/crm-audit/calendar-target-proof';
 import { randomUUID } from 'node:crypto';
 import { isUUID } from 'class-validator';
 import {
@@ -19,7 +23,6 @@ import {
   calendarSaveTableSql,
   quoteCalendarSaveIdentifier,
   calendarSaveActualIds,
-  calendarSaveSnapshotJson,
   type CalendarSaveTable,
   type CalendarSaveSnapshot,
 } from 'src/engine/core-modules/crm-audit/calendar-save-proof';
@@ -801,20 +804,14 @@ export class MatchParticipantService<
         ...(name === 'calendarEventParticipant' ? state.participantIds : []),
       ]),
     ];
-    const ids = (
-      await state.scope.executeRawQuery(
-        'SELECT id FROM ' +
-          calendarSaveTableSql(state.shapes.get(name)!) +
-          ' WHERE ' +
-          quoteCalendarSaveIdentifier(
-            name === 'calendarEvent' ? 'id' : 'calendarEventId',
-          ) +
-          '=ANY($1::uuid[]) OR id=ANY($2::uuid[]) ORDER BY id' +
-          (lock ? ' FOR UPDATE' : ''),
-        [state.rootIds, originalIds],
-      )
-    ).map((row) => String(row.id));
-    return this.readMatchingRows(state, name, ids);
+    return readCalendarProofGraph({
+      scope: state.scope,
+      shape: state.shapes.get(name)!,
+      name,
+      rootIds: state.rootIds,
+      originalIds,
+      lock,
+    });
   }
 
   private async verifyMatchingGraph(state: CalendarMatchingState) {
@@ -922,46 +919,7 @@ export class MatchParticipantService<
     columns: Record<string, unknown>,
     before?: CalendarSaveSnapshot,
   ): Promise<CalendarSaveSnapshot> {
-    const definitions = await state.scope.executeRawQuery(
-      `SELECT attribute.attname AS name,attribute.attgenerated<>'' AS generated,pg_get_expr(definition.adbin,definition.adrelid) AS expression FROM pg_attribute attribute JOIN pg_attrdef definition ON definition.adrelid=attribute.attrelid AND definition.adnum=attribute.attnum WHERE attribute.attrelid=$1::regclass AND NOT attribute.attisdropped ORDER BY attribute.attnum`,
-      [calendarSaveTableSql(shape)],
-    );
-    const expression = (column: Record<string, unknown>) => {
-      if (
-        typeof column.name !== 'string' ||
-        typeof column.expression !== 'string'
-      )
-        throw new Error('Calendar matching invalid column definition');
-      return `jsonb_build_object('${column.name.replaceAll("'", "''")}',(${column.expression}))`;
-    };
-    const generated = definitions
-      .filter((column) => column.generated === true)
-      .map(expression);
-    const defaults = before
-      ? []
-      : definitions
-          .filter(
-            (column) =>
-              column.generated === false &&
-              typeof column.name === 'string' &&
-              !Object.prototype.hasOwnProperty.call(columns, column.name),
-          )
-          .map(expression);
-    const [result] = await state.scope.executeRawQuery(
-      `WITH previous AS (SELECT COALESCE(jsonb_object_agg(key,value::jsonb),'{}'::jsonb) AS data FROM jsonb_each_text($1::jsonb)), image AS (SELECT (jsonb_populate_record(NULL::${calendarSaveTableSql(shape)}, previous.data ${defaults.map((sql) => '|| ' + sql).join(' ')} || $2::jsonb ${before && shape.columnShapeByColumnName.updatedAt ? "|| jsonb_build_object('updatedAt',CURRENT_TIMESTAMP)" : ''})).* FROM previous) SELECT image.id,(SELECT jsonb_object_agg(key,value::text) FROM jsonb_each(to_jsonb(image) ${generated.map((sql) => '|| ' + sql).join(' ')})) AS snapshot FROM image`,
-      [
-        before ? calendarSaveSnapshotJson(before) : '{}',
-        JSON.stringify(columns),
-      ],
-    );
-    if (
-      !result ||
-      typeof result.id !== 'string' ||
-      !result.snapshot ||
-      typeof result.snapshot !== 'object'
-    )
-      throw new Error('Calendar matching cannot compute expected image');
-    return { ...(result.snapshot as Record<string, unknown>), id: result.id };
+    return castCalendarProofImage(state.scope, shape, columns, before);
   }
 
   private async updateMatchingRecords(
