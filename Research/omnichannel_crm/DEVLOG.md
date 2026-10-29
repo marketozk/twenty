@@ -3910,3 +3910,14 @@ owner удерживает фиксированный SHARE table lock; оба �
 [Ревью и ограничения](implementation/log138/review.md).
 
 LOG138 publication: code 3fd759afa7c3ba19f68e51a9dcc63624aa7d37bb pushed and GitHub API ref verified. Linear comment 1e21d4b9-df9f-4bc2-bd35-e8136b28b54d, description/comment/all 11 issue states independently read back. Continuing bounded orphan CalendarEvent owner; ROB765 remains In Progress.
+
+## LOG139 — аудит orphan CalendarEvent и сохранение CallRecording
+
+LOG139 реализует закрытый аудит удаления orphan CalendarEvent: фактические каскады Association/Participant/Target и SET NULL у сохранённого CallRecording. Записи звонков, файлы, точность JSON и timestamps сохраняются; production sweep/provider callers ещё не подключены.
+2130 tests/71 suites PASS (415.115s); 30 targeted/1 suite PASS (15.432s), 30 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 405/407 roots, baseline/current 225 diagnostics, 0 новых/changed-file. 2 local/remote source hashes совпадают. [Проверки](implementation/log139/results.json). ROB765 In Progress. Новый candidate owner пока без production callers; global CalendarEvent sweep, provider sync и core metadata audit открыты. Код после LOG088 не выкатывался; полная HTTP/JWT приёмка и GitHub Actions не выполнялись. [Далее](implementation/log139/next-boundary.md).
+
+Тридцать новых PG cases проверяют точный граф, actual RETURNING, каскады,
+SET NULL без потери файлов/точности, unsupported FK и косвенные UPDATE effects,
+двухсоединительные INSERT/reparent races, late audit/deferred changes и COMMIT ACK.
+Независимое чтение блокеров не выявило. Исправлен один UUID type mismatch
+в тесте; окончательная регрессия включает правку. [Ревью](implementation/log139/review.md).

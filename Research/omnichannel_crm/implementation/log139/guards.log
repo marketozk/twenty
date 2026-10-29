@@ -1,0 +1,10 @@
+Recorded verification summary (commands executed before publication):
+python -m unittest discover -s scripts/omnichannel -p test_enterprise_dependencies.py
+20 tests PASS
+python -m unittest discover -s scripts/omnichannel -p test_fork_migration_sources.py
+6 tests PASS
+python scripts/omnichannel/check_fork_migration_sources.py
+Verified 10 fork migration sources, unchanged checksums
+python scripts/omnichannel/check_enterprise_dependencies.py --verify-baseline
+status: pass; violations: {}; runtime_license_proof: false
+code_files: 34713; runtime_files: 21434; edges: 136323

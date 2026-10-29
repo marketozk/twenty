@@ -1,0 +1,8 @@
+{
+  "baseCommit": "32f15a1557e0788b8b3cd917e7ea05b6f696fddb",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-orphan-native-calendar-events-with-audit.ts": "f5555ee5e82838f840a63289644231f0d50bcab2d0a5dcdd53ca1e0a8ef3a41a",
+    "packages/twenty-server/test/fork-migration/crm-audit-calendar-orphan-cleanup.postgres-spec.ts": "4bacf8cc47488f0c48725b9bc804871da8f301a1a04aa7c67e79f59825ba1d6c"
+  },
+  "uploadedSourceHashesVerified": true
+}

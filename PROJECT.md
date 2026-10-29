@@ -57,7 +57,7 @@
 ## Текущая реализация
 
 ROB764 принята по [LOG088](Research/omnichannel_crm/implementation/rob764-acceptance.md).
-ROB765 остаётся In Progress: LOG138 подключает аудит удаления календарных associations для удалённого канала. Удаляются и журналируются только фактические строки; проверены пагинация, частичный DELETE, откат и конкурентное создание канала. Само событие и его участники этим owner не удаляются.
+ROB765 остаётся In Progress: LOG139 реализует закрытый аудит удаления orphan CalendarEvent: фактические каскады Association/Participant/Target и SET NULL у сохранённого CallRecording. Записи звонков, файлы, точность JSON и timestamps сохраняются; production sweep/provider callers ещё не подключены.
 
 Актуальные проверки и ближайшая работа — в [STATUS](Research/omnichannel_crm/STATUS.md);
 единственная таблица приёмки аудита — [rob765-progress](Research/omnichannel_crm/implementation/rob765-progress.md).

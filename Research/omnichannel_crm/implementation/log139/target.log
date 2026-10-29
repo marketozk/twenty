@@ -1,0 +1,37 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-orphan-cleanup.postgres-spec.ts (15.325 s)
+  ✓ audits every actual cascade and exact SET NULL while preserving recording FILES, JSON precision and timestamps (339 ms)
+  ✓ retains the complete graph while a live association from any channel exists (250 ms)
+  ✓ allows an explicitly supplied tombstoned Event but preserves an unrelated tombstoned Event (245 ms)
+  ✓ uses actual RETURNING when a parent trigger skips the selected Event (219 ms)
+  ✓ attributes mixed parent deletions only to the actual returned Event and its effects (224 ms)
+  ✓ rejects shared before graph changes (157 ms)
+  ✓ rejects copied before graph changes (153 ms)
+  ✓ rejects foreign-operation before graph changes (115 ms)
+  ✓ rejects over-limit before graph changes (155 ms)
+  ✓ captures candidate IDs and actor before the first executor await (252 ms)
+  ✓ accepts 500 candidate UUIDs, duplicates and absent IDs without inventing effects (256 ms)
+  ✓ refuses a missing required calendarChannelEventAssociation FK even when that child has no rows (164 ms)
+  ✓ refuses a missing required callRecording FK even when that child has no rows (194 ms)
+  ✓ refuses populated unsupported incoming cascade effects on a child (192 ms)
+  ✓ refuses actual composite ON UPDATE CASCADE effects from recording SET NULL (234 ms)
+  ✓ handles unchanged recording-id references with key-rewriting trigger=false (192 ms)
+  ✓ handles unchanged recording-id references with key-rewriting trigger=true (176 ms)
+  ✓ rejects an FK update trigger changing recording updatedAt beyond the relation (178 ms)
+  ✓ rejects an FK update trigger changing recording transcript beyond the relation (164 ms)
+  ✓ rolls back the entire graph when audit append fails (191 ms)
+  ✓ rejects late audit recording-change and restores all earlier effects (189 ms)
+  ✓ rejects late audit retained-association-change and restores all earlier effects (183 ms)
+  ✓ drains actual deferred Event resurrection and rolls back graph/audit (186 ms)
+  ✓ reports real COMMIT ACK loss without duplicate audit on the idempotent later candidate (250 ms)
+  ✓ rereads calendarChannelEventAssociation reparenting committed while waiting for its source row lock (201 ms)
+  ✓ rereads callRecording reparenting committed while waiting for its source row lock (197 ms)
+  ✓ holds calendarChannelEventAssociation source lock until commit before allowing a later reparent (270 ms)
+  ✓ holds callRecording source lock until commit before allowing a later reparent (239 ms)
+  ✓ waits for an earlier live Association insert then retains the event and all its children (194 ms)
+  ✓ makes a later live Association insert wait on the Event lock and fail after actual deletion (198 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       30 passed, 30 total
+Snapshots:   0 total
+Time:        15.432 s
+Ran all test suites matching /crm-audit-calendar-orphan-cleanup/i.

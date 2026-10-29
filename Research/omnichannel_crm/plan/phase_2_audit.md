@@ -63,8 +63,9 @@ ROB765 остаётся In Progress. Подтверждённые участки
 
 В LOG134 подключён общий orphan sweep с единым аудитом и реальные jobs/CLI.
 LOG136/137 подключают адресные messaging callers и blocklist. LOG138 добавляет
-calendar-channel association owner и первый job call; следующий orphan sweep
-ещё не аудируется. Следующая работа — [orphan CalendarEvent graph](../implementation/log138/next-boundary.md).
+calendar-channel association owner и первый job call. LOG139 проверяет closed candidate
+Event owner с фактическим каскадом и сохранением CallRecording; production callers
+ещё не подключены. Далее — [global sweep и jobs](../implementation/log139/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.
