@@ -4012,3 +4012,5 @@ spy восстанавливается после каждой транзакц�
 transaction options и содержит недостающие calendar tables/grant; production
 не ослаблен. Real generated target update и incoming cascade refusal проверены.
 Публикация/Linear фиксируются после commit/push. Далее — [messaging targets](implementation/log146/next-design.md).
+
+LOG146 publication: code 79c399b6a492c02db71491d44d43cf42f9e3c557 pushed and GitHub API ref verified. Linear comment 98c58232-9fce-447c-93a5-3b7685c99bfe, description/comment/all 11 issue states independently read back. Continuing messaging person-company target audit; ROB765 remains In Progress.
