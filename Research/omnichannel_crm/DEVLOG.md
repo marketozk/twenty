@@ -3849,3 +3849,5 @@ STATUS содержит один актуальный блок проверок,
 приёмки; PROJECT, план этапа и карта Linear ссылаются на них. Нормативные требования
 плана сохранены, история DEVLOG/LOG-каталогов не переписана. Исходные падения тестов
 и исправление literal permission type описаны в [ревью](implementation/log134/review.md).
+
+LOG134 publication: code 497c8a914330dcb903a3171eeeefed1c093400ce pushed and GitHub API ref verified. Linear comment a59431c6-5fd7-4cd8-aff7-e3babcab2ab3, description/comment/all 11 issue states independently read back. Continuing targeted native cleanup; ROB765 remains In Progress.
