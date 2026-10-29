@@ -6,6 +6,7 @@ import { type DataSource } from 'typeorm';
 
 import { WorkspaceIteratorService } from 'src/database/commands/command-runners/workspace-iterator.service';
 import { CommandLogger } from 'src/database/commands/logger';
+import { withAccountScopeRepairExecution } from 'src/engine/core-modules/crm-audit/account-scope-repair-execution';
 
 export type WorkspaceCommandOptions = {
   workspaceId?: Set<string>;
@@ -127,13 +128,15 @@ export abstract class WorkspaceCommandRunner<
         workspaceCountLimit: options.workspaceCountLimit,
         dryRun: options.dryRun,
         callback: async (context) => {
-          await this.runOnWorkspace({
-            options,
-            workspaceId: context.workspaceId,
-            dataSource: context.dataSource,
-            index: context.index,
-            total: context.total,
-          });
+          await withAccountScopeRepairExecution(this, context.workspaceId, () =>
+            this.runOnWorkspace({
+              options,
+              workspaceId: context.workspaceId,
+              dataSource: context.dataSource,
+              index: context.index,
+              total: context.total,
+            }),
+          );
         },
       });
 

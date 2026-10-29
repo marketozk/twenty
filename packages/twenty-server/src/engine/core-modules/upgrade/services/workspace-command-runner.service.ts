@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { withAccountScopeRepairExecution } from 'src/engine/core-modules/crm-audit/account-scope-repair-execution';
 
 import { type WorkspaceIteratorContext } from 'src/database/commands/command-runners/workspace-iterator.service';
 import { type ParsedUpgradeCommandOptions } from 'src/database/commands/upgrade-version-command/upgrade.command';
@@ -119,13 +120,15 @@ export class WorkspaceCommandRunnerService {
     const { name, command: workspaceCommand } = workspaceCommandEntry;
 
     try {
-      await workspaceCommand.runOnWorkspace({
-        options,
-        workspaceId,
-        dataSource: iteratorContext.dataSource,
-        index: iteratorContext.index,
-        total: iteratorContext.total,
-      });
+      await withAccountScopeRepairExecution(workspaceCommand, workspaceId, () =>
+        workspaceCommand.runOnWorkspace({
+          options,
+          workspaceId,
+          dataSource: iteratorContext.dataSource,
+          index: iteratorContext.index,
+          total: iteratorContext.total,
+        }),
+      );
 
       if (!options.dryRun) {
         await this.upgradeMigrationService.recordUpgradeMigration({

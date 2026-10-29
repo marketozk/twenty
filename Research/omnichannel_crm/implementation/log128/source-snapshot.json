@@ -1,0 +1,13 @@
+{
+  "baseCommit": "54f5752503d65c5b2b33675cebbe6e8c13b337f3",
+  "lfSha256": {
+    "packages/twenty-server/src/database/commands/command-runners/workspace.command-runner.ts": "bfeb5943ad37eba1b455bf1c139bc938260f6cb29c550f6471e42fa9904f4d70",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-connected-accounts-with-audit.ts": "44fcf8276116fa3e52fb972e8a72c3ff153f0b711cf0726a3ecacc4bfca20a15",
+    "packages/twenty-server/src/engine/core-modules/upgrade/services/workspace-command-runner.service.ts": "b3677a19a4ad42a41b603d21cefa489ec4ce78277030b92d3d687905f8472ee7",
+    "packages/twenty-server/test/fork-migration/crm-audit-connected-account-delete.postgres-spec.ts": "7a8e936d2b5518c636a390fa3f0c8b775a45f13b84a5c48cb4460e45d38a172e",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/account-scope-repair-execution.ts": "ad554afedad24a9e8685eda84c25a6825adc6f7a1221f02f0d5f574c8dd7ff01",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/connected-account-deletion-boundary.ts": "e7a46d71e311b1fffd52b908b53aac37b2025edf39dd9d53a49f9c46f2b841be",
+    "packages/twenty-server/test/fork-migration/crm-audit-account-scope-execution.spec.ts": "ac4627eb832a90f8dc47820cf2f9c06ba2efa3fe19479ff6558b5e411ed492c6"
+  },
+  "uploadedSourceHashesVerified": true
+}

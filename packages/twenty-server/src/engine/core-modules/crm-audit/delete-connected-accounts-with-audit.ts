@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { isUUID } from 'class-validator';
 import { type DataSource } from 'typeorm';
+import {
+  captureAccountDeletionBoundary,
+  prepareAccountDeletionBoundary,
+  type ConnectedAccountDeletionBoundary,
+} from 'src/engine/core-modules/crm-audit/connected-account-deletion-boundary';
 
 import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
 import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
@@ -37,11 +42,13 @@ export const deleteConnectedAccountsWithAudit = async ({
   workspaceId,
   accountIds,
   operation,
+  boundary,
 }: {
   dataSource: DataSource;
   workspaceId: string;
   accountIds: readonly string[];
   operation: CrmAuditOperation;
+  boundary: ConnectedAccountDeletionBoundary;
 }): Promise<DeletedConnectedAccountGraph> => {
   if (
     !isUUID(workspaceId) ||
@@ -65,6 +72,7 @@ export const deleteConnectedAccountsWithAudit = async ({
     actor: { ...operation.actor },
     ...(operation.initiator ? { initiator: { ...operation.initiator } } : {}),
   };
+  const capturedBoundary = captureAccountDeletionBoundary(boundary);
 
   return runInCoreAuditTransaction(dataSource, async (runner) => {
     const audit = new CrmAuditTransactionContext(runner, captured);
@@ -96,6 +104,11 @@ export const deleteConnectedAccountsWithAudit = async ({
           .map((table) => 'core.' + quote(table))
           .join(',') +
         ' IN ROW EXCLUSIVE MODE',
+    );
+    const authorization = await prepareAccountDeletionBoundary(
+      runner,
+      workspaceId,
+      capturedBoundary,
     );
     await lockOmniMetadataAccounts(runner.manager, workspaceId, ids, 'write');
     const before = new Map<Table, Row[]>();
@@ -146,6 +159,10 @@ export const deleteConnectedAccountsWithAudit = async ({
         );
     };
     await assertOrdinary();
+    await authorization.authorize(
+      before.get('connectedAccount')!,
+      before.get('messageChannel')!,
+    );
     for (const table of TABLES) {
       const references = await getIncomingRecordForeignKeys(
         scope,
@@ -227,6 +244,7 @@ export const deleteConnectedAccountsWithAudit = async ({
       );
     }
     const verify = async () => {
+      await authorization.verify();
       const [currentWorkspace] = await runner.query(
         'SELECT id,"deletedAt" FROM core.workspace WHERE id=$1',
         [workspaceId],

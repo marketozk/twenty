@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { type ConnectedAccountDeletionBoundary } from 'src/engine/core-modules/crm-audit/connected-account-deletion-boundary';
 import { DataSource, type QueryRunner } from 'typeorm';
 
 import { deleteConnectedAccountsWithAudit } from 'src/engine/core-modules/crm-audit/delete-connected-accounts-with-audit';
@@ -48,11 +49,37 @@ const remove = (accountIds = [graph.account], audit = operation()) =>
     workspaceId: fixture.workspaceId,
     accountIds,
     operation: audit,
+    boundary: {
+      kind: 'administration',
+      userWorkspaceId: graph.member,
+      authorize: async () => true,
+    },
   });
 const audits = () =>
   fixture.owner.query(
     'SELECT * FROM crm_audit."crmAuditEntry" ORDER BY "resourceKind","resourceId"',
   );
+const removeWithBoundary = (boundary: ConnectedAccountDeletionBoundary) =>
+  deleteConnectedAccountsWithAudit({
+    dataSource: runtime,
+    workspaceId: fixture.workspaceId,
+    accountIds: [graph.account],
+    operation: operation(),
+    boundary,
+  });
+const seedProvider = async () => {
+  const id = randomUUID(),
+    applicationId = randomUUID();
+  await fixture.owner.query(
+    'INSERT INTO core."connectionProvider"(id,"workspaceId","applicationId",scope) VALUES($1,$2,$3,\'USER\')',
+    [id, fixture.workspaceId, applicationId],
+  );
+  await fixture.owner.query(
+    'UPDATE core."connectedAccount" SET "connectionProviderId"=$1 WHERE id=$2',
+    [id, graph.account],
+  );
+  return { id, applicationId };
+};
 const seed = async (): Promise<Graph> => {
   const value = {
     account: randomUUID(),
@@ -61,6 +88,10 @@ const seed = async (): Promise<Graph> => {
     folder: randomUUID(),
     member: randomUUID(),
   };
+  await fixture.owner.query(
+    'INSERT INTO core."userWorkspace"(id,"workspaceId") VALUES($1,$2)',
+    [value.member, fixture.workspaceId],
+  );
   await fixture.owner.query(
     `INSERT INTO core."connectedAccount" (id,"workspaceId","userWorkspaceId","accessToken","connectionParameters",claims,provider,scope)
     VALUES($1,$2,$3,'test-secret-token','{"password":"test-secret-password"}','{"n":9007199254740993}','app','WORKSPACE')`,
@@ -158,6 +189,12 @@ const pause = (matches: (sql: string) => boolean) => {
 
 beforeAll(async () => {
   await fixture.initialize();
+  await fixture.owner.query(
+    'CREATE TABLE core."userWorkspace" (id uuid PRIMARY KEY,"workspaceId" uuid REFERENCES core.workspace(id),"deletedAt" timestamptz)',
+  );
+  await fixture.owner.query(
+    'CREATE TABLE core."connectionProvider" (id uuid PRIMARY KEY,"workspaceId" uuid REFERENCES core.workspace(id),"applicationId" uuid,scope text)',
+  );
   await fixture.owner
     .query(`ALTER TABLE core."connectedAccount" ADD "workspaceId" uuid, ADD "userWorkspaceId" uuid, ADD "accessToken" text, ADD "refreshToken" text, ADD "connectionParameters" jsonb, ADD claims jsonb, ADD provider text, ADD scope text, ADD "archivedAt" timestamptz, ADD "applicationId" uuid, ADD "connectionProviderId" uuid;
     ALTER TABLE core."messageChannel" ADD "connectedAccountId" uuid REFERENCES core."connectedAccount"(id) ON DELETE CASCADE, ADD "isSyncEnabled" boolean DEFAULT true, ADD "webhookSubscriptionStatus" text;
@@ -187,6 +224,258 @@ afterAll(async () => {
 });
 
 describe('closed connected account deletion with atomic audit', () => {
+  it('requires a closed boundary and gives permission checks only a frozen safe record', async () => {
+    await expect(
+      removeWithBoundary(
+        undefined as unknown as ConnectedAccountDeletionBoundary,
+      ),
+    ).rejects.toThrow('boundary unavailable');
+    const authorize = jest.fn(async (account) => {
+      expect(Object.isFrozen(account)).toBe(true);
+      expect(Object.keys(account).sort()).toEqual([
+        'id',
+        'provider',
+        'scope',
+        'userWorkspaceId',
+      ]);
+      return false;
+    });
+    const before = await snapshots();
+    await expect(
+      removeWithBoundary({
+        kind: 'administration',
+        userWorkspaceId: graph.member,
+        authorize,
+      }),
+    ).rejects.toThrow('permission denied');
+    expect(authorize).toHaveBeenCalledTimes(1);
+    expect(await snapshots()).toEqual(before);
+    expect(await audits()).toHaveLength(0);
+  });
+  it.each(['missing', 'deleted', 'foreign'])(
+    'refuses %s administrative membership before authorization',
+    async (kind) => {
+      const authorize = jest.fn(async () => true);
+      if (kind === 'deleted')
+        await fixture.owner.query(
+          'UPDATE core."userWorkspace" SET "deletedAt"=now()',
+        );
+      if (kind === 'foreign') {
+        const workspace = randomUUID();
+        await fixture.owner.query('INSERT INTO core.workspace(id) VALUES($1)', [
+          workspace,
+        ]);
+        await fixture.owner.query(
+          'UPDATE core."userWorkspace" SET "workspaceId"=$1',
+          [workspace],
+        );
+      }
+      await expect(
+        removeWithBoundary({
+          kind: 'administration',
+          userWorkspaceId: kind === 'missing' ? randomUUID() : graph.member,
+          authorize,
+        }),
+      ).rejects.toThrow('prerequisites changed');
+      expect(authorize).not.toHaveBeenCalled();
+      expect(await audits()).toHaveLength(0);
+    },
+  );
+  it.each(['valid', 'type-changed', 'reparented'])(
+    'checks the pinned email group: %s',
+    async (kind) => {
+      await fixture.owner.query(
+        'UPDATE core."messageChannel" SET type=\'EMAIL_GROUP\'',
+      );
+      const boundary: ConnectedAccountDeletionBoundary = {
+        kind: 'emailGroup',
+        channelId: graph.channel,
+        accountId: graph.account,
+        userWorkspaceId: graph.member,
+        authorize: async () => true,
+      };
+      if (kind === 'type-changed')
+        await fixture.owner.query(
+          'UPDATE core."messageChannel" SET type=\'APP\'',
+        );
+      if (kind === 'reparented') {
+        const other = await seed();
+        await fixture.owner.query(
+          'UPDATE core."messageChannel" SET "connectedAccountId"=$1 WHERE id=$2',
+          [other.account, graph.channel],
+        );
+      }
+      if (kind === 'valid')
+        await expect(removeWithBoundary(boundary)).resolves.toMatchObject({
+          accounts: [{ id: graph.account }],
+        });
+      else {
+        await expect(removeWithBoundary(boundary)).rejects.toThrow(
+          'target changed',
+        );
+        expect(await audits()).toHaveLength(0);
+      }
+    },
+  );
+  it.each(['valid', 'application-changed', 'account-rebound'])(
+    'checks manifest provider selection: %s',
+    async (kind) => {
+      const provider = await seedProvider();
+      const boundary: ConnectedAccountDeletionBoundary = {
+        kind: 'manifest',
+        applicationId: provider.applicationId,
+        connectionProviderIds: [provider.id],
+      };
+      if (kind === 'application-changed')
+        await fixture.owner.query(
+          'UPDATE core."connectionProvider" SET "applicationId"=$1 WHERE id=$2',
+          [randomUUID(), provider.id],
+        );
+      if (kind === 'account-rebound') await seedProvider();
+      if (kind === 'valid')
+        await expect(removeWithBoundary(boundary)).resolves.toMatchObject({
+          accounts: [{ id: graph.account }],
+        });
+      else {
+        await expect(removeWithBoundary(boundary)).rejects.toThrow();
+        expect(await audits()).toHaveLength(0);
+      }
+    },
+  );
+  it.each(['valid', 'scope-fixed', 'account-rebound', 'foreign-provider'])(
+    'checks provider scope repair: %s',
+    async (kind) => {
+      const provider = await seedProvider();
+      const boundary: ConnectedAccountDeletionBoundary = {
+        kind: 'providerScopeRepair',
+        providerIdsByAccount: { [graph.account]: provider.id },
+      };
+      if (kind === 'scope-fixed')
+        await fixture.owner.query(
+          'UPDATE core."connectedAccount" SET scope=\'USER\'',
+        );
+      if (kind === 'account-rebound') await seedProvider();
+      if (kind === 'foreign-provider') {
+        const workspace = randomUUID();
+        await fixture.owner.query('INSERT INTO core.workspace(id) VALUES($1)', [
+          workspace,
+        ]);
+        await fixture.owner.query(
+          'UPDATE core."connectionProvider" SET "workspaceId"=$1',
+          [workspace],
+        );
+      }
+      if (kind === 'valid')
+        await expect(removeWithBoundary(boundary)).resolves.toMatchObject({
+          accounts: [{ id: graph.account }],
+        });
+      else {
+        await expect(removeWithBoundary(boundary)).rejects.toThrow();
+        expect(await audits()).toHaveLength(0);
+      }
+    },
+  );
+  it('captures provider scope maps before asynchronous work', async () => {
+    const provider = await seedProvider();
+    const map = { [graph.account]: provider.id };
+    const pending = removeWithBoundary({
+      kind: 'providerScopeRepair',
+      providerIdsByAccount: map,
+    });
+    map[graph.account] = randomUUID();
+    await expect(pending).resolves.toMatchObject({
+      accounts: [{ id: graph.account }],
+    });
+  });
+  it.each(['member', 'provider'] as const)(
+    'deletion first holds %s prerequisites until commit',
+    async (kind) => {
+      const provider = await seedProvider();
+      const table = kind === 'member' ? 'userWorkspace' : 'connectionProvider';
+      const hold = pause(
+        (sql) =>
+          sql.includes('to_jsonb(record)') &&
+          sql.includes('core."' + table + '"') &&
+          sql.endsWith('FOR SHARE'),
+      );
+      const first = capture(
+        kind === 'member'
+          ? remove()
+          : removeWithBoundary({
+              kind: 'providerScopeRepair',
+              providerIdsByAccount: { [graph.account]: provider.id },
+            }),
+      );
+      await hold.reached;
+      const second = capture(
+        fixture.owner.query(
+          kind === 'member'
+            ? 'UPDATE core."userWorkspace" SET "deletedAt"=now() WHERE id=$1'
+            : 'UPDATE core."connectionProvider" SET scope=\'WORKSPACE\' WHERE id=$1',
+          [kind === 'member' ? graph.member : provider.id],
+        ),
+      );
+      try {
+        await blocked();
+      } finally {
+        hold.resume();
+      }
+      expect(await first).toHaveProperty('value');
+      expect(await second).toHaveProperty('value');
+      expect(await audits()).toHaveLength(4);
+    },
+  );
+  it.each(['member', 'provider'] as const)(
+    'changed %s prerequisites first prevent deletion after lock wait',
+    async (kind) => {
+      const provider = await seedProvider(),
+        before = await snapshots();
+      const writer = fixture.owner.createQueryRunner();
+      await writer.connect();
+      await writer.startTransaction();
+      await writer.query(
+        kind === 'member'
+          ? 'UPDATE core."userWorkspace" SET "deletedAt"=now() WHERE id=$1'
+          : 'UPDATE core."connectionProvider" SET scope=\'WORKSPACE\' WHERE id=$1',
+        [kind === 'member' ? graph.member : provider.id],
+      );
+      const pending = capture(
+        kind === 'member'
+          ? remove()
+          : removeWithBoundary({
+              kind: 'providerScopeRepair',
+              providerIdsByAccount: { [graph.account]: provider.id },
+            }),
+      );
+      try {
+        await blocked();
+      } finally {
+        await writer.commitTransaction();
+        await writer.release();
+      }
+      expect(await pending).toHaveProperty('error');
+      expect(await snapshots()).toEqual(before);
+      expect(await audits()).toHaveLength(0);
+    },
+  );
+  it('rolls back audit-trigger corruption of locked provider prerequisites', async () => {
+    const provider = await seedProvider();
+    await fixture.owner.query(
+      `CREATE FUNCTION crm_audit.delete_test_trigger() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN UPDATE core."connectionProvider" SET scope='WORKSPACE'; RETURN NEW; END $$; CREATE TRIGGER delete_test AFTER INSERT ON crm_audit."crmAuditEntry" FOR EACH ROW EXECUTE FUNCTION crm_audit.delete_test_trigger()`,
+    );
+    const before = await snapshots();
+    await expect(
+      removeWithBoundary({
+        kind: 'providerScopeRepair',
+        providerIdsByAccount: { [graph.account]: provider.id },
+      }),
+    ).rejects.toThrow('prerequisites changed before commit');
+    expect(await snapshots()).toEqual(before);
+    expect(await audits()).toHaveLength(0);
+    expect(
+      await fixture.owner.query('SELECT scope FROM core."connectionProvider"'),
+    ).toEqual([{ scope: 'USER' }]);
+  });
   it('deletes the exact four-table graph and redacts secrets, names and provider data', async () => {
     const other = await seed();
     const audit = operation();
@@ -295,6 +584,11 @@ describe('closed connected account deletion with atomic audit', () => {
       deleteConnectedAccountsWithAudit({
         dataSource: runtime,
         workspaceId: fixture.workspaceId,
+        boundary: {
+          kind: 'administration',
+          userWorkspaceId: graph.member,
+          authorize: async () => true,
+        },
         accountIds:
           kind === 'missing-account' ? [randomUUID()] : [graph.account],
         operation:

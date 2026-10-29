@@ -3785,3 +3785,13 @@ LOG127 реализует closed four-table delete owner: account/messageChannel
 ROB765 In Progress. Caller authorization/wiring, external provider effects, native cleanup, full HTTP/build/deploy остаются открытыми. GitHub Actions не выполнялся.
 
 LOG127 publication: code dcb6a123c9f1a4b341c31cea21cf02ab20437310 pushed and GitHub API ref verified; Linear comment 86aa0cd4-d0ab-4957-b857-451f3173f5b2, description/comment/all 11 issue states independently read back. Continuing caller integration; ROB-765 remains In Progress.
+
+## LOG128 — основания удаления и scoped execution старой команды
+
+LOG128 добавляет обязательные captured deletion boundaries для administration/emailGroup/manifest/providerScopeRepair и locked membership/provider prerequisites. Actual CLI/upgrade runners дают исторической команде одноразовый scoped source по точной registered metadata; detached work лишается source после завершения. Старый command не изменён. Account service callers ещё не переключены; финальный provider cascade guard и require-all effects входят в ближайшее wiring.
+
+1687 tests/53 suites PASS (257.674s); 71 targeted/2 suites PASS (19.02s), 30 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 373/376 roots, 211/211 прежних диагностик, 0 новых/changed-file. 7 local/remote source hashes совпадают.
+[Проверки](implementation/log128/results.json), [ревью](implementation/log128/review.md).
+По ревью добавлены реальные обе очередности member/provider write races с observed lock waits. Проверены safe frozen DTO без runner, смена provider/application/scope/channel, одноразовое consumption, masking чужого command и detached work. Две type ошибки test fixtures исправлены, baseline неизменён.
+
+Для следующего wiring подтверждены новые границы: partial DELETE нельзя пропускать к последующей provider migration; account может появиться между транзакциями, поэтому provider handler требует собственного FOR UPDATE + no-references guard. Email-group требует pinned handle для domain cleanup. ROB765 In Progress; full HTTP/build/deploy и GitHub Actions не выполнялись.

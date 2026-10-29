@@ -1,0 +1,4 @@
+Checking baseline
+Baseline complete 373 211
+Checking current
+{"status":"pass-no-new-diagnostics","baselineDiagnostics":211,"currentDiagnostics":211,"newDiagnostics":[],"changedFileDiagnostics":[],"baselineOnlyUnchangedMethodDiagnostics":[],"changedCodeDiagnostics":[],"currentRootFiles":376}

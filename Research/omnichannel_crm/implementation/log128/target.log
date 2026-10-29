@@ -1,0 +1,13 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-connected-account-delete.postgres-spec.ts (18.444 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-account-scope-execution.spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       71 passed, 71 total
+Snapshots:   0 total
+Time:        19.02 s
+Ran all test suites matching /crm-audit-connected-account-delete|crm-audit-account-scope-execution/i.
+[32m[Nest] 1  - [39m10/29/2026, 4:49:54 AM [32m    LOG[39m [38;5;3m[ActualCommand] [39m[32mCommand completed![39m
+[32m[Nest] 1  - [39m10/29/2026, 4:49:54 AM [32m    LOG[39m [38;5;3m[WorkspaceCommandRunnerService] [39m[32mUpgrading workspace fc10b39a-a59a-40e3-8bc2-f94885a5a184 1/1
+[upgrade] event=workspace.start workspaceId=fc10b39a-a59a-40e3-8bc2-f94885a5a184 index=1 total=1 dryRun=false[39m
+[32m[Nest] 1  - [39m10/29/2026, 4:49:54 AM [32m    LOG[39m [38;5;3m[WorkspaceCommandRunnerService] [39m[32mUpgrade for workspace fc10b39a-a59a-40e3-8bc2-f94885a5a184 completed.
+[upgrade] event=workspace.success workspaceId=fc10b39a-a59a-40e3-8bc2-f94885a5a184 executedByVersion=2.52.0 dryRun=false[39m

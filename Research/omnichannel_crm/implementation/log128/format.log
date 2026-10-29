@@ -1,0 +1,10 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/database/commands/command-runners/workspace.command-runner.ts 168ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/delete-connected-accounts-with-audit.ts 113ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/upgrade/services/workspace-command-runner.service.ts 42ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-connected-account-delete.postgres-spec.ts 205ms
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/account-scope-repair-execution.ts 8ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/connected-account-deletion-boundary.ts 70ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-account-scope-execution.spec.ts 23ms
+
+{"formattedFiles": 7, "singleSshSession": true}

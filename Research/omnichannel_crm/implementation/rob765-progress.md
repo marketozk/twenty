@@ -16,8 +16,8 @@
 | Operation lookup index | LOG090: generated migration10, populated prefix upgrade/replay/down, real EXPLAIN, drift refusal; не выкатывалось |
 | Production rollout | Не выполнялся; нужны полная native coverage и согласованный выкат с остановленными writers при построении индекса |
 
-Последние проверки: 1657 tests/52 suites PASS (249.238s); 41 новых целевых PG cases/1 suite PASS (15.902s). 26 guard tests PASS; 10 migration checksums неизменны. Types 369/371 roots, 211/211 прежних диагностик, 0 новых/changed-file. 4 local/remote source hashes совпадают.
-Это не чистый full-server typecheck. [LOG127 results](log127/results.json).
+Последние проверки: 1687 tests/53 suites PASS (257.674s); 71 targeted/2 suites PASS (19.02s), 30 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 373/376 roots, 211/211 прежних диагностик, 0 новых/changed-file. 7 local/remote source hashes совпадают.
+Это не чистый full-server typecheck. [LOG128 results](log128/results.json).
 
 [Индекс реализованных участков](../plan/phase_2_audit.md), [текущие ограничения](log113/README.md),
 [полная хронология](../DEVLOG.md). Исторические заявления «ещё не включено» внутри
@@ -77,3 +77,5 @@ LOG126 запрещает normal automatic queue retry для обоих unknown
 Crash до persisted failure, stalled redelivery, manual retry и новый scheduled run остаются отдельными границами. Далее — strict four-table account deletion primitive, затем callers. Выката нет.
 
 LOG127 реализует closed four-table delete owner: account/messageChannel/calendarChannel/messageFolder, actual FK inventory, retained account и folder-only guards, exact DB snapshots, actual DELETE RETURNING и readback после audit. Сбой журнала откатывает удаление; повторное удаление recreated IDs получает новую operation. Production callers пока не переключены; далее их authorization/selection boundaries и wiring. [Следующая граница](log127/next-boundary.md).
+
+LOG128 добавляет обязательные captured deletion boundaries для administration/emailGroup/manifest/providerScopeRepair и locked membership/provider prerequisites. Actual CLI/upgrade runners дают исторической команде одноразовый scoped source по точной registered metadata; detached work лишается source после завершения. Старый command не изменён. Account service callers ещё не переключены; финальный provider cascade guard и require-all effects входят в ближайшее wiring. [Следующая граница](log128/next-boundary.md).
