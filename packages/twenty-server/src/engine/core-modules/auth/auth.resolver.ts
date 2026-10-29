@@ -1150,13 +1150,30 @@ export class AuthResolver {
     @Args() authorizeAppInput: AuthorizeAppInput,
     @AuthUser() user: AuthContextUser,
     @AuthWorkspace() workspace: WorkspaceEntity,
-    @Context() context: { req: Request },
+    @Context()
+    context: {
+      req: Request & {
+        impersonationContext?: { impersonatorUserWorkspaceId?: string };
+      };
+    },
   ): Promise<AuthorizeAppDTO> {
+    const input = { ...authorizeAppInput };
+    const capturedUser = { ...user };
+    const capturedWorkspace = { ...workspace };
+    const requestBaseUrl = getRequestBaseUrl(context.req);
+    const auditIdentity =
+      await this.userWorkspaceService.captureCleanupAuditIdentity({
+        workspaceId: workspace.id,
+        user: { id: user.id },
+        impersonatorUserWorkspaceId:
+          context.req.impersonationContext?.impersonatorUserWorkspaceId,
+      });
     return await this.authService.generateAuthorizationCode({
-      authorizeAppInput,
-      user,
-      workspace,
-      requestBaseUrl: getRequestBaseUrl(context.req),
+      authorizeAppInput: input,
+      user: capturedUser,
+      workspace: capturedWorkspace,
+      requestBaseUrl,
+      auditIdentity,
     });
   }
 

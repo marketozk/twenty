@@ -1,3 +1,5 @@
+import { requireOAuthAuditIdentity } from 'src/engine/core-modules/crm-audit/oauth-audit-identity';
+import { type MembershipCleanupIdentity } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -545,12 +547,22 @@ export class AuthService {
     user,
     workspace,
     requestBaseUrl,
+    auditIdentity,
   }: {
     authorizeAppInput: AuthorizeAppInput;
     user: AuthContextUser;
     workspace: WorkspaceEntity;
     requestBaseUrl: string;
+    auditIdentity: MembershipCleanupIdentity;
   }): Promise<AuthorizeAppDTO> {
+    const userId = user.id;
+    const workspaceId = workspace.id;
+    const capturedIdentity = requireOAuthAuditIdentity(
+      auditIdentity,
+      workspaceId,
+      userId,
+    );
+    authorizeAppInput = { ...authorizeAppInput };
     const { clientId, codeChallenge } = authorizeAppInput;
 
     const applicationRegistration =
@@ -660,6 +672,7 @@ export class AuthService {
     const expiresAt = addMilliseconds(new Date().getTime(), ms('5m'));
 
     const authCodeContext = {
+      auditIdentity: capturedIdentity,
       redirectUri: authorizeAppInput.redirectUrl,
       clientId: applicationRegistration.oAuthClientId,
       scope: requestedScopes.join(' '),
@@ -669,8 +682,8 @@ export class AuthService {
     const token = this.appTokenRepository.create({
       value: hashedAuthorizationCode,
       type: AppTokenType.AuthorizationCode,
-      userId: user.id,
-      workspaceId: workspace.id,
+      userId,
+      workspaceId,
       expiresAt,
       context: authCodeContext,
     });

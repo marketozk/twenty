@@ -1,3 +1,7 @@
+import { withCrmAuditIdentity } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
+import { requireOAuthAuditIdentity } from 'src/engine/core-modules/crm-audit/oauth-audit-identity';
+import { type MembershipCleanupIdentity } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
+import { ApplicationRegistrationSourceType } from 'src/engine/core-modules/application/application-registration/enums/application-registration-source-type.enum';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -224,10 +228,19 @@ export class OAuthService {
       );
     }
 
-    const application = await this.findOrInstallApplication(
-      applicationRegistration,
-      authCodeToken.workspaceId,
-    );
+    let auditIdentity: MembershipCleanupIdentity;
+    try {
+      auditIdentity = requireOAuthAuditIdentity(
+        authCodeToken.context?.auditIdentity,
+        authCodeToken.workspaceId,
+        authCodeToken.userId,
+      );
+    } catch {
+      return this.errorResponse(
+        'invalid_grant',
+        'Authorization attribution is unavailable; authorize again',
+      );
+    }
 
     const userWorkspace = await this.userWorkspaceRepository.findOne({
       where: {
@@ -242,6 +255,16 @@ export class OAuthService {
         'User no longer has access to this workspace',
       );
     }
+
+    const application = await withCrmAuditIdentity(
+      authCodeToken.workspaceId,
+      auditIdentity,
+      () =>
+        this.findOrInstallApplication(
+          applicationRegistration,
+          authCodeToken.workspaceId!,
+        ),
+    );
 
     const grantedScope =
       authCodeToken.context?.scope ??
@@ -769,33 +792,26 @@ export class OAuthService {
       return existingApplication;
     }
 
-    try {
+    const hasNoPackage =
+      applicationRegistration.sourceType ===
+        ApplicationRegistrationSourceType.OAUTH_ONLY ||
+      applicationRegistration.sourceType ===
+        ApplicationRegistrationSourceType.LOCAL;
+    if (!hasNoPackage) {
       await this.applicationInstallService.installApplication({
         appRegistrationId: applicationRegistration.id,
         workspaceId,
       });
-
       const installedApplication = await this.applicationRepository.findOne(
         workspaceId,
-        {
-          where: {
-            applicationRegistrationId: applicationRegistration.id,
-          },
-        },
+        { where: { applicationRegistrationId: applicationRegistration.id } },
       );
-
-      if (installedApplication) {
-        return installedApplication;
+      if (!installedApplication) {
+        throw new Error(
+          'OAuth application installation did not create an application',
+        );
       }
-
-      this.logger.warn(
-        `Install succeeded but application not found in workspace, falling back to bare creation`,
-      );
-    } catch (error) {
-      this.logger.warn(
-        `Auto-install failed for ${applicationRegistration.name}, falling back to bare creation`,
-        error,
-      );
+      return installedApplication;
     }
 
     return this.applicationService.create({

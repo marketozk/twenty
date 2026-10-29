@@ -1,3 +1,4 @@
+import { isApplicationTransactionOutcomeUnknown } from 'src/engine/core-modules/application/utils/is-application-transaction-outcome-unknown';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -205,6 +206,7 @@ export class ApplicationInstallService {
 
     await progressReporter.reportStepCompleted('RESOLVE_PACKAGE');
 
+    let outcomeUnknown = false;
     try {
       return await this.runInstallWithMetrics({
         appRegistration,
@@ -214,10 +216,20 @@ export class ApplicationInstallService {
         isVersionUpgrade,
         progressReporter,
       });
+    } catch (error) {
+      outcomeUnknown = isApplicationTransactionOutcomeUnknown(error);
+      throw error;
     } finally {
-      await this.applicationPackageFetcherService.cleanupExtractedDir(
-        resolvedPackage.cleanupDir,
-      );
+      try {
+        await this.applicationPackageFetcherService.cleanupExtractedDir(
+          resolvedPackage.cleanupDir,
+        );
+      } catch (cleanupError) {
+        if (!outcomeUnknown) throw cleanupError;
+        this.logger.warn(
+          'Package cleanup failed after an unknown transaction outcome',
+        );
+      }
     }
   }
 
@@ -317,6 +329,8 @@ export class ApplicationInstallService {
 
       return true;
     } catch (error) {
+      // No compensating mutation or fallible telemetry after an ambiguous COMMIT.
+      if (isApplicationTransactionOutcomeUnknown(error)) throw error;
       await this.eventLogEmitterService.recordApplicationPlatformEvents([
         buildApplicationLifecycleLogEntry({
           ...lifecycleLogContext,
@@ -575,6 +589,8 @@ export class ApplicationInstallService {
 
       return application;
     } catch (error) {
+      // No compensating mutation or fallible telemetry after an ambiguous COMMIT.
+      if (isApplicationTransactionOutcomeUnknown(error)) throw error;
       this.logger.error(
         `Failed to install app ${appRegistration.universalIdentifier}: ${error}`,
       );

@@ -1022,3 +1022,6 @@ Delegated application и cross-workspace impersonator сохраняют пра�
 
 LOG124 добавляет immutable attribution context после server authentication и переносит identity через install/upgrade/uninstall queue. Параллельные запросы изолированы, impersonator и initiator сохранены, legacy job не заимствует ambient actor. Это attribution, не проверка полномочий. OAuth/system wrappers и account delete ещё впереди.
 [Граница следующего среза](../implementation/log124/next-boundary.md).
+
+LOG125 фиксирует OAuth user/impersonator в одноразовом коде и проверяет membership до auto-install; packaged install больше не маскируется bare fallback. Preinstalled/backfill/CLI/automatic upgrade имеют явный system source. Оба unknown transaction outcome типа проходят через install/upgrade без compensation и telemetry replacement.
+Старые OAuth codes без identity требуют повторной авторизации (5 минут TTL); tokens не меняются. [Далее](../implementation/log125/next-boundary.md) — queue retry boundary и account delete.

@@ -1,3 +1,5 @@
+import { withCrmAuditIdentity } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
+import { systemMembershipCleanupIdentity } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { ApplicationUpgradeService } from 'src/engine/core-modules/application/application-upgrade/application-upgrade.service';
 import {
   UPGRADE_WORKSPACE_APPLICATION_JOB_NAME,
@@ -15,12 +17,20 @@ export class UpgradeWorkspaceApplicationJob {
 
   @Process(UPGRADE_WORKSPACE_APPLICATION_JOB_NAME)
   async handle(data: UpgradeWorkspaceApplicationJobData): Promise<void> {
-    await this.applicationUpgradeService.upgradeWorkspaceApplicationToLatestVersion(
-      {
-        applicationRegistrationId: data.applicationRegistrationId,
-        workspaceId: data.workspaceId,
-        onlyAutoUpgrade: data.onlyAutoUpgrade,
-      },
+    await withCrmAuditIdentity(
+      data.workspaceId,
+      systemMembershipCleanupIdentity(
+        data.workspaceId,
+        'UpgradeWorkspaceApplicationJob',
+      ),
+      () =>
+        this.applicationUpgradeService.upgradeWorkspaceApplicationToLatestVersion(
+          {
+            applicationRegistrationId: data.applicationRegistrationId,
+            workspaceId: data.workspaceId,
+            onlyAutoUpgrade: data.onlyAutoUpgrade,
+          },
+        ),
     );
   }
 }

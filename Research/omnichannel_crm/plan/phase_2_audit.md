@@ -94,11 +94,11 @@ stateless application JWT и concurrent-sign-in fencing ещё не объявл
 Просмотр/экспорт — ROB767 после ROB766; AI/workflow/connector добавляют свои события
 в ROB768/769. Полный HTTP/JWT и сборка/выкат изменений после LOG088 не выполнялись.
 
-Последние проверки: 1561 tests/49 suites PASS (236.658s); 22 новых targeted cases PASS. 26 guards PASS; 10 migration checksums неизменны. Types 370/372 roots, 211/210 прежних диагностик, 0 новых и 0 в изменённом коде; 2 diagnostics в неизменённом методе изменённого файла. 9 local/remote source hashes совпадают.
-Full-server typecheck не чистый. [Проверки LOG124](../implementation/log124/results.json).
+Последние проверки: 1601 tests/50 suites PASS (239.667s); 40 новых targeted cases PASS (7.176s), включая real PostgreSQL COMMIT ACK loss. 26 guards PASS; 10 migration checksums неизменны. Types 374/377 roots, 220/220 прежних диагностик, 0 новых/changed-code; 4 AST-identical imports и 1 unchanged method diagnostic. 12 local/remote source hashes совпадают.
+Full-server typecheck не чистый. [Проверки LOG125](../implementation/log125/results.json).
 
-Следующий шаг — explicit OAuth/system attribution, затем connected-account deletion audit;
-[граница](../implementation/log124/next-boundary.md).
+Следующий шаг — запрет queue retry при unknown outcome, затем connected-account deletion audit;
+[граница](../implementation/log125/next-boundary.md).
 LOG117 подключает известные API/jobs к core membership audit. LOG121 покрывает private native
 member deletion; LOG122/123 — connected-account transfer/disconnect. Real shares, весь public removal,
 in-flight fence и полный HTTP отзыв ещё не приняты.
@@ -111,5 +111,8 @@ owner; LOG122/123 — transfer/disconnect account/channels. Остальные m
 Демо остаётся прежним. При будущем выкате migration10 writers останавливаются на
 время построения индекса. GitHub Actions не используется.
 
-LOG124 добавляет immutable attribution context после server authentication и переносит identity через install/upgrade/uninstall queue. Параллельные запросы изолированы, impersonator и initiator сохранены, legacy job не заимствует ambient actor. Это attribution, не проверка полномочий. OAuth/system wrappers и account delete ещё впереди.
+LOG124 добавляет immutable attribution context после server authentication и переносит identity через install/upgrade/uninstall queue. Параллельные запросы изолированы, impersonator и initiator сохранены, legacy job не заимствует ambient actor. Это attribution, не проверка полномочий. OAuth/system wrappers добавлены в LOG125; account delete ещё впереди.
 Upstream middleware: 10 tests PASS; четыре application suites имеют одинаковый ESM load failure на baseline/current. С явными адаптерами несвязанных DI-зависимостей: 20 tests/5 suites PASS. Full HTTP и выкат не выполнены.
+
+LOG125 фиксирует OAuth user/impersonator в одноразовом коде и проверяет membership до auto-install; packaged install больше не маскируется bare fallback. Preinstalled/backfill/CLI/automatic upgrade имеют явный system source. Оба unknown transaction outcome типа проходят через install/upgrade без compensation и telemetry replacement.
+Следом — queue no-retry для recognized unknown outcomes. Crash/stall/manual retry этим ещё не защищены. Legacy OAuth codes без attribution требуют повторной авторизации; срок кода 5 минут. Выката нет.

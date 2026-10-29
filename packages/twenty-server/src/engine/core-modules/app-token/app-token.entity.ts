@@ -1,3 +1,4 @@
+import { type MembershipCleanupIdentity } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { isDefined } from 'twenty-shared/utils';
 import {
   BeforeInsert,
@@ -101,6 +102,7 @@ export class AppTokenEntity {
 
   @Column({ nullable: true, type: 'jsonb' })
   context: {
+    auditIdentity?: MembershipCleanupIdentity;
     email?: string;
     roleId?: string;
     redirectUri?: string;

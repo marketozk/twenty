@@ -1,0 +1,15 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/app-token/app-token.entity.ts 146ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/application/application-install/application-install.service.ts 208ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/application/application-install/commands/install-application.command.ts 67ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/application/application-oauth/oauth.service.ts 102ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/application/application-upgrade/application-upgrade.service.ts 24ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/application/jobs/upgrade-workspace-application.job.ts 3ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/application/pre-installed-apps/pre-installed-apps.service.ts 8ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/auth/auth.resolver.ts 197ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/auth/services/auth.service.ts 117ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/application/utils/is-application-transaction-outcome-unknown.ts 2ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/oauth-audit-identity.ts 2ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-application-sources.spec.ts 147ms
+
+{"formattedFiles": 12, "singleSshSession": true}

@@ -1,0 +1,18 @@
+{
+  "baseCommit": "666e22371bc3b0429bc8b8eb273e9a4d7c18af43",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/app-token/app-token.entity.ts": "7459e84d51c4ed01d65a5d6ea0326221e36e81450ffbee8e3cc980e398010b7e",
+    "packages/twenty-server/src/engine/core-modules/application/application-install/application-install.service.ts": "4d2c52c726aaf94a3e2020b6a344cf908b5b0c9cb38b0149e1c1d57df84ff274",
+    "packages/twenty-server/src/engine/core-modules/application/application-install/commands/install-application.command.ts": "900fc186ae409fd1bc1d1e9da3a3c766d2f316f26eee46cde8dac9e528f38b67",
+    "packages/twenty-server/src/engine/core-modules/application/application-oauth/oauth.service.ts": "648865bbf56c67497ec657a0870f4b42d36f7443fe200fd1e5dacc786c51a124",
+    "packages/twenty-server/src/engine/core-modules/application/application-upgrade/application-upgrade.service.ts": "32ab9313086c2740ed52f8d689cee42b0258775026632be6ebd91e95ab6ad099",
+    "packages/twenty-server/src/engine/core-modules/application/jobs/upgrade-workspace-application.job.ts": "e56d61b7195f24b1f2b71d019141eb914d29f4b6e2a149a88a1a8e4ce4df4c8a",
+    "packages/twenty-server/src/engine/core-modules/application/pre-installed-apps/pre-installed-apps.service.ts": "8e6dbf79ac325cc9073dd5850f6716c88226735216ca738d7bac7c6853502c55",
+    "packages/twenty-server/src/engine/core-modules/auth/auth.resolver.ts": "aa6575ea59c97c3fd2d3c88ba250ad8a5000d437900ba1b5385b62d532d8188e",
+    "packages/twenty-server/src/engine/core-modules/auth/services/auth.service.ts": "883db0ee513833d2c84e8a6e55ba97a366cf61b0e052e219ae46486b6526e60f",
+    "packages/twenty-server/src/engine/core-modules/application/utils/is-application-transaction-outcome-unknown.ts": "f134bb5b765e9d870b7add3613d433ce625b5fb223f489de7eae516da10006e2",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/oauth-audit-identity.ts": "4c411740eba5cd01de9a931bf769cd4ac4cd3387f2fd1a43fb7b63fb2c0dd1e2",
+    "packages/twenty-server/test/fork-migration/crm-audit-application-sources.spec.ts": "61b96069cb3f04e56cb5401e4204341f1dc17ee3a907b0ebf8abee95f61774f5"
+  },
+  "uploadedSourceHashesVerified": true
+}

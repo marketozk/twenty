@@ -16,8 +16,8 @@
 | Operation lookup index | LOG090: generated migration10, populated prefix upgrade/replay/down, real EXPLAIN, drift refusal; не выкатывалось |
 | Production rollout | Не выполнялся; нужны полная native coverage и согласованный выкат с остановленными writers при построении индекса |
 
-Последние проверки: 1561 tests/49 suites PASS (236.658s); 22 новых targeted cases PASS. 26 guards PASS; 10 migration checksums неизменны. Types 370/372 roots, 211/210 прежних диагностик, 0 новых и 0 в изменённом коде; 2 diagnostics в неизменённом методе изменённого файла. 9 local/remote source hashes совпадают.
-Это не чистый full-server typecheck. [LOG124 results](log124/results.json).
+Последние проверки: 1601 tests/50 suites PASS (239.667s); 40 новых targeted cases PASS (7.176s), включая real PostgreSQL COMMIT ACK loss. 26 guards PASS; 10 migration checksums неизменны. Types 374/377 roots, 220/220 прежних диагностик, 0 новых/changed-code; 4 AST-identical imports и 1 unchanged method diagnostic. 12 local/remote source hashes совпадают.
+Это не чистый full-server typecheck. [LOG125 results](log125/results.json).
 
 [Индекс реализованных участков](../plan/phase_2_audit.md), [текущие ограничения](log113/README.md),
 [полная хронология](../DEVLOG.md). Исторические заявления «ещё не включено» внутри
@@ -67,5 +67,8 @@ credential/auth failure cleanup и security-first savepoint. Caller/identity
 сохраняются до awaits; cross-workspace impersonation не теряет инициатора.
 [Следующая граница](log123/next-boundary.md) — account deletion и фактический core FK graph.
 
-LOG124 добавляет immutable attribution context после server authentication и переносит identity через install/upgrade/uninstall queue. Параллельные запросы изолированы, impersonator и initiator сохранены, legacy job не заимствует ambient actor. Это attribution, не проверка полномочий. OAuth/system wrappers и account delete ещё впереди.
+LOG124 добавляет immutable attribution context после server authentication и переносит identity через install/upgrade/uninstall queue. Параллельные запросы изолированы, impersonator и initiator сохранены, legacy job не заимствует ambient actor. Это attribution, не проверка полномочий. OAuth/system wrappers добавлены в LOG125; account delete ещё впереди.
 Upstream middleware: 10 tests PASS; четыре application suites имеют одинаковый ESM load failure на baseline/current. С явными адаптерами несвязанных DI-зависимостей: 20 tests/5 suites PASS. Full HTTP и выкат не выполнены.
+
+LOG125 фиксирует OAuth user/impersonator в одноразовом коде и проверяет membership до auto-install; packaged install больше не маскируется bare fallback. Preinstalled/backfill/CLI/automatic upgrade имеют явный system source. Оба unknown transaction outcome типа проходят через install/upgrade без compensation и telemetry replacement.
+Следом — queue no-retry для recognized unknown outcomes. Crash/stall/manual retry этим ещё не защищены. Legacy OAuth codes без attribution требуют повторной авторизации; срок кода 5 минут. Выката нет.

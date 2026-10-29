@@ -1,3 +1,5 @@
+import { withCrmAuditIdentity } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
+import { systemMembershipCleanupIdentity } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import chalk from 'chalk';
@@ -222,12 +224,20 @@ export class InstallApplicationCommand extends CommandRunner {
           return;
         }
 
-        await this.applicationInstallService.installApplication({
-          appRegistrationId: registration.id,
-          version: targetVersion ?? undefined,
+        await withCrmAuditIdentity(
           workspaceId,
-          hasUserApprovedCapabilities: true,
-        });
+          systemMembershipCleanupIdentity(
+            workspaceId,
+            'InstallApplicationCommand',
+          ),
+          () =>
+            this.applicationInstallService.installApplication({
+              appRegistrationId: registration.id,
+              version: targetVersion ?? undefined,
+              workspaceId,
+              hasUserApprovedCapabilities: true,
+            }),
+        );
       },
     });
 

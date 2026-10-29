@@ -1,0 +1,47 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-application-sources.spec.ts (7.063 s)
+  ✓ binds and copies OAuth user/impersonator identity; rejects another actor or workspace (24 ms)
+  ✓ issues a persisted code with a copied identity before the first awaited lookup (3 ms)
+  ✓ resolver captures the verified impersonator before its lookup and ignores body actor (1 ms)
+  ✓ uses retained impersonator at exchange and checks membership before installing (3 ms)
+  ✓ rejects missing persisted identity before effects (1 ms)
+  ✓ rejects foreign-workspace persisted identity before effects (1 ms)
+  ✓ rejects foreign-user persisted identity before effects
+  ✓ rejects system persisted identity before effects
+  ✓ rejects malformed persisted identity before effects
+  ✓ rejects bad-initiator persisted identity before effects
+  ✓ keeps client code rejection before installation (1 ms)
+  ✓ keeps redirect code rejection before installation (1 ms)
+  ✓ keeps pkce code rejection before installation
+  ✓ keeps expired code rejection before installation (1 ms)
+  ✓ keeps replayed code rejection before installation (12 ms)
+  ✓ keeps concurrent code rejection before installation (1 ms)
+  ✓ refuses a removed membership before either installation or token grant
+  ✓ creates a no-package oauth-only installation under retained identity (1 ms)
+  ✓ creates a no-package local installation under retained identity (1 ms)
+  ✓ uses an existing application without reinstalling (1 ms)
+  ✓ does not create a bare fallback or grant after ordinary packaged install failure (1 ms)
+  ✓ does not create a bare fallback or grant after unknown packaged install failure
+  ✓ does not create a bare fallback or grant after missing-result packaged install failure (4 ms)
+  ✓ scopes each preinstalled policy action despite a foreign ambient request (1 ms)
+  ✓ backfill uses named identities for the actual iterator workspaces (1 ms)
+  ✓ CLI dryRun=true retains its effect boundary and named source (1 ms)
+  ✓ CLI dryRun=false retains its effect boundary and named source (1 ms)
+  ✓ automatic upgrade uses the actual worker identity and restores the parent (1 ms)
+  ✓ real install catch does not compensate native unknown outcome (1 ms)
+  ✓ real install catch does not compensate omni unknown outcome (1 ms)
+  ✓ ordinary install failures retain their original compensation behavior
+  ✓ native unknown install outcome survives telemetry (1 ms)
+  ✓ omni unknown install outcome survives telemetry (1 ms)
+  ✓ native outcome survives package cleanup failure=false (1 ms)
+  ✓ native outcome survives package cleanup failure=true (1 ms)
+  ✓ omni outcome survives package cleanup failure=false
+  ✓ omni outcome survives package cleanup failure=true
+  ✓ upgrade propagates the exact native unknown outcome
+  ✓ upgrade propagates the exact omni unknown outcome (1 ms)
+  ✓ manifest account-delete COMMIT ACK loss crosses install without compensation or a second migration (177 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       40 passed, 40 total
+Snapshots:   0 total
+Time:        7.176 s
+Ran all test suites matching /crm-audit-application-sources/i.

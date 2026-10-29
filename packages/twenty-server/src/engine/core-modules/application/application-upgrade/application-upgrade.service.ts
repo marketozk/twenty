@@ -1,3 +1,4 @@
+import { isApplicationTransactionOutcomeUnknown } from 'src/engine/core-modules/application/utils/is-application-transaction-outcome-unknown';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -342,6 +343,7 @@ export class ApplicationUpgradeService {
         updateProgress: params.updateProgress,
       });
     } catch (error) {
+      if (isApplicationTransactionOutcomeUnknown(error)) throw error;
       const appName =
         appRegistration.sourcePackage ?? appRegistration.universalIdentifier;
 

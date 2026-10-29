@@ -3748,3 +3748,13 @@ ROB765 In Progress. [Далее](implementation/log124/next-boundary.md) — OAu
 LOG124 publication: 0f98ea40e813087cf543a01189871408e8ba0e53 pushed/API verified.
 ROB765 description/comment be639913-2aab-4681-a57d-b96a2ae57bdf independently read back;
 all 11 issue states match. Implementation continues with application source wrappers.
+
+## LOG-125 — OAuth/system attribution и propagation unknown outcomes
+
+LOG125 фиксирует OAuth user/impersonator в одноразовом коде и проверяет membership до auto-install; packaged install больше не маскируется bare fallback. Preinstalled/backfill/CLI/automatic upgrade имеют явный system source. Оба unknown transaction outcome типа проходят через install/upgrade без compensation и telemetry replacement.
+
+1601 tests/50 suites PASS (239.667s); 40 новых targeted cases PASS (7.176s), включая real PostgreSQL COMMIT ACK loss. 26 guards PASS; 10 migration checksums неизменны. Types 374/377 roots, 220/220 прежних диагностик, 0 новых/changed-code; 4 AST-identical imports и 1 unchanged method diagnostic. 12 local/remote source hashes совпадают.
+[Проверки](implementation/log125/results.json), [ревью](implementation/log125/review.md).
+Ревью нашло второй unknown error class на реальном account-delete path: исправлены оба. Real PG case проверяет manifest orchestration и committed DELETE через явный adapter. Исходные module type declarations отсутствуют и на baseline; AST-проверка подтверждает 4 unchanged imports и unchanged method. Full-server typecheck не чистый.
+
+ROB765 In Progress. Queue retryLimit=2 ещё повторяет unknown; [следующий шаг](implementation/log125/next-boundary.md) — остановка этого retry до подключения нового strict delete owner. Full HTTP/build/deploy и GitHub Actions не выполнялись.

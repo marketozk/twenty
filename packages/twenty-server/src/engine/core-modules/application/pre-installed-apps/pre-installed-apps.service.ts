@@ -1,3 +1,5 @@
+import { withCrmAuditIdentity } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
+import { systemMembershipCleanupIdentity } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -54,10 +56,18 @@ export class PreInstalledAppsService {
     await Promise.allSettled(
       registrations.map(async (registration) => {
         try {
-          await this.applicationInstallService.installApplication({
-            appRegistrationId: registration.id,
+          await withCrmAuditIdentity(
             workspaceId,
-          });
+            systemMembershipCleanupIdentity(
+              workspaceId,
+              'PreInstalledAppsService.installOnWorkspace',
+            ),
+            () =>
+              this.applicationInstallService.installApplication({
+                appRegistrationId: registration.id,
+                workspaceId,
+              }),
+          );
         } catch (error) {
           this.logger.error(
             `Failed to install pre-installed app "${registration.name}" (${registration.id}) on workspace ${workspaceId}: ${
@@ -86,10 +96,18 @@ export class PreInstalledAppsService {
     const report = await this.workspaceIteratorService.iterate({
       callback: async ({ workspaceId }) => {
         try {
-          await this.applicationInstallService.installApplication({
-            appRegistrationId: registration.id,
+          await withCrmAuditIdentity(
             workspaceId,
-          });
+            systemMembershipCleanupIdentity(
+              workspaceId,
+              'PreInstalledAppsService.backfill',
+            ),
+            () =>
+              this.applicationInstallService.installApplication({
+                appRegistrationId: registration.id,
+                workspaceId,
+              }),
+          );
         } catch (error) {
           if (
             error instanceof ApplicationException &&
