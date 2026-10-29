@@ -3608,3 +3608,7 @@ ROB765 In Progress. No full HTTP/native-share acceptance или выкат; Acti
 deletedAt. Далее [active-user fence и locale-save](implementation/log118/next-boundary.md).
 Source review также нашёл coreUser full saves в email verification/server-admin;
 они остаются открытой границей восстановления отключённой записи.
+
+LOG118 publication: 767fcd82dd2fbca632c804ac8467e21531ef5ac2 pushed/API verified.
+ROB765 description/comment 895cb43c-04d1-4b47-9578-e258230f5de1 independently read back;
+all 11 issue states match. Next: membership creation and locale resurrection fence.
