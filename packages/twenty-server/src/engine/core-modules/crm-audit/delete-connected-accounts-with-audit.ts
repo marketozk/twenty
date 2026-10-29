@@ -30,7 +30,7 @@ type Row = Record<string, unknown> & { id: string; workspaceId: string };
 const quote = (name: string) => '"' + name.replaceAll('"', '""') + '"';
 
 export type DeletedConnectedAccountGraph = {
-  accounts: { id: string; userWorkspaceId: string | null }[];
+  accounts: { id: string; userWorkspaceId: string }[];
   messageChannelIds: string[];
   calendarChannelIds: string[];
   messageFolderIds: string[];
@@ -142,6 +142,16 @@ export const deleteConnectedAccountsWithAudit = async ({
         throw new Error('Connected account deletion graph workspace mismatch');
       before.set(table, rows);
     }
+    if (
+      before
+        .get('connectedAccount')!
+        .some(
+          (row) =>
+            typeof row.userWorkspaceId !== 'string' ||
+            !isUUID(row.userWorkspaceId),
+        )
+    )
+      throw new Error('Connected account deletion requires valid custodians');
     const assertOrdinary = async () => {
       if (
         (await findOmniOwnedConnectedAccountIds(scope, workspaceId, ids))
@@ -227,6 +237,11 @@ export const deleteConnectedAccountsWithAudit = async ({
     )
       throw new Error('Connected account deletion returned unexpected records');
     const deleted = new Map<Table, Row[]>();
+    if (
+      capturedBoundary.kind !== 'administration' &&
+      returned.length !== before.get('connectedAccount')!.length
+    )
+      throw new Error('Connected account deletion requires complete effects');
     const deletedAccountIds = new Set(returned.map((row) => row.id));
     for (const table of TABLES) {
       const rows = before.get(table)!;
@@ -305,7 +320,7 @@ export const deleteConnectedAccountsWithAudit = async ({
     return {
       accounts: deleted.get('connectedAccount')!.map((row) => ({
         id: row.id,
-        userWorkspaceId: row.userWorkspaceId as string | null,
+        userWorkspaceId: row.userWorkspaceId as string,
       })),
       messageChannelIds: deleted.get('messageChannel')!.map((row) => row.id),
       calendarChannelIds: deleted.get('calendarChannel')!.map((row) => row.id),

@@ -410,6 +410,47 @@ const { WorkspaceMemberDeleteOnePostQueryHook } =
 const { ConnectedAccountResolver } =
   require('src/engine/metadata-modules/connected-account/resolvers/connected-account.resolver') as typeof import('src/engine/metadata-modules/connected-account/resolvers/connected-account.resolver');
 
+it('account delete resolver captures caller fields before asynchronous authorization', async () => {
+  const id = randomUUID(),
+    workspaceId = randomUUID(),
+    applicationId = randomUUID(),
+    memberId = randomUUID();
+  const workspace = { id: workspaceId },
+    application = { id: applicationId };
+  let release!: () => void;
+  const pause = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const verify = jest.fn(async () => {
+    await pause;
+  });
+  const remove = jest
+    .fn()
+    .mockResolvedValue({ id, scope: 'USER', connectionParameters: null });
+  const resolver = new ConnectedAccountResolver({
+    verifyAdministrableByCaller: verify,
+    delete: remove,
+  } as never);
+  const result = resolver.deleteConnectedAccount(
+    id,
+    workspace as never,
+    memberId,
+    application as never,
+  );
+  workspace.id = randomUUID();
+  application.id = randomUUID();
+  release();
+  expect(await result).toMatchObject({ id });
+  expect(remove).toHaveBeenCalledWith({
+    id,
+    workspaceId,
+    caller: { userWorkspaceId: memberId, applicationId },
+  });
+  expect(verify.mock.invocationCallOrder[0]).toBeLessThan(
+    remove.mock.invocationCallOrder[0],
+  );
+});
+
 it('account disconnect resolver captures server identity and caller before the first await', async () => {
   const workspaceId = randomUUID(),
     userId = randomUUID(),

@@ -1,10 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
+import { isUUID } from 'class-validator';
+import { consumeAccountScopeRepairExecution } from 'src/engine/core-modules/crm-audit/account-scope-repair-execution';
+import { captureCurrentCrmAuditIdentity } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
+import {
+  captureAccountDeletionBoundary,
+  type ConnectedAccountDeletionBoundary,
+} from 'src/engine/core-modules/crm-audit/connected-account-deletion-boundary';
+import {
+  deleteConnectedAccountsWithAudit,
+  type DeletedConnectedAccountGraph,
+} from 'src/engine/core-modules/crm-audit/delete-connected-accounts-with-audit';
 import {
   transferConnectedAccountsWithAudit,
   disconnectConnectedAccountWithAudit,
 } from 'src/engine/core-modules/crm-audit/transfer-connected-accounts-with-audit';
 import {
   captureMembershipCleanupIdentity,
+  copyMembershipCleanupIdentity,
   membershipCleanupOperation,
   type MembershipCleanupAuthentication,
 } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
@@ -48,7 +61,10 @@ import { PermissionsService } from 'src/engine/metadata-modules/permissions/perm
 import { WorkspaceEventEmitter } from 'src/engine/workspace-event-emitter/workspace-event-emitter';
 import { CalendarWebhookSubscriptionService } from 'src/modules/connected-account/webhook-subscription-manager/services/calendar-webhook-subscription.service';
 import { MessagingWebhookSubscriptionService } from 'src/modules/connected-account/webhook-subscription-manager/services/messaging-webhook-subscription.service';
-import { findOmniOwnedConnectedAccountIds } from 'src/modules/omnichannel/services/find-omni-owned-metadata-ids';
+import {
+  findOmniOwnedConnectedAccountIds,
+  findOmniOwnedMessageFolderIds,
+} from 'src/modules/omnichannel/services/find-omni-owned-metadata-ids';
 
 import {
   withOmniMetadataMutation,
@@ -744,10 +760,20 @@ export class ConnectedAccountMetadataService {
   async deleteManyByConnectionProviderIds({
     connectionProviderIds,
     workspaceId,
+    applicationId,
   }: {
     connectionProviderIds: string[];
     workspaceId: string;
+    applicationId: string;
   }): Promise<void> {
+    const boundary = captureAccountDeletionBoundary({
+      kind: 'manifest',
+      applicationId,
+      connectionProviderIds,
+    });
+    connectionProviderIds = [...connectionProviderIds];
+    const auditOperation =
+      await this.captureDeletionAuditOperation(workspaceId);
     const connectedAccounts = await this.repository.find({
       where: { connectionProviderId: In(connectionProviderIds), workspaceId },
       select: { id: true },
@@ -756,21 +782,52 @@ export class ConnectedAccountMetadataService {
     await this.deleteMany({
       ids: connectedAccounts.map(({ id }) => id),
       workspaceId,
+      boundary,
+      auditOperation,
     });
   }
 
   async delete({
     id,
     workspaceId,
+    caller,
+    emailGroup,
+    auditOperation,
   }: {
     id: string;
     workspaceId: string;
+    caller: { userWorkspaceId: string; applicationId?: string };
+    emailGroup?: { channelId: string; expectedHandle: string };
+    auditOperation?: CrmAuditOperation;
   }): Promise<ConnectedAccountEntity> {
+    const boundary = this.captureAdministrativeDeletionBoundary(
+      workspaceId,
+      caller,
+      emailGroup ? { ...emailGroup, accountId: id } : undefined,
+    );
+    const operation = auditOperation
+      ? {
+          ...auditOperation,
+          actor: { ...auditOperation.actor },
+          ...(auditOperation.initiator
+            ? { initiator: { ...auditOperation.initiator } }
+            : {}),
+        }
+      : await this.captureDeletionAuditOperation(workspaceId);
     const connectedAccount = await this.repository.findOneOrFail({
       where: { id, workspaceId },
     });
 
-    await this.deleteMany({ ids: [id], workspaceId });
+    const deleted = await this.deleteMany({
+      ids: [id],
+      workspaceId,
+      boundary,
+      auditOperation: operation,
+    });
+    if (!deleted.accounts.some((account) => account.id === id.toLowerCase()))
+      throw new Error(
+        'Connected account deletion did not delete the requested account',
+      );
 
     return connectedAccount;
   }
@@ -778,20 +835,144 @@ export class ConnectedAccountMetadataService {
   async deleteMany({
     ids,
     workspaceId,
+    boundary,
+    auditOperation,
+    caller,
   }: {
     ids: string[];
     workspaceId: string;
-  }): Promise<void> {
+    boundary?: ConnectedAccountDeletionBoundary;
+    auditOperation?: CrmAuditOperation;
+    caller?: { userWorkspaceId: string; applicationId?: string };
+  }): Promise<DeletedConnectedAccountGraph> {
+    if (this.repository.manager.queryRunner?.isTransactionActive)
+      throw new Error('OMNI_METADATA_REQUIRES_FRESH_TRANSACTION');
+    if (!isUUID(workspaceId) || ids.some((id) => !isUUID(id)))
+      throw new Error('Invalid connected account deletion scope');
+    ids = [...new Set(ids.map((id) => id.toLowerCase()))];
+    workspaceId = workspaceId.toLowerCase();
+    let capturedBoundary = boundary
+      ? captureAccountDeletionBoundary(boundary)
+      : caller
+        ? this.captureAdministrativeDeletionBoundary(workspaceId, caller)
+        : undefined;
+    const repair =
+      !capturedBoundary && consumeAccountScopeRepairExecution(workspaceId);
+    if (!capturedBoundary && !repair)
+      throw new Error('Connected account deletion boundary unavailable');
+    const operation = auditOperation
+      ? {
+          ...auditOperation,
+          actor: { ...auditOperation.actor },
+          ...(auditOperation.initiator
+            ? { initiator: { ...auditOperation.initiator } }
+            : {}),
+        }
+      : await this.captureDeletionAuditOperation(workspaceId);
+    if (operation.workspaceId !== workspaceId || !isUUID(operation.operationId))
+      throw new Error(
+        'Connected account deletion requires scoped audit operation',
+      );
+    copyMembershipCleanupIdentity(
+      {
+        workspaceId,
+        actor: operation.actor,
+        initiator: operation.initiator,
+        correlationId: operation.operationId,
+      },
+      workspaceId,
+    );
+    const empty: DeletedConnectedAccountGraph = {
+      accounts: [],
+      messageChannelIds: [],
+      calendarChannelIds: [],
+      messageFolderIds: [],
+    };
     if (ids.length === 0) {
-      return;
+      return empty;
     }
 
     const connectedAccounts = await this.repository.find({
       where: { id: In(ids), workspaceId },
     });
 
+    if (
+      (repair || capturedBoundary?.kind !== 'administration') &&
+      connectedAccounts.length !== ids.length
+    )
+      throw new Error('Connected account deletion selection changed');
     if (connectedAccounts.length === 0) {
-      return;
+      return empty;
+    }
+
+    if (repair) {
+      const providerIdsByAccount: Record<string, string> = {};
+      for (const account of connectedAccounts) {
+        if (!account.connectionProviderId)
+          throw new Error('Account scope repair requires provider');
+        providerIdsByAccount[account.id] = account.connectionProviderId;
+      }
+      capturedBoundary = captureAccountDeletionBoundary({
+        kind: 'providerScopeRepair',
+        providerIdsByAccount,
+      });
+    }
+    if (!capturedBoundary)
+      throw new Error('Connected account deletion boundary unavailable');
+    if (
+      capturedBoundary.kind === 'administration' ||
+      capturedBoundary.kind === 'emailGroup'
+    ) {
+      const [member] = await this.repository.manager.query(
+        'SELECT id FROM core."userWorkspace" WHERE id=$1 AND "workspaceId"=$2 AND "deletedAt" IS NULL',
+        [capturedBoundary.userWorkspaceId, workspaceId],
+      );
+      if (!member)
+        throw new Error('Connected account deletion prerequisites changed');
+      for (const account of connectedAccounts)
+        if (
+          !(await capturedBoundary.authorize(
+            Object.freeze({
+              id: account.id,
+              userWorkspaceId: account.userWorkspaceId,
+              scope: account.scope,
+              provider: account.provider,
+            }),
+          ))
+        )
+          throw new Error('Connected account deletion permission denied');
+    } else {
+      const providerIds =
+        capturedBoundary.kind === 'manifest'
+          ? [...capturedBoundary.connectionProviderIds]
+          : [...new Set(Object.values(capturedBoundary.providerIdsByAccount))];
+      const providers: {
+        id: string;
+        workspaceId: string;
+        applicationId: string;
+        scope: string;
+      }[] = await this.repository.manager.query(
+        'SELECT id,"workspaceId","applicationId",scope FROM core."connectionProvider" WHERE id=ANY($1::uuid[])',
+        [providerIds],
+      );
+      for (const account of connectedAccounts) {
+        const provider = providers.find(
+          (item) => item.id === account.connectionProviderId,
+        );
+        if (
+          !provider ||
+          provider.workspaceId !== workspaceId ||
+          (capturedBoundary.kind === 'manifest' &&
+            provider.applicationId !== capturedBoundary.applicationId) ||
+          (capturedBoundary.kind === 'providerScopeRepair' &&
+            (provider.id !==
+              capturedBoundary.providerIdsByAccount[account.id] ||
+              provider.scope === account.scope))
+        )
+          throw new Error(
+            'Connected account deletion provider selection changed',
+          );
+      }
     }
 
     const connectedAccountIds = connectedAccounts.map(({ id }) => id);
@@ -800,14 +981,63 @@ export class ConnectedAccountMetadataService {
 
     const [messageChannels, calendarChannels] = await Promise.all([
       this.messageChannelRepository.find({
-        where: { connectedAccountId: In(connectedAccountIds), workspaceId },
-        select: { id: true, connectedAccountId: true },
+        where: { connectedAccountId: In(connectedAccountIds) },
+        select: {
+          id: true,
+          connectedAccountId: true,
+          workspaceId: true,
+          type: true,
+        },
       }),
       this.calendarChannelRepository.find({
-        where: { connectedAccountId: In(connectedAccountIds), workspaceId },
-        select: { id: true, connectedAccountId: true },
+        where: { connectedAccountId: In(connectedAccountIds) },
+        select: { id: true, connectedAccountId: true, workspaceId: true },
       }),
     ]);
+
+    if (
+      [...messageChannels, ...calendarChannels].some(
+        (channel) => channel.workspaceId !== workspaceId,
+      )
+    )
+      throw new Error('Connected account deletion graph workspace mismatch');
+    if (capturedBoundary.kind === 'emailGroup') {
+      const emailGroup = capturedBoundary;
+      const channel = messageChannels.find(
+        (item) => item.id === emailGroup.channelId,
+      );
+      if (
+        connectedAccounts.length !== 1 ||
+        connectedAccounts[0].id !== emailGroup.accountId ||
+        connectedAccounts[0].handle !== emailGroup.expectedHandle ||
+        channel?.connectedAccountId !== emailGroup.accountId ||
+        channel.type !== 'EMAIL_GROUP'
+      )
+        throw new Error('Email group deletion target changed');
+    }
+
+    const folders: { id: string; workspaceId: string }[] =
+      await this.repository.manager.query(
+        'SELECT folder.id, folder."workspaceId" FROM core."messageFolder" folder JOIN core."messageChannel" channel ON channel.id=folder."messageChannelId" WHERE channel."connectedAccountId"=ANY($1::uuid[])',
+        [connectedAccountIds],
+      );
+    if (folders.some((folder) => folder.workspaceId !== workspaceId))
+      throw new Error('Connected account deletion graph workspace mismatch');
+    if (
+      (
+        await findOmniOwnedMessageFolderIds(
+          {
+            executeRawQuery: (sql, parameters) =>
+              this.repository.manager.query(sql, parameters),
+          },
+          workspaceId,
+          folders.map(({ id }) => id),
+        )
+      ).size
+    )
+      throw new Error(
+        'Connected account deletion excludes retained omni resources',
+      );
 
     this.logger.log(
       `WorkspaceId: ${workspaceId} Deleting ${connectedAccounts.length} connected account(s) with ${messageChannels.length} message channel(s) and ${calendarChannels.length} calendar channel(s)`,
@@ -843,74 +1073,96 @@ export class ConnectedAccountMetadataService {
       }
     }
 
-    const deleted = await withOmniMetadataMutation(
-      this.repository.manager,
+    const deleted = await deleteConnectedAccountsWithAudit({
+      dataSource: this.repository.manager.connection,
       workspaceId,
-      async (manager) => {
-        await lockOmniMetadataAccounts(
-          manager,
-          workspaceId,
-          connectedAccountIds,
-          'write',
+      accountIds: connectedAccountIds,
+      operation,
+      boundary: capturedBoundary,
+    });
+
+    try {
+      this.workspaceEventEmitter.emitCustomBatchEvent<MessageChannelDeletedEvent>(
+        MESSAGE_CHANNEL_DELETED_EVENT,
+        deleted.messageChannelIds.map((messageChannelId) => ({
+          messageChannelId,
+        })),
+        workspaceId,
+      );
+
+      this.workspaceEventEmitter.emitCustomBatchEvent<CalendarChannelDeletedEvent>(
+        CALENDAR_CHANNEL_DELETED_EVENT,
+        deleted.calendarChannelIds.map((calendarChannelId) => ({
+          calendarChannelId,
+        })),
+        workspaceId,
+      );
+
+      this.workspaceEventEmitter.emitCustomBatchEvent<ConnectedAccountDeletedEvent>(
+        CONNECTED_ACCOUNT_DELETED_EVENT,
+        deleted.accounts.map(({ id, userWorkspaceId }) => ({
+          connectedAccountId: id,
+          userWorkspaceId,
+        })),
+        workspaceId,
+      );
+    } catch (error) {
+      throw new CoreAuditPostCommitError(error);
+    }
+    return deleted;
+  }
+
+  private async captureDeletionAuditOperation(
+    workspaceId: string,
+  ): Promise<CrmAuditOperation> {
+    if (this.repository.manager.queryRunner?.isTransactionActive)
+      throw new Error('OMNI_METADATA_REQUIRES_FRESH_TRANSACTION');
+    const identity = await captureCurrentCrmAuditIdentity(
+      workspaceId,
+      async (membershipId) => {
+        const [member] = await this.repository.manager.query(
+          'SELECT "userId" FROM core."userWorkspace" WHERE id=$1',
+          [membershipId],
         );
-        await this.assertOrdinaryAccounts(
-          workspaceId,
-          connectedAccountIds,
-          manager,
-        );
-        // FK checks lock the new parent on reparent, not the old one. Keep the
-        // actual child rows stable until cascade DELETE and event snapshot commit.
-        const deletedMessageChannels: Pick<MessageChannelEntity, 'id'>[] =
-          await manager.query(
-            'SELECT id FROM core."messageChannel" WHERE "workspaceId"=$1 AND "connectedAccountId"=ANY($2::uuid[]) ORDER BY id FOR UPDATE',
-            [workspaceId, connectedAccountIds],
-          );
-        const deletedCalendarChannels: Pick<CalendarChannelEntity, 'id'>[] =
-          await manager.query(
-            'SELECT id FROM core."calendarChannel" WHERE "workspaceId"=$1 AND "connectedAccountId"=ANY($2::uuid[]) ORDER BY id FOR UPDATE',
-            [workspaceId, connectedAccountIds],
-          );
-        const deletedAccounts = await manager
-          .getRepository(ConnectedAccountEntity)
-          .find({
-            where: { id: In(connectedAccountIds), workspaceId },
-            select: { id: true, userWorkspaceId: true },
-          });
-        await manager
-          .getRepository(ConnectedAccountEntity)
-          .delete({ id: In(connectedAccountIds), workspaceId });
-        return {
-          messageChannels: deletedMessageChannels,
-          calendarChannels: deletedCalendarChannels,
-          accounts: deletedAccounts,
-        };
+        return member?.userId;
       },
     );
+    const operation = membershipCleanupOperation(workspaceId, identity);
+    if (!operation)
+      throw new Error('Connected account deletion requires audit identity');
+    return operation;
+  }
 
-    this.workspaceEventEmitter.emitCustomBatchEvent<MessageChannelDeletedEvent>(
-      MESSAGE_CHANNEL_DELETED_EVENT,
-      deleted.messageChannels.map((messageChannel) => ({
-        messageChannelId: messageChannel.id,
-      })),
-      workspaceId,
-    );
-
-    this.workspaceEventEmitter.emitCustomBatchEvent<CalendarChannelDeletedEvent>(
-      CALENDAR_CHANNEL_DELETED_EVENT,
-      deleted.calendarChannels.map((calendarChannel) => ({
-        calendarChannelId: calendarChannel.id,
-      })),
-      workspaceId,
-    );
-
-    this.workspaceEventEmitter.emitCustomBatchEvent<ConnectedAccountDeletedEvent>(
-      CONNECTED_ACCOUNT_DELETED_EVENT,
-      deleted.accounts.map(({ id, userWorkspaceId }) => ({
-        connectedAccountId: id,
-        userWorkspaceId,
-      })),
-      workspaceId,
-    );
+  private captureAdministrativeDeletionBoundary(
+    workspaceId: string,
+    caller: { userWorkspaceId: string; applicationId?: string },
+    emailGroup?: {
+      channelId: string;
+      accountId: string;
+      expectedHandle: string;
+    },
+  ): ConnectedAccountDeletionBoundary {
+    const capturedCaller = {
+      userWorkspaceId: caller.userWorkspaceId,
+      applicationId: caller.applicationId,
+    };
+    return captureAccountDeletionBoundary({
+      ...capturedCaller,
+      ...(emailGroup
+        ? { kind: 'emailGroup' as const, ...emailGroup }
+        : { kind: 'administration' as const }),
+      authorize: async (account) => {
+        const provider = Object.values(ConnectedAccountProvider).find(
+          (value) => value === account.provider,
+        );
+        if (!provider) return false;
+        return this.isAdministrableByCaller({
+          connectedAccount: { ...account, provider },
+          workspaceId,
+          ...capturedCaller,
+        });
+      },
+    });
   }
 
   private async assertOrdinaryAccounts(

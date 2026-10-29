@@ -1,0 +1,20 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/application/application-manifest/application-manifest-migration.service.ts 229ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/connected-account-deletion-boundary.ts 88ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/delete-connected-accounts-with-audit.ts 81ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/upgrade/services/workspace-command-runner.service.ts 14ms (unchanged)
+../../../source/packages/twenty-server/src/engine/metadata-modules/connected-account/connected-account-metadata.service.ts 179ms
+../../../source/packages/twenty-server/src/engine/metadata-modules/connected-account/resolvers/connected-account.resolver.ts 21ms (unchanged)
+../../../source/packages/twenty-server/src/engine/metadata-modules/message-channel/message-channel-metadata.service.ts 74ms (unchanged)
+../../../source/packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/action-handlers/connection-provider/services/delete-connection-provider-action-handler.service.ts 6ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-account-scope-execution.spec.ts 66ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-application-sources.spec.ts 114ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-connected-account-delete.postgres-spec.ts 196ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-entrypoints.spec.ts 79ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/omni-metadata-mutation-guard.spec.ts 113ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/omni-metadata-transaction.postgres-spec.ts 284ms
+../../../source/packages/twenty-server/test/integration/upgrade/suites/2-51-workspace-command-1792675225627-delete-connected-accounts-outside-provider-scope.integration-spec.ts 58ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-email-group-deletion.spec.ts 11ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-provider-deletion.postgres-spec.ts 21ms (unchanged)
+
+{"formattedFiles": 17, "singleSshSession": true}

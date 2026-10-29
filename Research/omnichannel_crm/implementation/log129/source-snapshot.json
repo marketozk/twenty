@@ -1,0 +1,23 @@
+{
+  "baseCommit": "acf13a74e85eefec776e50df07550c28fb1bf428",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/application/application-manifest/application-manifest-migration.service.ts": "abc3a1d07845d4bc982af1f8c81ba8b6a8732b09cebabd0c5b4252765ea0f028",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/connected-account-deletion-boundary.ts": "00be3bf758a1350895277550ee342367c2902c53418b2c40fe03b9d176ad6e43",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-connected-accounts-with-audit.ts": "2862d38910496bacbd60812c2a19760f3b70d05630e528d650633f45fb6347a9",
+    "packages/twenty-server/src/engine/core-modules/upgrade/services/workspace-command-runner.service.ts": "f83473e9dd2311c385b35825110cb97620de0cd656d17623ac6820713401cc33",
+    "packages/twenty-server/src/engine/metadata-modules/connected-account/connected-account-metadata.service.ts": "81c3b42bb2b4d8c59bbce3f60bac770f08856e5661114bf2d027305ac11f70f3",
+    "packages/twenty-server/src/engine/metadata-modules/connected-account/resolvers/connected-account.resolver.ts": "f7f6248bba701e18695cb9ea13251f03121a163ef2d735011193774f976e3429",
+    "packages/twenty-server/src/engine/metadata-modules/message-channel/message-channel-metadata.service.ts": "d8e01a7d66140d26c215a3774722143ca9072cc4f97e4666335b42f83fbabb75",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/action-handlers/connection-provider/services/delete-connection-provider-action-handler.service.ts": "f3dc52208dc84cc6c3074f1a5c23b32c13f19c33ef10ef967837b855f60836d3",
+    "packages/twenty-server/test/fork-migration/crm-audit-account-scope-execution.spec.ts": "e9fcb14c9c1f011872d892be350973e615e742e28edff27b6006c77dc224c8f7",
+    "packages/twenty-server/test/fork-migration/crm-audit-application-sources.spec.ts": "c3ecfb60e03c2527f0c35ce72e20e766708550e643c07e2e090e4f93d43c431c",
+    "packages/twenty-server/test/fork-migration/crm-audit-connected-account-delete.postgres-spec.ts": "b155e16a03b802fada25d69f9c9d74a14937ab1803dd8bd8cbf068ddf86dee4b",
+    "packages/twenty-server/test/fork-migration/crm-audit-membership-entrypoints.spec.ts": "294bc5203b2ff3d27d86cf0acdd149f36a72642bdb3b92333e6622ee7dcfe599",
+    "packages/twenty-server/test/fork-migration/omni-metadata-mutation-guard.spec.ts": "3593d6e16c92c53ccb59bab0b381e4b1dfd902ff391ceeb35a9d6e4a0e14680c",
+    "packages/twenty-server/test/fork-migration/omni-metadata-transaction.postgres-spec.ts": "a6ca5276340564ff0cc8ff74727870337447ef14d87ee09a58ddefd4fc1d999e",
+    "packages/twenty-server/test/integration/upgrade/suites/2-51-workspace-command-1792675225627-delete-connected-accounts-outside-provider-scope.integration-spec.ts": "884cfcfff4d191cfdc59b237a508324922bed69928ca2f4457d33120f18c10f8",
+    "packages/twenty-server/test/fork-migration/crm-audit-email-group-deletion.spec.ts": "89b47b9c5d78eeeeaf597f705413ada456531b619c03fd3c2b8a25d5a931537c",
+    "packages/twenty-server/test/fork-migration/crm-audit-provider-deletion.postgres-spec.ts": "48168735728fc608dff8aa1203616f0fd1d97b1e5761e3d79074005e944786ce"
+  },
+  "uploadedSourceHashesVerified": true
+}

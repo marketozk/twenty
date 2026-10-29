@@ -89,3 +89,5 @@ ROB-765 уточнён по существующему audit writer и оста�
 Описание и единственный комментарий прочитаны обратно; статусы 11 задач сохранены.
 292 теста и focused strict typecheck прошли. GitHub API подтвердил публикацию;
 Actions не запускались и не ожидались. [Метаданные](implementation/log027/publication.json).
+
+Текущий implementation slice — [LOG129](implementation/log129/README.md): account deletion callers подключены, 1729 regression tests PASS. ROB765 In Progress; ROB762/763/764/772 Done, ROB766–771 Backlog. После commit/push описание и отчёт синхронизируются с ROB765 и проверяются обратным чтением; publication evidence сохраняется в LOG129.

@@ -13,7 +13,12 @@ type AdministrativeBoundary = {
   authorize: (account: AccountDeletionPermissionRecord) => Promise<boolean>;
 } & (
   | { kind: 'administration' }
-  | { kind: 'emailGroup'; channelId: string; accountId: string }
+  | {
+      kind: 'emailGroup';
+      channelId: string;
+      accountId: string;
+      expectedHandle: string;
+    }
 );
 export type ConnectedAccountDeletionBoundary =
   | AdministrativeBoundary
@@ -42,6 +47,11 @@ export const captureAccountDeletionBoundary = (
     case 'emailGroup': {
       if (typeof boundary.authorize !== 'function')
         throw new Error('Connected account deletion requires authorization');
+      if (
+        boundary.kind === 'emailGroup' &&
+        typeof boundary.expectedHandle !== 'string'
+      )
+        throw new Error('Email group deletion requires a captured handle');
       return Object.freeze({
         kind: boundary.kind,
         userWorkspaceId: normalizedId(boundary.userWorkspaceId),
@@ -53,6 +63,7 @@ export const captureAccountDeletionBoundary = (
           ? {
               channelId: normalizedId(boundary.channelId),
               accountId: normalizedId(boundary.accountId),
+              expectedHandle: boundary.expectedHandle,
             }
           : {}),
       }) as AdministrativeBoundary;
@@ -137,6 +148,7 @@ export const prepareAccountDeletionBoundary = async (
         if (
           accounts.length !== 1 ||
           accounts[0].id !== boundary.accountId ||
+          accounts[0].handle !== boundary.expectedHandle ||
           !channel ||
           channel.connectedAccountId !== boundary.accountId ||
           channel.type !== 'EMAIL_GROUP'

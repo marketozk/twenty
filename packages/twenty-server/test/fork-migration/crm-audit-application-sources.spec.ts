@@ -1141,6 +1141,11 @@ it('manifest account-delete COMMIT ACK loss crosses install without compensation
       workspaceMigration: { actions: [] },
       hasSchemaMetadataChanged: true,
     });
+    const ownerApplicationId = randomUUID();
+    const ownerFlatApplication = {
+      id: ownerApplicationId,
+      universalIdentifier: f.f.registration.universalIdentifier,
+    };
     const deletion = jest.fn(async () => {
       try {
         await withOmniNativeOwnershipTransaction(
@@ -1160,7 +1165,12 @@ it('manifest account-delete COMMIT ACK loss crosses install without compensation
     });
     const migration = instance(ApplicationManifestMigrationService, {
       logger: { perf: () => {}, log: () => {} },
-      workspaceCacheService: { getOrRecompute: async () => ({}) },
+      workspaceCacheService: {
+        getOrRecompute: async () => {
+          ownerFlatApplication.id = randomUUID();
+          return {};
+        },
+      },
       computeManifestFlatEntityMapsService: { compute: () => ({}) },
       validateBuildAndRunOrThrow: validate,
       connectedAccountMetadataService: {
@@ -1187,10 +1197,7 @@ it('manifest account-delete COMMIT ACK loss crosses install without compensation
               workflows: [],
             },
             workspaceId: f.f.workspaceId,
-            ownerFlatApplication: {
-              id: application.id,
-              universalIdentifier: f.f.registration.universalIdentifier,
-            },
+            ownerFlatApplication,
           }),
       },
     });
@@ -1207,6 +1214,7 @@ it('manifest account-delete COMMIT ACK loss crosses install without compensation
     expect(deletion).toHaveBeenCalledWith({
       connectionProviderIds: [providerId],
       workspaceId: f.f.workspaceId,
+      applicationId: ownerApplicationId,
     });
     db.createQueryRunner = realCreate;
     expect(await db.query('SELECT * FROM public."' + table + '"')).toEqual([]);

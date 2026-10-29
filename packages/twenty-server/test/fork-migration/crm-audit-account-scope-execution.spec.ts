@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
+import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
 import {
   withAccountScopeRepairExecution,
   consumeAccountScopeRepairExecution,
@@ -43,6 +46,80 @@ const actor = async (workspace: string = workspaceId) =>
   captureCurrentCrmAuditIdentity(workspace, async () => undefined);
 
 describe('scoped historical account repair execution', () => {
+  it.each([
+    {
+      name: 'native outcome unknown',
+      error: new NativeTransactionOutcomeUnknownError(
+        'commit',
+        new Error('commit acknowledgement lost'),
+      ),
+    },
+    {
+      name: 'core outcome unknown',
+      error: new OmniCoreTransactionOutcomeUnknownError(
+        new Error('core commit acknowledgement lost'),
+      ),
+    },
+    {
+      name: 'confirmed postcommit failure',
+      error: new CoreAuditPostCommitError(new Error('postcommit hook failed')),
+    },
+  ])(
+    'preserves the original $name when migration failure recording fails',
+    async ({ error }) => {
+      const work = jest.fn(async () => {
+        expect(consumeAccountScopeRepairExecution(workspaceId)).toBe(true);
+        throw error;
+      });
+      class FailingCommand extends WorkspaceCommandRunner {
+        constructor() {
+          super({ listenToShutdownSignals: jest.fn(), iterate: jest.fn() }, []);
+        }
+        async runOnWorkspace() {
+          await work();
+        }
+      }
+      RegisteredWorkspaceCommand('2.51.0', 1792675225627)(FailingCommand);
+      const recordUpgradeMigration = jest
+        .fn()
+        .mockRejectedValue(new Error('migration recorder unavailable'));
+      const invalidate = jest.fn().mockResolvedValue(undefined);
+      type Dependencies = ConstructorParameters<
+        typeof WorkspaceCommandRunnerService
+      >;
+      const service = new WorkspaceCommandRunnerService(
+        { get: () => '2.52.0' } as unknown as Dependencies[0],
+        { recordUpgradeMigration } as unknown as Dependencies[1],
+        {
+          invalidateInstanceAndAllWorkspacesStatus: invalidate,
+        } as unknown as Dependencies[2],
+      );
+      await expect(
+        service.runWorkspaceCommands({
+          iteratorContext: { workspaceId, index: 0, total: 1 } as Parameters<
+            typeof service.runWorkspaceCommands
+          >[0]['iteratorContext'],
+          options: {} as Parameters<
+            typeof service.runWorkspaceCommands
+          >[0]['options'],
+          workspaceCommands: [
+            { name: 'test-repair', command: new FailingCommand() },
+          ],
+        }),
+      ).rejects.toBe(error);
+      expect(work).toHaveBeenCalledTimes(1);
+      expect(recordUpgradeMigration).toHaveBeenCalledTimes(1);
+      const recorded = recordUpgradeMigration.mock.calls[0][0];
+      expect(recorded).toMatchObject({
+        status: 'failed',
+        workspaceIds: [workspaceId],
+      });
+      expect(recorded.error).toBe(error);
+      expect(invalidate).toHaveBeenCalledTimes(1);
+      expect(consumeAccountScopeRepairExecution(workspaceId)).toBe(false);
+      expect(await actor()).toBeUndefined();
+    },
+  );
   it('uses exact registered metadata and emits named scoped attribution', async () => {
     await withAccountScopeRepairExecution(
       new RepairCommand(),

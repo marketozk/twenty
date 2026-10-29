@@ -190,6 +190,9 @@ const pause = (matches: (sql: string) => boolean) => {
 beforeAll(async () => {
   await fixture.initialize();
   await fixture.owner.query(
+    'ALTER TABLE core."connectedAccount" ADD handle text',
+  );
+  await fixture.owner.query(
     'CREATE TABLE core."userWorkspace" (id uuid PRIMARY KEY,"workspaceId" uuid REFERENCES core.workspace(id),"deletedAt" timestamptz)',
   );
   await fixture.owner.query(
@@ -281,7 +284,7 @@ describe('closed connected account deletion with atomic audit', () => {
       expect(await audits()).toHaveLength(0);
     },
   );
-  it.each(['valid', 'type-changed', 'reparented'])(
+  it.each(['valid', 'type-changed', 'reparented', 'handle-changed'])(
     'checks the pinned email group: %s',
     async (kind) => {
       await fixture.owner.query(
@@ -291,9 +294,18 @@ describe('closed connected account deletion with atomic audit', () => {
         kind: 'emailGroup',
         channelId: graph.channel,
         accountId: graph.account,
+        expectedHandle: 'group@example.test',
         userWorkspaceId: graph.member,
         authorize: async () => true,
       };
+      await fixture.owner.query(
+        'UPDATE core."connectedAccount" SET handle=$1',
+        [
+          kind === 'handle-changed'
+            ? 'other@example.test'
+            : 'group@example.test',
+        ],
+      );
       if (kind === 'type-changed')
         await fixture.owner.query(
           'UPDATE core."messageChannel" SET type=\'APP\'',
@@ -673,6 +685,63 @@ describe('closed connected account deletion with atomic audit', () => {
       );
       expect(await audits()).toHaveLength(kind === 'all' ? 0 : 4);
       if (kind === 'all') expect(await snapshots()).toEqual(before);
+    },
+  );
+  it.each(['manifest', 'providerScopeRepair', 'emailGroup'] as const)(
+    'rolls back skipped deletion for required complete %s effects',
+    async (kind) => {
+      const provider = await seedProvider();
+      await fixture.owner.query(
+        'UPDATE core."connectedAccount" SET handle=$1',
+        ['group@example.test'],
+      );
+      await fixture.owner.query(
+        'UPDATE core."messageChannel" SET type=\'EMAIL_GROUP\'',
+      );
+      const other = kind === 'emailGroup' ? undefined : await seed();
+      if (other)
+        await fixture.owner.query(
+          'UPDATE core."connectedAccount" SET "connectionProviderId"=$1 WHERE id=$2',
+          [provider.id, other.account],
+        );
+      await fixture.owner
+        .query(`CREATE FUNCTION core.delete_test_trigger() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF OLD.id='${graph.account}'::uuid THEN RETURN NULL; END IF; RETURN OLD; END $$;
+      CREATE TRIGGER delete_test BEFORE DELETE ON core."connectedAccount" FOR EACH ROW EXECUTE FUNCTION core.delete_test_trigger()`);
+      const boundary: ConnectedAccountDeletionBoundary =
+        kind === 'manifest'
+          ? {
+              kind,
+              applicationId: provider.applicationId,
+              connectionProviderIds: [provider.id],
+            }
+          : kind === 'providerScopeRepair'
+            ? {
+                kind,
+                providerIdsByAccount: {
+                  [graph.account]: provider.id,
+                  [other!.account]: provider.id,
+                },
+              }
+            : {
+                kind,
+                accountId: graph.account,
+                channelId: graph.channel,
+                userWorkspaceId: graph.member,
+                expectedHandle: 'group@example.test',
+                authorize: async () => true,
+              };
+      const before = await snapshots();
+      await expect(
+        deleteConnectedAccountsWithAudit({
+          dataSource: runtime,
+          workspaceId: fixture.workspaceId,
+          accountIds: [graph.account, ...(other ? [other.account] : [])],
+          operation: operation(),
+          boundary,
+        }),
+      ).rejects.toThrow('requires complete effects');
+      expect(await snapshots()).toEqual(before);
+      expect(await audits()).toHaveLength(0);
     },
   );
   it('detects exact JSONB corruption of a skipped root beyond JS integer precision', async () => {

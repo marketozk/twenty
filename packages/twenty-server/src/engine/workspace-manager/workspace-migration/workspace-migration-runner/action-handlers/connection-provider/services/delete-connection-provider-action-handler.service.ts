@@ -31,6 +31,28 @@ export class DeleteConnectionProviderActionHandlerService extends WorkspaceMigra
     context: WorkspaceMigrationActionRunnerContext<FlatDeleteConnectionProviderAction>,
   ): Promise<void> {
     const { flatAction, queryRunner, workspaceId } = context;
+    const providerId = flatAction.entityId;
+
+    if (!queryRunner.isTransactionActive)
+      throw new Error(
+        'Connection provider deletion requires an active transaction',
+      );
+    const providers: { id: string }[] = await queryRunner.query(
+      'SELECT id FROM core."connectionProvider" WHERE id=$1 AND "workspaceId"=$2 FOR UPDATE',
+      [providerId, workspaceId],
+    );
+    if (providers.length === 0) return;
+    if (
+      (
+        await queryRunner.query(
+          'SELECT id FROM core."connectedAccount" WHERE "connectionProviderId"=$1 LIMIT 1',
+          [providerId],
+        )
+      ).length
+    )
+      throw new Error(
+        'Connection provider still has connected accounts; audited cleanup must run first',
+      );
 
     const connectionProviderRepository =
       queryRunner.manager.getRepository<ConnectionProviderEntity>(
@@ -38,7 +60,7 @@ export class DeleteConnectionProviderActionHandlerService extends WorkspaceMigra
       );
 
     await connectionProviderRepository.delete({
-      id: flatAction.entityId,
+      id: providerId,
       workspaceId,
     });
   }

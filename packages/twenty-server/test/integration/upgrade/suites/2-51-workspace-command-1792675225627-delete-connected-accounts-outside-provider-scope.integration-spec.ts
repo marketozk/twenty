@@ -5,6 +5,7 @@ import { syncApplication } from 'test/integration/metadata/suites/application/ut
 import { findConnectionProvidersByApplication } from 'test/integration/metadata/suites/connection-provider/utils/find-connection-providers-by-application.util';
 import { getAppProviderByClassName } from 'test/integration/utils/get-app-provider-by-class-name.util';
 import { ConnectedAccountProvider } from 'twenty-shared/types';
+import { withAccountScopeRepairExecution } from 'src/engine/core-modules/crm-audit/account-scope-repair-execution';
 import { v4 } from 'uuid';
 
 import { type DeleteConnectedAccountsOutsideProviderScopeCommand } from 'src/database/commands/upgrade-version-command/2-51/2-51-workspace-command-1792675225627-delete-connected-accounts-outside-provider-scope.command';
@@ -157,7 +158,11 @@ describe('2-51 workspace command - delete connected accounts outside provider sc
       personalAppAccountId,
     ];
 
-    await command.runOnWorkspace(RUN_ON_WORKSPACE_ARGS);
+    await withAccountScopeRepairExecution(
+      command,
+      SEED_APPLE_WORKSPACE_ID,
+      () => command.runOnWorkspace(RUN_ON_WORKSPACE_ARGS),
+    );
 
     expect(await findRemainingIds(allIds)).toEqual(
       [googleAccountId, microsoftAccountId, sharedAppAccountId].sort(),
@@ -171,10 +176,15 @@ describe('2-51 workspace command - delete connected accounts outside provider sc
       isAppConnection: true,
     });
 
-    await command.runOnWorkspace({
-      ...RUN_ON_WORKSPACE_ARGS,
-      options: { dryRun: true },
-    });
+    await withAccountScopeRepairExecution(
+      command,
+      SEED_APPLE_WORKSPACE_ID,
+      () =>
+        command.runOnWorkspace({
+          ...RUN_ON_WORKSPACE_ARGS,
+          options: { dryRun: true },
+        }),
+    );
 
     expect(await findRemainingIds([personalAppAccountId])).toEqual([
       personalAppAccountId,

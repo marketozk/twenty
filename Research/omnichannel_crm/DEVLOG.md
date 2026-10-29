@@ -3797,3 +3797,13 @@ LOG128 добавляет обязательные captured deletion boundaries 
 Для следующего wiring подтверждены новые границы: partial DELETE нельзя пропускать к последующей provider migration; account может появиться между транзакциями, поэтому provider handler требует собственного FOR UPDATE + no-references guard. Email-group требует pinned handle для domain cleanup. ROB765 In Progress; full HTTP/build/deploy и GitHub Actions не выполнялись.
 
 LOG128 publication: code 543fa4651625b2c30d29a81e2549a9e1b30b107a pushed and GitHub API ref verified; Linear comment 8c0ae6cf-1c7e-4892-a361-2dd4394fcced, description/comment/all 11 issue states independently read back. Continuing service and entry-point wiring; ROB765 In Progress.
+
+## LOG129 — production удаление аккаунтов с аудитом
+
+LOG129 подключает production account deletion к closed audit owner: caller/manifest/email-group/repair boundaries, сохранённый handle, fresh checks и фактические RETURNING IDs. Non-administrative deletion требует полного результата внутри транзакции; provider handler блокирует captured ID и отказывает при любых оставшихся account refs. Синхронный сбой событий после COMMIT сохраняет unsafe classification. Старый command не изменён.
+
+1729 tests/55 suites PASS (261.127s); 309 targeted/8 suites PASS (44.631s), 42 новых cases. 26 guard tests PASS; 10 migration checksums неизменны. Types 380/382 roots, 229/229 прежних диагностик, 0 новых/changed-file. 17 local/remote source hashes совпадают.
+[Проверки](implementation/log129/results.json), [ревью](implementation/log129/review.md).
+Два initial targeted failures были устаревшими error-message expectations. Исходный standalone type harness не включал штатный @types/jest.d.ts; подключён один и тот же файл baseline/current, baseline source не изменён. Full-server typecheck не чистый.
+
+ROB765 In Progress. Внешние provider effects не откатываются с БД; async cleanup/event delivery отдельно. [Следующая реализация](implementation/log129/next-boundary.md). Full HTTP/build/deploy и GitHub Actions не выполнялись.

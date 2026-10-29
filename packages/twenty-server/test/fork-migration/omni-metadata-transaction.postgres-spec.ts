@@ -6,6 +6,22 @@ jest.mock(
 import { CalendarChannelEntity } from 'src/engine/metadata-modules/calendar-channel/entities/calendar-channel.entity';
 import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
+import { DeleteConnectedAccountsOutsideProviderScopeCommand } from 'src/database/commands/upgrade-version-command/2-51/2-51-workspace-command-1792675225627-delete-connected-accounts-outside-provider-scope.command';
+import { withAccountScopeRepairExecution } from 'src/engine/core-modules/crm-audit/account-scope-repair-execution';
+import { withCrmAuditIdentity } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
+import { systemMembershipCleanupIdentity } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
+jest.mock('chalk', () => ({
+  __esModule: true,
+  default: {
+    red: (s: string) => s,
+    blue: (s: string) => s,
+    yellow: (s: string) => s,
+  },
+}));
+jest.mock(
+  'src/database/commands/command-runners/workspace-iterator.service',
+  () => ({ WorkspaceIteratorService: class {} }),
+);
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { DataSource, EntitySchema, type QueryRunner } from 'typeorm';
@@ -87,7 +103,9 @@ jest.mock(
   'src/engine/metadata-modules/index-metadata/index-metadata.entity',
   () => ({ IndexMetadataEntity: class {} }),
 );
-const fixture = createOmniNativeMessageFixture();
+const fixture = createOmniNativeMessageFixture({
+  additionalTables: ['messageChannelMessageAssociationMessageFolder'],
+});
 const accountSchema = new EntitySchema<ConnectedAccountEntity>({
   name: 'ConnectedAccountFixture',
   target: ConnectedAccountEntity,
@@ -258,6 +276,9 @@ const pauseNextRunner = (matches: (sql: string) => boolean) => {
 beforeAll(async () => {
   await fixture.initialize();
   await fixture.owner.query(
+    'CREATE TABLE core."connectionProvider" (id uuid PRIMARY KEY,"workspaceId" uuid NOT NULL REFERENCES core.workspace(id),"applicationId" uuid NOT NULL,scope text NOT NULL)',
+  );
+  await fixture.owner.query(
     'CREATE TABLE core."userWorkspace" (id uuid PRIMARY KEY,"workspaceId" uuid NOT NULL REFERENCES core.workspace(id),"userId" uuid,"deletedAt" timestamptz)',
   );
   await fixture.owner.query(
@@ -409,6 +430,175 @@ const mutate = (kind: string) => {
       throw new Error('Unknown test mutation');
   }
 };
+describe('nonadministrative account deletion through actual service and historical command', () => {
+  const seedProvider = async () => {
+    const id = randomUUID();
+    await fixture.owner.query(
+      'INSERT INTO core."connectionProvider"(id,"workspaceId","applicationId",scope) VALUES($1,$2,$3,\'USER\')',
+      [id, fixture.workspaceId, appId],
+    );
+    await runtime.getRepository(ConnectedAccountEntity).update(accountId, {
+      connectionProviderId: id,
+      applicationId: appId,
+    });
+    return id;
+  };
+  const command = () =>
+    new DeleteConnectedAccountsOutsideProviderScopeCommand(
+      {} as never,
+      accounts,
+      runtime,
+    );
+  const args = (dryRun = false) => ({
+    workspaceId: fixture.workspaceId,
+    options: { dryRun },
+    index: 0,
+    total: 1,
+  });
+  const audits = () =>
+    fixture.owner.query(
+      'SELECT "resourceId",actor FROM crm_audit."crmAuditEntry"',
+    );
+  const manifest = (providerId: string, applicationId = appId) =>
+    withCrmAuditIdentity(
+      fixture.workspaceId,
+      systemMembershipCleanupIdentity(
+        fixture.workspaceId,
+        'manifest-delete-test',
+      ),
+      () =>
+        accounts.deleteManyByConnectionProviderIds({
+          workspaceId: fixture.workspaceId,
+          applicationId,
+          connectionProviderIds: [providerId],
+        }),
+    );
+
+  it('refuses direct destructive historical command before external effects', async () => {
+    await seedProvider();
+    await expect(command().runOnWorkspace(args())).rejects.toThrow(
+      'boundary unavailable',
+    );
+    expect(
+      await runtime
+        .getRepository(ConnectedAccountEntity)
+        .findOneBy({ id: accountId }),
+    ).not.toBeNull();
+    for (const effect of Object.values(external))
+      expect(effect).not.toHaveBeenCalled();
+    expect(await audits()).toEqual([]);
+  });
+
+  it('permits historical dry run without an execution context and changes nothing', async () => {
+    await seedProvider();
+    await expect(command().runOnWorkspace(args(true))).resolves.toBeUndefined();
+    expect(
+      await runtime
+        .getRepository(ConnectedAccountEntity)
+        .findOneBy({ id: accountId }),
+    ).not.toBeNull();
+    for (const effect of Object.values(external))
+      expect(effect).not.toHaveBeenCalled();
+    expect(await audits()).toEqual([]);
+  });
+
+  it('wrapped actual historical command deletes only mismatching scope and journals its actor', async () => {
+    const providerId = await seedProvider(),
+      matchingId = randomUUID();
+    await runtime.getRepository(ConnectedAccountEntity).insert({
+      id: matchingId,
+      workspaceId: fixture.workspaceId,
+      userWorkspaceId: memberId,
+      provider: ConnectedAccountProvider.APP,
+      scope: 'USER',
+      handle: 'matching',
+      connectionProviderId: providerId,
+      applicationId: appId,
+    });
+    const repair = command();
+    await withAccountScopeRepairExecution(repair, fixture.workspaceId, () =>
+      repair.runOnWorkspace(args()),
+    );
+    expect(
+      await runtime
+        .getRepository(ConnectedAccountEntity)
+        .findOneBy({ id: accountId }),
+    ).toBeNull();
+    expect(
+      await runtime
+        .getRepository(ConnectedAccountEntity)
+        .findOneBy({ id: matchingId }),
+    ).not.toBeNull();
+    const rows = await audits();
+    expect(rows).toHaveLength(2);
+    for (const row of rows)
+      expect(row.actor).toEqual({
+        kind: 'system',
+        id: 'DeleteConnectedAccountsOutsideProviderScopeCommand',
+      });
+    expect(
+      rows.map((row: { resourceId: string }) => row.resourceId).sort(),
+    ).toEqual([accountId, channelId].sort());
+    expect(external.hooks).toHaveBeenCalledTimes(1);
+  });
+
+  it('provider hook cannot reuse the historical command execution source', async () => {
+    await seedProvider();
+    let reentrantError: unknown;
+    external.hooks.mockImplementationOnce(async () => {
+      try {
+        await accounts.deleteMany({
+          ids: [accountId],
+          workspaceId: fixture.workspaceId,
+        });
+      } catch (error) {
+        reentrantError = error;
+      }
+    });
+    const repair = command();
+    await withAccountScopeRepairExecution(repair, fixture.workspaceId, () =>
+      repair.runOnWorkspace(args()),
+    );
+    expect(reentrantError).toBeInstanceOf(Error);
+    expect((reentrantError as Error).message).toContain(
+      'execution is unavailable',
+    );
+    expect(external.hooks).toHaveBeenCalledTimes(1);
+    expect(await audits()).toHaveLength(2);
+  });
+
+  it('manifest service deletes selected provider accounts with scoped lifecycle attribution', async () => {
+    const providerId = await seedProvider();
+    await expect(manifest(providerId)).resolves.toBeUndefined();
+    expect(
+      await runtime
+        .getRepository(ConnectedAccountEntity)
+        .findOneBy({ id: accountId }),
+    ).toBeNull();
+    const rows = await audits();
+    expect(rows).toHaveLength(2);
+    for (const row of rows)
+      expect(row.actor).toEqual({ kind: 'system', id: 'manifest-delete-test' });
+    expect(events.emitCustomBatchEvent).toHaveBeenCalledTimes(3);
+  });
+
+  it('manifest wrong application refuses before hooks and leaves its accounts intact', async () => {
+    const providerId = await seedProvider();
+    await expect(manifest(providerId, randomUUID())).rejects.toThrow(
+      'provider selection changed',
+    );
+    expect(
+      await runtime
+        .getRepository(ConnectedAccountEntity)
+        .findOneBy({ id: accountId }),
+    ).not.toBeNull();
+    for (const effect of Object.values(external))
+      expect(effect).not.toHaveBeenCalled();
+    expect(events.emitCustomBatchEvent).not.toHaveBeenCalled();
+    expect(await audits()).toEqual([]);
+  });
+});
+
 describe('atomic metadata writers over actual core repositories', () => {
   it('discards a connection after unconfirmed rollback and releases account locks', async () => {
     const create = runtime.createQueryRunner.bind(runtime);
@@ -969,6 +1159,8 @@ describe('account lifecycle final core transaction', () => {
         : accounts.deleteMany({
             ids: [accountId],
             workspaceId: fixture.workspaceId,
+            caller: { userWorkspaceId: memberId },
+            auditOperation: auditOperation ?? auditIdentity(),
           });
   const setupCredentials = async () => {
     await runtime.getRepository(ConnectedAccountEntity).update(accountId, {
@@ -995,6 +1187,157 @@ describe('account lifecycle final core transaction', () => {
   });
   const readTransferAudit = () =>
     fixture.owner.query('SELECT * FROM crm_audit."crmAuditEntry"');
+  it('passes only frozen permission fields in both service and locked authorization', async () => {
+    await setupCredentials();
+    const authorize = jest.fn(
+      async (account: Readonly<Record<string, unknown>>) => {
+        expect(Object.keys(account).sort()).toEqual([
+          'id',
+          'provider',
+          'scope',
+          'userWorkspaceId',
+        ]);
+        expect(Object.isFrozen(account)).toBe(true);
+        expect(Reflect.set(account, 'id', randomUUID())).toBe(false);
+        return true;
+      },
+    );
+    await accounts.deleteMany({
+      ids: [accountId],
+      workspaceId: fixture.workspaceId,
+      auditOperation: auditIdentity(),
+      boundary: {
+        kind: 'administration',
+        userWorkspaceId: memberId,
+        authorize,
+      },
+    });
+    expect(authorize).toHaveBeenCalledTimes(2);
+    expect(await readTransferAudit()).toHaveLength(3);
+  });
+  it('delete refuses missing attribution before any provider side effect', async () => {
+    await setupCredentials();
+    await runtime.getRepository(ConnectedAccountEntity).update(accountId, {
+      provider: ConnectedAccountProvider.GOOGLE,
+    });
+    await expect(
+      accounts.deleteMany({
+        ids: [accountId],
+        workspaceId: fixture.workspaceId,
+        caller: { userWorkspaceId: memberId },
+      }),
+    ).rejects.toThrow();
+    for (const effect of Object.values(external))
+      expect(effect).not.toHaveBeenCalled();
+    expect(await readTransferAudit()).toEqual([]);
+    expect(
+      await runtime
+        .getRepository(ConnectedAccountEntity)
+        .countBy({ id: accountId }),
+    ).toBe(1);
+  });
+  it('delete refuses an enclosing transaction before external effects', async () => {
+    await runtime.transaction(async (manager) => {
+      const repository = runtime.getRepository(ConnectedAccountEntity);
+      const previous = repository.manager;
+      Object.assign(repository, { manager });
+      try {
+        await expect(invoke('deleteMany')).rejects.toThrow(
+          'REQUIRES_FRESH_TRANSACTION',
+        );
+      } finally {
+        Object.assign(repository, { manager: previous });
+      }
+    });
+    for (const effect of Object.values(external))
+      expect(effect).not.toHaveBeenCalled();
+    expect(await readTransferAudit()).toEqual([]);
+  });
+  it.each(['membership', 'custodian'] as const)(
+    'delete rejects changed %s after provider work and emits no deletion event',
+    async (change) => {
+      await setupCredentials();
+      await runtime.getRepository(ConnectedAccountEntity).update(accountId, {
+        provider: ConnectedAccountProvider.GOOGLE,
+        scope: 'USER',
+      });
+      external.message.mockImplementationOnce(async () => {
+        if (change === 'membership')
+          await fixture.owner.query(
+            'UPDATE core."userWorkspace" SET "deletedAt"=now() WHERE id=$1',
+            [memberId],
+          );
+        else
+          await fixture.owner.query(
+            'UPDATE core."connectedAccount" SET "userWorkspaceId"=$1 WHERE id=$2',
+            [custodianId, accountId],
+          );
+      });
+      await expect(invoke('deleteMany')).rejects.toThrow();
+      expect(
+        await runtime
+          .getRepository(ConnectedAccountEntity)
+          .countBy({ id: accountId }),
+      ).toBe(1);
+      expect(await readTransferAudit()).toEqual([]);
+      expect(events.emitCustomBatchEvent).not.toHaveBeenCalled();
+      expect(external.revoke).toHaveBeenCalledTimes(1);
+    },
+  );
+  it('single delete does not return a successful DTO for a skipped DELETE', async () => {
+    await fixture.owner
+      .query(`CREATE FUNCTION core.skip_service_delete() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NULL; END $$;
+      CREATE TRIGGER skip_service_delete BEFORE DELETE ON core."connectedAccount" FOR EACH ROW EXECUTE FUNCTION core.skip_service_delete()`);
+    try {
+      await expect(
+        accounts.delete({
+          id: accountId,
+          workspaceId: fixture.workspaceId,
+          caller: { userWorkspaceId: memberId },
+          auditOperation: auditIdentity(),
+        }),
+      ).rejects.toThrow();
+      expect(
+        await runtime
+          .getRepository(ConnectedAccountEntity)
+          .countBy({ id: accountId }),
+      ).toBe(1);
+      expect(await readTransferAudit()).toEqual([]);
+      expect(
+        events.emitCustomBatchEvent.mock.calls.every(
+          (call) => call[1].length === 0,
+        ),
+      ).toBe(true);
+    } finally {
+      await fixture.owner.query(
+        'DROP FUNCTION core.skip_service_delete() CASCADE',
+      );
+    }
+  });
+  it('delete rolls back account graph when audit rejects and emits no event', async () => {
+    await fixture.owner
+      .query(`CREATE FUNCTION crm_audit.reject_service_delete() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'audit unavailable'; END $$;
+      CREATE TRIGGER reject_service_delete BEFORE INSERT ON crm_audit."crmAuditEntry" FOR EACH ROW EXECUTE FUNCTION crm_audit.reject_service_delete()`);
+    try {
+      await expect(invoke('deleteMany')).rejects.toThrow('audit unavailable');
+      expect(
+        await runtime
+          .getRepository(ConnectedAccountEntity)
+          .countBy({ id: accountId }),
+      ).toBe(1);
+      expect(
+        await runtime
+          .getRepository(MessageChannelEntity)
+          .countBy({ id: channelId }),
+      ).toBe(1);
+      expect(await readTransferAudit()).toEqual([]);
+      expect(events.emitCustomBatchEvent).not.toHaveBeenCalled();
+    } finally {
+      await fixture.owner.query(
+        'DROP FUNCTION crm_audit.reject_service_delete() CASCADE',
+      );
+    }
+  });
   it('disconnect returns committed account and audits credential and authentication failure cleanup', async () => {
     await setupCredentials();
     await runtime.getRepository(ConnectedAccountEntity).update(accountId, {
@@ -1726,7 +2069,11 @@ describe('account lifecycle final core transaction', () => {
       }
       expect(await first).toHaveProperty('value');
       expect(await second).toMatchObject({
-        error: { message: expect.stringContaining('OMNI_OWNED_ACCOUNT') },
+        error: {
+          message: expect.stringMatching(
+            /OMNI_OWNED_ACCOUNT|retained omni resources/,
+          ),
+        },
       });
       expect(
         (
@@ -1881,6 +2228,8 @@ describe('account lifecycle final core transaction', () => {
       accounts.deleteMany({
         ids: [other, accountId],
         workspaceId: fixture.workspaceId,
+        caller: { userWorkspaceId: memberId },
+        auditOperation: auditIdentity(),
       }),
     ).rejects.toThrow('OMNI_OWNED_ACCOUNT');
     expect(
@@ -1959,7 +2308,9 @@ describe('account lifecycle final core transaction', () => {
         });
       if (order === 'delete-first') {
         const pause = pauseLifecycleMutation((sql) =>
-          sql.startsWith('SELECT id FROM core."calendarChannel"'),
+          sql.startsWith(
+            'SELECT to_jsonb(record)::text AS snapshot FROM core."calendarChannel"',
+          ),
         );
         const first = capture(invoke('deleteMany'));
         await pause.reached;
@@ -2007,16 +2358,29 @@ describe('account lifecycle final core transaction', () => {
   });
   it('unknown delete commit emits no confirmed deletion events', async () => {
     const original = runtime.createQueryRunner.bind(runtime);
-    jest.spyOn(runtime, 'createQueryRunner').mockImplementation(() => {
+    jest.spyOn(runtime, 'createQueryRunner').mockImplementation((mode) => {
       const runner = original(),
-        commit = runner.commitTransaction.bind(runner);
-      runner.commitTransaction = async () => {
-        await commit();
-        throw new Error('lost-delete-ack');
-      };
+        connect = runner.connect.bind(runner);
+      if (mode !== 'master') return runner;
+      let wrapped = false;
+      jest.spyOn(runner, 'connect').mockImplementation(async () => {
+        const client = await connect();
+        if (!wrapped) {
+          wrapped = true;
+          const query = client.query.bind(client);
+          client.query = async (sql: string, ...args: unknown[]) => {
+            const result = await query(sql, ...args);
+            if (sql === 'COMMIT') throw new Error('lost-delete-ack');
+            return result;
+          };
+        }
+        return client;
+      });
       return runner;
     });
-    await expect(invoke('deleteMany')).rejects.toThrow('OUTCOME_UNKNOWN');
+    await expect(invoke('deleteMany')).rejects.toBeInstanceOf(
+      NativeTransactionOutcomeUnknownError,
+    );
     expect(events.emitCustomBatchEvent).not.toHaveBeenCalled();
     expect(
       await fixture.owner.query(
@@ -2024,5 +2388,24 @@ describe('account lifecycle final core transaction', () => {
         [accountId],
       ),
     ).toEqual([]);
+  });
+  it('classifies synchronous event failure after confirmed deletion as unsafe to retry', async () => {
+    const error = new Error('event dispatch failed');
+    events.emitCustomBatchEvent.mockImplementationOnce(() => {
+      throw error;
+    });
+    await expect(invoke('deleteMany')).rejects.toMatchObject({
+      name: 'CoreAuditPostCommitError',
+      commitConfirmed: true,
+      cause: error,
+    });
+    expect(events.emitCustomBatchEvent).toHaveBeenCalledTimes(1);
+    expect(
+      await fixture.owner.query(
+        'SELECT id FROM core."connectedAccount" WHERE id=$1',
+        [accountId],
+      ),
+    ).toEqual([]);
+    expect(await readTransferAudit()).toHaveLength(2);
   });
 });

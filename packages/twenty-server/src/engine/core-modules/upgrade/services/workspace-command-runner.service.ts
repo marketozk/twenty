@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { isTransactionUnsafeToRetry } from 'src/engine/twenty-orm/error-handling/is-transaction-outcome-unknown';
 import { withAccountScopeRepairExecution } from 'src/engine/core-modules/crm-audit/account-scope-repair-execution';
 
 import { type WorkspaceIteratorContext } from 'src/database/commands/command-runners/workspace-iterator.service';
@@ -141,14 +142,21 @@ export class WorkspaceCommandRunnerService {
       }
     } catch (error) {
       if (!options.dryRun) {
-        await this.upgradeMigrationService.recordUpgradeMigration({
-          name,
-          workspaceIds: [workspaceId],
-          isInstance: false,
-          status: 'failed',
-          executedByVersion,
-          error,
-        });
+        try {
+          await this.upgradeMigrationService.recordUpgradeMigration({
+            name,
+            workspaceIds: [workspaceId],
+            isInstance: false,
+            status: 'failed',
+            executedByVersion,
+            error,
+          });
+        } catch (reportError) {
+          if (!isTransactionUnsafeToRetry(error)) throw reportError;
+          this.logger.warn(
+            'Failed to record upgrade failure after an unsafe transaction outcome',
+          );
+        }
       }
 
       throw error;

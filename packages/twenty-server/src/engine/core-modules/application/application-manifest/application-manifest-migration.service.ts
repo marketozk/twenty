@@ -185,6 +185,7 @@ export class ApplicationManifestMigrationService {
     workspaceMigration: WorkspaceMigration;
     hasSchemaMetadataChanged: boolean;
   }> {
+    const ownerApplicationId = ownerFlatApplication.id;
     const now = new Date().toISOString();
 
     const recomputeStart = performance.now();
@@ -288,7 +289,11 @@ export class ApplicationManifestMigrationService {
     // Deleting runs disconnect hooks and revokes tokens, so the plan is validated before anything is released
     if (shouldDeleteConnectedAccounts) {
       await this.connectedAccountMetadataService.deleteManyByConnectionProviderIds(
-        { connectionProviderIds: connectionProviderIdsToDelete, workspaceId },
+        {
+          connectionProviderIds: connectionProviderIdsToDelete,
+          workspaceId,
+          applicationId: ownerApplicationId,
+        },
       );
 
       validateAndBuildResult = await validateBuildAndRunMigration(false);

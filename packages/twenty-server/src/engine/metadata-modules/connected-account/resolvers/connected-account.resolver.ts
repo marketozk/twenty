@@ -102,17 +102,19 @@ export class ConnectedAccountResolver {
     @AuthUserWorkspaceId() userWorkspaceId: string,
     @AuthApplication({ allowUndefined: true }) application?: FlatApplication,
   ): Promise<ConnectedAccountPublicDTO> {
+    const workspaceId = workspace.id;
+    const caller = { userWorkspaceId, applicationId: application?.id };
     await this.connectedAccountMetadataService.verifyAdministrableByCaller({
       id,
-      userWorkspaceId,
-      workspaceId: workspace.id,
-      applicationId: application?.id,
+      ...caller,
+      workspaceId,
       agentId: undefined,
     });
 
     const deleted = await this.connectedAccountMetadataService.delete({
       id,
-      workspaceId: workspace.id,
+      workspaceId,
+      caller,
     });
 
     return buildPublicConnectedAccount(deleted);

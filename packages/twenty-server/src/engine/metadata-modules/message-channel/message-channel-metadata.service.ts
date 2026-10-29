@@ -648,6 +648,11 @@ export class MessageChannelMetadataService {
     await this.connectedAccountMetadataService.delete({
       id: messageChannel.connectedAccountId,
       workspaceId,
+      caller: { userWorkspaceId },
+      emailGroup: {
+        channelId: id,
+        expectedHandle: connectedAccount?.handle ?? '',
+      },
     });
 
     if (

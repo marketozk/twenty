@@ -10,9 +10,27 @@ import {
 import { ConnectedAccountMetadataService } from 'src/engine/metadata-modules/connected-account/connected-account-metadata.service';
 import { MessageChannelMetadataService } from 'src/engine/metadata-modules/message-channel/message-channel-metadata.service';
 import { ApplicationMessageChannelsService } from 'src/engine/metadata-modules/message-channel/services/application-message-channels.service';
+import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
+
+const deletionOperation = (workspaceId: string): CrmAuditOperation => ({
+  workspaceId,
+  operationId: randomUUID(),
+  actor: { kind: 'system', id: 'metadata-preflight-test' },
+});
 
 // These tests cover entrypoint preflight; strict owners run against PostgreSQL
 // in omni-metadata-transaction.postgres-spec.ts.
+jest.mock(
+  'src/engine/core-modules/crm-audit/delete-connected-accounts-with-audit',
+  () => ({
+    deleteConnectedAccountsWithAudit: jest.fn(async () => ({
+      accounts: [],
+      messageChannelIds: [],
+      calendarChannelIds: [],
+      messageFolderIds: [],
+    })),
+  }),
+);
 jest.mock(
   'src/engine/core-modules/crm-audit/transfer-connected-accounts-with-audit',
   () => {
@@ -127,6 +145,8 @@ const accountFixture = () => {
     workspaceId,
     userWorkspaceId: randomUUID(),
     connectionProviderId: randomUUID(),
+    provider: ConnectedAccountProvider.GOOGLE,
+    scope: 'USER',
   };
   const query = jest.fn().mockResolvedValue([]);
   const update = jest.fn().mockResolvedValue({ affected: 1 });
@@ -158,14 +178,28 @@ const accountFixture = () => {
     findOne: jest.fn().mockResolvedValue(account),
     update: jest.fn().mockResolvedValue({ affected: 1 }),
     delete: jest.fn().mockResolvedValue({ affected: 1 }),
-    manager: { query, transaction },
+    manager: {
+      query: async (sql: string, parameters?: unknown[]) =>
+        sql.startsWith('SELECT id FROM core."userWorkspace"')
+          ? [{ id: account.userWorkspaceId }]
+          : query(sql, parameters),
+      transaction,
+    },
   };
   attachTransactionRunner(repository.manager, makeTransactionManager());
   const channels = {
-    find: jest.fn().mockResolvedValue([{ id: randomUUID() }]),
+    find: jest
+      .fn()
+      .mockResolvedValue([
+        { id: randomUUID(), workspaceId, connectedAccountId: account.id },
+      ]),
   };
   const calendars = {
-    find: jest.fn().mockResolvedValue([{ id: randomUUID() }]),
+    find: jest
+      .fn()
+      .mockResolvedValue([
+        { id: randomUUID(), workspaceId, connectedAccountId: account.id },
+      ]),
   };
   const revoke = { revokeIfApp: jest.fn().mockResolvedValue(undefined) };
   const hooks = { runOnDisconnect: jest.fn().mockResolvedValue(undefined) };
@@ -217,7 +251,12 @@ const accountFixture = () => {
           caller: { userWorkspaceId: account.userWorkspaceId },
         });
       case 'deleteMany':
-        return service.deleteMany({ ids: [account.id], workspaceId });
+        return service.deleteMany({
+          ids: [account.id],
+          workspaceId,
+          caller: { userWorkspaceId: account.userWorkspaceId },
+          auditOperation: deletionOperation(workspaceId),
+        });
       case 'transferOwnership':
         return service.transferOwnership({
           fromUserWorkspaceId: account.userWorkspaceId,
@@ -427,6 +466,8 @@ describe('metadata mutation entry points respect persisted omni ownership', () =
       fixture.service.deleteMany({
         ids: [fixture.account.id, protectedAccount.id],
         workspaceId: fixture.workspaceId,
+        caller: { userWorkspaceId: fixture.account.userWorkspaceId },
+        auditOperation: deletionOperation(fixture.workspaceId),
       }),
     ).rejects.toThrow('OMNI_OWNED_ACCOUNT');
     for (const effect of fixture.effects) expect(effect).not.toHaveBeenCalled();
@@ -444,6 +485,7 @@ describe('metadata mutation entry points respect persisted omni ownership', () =
           id: fixture.account.id,
           workspaceId: fixture.workspaceId,
           caller: { userWorkspaceId: fixture.account.userWorkspaceId },
+          auditOperation: deletionOperation(fixture.workspaceId),
         }),
       ).rejects.toBe(notFound);
       expect(fixture.query).not.toHaveBeenCalled();
@@ -458,6 +500,8 @@ describe('metadata mutation entry points respect persisted omni ownership', () =
     await fixture.service.deleteMany({
       ids: [],
       workspaceId: fixture.workspaceId,
+      caller: { userWorkspaceId: fixture.account.userWorkspaceId },
+      auditOperation: deletionOperation(fixture.workspaceId),
     });
     await fixture.invoke('transferOwnership');
     expect(fixture.query).not.toHaveBeenCalled();
