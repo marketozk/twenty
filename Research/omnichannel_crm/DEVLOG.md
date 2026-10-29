@@ -3730,3 +3730,7 @@ authentication type. RawAuthContext import отклонён dependency guard и�
 ROB765 In Progress. Provider effects уже выполнены до DB owner и не откатываются
 вместе с ним; глобальная свежесть role cache и полный HTTP не заявлены. Выката нет.
 Далее [core account deletion](implementation/log123/next-boundary.md).
+
+LOG123 publication: 9eab8c435e63093cc1a7c58db9201fe6b9606744 pushed/API verified.
+ROB765 description/comment 92df1f8d-e561-44f9-83f0-5bcfe7b658b2 independently read back;
+all 11 issue states match. Implementation continues with account deletion prerequisites.
