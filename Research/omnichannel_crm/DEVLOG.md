@@ -3772,3 +3772,4 @@ LOG126 запрещает normal automatic queue retry для обоих unknown
 Повторное source-review выявило CoreAuditPostCommitError после подтверждённого COMMIT: выделен leaf с совместимым re-export, добавлен broader unsafe-to-retry predicate. Старое unknown-to-Error замечание explorer устранено narrowing. Штатные driver tests сначала имели одинаковые 2 failures на baseline/current из-за fork harness defaults; восстановлены их clearMocks/fakeTimers, 18 PASS.
 
 ROB765 In Progress. Crash/stall/manual retry и scheduled recurrence не закрыты. [Далее](implementation/log126/next-boundary.md) — строгий four-table deletion primitive и подключение callers. Full HTTP/build/deploy и GitHub Actions не выполнялись.
+`nLOG126 publication: code faa4e6c4374283cbfe32004bae7156a05726460c pushed and GitHub API ref verified; Linear comment 5d414854-3e56-4e1e-b07d-7c0cf3c542bb, description/comment/all 11 states read back. ROB-765 In Progress; continuing LOG127 closed deletion owner.
