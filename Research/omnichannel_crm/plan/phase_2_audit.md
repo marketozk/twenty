@@ -80,6 +80,7 @@ ROB765 остаётся In Progress. Единственная текущая т�
 | Explicit-operation membership audit primitive: fixed FK effects, recursive navigation, security-first savepoint | [LOG115](../implementation/log115/README.md) |
 | Fresh active membership check for JWT/cookie and delegated application despite stale caches | [LOG116](../implementation/log116/README.md) |
 | Trusted API/job membership attribution, exact retained targets and locked user-rebind check | [LOG117](../implementation/log117/README.md) |
+| Core user deactivation: strict owner, actual snapshots, security-first audit and cache-finally | [LOG118](../implementation/log118/README.md) |
 
 Открыто: остальные native/system writers и FK effects, real share writes, public
 DESTROY/MERGE, остальные metadata/role mutations, общий denied/failed audit после rollback и health/alert.
@@ -88,13 +89,15 @@ stateless application JWT и concurrent-sign-in fencing ещё не объявл
 Просмотр/экспорт — ROB767 после ROB766; AI/workflow/connector добавляют свои события
 в ROB768/769. Полный HTTP/JWT и сборка/выкат изменений после LOG088 не выполнялись.
 
-Последние проверки: 1296 tests/42 suites PASS (208.326s); 134 targeted/5 suites и 8 entrypoint tests PASS, 46 новых cases. 26 guards PASS; 10 migration checksums неизменны. Types 363/366 roots, 190/190 прежних диагностик, 0 новых/changed-code; 6 ошибок находятся в неизменённых методах baseline. 17 local/remote source hashes совпадают.
-Full-server typecheck не чистый. [Проверки LOG117](../implementation/log117/results.json).
+Последние проверки: 1320 tests/43 suites PASS (209.159s); 52 targeted/3 suites PASS, 24 новых cases. 26 guards PASS; 10 migration checksums неизменны. Types 357/359 roots, 189/189 прежних диагностик, 0 новых/changed-file. 8 local/remote source hashes совпадают.
+Full-server typecheck не чистый. [Проверки LOG118](../implementation/log118/results.json).
 
-Следующий шаг — аудит softDelete самой core user account;
-[граница и native остаток](../implementation/log117/next-boundary.md).
+Следующий шаг — active-user fence в membership creation и устранение locale-save resurrection;
+[граница](../implementation/log118/next-boundary.md).
 LOG117 подключает известные API/jobs к core membership audit. Native member deletion,
 transfers, весь public removal, in-flight mutation fence и полный HTTP отзыв ещё не приняты.
+LOG118 аудирует core account deactivation; создание membership после её COMMIT и
+восстановление core user старыми full-entity saves пока не объявлены закрытыми.
 
 Демо остаётся прежним. При будущем выкате migration10 writers останавливаются на
 время построения индекса. GitHub Actions не используется.

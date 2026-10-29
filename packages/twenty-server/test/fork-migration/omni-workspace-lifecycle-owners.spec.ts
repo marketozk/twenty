@@ -1,4 +1,12 @@
 import { randomUUID } from 'node:crypto';
+import { deactivateCoreUserWithAudit } from 'src/engine/core-modules/crm-audit/deactivate-core-user-with-audit';
+jest.mock(
+  'src/engine/core-modules/crm-audit/deactivate-core-user-with-audit',
+  () => ({
+    deactivateCoreUserWithAudit: jest.fn().mockResolvedValue('deleted'),
+  }),
+);
+const deactivateUser = jest.mocked(deactivateCoreUserWithAudit);
 import { systemMembershipCleanupIdentity } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { WorkspaceService } from 'src/engine/core-modules/workspace/services/workspace.service';
 import { WorkspaceSchemaService } from 'src/engine/workspace-datasource/workspace-schema.service';
@@ -281,6 +289,7 @@ describe('membership cleanup attribution and exact teardown targets', () => {
       deleteUserWorkspace: jest.fn().mockResolvedValue(undefined),
     };
     const userRepository = {
+      manager: { connection: {} },
       softDelete: jest.fn().mockResolvedValue(undefined),
     };
     const coreEntityCacheService = {
@@ -384,6 +393,7 @@ describe('membership cleanup attribution and exact teardown targets', () => {
       }),
     });
     expect(f.userRepository.softDelete).not.toHaveBeenCalled();
+    expect(deactivateUser).not.toHaveBeenCalled();
   });
   it('disables the core user after removing their last retained target', async () => {
     const f = cleanupFixture();
@@ -403,7 +413,24 @@ describe('membership cleanup attribution and exact teardown targets', () => {
       systemMembershipCleanupIdentity(workspaceId, 'destroy-test'),
       id,
     );
-    expect(f.userRepository.softDelete).toHaveBeenCalledWith(userId);
+    expect(deactivateUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId,
+        auditOperations: [
+          expect.objectContaining({
+            workspaceId,
+            actor: { kind: 'system', id: 'destroy-test' },
+          }),
+        ],
+      }),
+    );
+    expect(f.userRepository.softDelete).not.toHaveBeenCalled();
+    expect(
+      deactivateUser.mock.calls[0][0].auditOperations[0]!.operationId,
+    ).not.toBe(
+      f.userWorkspaceService.deleteUserWorkspace.mock.calls[0][0].auditOperation
+        .operationId,
+    );
   });
   it('legacy job lookup remains active-only instead of sweeping historical rows', async () => {
     const f = cleanupFixture();

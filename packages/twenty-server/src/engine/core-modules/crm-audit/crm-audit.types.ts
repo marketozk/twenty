@@ -11,6 +11,7 @@ export type CrmAuditPrincipal = {
 };
 
 export type CrmAuditResourceKind =
+  | 'coreUser'
   | 'userWorkspace'
   | 'applicationAuthorization'
   | 'userApplicationVariableValue'

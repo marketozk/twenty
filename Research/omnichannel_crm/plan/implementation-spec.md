@@ -968,3 +968,10 @@ native member deletion, application сохраняет user initiator, impersona
 невалидная/foreign identity не понижается до unaudited fallback. Hard teardown
 передаёт exact retained membership ID; expectedUserId проверяется под FOR UPDATE.
 Core user softDelete и native member/transfer writers остаются отдельными owners.
+
+LOG118 даёт трём coreUser deactivation callers отдельный strict owner: user lock,
+fresh active-membership check, actual soft-delete, pinned after snapshot, audit
+savepoint и cache invalidation finally. Корреляция общая, operation ID отдельный.
+Нет email/password в журнале и выдуманной workspace для workspace-less account.
+Это не двусторонний create/deactivate fence: требуется active user lock в INSERT
+owner и устранение old full-entity saves, способных восстановить deletedAt.

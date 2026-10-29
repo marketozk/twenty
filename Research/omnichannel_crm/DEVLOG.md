@@ -3589,3 +3589,22 @@ ROB765 In Progress. Демо/сообщения/Actions не менялись. �
 LOG117 publication: 651c6e4cd82b2705666277fa66d6e982b5ca1739 pushed/API verified.
 ROB765 description/comment ecbe25a3-a55f-4cd4-8e5a-ebe0d91e7235 independently read back;
 all 11 issue states match. Implementation continues with core account deactivation audit.
+
+## LOG-118 — аудит отключения core учётной записи
+
+Три softDelete callers используют strict core owner: user FOR UPDATE, fresh active
+memberships, проверка неизменённых полей/actual deletion, audit savepoint и cache-finally.
+Journal failure не возвращает доступ; повреждённая mutation откатывается. Unknown
+COMMIT не повторяется. Workspace-less account получает явный unavailable scope.
+Секреты/email не записываются; отдельная операция сохраняет общую correlation.
+
+1320 tests/43 suites PASS (209.159s); 52 targeted/3 suites PASS, 24 новых cases
+(22 PG + 2 caller). 26 guards PASS, 10 migration checksums неизменны. Types 357/359
+roots, 189/189 прежних диагностик, 0 новых/changed-file. 8 source hashes совпадают.
+[Результаты](implementation/log118/results.json), [ревью](implementation/log118/review.md).
+
+ROB765 In Progress. No full HTTP/native-share acceptance или выкат; Actions не использован.
+Ревью подтвердило create-after-deactivate gap: FK проверяет существование, не
+deletedAt. Далее [active-user fence и locale-save](implementation/log118/next-boundary.md).
+Source review также нашёл coreUser full saves в email verification/server-admin;
+они остаются открытой границей восстановления отключённой записи.

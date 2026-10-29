@@ -1,0 +1,14 @@
+{
+  "baseCommit": "5532bcaa81613868c9f2a7a8e51f3aff3f86fa44",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "dd9d7c14c225ed9e5e06d5d3511426cc143137234c36909d353801c15fb85a75",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "3de4c350d550222d921b092e2c93735909c501a24bfe54594aef52f145e4cce0",
+    "packages/twenty-server/src/engine/core-modules/user/services/user.service.ts": "3c823c4bba1da3c736f18df8e180bc16d86241584c5b88451604a035cc17757c",
+    "packages/twenty-server/src/engine/core-modules/workspace/services/workspace.service.ts": "abd5d95665084a3616669f51c0147d3889a74861423cf896a2c6b0109965280f",
+    "packages/twenty-server/test/fork-migration/crm-audit-membership-entrypoints.spec.ts": "e6f86ea360bfaa4cd840cfeea32e9342ae1090cdd241d9df2445a50b0ea67fa6",
+    "packages/twenty-server/test/fork-migration/omni-workspace-lifecycle-owners.spec.ts": "d58206e9c8c9cfff16bfc80e9aa8785ea71d681226e2d9f4d7be4dc5326a5d14",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/deactivate-core-user-with-audit.ts": "4bc75c758fa17d827a9ab82b2e9196189a358472f8a387ecfbbc383e8a18271b",
+    "packages/twenty-server/test/fork-migration/crm-audit-core-user-deactivation.postgres-spec.ts": "7591e512233e3f29dd1f7ac6d9050a807deb46d8a8ba558a3dfc3ec688c034dc"
+  },
+  "uploadedSourceHashesVerified": true
+}

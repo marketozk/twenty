@@ -1,0 +1,11 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts 335ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts 11ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/user/services/user.service.ts 130ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/workspace/services/workspace.service.ts 189ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-entrypoints.spec.ts 145ms
+../../../source/packages/twenty-server/test/fork-migration/omni-workspace-lifecycle-owners.spec.ts 108ms
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/deactivate-core-user-with-audit.ts 16ms
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-core-user-deactivation.postgres-spec.ts 73ms (unchanged)
+
+{"formattedFiles": 8, "singleSshSession": true}

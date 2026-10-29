@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { deactivateCoreUserWithAudit } from 'src/engine/core-modules/crm-audit/deactivate-core-user-with-audit';
 import {
   copyMembershipCleanupIdentity,
   membershipCleanupOperation,
@@ -1068,9 +1069,13 @@ export class WorkspaceService {
     auditIdentity: MembershipCleanupIdentity | undefined,
     userWorkspaceId?: string,
   ) {
+    const capturedAuditIdentity = copyMembershipCleanupIdentity(
+      auditIdentity,
+      workspaceId,
+    );
     const auditOperation = membershipCleanupOperation(
       workspaceId,
-      auditIdentity,
+      capturedAuditIdentity,
     );
     const userWorkspaces = await this.userWorkspaceRepository.find({
       where: {
@@ -1108,8 +1113,16 @@ export class WorkspaceService {
     );
 
     if (!hasOtherUserWorkspaces) {
-      await this.userRepository.softDelete(userId);
-      await this.coreEntityCacheService.invalidate('user', userId);
+      await deactivateCoreUserWithAudit({
+        dataSource: this.userRepository.manager.connection,
+        userEntity: UserEntity,
+        userId,
+        auditOperations: userWorkspaceOfRemovedWorkspaceMember
+          ? [membershipCleanupOperation(workspaceId, capturedAuditIdentity)]
+          : [],
+        invalidate: () =>
+          this.coreEntityCacheService.invalidate('user', userId),
+      });
     }
   }
 

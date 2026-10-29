@@ -16,8 +16,8 @@
 | Operation lookup index | LOG090: generated migration10, populated prefix upgrade/replay/down, real EXPLAIN, drift refusal; не выкатывалось |
 | Production rollout | Не выполнялся; нужны полная native coverage и согласованный выкат с остановленными writers при построении индекса |
 
-Последние проверки: 1296 tests/42 suites PASS (208.326s); 134 targeted/5 suites и 8 entrypoint tests PASS, 46 новых cases. 26 guards PASS; 10 migration checksums неизменны. Types 363/366 roots, 190/190 прежних диагностик, 0 новых/changed-code; 6 ошибок находятся в неизменённых методах baseline. 17 local/remote source hashes совпадают.
-Это не чистый full-server typecheck. [LOG117 results](log117/results.json).
+Последние проверки: 1320 tests/43 suites PASS (209.159s); 52 targeted/3 suites PASS, 24 новых cases. 26 guards PASS; 10 migration checksums неизменны. Types 357/359 roots, 189/189 прежних диагностик, 0 новых/changed-file. 8 local/remote source hashes совпадают.
+Это не чистый full-server typecheck. [LOG118 results](log118/results.json).
 
 [Индекс реализованных участков](../plan/phase_2_audit.md), [текущие ограничения](log113/README.md),
 [полная хронология](../DEVLOG.md). Исторические заявления «ещё не включено» внутри
@@ -47,5 +47,7 @@ LOG117 подключает trusted attribution известных API/jobs, в�
 LOG116 закрывает soft-delete/JWT stale-cache gap:
 actual strategy/cookie bridge проверены с PostgreSQL и отказавшей инвалидацией.
 Полный HTTP и fence уже принятых запросов этим не заявлены.
-[Следующая граница](log117/next-boundary.md): coreUser softDelete audit, затем отдельный
-native workspaceMember writer с реальными FK effects и security-first ordering.
+LOG118 подключает три coreUser softDelete callers к strict owner с actual audit,
+fresh remaining-membership check, security-first savepoint и cache-finally.
+[Следующая граница](log118/next-boundary.md): membership creation fence и locale update;
+old coreUser full saves и отдельный native member writer остаются открытыми.

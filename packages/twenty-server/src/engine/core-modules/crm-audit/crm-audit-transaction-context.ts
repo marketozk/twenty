@@ -27,6 +27,7 @@ const CATALOG: Record<
   CrmAuditResourceKind,
   { values: string[]; redacted: string[] }
 > = {
+  coreUser: { values: [], redacted: ['deletedAt'] },
   userWorkspace: { values: ['userId'], redacted: ['deletedAt'] },
   applicationAuthorization: {
     values: ['userId', 'userWorkspaceId', 'applicationId'],
@@ -374,6 +375,7 @@ const principal = (value: CrmAuditPrincipal): CrmAuditPrincipal => {
 const ADMINISTRATIVE_ACTIONS: Partial<
   Record<CrmAuditResourceKind, readonly CrmAuditAction[]>
 > = {
+  coreUser: ['update'],
   role: ['create', 'update'],
   roleTarget: ['create', 'delete'],
   userWorkspace: ['update', 'delete'],

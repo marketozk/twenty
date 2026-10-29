@@ -1,4 +1,12 @@
 import { randomUUID } from 'node:crypto';
+import { deactivateCoreUserWithAudit } from 'src/engine/core-modules/crm-audit/deactivate-core-user-with-audit';
+jest.mock(
+  'src/engine/core-modules/crm-audit/deactivate-core-user-with-audit',
+  () => ({
+    deactivateCoreUserWithAudit: jest.fn().mockResolvedValue('deleted'),
+  }),
+);
+const deactivateUser = jest.mocked(deactivateCoreUserWithAudit);
 import {
   captureMembershipCleanupIdentity,
   systemMembershipCleanupIdentity,
@@ -389,6 +397,7 @@ const fixture = () => {
     expect(nativeDeleted).toBe(true);
   });
   const coreUserRepository = {
+    manager: { connection: {} },
     findOne: jest
       .fn()
       .mockResolvedValue({ id: userId, userWorkspaces: [membership] }),
@@ -454,7 +463,10 @@ const fixture = () => {
     nativeId,
   };
 };
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  deactivateUser.mockResolvedValue('deleted');
+});
 
 it.each([false, true])(
   'actual member removal retains actor after native deletion (application=%s)',
@@ -474,6 +486,15 @@ it.each([false, true])(
     expect(f.nativeRepository.delete).toHaveBeenCalledWith({
       userId: f.userId,
     });
+    const coreOperation = deactivateUser.mock.calls[0][0].auditOperations[0]!;
+    expect(coreOperation).toMatchObject({
+      workspaceId: f.workspaceId,
+      actor: {
+        kind: viaApplication ? 'application' : 'coreUser',
+        id: viaApplication ? applicationId : f.actorId,
+      },
+    });
+    expect(deactivateUser.mock.calls[0][0].userId).toBe(f.userId);
     expect(f.cleanup).toHaveBeenCalledWith(
       expect.objectContaining({
         userWorkspaceId: f.membershipId,
@@ -507,6 +528,24 @@ it('actual self-account deletion captures impersonator before service reads memb
   );
   expect(f.capture.mock.invocationCallOrder[0]).toBeLessThan(
     f.coreUserRepository.findOne.mock.invocationCallOrder[0],
+  );
+});
+it('self-account caller reports active-membership refusal rather than successful deletion', async () => {
+  const f = fixture();
+  deactivateUser.mockResolvedValue('active-memberships');
+  await expect(
+    f.resolver.deleteUser({ id: f.userId } as never, undefined),
+  ).rejects.toThrow('active workspace memberships remain');
+});
+it('workspace-less self-account caller supplies no invented audit scope', async () => {
+  const f = fixture();
+  f.coreUserRepository.findOne.mockResolvedValue({
+    id: f.userId,
+    userWorkspaces: [],
+  });
+  await f.resolver.deleteUser({ id: f.userId } as never, undefined);
+  expect(deactivateUser).toHaveBeenCalledWith(
+    expect.objectContaining({ userId: f.userId, auditOperations: [] }),
   );
 });
 it('last-member path carries caller attribution into workspace teardown', async () => {

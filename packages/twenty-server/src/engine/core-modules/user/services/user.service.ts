@@ -1,4 +1,5 @@
 import { InjectRepository } from '@nestjs/typeorm';
+import { deactivateCoreUserWithAudit } from 'src/engine/core-modules/crm-audit/deactivate-core-user-with-audit';
 import {
   copyMembershipCleanupIdentity,
   membershipCleanupOperation,
@@ -279,6 +280,9 @@ export class UserService {
 
     userValidator.assertIsDefinedOrThrow(user);
 
+    const auditOperations = user.userWorkspaces.map((membership) =>
+      membershipCleanupOperation(membership.workspaceId, capturedAuditIdentity),
+    );
     for (const userWorkspace of user.userWorkspaces) {
       await this.removeUserFromWorkspaceAndPotentiallyDeleteWorkspace(
         userWorkspace,
@@ -286,8 +290,17 @@ export class UserService {
       );
     }
 
-    await this.userRepository.softDelete({ id: userId });
-    await this.coreEntityCacheService.invalidate('user', userId);
+    const result = await deactivateCoreUserWithAudit({
+      dataSource: this.userRepository.manager.connection,
+      userEntity: UserEntity,
+      userId,
+      auditOperations,
+      invalidate: () => this.coreEntityCacheService.invalidate('user', userId),
+    });
+    if (result === 'active-memberships')
+      throw new Error(
+        'Cannot delete account while active workspace memberships remain',
+      );
 
     return await this.userRepository.findOne({
       where: {
@@ -336,8 +349,16 @@ export class UserService {
     );
 
     if (user.userWorkspaces.length === 1) {
-      await this.userRepository.softDelete(userId);
-      await this.coreEntityCacheService.invalidate('user', userId);
+      await deactivateCoreUserWithAudit({
+        dataSource: this.userRepository.manager.connection,
+        userEntity: UserEntity,
+        userId,
+        auditOperations: [
+          membershipCleanupOperation(workspaceId, capturedAuditIdentity),
+        ],
+        invalidate: () =>
+          this.coreEntityCacheService.invalidate('user', userId),
+      });
     }
 
     return userWorkspace;
