@@ -7,6 +7,11 @@ import {
 } from 'twenty-shared/types';
 
 import { POSTGRESQL_ERROR_CODES } from 'src/engine/api/graphql/workspace-query-runner/constants/postgres-error-codes.constants';
+import {
+  type WorkspaceTransactionScope,
+  type WorkspaceTransactionOptions,
+} from 'src/engine/twenty-orm/types/workspace-transaction-scope.type';
+import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
 import { CalendarEventParticipantService } from 'src/modules/calendar/calendar-event-participant-manager/services/calendar-event-participant.service';
 
 import { googleCalendarEvent } from 'test/integration/google/mocks/google-calendar-event.util';
@@ -29,6 +34,67 @@ describe('Calendar import transient database errors (integration)', () => {
 
   let channel: Awaited<ReturnType<typeof connectMessagingAccount>>;
   let calendarEventParticipantService: CalendarEventParticipantService;
+  let workspaceOrmManager: WorkspaceOrmManager;
+
+  type ParticipantWrite = 'insert' | 'updateMany' | 'delete';
+  type ParticipantWriter = Record<
+    ParticipantWrite,
+    (...args: unknown[]) => Promise<unknown>
+  >;
+  const observeParticipantWrites = (
+    observe: (
+      scope: WorkspaceTransactionScope,
+      phase: ParticipantWrite,
+      records: unknown,
+    ) => Promise<void>,
+  ) => {
+    const transaction =
+      workspaceOrmManager.runInWorkspaceTransaction.bind(workspaceOrmManager);
+    jest
+      .spyOn(workspaceOrmManager, 'runInWorkspaceTransaction')
+      .mockImplementation(((
+        work: (scope: WorkspaceTransactionScope) => Promise<unknown>,
+        options?: WorkspaceTransactionOptions,
+      ) =>
+        transaction(async (scope) => {
+          // Keep the real issued scope and transaction. Matching's separate transactions
+          // are not the strict/exclusive calendar-save mutation being observed here.
+          if (
+            options?.commitOutcome === 'strict' &&
+            options.nativeOwnershipLock === 'exclusive'
+          ) {
+            const getRepository = scope.getRepository.bind(scope);
+            const instrumented = new WeakSet<object>();
+            scope.getRepository = ((
+              ...args: Parameters<WorkspaceTransactionScope['getRepository']>
+            ) => {
+              const repository = getRepository(...args);
+              if (
+                args[0] === 'calendarEventParticipant' &&
+                !instrumented.has(repository)
+              ) {
+                instrumented.add(repository);
+                const writer = repository as unknown as ParticipantWriter;
+                for (const phase of [
+                  'insert',
+                  'updateMany',
+                  'delete',
+                ] as const) {
+                  const perform = writer[phase].bind(writer);
+                  jest
+                    .spyOn(writer, phase)
+                    .mockImplementation(async (...values: unknown[]) => {
+                      await observe(scope, phase, values[0]);
+                      return perform(...values);
+                    });
+                }
+              }
+              return repository;
+            }) as WorkspaceTransactionScope['getRepository'];
+          }
+          return work(scope);
+        }, options)) as typeof workspaceOrmManager.runInWorkspaceTransaction);
+  };
 
   const fetchEvent = async ({
     eventId,
@@ -72,6 +138,9 @@ describe('Calendar import transient database errors (integration)', () => {
       getAppProviderByClassName<CalendarEventParticipantService>(
         'CalendarEventParticipantService',
       );
+    workspaceOrmManager = getAppProviderByClassName<WorkspaceOrmManager>(
+      'WorkspaceOrmManager',
+    );
   }, 60000);
 
   afterAll(async () => {
@@ -85,15 +154,17 @@ describe('Calendar import transient database errors (integration)', () => {
   it('should fail the calendar channel as unknown when a unique violation aborts the import transaction', async () => {
     await fetchOneEvent();
 
-    jest
-      .spyOn(calendarEventParticipantService, 'writeCalendarEventParticipants')
-      .mockImplementation(async ({ transactionScope }) => {
-        await transactionScope.executeRawQuery(
-          raiseSqlState(POSTGRESQL_ERROR_CODES.UNIQUE_VIOLATION),
-        );
-      });
+    let injected = 0;
+    observeParticipantWrites(async (scope) => {
+      injected++;
+      await scope.executeRawQuery(
+        raiseSqlState(POSTGRESQL_ERROR_CODES.UNIQUE_VIOLATION),
+      );
+    });
 
     await runCalendarChannelEventsImport(channel.calendarChannelId);
+
+    expect(injected).toBe(1);
 
     const channelState = await queryCalendarChannel(channel);
 
@@ -107,17 +178,19 @@ describe('Calendar import transient database errors (integration)', () => {
   it('should reschedule the calendar channel when the import transaction is killed by the idle-in-transaction timeout', async () => {
     await fetchOneEvent();
 
-    jest
-      .spyOn(calendarEventParticipantService, 'writeCalendarEventParticipants')
-      .mockImplementation(async ({ transactionScope }) => {
-        await transactionScope.executeRawQuery(
-          raiseSqlState(
-            POSTGRESQL_ERROR_CODES.IDLE_IN_TRANSACTION_SESSION_TIMEOUT,
-          ),
-        );
-      });
+    let injected = 0;
+    observeParticipantWrites(async (scope) => {
+      injected++;
+      await scope.executeRawQuery(
+        raiseSqlState(
+          POSTGRESQL_ERROR_CODES.IDLE_IN_TRANSACTION_SESSION_TIMEOUT,
+        ),
+      );
+    });
 
     await runCalendarChannelEventsImport(channel.calendarChannelId);
+
+    expect(injected).toBe(1);
 
     const channelState = await queryCalendarChannel(channel);
 
@@ -131,10 +204,6 @@ describe('Calendar import transient database errors (integration)', () => {
   it('should have ended the import transaction before the contact creation job is enqueued and the participants are matched', async () => {
     await fetchOneEvent();
 
-    const writeCalendarEventParticipants =
-      calendarEventParticipantService.writeCalendarEventParticipants.bind(
-        calendarEventParticipantService,
-      );
     const matchParticipantsAndEnqueueContactCreationJob =
       calendarEventParticipantService.matchParticipantsAndEnqueueContactCreationJob.bind(
         calendarEventParticipantService,
@@ -143,17 +212,12 @@ describe('Calendar import transient database errors (integration)', () => {
     let importBackendPid: number | undefined;
     let importBackendStateWhileMatching: string | undefined;
 
-    jest
-      .spyOn(calendarEventParticipantService, 'writeCalendarEventParticipants')
-      .mockImplementation(async (args) => {
-        const backends = await args.transactionScope.executeRawQuery(
-          'SELECT pg_backend_pid() AS pid',
-        );
-
-        importBackendPid = Number(backends[0].pid);
-
-        return writeCalendarEventParticipants(args);
-      });
+    observeParticipantWrites(async (scope) => {
+      const backends = await scope.executeRawQuery(
+        'SELECT pg_backend_pid() AS pid',
+      );
+      importBackendPid = Number(backends[0].pid);
+    });
 
     jest
       .spyOn(
@@ -190,24 +254,17 @@ describe('Calendar import transient database errors (integration)', () => {
       attendees: [knownAttendee, newAttendee],
     });
 
-    const writeCalendarEventParticipants =
-      calendarEventParticipantService.writeCalendarEventParticipants.bind(
-        calendarEventParticipantService,
-      );
-
     let insertedHandles: string[] = [];
-    let updatedParticipantCount = -1;
+    let updatedParticipantCount = 0;
 
-    jest
-      .spyOn(calendarEventParticipantService, 'writeCalendarEventParticipants')
-      .mockImplementation(async (args) => {
-        insertedHandles = args.operations.participantsToInsert.map(
-          (participant) => participant.handle,
+    observeParticipantWrites(async (_scope, phase, records) => {
+      if (phase === 'insert')
+        insertedHandles.push(
+          ...(records as { handle: string }[]).map(({ handle }) => handle),
         );
-        updatedParticipantCount = args.operations.participantsToUpdate.length;
-
-        return writeCalendarEventParticipants(args);
-      });
+      if (phase === 'updateMany')
+        updatedParticipantCount += (records as unknown[]).length;
+    });
 
     await runCalendarChannelEventsImport(channel.calendarChannelId);
 
@@ -215,17 +272,13 @@ describe('Calendar import transient database errors (integration)', () => {
     expect(updatedParticipantCount).toBe(0);
   }, 180000);
 
-  it('should read and compute outside the transaction and only write inside it', async () => {
+  it('should read and write inside the locked transaction before postcommit matching', async () => {
     await fetchOneEvent();
 
     const calls: string[] = [];
 
     const findCalendarEventParticipantsByCalendarEventIds =
       calendarEventParticipantService.findCalendarEventParticipantsByCalendarEventIds.bind(
-        calendarEventParticipantService,
-      );
-    const writeCalendarEventParticipants =
-      calendarEventParticipantService.writeCalendarEventParticipants.bind(
         calendarEventParticipantService,
       );
     const matchParticipantsAndEnqueueContactCreationJob =
@@ -239,18 +292,18 @@ describe('Calendar import transient database errors (integration)', () => {
         'findCalendarEventParticipantsByCalendarEventIds',
       )
       .mockImplementation(async (args) => {
+        expect(
+          args.transactionScope?.transactionLifecycle?.isTransactionActive,
+        ).toBe(true);
         calls.push('read');
 
         return findCalendarEventParticipantsByCalendarEventIds(args);
       });
 
-    jest
-      .spyOn(calendarEventParticipantService, 'writeCalendarEventParticipants')
-      .mockImplementation(async (args) => {
-        calls.push('write');
-
-        return writeCalendarEventParticipants(args);
-      });
+    observeParticipantWrites(async (scope) => {
+      expect(scope.transactionLifecycle?.isTransactionActive).toBe(true);
+      calls.push('write');
+    });
 
     jest
       .spyOn(

@@ -187,6 +187,7 @@ export class CalendarEventsImportService {
                 calendarChannel,
                 connectedAccount,
                 workspaceId,
+                membershipCleanupOperation(workspaceId, cleanupIdentity)!,
                 expectedRun,
               );
             if (!saved.applied) return;

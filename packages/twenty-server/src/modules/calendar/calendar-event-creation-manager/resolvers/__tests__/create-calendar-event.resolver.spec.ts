@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { type MessageDescriptor } from '@lingui/core';
 
 import { type I18nContext } from 'src/engine/core-modules/i18n/types/i18n-context.type';
@@ -38,7 +39,15 @@ describe('CreateCalendarEventResolver errors', () => {
     return new CreateCalendarEventResolver(
       { verifyUsableByCaller: jest.fn() } as never,
       { composeCalendarEvent } as never,
-      { createComposedCalendarEvent } as never,
+      {
+        createComposedCalendarEvent,
+        captureCalendarSaveAuditOperation: jest.fn().mockResolvedValue({
+          workspaceId: WORKSPACE_ID,
+          operationId: randomUUID(),
+          correlationId: randomUUID(),
+          actor: { kind: 'coreUser', id: randomUUID() },
+        }),
+      } as never,
       i18nService as never,
     );
   };
@@ -70,9 +79,10 @@ describe('CreateCalendarEventResolver errors', () => {
       CalendarEventCreationExceptionCode.PROVIDER_REQUEST_FAILED,
     );
     const resolver = buildResolver({
-      composeCalendarEvent: jest
-        .fn()
-        .mockResolvedValue({ success: true, data: {} }),
+      composeCalendarEvent: jest.fn().mockResolvedValue({
+        success: true,
+        data: { connectedAccount: {}, calendarChannel: {} },
+      }),
       createComposedCalendarEvent: jest.fn().mockRejectedValue(exception),
     });
 
@@ -91,9 +101,10 @@ describe('CreateCalendarEventResolver errors', () => {
 
   it('returns no error text for an unexpected error so the client shows its fallback', async () => {
     const resolver = buildResolver({
-      composeCalendarEvent: jest
-        .fn()
-        .mockResolvedValue({ success: true, data: {} }),
+      composeCalendarEvent: jest.fn().mockResolvedValue({
+        success: true,
+        data: { connectedAccount: {}, calendarChannel: {} },
+      }),
       createComposedCalendarEvent: jest
         .fn()
         .mockRejectedValue(new Error('socket hang up')),

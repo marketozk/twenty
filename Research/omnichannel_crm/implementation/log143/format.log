@@ -1,0 +1,16 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/tool/tools/calendar-tool/create-calendar-event-tool.ts 145ms (unchanged)
+../../../source/packages/twenty-server/src/modules/calendar/calendar-event-creation-manager/resolvers/__tests__/create-calendar-event.resolver.spec.ts 36ms (unchanged)
+../../../source/packages/twenty-server/src/modules/calendar/calendar-event-creation-manager/resolvers/create-calendar-event.resolver.ts 45ms (unchanged)
+../../../source/packages/twenty-server/src/modules/calendar/calendar-event-creation-manager/services/create-calendar-event.service.ts 13ms (unchanged)
+../../../source/packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-events-import.service.ts 31ms (unchanged)
+../../../source/packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-save-events.service.ts 179ms (unchanged)
+../../../source/packages/twenty-server/src/modules/calendar/calendar-event-participant-manager/services/calendar-event-participant.service.ts 13ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts 213ms (unchanged)
+../../../source/packages/twenty-server/test/integration/google/calendar/transient-database-error.integration-spec.ts 64ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/calendar-save-proof.ts 13ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/calendar-save-audit.postgres-spec.ts 186ms
+../../../source/packages/twenty-server/test/fork-migration/calendar-save-proof.spec.ts 10ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-save-entrypoints.spec.ts 68ms (unchanged)
+
+{"formattedFiles": 13, "singleSshSession": true}

@@ -1,3 +1,4 @@
+import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { MessagingMessagesImportService } from 'src/modules/messaging/message-import-manager/services/messaging-messages-import.service';
 import { CalendarEventsImportService } from 'src/modules/calendar/calendar-event-import-manager/services/calendar-events-import.service';
 import { MessagingMessageCleanerService } from 'src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service';
@@ -151,6 +152,19 @@ let messageParticipants: MessagingMessageParticipantService,
 let contacts: { add: jest.Mock },
   matchMessages: jest.SpyInstance,
   matchCalendar: jest.SpyInstance;
+const calendarOperation = (): CrmAuditOperation => ({
+  workspaceId: fixture.workspaceId,
+  operationId: randomUUID(),
+  actor: { kind: 'system', id: 'calendar-save-fixture' },
+});
+const calendarFailureText = (error: unknown) => {
+  const messages: string[] = [];
+  for (let i = 0; i < 6 && error instanceof Error; i++) {
+    messages.push(error.message);
+    error = error.cause;
+  }
+  return messages.join(' | ');
+};
 const startedAt = '2030-01-01T00:00:00.123456Z';
 const run = (kind: 'message' | 'calendar'): OrdinaryMetadataSyncRun => ({
   workspaceId: fixture.workspaceId,
@@ -226,6 +240,7 @@ const save = (
         calendarChannel,
         account,
         fixture.workspaceId,
+        calendarOperation(),
         proof,
       );
 const snapshot = async () => ({
@@ -301,7 +316,7 @@ beforeAll(async () => {
     'ALTER TABLE core."messageChannel" ADD "connectedAccountId" uuid,ADD "isSyncEnabled" boolean,ADD "syncStage" text,ADD "syncStageStartedAt" timestamptz',
   );
   await fixture.owner.query(
-    'CREATE TABLE core."calendarChannel"(id uuid PRIMARY KEY,"workspaceId" uuid,"connectedAccountId" uuid,"isSyncEnabled" boolean,"syncStage" text,"syncStageStartedAt" timestamptz,handle text,"syncStatus" text)',
+    'CREATE TABLE core."calendarChannel"(id uuid PRIMARY KEY,"workspaceId" uuid,"connectedAccountId" uuid,"isSyncEnabled" boolean,"syncStage" text,"syncStageStartedAt" timestamptz,handle text,"syncStatus" text,"isContactAutoCreationEnabled" boolean DEFAULT false,"contactAutoCreationPolicy" text DEFAULT \'AS_PARTICIPANT_AND_ORGANIZER\',"excludePrivateEvents" boolean DEFAULT false)',
   );
   await fixture.owner.query(
     `GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA core TO "${fixture.roleName}"`,
@@ -311,6 +326,12 @@ beforeAll(async () => {
   await metadata.initialize();
 });
 beforeEach(async () => {
+  await fixture.owner.query(
+    `DROP TRIGGER IF EXISTS calendar_save_phase_failure ON "${fixture.schemaName}"."calendarEventParticipant"`,
+  );
+  await fixture.owner.query(
+    `DROP FUNCTION IF EXISTS "${fixture.schemaName}".calendar_save_phase_failure()`,
+  );
   await fixture.reset();
   await fixture.owner.query(
     'TRUNCATE core.workspace,core."connectedAccount",core."messageChannel",core."calendarChannel" CASCADE',
@@ -471,11 +492,17 @@ for (const kind of ['message', 'calendar'] as const)
           .spyOn(messageParticipants, 'saveMessageParticipants')
           .mockRejectedValue(new Error('participant write refused'));
       else
-        jest
-          .spyOn(calendarParticipants, 'writeCalendarEventParticipants')
-          .mockRejectedValue(new Error('participant write refused'));
+        await fixture.owner.query(
+          `CREATE FUNCTION "${fixture.schemaName}".calendar_save_phase_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'participant write refused'; END $$; CREATE TRIGGER calendar_save_phase_failure BEFORE INSERT ON "${fixture.schemaName}"."calendarEventParticipant" FOR EACH ROW EXECUTE FUNCTION "${fixture.schemaName}".calendar_save_phase_failure()`,
+        );
       const before = await snapshot();
-      await expect(save(kind)).rejects.toThrow('participant write refused');
+      const failure = await save(kind).then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+      expect(calendarFailureText(failure)).toContain(
+        'participant write refused',
+      );
       expect(await snapshot()).toEqual(before);
       expect(contacts.add).not.toHaveBeenCalled();
       expect(matchMessages).not.toHaveBeenCalled();
@@ -539,6 +566,7 @@ for (const kind of ['message', 'calendar'] as const)
           calendarChannel,
           account,
           fixture.workspaceId,
+          calendarOperation(),
         );
       expect(
         await fixture.read(kind === 'message' ? 'message' : 'calendarEvent'),
@@ -608,6 +636,7 @@ it('calendar participant decisions read inside the transaction and see prior nat
     calendarChannel,
     account,
     fixture.workspaceId,
+    calendarOperation(),
     run('calendar'),
   );
   const after = await fixture.read('calendarEventParticipant');
@@ -667,6 +696,7 @@ it('calendar sharing projection links two same-provider channels to one native e
     secondChannel,
     secondAccount,
     fixture.workspaceId,
+    calendarOperation(),
     {
       ...run('calendar'),
       channelId: secondChannel.id,

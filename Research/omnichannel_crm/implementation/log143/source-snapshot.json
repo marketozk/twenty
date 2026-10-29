@@ -1,0 +1,19 @@
+{
+  "baseCommit": "b92ee076f3320f192c8a6dba17bdda32f999d00f",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/tool/tools/calendar-tool/create-calendar-event-tool.ts": "9a2f6759daa8d17749fd8b518d90e097d96e05dc9c35035adfdaf84fc147b0c2",
+    "packages/twenty-server/src/modules/calendar/calendar-event-creation-manager/resolvers/__tests__/create-calendar-event.resolver.spec.ts": "a69ad485797efc3d39786a145a484e84c16929c22c1ef056a9534aeab3198dfb",
+    "packages/twenty-server/src/modules/calendar/calendar-event-creation-manager/resolvers/create-calendar-event.resolver.ts": "77c7bb70704616d07b42944025c410994c75778186fd799cc0d6b1e6cb323d2c",
+    "packages/twenty-server/src/modules/calendar/calendar-event-creation-manager/services/create-calendar-event.service.ts": "64955613a51ec1c3d4594c58be316c762788a31c7ece0bdad469d3931e2a6957",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-events-import.service.ts": "cc10331e589c1b8579481587084e8ddd8d0eb6921f43fe9a903234c6fdb7db99",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-save-events.service.ts": "f6b46f0bb01de8d3906b761544ecd66b68e95ca9a01c0d80d4ae562ff06bfc5e",
+    "packages/twenty-server/src/modules/calendar/calendar-event-participant-manager/services/calendar-event-participant.service.ts": "d62a61991dde150db96204ba471969a00e045c4af3726c0d3167cc2bd35f8c17",
+    "packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts": "663e699a3bd2a8aad500d911c86534ee65b682da58cf8e05ff60df64017413f4",
+    "packages/twenty-server/test/integration/google/calendar/transient-database-error.integration-spec.ts": "b452c361f87b67d4476395889f4d29eaf57f57b4bd0954833d0cf00bffc11df7",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/calendar-save-proof.ts": "f018c3f66b66b37cd436940693a145a37516e563c975d80732118db5422dad27",
+    "packages/twenty-server/test/fork-migration/calendar-save-audit.postgres-spec.ts": "25850188c94149adf2d2f9c360690a969f899c0577b8d9a16bd5eee3bcb8cd52",
+    "packages/twenty-server/test/fork-migration/calendar-save-proof.spec.ts": "445cacd3e69ccaa81481ad395c52e6e8e3a7105c51f0119af5838c3447d69d62",
+    "packages/twenty-server/test/fork-migration/crm-audit-calendar-save-entrypoints.spec.ts": "a87343a6f6df20e5fa9209d114a7b12598711f38dab9e059018edd9f248d60dd"
+  },
+  "uploadedSourceHashesVerified": true
+}

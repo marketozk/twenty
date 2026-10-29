@@ -1,3 +1,5 @@
+import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
+import { type MembershipCleanupIdentity } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { ConnectedAccountProvider } from 'twenty-shared/types';
@@ -23,6 +25,16 @@ export class CreateCalendarEventService {
     private readonly calDavCreateEventService: CalDavCreateEventService,
     private readonly calendarSaveEventsService: CalendarSaveEventsService,
   ) {}
+
+  captureCalendarSaveAuditOperation(
+    workspaceId: string,
+    trustedIdentity?: MembershipCleanupIdentity,
+  ): Promise<CrmAuditOperation> {
+    return this.calendarSaveEventsService.captureCalendarSaveAuditOperation(
+      workspaceId,
+      trustedIdentity,
+    );
+  }
 
   async createComposedCalendarEvent(
     data: ComposedCalendarEvent,
@@ -56,6 +68,7 @@ export class CreateCalendarEventService {
     createdEvent: FetchedCalendarEvent,
     data: ComposedCalendarEvent,
     workspaceId: string,
+    auditOperation: CrmAuditOperation,
   ): Promise<string | null> {
     try {
       const { calendarEventIds } =
@@ -64,14 +77,19 @@ export class CreateCalendarEventService {
           data.calendarChannel,
           data.connectedAccount,
           workspaceId,
+          auditOperation,
         );
 
       return calendarEventIds[0] ?? null;
-    } catch (persistenceError) {
-      this.logger.warn(
-        `Failed to persist created calendar event (sync will recover): ${persistenceError}`,
-      );
-
+    } catch {
+      // Provider creation already succeeded; diagnostics must not report it as failed.
+      try {
+        this.logger.warn(
+          'Created calendar event could not be confirmed locally; provider sync will reconcile it.',
+        );
+      } catch {
+        // Logging is best-effort after the external side effect.
+      }
       return null;
     }
   }

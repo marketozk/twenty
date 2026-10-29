@@ -13,7 +13,6 @@ import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager
 import { type WorkspaceTransactionScope } from 'src/engine/twenty-orm/types/workspace-transaction-scope.type';
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
 import { CALENDAR_EVENT_PARTICIPANT_CHUNK_SIZE } from 'src/modules/calendar/calendar-event-participant-manager/constants/calendar-event-participant-chunk-size';
-import { type CalendarEventParticipantSaveOperations } from 'src/modules/calendar/calendar-event-participant-manager/types/calendar-event-participant-save-operations.type';
 import { type CalendarEventParticipantWorkspaceEntity } from 'src/modules/calendar/common/standard-objects/calendar-event-participant.workspace-entity';
 import { type FetchedCalendarEventParticipant } from 'src/modules/calendar/common/types/fetched-calendar-event.type';
 import {
@@ -48,40 +47,6 @@ export class CalendarEventParticipantService {
     return calendarEventParticipantRepository.find({
       where: { calendarEventId: Any([...new Set(calendarEventIds)]) },
     });
-  }
-
-  public async writeCalendarEventParticipants({
-    operations,
-    transactionScope,
-  }: {
-    operations: CalendarEventParticipantSaveOperations;
-    transactionScope: WorkspaceTransactionScope;
-  }): Promise<void> {
-    const calendarEventParticipantRepository =
-      transactionScope.getRepository<CalendarEventParticipantWorkspaceEntity>(
-        'calendarEventParticipant',
-        { shouldBypassPermissionChecks: true },
-      );
-
-    if (operations.participantIdsToDelete.length > 0) {
-      await calendarEventParticipantRepository.delete({
-        id: Any(operations.participantIdsToDelete),
-      });
-    }
-
-    for (const participantsChunk of chunk(
-      operations.participantsToUpdate,
-      CALENDAR_EVENT_PARTICIPANT_CHUNK_SIZE,
-    )) {
-      await calendarEventParticipantRepository.updateMany(participantsChunk);
-    }
-
-    for (const participantsChunk of chunk(
-      operations.participantsToInsert,
-      CALENDAR_EVENT_PARTICIPANT_CHUNK_SIZE,
-    )) {
-      await calendarEventParticipantRepository.insert(participantsChunk);
-    }
   }
 
   public async matchParticipantsAndEnqueueContactCreationJob({

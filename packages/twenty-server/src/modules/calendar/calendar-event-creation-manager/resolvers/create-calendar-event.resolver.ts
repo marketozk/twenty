@@ -60,11 +60,17 @@ export class CreateCalendarEventResolver {
     @AuthUserWorkspaceId() userWorkspaceId: string,
     @Context() context: I18nContext,
   ): Promise<CreateCalendarEventOutputDTO> {
+    const workspaceId = workspace.id;
+    input = { ...input };
     try {
+      const auditOperation =
+        await this.createCalendarEventService.captureCalendarSaveAuditOperation(
+          workspaceId,
+        );
       await this.connectedAccountMetadataService.verifyUsableByCaller({
         id: input.connectedAccountId,
         userWorkspaceId,
-        workspaceId: workspace.id,
+        workspaceId,
       });
 
       const result =
@@ -82,7 +88,7 @@ export class CreateCalendarEventResolver {
             sendInvitations: input.sendInvitations,
             addConferencing: input.addConferencing,
           },
-          workspace.id,
+          workspaceId,
         );
 
       if (!result.success) {
@@ -94,6 +100,17 @@ export class CreateCalendarEventResolver {
         };
       }
 
+      const persistenceData = {
+        ...result.data,
+        calendarChannel: { ...result.data.calendarChannel },
+        connectedAccount: {
+          ...result.data.connectedAccount,
+          handleAliases: result.data.connectedAccount.handleAliases && [
+            ...result.data.connectedAccount.handleAliases,
+          ],
+        },
+      };
+
       const createdEvent =
         await this.createCalendarEventService.createComposedCalendarEvent(
           result.data,
@@ -102,8 +119,9 @@ export class CreateCalendarEventResolver {
       const calendarEventId =
         await this.createCalendarEventService.persistCalendarEvent(
           createdEvent,
-          result.data,
-          workspace.id,
+          persistenceData,
+          workspaceId,
+          auditOperation,
         );
 
       return {

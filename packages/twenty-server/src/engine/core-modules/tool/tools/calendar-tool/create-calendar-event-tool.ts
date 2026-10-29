@@ -1,3 +1,4 @@
+import { membershipCleanupIdentityFromWorkspaceAuth } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { PermissionFlagType } from 'twenty-shared/constants';
@@ -32,11 +33,29 @@ export class CreateCalendarEventTool implements Tool {
     parameters: CreateCalendarEventToolInput,
     context: ToolExecutionContext,
   ): Promise<ToolOutput> {
+    const workspaceId = context.workspaceId;
+    parameters = { ...parameters };
     try {
+      const auth = context.authContext;
+      if (
+        !auth ||
+        auth.workspace.id !== workspaceId ||
+        auth.type === 'system' ||
+        auth.type === 'pendingActivationUser'
+      )
+        throw new Error(
+          'Calendar creation requires authenticated tool audit identity',
+        );
+      const identity = membershipCleanupIdentityFromWorkspaceAuth(auth);
+      const auditOperation =
+        await this.createCalendarEventService.captureCalendarSaveAuditOperation(
+          workspaceId,
+          identity,
+        );
       const result =
         await this.calendarEventComposerService.composeCalendarEvent(
           parameters,
-          context.workspaceId,
+          workspaceId,
         );
 
       if (!result.success) {
@@ -50,19 +69,32 @@ export class CreateCalendarEventTool implements Tool {
       }
 
       const { data } = result;
+      const persistenceData = {
+        ...data,
+        calendarChannel: { ...data.calendarChannel },
+        connectedAccount: {
+          ...data.connectedAccount,
+          handleAliases: data.connectedAccount.handleAliases && [
+            ...data.connectedAccount.handleAliases,
+          ],
+        },
+      };
 
       const createdEvent =
         await this.createCalendarEventService.createComposedCalendarEvent(data);
 
       await this.createCalendarEventService.persistCalendarEvent(
         createdEvent,
-        data,
-        context.workspaceId,
+        persistenceData,
+        workspaceId,
+        auditOperation,
       );
 
-      this.logger.log(
-        `Calendar event "${createdEvent.title}" created on connected account ${data.connectedAccount.id}`,
-      );
+      try {
+        this.logger.log('Calendar event created.');
+      } catch {
+        // Diagnostics must not turn a successful provider operation into a retry.
+      }
 
       return {
         success: true,
@@ -75,7 +107,7 @@ export class CreateCalendarEventTool implements Tool {
           endsAt: createdEvent.endsAt,
           conferenceLink: createdEvent.conferenceLinkUrl || undefined,
           attendeeCount: createdEvent.participants.length,
-          connectedAccountId: data.connectedAccount.id,
+          connectedAccountId: persistenceData.connectedAccount.id,
         },
       };
     } catch (error) {

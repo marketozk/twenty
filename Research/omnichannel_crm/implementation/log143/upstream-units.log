@@ -1,0 +1,8 @@
+[Nest] 1  - 10/29/2026, 12:24:58 PM   ERROR [CreateCalendarEventResolver] Failed to create calendar event: Error: Google Calendar API returned 403: insufficientPermissions
+[Nest] 1  - 10/29/2026, 12:24:58 PM   ERROR [CreateCalendarEventResolver] Failed to create calendar event: Error: socket hang up
+PASS twenty-server ../../../source/packages/twenty-server/src/modules/calendar/calendar-event-creation-manager/resolvers/__tests__/create-calendar-event.resolver.spec.ts (23.75 s)
+
+Test Suites: 1 passed, 1 total
+Tests:       3 passed, 3 total
+Snapshots:   0 total
+Time:        23.845 s

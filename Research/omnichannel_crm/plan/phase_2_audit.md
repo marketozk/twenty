@@ -68,9 +68,11 @@ Event owner с фактическим каскадом и сохранением
 единый global sweep и три jobs. LOG141 подключает оба provider/import cleanup caller
 к общему аудиту Association и orphan Event, сохраняя unsafe outcomes. LOG142
 объединяет public settings/reset и audit; cache-only действие выполняется после
-подтверждённого COMMIT, прежние права/ответ/коды ошибок сохранены. Provider save,
-matching, свежесть import policy и durable cache этим не покрываются.
-Далее — [provider calendar save](../implementation/log142/next-boundary.md).
+подтверждённого COMMIT, прежние права/ответ/коды ошибок сохранены. LOG143 объединяет
+provider Event/Association/Participant save с аудитом; фактические данные, источники,
+generated fields и late effects проверены. Ручной provider success сохранён.
+Matching/Targets/contact creation, свежесть import policy и durable cache открыты.
+Далее — [calendar matching и targets](../implementation/log143/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.
