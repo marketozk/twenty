@@ -1,0 +1,53 @@
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-target-reconciliation.postgres-spec.ts (16.173 s)
+  ✓ derives Person/Company/Opportunity targets from actual live sources, audits creates, and leaves source rows unchanged (405 ms)
+  ✓ preserves manual and tombstone policy while auditing only actual automatic-flag changes and obsolete deletions (343 ms)
+  ✓ preserves legacy source liveness semantics when message is soft-deleted (218 ms)
+  ✓ preserves legacy source liveness semantics when messageParticipant is soft-deleted (237 ms)
+  ✓ preserves legacy source liveness semantics when person is soft-deleted (228 ms)
+  ✓ preserves legacy source liveness semantics when opportunity is soft-deleted (201 ms)
+  ✓ preserves legacy source liveness semantics when company is soft-deleted (236 ms)
+  ✓ deduplicates shared sources and ignores null participant Person without inventing targets (230 ms)
+  ✓ retains the protected thread projection while reconciling an ordinary thread in the same batch (223 ms)
+  ✓ does not claim or audit trigger-skipped target INSERT effects (203 ms)
+  ✓ does not claim or audit trigger-skipped target UPDATE effects (223 ms)
+  ✓ does not claim or audit trigger-skipped target DELETE effects (196 ms)
+  ✓ rejects an alternate row inserted by a real INSERT-conflict trigger instead of fabricating a create audit (234 ms)
+  ✓ rolls back all target mutations if audit insertion is refused (218 ms)
+  ✓ rolls back late Conversation ownership introduced during audit flush (211 ms)
+  ✓ drains a deferred target DELETE resurrection and rejects its effects before commit (220 ms)
+  ✓ rejects populated unknown incoming target CASCADE instead of deleting an unaudited dependent (240 ms)
+  ✓ preserves committed targets and audit after actual COMMIT acknowledgement loss (302 ms)
+  ✓ requires the Opportunity-to-Person FK that fences new source insertions (218 ms)
+  ✓ refuses foreign-operation authority/input without effects (153 ms)
+  ✓ refuses shared-scope authority/input without effects (140 ms)
+  ✓ refuses too-many authority/input without effects (140 ms)
+  ✓ includes a new Opportunity source whose FK lock commits before source locking (254 ms)
+  ✕ holds Person source locks until commit so later Opportunity insertion is handled by the next reconciliation (1264 ms)
+
+  ● holds Person source locks until commit so later Opportunity insertion is handled by the next reconciliation
+
+    QueryFailedError: deadlock detected
+
+      at PostgresQueryRunner.query (../../../app/src/driver/postgres/PostgresQueryRunner.ts:325:19)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 23 passed, 24 total
+Snapshots:   0 total
+Time:        16.28 s
+Ran all test suites matching /crm-audit-native-target-reconciliation/i.
+Traceback (most recent call last):
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log133-target.py", line 6, in <module>
+    m['node'](['/tools/node_modules/jest/bin/jest.js','--config','/source/packages/twenty-server/jest-fork-migration.config.mjs','--runInBand','--testPathPattern='+pattern],{'FORK_MIGRATION_TEST_REDIS_URL':'redis://redis:6379','FORK_MIGRATION_TEST_URL':'postgres://test_owner:isolated-test-only@postgres/'+s['database']})
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log133-run.py", line 16, in node
+    return ssh(cmd+['--entrypoint','node','marketozk/twenty:log088-server-fixed',*args])
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log133-run.py", line 4, in ssh
+    def ssh(args,**kw):return call(['ssh',HOST,shlex.join(args)],**kw)
+                              ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log133-run.py", line 3, in call
+    def call(args,**kw):return subprocess.run(args,check=True,**kw)
+                               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['ssh', 'root@176.114.84.194', 'docker run --rm --user 0:0 --network twenty-rob764-3e371e20ab394c2b-net --memory 3g --cpus 2 -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source:/source:ro -v /opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools:/tools:ro -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/out:/out:rw -e NODE_PATH=/out/tools/node_modules:/tools/node_modules:/app/node_modules -e FORK_MIGRATION_TEST_REDIS_URL=redis://redis:6379 -e FORK_MIGRATION_TEST_URL=postgres://test_owner:isolated-test-only@postgres/twenty_rob764_test_3e371e20ab394c2b --entrypoint node marketozk/twenty:log088-server-fixed /tools/node_modules/jest/bin/jest.js --config /source/packages/twenty-server/jest-fork-migration.config.mjs --runInBand --testPathPattern=crm-audit-native-target-reconciliation']' returned non-zero exit status 1.

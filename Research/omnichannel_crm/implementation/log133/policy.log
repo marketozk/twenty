@@ -1,0 +1,14 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/src/modules/match-participant/utils/__tests__/compute-target-reconciliation-operations.util.spec.ts
+  computeTargetReconciliationOperations
+    ✓ creates missing automatic targets (4 ms)
+    ✓ does not recreate an explicitly deleted target
+    ✓ adds automatic provenance to an existing manual target
+    ✓ keeps a manual target when its automatic reason disappears (1 ms)
+    ✓ hard-deletes an obsolete automatic-only target
+    ✓ deduplicates desired targets
+
+Test Suites: 1 passed, 1 total
+Tests:       6 passed, 6 total
+Snapshots:   0 total
+Time:        2.944 s
+Ran all test suites.

@@ -1,5 +1,3 @@
-import { isDefined } from 'twenty-shared/utils';
-
 export type TargetIdentity = {
   parentId: string;
   targetPersonId: string | null;
@@ -46,12 +44,16 @@ export const computeTargetReconciliationOperations = ({
   );
   const liveTargetByKey = new Map(
     existingTargets
-      .filter((target) => !isDefined(target.deletedAt))
+      .filter(
+        (target) => target.deletedAt === null || target.deletedAt === undefined,
+      )
       .map((target) => [getTargetIdentityKey(target), target]),
   );
   const tombstoneKeys = new Set(
     existingTargets
-      .filter((target) => isDefined(target.deletedAt))
+      .filter(
+        (target) => target.deletedAt !== null && target.deletedAt !== undefined,
+      )
       .map(getTargetIdentityKey),
   );
 
@@ -61,7 +63,7 @@ export const computeTargetReconciliationOperations = ({
 
   const targetsToMarkAutomatic = [...desiredTargetByKey.keys()]
     .map((key) => liveTargetByKey.get(key))
-    .filter(isDefined)
+    .filter((target) => target !== undefined)
     .filter((target) => !target.isAutomaticallyAssigned)
     .map((target) => target.id);
 

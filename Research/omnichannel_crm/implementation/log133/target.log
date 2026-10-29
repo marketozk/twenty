@@ -1,0 +1,10 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-target-reconciliation.postgres-spec.ts (16.257 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-empty-thread-cleanup.postgres-spec.ts (10.778 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-orphan-message.postgres-spec.ts (9.406 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-update-fk.postgres-spec.ts (5.04 s)
+
+Test Suites: 4 passed, 4 total
+Tests:       115 passed, 115 total
+Snapshots:   0 total
+Time:        41.605 s
+Ran all test suites matching /crm-audit-native-target-reconciliation|crm-audit-native-orphan-message|crm-audit-native-empty-thread-cleanup|crm-audit-update-fk/i.

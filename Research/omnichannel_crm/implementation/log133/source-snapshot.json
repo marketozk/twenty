@@ -1,0 +1,9 @@
+{
+  "baseCommit": "999274b95022fe95afd17069d55e8608105e2a12",
+  "lfSha256": {
+    "packages/twenty-server/src/modules/match-participant/utils/compute-target-reconciliation-operations.util.ts": "e0d2c97028bbbb28e8b90923a99e0269147d8e7518d998d16e17aef22a67f624",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/reconcile-native-message-thread-targets-with-audit.ts": "5b0b04dd672361cfa0956c4e1b318758c872c50ae8823b1c8931305e90ce6924",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-target-reconciliation.postgres-spec.ts": "aede4b733508461140d75e6c1a9b089a12605d09a4ada2656d8064af5093dd59"
+  },
+  "uploadedSourceHashesVerified": true
+}
