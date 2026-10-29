@@ -3560,3 +3560,7 @@ fixture заменены adapters. Полный HTTP, in-flight mutation fence �
 Продолжаем automatic trusted attribution API/jobs. Readonly разбор выявил
 hard-workspace teardown gap: retained soft-deleted memberships должны поступать в
 cleanup по точному ID; активные остальные memberships считаются отдельно.
+
+LOG116 publication: c2b2c5085608641d59321111668a319f4fba067f pushed/API verified.
+ROB765 description/comment 6ace0d87-3c50-4dec-a813-564d2506ea1f independently read back;
+all 11 issue states match. Implementation continues with trusted cleanup attribution.
