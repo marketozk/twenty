@@ -3993,4 +3993,6 @@ LOG145 подключает календарный rematch job к закрыты
 
 Первый targeted run прошёл без падений. Независимое ревью не нашло blockers; legacy generic suffix проверен побайтно. Реальные PG тесты показывают старый stale-member bug, его исправление, 201 кандидата, полностью пропущенную страницу, сохранение первого commit при отказе второй страницы и точную причину late-effect отказа. Семь adapter-страниц не являются 1000-event PG performance приёмкой. Type baseline снизился из-за другого набора импортируемых корней, а не исправления прежних application errors. [Ревью](implementation/log145/review.md).
 
-Следующий участок — [person-company targets](implementation/log145/next-boundary.md). Публикация Linear ожидается после commit/push.
+Следующий участок — [person-company targets](implementation/log145/next-boundary.md).
+
+LOG145 publication: code cade648f6d730a878fab89e1fcde9aa91ff92d6c pushed and GitHub API ref verified. Linear comment b13fec02-5a0f-4975-bd10-b650101a1028, description/comment/all 11 issue states independently read back. ROB765 remains In Progress; continuing person-company targets.
