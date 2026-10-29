@@ -3795,3 +3795,5 @@ LOG128 добавляет обязательные captured deletion boundaries 
 По ревью добавлены реальные обе очередности member/provider write races с observed lock waits. Проверены safe frozen DTO без runner, смена provider/application/scope/channel, одноразовое consumption, masking чужого command и detached work. Две type ошибки test fixtures исправлены, baseline неизменён.
 
 Для следующего wiring подтверждены новые границы: partial DELETE нельзя пропускать к последующей provider migration; account может появиться между транзакциями, поэтому provider handler требует собственного FOR UPDATE + no-references guard. Email-group требует pinned handle для domain cleanup. ROB765 In Progress; full HTTP/build/deploy и GitHub Actions не выполнялись.
+
+LOG128 publication: code 543fa4651625b2c30d29a81e2549a9e1b30b107a pushed and GitHub API ref verified; Linear comment 8c0ae6cf-1c7e-4892-a361-2dd4394fcced, description/comment/all 11 issue states independently read back. Continuing service and entry-point wiring; ROB765 In Progress.
