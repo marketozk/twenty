@@ -4028,3 +4028,5 @@ LOG147 добавляет аудит автоматических связей �
 у тестового page helper. Рабочий код прошёл независимое ревью и проверки.
 Отдельные страницы сохраняются атомарно. Общая приёмка ROB765 остаётся открытой.
 Публикация и Linear фиксируются после push. Далее — [messaging rematch](implementation/log147/next-boundary.md).
+
+03.11.2026 LOG147 publication. Code e4f4fd84316b178197058113423ffd831e34b9cb pushed, GitHub API ref verified. Linear comment eaf8087b-1e2c-4e4f-a28d-3ce7dfc1a660 verified by readback together with description and all 11 issue states. ROB765 remains In Progress.
