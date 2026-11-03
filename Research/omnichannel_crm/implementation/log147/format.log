@@ -1,0 +1,8 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts 857ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/reconcile-native-message-thread-targets-with-audit.ts 5ms (unchanged)
+../../../source/packages/twenty-server/src/modules/match-participant/participant-target-reconciliation.service.ts 211ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts 412ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-person-target-reconciliation.postgres-spec.ts 90ms (unchanged)
+
+{"formattedFiles": 5, "singleSshSession": true}

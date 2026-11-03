@@ -1126,6 +1126,158 @@ it('refuses an incoming generated Participant searchVector ON UPDATE cascade bef
   });
 });
 
+// LOG147: exercise the public service, real native owners and real transactions.
+const observePeopleTargetTransactions = (
+  observe: (sql: string, values: unknown[] | undefined) => Promise<void>,
+  onError?: (error: unknown) => void,
+) => {
+  const originalTransaction = manager.runInWorkspaceTransaction.bind(manager);
+  jest.spyOn(manager, 'runInWorkspaceTransaction').mockImplementation((async (
+    work: (scope: WorkspaceTransactionScope) => Promise<unknown>,
+    options?: WorkspaceTransactionOptions,
+  ) => {
+    expect(options).toMatchObject({
+      commitOutcome: 'strict',
+      nativeOwnershipLock: 'exclusive',
+    });
+    const client = await f.pool.connect();
+    const original = client.query.bind(client);
+    const querySpy = jest.spyOn(client, 'query').mockImplementation((async (
+      statement: string | { text: string; values?: unknown[] },
+      values?: unknown[],
+    ) => {
+      const sql = typeof statement === 'string' ? statement : statement.text;
+      const result = await original(statement as string, values);
+      await observe(
+        sql,
+        typeof statement === 'string' ? values : statement.values,
+      );
+      return result;
+    }) as typeof client.query);
+    jest
+      .spyOn(f.pool, 'connect')
+      .mockImplementationOnce(() => Promise.resolve(client));
+    try {
+      return await originalTransaction(work, options);
+    } catch (error) {
+      onError?.(error);
+      throw error;
+    } finally {
+      querySpy.mockRestore();
+    }
+  }) as typeof manager.runInWorkspaceTransaction);
+};
+
+it('public people target service drains messaging pages before calendar with independent cursors and captured authority', async () => {
+  const s = await linkTargetSeed();
+  const threadId = await insert('messageThread', { subject: 'Public service' });
+  const messageId = await insert('message', {
+    messageThreadId: threadId,
+    headerMessageId: randomUUID(),
+  });
+  const ids = Array.from(
+    { length: 201 },
+    (_, index) =>
+      `40000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+  );
+  await f.withContext(() =>
+    f.dataSource.transaction(
+      async (scope) => {
+        await scope.getRepository('messageParticipant', permissions).insert(
+          ids.map((id) => ({
+            id,
+            messageId,
+            personId: s.personId,
+            role: 'TO',
+          })),
+        );
+      },
+      { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
+    ),
+  );
+  const personIds = [s.personId];
+  const authority = operation();
+  const expectedActor = { ...authority.actor };
+  const calls: { lane: string; cursor: unknown; people: unknown }[] = [];
+  let mutated = false;
+  const legacy = jest.spyOn(targets, 'reconcileParticipantTargets');
+  observePeopleTargetTransactions(async (sql, values) => {
+    if (!mutated && sql === 'BEGIN') {
+      mutated = true;
+      personIds.splice(0);
+      authority.actor.id = 'UntrustedAfterAwait';
+    }
+    if (/LIMIT\s+200/i.test(sql)) {
+      if (sql.includes(table('messageParticipant')))
+        calls.push({
+          lane: 'message',
+          people: values?.[0],
+          cursor: values?.[1],
+        });
+      else if (sql.includes(table(PART)))
+        calls.push({
+          lane: 'calendar',
+          people: values?.[0],
+          cursor: values?.[1],
+        });
+    }
+  });
+  await reconcilePeopleTargets(personIds, authority);
+  expect(mutated).toBe(true);
+  expect(calls).toEqual([
+    { lane: 'message', people: [s.personId], cursor: null },
+    { lane: 'message', people: [s.personId], cursor: ids[199] },
+    { lane: 'calendar', people: [s.personId], cursor: null },
+  ]);
+  expect(await rows('messageThreadTarget')).toHaveLength(3);
+  expect(await rows(TARGET)).toHaveLength(3);
+  const entries = await audit();
+  expect(entries).toHaveLength(6);
+  for (const entry of entries) expect(entry.actor).toEqual(expectedActor);
+  expect(legacy).not.toHaveBeenCalled();
+});
+
+it('public people target service preserves exact messaging unknown-outcome error and never enters calendar', async () => {
+  const s = await linkTargetSeed();
+  const threadId = await insert('messageThread', { subject: 'Public ACK' });
+  const messageId = await insert('message', {
+    messageThreadId: threadId,
+    headerMessageId: randomUUID(),
+  });
+  await insert('messageParticipant', {
+    messageId,
+    personId: s.personId,
+    role: 'TO',
+  });
+  let observedError: unknown;
+  let commits = 0;
+  let calendarDiscovery = false;
+  observePeopleTargetTransactions(
+    async (sql) => {
+      if (sql.includes(table(PART)) && /LIMIT\s+200/i.test(sql))
+        calendarDiscovery = true;
+      if (sql === 'COMMIT') {
+        commits++;
+        throw new Error('public people message ACK lost');
+      }
+    },
+    (error) => {
+      observedError = error;
+    },
+  );
+  const outcome = await capture(reconcilePeopleTargets([s.personId]));
+  expect(outcome.ok).toBe(false);
+  if (!outcome.ok) {
+    expect(outcome.error).toBe(observedError);
+    expect(outcome.error).toBeInstanceOf(NativeTransactionOutcomeUnknownError);
+  }
+  expect(commits).toBe(1);
+  expect(calendarDiscovery).toBe(false);
+  expect(await rows('messageThreadTarget')).toHaveLength(3);
+  expect(await rows(TARGET)).toEqual([]);
+  expect(await audit()).toHaveLength(3);
+});
+
 type RematchSelector =
   | { kind: 'personOnly'; personEmails: string[] }
   | { kind: 'workspaceMemberOnly'; workspaceMemberIds: string[] };
@@ -1494,13 +1646,22 @@ const onCalendarTargetQuery = (observe: (sql: string) => Promise<void>) => {
     ) {
       const client = await f.pool.connect(),
         original = client.query.bind(client);
+      let messagingPage = false;
       const querySpy = jest.spyOn(client, 'query').mockImplementation((async (
         statement: string | { text: string },
         values?: unknown[],
       ) => {
         const sql = typeof statement === 'string' ? statement : statement.text;
         const result = await original(statement as string, values);
-        await observe(sql);
+        // The public service runs messaging pages first; scope calendar failure
+        // injection and SHARE barriers to the calendar transaction itself.
+        if (
+          sql.includes('LOCK TABLE') &&
+          sql.includes(table('messageThread')) &&
+          sql.includes('IN ROW EXCLUSIVE MODE')
+        )
+          messagingPage = true;
+        if (!messagingPage) await observe(sql);
         return result;
       }) as typeof client.query);
       jest

@@ -75,9 +75,10 @@ LOG144 объединяет import matching Participant/CalendarEventTarget и �
 source SHARE, actual effects и queue-before-matching сохранены. LOG145 подключает
 фоновые rematch pages и исправляет stale-member-link; режимы сохраняют противоположные связи.
 LOG146 закрывает календарные person-company targets с current source/parent proof,
-actual effects и generated/FK проверками. Messaging-ветка, contact creation,
-свежесть import policy и durable cache открыты.
-Далее — [messaging person-company targets](../implementation/log146/next-boundary.md).
+actual effects и generated/FK проверками. LOG147 подключает messaging target pages
+к существующему owner с current selector proof и отдельным аудитом каждой страницы.
+Rematch/import matching, contact creation, свежесть import policy и durable cache открыты.
+Далее — [messaging rematch](../implementation/log147/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

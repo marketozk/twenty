@@ -35,6 +35,7 @@ ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.
 Последняя подтверждённая сверка — [LOG146 publication](implementation/log146/publication.json):
 описание, комментарий и все 11 статусов прочитаны обратно; commit/push подтверждены GitHub API.
 LOG146 опубликован; описание и отчёт Linear прочитаны обратно после push.
-Следующая работа — messaging person-company targets; ROB765 остаётся In Progress.
+LOG147 проверен. Публикация и синхронизация нового отчёта ожидаются.
+Следующая работа — messaging rematch. ROB765 остаётся In Progress.
 История прежних R13–R16/LOG-публикаций сохраняется в [DEVLOG](DEVLOG.md) и каталогах evidence.
 GitHub Actions не используется.

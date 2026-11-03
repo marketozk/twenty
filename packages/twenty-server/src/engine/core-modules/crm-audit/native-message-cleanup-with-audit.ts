@@ -935,9 +935,17 @@ const deleteOrphanMessagesStage = async (
   };
 };
 
+type PersonTargetHint = Readonly<{
+  id: string;
+  personId: string;
+  messageId: string | null;
+  messageThreadId: string | null;
+}>;
+
 const reconcileTargetsStage = async (
   session: CleanupSession<TargetReconciliationScope>,
   candidateThreadIds: readonly string[],
+  personHints?: readonly PersonTargetHint[],
 ): Promise<{
   createdTargetIds: string[];
   updatedTargetIds: string[];
@@ -1126,6 +1134,70 @@ const reconcileTargetsStage = async (
     if (referencedIds.some((id) => !found.has(id)))
       throw new Error('Native target reconciliation missing source parent');
   }
+  let admittedPersonThreads: Set<string> | undefined;
+  let verifyPersonSelection: (() => Promise<void>) | undefined;
+  if (personHints !== undefined) {
+    const originalIds = new Map<Table, string[]>([
+      [PARTICIPANT, personHints.map((hint) => hint.id)],
+      [PERSON, personHints.map((hint) => hint.personId)],
+      [
+        MESSAGE,
+        personHints.flatMap((hint) => (hint.messageId ? [hint.messageId] : [])),
+      ],
+      [
+        THREAD,
+        personHints.flatMap((hint) =>
+          hint.messageThreadId ? [hint.messageThreadId] : [],
+        ),
+      ],
+    ]);
+    const selectionBefore = new Map<Table, Snapshot[]>();
+    const readOriginals = (name: Table) =>
+      readNativeCrmAuditRows(
+        sql,
+        shapes.get(name)!,
+        [...new Set(originalIds.get(name)!)].sort(),
+      );
+    // Moved hints are proof-only: locking their children would follow an unlocked parent.
+    for (const name of originalIds.keys())
+      selectionBefore.set(name, await readOriginals(name));
+    verifyPersonSelection = async () => {
+      for (const name of originalIds.keys())
+        if (
+          canonicalAuditJson(await readOriginals(name)) !==
+          canonicalAuditJson(selectionBefore.get(name)!)
+        )
+          throw new Error('Native person target selection changed');
+    };
+    session.validators.push(verifyPersonSelection);
+    const selectedRow = (name: Table, id: string | null) => {
+      const locked = before.get(name)!.find((row) => row.id === id);
+      const original = selectionBefore.get(name)!.find((row) => row.id === id);
+      if (
+        !locked ||
+        !original ||
+        canonicalAuditJson(locked) !== canonicalAuditJson(original)
+      )
+        return undefined;
+      return decode(locked);
+    };
+    admittedPersonThreads = new Set<string>();
+    for (const hint of personHints) {
+      const participant = selectedRow(PARTICIPANT, hint.id);
+      const message = selectedRow(MESSAGE, hint.messageId);
+      const thread = selectedRow(THREAD, hint.messageThreadId);
+      if (
+        participant?.deletedAt === null &&
+        participant.personId === hint.personId &&
+        participant.messageId === hint.messageId &&
+        message?.deletedAt === null &&
+        message.messageThreadId === hint.messageThreadId &&
+        thread?.deletedAt === null &&
+        hint.messageThreadId !== null
+      )
+        admittedPersonThreads.add(hint.messageThreadId);
+    }
+  }
   const ownedThreads = new Set(
     (
       await findOmniNativeWriteOwnedRecords(
@@ -1140,7 +1212,11 @@ const reconcileTargetsStage = async (
     before
       .get(THREAD)!
       .filter(
-        (row) => decode(row).deletedAt === null && !ownedThreads.has(row.id),
+        (row) =>
+          decode(row).deletedAt === null &&
+          !ownedThreads.has(row.id) &&
+          (admittedPersonThreads === undefined ||
+            admittedPersonThreads.has(row.id)),
       )
       .map((row) => row.id),
   );
@@ -1286,6 +1362,7 @@ const reconcileTargetsStage = async (
         'Native target reconciliation excludes unsupported cascade effects',
       );
   }
+  if (verifyPersonSelection) await verifyPersonSelection();
   const repository = scope.getRepository(TARGET, {
     shouldBypassPermissionChecks: true,
   });
@@ -1827,6 +1904,89 @@ export const deleteOrdinaryBlocklistedMessageAssociationsWithAudit = async ({
   const result = await cleanupRelatedOrphansStage(session, associations);
   await finalizeSession(session);
   return result;
+};
+
+export const reconcileNativeMessageThreadTargetsForPeopleWithAudit = async ({
+  scope,
+  personIds,
+  afterParticipantId,
+  operation,
+}: {
+  scope: TargetReconciliationScope;
+  personIds: readonly string[];
+  afterParticipantId?: string;
+  operation: CrmAuditOperation;
+}): Promise<{ nextCursor: string | null }> => {
+  const ids = captureCandidates(personIds, 'Native person target selection');
+  if (
+    afterParticipantId !== undefined &&
+    (typeof afterParticipantId !== 'string' || !isUUID(afterParticipantId))
+  )
+    throw new Error('Native person target selection requires a UUID cursor');
+  const cursor = afterParticipantId?.toLowerCase() ?? null;
+  const session = createSession(scope, operation, TARGET_RECONCILIATION_TABLES);
+  await prepareSession(session);
+  await scope.executeRawQuery(
+    'LOCK TABLE ' +
+      ['person', 'company', 'opportunity']
+        .map((name) =>
+          tableExpression(session.shapes.get(name as CleanupTableName)!),
+        )
+        .sort()
+        .join(',') +
+      ' IN SHARE MODE',
+  );
+  const participantTable = tableExpression(
+    session.shapes.get('messageParticipant')!,
+  );
+  const messageTable = tableExpression(session.shapes.get('message')!);
+  const discovered = await scope.executeRawQuery(
+    'SELECT participant.id, participant."personId", participant."messageId", message."messageThreadId" FROM ' +
+      participantTable +
+      ' participant LEFT JOIN ' +
+      messageTable +
+      ' message ON message.id=participant."messageId" WHERE participant."deletedAt" IS NULL AND participant."personId"=ANY($1::uuid[]) AND ($2::uuid IS NULL OR participant.id>$2::uuid) ORDER BY participant.id LIMIT 200',
+    [ids, cursor],
+  );
+  const hints: readonly PersonTargetHint[] = Object.freeze(
+    discovered.map((row) => {
+      if (
+        typeof row.id !== 'string' ||
+        !isUUID(row.id) ||
+        typeof row.personId !== 'string' ||
+        !isUUID(row.personId) ||
+        (row.messageId !== null &&
+          (typeof row.messageId !== 'string' || !isUUID(row.messageId))) ||
+        (row.messageThreadId !== null &&
+          (typeof row.messageThreadId !== 'string' ||
+            !isUUID(row.messageThreadId)))
+      )
+        throw new Error(
+          'Native person target selection invalid source identity',
+        );
+      return Object.freeze({
+        id: row.id.toLowerCase(),
+        personId: row.personId.toLowerCase(),
+        messageId: row.messageId === null ? null : row.messageId.toLowerCase(),
+        messageThreadId:
+          row.messageThreadId === null
+            ? null
+            : row.messageThreadId.toLowerCase(),
+      });
+    }),
+  );
+  const threadIds = [
+    ...new Set(
+      hints.flatMap((hint) =>
+        hint.messageThreadId === null ? [] : [hint.messageThreadId],
+      ),
+    ),
+  ].sort();
+  await reconcileTargetsStage(session, threadIds, hints);
+  await finalizeSession(session);
+  return {
+    nextCursor: hints.length === 200 ? hints[hints.length - 1].id : null,
+  };
 };
 
 export const reconcileNativeMessageThreadTargetsWithAudit = async ({

@@ -1,0 +1,11 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts (34.204 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-target-reconciliation.postgres-spec.ts (10.809 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-reconciliation.postgres-spec.ts (7.335 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-person-target-reconciliation.postgres-spec.ts (9.346 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-target-enrichment-entrypoints.spec.ts
+
+Test Suites: 5 passed, 5 total
+Tests:       142 passed, 142 total
+Snapshots:   0 total
+Time:        61.992 s
+Ran all test suites matching /crm-audit-native-person-target-reconciliation|crm-audit-native-target-reconciliation|calendar-import-matching-audit|crm-audit-calendar-target-enrichment-entrypoints|omni-native-reconciliation/i.

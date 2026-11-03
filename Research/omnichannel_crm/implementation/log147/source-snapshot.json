@@ -1,0 +1,11 @@
+{
+  "baseCommit": "aa2db4423dd34b07b4bca9ef8e2d17a45d4f941e",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts": "607fc6b9b9ed9e6a5c956eb3fb280ac600863a26fbf14f047ceb7486d66aa5a2",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/reconcile-native-message-thread-targets-with-audit.ts": "f6de0c82881563c4f96a8134714d8f859bd5e8277b3a793015b4ff6b96058555",
+    "packages/twenty-server/src/modules/match-participant/participant-target-reconciliation.service.ts": "1e84f6e300e1db04b28241ea13c4ad5fd3948876c40ed1a5683655c15846edf5",
+    "packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts": "83ff6f4a20714bb78bd48bb944d4c0dc3562c77a9aa2da0bbb9fdc7338bdd485",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-person-target-reconciliation.postgres-spec.ts": "03d6595b0acc860792976f9ee905966d2ca02452ed66a3f7a0c7e33ceca96a45"
+  },
+  "uploadedSourceHashesVerified": true
+}

@@ -4014,3 +4014,17 @@ transaction options и содержит недостающие calendar tables/g
 Публикация/Linear фиксируются после commit/push. Далее — [messaging targets](implementation/log146/next-design.md).
 
 LOG146 publication: code 79c399b6a492c02db71491d44d43cf42f9e3c557 pushed and GitHub API ref verified. Linear comment 98c58232-9fce-447c-93a5-3b7685c99bfe, description/comment/all 11 issue states independently read back. Continuing messaging person-company target audit; ROB765 remains In Progress.
+
+## LOG147 — messaging person-company target audit
+
+LOG147 добавляет аудит автоматических связей переписки после привязки компании к контакту. Закрытые страницы проверяют исходные связи участников и сообщений, сохраняют ручные назначения и записывают фактические изменения вместе с аудитом. Messaging pages выполняются перед календарными.
+2804 tests/86 suites PASS (551.4s). 142 targeted/5 suites PASS (61.992s), 19 новых PG cases. 26 guard tests PASS, 10 migration checksums неизменны. Types 426/427 roots, baseline/current 225 diagnostics, 0 новых/changed-file. Совпали 5 local/remote source hashes.
+
+Прогон завершился 29.10.2026 после прерывания работы. 03.11.2026 результаты
+прочитаны, совпадение локальных и проверенных удалённых исходников подтверждено.
+[Результаты](implementation/log147/results.json), [ревью](implementation/log147/review.md).
+Первоначальный expanded target run имел одно падение в наблюдателе QueryConfig,
+исправлено чтение statement.values. Семь ошибок типов устранены объявлением async
+у тестового page helper. Рабочий код прошёл независимое ревью и проверки.
+Отдельные страницы сохраняются атомарно. Общая приёмка ROB765 остаётся открытой.
+Публикация и Linear фиксируются после push. Далее — [messaging rematch](implementation/log147/next-boundary.md).

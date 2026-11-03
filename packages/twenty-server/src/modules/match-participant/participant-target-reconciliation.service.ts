@@ -1,3 +1,4 @@
+import { reconcileNativeMessageThreadTargetsForPeopleWithAudit } from 'src/engine/core-modules/crm-audit/reconcile-native-message-thread-targets-with-audit';
 import { randomUUID } from 'node:crypto';
 import { isUUID } from 'class-validator';
 import {
@@ -38,7 +39,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import chunk from 'lodash.chunk';
 import { QUERY_MAX_RECORDS } from 'twenty-shared/constants';
 import { isDefined } from 'twenty-shared/utils';
-import { DataSource, In, MoreThan, type ObjectLiteral } from 'typeorm';
+import { DataSource, In, type ObjectLiteral } from 'typeorm';
 
 import { type WorkspaceRepository } from 'src/engine/twenty-orm/repository/workspace-repository';
 import { getWorkspaceContext } from 'src/engine/twenty-orm/storage/orm-workspace-context.storage';
@@ -114,48 +115,22 @@ export class ParticipantTargetReconciliationService {
     workspaceId = workspaceId.toLowerCase();
     personIds = [...new Set(personIds.map((id) => id.toLowerCase()))];
     await this.workspaceOrmManager.executeInWorkspaceContext(async () => {
-      for (const objectMetadataName of ['messageParticipant'] as const) {
-        for (const personIdChunk of chunk(
-          [...new Set(personIds)],
-          QUERY_MAX_RECORDS,
-        )) {
-          let lastParticipantId: string | undefined;
-          let hasMoreParticipants = true;
-
-          while (hasMoreParticipants) {
+      for (const personIdChunk of chunk(personIds, QUERY_MAX_RECORDS)) {
+        let afterParticipantId: string | undefined;
+        do {
+          const { nextCursor } =
             await this.workspaceOrmManager.runInWorkspaceTransaction(
-              async (transactionScope) => {
-                const participantRepository = await this.getRepository<
-                  | MessageParticipantWorkspaceEntity
-                  | CalendarEventParticipantWorkspaceEntity
-                >(objectMetadataName, transactionScope);
-                const participants = await participantRepository.find({
-                  where: {
-                    personId: In(personIdChunk),
-                    ...(isDefined(lastParticipantId)
-                      ? { id: MoreThan(lastParticipantId) }
-                      : {}),
-                  },
-                  order: { id: 'ASC' },
-                  take: QUERY_MAX_RECORDS,
-                });
-
-                await this.reconcileParticipantTargets({
-                  objectMetadataName,
-                  sourceRecordIds: participants.map((participant) =>
-                    'messageId' in participant
-                      ? participant.messageId
-                      : participant.calendarEventId,
-                  ),
-                  transactionScope,
-                });
-
-                lastParticipantId = participants[participants.length - 1]?.id;
-                hasMoreParticipants = participants.length === QUERY_MAX_RECORDS;
-              },
+              (scope) =>
+                reconcileNativeMessageThreadTargetsForPeopleWithAudit({
+                  scope,
+                  personIds: personIdChunk,
+                  afterParticipantId,
+                  operation,
+                }),
+              { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
             );
-          }
-        }
+          afterParticipantId = nextCursor ?? undefined;
+        } while (afterParticipantId !== undefined);
       }
     }, buildSystemAuthContext(workspaceId));
     for (const personIdChunk of chunk(personIds, QUERY_MAX_RECORDS)) {
