@@ -4100,3 +4100,9 @@ SendEmailTool и EmailWorkflowActionBase. Выделен дескриптор se
 [адаптеры](implementation/log149/callers-review.md), [следующий участок](implementation/log149/next-boundary.md).
 ROB765 остаётся In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
 Публикация и сверка Linear фиксируются после push.
+
+04.11.2026 LOG149 опубликован. Code 3c9a49b3c57e71db5c7476071647b9df3359a19a
+отправлен в GitHub, ref подтверждён через API. Описание ROB765, комментарий
+f317ed4d-c816-4fab-9b97-e48e8439df29 и все 11 состояний задач прочитаны обратно
+и совпали. [Публикация](implementation/log149/publication.json).
+Продолжается проектирование и реализация аудита первоначального сохранения сообщений по LOG150.
