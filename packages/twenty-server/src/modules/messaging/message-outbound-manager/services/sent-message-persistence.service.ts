@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { captureCrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
+import { captureMessageImportMatchingContext } from 'src/engine/core-modules/crm-audit/message-import-matching-context';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { isDefined } from 'twenty-shared/utils';
@@ -21,12 +23,34 @@ export class SentMessagePersistenceService {
   async persistSentMessage(
     input: PersistSentMessageInput,
   ): Promise<PersistedSentMessage | undefined> {
+    input = {
+      ...input,
+      auditOperation: captureCrmAuditOperation(input.auditOperation),
+      matchingCaller: { ...input.matchingCaller },
+      connectedAccount: { ...input.connectedAccount },
+    };
     const messageChannel = await this.messageChannelRepository.findOneOrFail({
       where: {
         id: input.messageChannelId,
         workspaceId: input.workspaceId,
       },
       relations: { connectedAccount: true },
+    });
+
+    if (
+      messageChannel.connectedAccountId !== input.connectedAccount.id ||
+      messageChannel.connectedAccount.id !== input.connectedAccount.id
+    )
+      throw new Error('Sent matching channel changed its sending account');
+    const context = captureMessageImportMatchingContext({
+      operation: input.auditOperation,
+      authority: {
+        workspaceId: input.workspaceId,
+        connectedAccountId: input.connectedAccount.id,
+        channelId: input.messageChannelId,
+        channelType: messageChannel.type,
+        ...input.matchingCaller,
+      },
     });
 
     const messageToSave = formatSentMessage(input);
@@ -37,6 +61,7 @@ export class SentMessagePersistenceService {
         messageChannel,
         messageChannel.connectedAccount,
         input.workspaceId,
+        { context },
       );
 
     const messageId = savedMessagesResult?.messageExternalIdsAndIdsMap.get(

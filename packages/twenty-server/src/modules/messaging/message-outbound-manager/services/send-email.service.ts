@@ -1,5 +1,7 @@
 import { type SentDraftCleanupTarget } from 'src/engine/core-modules/crm-audit/delete-sent-draft-message-with-audit';
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
+import { type SentMessageAuditContext } from 'src/modules/messaging/message-outbound-manager/types/persist-sent-message-input.type';
+import { type MembershipCleanupIdentity } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { type ComposedEmail } from 'src/engine/core-modules/tool/tools/email-tool/types/composed-email.type';
@@ -51,6 +53,16 @@ export class SendEmailService {
     );
   }
 
+  async captureRequestAuditOperation(
+    workspaceId: string,
+    trustedIdentity?: MembershipCleanupIdentity,
+  ): Promise<CrmAuditOperation> {
+    return this.messagingDraftSendService.captureRequestAuditOperation(
+      workspaceId,
+      trustedIdentity,
+    );
+  }
+
   async deleteSentDraft(
     draftMessageId: string,
     connectedAccountId: string,
@@ -99,23 +111,47 @@ export class SendEmailService {
     sendResult: SendMessageResult,
     data: ComposedEmail,
     workspaceId: string,
+    context: SentMessageAuditContext,
   ): Promise<PersistedSentMessage | undefined> {
     try {
+      if (!context.messageChannelId)
+        throw new Error('Sent matching requires the captured channel');
       return await this.sentMessagePersistenceService.persistSentMessage({
         sendResult,
         subject: data.sanitizedSubject,
         body: data.plainTextBody,
         recipients: sendResult.deliveredRecipients ?? data.recipients,
-        connectedAccount: data.connectedAccount,
-        messageChannelId: data.messageChannelId!,
+        connectedAccount: {
+          ...data.connectedAccount,
+          id: context.connectedAccountId,
+        },
+        messageChannelId: context.messageChannelId,
         inReplyTo: data.inReplyTo,
         parentThreadExternalId: data.threadExternalId,
         workspaceId,
+        auditOperation: context.operation,
+        matchingCaller:
+          context.kind === 'sent'
+            ? {
+                kind: 'sent',
+                userWorkspaceId: context.userWorkspaceId,
+                effectiveUserId: context.effectiveUserId,
+              }
+            : {
+                kind: 'sent-tool',
+                userWorkspaceId: context.userWorkspaceId,
+                effectiveUserId: context.effectiveUserId,
+                applicationId: context.applicationId,
+              },
       });
     } catch (persistenceError) {
-      this.logger.warn(
-        `Failed to persist sent message (sync will recover): ${persistenceError}`,
-      );
+      try {
+        this.logger.warn(
+          `Failed to persist sent message (sync will recover): ${persistenceError}`,
+        );
+      } catch {
+        // Diagnostics cannot reverse a confirmed provider send.
+      }
 
       return undefined;
     }

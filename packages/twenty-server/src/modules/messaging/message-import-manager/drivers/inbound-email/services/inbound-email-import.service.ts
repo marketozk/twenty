@@ -1,4 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import {
+  membershipCleanupOperation,
+  systemMembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
+import { captureMessageImportMatchingContext } from 'src/engine/core-modules/crm-audit/message-import-matching-context';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { isNonEmptyString } from '@sniptt/guards';
@@ -96,11 +101,27 @@ export class InboundEmailImportService {
       return { kind: 'unmatched', recipient };
     }
 
+    const { workspaceId } = messageChannel;
+    const context = captureMessageImportMatchingContext({
+      operation: membershipCleanupOperation(
+        workspaceId,
+        systemMembershipCleanupIdentity(
+          workspaceId,
+          'InboundEmailImportService.importInboundMessage',
+        ),
+      )!,
+      authority: {
+        kind: 'inbound',
+        workspaceId,
+        channelId: messageChannel.id,
+        connectedAccountId: messageChannel.connectedAccountId,
+        channelType: messageChannel.type,
+        recipient,
+      },
+    });
     const message = await messageSource.fetchMessage(
       messageReference.reference,
     );
-
-    const { workspaceId } = messageChannel;
 
     const connectedAccount = await this.connectedAccountRepository.findOne({
       where: { id: messageChannel.connectedAccountId, workspaceId },
@@ -140,6 +161,7 @@ export class InboundEmailImportService {
           messageChannel,
           connectedAccount,
           workspaceId,
+          { context },
         );
       },
       buildSystemAuthContext(workspaceId),

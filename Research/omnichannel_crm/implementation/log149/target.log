@@ -1,0 +1,32 @@
+[32m[Nest] 1  - [39m11/04/2026, 9:41:34 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggering message list fetch for workspace 6b639d01-7fe1-494a-8bc3-a3a17f7da36b (all pending channels)[39m
+[32m[Nest] 1  - [39m11/04/2026, 9:41:34 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mFound 2 message channel(s) to process[39m
+[32m[Nest] 1  - [39m11/04/2026, 9:41:34 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggered fetch for message channel 6398cbb0-c61a-4c71-98f3-2ccc234c02a8[39m
+[32m[Nest] 1  - [39m11/04/2026, 9:41:34 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mSuccessfully triggered 1 message list fetch job(s)[39m
+[32m[Nest] 1  - [39m11/04/2026, 9:41:34 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggering message list fetch for workspace 6b639d01-7fe1-494a-8bc3-a3a17f7da36b (all pending channels)[39m
+[32m[Nest] 1  - [39m11/04/2026, 9:41:34 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mFound 2 message channel(s) to process[39m
+[32m[Nest] 1  - [39m11/04/2026, 9:41:51 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel fb34c2e5-3d5d-4b7d-8130-da30ccfc95a7, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/04/2026, 9:41:51 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel 55478403-e130-4cf2-b4b0-fddadd85d61d, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/04/2026, 9:41:51 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel d02fe7a7-3d5d-4518-a821-5a6b5e41175b, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/04/2026, 9:41:51 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel 4b1f7d5a-f63a-4f6d-80e7-e4191d457f3e, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/04/2026, 9:41:52 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mDeferring 100000 calendar events to the import cron for calendar channel c0087208-96d2-43f2-b950-2f59bb0c4292[39m
+[32m[Nest] 1  - [39m11/04/2026, 9:41:53 AM [32m    LOG[39m [38;5;3m[MessagingMessageWebhookSyncService] [39m[32mSkipping webhook sync for message channel f4729421-cf81-4fe5-ac4c-49b6ba8abe4e, a sync is already in progress[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts (58.994 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts (20.123 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-matching.postgres-spec.ts (16.079 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts (15.248 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-sent-draft-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-orchestration.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-app-ingestion-guard.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-sent-tool-entrypoint.spec.ts
+
+Test Suites: 9 passed, 9 total
+Tests:       540 passed, 540 total
+Snapshots:   0 total
+Time:        112.617 s
+Ran all test suites matching /crm-audit-message-import|crm-audit-sent-tool|crm-audit-sent-draft|ordinary-native-sync-run|omni-app-ingestion|crm-audit-native-message-rematch|omni-sync-status/i.
+[32m[Nest] 1  - [39m11/04/2026, 9:43:04 AM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m
+[32m[Nest] 1  - [39m11/04/2026, 9:43:04 AM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m
+[32m[Nest] 1  - [39m11/04/2026, 9:43:04 AM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m
+[32m[Nest] 1  - [39m11/04/2026, 9:43:04 AM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m
+[32m[Nest] 1  - [39m11/04/2026, 9:43:04 AM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m

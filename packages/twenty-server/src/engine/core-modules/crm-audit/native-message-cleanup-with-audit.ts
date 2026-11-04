@@ -1,4 +1,13 @@
 import {
+  captureMessageImportMatchingContext,
+  captureMessageImportMatchingManifest,
+  type MessageImportMatchingContext,
+  type MessageImportMatchingAuthority,
+  type MessageImportMatchingManifest,
+} from 'src/engine/core-modules/crm-audit/message-import-matching-context';
+import { isConnectionHiddenFromRequestUser } from 'src/engine/core-modules/application/connection-provider/connections/utils/is-connection-hidden-from-request-user.util';
+import { findOmniOwnedMessageChannelIds } from 'src/modules/omnichannel/services/find-omni-owned-metadata-ids';
+import {
   captureMessageParticipantRematchSelector,
   type MessageParticipantRematchSelector,
 } from 'src/engine/core-modules/crm-audit/message-participant-rematch-selector';
@@ -1996,28 +2005,240 @@ export const reconcileNativeMessageThreadTargetsForPeopleWithAudit = async ({
   };
 };
 
-export const rematchNativeMessageParticipantsWithAudit = async ({
+type NativeMessageMatchingSelection =
+  | {
+      kind: 'rematch';
+      selector: MessageParticipantRematchSelector;
+      afterParticipantId?: string;
+    }
+  | {
+      kind: 'import';
+      authority: MessageImportMatchingAuthority;
+      manifest: MessageImportMatchingManifest;
+    };
+
+const verifyMessageImportAuthority = async (
+  session: CleanupSession<TargetReconciliationScope>,
+  authority: MessageImportMatchingAuthority,
+): Promise<boolean> => {
+  const { scope } = session;
+  if (authority.workspaceId !== scope.workspaceId)
+    throw new Error('Native message import workspace mismatch');
+  if (
+    authority.kind === 'provider' &&
+    !(await lockOrdinaryNativeSyncRun(scope, authority.run))
+  )
+    return false;
+  const read =
+    (table: string, columns: string, id: string, workspaceScoped = false) =>
+    async (lock = false) => {
+      const rows = await scope.executeRawQuery(
+        `SELECT ${columns} FROM core.${quote(table)} WHERE id=$1${workspaceScoped ? ' AND "workspaceId"=$2' : ''}${lock ? ' FOR SHARE' : ''}`,
+        workspaceScoped ? [id, scope.workspaceId] : [id],
+      );
+      return rows[0];
+    };
+  const proofs: {
+    read: (lock?: boolean) => Promise<Record<string, unknown> | undefined>;
+    before: Record<string, unknown>;
+  }[] = [];
+  const capture = async (
+    reader: (lock?: boolean) => Promise<Record<string, unknown> | undefined>,
+  ) => {
+    const before = await reader(true);
+    if (!before) throw new Error('Native message import authority changed');
+    proofs.push({ read: reader, before });
+    return before;
+  };
+  const sentAuthority =
+    authority.kind === 'sent' || authority.kind === 'sent-tool'
+      ? authority
+      : undefined;
+  if (sentAuthority?.effectiveUserId) {
+    const user = await capture(
+      read('user', 'id,"deletedAt",disabled', sentAuthority.effectiveUserId),
+    );
+    if (user.deletedAt !== null || user.disabled !== false)
+      throw new Error('Native message import caller unavailable');
+  }
+  const memberId = sentAuthority
+    ? sentAuthority.userWorkspaceId
+    : authority.kind === 'application'
+      ? authority.requestUserWorkspaceId
+      : null;
+  if (memberId) {
+    const member = await capture(
+      read(
+        'userWorkspace',
+        'id,"workspaceId","userId","deletedAt"',
+        memberId,
+        true,
+      ),
+    );
+    if (
+      member.deletedAt !== null ||
+      (sentAuthority?.effectiveUserId &&
+        member.userId !== sentAuthority.effectiveUserId)
+    )
+      throw new Error('Native message import caller unavailable');
+  }
+  const attributedApplicationId =
+    session.operation.actor.kind === 'application'
+      ? session.operation.actor.id
+      : session.operation.actor.kind === 'agent' &&
+          session.operation.initiator?.kind === 'application'
+        ? session.operation.initiator.id
+        : undefined;
+  let applicationId =
+    authority.kind === 'application' || authority.kind === 'sent-tool'
+      ? authority.applicationId
+      : attributedApplicationId;
+  if (
+    applicationId !== undefined &&
+    attributedApplicationId !== undefined &&
+    applicationId !== attributedApplicationId
+  )
+    throw new Error('Native message import application attribution changed');
+  const readAgent =
+    session.operation.actor.kind === 'agent'
+      ? read(
+          'agent',
+          'id,"workspaceId","applicationId","deletedAt"',
+          session.operation.actor.id,
+          true,
+        )
+      : undefined;
+  if (readAgent) {
+    const agent = await readAgent();
+    if (
+      !agent ||
+      typeof agent.applicationId !== 'string' ||
+      (applicationId !== undefined && agent.applicationId !== applicationId)
+    )
+      throw new Error('Native message import agent application changed');
+    applicationId = agent.applicationId;
+  }
+  if (applicationId) {
+    const application = await capture(
+      read('application', 'id,"workspaceId","deletedAt"', applicationId, true),
+    );
+    if (application.deletedAt !== null)
+      throw new Error('Native message import application unavailable');
+  }
+  if (readAgent) {
+    const agent = await capture(readAgent);
+    if (agent.deletedAt !== null || agent.applicationId !== applicationId)
+      throw new Error('Native message import agent application changed');
+  }
+  const account = await capture(
+    read(
+      'connectedAccount',
+      'id,"workspaceId",scope,"userWorkspaceId",provider,"applicationId","connectionProviderId","archivedAt"::text AS "archivedAt"',
+      authority.connectedAccountId,
+      true,
+    ),
+  );
+  if (sentAuthority && account.archivedAt !== null)
+    throw new Error('Native message import account archived');
+  const channel = await capture(
+    read(
+      'messageChannel',
+      'id,"workspaceId","connectedAccountId",type,handle,"isSyncEnabled","syncStage","syncStageStartedAt"::text AS "syncStageStartedAt"',
+      authority.channelId,
+      true,
+    ),
+  );
+  if (
+    channel.connectedAccountId !== account.id ||
+    channel.type !== authority.channelType ||
+    !['USER', 'WORKSPACE'].includes(String(account.scope))
+  )
+    throw new Error('Native message import channel changed');
+  if (
+    authority.kind === 'inbound' &&
+    (channel.type !== 'EMAIL_GROUP' || channel.handle !== authority.recipient)
+  )
+    throw new Error('Native message import inbound channel changed');
+  if (
+    authority.kind === 'sent' &&
+    !isConnectedAccountUsableByCaller({
+      connectedAccount: {
+        scope: account.scope as 'USER' | 'WORKSPACE',
+        userWorkspaceId: String(account.userWorkspaceId),
+      },
+      userWorkspaceId: authority.userWorkspaceId,
+    })
+  )
+    throw new Error('Native message import account unavailable');
+  if (
+    authority.kind === 'application' &&
+    (account.provider !== 'app' ||
+      account.applicationId !== authority.applicationId ||
+      channel.type !== 'APP' ||
+      channel.isSyncEnabled !== true ||
+      isConnectionHiddenFromRequestUser({
+        account: {
+          scope: String(account.scope),
+          userWorkspaceId: String(account.userWorkspaceId),
+        },
+        requestUserWorkspaceId: authority.requestUserWorkspaceId,
+      }))
+  )
+    throw new Error('Native message import application channel unavailable');
+  const verify = async () => {
+    for (const proof of proofs) {
+      const current = await proof.read();
+      if (
+        !current ||
+        canonicalAuditJson(current) !== canonicalAuditJson(proof.before)
+      )
+        throw new Error('Native message import authority changed');
+    }
+    const owned = await findOmniOwnedMessageChannelIds(
+      scope,
+      scope.workspaceId,
+      [authority.channelId],
+    );
+    if (owned.size)
+      throw new Error('Native message import channel ownership changed');
+  };
+  await verify();
+  session.validators.push(verify);
+  return true;
+};
+
+const executeNativeMessageMatchingWithAudit = async ({
   scope,
   operation,
-  selector,
-  afterParticipantId,
+  request,
 }: {
   scope: TargetReconciliationScope;
   operation: CrmAuditOperation;
-  selector: MessageParticipantRematchSelector;
-  afterParticipantId?: string;
-}): Promise<{ nextCursor: string | null }> => {
-  const captured = captureMessageParticipantRematchSelector(selector);
+  request: NativeMessageMatchingSelection;
+}): Promise<{
+  nextCursor: string | null;
+  outcome: 'applied' | 'stale-run';
+}> => {
+  const captured =
+    request.kind === 'rematch'
+      ? captureMessageParticipantRematchSelector(request.selector)
+      : undefined;
+  const imported = request.kind === 'import' ? request : undefined;
+  const afterParticipantId =
+    request.kind === 'rematch' ? request.afterParticipantId : undefined;
   if (
     afterParticipantId !== undefined &&
     (typeof afterParticipantId !== 'string' || !isUUID(afterParticipantId))
   )
     throw new Error('Native message rematch requires UUID cursor');
-  const personMode = captured.kind === 'personOnly';
+  const personMode = imported !== undefined || captured?.kind === 'personOnly';
+  const memberMode = imported
+    ? imported.manifest.mode === 'both'
+    : captured?.kind === 'workspaceMemberOnly';
   const selection =
-    captured.kind === 'personOnly'
+    captured?.kind === 'personOnly'
       ? captured.personEmails
-      : captured.workspaceMemberIds;
+      : (captured?.workspaceMemberIds ?? []);
   const graphNames = [
     'messageThread',
     'message',
@@ -2025,13 +2246,24 @@ export const rematchNativeMessageParticipantsWithAudit = async ({
     'messageThreadTarget',
   ] as const;
   const sourceNames: CleanupTableName[] = personMode
-    ? ['person', 'company', 'opportunity', 'messageChannelMessageAssociation']
+    ? [
+        'person',
+        'company',
+        'opportunity',
+        'messageChannelMessageAssociation',
+        ...(memberMode ? ['workspaceMember' as const] : []),
+      ]
     : ['workspaceMember'];
   const session = createSession(scope, operation, [
     ...graphNames,
     ...sourceNames,
   ]);
   await prepareSession(session);
+  if (
+    imported &&
+    !(await verifyMessageImportAuthority(session, imported.authority))
+  )
+    return { nextCursor: null, outcome: 'stale-run' };
   if (personMode)
     await scope.executeRawQuery(
       'LOCK TABLE core."messageChannel" IN SHARE MODE',
@@ -2050,10 +2282,17 @@ export const rematchNativeMessageParticipantsWithAudit = async ({
     execute: ({ text, values }: { text: string; values: unknown[] }) =>
       scope.executeRawQuery(text, values),
   };
-  const discovered = await scope.executeRawQuery(
-    `SELECT participant.id,participant.handle,participant."workspaceMemberId",participant."messageId",message."messageThreadId" FROM ${expression('messageParticipant')} participant LEFT JOIN ${expression('message')} message ON message.id=participant."messageId" WHERE participant."deletedAt" IS NULL AND ${personMode ? 'LOWER(participant.handle)=ANY($1::text[])' : 'participant."workspaceMemberId"=ANY($1::uuid[])'} AND ($2::uuid IS NULL OR participant.id>$2::uuid) ORDER BY participant.id LIMIT 200`,
-    [[...selection], afterParticipantId?.toLowerCase() ?? null],
-  );
+  const discovered = imported
+    ? imported.manifest.participants.map((participant) => ({
+        ...participant,
+        messageThreadId: imported.manifest.messages.find(
+          (message) => message.messageId === participant.messageId,
+        )!.messageThreadId,
+      }))
+    : await scope.executeRawQuery(
+        `SELECT participant.id,participant.handle,participant."workspaceMemberId",participant."messageId",message."messageThreadId" FROM ${expression('messageParticipant')} participant LEFT JOIN ${expression('message')} message ON message.id=participant."messageId" WHERE participant."deletedAt" IS NULL AND ${personMode ? 'LOWER(participant.handle)=ANY($1::text[])' : 'participant."workspaceMemberId"=ANY($1::uuid[])'} AND ($2::uuid IS NULL OR participant.id>$2::uuid) ORDER BY participant.id LIMIT 200`,
+        [[...selection], afterParticipantId?.toLowerCase() ?? null],
+      );
   const nullableId = (value: unknown): string | null => {
     if (value === null) return null;
     if (typeof value !== 'string' || !isUUID(value))
@@ -2068,12 +2307,17 @@ export const rematchNativeMessageParticipantsWithAudit = async ({
       id,
       handle: row.handle as string | null,
       workspaceMemberId: nullableId(row.workspaceMemberId),
+      personId: imported ? nullableId(row.personId) : null,
       messageId: nullableId(row.messageId),
       threadId: nullableId(row.messageThreadId),
     };
   });
   const rootIds = [
-    ...new Set(hints.flatMap((hint) => (hint.threadId ? [hint.threadId] : []))),
+    ...new Set(
+      imported
+        ? imported.manifest.messages.map((message) => message.messageThreadId)
+        : hints.flatMap((hint) => (hint.threadId ? [hint.threadId] : [])),
+    ),
   ].sort();
   const originalIds = new Map<CleanupTableName, string[]>([
     ['messageThread', rootIds],
@@ -2081,7 +2325,9 @@ export const rematchNativeMessageParticipantsWithAudit = async ({
       'message',
       [
         ...new Set(
-          hints.flatMap((hint) => (hint.messageId ? [hint.messageId] : [])),
+          imported
+            ? imported.manifest.messages.map((message) => message.messageId)
+            : hints.flatMap((hint) => (hint.messageId ? [hint.messageId] : [])),
         ),
       ],
     ],
@@ -2140,6 +2386,21 @@ export const rematchNativeMessageParticipantsWithAudit = async ({
     ],
   ] as [CleanupTableName, CleanupTableName, string][]) {
     await requireSourceForeignKey(session, parent, child, column);
+  }
+  if (imported) {
+    await requireSourceForeignKey(
+      session,
+      'message',
+      'messageChannelMessageAssociation',
+      'messageId',
+    );
+    if (memberMode)
+      await requireSourceForeignKey(
+        session,
+        'workspaceMember',
+        'messageParticipant',
+        'workspaceMemberId',
+      );
   }
   for (const name of graphNames) {
     const predicate = graphPredicate(name);
@@ -2228,6 +2489,30 @@ export const rematchNativeMessageParticipantsWithAudit = async ({
   const threads = new Map(
     expected.get('messageThread')!.map((row) => [row.id, decode(row)]),
   );
+  const importMessageIds = new Set<string>();
+  if (imported) {
+    const associations = expected
+      .get('messageChannelMessageAssociation')!
+      .map(decode);
+    for (const reference of imported.manifest.messages) {
+      const message = messages.get(reference.messageId);
+      const thread = threads.get(reference.messageThreadId);
+      if (
+        message?.deletedAt === null &&
+        message.messageThreadId === reference.messageThreadId &&
+        thread?.deletedAt === null &&
+        lockedIds.get('message')!.includes(reference.messageId) &&
+        !ownedMessageIds.has(reference.messageId) &&
+        associations.some(
+          (association) =>
+            association.deletedAt === null &&
+            association.messageId === reference.messageId &&
+            association.messageChannelId === imported.authority.channelId,
+        )
+      )
+        importMessageIds.add(reference.messageId);
+    }
+  }
   const admitted = hints.filter((hint) => {
     const participant = participants.get(hint.id);
     if (!participant || !lockedIds.get('messageParticipant')!.includes(hint.id))
@@ -2242,10 +2527,16 @@ export const rematchNativeMessageParticipantsWithAudit = async ({
       message.messageThreadId === hint.threadId &&
       thread?.deletedAt === null &&
       !ownedMessageIds.has(String(hint.messageId)) &&
-      !(personMode && appMessageIds.has(String(hint.messageId))) &&
-      (personMode
-        ? row.handle === hint.handle
-        : row.workspaceMemberId === hint.workspaceMemberId)
+      !(!imported && personMode && appMessageIds.has(String(hint.messageId))) &&
+      (imported
+        ? imported.manifest.mode === 'both' &&
+          importMessageIds.has(String(hint.messageId)) &&
+          row.handle === hint.handle &&
+          row.personId === hint.personId &&
+          row.workspaceMemberId === hint.workspaceMemberId
+        : personMode
+          ? row.handle === hint.handle
+          : row.workspaceMemberId === hint.workspaceMemberId)
     );
   });
   const handles = [
@@ -2302,7 +2593,8 @@ export const rematchNativeMessageParticipantsWithAudit = async ({
     );
     expected.set('person', people);
     fixedCompanyIds = referenceIds(people, 'companyId');
-  } else {
+  }
+  if (memberMode) {
     matchingMembers = (
       await readRows(
         'workspaceMember',
@@ -2349,7 +2641,15 @@ export const rematchNativeMessageParticipantsWithAudit = async ({
       rows.map((row) => row.id),
     );
   }
-  const admittedRootIds = [...new Set(admitted.map((hint) => hint.threadId!))];
+  const admittedRootIds = [
+    ...new Set(
+      imported
+        ? imported.manifest.messages
+            .filter((message) => importMessageIds.has(message.messageId))
+            .map((message) => message.messageThreadId)
+        : admitted.map((hint) => hint.threadId!),
+    ),
+  ];
   const retainedTargetIds = new Set(
     expected
       .get('messageThreadTarget')!
@@ -2399,15 +2699,21 @@ export const rematchNativeMessageParticipantsWithAudit = async ({
   };
   session.validators.push(verify);
   await verify();
-  const field = personMode ? 'personId' : 'workspaceMemberId';
+  const fields = imported
+    ? imported.manifest.mode === 'both'
+      ? ['personId', 'workspaceMemberId']
+      : []
+    : [personMode ? 'personId' : 'workspaceMemberId'];
   const participantShape = session.shapes.get('messageParticipant')!;
-  const fieldShape = participantShape.columnShapeByColumnName[field];
-  if (
-    !fieldShape ||
-    fieldShape.compositeParentFieldName ||
-    fieldShape.fieldMetadataType === 'FILES'
-  )
-    throw new Error('Native message rematch field metadata mismatch');
+  for (const field of fields) {
+    const fieldShape = participantShape.columnShapeByColumnName[field];
+    if (
+      !fieldShape ||
+      fieldShape.compositeParentFieldName ||
+      fieldShape.fieldMetadataType === 'FILES'
+    )
+      throw new Error('Native message rematch field metadata mismatch');
+  }
   const changes = new Map<string, Snapshot>();
   const updates: {
     criteria: string;
@@ -2417,18 +2723,23 @@ export const rematchNativeMessageParticipantsWithAudit = async ({
     const before = participants.get(hint.id)!;
     const row = decode(before),
       handle = String(row.handle ?? '');
-    const match = personMode
-      ? findPersonByPrimaryOrAdditionalEmail({
-          people: matchingPeople,
-          email: handle,
-        })
-      : matchingMembers.find((member) => member.userEmail === handle);
-    const value = match ? String(match.id) : null;
-    if (row[field] === value) continue;
+    const partialEntity: Record<string, unknown> = {};
+    for (const field of fields) {
+      const match =
+        field === 'personId'
+          ? findPersonByPrimaryOrAdditionalEmail({
+              people: matchingPeople,
+              email: handle,
+            })
+          : matchingMembers.find((member) => member.userEmail === handle);
+      const value = match ? String(match.id) : null;
+      if (row[field] !== value) partialEntity[field] = value;
+    }
+    if (!Object.keys(partialEntity).length) continue;
     const image = await castCalendarProofImage(
       scope,
       participantShape,
-      { id: hint.id, [field]: value },
+      { id: hint.id, ...partialEntity },
       before,
     );
     const changedColumns = Object.keys(image).filter(
@@ -2456,7 +2767,7 @@ export const rematchNativeMessageParticipantsWithAudit = async ({
       (text) => ({ text, values: [hint.id, patch] }),
     );
     changes.set(hint.id, image);
-    updates.push({ criteria: hint.id, partialEntity: { [field]: value } });
+    updates.push({ criteria: hint.id, partialEntity });
   }
   await verify();
   const result = updates.length
@@ -2520,7 +2831,57 @@ export const rematchNativeMessageParticipantsWithAudit = async ({
   await finalizeSession(session);
   return {
     nextCursor: hints.length === 200 ? hints[hints.length - 1].id : null,
+    outcome: 'applied',
   };
+};
+
+export const rematchNativeMessageParticipantsWithAudit = async ({
+  scope,
+  operation,
+  selector,
+  afterParticipantId,
+}: {
+  scope: TargetReconciliationScope;
+  operation: CrmAuditOperation;
+  selector: MessageParticipantRematchSelector;
+  afterParticipantId?: string;
+}): Promise<{ nextCursor: string | null }> => {
+  const result = await executeNativeMessageMatchingWithAudit({
+    scope,
+    operation,
+    request: { kind: 'rematch', selector, afterParticipantId },
+  });
+  return { nextCursor: result.nextCursor };
+};
+
+export const applyNativeMessageImportMatchingWithAudit = async ({
+  scope,
+  context,
+  manifest,
+}: {
+  scope: TargetReconciliationScope;
+  context: MessageImportMatchingContext;
+  manifest: MessageImportMatchingManifest;
+}): Promise<'applied' | 'stale-run'> => {
+  const captured = captureMessageImportMatchingContext(context);
+  const records = captureMessageImportMatchingManifest(manifest);
+  if (
+    records.participants.length > 200 ||
+    records.messages.length > 200 ||
+    (records.mode === 'targetsOnly') !==
+      (captured.authority.channelType === 'APP')
+  )
+    throw new Error('Native message import requires bounded matching mode');
+  const result = await executeNativeMessageMatchingWithAudit({
+    scope,
+    operation: captured.operation,
+    request: {
+      kind: 'import',
+      authority: captured.authority,
+      manifest: records,
+    },
+  });
+  return result.outcome;
 };
 
 export const reconcileNativeMessageThreadTargetsWithAudit = async ({

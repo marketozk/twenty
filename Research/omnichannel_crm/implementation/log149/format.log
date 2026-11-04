@@ -1,0 +1,29 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/application/connection-provider/connections/utils/is-connection-hidden-from-request-user.util.ts 89ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts 888ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/tool/tools/email-tool/__tests__/send-email-tool.spec.ts 56ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/tool/tools/email-tool/send-email-tool.ts 21ms (unchanged)
+../../../source/packages/twenty-server/src/engine/metadata-modules/message-channel/services/application-message-ingestion.service.ts 30ms (unchanged)
+../../../source/packages/twenty-server/src/modules/match-participant/match-participant.service.ts 207ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-import-manager/drivers/inbound-email/services/inbound-email-import.service.ts 19ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-messages-import.service.ts 51ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts 140ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-outbound-manager/resolvers/__tests__/send-email.resolver.spec.ts 14ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-outbound-manager/resolvers/send-email.resolver.ts 14ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-outbound-manager/services/messaging-draft-send.service.ts 56ms
+../../../source/packages/twenty-server/src/modules/messaging/message-outbound-manager/services/send-email.service.ts 10ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-outbound-manager/services/sent-message-persistence.service.ts 8ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-outbound-manager/types/persist-sent-message-input.type.ts 4ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-participant-manager/services/messaging-message-participant.service.ts 11ms (unchanged)
+../../../source/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/mail-sender/email-workflow-action.base.ts 10ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-sent-draft-entrypoints.spec.ts 47ms
+../../../source/packages/twenty-server/test/fork-migration/omni-app-ingestion-guard.spec.ts 19ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts 166ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/apply-native-message-import-matching-with-audit.ts 2ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/message-import-matching-context.ts 20ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-entrypoints.spec.ts 47ms
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-matching.postgres-spec.ts 127ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-orchestration.spec.ts 31ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-sent-tool-entrypoint.spec.ts 24ms (unchanged)
+
+{"formattedFiles": 26, "singleSshSession": true}

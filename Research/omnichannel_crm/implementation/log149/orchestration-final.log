@@ -1,0 +1,17 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-orchestration.spec.ts
+  ✓ captures full saved references and attribution before caller mutation (3 ms)
+  ✓ equal references deduplicate while conflicting message and participant identities fail (16 ms)
+  ✓ saved manifests preserve batches larger than one page (4 ms)
+  ✓ sent context requires request attribution and application context requires its authenticated application (1 ms)
+  ✓ adapter splits touched participants then untouched Messages into bounded strict pages (7 ms)
+  ✓ APP targetsOnly adapter never schedules participant identity updates (1 ms)
+  ✓ stale page stops remaining participant and target-only pages (1 ms)
+  ✓ unknown matching commit is propagated unchanged and does not replay the page (1 ms)
+  ✓ derives the sent effective user from its authenticated actor and refuses contradiction (1 ms)
+  ✓ derives the sent-tool effective user from its authenticated actor and refuses contradiction (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       10 passed, 10 total
+Snapshots:   0 total
+Time:        4.362 s
+Ran all test suites matching /crm-audit-message-import-orchestration/i.

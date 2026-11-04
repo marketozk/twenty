@@ -12,12 +12,19 @@ import { SendEmailResolver } from 'src/modules/messaging/message-outbound-manage
 
 const WORKSPACE_ID = '33333333-3333-4333-8333-333333333333';
 const USER_WORKSPACE_ID = '66666666-6666-4666-8666-666666666666';
+const CONNECTED_ACCOUNT_ID = '77777777-7777-4777-8777-777777777777';
+const auditOperation = {
+  workspaceId: WORKSPACE_ID,
+  operationId: '88888888-8888-4888-8888-888888888888',
+  correlationId: '99999999-9999-4999-8999-999999999999',
+  actor: { kind: 'coreUser', id: '11111111-1111-4111-8111-111111111111' },
+};
 
 describe('SendEmailResolver errors', () => {
   const workspace = { id: WORKSPACE_ID } as WorkspaceEntity;
   const context: I18nContext = { req: { locale: 'fr-FR' } };
   const input = {
-    connectedAccountId: 'connected-account-id',
+    connectedAccountId: CONNECTED_ACCOUNT_ID,
     to: 'recipient@example.com',
     subject: 'Subject',
     body: '<p>body</p>',
@@ -34,7 +41,11 @@ describe('SendEmailResolver errors', () => {
       { verifyUsableByCaller: jest.fn() } as never,
       { composeEmail } as never,
       {} as never,
-      {} as never,
+      {
+        captureRequestAuditOperation: jest
+          .fn()
+          .mockResolvedValue(auditOperation),
+      } as never,
       {} as never,
       i18nService as never,
     );
@@ -99,7 +110,12 @@ describe('SendEmailResolver errors', () => {
   });
 });
 
-const AUTH_CONTEXT = { workspace: { id: WORKSPACE_ID } };
+const AUTH_CONTEXT = {
+  type: 'user',
+  workspace: { id: WORKSPACE_ID },
+  user: { id: auditOperation.actor.id },
+  userWorkspace: { id: USER_WORKSPACE_ID },
+};
 
 jest.mock(
   'src/engine/core-modules/auth/storage/workspace-auth-context.storage',
@@ -110,7 +126,7 @@ describe('SendEmailResolver target record linking', () => {
   const workspace = { id: WORKSPACE_ID } as WorkspaceEntity;
   const context: I18nContext = { req: { locale: 'en' } };
   const baseInput = {
-    connectedAccountId: 'connected-account-id',
+    connectedAccountId: CONNECTED_ACCOUNT_ID,
     to: 'recipient@example.com',
     subject: 'Subject',
     body: '<p>body</p>',
@@ -128,11 +144,17 @@ describe('SendEmailResolver target record linking', () => {
       {
         composeEmail: jest.fn().mockResolvedValue({
           success: true,
-          data: { shouldPersistMessage: true },
+          data: {
+            shouldPersistMessage: true,
+            connectedAccount: { id: CONNECTED_ACCOUNT_ID },
+          },
         }),
       } as never,
       { deleteFiles: jest.fn() } as never,
       {
+        captureRequestAuditOperation: jest
+          .fn()
+          .mockResolvedValue(auditOperation),
         sendComposedEmail: jest.fn().mockResolvedValue({}),
         persistSentMessage: jest.fn().mockResolvedValue(
           isDefined(persistedMessageThreadId)

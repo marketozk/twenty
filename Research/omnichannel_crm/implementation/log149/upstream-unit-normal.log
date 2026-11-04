@@ -1,0 +1,112 @@
+FAIL twenty-server ../../../source/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/mail-sender/__tests__/send-email.workflow-action.spec.ts
+  ● Test suite failed to run
+
+
+
+    Caused by:
+        0: Failed to compile wasm plugins
+        1: failed to resolve plugin path: @lingui/swc-plugin
+        2: failed to get the node_modules path
+
+      at Compiler.transformSync (../../../tools/node_modules/@swc/core/index.js:249:29)
+      at transformSync (../../../tools/node_modules/@swc/core/index.js:363:21)
+      at Object.process (../../../tools/node_modules/@swc/jest/index.js:87:45)
+      at ScriptTransformer.transformSource (../../../tools/node_modules/@jest/transform/build/ScriptTransformer.js:545:31)
+      at ScriptTransformer._transformAndBuildScript (../../../tools/node_modules/@jest/transform/build/ScriptTransformer.js:674:40)
+      at ScriptTransformer.transform (../../../tools/node_modules/@jest/transform/build/ScriptTransformer.js:726:19)
+
+FAIL twenty-server ../../../source/packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/mail-sender/__tests__/draft-email.workflow-action.spec.ts
+  ● Test suite failed to run
+
+
+
+    Caused by:
+        0: Failed to compile wasm plugins
+        1: failed to resolve plugin path: @lingui/swc-plugin
+        2: failed to get the node_modules path
+
+      at Compiler.transformSync (../../../tools/node_modules/@swc/core/index.js:249:29)
+      at transformSync (../../../tools/node_modules/@swc/core/index.js:363:21)
+      at Object.process (../../../tools/node_modules/@swc/jest/index.js:87:45)
+      at ScriptTransformer.transformSource (../../../tools/node_modules/@jest/transform/build/ScriptTransformer.js:545:31)
+      at ScriptTransformer._transformAndBuildScript (../../../tools/node_modules/@jest/transform/build/ScriptTransformer.js:674:40)
+      at ScriptTransformer.transform (../../../tools/node_modules/@jest/transform/build/ScriptTransformer.js:726:19)
+
+FAIL twenty-server ../../../source/packages/twenty-server/src/modules/messaging/message-outbound-manager/resolvers/__tests__/send-email.resolver.spec.ts
+  ● Test suite failed to run
+
+
+
+    Caused by:
+        0: Failed to compile wasm plugins
+        1: failed to resolve plugin path: @lingui/swc-plugin
+        2: failed to get the node_modules path
+
+      at Compiler.transformSync (../../../tools/node_modules/@swc/core/index.js:249:29)
+      at transformSync (../../../tools/node_modules/@swc/core/index.js:363:21)
+      at Object.process (../../../tools/node_modules/@swc/jest/index.js:87:45)
+      at ScriptTransformer.transformSource (../../../tools/node_modules/@jest/transform/build/ScriptTransformer.js:545:31)
+      at ScriptTransformer._transformAndBuildScript (../../../tools/node_modules/@jest/transform/build/ScriptTransformer.js:674:40)
+      at ScriptTransformer.transform (../../../tools/node_modules/@jest/transform/build/ScriptTransformer.js:726:19)
+
+FAIL twenty-server ../../../source/packages/twenty-server/src/engine/core-modules/tool/tools/email-tool/__tests__/send-email-tool.spec.ts
+  ● Test suite failed to run
+
+
+
+    Caused by:
+        0: Failed to compile wasm plugins
+        1: failed to resolve plugin path: @lingui/swc-plugin
+        2: failed to get the node_modules path
+
+      at Compiler.transformSync (../../../tools/node_modules/@swc/core/index.js:249:29)
+      at transformSync (../../../tools/node_modules/@swc/core/index.js:363:21)
+      at Object.process (../../../tools/node_modules/@swc/jest/index.js:87:45)
+      at ScriptTransformer.transformSource (../../../tools/node_modules/@jest/transform/build/ScriptTransformer.js:545:31)
+      at ScriptTransformer._transformAndBuildScript (../../../tools/node_modules/@jest/transform/build/ScriptTransformer.js:674:40)
+      at ScriptTransformer.transform (../../../tools/node_modules/@jest/transform/build/ScriptTransformer.js:726:19)
+
+FAIL twenty-server ../../../source/packages/twenty-server/src/engine/core-modules/tool/tools/send-email-tool/__tests__/send-email-tool.spec.ts
+  ● Test suite failed to run
+
+
+
+    Caused by:
+        0: Failed to compile wasm plugins
+        1: failed to resolve plugin path: @lingui/swc-plugin
+        2: failed to get the node_modules path
+
+      at Compiler.transformSync (../../../tools/node_modules/@swc/core/index.js:249:29)
+      at transformSync (../../../tools/node_modules/@swc/core/index.js:363:21)
+      at Object.process (../../../tools/node_modules/@swc/jest/index.js:87:45)
+      at ScriptTransformer.transformSource (../../../tools/node_modules/@jest/transform/build/ScriptTransformer.js:545:31)
+      at ScriptTransformer._transformAndBuildScript (../../../tools/node_modules/@jest/transform/build/ScriptTransformer.js:674:40)
+      at ScriptTransformer.transform (../../../tools/node_modules/@jest/transform/build/ScriptTransformer.js:726:19)
+
+Test Suites: 5 failed, 5 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        0.464 s
+Traceback (most recent call last):
+  File "C:\Users\regis\AppData\Local\Temp/twenty-log149-upstream-unit.py", line 6, in <module>
+    m['node']([
+    ~~~~~~~~~^^
+        '/tools/node_modules/jest/bin/jest.js',
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        '--testPathPattern=send-email.resolver.spec|send-email-tool.spec|send-email.workflow-action.spec|draft-email.workflow-action.spec',
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log149-run.py", line 16, in node
+    return ssh(cmd+['--entrypoint','node','marketozk/twenty:log088-server-fixed',*args])
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log149-run.py", line 4, in ssh
+    def ssh(args,**kw):return call(['ssh',HOST,shlex.join(args)],**kw)
+                              ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log149-run.py", line 3, in call
+    def call(args,**kw):return subprocess.run(args,check=True,**kw)
+                               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['ssh', 'root@176.114.84.194', "docker run --rm --user 0:0 --network twenty-rob764-3e371e20ab394c2b-net --memory 3g --cpus 2 -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source:/source:ro -v /opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools:/tools:ro -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/out:/out:rw -e NODE_PATH=/out/tools/node_modules:/tools/node_modules:/app/node_modules --entrypoint node marketozk/twenty:log088-server-fixed /tools/node_modules/jest/bin/jest.js --config /source/packages/twenty-server/jest.config.mjs --runInBand '--testPathPattern=send-email.resolver.spec|send-email-tool.spec|send-email.workflow-action.spec|draft-email.workflow-action.spec'"]' returned non-zero exit status 1.

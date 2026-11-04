@@ -1,4 +1,5 @@
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
+import { type MessageImportMatchingContext } from 'src/engine/core-modules/crm-audit/message-import-matching-context';
 import { MessagingMessagesImportService } from 'src/modules/messaging/message-import-manager/services/messaging-messages-import.service';
 import { CalendarEventsImportService } from 'src/modules/calendar/calendar-event-import-manager/services/calendar-events-import.service';
 import { MessagingMessageCleanerService } from 'src/modules/messaging/message-cleaner/services/messaging-message-cleaner.service';
@@ -223,6 +224,38 @@ const event = (): FetchedCalendarEvent => ({
     },
   ],
 });
+const messageOptions = (expectedRun?: OrdinaryMetadataSyncRun) => {
+  const applicationId = randomUUID();
+  const operation: CrmAuditOperation = {
+    workspaceId: fixture.workspaceId,
+    operationId: randomUUID(),
+    actor: expectedRun
+      ? { kind: 'system', id: 'MessageSaveFixture' }
+      : messageChannel.type === MessageChannelType.APP
+        ? { kind: 'application', id: applicationId }
+        : { kind: 'coreUser', id: randomUUID() },
+  };
+  const scope = {
+    workspaceId: fixture.workspaceId,
+    channelId: messageChannel.id,
+    connectedAccountId: account.id,
+    channelType: messageChannel.type,
+  };
+  const context: MessageImportMatchingContext = {
+    operation,
+    authority: expectedRun
+      ? { ...scope, kind: 'provider', run: expectedRun }
+      : messageChannel.type === MessageChannelType.APP
+        ? {
+            ...scope,
+            kind: 'application',
+            applicationId,
+            requestUserWorkspaceId: null,
+          }
+        : { ...scope, kind: 'sent', userWorkspaceId: randomUUID() },
+  };
+  return { context, expectedRun };
+};
 const save = (
   kind: 'message' | 'calendar',
   proof: OrdinaryMetadataSyncRun | undefined = run(kind),
@@ -233,7 +266,7 @@ const save = (
         messageChannel,
         account,
         fixture.workspaceId,
-        proof,
+        messageOptions(proof),
       )
     : calendar.saveCalendarEventsAndEnqueueContactCreationJob(
         [event()],
@@ -413,7 +446,7 @@ beforeEach(async () => {
   );
   matchMessages = jest
     .spyOn(messageParticipants, 'matchMessageParticipants')
-    .mockResolvedValue(undefined);
+    .mockResolvedValue('applied');
   matchCalendar = jest
     .spyOn(
       calendarParticipants,
@@ -559,6 +592,7 @@ for (const kind of ['message', 'calendar'] as const)
           messageChannel,
           account,
           fixture.workspaceId,
+          messageOptions(),
         );
       else
         await calendar.saveCalendarEventsAndEnqueueContactCreationJob(
@@ -589,7 +623,7 @@ it('nullable participant identities persist unchanged and only addressable conta
     messageChannel,
     account,
     fixture.workspaceId,
-    run('message'),
+    messageOptions(run('message')),
   );
   const participants = await fixture.read('messageParticipant');
   expect(participants).toHaveLength(2);
@@ -615,9 +649,12 @@ it('APP caller without provider-run proof retains targets-only postcommit matchi
     messageChannel,
     account,
     fixture.workspaceId,
+    messageOptions(),
   );
   expect(matchMessages).toHaveBeenCalledWith(
-    expect.objectContaining({ matchWith: 'targetsOnly' }),
+    expect.objectContaining({
+      manifest: expect.objectContaining({ mode: 'targetsOnly' }),
+    }),
   );
 });
 it('calendar participant decisions read inside the transaction and see prior native change', async () => {

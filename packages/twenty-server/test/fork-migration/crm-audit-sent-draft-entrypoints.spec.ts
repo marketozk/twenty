@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import { withWorkspaceAuthContext } from 'src/engine/core-modules/auth/storage/workspace-auth-context.storage';
+import {
+  captureCrmAuditRequest,
+  withCrmAuditRequest,
+} from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
@@ -95,7 +99,7 @@ const build = () => {
     messageExternalId: 'provider-selected-draft',
   });
   const send = {
-    captureDraftCleanupAuditOperation: jest.fn().mockResolvedValue(operation),
+    captureRequestAuditOperation: jest.fn().mockResolvedValue(operation),
     sendComposedDraft: jest.fn().mockResolvedValue({
       sendResult: { messageExternalId: 'confirmed-provider-id' },
       cleanupTarget,
@@ -113,7 +117,10 @@ const build = () => {
   const compose = {
     composeEmail: jest.fn().mockResolvedValue({
       success: true,
-      data: { shouldPersistMessage: false },
+      data: {
+        shouldPersistMessage: false,
+        connectedAccount: { id: connectedAccountId },
+      },
     }),
   };
   const resolver = new SendEmailResolver(
@@ -155,7 +162,7 @@ afterEach(() => jest.restoreAllMocks());
 it('captures immutable cleanup IDs and the effective user before audit identity lookup and provider awaits', async () => {
   const f = build();
   let release!: () => void;
-  f.send.captureDraftCleanupAuditOperation.mockImplementationOnce(
+  f.send.captureRequestAuditOperation.mockImplementationOnce(
     () =>
       new Promise((resolve) => {
         release = () => resolve(f.operation);
@@ -168,11 +175,11 @@ it('captures immutable cleanup IDs and the effective user before audit identity 
   f.authentication.userWorkspaceId = randomUUID();
   release();
   expect(await result).toMatchObject({ success: true });
-  expect(f.send.captureDraftCleanupAuditOperation).toHaveBeenCalledWith(
+  expect(f.send.captureRequestAuditOperation).toHaveBeenCalledWith(
     f.workspaceId,
   );
   expect(
-    f.send.captureDraftCleanupAuditOperation.mock.invocationCallOrder[0],
+    f.send.captureRequestAuditOperation.mock.invocationCallOrder[0],
   ).toBeLessThan(f.send.sendComposedDraft.mock.invocationCallOrder[0]);
   expect(f.account.verifyUsableByCaller).toHaveBeenCalledWith({
     id: f.connectedAccountId,
@@ -226,7 +233,7 @@ it.each([
 
 it('does not send when request audit identity cannot be captured', async () => {
   const f = build();
-  f.send.captureDraftCleanupAuditOperation.mockRejectedValueOnce(
+  f.send.captureRequestAuditOperation.mockRejectedValueOnce(
     new Error('request identity unavailable'),
   );
   jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
@@ -245,25 +252,188 @@ it.each(['workspace', 'membership'] as const)(
     await expect(f.invoke()).rejects.toThrow(
       'Draft cleanup requires the authenticated workspace member.',
     );
-    expect(f.send.captureDraftCleanupAuditOperation).not.toHaveBeenCalled();
+    expect(f.send.captureRequestAuditOperation).not.toHaveBeenCalled();
     expect(f.send.sendComposedDraft).not.toHaveBeenCalled();
   },
 );
 
-it('preserves the non-draft path without requiring a draft cleanup identity', async () => {
+it('captures request attribution for a non-draft send and keeps cleanup draft-only', async () => {
   const f = build();
   const { draftMessageId: _unused, ...input } = f.input;
-  const result = await f.resolver.sendEmail(
-    input as never,
-    { id: f.workspaceId } as never,
-    f.userWorkspaceId,
-    { req: { locale: 'en' } },
+  const result = await withWorkspaceAuthContext(f.authentication as never, () =>
+    f.resolver.sendEmail(
+      input as never,
+      { id: f.workspaceId } as never,
+      f.userWorkspaceId,
+      { req: { locale: 'en' } },
+    ),
   );
   expect(result).toMatchObject({ success: true });
-  expect(f.send.captureDraftCleanupAuditOperation).not.toHaveBeenCalled();
+  expect(f.send.captureRequestAuditOperation).toHaveBeenCalledWith(
+    f.workspaceId,
+  );
   expect(f.send.sendComposedDraft).not.toHaveBeenCalled();
   expect(f.send.sendComposedEmail).toHaveBeenCalledTimes(1);
   expect(f.send.deleteSentDraft).not.toHaveBeenCalled();
+});
+
+it('rejects a contradictory application when ambient request attribution is an agent', async () => {
+  const workspaceId = randomUUID();
+  const service = new MessagingDraftSendService(
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+  );
+  await expect(
+    withCrmAuditRequest(
+      captureCrmAuditRequest({
+        workspace: { id: workspaceId },
+        application: { id: randomUUID() },
+        agentId: randomUUID(),
+      }),
+      () =>
+        service.captureRequestAuditOperation(workspaceId, {
+          workspaceId,
+          actor: { kind: 'application', id: randomUUID() },
+          correlationId: randomUUID(),
+        }),
+    ),
+  ).rejects.toThrow('Native messaging audit identity mismatch');
+});
+
+it.each(['user', 'apiKey', 'application', 'oauth', 'impersonated'] as const)(
+  'preserves actual %s request attribution through non-draft persistence',
+  async (kind) => {
+    const f = build();
+    const applicationId = randomUUID();
+    const apiKeyId = randomUUID();
+    const initiatorId = randomUUID();
+    const membershipId = randomUUID();
+    const request = {
+      workspace: { id: f.workspaceId },
+      ...(kind === 'apiKey' ? { apiKey: { id: apiKeyId } } : {}),
+      ...(['user', 'oauth', 'impersonated'].includes(kind)
+        ? { user: { id: f.userId } }
+        : {}),
+      ...(['application', 'oauth'].includes(kind)
+        ? { application: { id: applicationId } }
+        : {}),
+      ...(kind === 'impersonated'
+        ? {
+            impersonationContext: { impersonatorUserWorkspaceId: membershipId },
+          }
+        : {}),
+    };
+    const capture = new MessagingDraftSendService(
+      {} as never,
+      {} as never,
+      {} as never,
+      {
+        manager: {
+          query: jest.fn().mockResolvedValue([{ userId: initiatorId }]),
+        },
+      } as never,
+    );
+    f.send.captureRequestAuditOperation.mockImplementation(
+      (workspaceId: string) =>
+        capture.captureRequestAuditOperation(workspaceId),
+    );
+    const channelId = randomUUID();
+    f.compose.composeEmail.mockResolvedValue({
+      success: true,
+      data: {
+        shouldPersistMessage: true,
+        connectedAccount: { id: f.connectedAccountId },
+        messageChannelId: channelId,
+      },
+    });
+    const { draftMessageId: _unused, ...input } = f.input;
+    const authentication =
+      kind === 'apiKey'
+        ? {
+            type: 'apiKey',
+            workspace: request.workspace,
+            apiKey: request.apiKey,
+          }
+        : kind === 'application'
+          ? {
+              type: 'application',
+              workspace: request.workspace,
+              application: request.application,
+            }
+          : f.authentication;
+    const result = await withCrmAuditRequest(
+      captureCrmAuditRequest(request),
+      () =>
+        withWorkspaceAuthContext(authentication as never, () =>
+          f.resolver.sendEmail(
+            input as never,
+            { id: f.workspaceId } as never,
+            f.userWorkspaceId,
+            { req: { locale: 'en' } },
+          ),
+        ),
+    );
+    expect(result).toMatchObject({ success: true });
+    const actor =
+      kind === 'apiKey'
+        ? { kind: 'apiKey', id: apiKeyId }
+        : ['application', 'oauth'].includes(kind)
+          ? { kind: 'application', id: applicationId }
+          : { kind: 'coreUser', id: f.userId };
+    expect(f.send.persistSentMessage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      f.workspaceId,
+      expect.objectContaining({
+        operation: expect.objectContaining({
+          workspaceId: f.workspaceId,
+          actor,
+          ...(kind === 'oauth'
+            ? { initiator: { kind: 'coreUser', id: f.userId } }
+            : {}),
+          ...(kind === 'impersonated'
+            ? { initiator: { kind: 'coreUser', id: initiatorId } }
+            : {}),
+        }),
+        connectedAccountId: f.connectedAccountId,
+        messageChannelId: channelId,
+        userWorkspaceId: f.userWorkspaceId,
+      }),
+    );
+    expect(f.send.sendComposedEmail).toHaveBeenCalledTimes(1);
+    expect(f.send.deleteSentDraft).not.toHaveBeenCalled();
+  },
+);
+
+it('preserves confirmed non-draft send when matching persistence and diagnostics fail', async () => {
+  const f = build();
+  f.compose.composeEmail.mockResolvedValue({
+    success: true,
+    data: {
+      shouldPersistMessage: true,
+      connectedAccount: { id: f.connectedAccountId },
+    },
+  });
+  f.send.persistSentMessage.mockRejectedValueOnce(
+    new NativeTransactionOutcomeUnknownError('commit', new Error('ACK lost')),
+  );
+  jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => {
+    throw new Error('logger unavailable');
+  });
+  const { draftMessageId: _unused, ...input } = f.input;
+  const result = await withWorkspaceAuthContext(f.authentication as never, () =>
+    f.resolver.sendEmail(
+      input as never,
+      { id: f.workspaceId } as never,
+      f.userWorkspaceId,
+      { req: { locale: 'en' } },
+    ),
+  );
+  expect(result).toMatchObject({ success: true });
+  expect(f.send.persistSentMessage).toHaveBeenCalledTimes(1);
+  expect(f.send.sendComposedEmail).toHaveBeenCalledTimes(1);
 });
 
 it('actual DraftSendService captures exactly the selected association before the provider changes available rows', async () => {

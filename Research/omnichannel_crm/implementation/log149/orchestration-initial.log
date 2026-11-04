@@ -1,0 +1,55 @@
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-orchestration.spec.ts
+  ✓ captures full saved references and attribution before caller mutation (4 ms)
+  ✓ equal references deduplicate while conflicting message and participant identities fail (16 ms)
+  ✓ saved manifests preserve batches larger than one page (3 ms)
+  ✓ sent context requires request attribution and application context requires its authenticated application (1 ms)
+  ✓ adapter splits touched participants then untouched Messages into bounded strict pages (7 ms)
+  ✓ APP targetsOnly adapter never schedules participant identity updates (1 ms)
+  ✓ stale page stops remaining participant and target-only pages (1 ms)
+  ✓ unknown matching commit is propagated unchanged and does not replay the page (1 ms)
+  ✓ derives the sent effective user from its authenticated actor and refuses contradiction (1 ms)
+  ✕ derives the sent-tool effective user from its authenticated actor and refuses contradiction (15 ms)
+
+  ● derives the sent-tool effective user from its authenticated actor and refuses contradiction
+
+    expect(received).toThrow(expected)
+
+    Expected substring: "caller attribution mismatch"
+    Received message:   "Native message import tool user attribution mismatch"
+
+          159 |         effectiveUserId !== operation.actor.id
+          160 |       )
+        > 161 |         throw new Error('Native message import tool user attribution mismatch');
+              |               ^
+          162 |       authority = {
+          163 |         ...scope,
+          164 |         kind: 'sent-tool',
+
+      at captureMessageImportMatchingContext (src/engine/core-modules/crm-audit/message-import-matching-context.ts:161:15)
+      at test/fork-migration/crm-audit-message-import-orchestration.spec.ts:330:42
+      at Object.<anonymous> (../../../tools/node_modules/@jest/expect/node_modules/expect/build/toThrowMatchers.js:74:11)
+      at Object.throwingMatcher [as toThrow] (../../../tools/node_modules/@jest/expect/node_modules/expect/build/index.js:320:21)
+      at toThrow (test/fork-migration/crm-audit-message-import-orchestration.spec.ts:337:7)
+      at toThrow (test/fork-migration/crm-audit-message-import-orchestration.spec.ts:337:7)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 9 passed, 10 total
+Snapshots:   0 total
+Time:        4.385 s
+Ran all test suites matching /crm-audit-message-import-orchestration/i.
+Traceback (most recent call last):
+  File "C:\Users\regis\AppData\Local\Temp/twenty-log149-target.py", line 6, in <module>
+    m['node'](['/tools/node_modules/jest/bin/jest.js','--config','/source/packages/twenty-server/jest-fork-migration.config.mjs','--runInBand','--testPathPattern='+pattern],{'FORK_MIGRATION_TEST_REDIS_URL':'redis://redis:6379','FORK_MIGRATION_TEST_URL':'postgres://test_owner:isolated-test-only@postgres/'+s['database']})
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log149-run.py", line 16, in node
+    return ssh(cmd+['--entrypoint','node','marketozk/twenty:log088-server-fixed',*args])
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log149-run.py", line 4, in ssh
+    def ssh(args,**kw):return call(['ssh',HOST,shlex.join(args)],**kw)
+                              ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log149-run.py", line 3, in call
+    def call(args,**kw):return subprocess.run(args,check=True,**kw)
+                               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['ssh', 'root@176.114.84.194', 'docker run --rm --user 0:0 --network twenty-rob764-3e371e20ab394c2b-net --memory 3g --cpus 2 -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source:/source:ro -v /opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools:/tools:ro -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/out:/out:rw -e NODE_PATH=/out/tools/node_modules:/tools/node_modules:/app/node_modules -e FORK_MIGRATION_TEST_REDIS_URL=redis://redis:6379 -e FORK_MIGRATION_TEST_URL=postgres://test_owner:isolated-test-only@postgres/twenty_rob764_test_3e371e20ab394c2b --entrypoint node marketozk/twenty:log088-server-fixed /tools/node_modules/jest/bin/jest.js --config /source/packages/twenty-server/jest-fork-migration.config.mjs --runInBand --testPathPattern=crm-audit-message-import-orchestration']' returned non-zero exit status 1.

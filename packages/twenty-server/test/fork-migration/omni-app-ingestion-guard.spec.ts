@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
 
-import { MessageParticipantRole } from 'twenty-shared/types';
+import {
+  MessageParticipantRole,
+  MessageChannelType,
+} from 'twenty-shared/types';
+import {
+  captureCrmAuditRequest,
+  withCrmAuditRequest,
+} from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
 
 import { ApplicationMessageIngestionService } from 'src/engine/metadata-modules/message-channel/services/application-message-ingestion.service';
 import { buildAppMessageHeaderMessageId } from 'src/engine/metadata-modules/message-channel/utils/build-app-message-header-message-id.util';
@@ -50,12 +57,15 @@ const fixture = () => {
       },
     ],
   };
+  const connectedAccount = { id: randomUUID() };
   const messageChannel = {
     id: request.messageChannelId,
+    workspaceId: request.workspaceId,
+    connectedAccountId: connectedAccount.id,
+    type: MessageChannelType.APP,
     isSyncEnabled: true,
     handle: 'app-account',
   };
-  const connectedAccount = { id: randomUUID() };
   const channels = {
     findOwnedOrThrow: jest
       .fn()
@@ -97,6 +107,14 @@ const fixture = () => {
 
   return {
     service,
+    invoke: () =>
+      withCrmAuditRequest(
+        captureCrmAuditRequest({
+          workspace: { id: request.workspaceId },
+          application: { id: request.applicationId },
+        }),
+        () => service.ingest(request),
+      ),
     request,
     messageChannel,
     connectedAccount,
@@ -112,11 +130,38 @@ const fixture = () => {
 };
 
 describe('ordinary APP ingestion excludes persisted omnichannel ownership', () => {
+  it('requires actual request attribution before channel reads or aggregate writes', async () => {
+    const test = fixture();
+    await expect(test.service.ingest(test.request)).rejects.toThrow(
+      'Application ingestion requires request audit identity',
+    );
+    expect(test.channels.findOwnedOrThrow).not.toHaveBeenCalled();
+    expect(
+      test.aggregate.saveMessagesAndEnqueueContactCreation,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('rejects a different authenticated application before aggregate writes', async () => {
+    const test = fixture();
+    await expect(
+      withCrmAuditRequest(
+        captureCrmAuditRequest({
+          workspace: { id: test.request.workspaceId },
+          application: { id: randomUUID() },
+        }),
+        () => test.service.ingest(test.request),
+      ),
+    ).rejects.toThrow('Native message import application attribution mismatch');
+    expect(
+      test.aggregate.saveMessagesAndEnqueueContactCreation,
+    ).not.toHaveBeenCalled();
+  });
+
   it('rejects an owned channel before identity reads, cache locking and aggregate writes', async () => {
     const test = fixture();
     test.core.query.mockResolvedValue([{ owned: true }]);
 
-    await expect(test.service.ingest(test.request)).rejects.toThrow(
+    await expect(test.invoke()).rejects.toThrow(
       'not available for application ingestion',
     );
     expect(test.channels.findOwnedOrThrow).toHaveBeenCalledTimes(1);
@@ -137,7 +182,7 @@ describe('ordinary APP ingestion excludes persisted omnichannel ownership', () =
     const failure = new Error('fixture ownership query unavailable');
     test.core.query.mockRejectedValue(failure);
 
-    await expect(test.service.ingest(test.request)).rejects.toBe(failure);
+    await expect(test.invoke()).rejects.toBe(failure);
     expect(test.manager.getRepository).not.toHaveBeenCalled();
     expect(test.cache.withLock).not.toHaveBeenCalled();
     expect(
@@ -159,7 +204,7 @@ describe('ordinary APP ingestion excludes persisted omnichannel ownership', () =
       const test = fixture();
       test.core.query.mockResolvedValue(result);
 
-      await expect(test.service.ingest(test.request)).rejects.toThrow(
+      await expect(test.invoke()).rejects.toThrow(
         'OMNI_INVALID_CHANNEL_OWNERSHIP_RESULT',
       );
       expect(test.manager.getRepository).not.toHaveBeenCalled();
@@ -175,7 +220,7 @@ describe('ordinary APP ingestion excludes persisted omnichannel ownership', () =
     const failure = new Error('fixture app cannot reach channel');
     test.channels.findOwnedOrThrow.mockRejectedValue(failure);
 
-    await expect(test.service.ingest(test.request)).rejects.toBe(failure);
+    await expect(test.invoke()).rejects.toBe(failure);
     expect(test.core.query).not.toHaveBeenCalled();
     expect(test.cache.withLock).not.toHaveBeenCalled();
     expect(
@@ -187,7 +232,7 @@ describe('ordinary APP ingestion excludes persisted omnichannel ownership', () =
     const test = fixture();
     const input = test.request.messages[0];
 
-    expect(await test.service.ingest(test.request)).toEqual({
+    expect(await test.invoke()).toEqual({
       messages: [
         {
           externalId: input.externalId,
@@ -228,6 +273,18 @@ describe('ordinary APP ingestion excludes persisted omnichannel ownership', () =
       test.messageChannel,
       test.connectedAccount,
       test.request.workspaceId,
+      expect.objectContaining({
+        context: expect.objectContaining({
+          operation: expect.objectContaining({
+            actor: { kind: 'application', id: test.request.applicationId },
+          }),
+          authority: expect.objectContaining({
+            kind: 'application',
+            applicationId: test.request.applicationId,
+            requestUserWorkspaceId: test.request.requestUserWorkspaceId,
+          }),
+        }),
+      }),
     );
     expect(test.core.query.mock.invocationCallOrder[0]).toBeLessThan(
       test.manager.getRepository.mock.invocationCallOrder[0],
@@ -241,9 +298,7 @@ describe('ordinary APP ingestion excludes persisted omnichannel ownership', () =
     const test = fixture();
     test.messageChannel.isSyncEnabled = false;
 
-    await expect(test.service.ingest(test.request)).rejects.toThrow(
-      'sync disabled',
-    );
+    await expect(test.invoke()).rejects.toThrow('sync disabled');
     expect(test.cache.withLock).not.toHaveBeenCalled();
     expect(
       test.aggregate.saveMessagesAndEnqueueContactCreation,

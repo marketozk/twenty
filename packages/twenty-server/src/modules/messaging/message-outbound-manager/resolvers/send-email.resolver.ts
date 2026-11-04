@@ -1,6 +1,7 @@
 import { type SentDraftCleanupTarget } from 'src/engine/core-modules/crm-audit/delete-sent-draft-message-with-audit';
 import { type SendMessageResult } from 'src/modules/messaging/message-outbound-manager/types/send-message-result.type';
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
+import { captureCrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
 import { EmailOperation } from 'twenty-shared/types';
 import {
   ForbiddenException,
@@ -79,8 +80,10 @@ export class SendEmailResolver {
     let cleanupCaller: { userWorkspaceId: string; userId: string } | undefined;
     let cleanupOperation: CrmAuditOperation | undefined;
     try {
+      const authentication = getWorkspaceAuthContext();
+      const effectiveUserId =
+        authentication.type === 'user' ? authentication.user.id : undefined;
       if (isDefined(draftMessageId)) {
-        const authentication = getWorkspaceAuthContext();
         if (
           authentication.type !== 'user' ||
           authentication.workspace.id !== workspaceId ||
@@ -90,11 +93,11 @@ export class SendEmailResolver {
             'Draft cleanup requires the authenticated workspace member.',
           );
         cleanupCaller = { userWorkspaceId, userId: authentication.user.id };
-        cleanupOperation =
-          await this.sendEmailService.captureDraftCleanupAuditOperation(
-            workspaceId,
-          );
       }
+      const requestOperation = captureCrmAuditOperation(
+        await this.sendEmailService.captureRequestAuditOperation(workspaceId),
+      );
+      if (isDefined(draftMessageId)) cleanupOperation = requestOperation;
       await this.connectedAccountMetadataService.verifyUsableByCaller({
         id: connectedAccountId,
         userWorkspaceId,
@@ -128,7 +131,18 @@ export class SendEmailResolver {
         };
       }
 
-      const { data } = result;
+      const data = {
+        ...result.data,
+        connectedAccount: { ...result.data.connectedAccount },
+      };
+      const matchingContext = Object.freeze({
+        kind: 'sent' as const,
+        operation: requestOperation,
+        userWorkspaceId,
+        effectiveUserId,
+        connectedAccountId: data.connectedAccount.id,
+        messageChannelId: data.messageChannelId,
+      });
 
       let sendResult: SendMessageResult;
       let cleanupTarget: SentDraftCleanupTarget | undefined;
@@ -152,6 +166,7 @@ export class SendEmailResolver {
               sendResult,
               data,
               workspaceId,
+              matchingContext,
             )
           : undefined;
 

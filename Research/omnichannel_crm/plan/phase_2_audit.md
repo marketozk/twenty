@@ -79,10 +79,13 @@ actual effects и generated/FK проверками. LOG147 подключает
 к существующему owner с current selector proof и отдельным аудитом каждой страницы.
 LOG148 подключает оба режима messaging rematch job, исправляет stale-member-link
 и проверяет реальные связи, APP policy и источники до изменения Participant, перед
-расчётом Target и после deferred drain. Import matching, contact creation, свежесть
-import policy и durable cache открыты. Зафиксирован пробел восстановления исходного
-набора участников после сохранения сообщения и сбоя последующего сопоставления.
-Далее — [post-save import matching](../implementation/log148/next-boundary.md).
+расчётом Target и после deferred drain. LOG149 подключает post-save import matching
+после сохранения сообщений для provider, inbound, sent, sent-tool и application с
+манифестом затронутых участников до очереди контактов, проверкой полномочий источника
+и сохранением успешной внешней отправки. Аудит начального сохранения сообщений,
+создание контактов, долговечное восстановление манифеста сопоставления, свежесть
+import policy и durable cache открыты.
+Далее — [ordinary message save audit](../implementation/log149/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

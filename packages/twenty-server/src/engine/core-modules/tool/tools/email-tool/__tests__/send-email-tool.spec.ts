@@ -8,6 +8,8 @@ import { SendEmailTool } from 'src/engine/core-modules/tool/tools/email-tool/sen
 import { type EmailToolInput } from 'src/engine/core-modules/tool/tools/email-tool/types/email-tool-input.type';
 import { SendEmailService } from 'src/modules/messaging/message-outbound-manager/services/send-email.service';
 
+const WORKSPACE_ID = '33333333-3333-4333-8333-333333333333';
+
 const buildComposedEmail = (shouldPersistMessage: boolean) => ({
   recipients: { to: ['test@example.com'], cc: [], bcc: [] },
   toRecipientsDisplay: 'test@example.com',
@@ -64,6 +66,14 @@ describe('SendEmailTool', () => {
         {
           provide: SendEmailService,
           useValue: {
+            captureRequestAuditOperation: jest.fn().mockResolvedValue({
+              workspaceId: WORKSPACE_ID,
+              operationId: '88888888-8888-4888-8888-888888888888',
+              actor: {
+                kind: 'coreUser',
+                id: '11111111-1111-4111-8111-111111111111',
+              },
+            }),
             sendComposedEmail: mockSendComposedEmail,
             persistSentMessage: mockPersistSentMessage,
           },
@@ -85,7 +95,7 @@ describe('SendEmailTool', () => {
     });
 
     const result = await tool.execute(baseInput, {
-      workspaceId: 'workspace-1',
+      workspaceId: WORKSPACE_ID,
     });
 
     expect(result.success).toBe(true);
@@ -104,7 +114,7 @@ describe('SendEmailTool', () => {
     });
 
     const result = await tool.execute(baseInput, {
-      workspaceId: 'workspace-1',
+      workspaceId: WORKSPACE_ID,
     });
 
     expect(mockPersistSentMessage).not.toHaveBeenCalled();
@@ -124,7 +134,7 @@ describe('SendEmailTool', () => {
     });
 
     const result = await tool.execute(baseInput, {
-      workspaceId: 'workspace-1',
+      workspaceId: WORKSPACE_ID,
     });
 
     expect(mockGetI18nInstance).toHaveBeenCalledWith(SOURCE_LOCALE);
@@ -144,7 +154,7 @@ describe('SendEmailTool', () => {
     mockPersistSentMessage.mockResolvedValue(undefined);
 
     const result = await tool.execute(baseInput, {
-      workspaceId: 'workspace-1',
+      workspaceId: WORKSPACE_ID,
     });
 
     expect(result.success).toBe(true);

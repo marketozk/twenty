@@ -1,4 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import {
+  type MessageImportMatchingContext,
+  type MessageImportMatchingManifest,
+} from 'src/engine/core-modules/crm-audit/message-import-matching-context';
 
 import { isNonEmptyString } from '@sniptt/guards';
 import chunk from 'lodash.chunk';
@@ -9,10 +13,7 @@ import { In } from 'typeorm';
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
 import { type WorkspaceTransactionScope } from 'src/engine/twenty-orm/types/workspace-transaction-scope.type';
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
-import {
-  type MatchParticipantsArgs,
-  MatchParticipantService,
-} from 'src/modules/match-participant/match-participant.service';
+import { MatchParticipantService } from 'src/modules/match-participant/match-participant.service';
 import { type MessageParticipantWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-participant.workspace-entity';
 import { type ParticipantWithMessageId } from 'src/modules/messaging/message-import-manager/drivers/gmail/types/gmail-message.type';
 
@@ -161,29 +162,16 @@ export class MessagingMessageParticipantService {
   }
 
   public async matchMessageParticipants({
-    participants,
-    messageIds,
+    manifest,
+    context,
     workspaceId,
-    matchWith = 'workspaceMemberAndPerson',
   }: {
-    participants: MessageParticipantWorkspaceEntity[];
-    messageIds: string[];
+    manifest: MessageImportMatchingManifest;
+    context: MessageImportMatchingContext;
     workspaceId: string;
-    matchWith?: MatchParticipantsArgs<MessageParticipantWorkspaceEntity>['matchWith'];
-  }): Promise<void> {
-    const authContext = buildSystemAuthContext(workspaceId);
-
-    await this.workspaceOrmManager.executeInWorkspaceContext(
-      async () => {
-        await this.matchParticipantService.matchParticipants({
-          participants,
-          sourceRecordIds: messageIds,
-          objectMetadataName: 'messageParticipant',
-          matchWith,
-        });
-      },
-      authContext,
-      { lite: true },
+  }): Promise<'applied' | 'stale-run'> {
+    return this.matchParticipantService.matchMessageImportParticipantsWithAudit(
+      { workspaceId, context, manifest },
     );
   }
 }

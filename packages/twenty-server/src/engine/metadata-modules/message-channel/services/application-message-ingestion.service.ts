@@ -1,4 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { captureCurrentCrmAuditIdentity } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
+import { membershipCleanupOperation } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
+import { captureMessageImportMatchingContext } from 'src/engine/core-modules/crm-audit/message-import-matching-context';
 import { InjectDataSource } from '@nestjs/typeorm';
 
 import { MessageParticipantRole } from 'twenty-shared/types';
@@ -62,6 +65,19 @@ export class ApplicationMessageIngestionService {
     messageChannelId,
     messages,
   }: IngestArgs): Promise<IngestAppMessagesOutput> {
+    const identity = await captureCurrentCrmAuditIdentity(
+      workspaceId,
+      async (membershipId) => {
+        const [member] = await this.coreDataSource.query(
+          'SELECT "userId" FROM core."userWorkspace" WHERE id=$1',
+          [membershipId],
+        );
+        return member?.userId;
+      },
+    );
+    const operation = membershipCleanupOperation(workspaceId, identity);
+    if (!operation)
+      throw new Error('Application ingestion requires request audit identity');
     const { messageChannel, connectedAccount } =
       await this.applicationMessageChannelsService.findOwnedOrThrow({
         applicationId,
@@ -69,6 +85,19 @@ export class ApplicationMessageIngestionService {
         requestUserWorkspaceId,
         id: messageChannelId,
       });
+
+    const context = captureMessageImportMatchingContext({
+      operation,
+      authority: {
+        kind: 'application',
+        applicationId,
+        requestUserWorkspaceId,
+        workspaceId,
+        channelId: messageChannelId,
+        connectedAccountId: connectedAccount.id,
+        channelType: messageChannel.type,
+      },
+    });
 
     if (
       await isOmniOwnedMessageChannel(
@@ -115,6 +144,7 @@ export class ApplicationMessageIngestionService {
           messageChannel,
           connectedAccount,
           workspaceId,
+          { context },
         ),
       buildAppIngestionLockKey({ workspaceId, messageChannelId }),
       INGESTION_LOCK_OPTIONS,

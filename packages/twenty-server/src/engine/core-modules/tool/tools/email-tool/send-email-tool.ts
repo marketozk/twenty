@@ -1,4 +1,7 @@
 import { EmailOperation } from 'twenty-shared/types';
+import { membershipCleanupIdentityFromWorkspaceAuth } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
+import { captureCrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
+import { type PersistedSentMessage } from 'src/modules/messaging/message-outbound-manager/types/persisted-sent-message.type';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { SOURCE_LOCALE } from 'twenty-shared/translations';
@@ -32,7 +35,47 @@ export class SendEmailTool implements Tool {
     parameters: EmailToolInput,
     context: ToolExecutionContext,
   ): Promise<ToolOutput> {
+    const workspaceId = context.workspaceId;
+    const userWorkspaceId = context.userWorkspaceId ?? null;
+    const auth = context.authContext;
+    const effectiveUserId =
+      auth?.type === 'user' ? auth.user.id : context.userId;
+    const authApplicationId =
+      auth?.type === 'application'
+        ? auth.application.id
+        : auth?.type === 'user'
+          ? (auth.viaApplication ?? auth.application)?.id
+          : undefined;
+    context = { ...context };
+    parameters = { ...parameters };
     try {
+      if (
+        auth &&
+        (auth.workspace.id !== workspaceId ||
+          auth.type === 'system' ||
+          auth.type === 'pendingActivationUser')
+      )
+        throw new Error('Email tool requires authenticated audit identity');
+      const trustedIdentity = auth
+        ? membershipCleanupIdentityFromWorkspaceAuth(auth)
+        : undefined;
+      const operation = captureCrmAuditOperation(
+        await this.sendEmailService.captureRequestAuditOperation(
+          workspaceId,
+          trustedIdentity,
+        ),
+      );
+      const applicationId =
+        authApplicationId ??
+        (operation.actor.kind === 'application'
+          ? operation.actor.id
+          : operation.initiator?.kind === 'application'
+            ? operation.initiator.id
+            : undefined);
+      if (operation.actor.kind === 'agent' && !applicationId)
+        throw new Error(
+          'Email tool agent requires its authenticated application',
+        );
       const result = await this.emailComposerService.composeEmail({
         parameters,
         context,
@@ -47,21 +90,39 @@ export class SendEmailTool implements Tool {
         return { success: false, message: errorMessage, error: errorMessage };
       }
 
-      const { data } = result;
+      const data = {
+        ...result.data,
+        connectedAccount: { ...result.data.connectedAccount },
+      };
+      const matchingContext = Object.freeze({
+        kind: 'sent-tool' as const,
+        operation,
+        userWorkspaceId,
+        effectiveUserId,
+        applicationId,
+        connectedAccountId: data.connectedAccount.id,
+        messageChannelId: data.messageChannelId,
+      });
 
       const sendResult = await this.sendEmailService.sendComposedEmail(data);
 
-      const persistedMessage = data.shouldPersistMessage
-        ? await this.sendEmailService.persistSentMessage(
-            sendResult,
-            data,
-            context.workspaceId,
-          )
-        : undefined;
+      let persistedMessage: PersistedSentMessage | undefined;
+      try {
+        persistedMessage = data.shouldPersistMessage
+          ? await this.sendEmailService.persistSentMessage(
+              sendResult,
+              data,
+              workspaceId,
+              matchingContext,
+            )
+          : undefined;
 
-      this.logger.log(
-        `Email sent successfully to ${data.toRecipientsDisplay}${data.attachments.length > 0 ? ` with ${data.attachments.length} attachments` : ''}`,
-      );
+        this.logger.log(
+          `Email sent successfully to ${data.toRecipientsDisplay}${data.attachments.length > 0 ? ` with ${data.attachments.length} attachments` : ''}`,
+        );
+      } catch {
+        // The provider result remains successful after persistence or logging failure.
+      }
 
       return {
         success: true,

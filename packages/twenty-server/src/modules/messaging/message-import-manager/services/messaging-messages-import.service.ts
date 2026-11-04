@@ -1,8 +1,13 @@
 import { type OrdinaryMetadataSyncRun } from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
-import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
+import {
+  membershipCleanupOperation,
+  systemMembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
+import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
+import { isTransactionUnsafeToRetry } from 'src/engine/twenty-orm/error-handling/is-transaction-outcome-unknown';
+import { captureMessageImportMatchingContext } from 'src/engine/core-modules/crm-audit/message-import-matching-context';
 import { messageImportCacheKeys } from 'src/modules/messaging/common/utils/message-import-cache-keys';
 import { MESSAGE_IMPORT_CACHE_TTL_MS } from 'src/modules/messaging/common/constants/message-import-cache-ttl-ms.constant';
-import { OmniCoreTransactionOutcomeUnknownError } from 'src/modules/omnichannel/services/omni-core-transaction';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -68,6 +73,13 @@ export class MessagingMessagesImportService {
   ) {
     messageChannel = { ...messageChannel };
     connectedAccount = { ...connectedAccount };
+    const operation = membershipCleanupOperation(
+      workspaceId,
+      systemMembershipCleanupIdentity(
+        workspaceId,
+        'MessagingMessagesImportService.processMessageBatchImport',
+      ),
+    )!;
     if (messageChannel.connectedAccountId !== connectedAccount.id)
       throw new Error('MESSAGE_IMPORT_ACCOUNT_MISMATCH');
     const admitted =
@@ -84,6 +96,7 @@ export class MessagingMessagesImportService {
       batchSize,
       admitted.run,
       false,
+      operation,
     );
   }
 
@@ -91,6 +104,14 @@ export class MessagingMessagesImportService {
     reservation: OrdinaryMetadataSyncRun,
     batchSize: number,
   ) {
+    reservation = { ...reservation };
+    const operation = membershipCleanupOperation(
+      reservation.workspaceId,
+      systemMembershipCleanupIdentity(
+        reservation.workspaceId,
+        'MessagingMessagesImportService.processRecentMessageBatchImport',
+      ),
+    )!;
     const admitted =
       await this.messageChannelSyncStatusService.handoffRecentMessagesImport(
         reservation,
@@ -103,6 +124,7 @@ export class MessagingMessagesImportService {
       batchSize,
       admitted.run,
       true,
+      operation,
     );
   }
 
@@ -128,7 +150,19 @@ export class MessagingMessagesImportService {
     batchSize: number | undefined,
     expectedRun: OrdinaryMetadataSyncRun,
     recent: boolean,
+    operation: CrmAuditOperation,
   ) {
+    const context = captureMessageImportMatchingContext({
+      operation,
+      authority: {
+        kind: 'provider',
+        workspaceId,
+        connectedAccountId: connectedAccount.id,
+        channelId: messageChannel.id,
+        channelType: messageChannel.type,
+        run: expectedRun,
+      },
+    });
     const importKeys = messageImportCacheKeys({
       workspaceId,
       messageChannelId: messageChannel.id,
@@ -283,7 +317,7 @@ export class MessagingMessagesImportService {
                 messageChannel,
                 connectedAccount,
                 workspaceId,
-                expectedRun,
+                { context, expectedRun },
               );
             if (!saved) return;
           }
@@ -324,11 +358,7 @@ export class MessagingMessagesImportService {
           await this.trackMessageImportCompleted(messageChannel, workspaceId);
           return true;
         } catch (error) {
-          if (
-            error instanceof OmniCoreTransactionOutcomeUnknownError ||
-            error instanceof NativeTransactionOutcomeUnknownError
-          )
-            throw error;
+          if (isTransactionUnsafeToRetry(error)) throw error;
           const message =
             error instanceof Error ? error.message : String(error);
           const code =

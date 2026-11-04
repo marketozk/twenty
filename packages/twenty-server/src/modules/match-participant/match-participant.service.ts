@@ -1,4 +1,11 @@
 import {
+  applyNativeMessageImportMatchingWithAudit,
+  captureMessageImportMatchingContext,
+  captureMessageImportMatchingManifest,
+  type MessageImportMatchingContext,
+  type MessageImportMatchingManifest,
+} from 'src/engine/core-modules/crm-audit/apply-native-message-import-matching-with-audit';
+import {
   rematchNativeMessageParticipantsWithAudit,
   captureMessageParticipantRematchSelector,
   type MessageParticipantRematchSelector,
@@ -185,6 +192,70 @@ export class MatchParticipantService<
             }),
           { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
         ),
+      buildSystemAuthContext(workspaceId.toLowerCase()),
+    );
+  }
+
+  public async matchMessageImportParticipantsWithAudit({
+    workspaceId,
+    context,
+    manifest,
+  }: {
+    workspaceId: string;
+    context: MessageImportMatchingContext;
+    manifest: MessageImportMatchingManifest;
+  }): Promise<'applied' | 'stale-run'> {
+    const captured = captureMessageImportMatchingContext(context);
+    const records = captureMessageImportMatchingManifest(manifest);
+    if (
+      !isUUID(workspaceId) ||
+      captured.operation.workspaceId !== workspaceId.toLowerCase() ||
+      (records.mode === 'targetsOnly') !==
+        (captured.authority.channelType === 'APP')
+    )
+      throw new Error('Native message import matching scope mismatch');
+    const pages: MessageImportMatchingManifest[] = [];
+    const includedMessages = new Set<string>();
+    if (records.mode === 'both') {
+      for (const participants of chunk([...records.participants], 200)) {
+        const pageMessageIds = new Set(
+          participants.map((participant) => participant.messageId),
+        );
+        const messages = records.messages.filter((message) =>
+          pageMessageIds.has(message.messageId),
+        );
+        for (const message of messages) includedMessages.add(message.messageId);
+        pages.push({ mode: 'both', participants, messages });
+      }
+    }
+    const remainingMessages = records.messages.filter(
+      (message) => !includedMessages.has(message.messageId),
+    );
+    for (const messages of chunk(remainingMessages, 200))
+      pages.push({ mode: records.mode, participants: [], messages });
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async (): Promise<'applied' | 'stale-run'> => {
+        for (const page of pages) {
+          const outcome =
+            await this.workspaceOrmManager.runInWorkspaceTransaction(
+              (scope) =>
+                applyNativeMessageImportMatchingWithAudit({
+                  scope,
+                  context: {
+                    ...captured,
+                    operation: {
+                      ...captured.operation,
+                      operationId: randomUUID(),
+                    },
+                  },
+                  manifest: page,
+                }),
+              { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
+            );
+          if (outcome === 'stale-run') return outcome;
+        }
+        return 'applied';
+      },
       buildSystemAuthContext(workspaceId.toLowerCase()),
     );
   }

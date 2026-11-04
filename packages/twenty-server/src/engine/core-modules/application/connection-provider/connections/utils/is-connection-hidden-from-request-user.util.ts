@@ -1,15 +1,12 @@
-import { isDefined } from 'twenty-shared/utils';
-
-import { type ConnectedAccountEntity } from 'src/engine/metadata-modules/connected-account/entities/connected-account.entity';
-
 // Background executions carry no request user, so nothing is hidden from them.
 export const isConnectionHiddenFromRequestUser = ({
   account,
   requestUserWorkspaceId,
 }: {
-  account: Pick<ConnectedAccountEntity, 'scope' | 'userWorkspaceId'>;
+  account: { scope: string; userWorkspaceId: string };
   requestUserWorkspaceId: string | null;
 }): boolean =>
-  isDefined(requestUserWorkspaceId) &&
+  requestUserWorkspaceId !== null &&
+  requestUserWorkspaceId !== undefined &&
   account.scope === 'USER' &&
   account.userWorkspaceId !== requestUserWorkspaceId;

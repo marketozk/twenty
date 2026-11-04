@@ -1,5 +1,11 @@
 import { withOmniDetachedParentDelete } from 'src/engine/twenty-orm/repository/omni-native-write-capability';
 import {
+  captureMessageImportMatchingContext,
+  captureMessageImportMatchingManifest,
+  type MessageImportMatchingContext,
+} from 'src/engine/core-modules/crm-audit/message-import-matching-context';
+import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
+import {
   destroyOmniCrmParent,
   snapshotOmniParentDestroyRequest,
   appendOmniParentDestroyFailure,
@@ -1893,7 +1899,10 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     messageChannel: MessageChannelEntity,
     connectedAccount: ConnectedAccountEntity,
     workspaceId: string,
-    expectedRun?: OrdinaryMetadataSyncRun,
+    options: {
+      context: MessageImportMatchingContext;
+      expectedRun?: OrdinaryMetadataSyncRun;
+    },
   ): Promise<
     | {
         messageExternalIdsAndIdsMap: Map<string, string>;
@@ -1901,7 +1910,21 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
       }
     | undefined
   > {
-    expectedRun = expectedRun && { ...expectedRun };
+    const context = captureMessageImportMatchingContext(options.context);
+    const expectedRun = options.expectedRun && { ...options.expectedRun };
+    const authority = context.authority;
+    if (
+      authority.workspaceId !== workspaceId ||
+      authority.channelId !== messageChannel.id ||
+      authority.connectedAccountId !== connectedAccount.id ||
+      authority.channelType !== messageChannel.type ||
+      messageChannel.connectedAccountId !== connectedAccount.id ||
+      (authority.kind === 'provider'
+        ? !expectedRun ||
+          canonicalAuditJson(authority.run) !== canonicalAuditJson(expectedRun)
+        : expectedRun !== undefined)
+    )
+      throw new Error('MESSAGE_IMPORT_MATCHING_SCOPE_MISMATCH');
     messageChannel = { ...messageChannel };
     connectedAccount = {
       ...connectedAccount,
@@ -2049,7 +2072,42 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
         { lite: true },
       );
 
-    if (messageChannel.isContactAutoCreationEnabled && savedMessagesResult) {
+    if (!isDefined(savedMessagesResult)) return undefined;
+    const messageIds = [
+      ...new Set(
+        savedMessagesResult.participantsWithMessageId.map(
+          ({ messageId }) => messageId,
+        ),
+      ),
+    ];
+    const messageReferences = [
+      ...savedMessagesResult.messageExternalIdsAndIdsMap,
+    ].flatMap(([externalId, messageId]) => {
+      if (!messageIds.includes(messageId)) return [];
+      const messageThreadId =
+        savedMessagesResult.messageExternalIdToMessageThreadIdMap.get(
+          externalId,
+        );
+      if (!messageThreadId)
+        throw new Error('MESSAGE_IMPORT_MATCHING_THREAD_MISSING');
+      return [{ messageId, messageThreadId }];
+    });
+    const manifest = captureMessageImportMatchingManifest({
+      messages: messageReferences,
+      participants: savedMessagesResult.savedMessageParticipants.map(
+        (participant) => ({
+          id: participant.id,
+          messageId: participant.messageId,
+          handle: participant.handle ?? null,
+          personId: participant.personId ?? null,
+          workspaceMemberId: participant.workspaceMemberId ?? null,
+        }),
+      ),
+      mode:
+        messageChannel.type === MessageChannelType.APP ? 'targetsOnly' : 'both',
+    });
+
+    if (messageChannel.isContactAutoCreationEnabled) {
       const contactsToCreate =
         savedMessagesResult.participantsWithMessageId.flatMap((participant) =>
           participant.shouldCreateContact && participant.handle
@@ -2073,28 +2131,13 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
       );
     }
 
-    if (!isDefined(savedMessagesResult)) {
-      return undefined;
-    }
-
-    const messageIds = [
-      ...new Set(
-        savedMessagesResult.participantsWithMessageId.map(
-          ({ messageId }) => messageId,
-        ),
-      ),
-    ];
-
-    // Matching non-email handles as emails would null out caller-supplied identities, so those channels only reconcile targets
-    await this.messageParticipantService.matchMessageParticipants({
-      participants: savedMessagesResult.savedMessageParticipants,
-      messageIds,
-      workspaceId,
-      matchWith:
-        messageChannel.type === MessageChannelType.APP
-          ? 'targetsOnly'
-          : 'workspaceMemberAndPerson',
-    });
+    const matchingOutcome =
+      await this.messageParticipantService.matchMessageParticipants({
+        manifest,
+        context,
+        workspaceId,
+      });
+    if (matchingOutcome === 'stale-run') return undefined;
 
     return {
       messageExternalIdsAndIdsMap:

@@ -1,0 +1,109 @@
+[32m[Nest] 1  - [39m11/04/2026, 8:01:52 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggering message list fetch for workspace 9344b519-1000-41a1-b670-64d744b6990d (all pending channels)[39m
+[32m[Nest] 1  - [39m11/04/2026, 8:01:52 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mFound 2 message channel(s) to process[39m
+[32m[Nest] 1  - [39m11/04/2026, 8:01:52 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggered fetch for message channel 8cda8287-5e71-45be-849b-14315bdb60a9[39m
+[32m[Nest] 1  - [39m11/04/2026, 8:01:52 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mSuccessfully triggered 1 message list fetch job(s)[39m
+[32m[Nest] 1  - [39m11/04/2026, 8:01:52 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggering message list fetch for workspace 9344b519-1000-41a1-b670-64d744b6990d (all pending channels)[39m
+[32m[Nest] 1  - [39m11/04/2026, 8:01:52 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mFound 2 message channel(s) to process[39m
+[32m[Nest] 1  - [39m11/04/2026, 8:02:09 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel b171158a-6418-4c5e-a00d-14eeff21a501, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/04/2026, 8:02:09 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel edad3440-2788-45f9-8820-a90cd0337967, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/04/2026, 8:02:09 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel 9d144515-ab8c-4477-b9bc-14f8d989bc0f, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/04/2026, 8:02:10 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel c5fc54dd-97a1-4666-8824-dc7106dcbfe9, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/04/2026, 8:02:11 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mDeferring 100000 calendar events to the import cron for calendar channel 46cf4d49-e01a-4bdb-a9d7-4a68c2d384c6[39m
+[32m[Nest] 1  - [39m11/04/2026, 8:02:11 AM [32m    LOG[39m [38;5;3m[MessagingMessageWebhookSyncService] [39m[32mSkipping webhook sync for message channel c2de2423-6e1a-4090-a760-281fc5f22c71, a sync is already in progress[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts (59.129 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts (19.925 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-matching.postgres-spec.ts (16.533 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts (15.143 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-sent-draft-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-app-ingestion-guard.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-sent-tool-entrypoint.spec.ts
+[32m[Nest] 1  - [39m11/04/2026, 8:03:22 AM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m
+[32m[Nest] 1  - [39m11/04/2026, 8:03:22 AM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m
+[32m[Nest] 1  - [39m11/04/2026, 8:03:22 AM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m
+[32m[Nest] 1  - [39m11/04/2026, 8:03:22 AM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m
+[32m[Nest] 1  - [39m11/04/2026, 8:03:22 AM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-orchestration.spec.ts
+  ● adapter splits touched participants then untouched Messages into bounded strict pages
+
+    TypeError: (0 , _applynativemessageimportmatchingwithaudit.captureMessageImportMatchingContext) is not a function
+
+      206 |     manifest: MessageImportMatchingManifest;
+      207 |   }): Promise<'applied' | 'stale-run'> {
+    > 208 |     const captured = captureMessageImportMatchingContext(context);
+          |                                                         ^
+      209 |     const records = captureMessageImportMatchingManifest(manifest);
+      210 |     if (
+      211 |       !isUUID(workspaceId) ||
+
+      at MatchParticipantService.matchMessageImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:208:57)
+      at Object.matchMessageImportParticipantsWithAudit (test/fork-migration/crm-audit-message-import-orchestration.spec.ts:215:21)
+
+  ● APP targetsOnly adapter never schedules participant identity updates
+
+    TypeError: (0 , _applynativemessageimportmatchingwithaudit.captureMessageImportMatchingContext) is not a function
+
+      206 |     manifest: MessageImportMatchingManifest;
+      207 |   }): Promise<'applied' | 'stale-run'> {
+    > 208 |     const captured = captureMessageImportMatchingContext(context);
+          |                                                         ^
+      209 |     const records = captureMessageImportMatchingManifest(manifest);
+      210 |     if (
+      211 |       !isUUID(workspaceId) ||
+
+      at MatchParticipantService.matchMessageImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:208:57)
+      at Object.matchMessageImportParticipantsWithAudit (test/fork-migration/crm-audit-message-import-orchestration.spec.ts:264:19)
+
+  ● stale page stops remaining participant and target-only pages
+
+    TypeError: (0 , _applynativemessageimportmatchingwithaudit.captureMessageImportMatchingContext) is not a function
+
+      206 |     manifest: MessageImportMatchingManifest;
+      207 |   }): Promise<'applied' | 'stale-run'> {
+    > 208 |     const captured = captureMessageImportMatchingContext(context);
+          |                                                         ^
+      209 |     const records = captureMessageImportMatchingManifest(manifest);
+      210 |     if (
+      211 |       !isUUID(workspaceId) ||
+
+      at MatchParticipantService.matchMessageImportParticipantsWithAudit (src/modules/match-participant/match-participant.service.ts:208:57)
+      at Object.matchMessageImportParticipantsWithAudit (test/fork-migration/crm-audit-message-import-orchestration.spec.ts:282:21)
+
+  ● unknown matching commit is propagated unchanged and does not replay the page
+
+    expect(received).rejects.toBe(expected) // Object.is equality
+
+    Expected: [NativeTransactionOutcomeUnknownError: Native transaction outcome is unknown after commit]
+    Received: [TypeError: (0 , _applynativemessageimportmatchingwithaudit.captureMessageImportMatchingContext) is not a function]
+
+      296 |     );
+      297 |   f.page.mockRejectedValueOnce(error);
+    > 298 |   await expect(f.run()).rejects.toBe(error);
+          |                                 ^
+      299 |   expect(f.page).toHaveBeenCalledTimes(1);
+      300 | });
+      301 |
+
+      at Object.toBe (../../../tools/node_modules/@jest/expect/node_modules/expect/build/index.js:218:22)
+      at Object.toBe (test/fork-migration/crm-audit-message-import-orchestration.spec.ts:298:33)
+
+Test Suites: 1 failed, 7 passed, 8 total
+Tests:       4 failed, 526 passed, 530 total
+Snapshots:   0 total
+Time:        112.642 s
+Ran all test suites matching /crm-audit-message-import|crm-audit-sent-tool|crm-audit-sent-draft|ordinary-native-sync-run|omni-app-ingestion|crm-audit-native-message-rematch|omni-sync-status/i.
+Traceback (most recent call last):
+  File "C:\Users\regis\AppData\Local\Temp/twenty-log149-target.py", line 6, in <module>
+    m['node'](['/tools/node_modules/jest/bin/jest.js','--config','/source/packages/twenty-server/jest-fork-migration.config.mjs','--runInBand','--testPathPattern='+pattern],{'FORK_MIGRATION_TEST_REDIS_URL':'redis://redis:6379','FORK_MIGRATION_TEST_URL':'postgres://test_owner:isolated-test-only@postgres/'+s['database']})
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log149-run.py", line 16, in node
+    return ssh(cmd+['--entrypoint','node','marketozk/twenty:log088-server-fixed',*args])
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log149-run.py", line 4, in ssh
+    def ssh(args,**kw):return call(['ssh',HOST,shlex.join(args)],**kw)
+                              ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log149-run.py", line 3, in call
+    def call(args,**kw):return subprocess.run(args,check=True,**kw)
+                               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['ssh', 'root@176.114.84.194', "docker run --rm --user 0:0 --network twenty-rob764-3e371e20ab394c2b-net --memory 3g --cpus 2 -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source:/source:ro -v /opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools:/tools:ro -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/out:/out:rw -e NODE_PATH=/out/tools/node_modules:/tools/node_modules:/app/node_modules -e FORK_MIGRATION_TEST_REDIS_URL=redis://redis:6379 -e FORK_MIGRATION_TEST_URL=postgres://test_owner:isolated-test-only@postgres/twenty_rob764_test_3e371e20ab394c2b --entrypoint node marketozk/twenty:log088-server-fixed /tools/node_modules/jest/bin/jest.js --config /source/packages/twenty-server/jest-fork-migration.config.mjs --runInBand '--testPathPattern=crm-audit-message-import|crm-audit-sent-tool|crm-audit-sent-draft|ordinary-native-sync-run|omni-app-ingestion|crm-audit-native-message-rematch|omni-sync-status'"]' returned non-zero exit status 1.

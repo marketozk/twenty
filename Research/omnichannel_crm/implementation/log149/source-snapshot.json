@@ -1,0 +1,32 @@
+{
+  "baseCommit": "edc2ed22939449f9fa2cd8a692eee978b38f060e",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/application/connection-provider/connections/utils/is-connection-hidden-from-request-user.util.ts": "566be9cc2142e4324305d7362514b488be4879a387c490da22d9212b92249473",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts": "5481f186e39ce6e864a849921962deac11e1d617170cddc0e60ff75919648d58",
+    "packages/twenty-server/src/engine/core-modules/tool/tools/email-tool/__tests__/send-email-tool.spec.ts": "447fcf529012a3ccfe3a72df7f51e91534d1958a60069903a5b3fd2f2c1e4a1b",
+    "packages/twenty-server/src/engine/core-modules/tool/tools/email-tool/send-email-tool.ts": "cd91f1867ae1d17c4e11df0f9c8f0dce84602e45304a4b30c158dcea66e67337",
+    "packages/twenty-server/src/engine/metadata-modules/message-channel/services/application-message-ingestion.service.ts": "8ce40cd8b2fdebea3d8ef559da98842e78fcfe6a65b1e2bca39228b78808a367",
+    "packages/twenty-server/src/modules/match-participant/match-participant.service.ts": "78d33aaacb5172aa97183ef4e3360ef78498ef9eee7e4818c256adec33f6c8b8",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/drivers/inbound-email/services/inbound-email-import.service.ts": "34eff09c7249f3972d61bf8997cf2e520db68978434f47207f36ff702dafc7c1",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-messages-import.service.ts": "fdbdd2aa9ccef3b658de9aae5bd4d895b294e63e28d8a34660c79d474d0035e7",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts": "582219394d47522b2f564088569a65f1f9b387cd12b41bad571eb1d97a64beca",
+    "packages/twenty-server/src/modules/messaging/message-outbound-manager/resolvers/__tests__/send-email.resolver.spec.ts": "9e5ce3e01d97ed74fa58c5c50c62bf51b482f2381af9451a28075d5f11661ca9",
+    "packages/twenty-server/src/modules/messaging/message-outbound-manager/resolvers/send-email.resolver.ts": "4e84109a244751c3bcede4d1ee9e2fb41f01fa5ed0035860320504ca70d3bf91",
+    "packages/twenty-server/src/modules/messaging/message-outbound-manager/services/messaging-draft-send.service.ts": "8532ded075f4575d42022ac599e4e66908c90f8e95da8b8a1afb22bc9dfb70f1",
+    "packages/twenty-server/src/modules/messaging/message-outbound-manager/services/send-email.service.ts": "ad3f3582f6cde3d5c7bc032878eabf4e7f50fba67b97411954282410d3745e2b",
+    "packages/twenty-server/src/modules/messaging/message-outbound-manager/services/sent-message-persistence.service.ts": "243c8d788a0cafe510f43bc4f01cbc2bad381b76777cf24219654ef48ff3f46d",
+    "packages/twenty-server/src/modules/messaging/message-outbound-manager/types/persist-sent-message-input.type.ts": "ba52e169e446196fc14a6f89dd7e147972891c5e6a8800b4c799329e73319361",
+    "packages/twenty-server/src/modules/messaging/message-participant-manager/services/messaging-message-participant.service.ts": "c4dbb58006adf93efb4e115c93185dd841b7a96d5309284b8f079fd53cfc2f0b",
+    "packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/mail-sender/email-workflow-action.base.ts": "f32ad8c43ab2c7c1e3fd3403605426a2d85c29ae30132f2b1a212021b2855146",
+    "packages/twenty-server/test/fork-migration/crm-audit-sent-draft-entrypoints.spec.ts": "7b8af70200a77325f27d351255a700b82feca7312889a511bcdfb72cf7c5f57c",
+    "packages/twenty-server/test/fork-migration/omni-app-ingestion-guard.spec.ts": "970363994540327282178bc53c6b1b5c8b91b25d935b4b0f56c658fa990e4087",
+    "packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts": "8933940f8be746cccd7283a7e7af6fe144075e5d9f74e13424bc8375e071bc08",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/apply-native-message-import-matching-with-audit.ts": "937d748c828beaa26c27e221434c264e65a29eb41c3e23e0ecae3d9bd90e0445",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/message-import-matching-context.ts": "5083138937775fe202d5f64672568d4b9fed4ab8f46bd3428352134499199225",
+    "packages/twenty-server/test/fork-migration/crm-audit-message-import-entrypoints.spec.ts": "b75f586a35fdd902bc00821a6cac97e5765e408aad0cfe366a1a9d956a1958f9",
+    "packages/twenty-server/test/fork-migration/crm-audit-message-import-matching.postgres-spec.ts": "98b5dc88167ee289d818f350a1dfeb5135128682f98ffaf41d9f0357f3230895",
+    "packages/twenty-server/test/fork-migration/crm-audit-message-import-orchestration.spec.ts": "cf98dd473ceccdd97ccebc4562394b050b1968dd522609ebe67869c19e721a15",
+    "packages/twenty-server/test/fork-migration/crm-audit-sent-tool-entrypoint.spec.ts": "8318b24ef010c9477e90dbe87b4c8d1adc4efea47a1bc3abbb23d45cea568c37"
+  },
+  "uploadedSourceHashesVerified": true
+}

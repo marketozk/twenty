@@ -35,6 +35,7 @@ ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.
 Последняя подтверждённая сверка — [LOG148 publication](implementation/log148/publication.json).
 Описание, комментарий и все 11 статусов прочитаны обратно. Commit/push подтверждены GitHub API.
 LOG148 опубликован. Описание и отчёт Linear прочитаны обратно после push.
-Следующая работа — post-save import matching. ROB765 остаётся In Progress.
+LOG149 проверен, публикация и синхронизация ожидают commit/push.
+Следующая работа — аудит первоначального сохранения обычных сообщений. ROB765 остаётся In Progress.
 История прежних R13–R16/LOG-публикаций сохраняется в [DEVLOG](DEVLOG.md) и каталогах evidence.
 GitHub Actions не используется.

@@ -1,7 +1,11 @@
 import { captureCurrentCrmAuditIdentity } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { type SentDraftCleanupTarget } from 'src/engine/core-modules/crm-audit/delete-sent-draft-message-with-audit';
-import { membershipCleanupOperation } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
+import {
+  membershipCleanupOperation,
+  copyMembershipCleanupIdentity,
+  type MembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -97,7 +101,17 @@ export class MessagingDraftSendService {
   async captureDraftCleanupAuditOperation(
     workspaceId: string,
   ): Promise<CrmAuditOperation> {
-    const identity = await captureCurrentCrmAuditIdentity(
+    return this.captureRequestAuditOperation(workspaceId);
+  }
+
+  async captureRequestAuditOperation(
+    workspaceId: string,
+    trustedIdentity?: MembershipCleanupIdentity,
+  ): Promise<CrmAuditOperation> {
+    const trusted = copyMembershipCleanupIdentity(trustedIdentity, workspaceId);
+    if (trusted?.actor.kind === 'system')
+      throw new Error('Native messaging requires authenticated audit identity');
+    const ambient = await captureCurrentCrmAuditIdentity(
       workspaceId,
       async (membershipId) => {
         const [member] = await this.messageChannelRepository.manager.query(
@@ -107,9 +121,29 @@ export class MessagingDraftSendService {
         return member?.userId;
       },
     );
+    if (ambient && trusted) {
+      const sameActor =
+        ambient.actor.kind === trusted.actor.kind &&
+        ambient.actor.id === trusted.actor.id;
+      const requestAgent =
+        ambient.actor.kind === 'agent' && trusted.actor.kind === 'application';
+      if (
+        (!sameActor && !requestAgent) ||
+        (requestAgent &&
+          ambient.initiator?.kind === 'application' &&
+          ambient.initiator.id !== trusted.actor.id) ||
+        (trusted.initiator &&
+          (ambient.initiator?.kind !== trusted.initiator.kind ||
+            ambient.initiator?.id !== trusted.initiator.id))
+      )
+        throw new Error('Native messaging audit identity mismatch');
+    }
+    const identity = ambient ?? trusted;
+    if (identity?.actor.kind === 'system')
+      throw new Error('Native messaging requires authenticated audit identity');
     const operation = membershipCleanupOperation(workspaceId, identity);
     if (!operation)
-      throw new Error('Native draft cleanup requires request audit identity');
+      throw new Error('Native messaging requires request audit identity');
     return operation;
   }
 
