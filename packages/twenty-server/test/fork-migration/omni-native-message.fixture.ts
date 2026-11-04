@@ -201,6 +201,9 @@ export const createOmniNativeMessageFixture = (
         await owner.query(
           'CREATE TABLE core."messageChannel" (id uuid PRIMARY KEY, "workspaceId" uuid NOT NULL, type text NOT NULL)',
         );
+        await owner.query(
+          'CREATE TABLE core."deferredWorkspaceMigrationAction" (id uuid PRIMARY KEY DEFAULT uuid_generate_v4(), "workspaceId" uuid NOT NULL REFERENCES core.workspace(id) ON DELETE CASCADE, "applicationUniversalIdentifier" varchar NOT NULL, name varchar NOT NULL, payload jsonb NOT NULL, position integer NOT NULL, "runByVersion" varchar, status varchar NOT NULL DEFAULT \'PENDING\', attempts integer NOT NULL DEFAULT 0, "lastError" text, "startedAt" timestamptz, "createdAt" timestamptz NOT NULL DEFAULT now(), "updatedAt" timestamptz NOT NULL DEFAULT now())',
+        );
         if (
           tableNames.includes('messageChannelMessageAssociationMessageFolder')
         )
@@ -363,6 +366,9 @@ export const createOmniNativeMessageFixture = (
       await owner.query(
         `GRANT SELECT ON ALL TABLES IN SCHEMA core TO "${roleName}"`,
       );
+      await owner.query(
+        `GRANT SELECT, INSERT, UPDATE, DELETE ON core."deferredWorkspaceMigrationAction" TO "${roleName}"`,
+      );
     }
   };
   const reset = async () => {
@@ -370,6 +376,9 @@ export const createOmniNativeMessageFixture = (
       `TRUNCATE ${createdTableNames.map((name) => `"${schemaName}"."${name}"`).join(', ')} CASCADE`,
     );
     await owner.query('TRUNCATE crm_audit."crmAuditEntry"');
+    if (options.coreSchema !== 'audit') {
+      await owner.query('TRUNCATE core."deferredWorkspaceMigrationAction"');
+    }
     eventEmitter.mockClear();
     Object.values(recordStock).forEach((method) => method.mockClear());
   };

@@ -4140,3 +4140,39 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 ef23f2e6-bd3a-4dcf-b55e-0b5f0b00c904 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log150/publication.json).
 Следующий участок — долговечное сохранение и восстановление манифеста сопоставления по LOG151.
+
+## LOG151 — долговечное сохранение и восстановление манифеста сопоставления сообщений
+
+04.11.2026 зафиксированы [дизайн](implementation/log151/design.md),
+[независимое ревью](implementation/log151/design-review.md) и
+[план проверок](implementation/log151/test-research.md).
+В `message-import-matching-context.ts` добавлены построение постраничного манифеста
+(`buildMessageImportMatchingPages`) и валидация долговечного payload
+(`captureMessageImportMatchingIntentPayload`) для действия
+`reconcile_messageImportMatching` в `core.deferredWorkspaceMigrationAction`.
+В `saveOrdinaryMessageBatchWithAudit` непустой манифест атомарно сохраняется со
+статусом `PENDING` и проверяется до `COMMIT` и после `SET CONSTRAINTS ALL IMMEDIATE`.
+В `MatchParticipantService` и `applyNativeMessageImportMatchingWithAudit`
+реализованы координация `IN_PROGRESS` между штатным прогоном и фоновым
+восстановлением, атомарное продвижение `nextPageIndex` или удаление намерения в
+коммите каждой страницы, блокировка `NativeTransactionOutcomeUnknownError` /
+`CoreAuditPostCommitError` в `status = 'FAILED'` с `unsafeOutcome` через `jsonb_set`
+и восстановление `reconcileMessageImportMatchingIntentsWithAudit` с повторной
+проверкой актуальных полномочий источника.
+
+04.11.2026 проверки LOG151 завершены. 4707 tests/155 suites PASS (1348.722s). 686 targeted/15 suites PASS (180.849s), 15 новых PostgreSQL и 2 unit случая. 26 guard tests PASS, 10 migration checksums неизменны. Types 441/442 roots, baseline/current 225 diagnostics, 0 новых/changed-file. Совпали 11 local/remote source hashes.
+
+Независимое ревью подтвердило координацию `status = 'IN_PROGRESS'` между штатным
+прогоном и фоновым восстановлением под эксклюзивной блокировкой workspace,
+сохранение `nextPageIndex` при блокировке `unsafeOutcome`, проверку актуальных
+живых полномочий `provider` (`isSyncEnabled`, запрет APP и omni-owned аккаунтов и
+каналов) при replay после смены `syncStage`, а также отсутствие широкого
+пересопоставления исторических участников при повторном сохранении той же пачки.
+Начальное расхождение формата ответа `DataSource.query` для `UPDATE ... RETURNING`,
+настройка прав тестовой роли и одна первичная ошибка типов в тесте устранены и
+сохранены в initial/second логах.
+
+[Результаты](implementation/log151/results.json), [ревью](implementation/log151/review.md),
+[следующий участок](implementation/log151/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

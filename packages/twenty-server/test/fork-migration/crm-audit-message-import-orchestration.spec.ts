@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import {
+  buildMessageImportMatchingPages,
   captureMessageImportMatchingContext,
+  captureMessageImportMatchingIntentPayload,
   captureMessageImportMatchingManifest,
+  MESSAGE_IMPORT_MATCHING_INTENT_NAME,
   type MessageImportMatchingContext,
   type MessageImportMatchingManifest,
 } from 'src/engine/core-modules/crm-audit/message-import-matching-context';
@@ -341,3 +344,81 @@ it.each(['sent', 'sent-tool'] as const)(
     );
   },
 );
+
+it('validates durable matching intent payloads and rejects structural tampering', () => {
+  const f = fixture();
+  const pages = buildMessageImportMatchingPages(f.manifest);
+  const payload = captureMessageImportMatchingIntentPayload({
+    version: 1,
+    context: f.context,
+    pages,
+    nextPageIndex: 0,
+  });
+  expect(payload.pages).toHaveLength(1);
+  expect(Object.isFrozen(payload)).toBe(true);
+  expect(() =>
+    captureMessageImportMatchingIntentPayload({
+      version: 1,
+      context: f.context,
+      pages,
+      nextPageIndex: 1,
+    }),
+  ).toThrow('cursor invalid');
+  expect(() =>
+    captureMessageImportMatchingIntentPayload({
+      version: 1,
+      context: f.context,
+      pages,
+      nextPageIndex: 0,
+      unsafeOutcome: { pageIndex: 0, reason: '' },
+    }),
+  ).toThrow('outcome invalid');
+});
+
+it('fences unsafe outcomes into FAILED with unsafeOutcome during durable intent execution', async () => {
+  const f = fixture();
+  const intentId = randomUUID();
+  const pages = buildMessageImportMatchingPages(f.manifest);
+  const query = jest
+    .fn()
+    .mockResolvedValueOnce([
+      {
+        id: intentId,
+        payload: {
+          version: 1,
+          context: f.context,
+          pages,
+          nextPageIndex: 0,
+        },
+      },
+    ])
+    .mockResolvedValueOnce([]);
+  const matcher = new MatchParticipantService(
+    f.manager as never,
+    {} as never,
+    {} as never,
+    { query } as never,
+  );
+  const error = new NativeTransactionOutcomeUnknownError(
+    'commit',
+    new Error('ACK lost'),
+  );
+  f.page.mockRejectedValueOnce(error);
+  await expect(
+    matcher.matchMessageImportParticipantsWithAudit({
+      workspaceId: f.workspaceId,
+      context: f.context,
+      manifest: f.manifest,
+      intentId,
+    }),
+  ).rejects.toBe(error);
+  expect(query).toHaveBeenCalledTimes(2);
+  expect(query.mock.calls[1][0]).toContain("SET status='FAILED'");
+  expect(query.mock.calls[1][1]).toEqual([
+    intentId.toLowerCase(),
+    f.workspaceId.toLowerCase(),
+    MESSAGE_IMPORT_MATCHING_INTENT_NAME,
+    error.message,
+    JSON.stringify({ pageIndex: 0, reason: error.message }),
+  ]);
+});

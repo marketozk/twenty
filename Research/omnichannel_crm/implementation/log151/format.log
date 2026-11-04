@@ -1,0 +1,14 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/apply-native-message-import-matching-with-audit.ts 91ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/message-import-authority-proof.ts 130ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/message-import-matching-context.ts 108ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts 783ms (unchanged)
+../../../source/packages/twenty-server/src/modules/match-participant/match-participant.service.ts 263ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts 270ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-participant-manager/services/messaging-message-participant.service.ts 25ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-matching.postgres-spec.ts 95ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-orchestration.spec.ts 43ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/omni-native-message.fixture.ts 85ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-recovery.postgres-spec.ts 85ms (unchanged)
+
+{"formattedFiles": 11, "singleSshSession": true}

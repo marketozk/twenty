@@ -1,8 +1,12 @@
 import { withOmniDetachedParentDelete } from 'src/engine/twenty-orm/repository/omni-native-write-capability';
 import {
+  buildMessageImportMatchingPages,
   captureMessageImportMatchingContext,
   captureMessageImportMatchingManifest,
+  MESSAGE_IMPORT_MATCHING_INTENT_NAME,
   type MessageImportMatchingContext,
+  type MessageImportMatchingIntentPayload,
+  type MessageImportMatchingManifest,
 } from 'src/engine/core-modules/crm-audit/message-import-matching-context';
 import { captureMessageImportAuthorityProof } from 'src/engine/core-modules/crm-audit/message-import-authority-proof';
 import {
@@ -2090,39 +2094,6 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     });
 
     if (!isDefined(savedMessagesResult)) return undefined;
-    const messageIds = [
-      ...new Set(
-        savedMessagesResult.participantsWithMessageId.map(
-          ({ messageId }) => messageId,
-        ),
-      ),
-    ];
-    const messageReferences = [
-      ...savedMessagesResult.messageExternalIdsAndIdsMap,
-    ].flatMap(([externalId, messageId]) => {
-      if (!messageIds.includes(messageId)) return [];
-      const messageThreadId =
-        savedMessagesResult.messageExternalIdToMessageThreadIdMap.get(
-          externalId,
-        );
-      if (!messageThreadId)
-        throw new Error('MESSAGE_IMPORT_MATCHING_THREAD_MISSING');
-      return [{ messageId, messageThreadId }];
-    });
-    const manifest = captureMessageImportMatchingManifest({
-      messages: messageReferences,
-      participants: savedMessagesResult.savedMessageParticipants.map(
-        (participant) => ({
-          id: participant.id,
-          messageId: participant.messageId,
-          handle: participant.handle ?? null,
-          personId: participant.personId ?? null,
-          workspaceMemberId: participant.workspaceMemberId ?? null,
-        }),
-      ),
-      mode:
-        messageChannel.type === MessageChannelType.APP ? 'targetsOnly' : 'both',
-    });
 
     if (messageChannel.isContactAutoCreationEnabled) {
       const contactsToCreate =
@@ -2150,9 +2121,12 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
 
     const matchingOutcome =
       await this.messageParticipantService.matchMessageParticipants({
-        manifest,
+        manifest: savedMessagesResult.manifest,
         context,
         workspaceId,
+        ...(savedMessagesResult.intentId
+          ? { intentId: savedMessagesResult.intentId }
+          : {}),
       });
     if (matchingOutcome === 'stale-run') return undefined;
 
@@ -2178,6 +2152,8 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     context: MessageImportMatchingContext;
   }): Promise<
     | {
+        manifest: MessageImportMatchingManifest;
+        intentId?: string;
         participantsWithMessageId: {
           messageId: string;
           handle: string | null;
@@ -2621,9 +2597,95 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
                 'Message save skipped folder junction required by dependent plan',
               );
 
+            const participantMessageIds = [
+              ...new Set(
+                participantsWithMessageId.map(({ messageId }) => messageId),
+              ),
+            ];
+            const messageReferences = [...messageExternalIdsAndIdsMap].flatMap(
+              ([externalId, messageId]) => {
+                if (!participantMessageIds.includes(messageId)) return [];
+                const messageThreadId =
+                  messageExternalIdToMessageThreadIdMap.get(externalId);
+                if (!messageThreadId)
+                  throw new Error('MESSAGE_IMPORT_MATCHING_THREAD_MISSING');
+                return [{ messageId, messageThreadId }];
+              },
+            );
+            const manifest = captureMessageImportMatchingManifest({
+              messages: messageReferences,
+              participants: savedMessageParticipants.map((participant) => ({
+                id: participant.id,
+                messageId: participant.messageId,
+                handle: participant.handle ?? null,
+                personId: participant.personId ?? null,
+                workspaceMemberId: participant.workspaceMemberId ?? null,
+              })),
+              mode:
+                messageChannel.type === MessageChannelType.APP
+                  ? 'targetsOnly'
+                  : 'both',
+            });
+            const pages = buildMessageImportMatchingPages(manifest);
+            let intentId: string | undefined;
+            if (pages.length > 0) {
+              intentId = randomUUID();
+              const intentPayload: MessageImportMatchingIntentPayload = {
+                version: 1,
+                context,
+                pages,
+                nextPageIndex: 0,
+              };
+              const insertedIntent = await transactionScope.executeRawQuery(
+                `INSERT INTO core."deferredWorkspaceMigrationAction"(id,"workspaceId","applicationUniversalIdentifier",name,payload,position,"runByVersion",status,attempts) VALUES($1,$2,$3,$4,$5::jsonb,0,NULL,'PENDING',0) RETURNING id`,
+                [
+                  intentId,
+                  workspaceId,
+                  TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER,
+                  MESSAGE_IMPORT_MATCHING_INTENT_NAME,
+                  JSON.stringify(intentPayload),
+                ],
+              );
+              if (
+                insertedIntent.length !== 1 ||
+                insertedIntent[0].id !== intentId
+              )
+                throw new Error(
+                  'Message save matching intent was not persisted',
+                );
+              const persistedIntentId = intentId;
+              state.validators.push(async () => {
+                const intentRows = await transactionScope.executeRawQuery(
+                  `SELECT id,"workspaceId","applicationUniversalIdentifier",name,payload,position,"runByVersion",status,attempts,"lastError","startedAt" FROM core."deferredWorkspaceMigrationAction" WHERE id=$1`,
+                  [persistedIntentId],
+                );
+                if (
+                  intentRows.length !== 1 ||
+                  intentRows[0].id !== persistedIntentId ||
+                  intentRows[0].workspaceId !== workspaceId ||
+                  intentRows[0].applicationUniversalIdentifier !==
+                    TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER ||
+                  intentRows[0].name !== MESSAGE_IMPORT_MATCHING_INTENT_NAME ||
+                  intentRows[0].position !== 0 ||
+                  intentRows[0].runByVersion !== null ||
+                  intentRows[0].status !== 'PENDING' ||
+                  intentRows[0].attempts !== 0 ||
+                  intentRows[0].lastError !== null ||
+                  intentRows[0].startedAt !== null ||
+                  canonicalAuditJson(intentRows[0].payload) !==
+                    canonicalAuditJson(intentPayload)
+                )
+                  throw new Error(
+                    'Message save matching intent changed before commit',
+                  );
+              });
+            }
+
             await this.finishMessageSaveAudit(state);
 
             return {
+              manifest,
+              ...(intentId ? { intentId } : {}),
               participantsWithMessageId,
               savedMessageParticipants,
               messageExternalIdsAndIdsMap,

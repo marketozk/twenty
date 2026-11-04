@@ -773,6 +773,19 @@ it('a failed queue preserves saved rows and identical retry exposes the document
     personId: null,
     workspaceMemberId: null,
   });
+  const recovered =
+    await s.messageParticipants.reconcileMessageImportMatchingIntents({
+      workspaceId: f.workspaceId,
+    });
+  expect(recovered).toEqual({
+    processedIntents: 1,
+    completedIntents: 1,
+    pagesApplied: 1,
+  });
+  expect(await s.savedParticipant()).toMatchObject({
+    personId: s.personId,
+    workspaceMemberId: s.memberId,
+  });
 });
 
 it('actual matching failure rolls back matching while the aggregate save remains committed', async () => {

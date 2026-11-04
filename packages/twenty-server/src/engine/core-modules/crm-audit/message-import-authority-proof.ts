@@ -3,7 +3,10 @@ import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { type MessageImportMatchingAuthority } from 'src/engine/core-modules/crm-audit/message-import-matching-context';
 import { isConnectedAccountUsableByCaller } from 'src/engine/metadata-modules/connected-account/utils/is-connected-account-usable-by-caller.util';
-import { findOmniOwnedMessageChannelIds } from 'src/modules/omnichannel/services/find-omni-owned-metadata-ids';
+import {
+  findOmniOwnedConnectedAccountIds,
+  findOmniOwnedMessageChannelIds,
+} from 'src/modules/omnichannel/services/find-omni-owned-metadata-ids';
 import { lockOrdinaryNativeSyncRun } from 'src/modules/omnichannel/services/lock-ordinary-native-sync-run';
 
 type AuthorityProofScope = {
@@ -20,10 +23,12 @@ export const captureMessageImportAuthorityProof = async ({
   scope,
   operation,
   authority,
+  isRecoveryReplay = false,
 }: {
   scope: AuthorityProofScope;
   operation: CrmAuditOperation;
   authority: MessageImportMatchingAuthority;
+  isRecoveryReplay?: boolean;
 }): Promise<
   { applied: false } | { applied: true; verify: () => Promise<void> }
 > => {
@@ -31,6 +36,7 @@ export const captureMessageImportAuthorityProof = async ({
     throw new Error('Native message import workspace mismatch');
   if (
     authority.kind === 'provider' &&
+    !isRecoveryReplay &&
     !(await lockOrdinaryNativeSyncRun(scope, authority.run))
   )
     return { applied: false };
@@ -160,6 +166,13 @@ export const captureMessageImportAuthorityProof = async ({
   )
     throw new Error('Native message import channel changed');
   if (
+    authority.kind === 'provider' &&
+    (account.provider === 'app' ||
+      channel.type === 'APP' ||
+      channel.isSyncEnabled !== true)
+  )
+    throw new Error('Native message import provider channel unavailable');
+  if (
     authority.kind === 'inbound' &&
     (channel.type !== 'EMAIL_GROUP' || channel.handle !== authority.recipient)
   )
@@ -199,12 +212,17 @@ export const captureMessageImportAuthorityProof = async ({
       )
         throw new Error('Native message import authority changed');
     }
+    const ownedAccounts = await findOmniOwnedConnectedAccountIds(
+      scope,
+      scope.workspaceId,
+      [authority.connectedAccountId],
+    );
     const owned = await findOmniOwnedMessageChannelIds(
       scope,
       scope.workspaceId,
       [authority.channelId],
     );
-    if (owned.size)
+    if (ownedAccounts.size || owned.size)
       throw new Error('Native message import channel ownership changed');
   };
   await verify();

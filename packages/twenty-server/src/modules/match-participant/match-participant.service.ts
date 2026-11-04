@@ -1,8 +1,12 @@
 import {
   applyNativeMessageImportMatchingWithAudit,
+  buildMessageImportMatchingPages,
   captureMessageImportMatchingContext,
+  captureMessageImportMatchingIntentPayload,
   captureMessageImportMatchingManifest,
+  MESSAGE_IMPORT_MATCHING_INTENT_NAME,
   type MessageImportMatchingContext,
+  type MessageImportMatchingIntentPayload,
   type MessageImportMatchingManifest,
 } from 'src/engine/core-modules/crm-audit/apply-native-message-import-matching-with-audit';
 import {
@@ -39,9 +43,11 @@ import {
   type CalendarSaveTable,
   type CalendarSaveSnapshot,
 } from 'src/engine/core-modules/crm-audit/calendar-save-proof';
+import { isTransactionUnsafeToRetry } from 'src/engine/twenty-orm/error-handling/is-transaction-outcome-unknown';
 import { getIssuedNativeCleanupMetadata } from 'src/engine/twenty-orm/repository/omni-native-write-capability';
 import { getIncomingRecordForeignKeys } from 'src/engine/twenty-orm/utils/has-referencing-records';
 import { assertNoReferentialUpdateEffects } from 'src/engine/twenty-orm/utils/assert-no-referential-update-effects';
+import { DEFERRED_WORKSPACE_MIGRATION_ACTION_MAX_ATTEMPTS } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/constants/deferred-workspace-migration-action-max-attempts.constant';
 import {
   computeTargetReconciliationOperations,
   type ExistingTarget,
@@ -200,10 +206,12 @@ export class MatchParticipantService<
     workspaceId,
     context,
     manifest,
+    intentId,
   }: {
     workspaceId: string;
     context: MessageImportMatchingContext;
     manifest: MessageImportMatchingManifest;
+    intentId?: string;
   }): Promise<'applied' | 'stale-run'> {
     const captured = captureMessageImportMatchingContext(context);
     const records = captureMessageImportMatchingManifest(manifest);
@@ -211,53 +219,367 @@ export class MatchParticipantService<
       !isUUID(workspaceId) ||
       captured.operation.workspaceId !== workspaceId.toLowerCase() ||
       (records.mode === 'targetsOnly') !==
-        (captured.authority.channelType === 'APP')
+        (captured.authority.channelType === 'APP') ||
+      (intentId !== undefined &&
+        (typeof intentId !== 'string' || !isUUID(intentId)))
     )
       throw new Error('Native message import matching scope mismatch');
-    const pages: MessageImportMatchingManifest[] = [];
-    const includedMessages = new Set<string>();
-    if (records.mode === 'both') {
-      for (const participants of chunk([...records.participants], 200)) {
-        const pageMessageIds = new Set(
-          participants.map((participant) => participant.messageId),
-        );
-        const messages = records.messages.filter((message) =>
-          pageMessageIds.has(message.messageId),
-        );
-        for (const message of messages) includedMessages.add(message.messageId);
-        pages.push({ mode: 'both', participants, messages });
-      }
+    const canonicalWorkspaceId = workspaceId.toLowerCase();
+    const normalizedIntentId = intentId?.toLowerCase();
+    const pages = buildMessageImportMatchingPages(records);
+    if (pages.length === 0) {
+      if (normalizedIntentId !== undefined)
+        throw new Error('Native message import matching intent requires pages');
+      return 'applied';
     }
-    const remainingMessages = records.messages.filter(
-      (message) => !includedMessages.has(message.messageId),
-    );
-    for (const messages of chunk(remainingMessages, 200))
-      pages.push({ mode: records.mode, participants: [], messages });
     return this.workspaceOrmManager.executeInWorkspaceContext(
       async (): Promise<'applied' | 'stale-run'> => {
-        for (const page of pages) {
-          const outcome =
+        let startPageIndex = 0;
+        if (normalizedIntentId !== undefined) {
+          const claim = await this.claimInBandMessageImportMatchingIntent(
+            canonicalWorkspaceId,
+            normalizedIntentId,
+            captured,
+            pages,
+          );
+          if (claim.completedByRecovery) return 'applied';
+          startPageIndex = claim.startPageIndex;
+        }
+        for (
+          let pageIndex = startPageIndex;
+          pageIndex < pages.length;
+          pageIndex++
+        ) {
+          try {
+            const outcome =
+              await this.workspaceOrmManager.runInWorkspaceTransaction(
+                (scope) =>
+                  applyNativeMessageImportMatchingWithAudit({
+                    scope,
+                    context: {
+                      ...captured,
+                      operation: {
+                        ...captured.operation,
+                        operationId: randomUUID(),
+                      },
+                    },
+                    manifest: pages[pageIndex],
+                    ...(normalizedIntentId
+                      ? {
+                          intent: {
+                            intentId: normalizedIntentId,
+                            pageIndex,
+                            totalPages: pages.length,
+                          },
+                        }
+                      : {}),
+                  }),
+                { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
+              );
+            if (outcome === 'stale-run') return outcome;
+          } catch (error) {
+            if (normalizedIntentId !== undefined) {
+              if (isTransactionUnsafeToRetry(error)) {
+                await this.fenceUnsafeMessageImportMatchingIntent(
+                  canonicalWorkspaceId,
+                  normalizedIntentId,
+                  pageIndex,
+                  error,
+                );
+              } else {
+                await this.releaseMessageImportMatchingIntentAfterError(
+                  canonicalWorkspaceId,
+                  normalizedIntentId,
+                  error,
+                  false,
+                );
+              }
+            }
+            throw error;
+          }
+        }
+        return 'applied';
+      },
+      buildSystemAuthContext(canonicalWorkspaceId),
+    );
+  }
+
+  public async reconcileMessageImportMatchingIntentsWithAudit({
+    workspaceId,
+    intentId,
+  }: {
+    workspaceId: string;
+    intentId?: string;
+  }): Promise<{
+    processedIntents: number;
+    completedIntents: number;
+    pagesApplied: number;
+  }> {
+    if (
+      typeof workspaceId !== 'string' ||
+      !isUUID(workspaceId) ||
+      (intentId !== undefined &&
+        (typeof intentId !== 'string' || !isUUID(intentId)))
+    )
+      throw new Error('Native message import matching recovery scope mismatch');
+    const canonicalWorkspaceId = workspaceId.toLowerCase();
+    const normalizedIntentId = intentId?.toLowerCase() ?? null;
+    return this.workspaceOrmManager.executeInWorkspaceContext(async () => {
+      const candidates = await this.executeCoreIntentQuery(
+        `SELECT id FROM core."deferredWorkspaceMigrationAction" WHERE "workspaceId"=$1 AND name=$2 AND status='PENDING' AND NOT (payload ? 'unsafeOutcome') AND ($3::uuid IS NULL OR id=$3::uuid) ORDER BY "createdAt" ASC, position ASC, id ASC`,
+        [
+          canonicalWorkspaceId,
+          MESSAGE_IMPORT_MATCHING_INTENT_NAME,
+          normalizedIntentId,
+        ],
+      );
+      let processedIntents = 0;
+      let completedIntents = 0;
+      let pagesApplied = 0;
+      for (const candidate of candidates) {
+        const candidateId = String(candidate.id).toLowerCase();
+        const claimed = await this.executeCoreIntentQuery(
+          `UPDATE core."deferredWorkspaceMigrationAction" SET status='IN_PROGRESS',attempts=attempts+1,"startedAt"=now(),"updatedAt"=now() WHERE id=$1 AND "workspaceId"=$2 AND name=$3 AND status='PENDING' AND NOT (payload ? 'unsafeOutcome') RETURNING id,payload,attempts`,
+          [
+            candidateId,
+            canonicalWorkspaceId,
+            MESSAGE_IMPORT_MATCHING_INTENT_NAME,
+          ],
+        );
+        if (claimed.length !== 1) continue;
+        processedIntents += 1;
+        let payload: MessageImportMatchingIntentPayload;
+        try {
+          payload = captureMessageImportMatchingIntentPayload(
+            claimed[0].payload,
+          );
+          if (
+            payload.unsafeOutcome !== undefined ||
+            payload.context.operation.workspaceId !== canonicalWorkspaceId
+          )
+            throw new Error(
+              'Native message import matching intent requires reconciliation',
+            );
+        } catch (validationError) {
+          await this.executeCoreIntentQuery(
+            `UPDATE core."deferredWorkspaceMigrationAction" SET status='FAILED',"startedAt"=NULL,"lastError"=$4,"updatedAt"=now() WHERE id=$1 AND "workspaceId"=$2 AND name=$3`,
+            [
+              candidateId,
+              canonicalWorkspaceId,
+              MESSAGE_IMPORT_MATCHING_INTENT_NAME,
+              validationError instanceof Error
+                ? validationError.message
+                : String(validationError),
+            ],
+          );
+          throw validationError;
+        }
+        for (
+          let pageIndex = payload.nextPageIndex;
+          pageIndex < payload.pages.length;
+          pageIndex++
+        ) {
+          try {
             await this.workspaceOrmManager.runInWorkspaceTransaction(
               (scope) =>
                 applyNativeMessageImportMatchingWithAudit({
                   scope,
                   context: {
-                    ...captured,
+                    ...payload.context,
                     operation: {
-                      ...captured.operation,
+                      ...payload.context.operation,
                       operationId: randomUUID(),
                     },
                   },
-                  manifest: page,
+                  manifest: payload.pages[pageIndex],
+                  intent: {
+                    intentId: candidateId,
+                    pageIndex,
+                    totalPages: payload.pages.length,
+                    isRecoveryReplay: true,
+                  },
                 }),
               { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
             );
-          if (outcome === 'stale-run') return outcome;
+            pagesApplied += 1;
+          } catch (error) {
+            if (isTransactionUnsafeToRetry(error)) {
+              await this.fenceUnsafeMessageImportMatchingIntent(
+                canonicalWorkspaceId,
+                candidateId,
+                pageIndex,
+                error,
+              );
+            } else {
+              await this.releaseMessageImportMatchingIntentAfterError(
+                canonicalWorkspaceId,
+                candidateId,
+                error,
+                Number(claimed[0].attempts) >=
+                  DEFERRED_WORKSPACE_MIGRATION_ACTION_MAX_ATTEMPTS,
+              );
+            }
+            throw error;
+          }
         }
-        return 'applied';
-      },
-      buildSystemAuthContext(workspaceId.toLowerCase()),
+        completedIntents += 1;
+      }
+      return { processedIntents, completedIntents, pagesApplied };
+    }, buildSystemAuthContext(canonicalWorkspaceId));
+  }
+
+  private async executeCoreIntentQuery(
+    sql: string,
+    values: unknown[],
+  ): Promise<Record<string, unknown>[]> {
+    if (typeof this.coreDataSource?.query === 'function') {
+      const result: unknown = await this.coreDataSource.query(sql, values);
+      if (
+        Array.isArray(result) &&
+        result.length === 2 &&
+        Array.isArray(result[0]) &&
+        typeof result[1] === 'number'
+      ) {
+        return result[0] as Record<string, unknown>[];
+      }
+      return Array.isArray(result) ? (result as Record<string, unknown>[]) : [];
+    }
+    return this.workspaceOrmManager.runInWorkspaceTransaction(
+      (scope) => scope.executeRawQuery(sql, values),
+      { commitOutcome: 'strict' },
     );
+  }
+
+  private verifyClaimedIntentPayload(
+    rawPayload: unknown,
+    expectedContext: MessageImportMatchingContext,
+    expectedPages: readonly MessageImportMatchingManifest[],
+  ): MessageImportMatchingIntentPayload {
+    const payload = captureMessageImportMatchingIntentPayload(rawPayload);
+    if (
+      payload.unsafeOutcome !== undefined ||
+      canonicalAuditJson(payload.pages) !== canonicalAuditJson(expectedPages) ||
+      canonicalAuditJson(payload.context.authority) !==
+        canonicalAuditJson(expectedContext.authority) ||
+      payload.context.operation.workspaceId !==
+        expectedContext.operation.workspaceId ||
+      canonicalAuditJson(payload.context.operation.actor) !==
+        canonicalAuditJson(expectedContext.operation.actor) ||
+      canonicalAuditJson(payload.context.operation.initiator ?? null) !==
+        canonicalAuditJson(expectedContext.operation.initiator ?? null) ||
+      (payload.context.operation.correlationId ?? null) !==
+        (expectedContext.operation.correlationId ?? null)
+    )
+      throw new Error('Native message import matching intent payload mismatch');
+    return payload;
+  }
+
+  private async claimInBandMessageImportMatchingIntent(
+    workspaceId: string,
+    intentId: string,
+    expectedContext: MessageImportMatchingContext,
+    expectedPages: readonly MessageImportMatchingManifest[],
+  ): Promise<{ completedByRecovery: boolean; startPageIndex: number }> {
+    const claimed = await this.executeCoreIntentQuery(
+      `UPDATE core."deferredWorkspaceMigrationAction" SET status='IN_PROGRESS',"startedAt"=now(),"updatedAt"=now() WHERE id=$1 AND "workspaceId"=$2 AND name=$3 AND status='PENDING' AND NOT (payload ? 'unsafeOutcome') RETURNING id,payload`,
+      [intentId, workspaceId, MESSAGE_IMPORT_MATCHING_INTENT_NAME],
+    );
+    if (claimed.length === 1) {
+      const payload = this.verifyClaimedIntentPayload(
+        claimed[0].payload,
+        expectedContext,
+        expectedPages,
+      );
+      return {
+        completedByRecovery: false,
+        startPageIndex: payload.nextPageIndex,
+      };
+    }
+    return this.workspaceOrmManager.runInWorkspaceTransaction(
+      async (scope) => {
+        const rows = await scope.executeRawQuery(
+          `SELECT id,payload,status FROM core."deferredWorkspaceMigrationAction" WHERE id=$1 AND "workspaceId"=$2 AND name=$3 FOR UPDATE`,
+          [intentId, workspaceId, MESSAGE_IMPORT_MATCHING_INTENT_NAME],
+        );
+        if (rows.length === 0)
+          return {
+            completedByRecovery: true,
+            startPageIndex: expectedPages.length,
+          };
+        if (rows[0].status !== 'PENDING')
+          throw new Error(
+            'Native message import matching intent requires reconciliation',
+          );
+        const payload = this.verifyClaimedIntentPayload(
+          rows[0].payload,
+          expectedContext,
+          expectedPages,
+        );
+        const updated = await scope.executeRawQuery(
+          `UPDATE core."deferredWorkspaceMigrationAction" SET status='IN_PROGRESS',"startedAt"=now(),"updatedAt"=now() WHERE id=$1 AND "workspaceId"=$2 AND name=$3 AND status='PENDING' RETURNING id`,
+          [intentId, workspaceId, MESSAGE_IMPORT_MATCHING_INTENT_NAME],
+        );
+        if (updated.length !== 1)
+          throw new Error('Native message import matching intent claim failed');
+        return {
+          completedByRecovery: false,
+          startPageIndex: payload.nextPageIndex,
+        };
+      },
+      { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
+    );
+  }
+
+  private async fenceUnsafeMessageImportMatchingIntent(
+    workspaceId: string,
+    intentId: string,
+    pageIndex: number,
+    error: unknown,
+  ): Promise<void> {
+    const reason =
+      error instanceof Error && error.message.length > 0
+        ? error.message
+        : 'Unknown matching transaction outcome';
+    try {
+      await this.executeCoreIntentQuery(
+        `UPDATE core."deferredWorkspaceMigrationAction" SET status='FAILED',"startedAt"=NULL,"lastError"=$4,payload=jsonb_set(payload,'{unsafeOutcome}',$5::jsonb,true),"updatedAt"=now() WHERE id=$1 AND "workspaceId"=$2 AND name=$3`,
+        [
+          intentId,
+          workspaceId,
+          MESSAGE_IMPORT_MATCHING_INTENT_NAME,
+          reason,
+          JSON.stringify({ pageIndex, reason }),
+        ],
+      );
+    } catch {
+      return;
+    }
+  }
+
+  private async releaseMessageImportMatchingIntentAfterError(
+    workspaceId: string,
+    intentId: string,
+    error: unknown,
+    exhausted: boolean,
+  ): Promise<void> {
+    const reason =
+      error instanceof Error && error.message.length > 0
+        ? error.message
+        : String(error);
+    try {
+      await this.executeCoreIntentQuery(
+        `UPDATE core."deferredWorkspaceMigrationAction" SET status=$4,"startedAt"=NULL,"lastError"=$5,"updatedAt"=now() WHERE id=$1 AND "workspaceId"=$2 AND name=$3 AND status='IN_PROGRESS' AND NOT (payload ? 'unsafeOutcome')`,
+        [
+          intentId,
+          workspaceId,
+          MESSAGE_IMPORT_MATCHING_INTENT_NAME,
+          exhausted ? 'FAILED' : 'PENDING',
+          reason,
+        ],
+      );
+    } catch {
+      return;
+    }
   }
 
   public async matchCalendarImportParticipantsWithAudit({

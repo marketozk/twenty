@@ -1,0 +1,17 @@
+{
+  "baseCommit": "c3478dde40c95de2d3ec6c4dc40efccdeaf28c75",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/apply-native-message-import-matching-with-audit.ts": "0310b6ca8f9121eb726f9bba214d4b5bde39a130d8583a9ea70a37bf0621befc",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/message-import-authority-proof.ts": "34a31d4ff813a0dd5cf7b440d578eb3e439138c2234bcc176cafa36bfe1d9fb7",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/message-import-matching-context.ts": "6b72b1efb50f89879d48cf0360f556a30749b4b50341d672d817fbdfa76875f1",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts": "1336f729ca253f6062251c90ab031399ddd258717bee152b6bb1be8d1bf4ca66",
+    "packages/twenty-server/src/modules/match-participant/match-participant.service.ts": "9859583b826a09ca734248c8cbeea1e2325ac29b88198da072b6d86ec8e60278",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts": "0631dab62b3408f0fc801711e556a23992180f7da03b73d8b2c3a495712b491a",
+    "packages/twenty-server/src/modules/messaging/message-participant-manager/services/messaging-message-participant.service.ts": "8d15531540e48f1500ed336c4ff96394a487187ddd1385f47731f257f9fd372f",
+    "packages/twenty-server/test/fork-migration/crm-audit-message-import-matching.postgres-spec.ts": "334b8e3336e10d9e32e51dfbe667d9a911d0d84084d02a3f93afb617356be17c",
+    "packages/twenty-server/test/fork-migration/crm-audit-message-import-orchestration.spec.ts": "18b9f46e24f246d88da51fc6b5e0102090ccd9e7b08bd27d6ebdb0c1d0059768",
+    "packages/twenty-server/test/fork-migration/omni-native-message.fixture.ts": "a717c99509d28f955b3a11455068a311d3d0c5c9da0c57829a5c93734032ca3b",
+    "packages/twenty-server/test/fork-migration/crm-audit-message-import-recovery.postgres-spec.ts": "42a93237fc773a1276752f3bf8028a28e98cb456725bc5e7666399a089623676"
+  },
+  "uploadedSourceHashesVerified": true
+}

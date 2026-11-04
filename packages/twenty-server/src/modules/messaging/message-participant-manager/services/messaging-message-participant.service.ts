@@ -236,13 +236,39 @@ export class MessagingMessageParticipantService {
     manifest,
     context,
     workspaceId,
+    intentId,
   }: {
     manifest: MessageImportMatchingManifest;
     context: MessageImportMatchingContext;
     workspaceId: string;
+    intentId?: string;
   }): Promise<'applied' | 'stale-run'> {
     return this.matchParticipantService.matchMessageImportParticipantsWithAudit(
-      { workspaceId, context, manifest },
+      {
+        workspaceId,
+        context,
+        manifest,
+        ...(intentId === undefined ? {} : { intentId }),
+      },
+    );
+  }
+
+  public async reconcileMessageImportMatchingIntents({
+    workspaceId,
+    intentId,
+  }: {
+    workspaceId: string;
+    intentId?: string;
+  }): Promise<{
+    processedIntents: number;
+    completedIntents: number;
+    pagesApplied: number;
+  }> {
+    return this.matchParticipantService.reconcileMessageImportMatchingIntentsWithAudit(
+      {
+        workspaceId,
+        ...(intentId === undefined ? {} : { intentId }),
+      },
     );
   }
 }

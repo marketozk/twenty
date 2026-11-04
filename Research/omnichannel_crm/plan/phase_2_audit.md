@@ -86,9 +86,13 @@ LOG148 подключает оба режима messaging rematch job, испр�
 обычных сообщений (пять таблиц записи и неизменный `messageThreadTarget`) на закрытый
 owner с единым аудитом в одной strict/exclusive транзакции, выделяет read-only
 планировщики для совместимости с каноническими omni receipts и формирует проверенный
-манифест затронутых участников. Долговечное сохранение и восстановление манифеста
-сопоставления, создание контактов, свежесть import policy и durable cache открыты.
-Далее — [durable post-save matching intent](../implementation/log150/next-boundary.md).
+манифест затронутых участников. LOG151 сохраняет этот манифест как долговечное намерение
+`reconcile_messageImportMatching` в `core.deferredWorkspaceMigrationAction` внутри
+транзакции сохранения, атомарно продвигает `nextPageIndex` или удаляет завершённое
+намерение в каждой транзакции страницы сопоставления, блокирует `unsafeOutcome` и
+восстанавливает незавершённые страницы с проверкой актуальных полномочий. Создание
+контактов, свежесть import policy и durable cache открыты.
+Далее — [audited contact and company auto-creation](../implementation/log151/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

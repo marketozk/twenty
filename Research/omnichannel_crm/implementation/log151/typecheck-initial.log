@@ -1,0 +1,4 @@
+Checking baseline
+Baseline complete 441 225
+Checking current
+{"status":"fail","baselineDiagnostics":225,"currentDiagnostics":226,"newDiagnostics":[{"file":"test/fork-migration/crm-audit-message-import-recovery.postgres-spec.ts","code":2554,"message":"Expected 6 arguments, but got 5.","line":192}],"changedFileDiagnostics":[{"file":"test/fork-migration/crm-audit-message-import-recovery.postgres-spec.ts","code":2554,"message":"Expected 6 arguments, but got 5.","line":192}],"baselineOnlyUnchangedMethodDiagnostics":[],"changedCodeDiagnostics":[{"file":"test/fork-migration/crm-audit-message-import-recovery.postgres-spec.ts","code":2554,"message":"Expected 6 arguments, but got 5.","line":192}],"currentRootFiles":442}

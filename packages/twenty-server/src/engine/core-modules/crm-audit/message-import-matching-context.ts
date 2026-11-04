@@ -242,3 +242,148 @@ export const captureMessageImportMatchingManifest = (
     participants: Object.freeze([...participants.values()]),
   });
 };
+
+export const MESSAGE_IMPORT_MATCHING_INTENT_NAME =
+  'reconcile_messageImportMatching' as const;
+
+export type MessageImportMatchingPageReceipt = Readonly<{
+  intentId: string;
+  pageIndex: number;
+  totalPages: number;
+  isRecoveryReplay?: boolean;
+}>;
+
+export type MessageImportMatchingIntentUnsafeOutcome = Readonly<{
+  pageIndex: number;
+  reason: string;
+}>;
+
+export type MessageImportMatchingIntentPayload = Readonly<{
+  version: 1;
+  context: MessageImportMatchingContext;
+  pages: readonly MessageImportMatchingManifest[];
+  nextPageIndex: number;
+  unsafeOutcome?: MessageImportMatchingIntentUnsafeOutcome;
+}>;
+
+export const buildMessageImportMatchingPages = (
+  manifest: MessageImportMatchingManifest,
+): readonly MessageImportMatchingManifest[] => {
+  const records = captureMessageImportMatchingManifest(manifest);
+  const pages: MessageImportMatchingManifest[] = [];
+  const includedMessages = new Set<string>();
+  if (records.mode === 'both') {
+    for (let offset = 0; offset < records.participants.length; offset += 200) {
+      const participants = records.participants.slice(offset, offset + 200);
+      const pageMessageIds = new Set(
+        participants.map((participant) => participant.messageId),
+      );
+      const messages = records.messages.filter((message) =>
+        pageMessageIds.has(message.messageId),
+      );
+      for (const message of messages) includedMessages.add(message.messageId);
+      pages.push(
+        captureMessageImportMatchingManifest({
+          mode: 'both',
+          participants,
+          messages,
+        }),
+      );
+    }
+  }
+  const remainingMessages = records.messages.filter(
+    (message) => !includedMessages.has(message.messageId),
+  );
+  for (let offset = 0; offset < remainingMessages.length; offset += 200) {
+    const messages = remainingMessages.slice(offset, offset + 200);
+    pages.push(
+      captureMessageImportMatchingManifest({
+        mode: records.mode,
+        participants: [],
+        messages,
+      }),
+    );
+  }
+  return Object.freeze(pages);
+};
+
+export const captureMessageImportMatchingIntentPayload = (
+  input: unknown,
+): MessageImportMatchingIntentPayload => {
+  if (!input || typeof input !== 'object' || Array.isArray(input))
+    throw new Error('Native message import matching intent payload invalid');
+  const raw = input as Record<string, unknown>;
+  const allowedKeys = new Set([
+    'version',
+    'context',
+    'pages',
+    'nextPageIndex',
+    'unsafeOutcome',
+  ]);
+  if (
+    raw.version !== 1 ||
+    !Array.isArray(raw.pages) ||
+    raw.pages.length === 0 ||
+    Object.keys(raw).some((key) => !allowedKeys.has(key))
+  )
+    throw new Error('Native message import matching intent payload invalid');
+  const context = captureMessageImportMatchingContext(
+    raw.context as MessageImportMatchingContext,
+  );
+  const pages = raw.pages.map((entry) => {
+    const page = captureMessageImportMatchingManifest(
+      entry as MessageImportMatchingManifest,
+    );
+    if (
+      page.participants.length > 200 ||
+      page.messages.length > 200 ||
+      (page.participants.length === 0 && page.messages.length === 0) ||
+      (page.mode === 'targetsOnly') !==
+        (context.authority.channelType === 'APP') ||
+      (page.mode === 'targetsOnly' && page.participants.length > 0)
+    )
+      throw new Error('Native message import matching intent page invalid');
+    return page;
+  });
+  const nextPageIndex = raw.nextPageIndex;
+  if (
+    typeof nextPageIndex !== 'number' ||
+    !Number.isInteger(nextPageIndex) ||
+    nextPageIndex < 0 ||
+    nextPageIndex >= pages.length
+  )
+    throw new Error('Native message import matching intent cursor invalid');
+  let unsafeOutcome: MessageImportMatchingIntentUnsafeOutcome | undefined;
+  if (raw.unsafeOutcome !== undefined) {
+    if (
+      !raw.unsafeOutcome ||
+      typeof raw.unsafeOutcome !== 'object' ||
+      Array.isArray(raw.unsafeOutcome)
+    )
+      throw new Error('Native message import matching intent outcome invalid');
+    const outcome = raw.unsafeOutcome as Record<string, unknown>;
+    if (
+      Object.keys(outcome).some(
+        (key) => key !== 'pageIndex' && key !== 'reason',
+      ) ||
+      typeof outcome.pageIndex !== 'number' ||
+      !Number.isInteger(outcome.pageIndex) ||
+      outcome.pageIndex < 0 ||
+      outcome.pageIndex >= pages.length ||
+      typeof outcome.reason !== 'string' ||
+      !outcome.reason.length
+    )
+      throw new Error('Native message import matching intent outcome invalid');
+    unsafeOutcome = Object.freeze({
+      pageIndex: outcome.pageIndex,
+      reason: outcome.reason,
+    });
+  }
+  return Object.freeze({
+    version: 1,
+    context,
+    pages: Object.freeze(pages),
+    nextPageIndex,
+    ...(unsafeOutcome === undefined ? {} : { unsafeOutcome }),
+  });
+};
