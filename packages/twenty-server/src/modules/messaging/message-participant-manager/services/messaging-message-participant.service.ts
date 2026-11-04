@@ -19,10 +19,31 @@ import { type ParticipantWithMessageId } from 'src/modules/messaging/message-imp
 
 // Native fields are nullable; historical command authors need no invented email/name.
 // Keep email provider input contracts unchanged and widen only persistence input.
-type PersistedMessageParticipantInput = Omit<
+export type PersistedMessageParticipantInput = Omit<
   ParticipantWithMessageId,
   'handle' | 'displayName'
 > & { handle: string | null; displayName: string | null };
+
+export type MessageParticipantSavePlan = Readonly<{
+  participantsToCreate: readonly Pick<
+    MessageParticipantWorkspaceEntity,
+    | 'messageId'
+    | 'handle'
+    | 'displayName'
+    | 'role'
+    | 'personId'
+    | 'workspaceMemberId'
+  >[];
+  identityUpdates: readonly {
+    criteria: string;
+    partialEntity: {
+      personId: string | null;
+      workspaceMemberId: string | null;
+      displayName: string | null;
+    };
+  }[];
+  existingParticipants: readonly MessageParticipantWorkspaceEntity[];
+}>;
 
 @Injectable()
 export class MessagingMessageParticipantService {
@@ -31,11 +52,11 @@ export class MessagingMessageParticipantService {
     private readonly matchParticipantService: MatchParticipantService<MessageParticipantWorkspaceEntity>,
   ) {}
 
-  public async saveMessageParticipants(
+  public async prepareMessageParticipantsWithinTransaction(
     participants: PersistedMessageParticipantInput[],
     workspaceId: string,
     transactionScope: WorkspaceTransactionScope,
-  ): Promise<MessageParticipantWorkspaceEntity[]> {
+  ): Promise<MessageParticipantSavePlan> {
     const authContext = buildSystemAuthContext(workspaceId);
 
     return this.workspaceOrmManager.executeInWorkspaceContext(
@@ -136,20 +157,70 @@ export class MessagingMessageParticipantService {
           },
         );
 
+        return Object.freeze({
+          participantsToCreate: Object.freeze(
+            participantsToCreate.map((row) => Object.freeze({ ...row })),
+          ),
+          identityUpdates: Object.freeze(
+            identityUpdates.map((row) =>
+              Object.freeze({
+                criteria: row.criteria,
+                partialEntity: Object.freeze({ ...row.partialEntity }),
+              }),
+            ),
+          ),
+          existingParticipants: Object.freeze(
+            existingParticipantsBasedOnMessageIds.map((row) =>
+              Object.freeze({ ...row }),
+            ),
+          ),
+        });
+      },
+      authContext,
+      { lite: true },
+    );
+  }
+
+  public async saveMessageParticipants(
+    participants: PersistedMessageParticipantInput[],
+    workspaceId: string,
+    transactionScope: WorkspaceTransactionScope,
+  ): Promise<MessageParticipantWorkspaceEntity[]> {
+    const plan = await this.prepareMessageParticipantsWithinTransaction(
+      participants,
+      workspaceId,
+      transactionScope,
+    );
+    const authContext = buildSystemAuthContext(workspaceId);
+
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        const messageParticipantRepository =
+          transactionScope.getRepository<MessageParticipantWorkspaceEntity>(
+            'messageParticipant',
+            { shouldBypassPermissionChecks: true },
+          );
+
         // Batches are bounded by messages, not participants, so they can exceed what updateMany accepts
         for (const identityUpdatesChunk of chunk(
-          identityUpdates,
+          plan.identityUpdates,
           QUERY_MAX_RECORDS,
         )) {
-          await messageParticipantRepository.updateMany(identityUpdatesChunk);
+          await messageParticipantRepository.updateMany(
+            identityUpdatesChunk.map((row) => ({
+              criteria: row.criteria,
+              partialEntity: { ...row.partialEntity },
+            })),
+          );
         }
 
-        const { identifiers } =
-          await messageParticipantRepository.insert(participantsToCreate);
+        const { identifiers } = await messageParticipantRepository.insert(
+          plan.participantsToCreate.map((row) => ({ ...row })),
+        );
 
         const touchedIds = [
           ...identifiers.map(({ id }) => id),
-          ...identityUpdates.map(({ criteria }) => criteria),
+          ...plan.identityUpdates.map(({ criteria }) => criteria),
         ];
 
         return messageParticipantRepository.find({

@@ -711,13 +711,26 @@ const aggregateFixture = async () => {
 it('actual aggregate commits save before contact queue and actual audited matching', async () => {
   const s = await aggregateFixture();
   let queued = false;
+  let initialSaveOperationIds: string[] = [];
   s.contacts.add.mockImplementationOnce(async () => {
     queued = true;
     expect(await s.savedParticipant()).toMatchObject({
       personId: null,
       workspaceMemberId: null,
     });
-    expect(await audit()).toEqual([]);
+    const saveEntries = await audit();
+    expect(saveEntries).toHaveLength(4);
+    expect(
+      saveEntries.every(
+        (entry: { action: string }) => entry.action === 'create',
+      ),
+    ).toBe(true);
+    initialSaveOperationIds = [
+      ...new Set<string>(
+        saveEntries.map((entry: { operationId: string }) => entry.operationId),
+      ),
+    ];
+    expect(initialSaveOperationIds).toHaveLength(1);
   });
   const result = await s.run();
   expect(queued).toBe(true);
@@ -726,7 +739,13 @@ it('actual aggregate commits save before contact queue and actual audited matchi
     personId: s.personId,
     workspaceMemberId: s.memberId,
   });
-  expect((await audit()).length).toBeGreaterThan(0);
+  const allEntries = await audit();
+  expect(allEntries.length).toBeGreaterThan(4);
+  expect(
+    new Set(
+      allEntries.map((entry: { operationId: string }) => entry.operationId),
+    ).size,
+  ).toBe(2);
 });
 
 it('a failed queue preserves saved rows and identical retry exposes the documented lost touched-set gap', async () => {
@@ -738,7 +757,13 @@ it('a failed queue preserves saved rows and identical retry exposes the document
     personId: null,
     workspaceMemberId: null,
   });
-  expect(await audit()).toEqual([]);
+  const initialEntries = await audit();
+  expect(initialEntries).toHaveLength(4);
+  expect(
+    initialEntries.every(
+      (entry: { action: string }) => entry.action === 'create',
+    ),
+  ).toBe(true);
   const match = jest.spyOn(s.messageParticipants, 'matchMessageParticipants');
   await s.run();
   expect(match).toHaveBeenCalledTimes(1);
@@ -752,7 +777,9 @@ it('a failed queue preserves saved rows and identical retry exposes the document
 
 it('actual matching failure rolls back matching while the aggregate save remains committed', async () => {
   const s = await aggregateFixture();
-  await trigger("RAISE EXCEPTION 'post-save matching audit refused';");
+  s.contacts.add.mockImplementationOnce(async () => {
+    await trigger("RAISE EXCEPTION 'post-save matching audit refused';");
+  });
   const result = await capture(s.run());
   expect(result.ok).toBe(false);
   if (!result.ok)
@@ -761,7 +788,13 @@ it('actual matching failure rolls back matching while the aggregate save remains
     personId: null,
     workspaceMemberId: null,
   });
-  expect(await audit()).toEqual([]);
+  const retainedEntries = await audit();
+  expect(retainedEntries).toHaveLength(4);
+  expect(
+    retainedEntries.every(
+      (entry: { action: string }) => entry.action === 'create',
+    ),
+  ).toBe(true);
   expect(s.contacts.add).toHaveBeenCalledTimes(1);
 });
 

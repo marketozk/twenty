@@ -145,7 +145,10 @@ const makeService = <T extends object>(prototype: T, deps: object): T =>
 let account: ConnectedAccountEntity,
   messageChannel: MessageChannelEntity,
   calendarChannel: CalendarChannelEntity,
-  folder: string;
+  folder: string,
+  seededUserId: string,
+  seededUserWorkspaceId: string,
+  seededApplicationId: string;
 let messages: MessagingSaveMessagesAndEnqueueContactCreationService,
   calendar: CalendarSaveEventsService;
 let messageParticipants: MessagingMessageParticipantService,
@@ -225,15 +228,14 @@ const event = (): FetchedCalendarEvent => ({
   ],
 });
 const messageOptions = (expectedRun?: OrdinaryMetadataSyncRun) => {
-  const applicationId = randomUUID();
   const operation: CrmAuditOperation = {
     workspaceId: fixture.workspaceId,
     operationId: randomUUID(),
     actor: expectedRun
       ? { kind: 'system', id: 'MessageSaveFixture' }
       : messageChannel.type === MessageChannelType.APP
-        ? { kind: 'application', id: applicationId }
-        : { kind: 'coreUser', id: randomUUID() },
+        ? { kind: 'application', id: seededApplicationId }
+        : { kind: 'coreUser', id: seededUserId },
   };
   const scope = {
     workspaceId: fixture.workspaceId,
@@ -249,10 +251,15 @@ const messageOptions = (expectedRun?: OrdinaryMetadataSyncRun) => {
         ? {
             ...scope,
             kind: 'application',
-            applicationId,
+            applicationId: seededApplicationId,
             requestUserWorkspaceId: null,
           }
-        : { ...scope, kind: 'sent', userWorkspaceId: randomUUID() },
+        : {
+            ...scope,
+            kind: 'sent',
+            userWorkspaceId: seededUserWorkspaceId,
+            effectiveUserId: seededUserId,
+          },
   };
   return { context, expectedRun };
 };
@@ -343,10 +350,22 @@ const mutateRun = async (kind: 'message' | 'calendar', mutation: string) => {
 beforeAll(async () => {
   await fixture.initialize();
   await fixture.owner.query(
-    'ALTER TABLE core."connectedAccount" ADD "workspaceId" uuid,ADD provider text,ADD "applicationId" uuid,ADD "connectionProviderId" uuid,ADD "handleAliases" jsonb,ADD "archivedAt" timestamptz',
+    'ALTER TABLE core."connectedAccount" ADD "workspaceId" uuid,ADD provider text,ADD "applicationId" uuid,ADD "connectionProviderId" uuid,ADD "handleAliases" jsonb,ADD "archivedAt" timestamptz,ADD scope text DEFAULT \'WORKSPACE\',ADD "userWorkspaceId" uuid',
   );
   await fixture.owner.query(
-    'ALTER TABLE core."messageChannel" ADD "connectedAccountId" uuid,ADD "isSyncEnabled" boolean,ADD "syncStage" text,ADD "syncStageStartedAt" timestamptz',
+    'ALTER TABLE core."messageChannel" ADD "connectedAccountId" uuid,ADD "isSyncEnabled" boolean,ADD "syncStage" text,ADD "syncStageStartedAt" timestamptz,ADD handle text DEFAULT \'operator@example.test\'',
+  );
+  await fixture.owner.query(
+    'CREATE TABLE core."user"(id uuid PRIMARY KEY,disabled boolean NOT NULL DEFAULT false,"deletedAt" timestamptz)',
+  );
+  await fixture.owner.query(
+    'CREATE TABLE core."userWorkspace"(id uuid PRIMARY KEY,"userId" uuid NOT NULL,"workspaceId" uuid NOT NULL,"deletedAt" timestamptz)',
+  );
+  await fixture.owner.query(
+    'CREATE TABLE core.application(id uuid PRIMARY KEY,"workspaceId" uuid NOT NULL,"deletedAt" timestamptz)',
+  );
+  await fixture.owner.query(
+    'CREATE TABLE core.agent(id uuid PRIMARY KEY,"workspaceId" uuid NOT NULL,"applicationId" uuid NOT NULL,"deletedAt" timestamptz)',
   );
   await fixture.owner.query(
     'CREATE TABLE core."calendarChannel"(id uuid PRIMARY KEY,"workspaceId" uuid,"connectedAccountId" uuid,"isSyncEnabled" boolean,"syncStage" text,"syncStageStartedAt" timestamptz,handle text,"syncStatus" text,"isContactAutoCreationEnabled" boolean DEFAULT false,"contactAutoCreationPolicy" text DEFAULT \'AS_PARTICIPANT_AND_ORGANIZER\',"excludePrivateEvents" boolean DEFAULT false)',
@@ -365,13 +384,33 @@ beforeEach(async () => {
   await fixture.owner.query(
     `DROP FUNCTION IF EXISTS "${fixture.schemaName}".calendar_save_phase_failure()`,
   );
+  await fixture.owner.query(
+    `DROP TRIGGER IF EXISTS message_save_phase_failure ON "${fixture.schemaName}"."messageParticipant"`,
+  );
+  await fixture.owner.query(
+    `DROP FUNCTION IF EXISTS "${fixture.schemaName}".message_save_phase_failure()`,
+  );
   await fixture.reset();
   await fixture.owner.query(
-    'TRUNCATE core.workspace,core."connectedAccount",core."messageChannel",core."calendarChannel" CASCADE',
+    'TRUNCATE core.workspace,core."connectedAccount",core."messageChannel",core."calendarChannel",core."user",core."userWorkspace",core.application,core.agent CASCADE',
   );
   await fixture.owner.query('INSERT INTO core.workspace(id) VALUES ($1)', [
     fixture.workspaceId,
   ]);
+  seededUserId = randomUUID();
+  seededUserWorkspaceId = randomUUID();
+  seededApplicationId = randomUUID();
+  await fixture.owner.query('INSERT INTO core."user"(id) VALUES ($1)', [
+    seededUserId,
+  ]);
+  await fixture.owner.query(
+    'INSERT INTO core."userWorkspace"(id,"userId","workspaceId") VALUES ($1,$2,$3)',
+    [seededUserWorkspaceId, seededUserId, fixture.workspaceId],
+  );
+  await fixture.owner.query(
+    'INSERT INTO core.application(id,"workspaceId") VALUES ($1,$2)',
+    [seededApplicationId, fixture.workspaceId],
+  );
   account = {
     id: randomUUID(),
     workspaceId: fixture.workspaceId,
@@ -399,16 +438,18 @@ beforeEach(async () => {
   } as CalendarChannelEntity;
   folder = randomUUID();
   await fixture.owner.query(
-    'INSERT INTO core."connectedAccount"(id,"workspaceId",provider,"handleAliases") VALUES ($1,$2,$3,$4)',
+    'INSERT INTO core."connectedAccount"(id,"workspaceId",provider,"handleAliases",scope,"userWorkspaceId") VALUES ($1,$2,$3,$4,$5,$6)',
     [
       account.id,
       fixture.workspaceId,
       account.provider,
       JSON.stringify(account.handleAliases),
+      'USER',
+      seededUserWorkspaceId,
     ],
   );
   await fixture.owner.query(
-    'INSERT INTO core."messageChannel"(id,"workspaceId",type,"connectedAccountId","isSyncEnabled","syncStage","syncStageStartedAt") VALUES ($1,$2,$3,$4,true,$5,$6)',
+    'INSERT INTO core."messageChannel"(id,"workspaceId",type,"connectedAccountId","isSyncEnabled","syncStage","syncStageStartedAt",handle) VALUES ($1,$2,$3,$4,true,$5,$6,$7)',
     [
       messageChannel.id,
       fixture.workspaceId,
@@ -416,6 +457,7 @@ beforeEach(async () => {
       account.id,
       run('message').stage,
       startedAt,
+      messageChannel.handle,
     ],
   );
   await fixture.owner.query(
@@ -521,9 +563,9 @@ for (const kind of ['message', 'calendar'] as const)
     );
     it('participant write failure rolls back whole native graph', async () => {
       if (kind === 'message')
-        jest
-          .spyOn(messageParticipants, 'saveMessageParticipants')
-          .mockRejectedValue(new Error('participant write refused'));
+        await fixture.owner.query(
+          `CREATE FUNCTION "${fixture.schemaName}".message_save_phase_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'participant write refused'; END $$; CREATE TRIGGER message_save_phase_failure BEFORE INSERT ON "${fixture.schemaName}"."messageParticipant" FOR EACH ROW EXECUTE FUNCTION "${fixture.schemaName}".message_save_phase_failure()`,
+        );
       else
         await fixture.owner.query(
           `CREATE FUNCTION "${fixture.schemaName}".calendar_save_phase_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'participant write refused'; END $$; CREATE TRIGGER calendar_save_phase_failure BEFORE INSERT ON "${fixture.schemaName}"."calendarEventParticipant" FOR EACH ROW EXECUTE FUNCTION "${fixture.schemaName}".calendar_save_phase_failure()`,
@@ -644,6 +686,14 @@ it('nullable participant identities persist unchanged and only addressable conta
 
 it('APP caller without provider-run proof retains targets-only postcommit matching', async () => {
   messageChannel.type = MessageChannelType.APP;
+  await fixture.owner.query(
+    'UPDATE core."connectedAccount" SET provider=$1,"applicationId"=$2 WHERE id=$3',
+    [ConnectedAccountProvider.APP, seededApplicationId, account.id],
+  );
+  await fixture.owner.query(
+    'UPDATE core."messageChannel" SET type=$1 WHERE id=$2',
+    [MessageChannelType.APP, messageChannel.id],
+  );
   await messages.saveMessagesAndEnqueueContactCreation(
     [email()],
     messageChannel,

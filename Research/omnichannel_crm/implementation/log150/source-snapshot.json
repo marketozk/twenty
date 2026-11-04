@@ -1,0 +1,16 @@
+{
+  "baseCommit": "d3f6d657c2b3f3849a023079d9d12f04ce301d28",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts": "0afb8cb0cd9d031f79a4ddff3986996515cf6619e299dcab823acd3030fdb8e4",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-message-folder-association.service.ts": "f90ea65c39be77e93604f2d06789115c5533ede73e1e27c6f555b10fcb93bbb1",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-message.service.ts": "b7744de1165bf73e1205ac60cd40c420741290781e5599b1c914d8466f0f6c52",
+    "packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts": "4b314efd6ae4e4c6b097b4c903b015a8092e052318778b70d2aeeb96b4fda0e6",
+    "packages/twenty-server/src/modules/messaging/message-participant-manager/services/messaging-message-participant.service.ts": "c182fe02961696ba673d657c05c9825a96cc882c6040af1711c96973b20c11d0",
+    "packages/twenty-server/test/fork-migration/crm-audit-message-import-matching.postgres-spec.ts": "ddac83e52e07dbaf25a8bd0c28ec86115ab8adee31a5fc1af27af7a1d0586d1d",
+    "packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts": "16b3128251147121f0849d7b9d0d7de0a6274409d2ed4e1e883ec806aa416c40",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/message-import-authority-proof.ts": "eed2dac6c33eaced8963653fc09099ea2acac17d84457d7b49e645dbfd503b93",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/message-save-proof.ts": "ff0ca0246152e916660e399d483e2a478ef33ddc24112f4033c7e0dbd5705028",
+    "packages/twenty-server/test/fork-migration/crm-audit-ordinary-message-save.postgres-spec.ts": "7adb9ed91a5ae8276d748ae47c5992c4e3ddc4dd6167a55acfc57074275174fd"
+  },
+  "uploadedSourceHashesVerified": true
+}

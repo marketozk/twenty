@@ -1,0 +1,175 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts (30.936 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-matching.postgres-spec.ts (16.436 s)
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-ordinary-message-save.postgres-spec.ts (12.591 s)
+  ● commits five native tables with one redacted audit operation for provider authority
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Set {
+    -   "system",
+    +   undefined,
+      }
+
+      396 |     expect(
+      397 |       new Set(entries.map((entry: { actorKind: string }) => entry.actorKind)),
+    > 398 |     ).toEqual(new Set([s.context.operation.actor.kind]));
+          |       ^
+      399 |     expect(JSON.stringify(entries)).not.toContain('Private subject');
+      400 |     expect(JSON.stringify(entries)).not.toContain('Private message body');
+      401 |     expect(JSON.stringify(entries)).not.toContain('Private Client Name');
+
+      at toEqual (test/fork-migration/crm-audit-ordinary-message-save.postgres-spec.ts:398:7)
+
+  ● commits five native tables with one redacted audit operation for inbound authority
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Set {
+    -   "system",
+    +   undefined,
+      }
+
+      396 |     expect(
+      397 |       new Set(entries.map((entry: { actorKind: string }) => entry.actorKind)),
+    > 398 |     ).toEqual(new Set([s.context.operation.actor.kind]));
+          |       ^
+      399 |     expect(JSON.stringify(entries)).not.toContain('Private subject');
+      400 |     expect(JSON.stringify(entries)).not.toContain('Private message body');
+      401 |     expect(JSON.stringify(entries)).not.toContain('Private Client Name');
+
+      at toEqual (test/fork-migration/crm-audit-ordinary-message-save.postgres-spec.ts:398:7)
+
+  ● commits five native tables with one redacted audit operation for sent authority
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Set {
+    -   "coreUser",
+    +   undefined,
+      }
+
+      396 |     expect(
+      397 |       new Set(entries.map((entry: { actorKind: string }) => entry.actorKind)),
+    > 398 |     ).toEqual(new Set([s.context.operation.actor.kind]));
+          |       ^
+      399 |     expect(JSON.stringify(entries)).not.toContain('Private subject');
+      400 |     expect(JSON.stringify(entries)).not.toContain('Private message body');
+      401 |     expect(JSON.stringify(entries)).not.toContain('Private Client Name');
+
+      at toEqual (test/fork-migration/crm-audit-ordinary-message-save.postgres-spec.ts:398:7)
+
+  ● commits five native tables with one redacted audit operation for sent-tool authority
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Set {
+    -   "coreUser",
+    +   undefined,
+      }
+
+      396 |     expect(
+      397 |       new Set(entries.map((entry: { actorKind: string }) => entry.actorKind)),
+    > 398 |     ).toEqual(new Set([s.context.operation.actor.kind]));
+          |       ^
+      399 |     expect(JSON.stringify(entries)).not.toContain('Private subject');
+      400 |     expect(JSON.stringify(entries)).not.toContain('Private message body');
+      401 |     expect(JSON.stringify(entries)).not.toContain('Private Client Name');
+
+      at toEqual (test/fork-migration/crm-audit-ordinary-message-save.postgres-spec.ts:398:7)
+
+  ● commits five native tables with one redacted audit operation for application authority
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Set {
+    -   "application",
+    +   undefined,
+      }
+
+      396 |     expect(
+      397 |       new Set(entries.map((entry: { actorKind: string }) => entry.actorKind)),
+    > 398 |     ).toEqual(new Set([s.context.operation.actor.kind]));
+          |       ^
+      399 |     expect(JSON.stringify(entries)).not.toContain('Private subject');
+      400 |     expect(JSON.stringify(entries)).not.toContain('Private message body');
+      401 |     expect(JSON.stringify(entries)).not.toContain('Private Client Name');
+
+      at toEqual (test/fork-migration/crm-audit-ordinary-message-save.postgres-spec.ts:398:7)
+
+  ● rolls back save and audit when deferred trigger causes target-insert
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "Message save graph effects mismatch"
+    Received string:    "Data validation error. | Data validation error. | column \"personId\" of relation \"messageThreadTarget\" does not exist"
+
+      617 |     );
+      618 |     expect(outcome.ok).toBe(false);
+    > 619 |     if (!outcome.ok) expect(causes(outcome.error)).toContain(expectedMessage);
+          |                                                    ^
+      620 |     expect(await graph()).toEqual(before);
+      621 |     expect(await audit()).toEqual([]);
+      622 |     expect(s.contacts.add).not.toHaveBeenCalled();
+
+      at toContain (test/fork-migration/crm-audit-ordinary-message-save.postgres-spec.ts:619:52)
+
+  ● rolls back save and audit when deferred trigger causes folder-authority-mutation
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "Message save folder authority changed before commit"
+    Received string:    "insert or update on table \"messageFolder\" violates foreign key constraint \"messageFolder_messageChannelId_fkey\" | insert or update on table \"messageFolder\" violates foreign key constraint \"messageFolder_messageChannelId_fkey\""
+
+      617 |     );
+      618 |     expect(outcome.ok).toBe(false);
+    > 619 |     if (!outcome.ok) expect(causes(outcome.error)).toContain(expectedMessage);
+          |                                                    ^
+      620 |     expect(await graph()).toEqual(before);
+      621 |     expect(await audit()).toEqual([]);
+      622 |     expect(s.contacts.add).not.toHaveBeenCalled();
+
+      at toContain (test/fork-migration/crm-audit-ordinary-message-save.postgres-spec.ts:619:52)
+
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-apply.postgres-spec.ts (14.594 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-first-conversation.postgres-spec.ts (10.531 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-message.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-sent-apply-facade.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-orchestration.spec.ts
+
+Test Suites: 1 failed, 8 passed, 9 total
+Tests:       7 failed, 235 passed, 242 total
+Snapshots:   0 total
+Time:        90.588 s
+Ran all test suites matching /crm-audit-ordinary-message-save|ordinary-native-sync-run|crm-audit-message-import|omni-native-message|omni-history-apply|omni-history-first-conversation|omni-sent-apply-facade/i.
+Traceback (most recent call last):
+  File "C:\Users\regis\AppData\Local\Temp/twenty-log150-target.py", line 6, in <module>
+    m['node'](['/tools/node_modules/jest/bin/jest.js','--config','/source/packages/twenty-server/jest-fork-migration.config.mjs','--runInBand','--testPathPattern='+pattern],{'FORK_MIGRATION_TEST_REDIS_URL':'redis://redis:6379','FORK_MIGRATION_TEST_URL':'postgres://test_owner:isolated-test-only@postgres/'+s['database']})
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log150-run.py", line 16, in node
+    return ssh(cmd+['--entrypoint','node','marketozk/twenty:log088-server-fixed',*args])
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log150-run.py", line 4, in ssh
+    def ssh(args,**kw):return call(['ssh',HOST,shlex.join(args)],**kw)
+                              ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log150-run.py", line 3, in call
+    def call(args,**kw):return subprocess.run(args,check=True,**kw)
+                               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['ssh', 'root@176.114.84.194', "docker run --rm --user 0:0 --network twenty-rob764-3e371e20ab394c2b-net --memory 3g --cpus 2 -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source:/source:ro -v /opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools:/tools:ro -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/out:/out:rw -e NODE_PATH=/out/tools/node_modules:/tools/node_modules:/app/node_modules -e FORK_MIGRATION_TEST_REDIS_URL=redis://redis:6379 -e FORK_MIGRATION_TEST_URL=postgres://test_owner:isolated-test-only@postgres/twenty_rob764_test_3e371e20ab394c2b --entrypoint node marketozk/twenty:log088-server-fixed /tools/node_modules/jest/bin/jest.js --config /source/packages/twenty-server/jest-fork-migration.config.mjs --runInBand '--testPathPattern=crm-audit-ordinary-message-save|ordinary-native-sync-run|crm-audit-message-import|omni-native-message|omni-history-apply|omni-history-first-conversation|omni-sent-apply-facade'"]' returned non-zero exit status 1.

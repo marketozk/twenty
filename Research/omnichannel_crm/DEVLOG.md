@@ -4106,3 +4106,31 @@ ROB765 остаётся In Progress. Выкат и общая HTTP/JWT приё�
 f317ed4d-c816-4fab-9b97-e48e8439df29 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log149/publication.json).
 Продолжается проектирование и реализация аудита первоначального сохранения сообщений по LOG150.
+
+## LOG150 — аудит первоначального сохранения обычных сообщений
+
+04.11.2026 зафиксированы [дизайн](implementation/log150/design.md),
+[независимое ревью](implementation/log150/design-review.md) и
+[план проверок](implementation/log150/test-research.md).
+Из `MessagingMessageService`, `MessagingMessageParticipantService` и
+`MessagingMessageFolderAssociationService` выделены read-only методы планирования,
+а в `MessagingSaveMessagesAndEnqueueContactCreationService` реализован закрытый
+owner первоначального сохранения для пяти таблиц записи и неизменного
+`messageThreadTarget` в одной strict/exclusive транзакции. Проверка полномочий
+источника выделена в `message-import-authority-proof.ts` и переиспользуется обоими
+закрытыми владельцами.
+
+04.11.2026 проверки LOG150 завершены. 2956 tests/94 suites PASS (605.022s). 669 targeted/14 suites PASS (164.12s), 30 новых PostgreSQL случаев. 26 guard tests PASS, 10 migration checksums неизменны. Types 439/442 roots, baseline/current 225 diagnostics, 0 новых/changed-file. Совпали 10 local/remote source hashes.
+
+Независимое ревью подтвердило отказ при дублирующихся `externalId`, сохранение
+правила самого позднего `receivedAt` при нескольких новых сообщениях в одном
+новом или существующем `messageThread`, фильтрацию мягко удалённых сообщений при
+поиске связей канала, проверку `core.messageFolder` и ссылок `person`/`workspaceMember`,
+отказ при каскадных внешних ключах обновления и защиту от пропущенных или
+переписанных триггерами вставок. Начальные ошибки тестовых триггеров/прав и четыре
+первичные ошибки типов устранены и сохранены в initial/second логах.
+
+[Результаты](implementation/log150/results.json), [ревью](implementation/log150/review.md),
+[следующий участок](implementation/log150/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
