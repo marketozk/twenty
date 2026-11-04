@@ -1,0 +1,1451 @@
+FAIL fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts (14.086 s)
+  ● member rematch clears a stale actual link and preserves person and every target
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:198:13)
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:198:13)
+
+  ● member rematch leaves an actual equal match unchanged and does not audit a no-op
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:213:13)
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:213:13)
+
+  ● member replacement preserves exact-case/live selection (exact)
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:227:15
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:227:15
+
+  ● member replacement preserves exact-case/live selection (case)
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:227:15
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:227:15
+
+  ● member replacement preserves exact-case/live selection (deleted)
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:227:15
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:227:15
+
+  ● person primary match wins over older additional match and preserves member linkage
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:243:13)
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:243:13)
+
+  ● person duplicate primary matches use createdAt precedence
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:267:13)
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:267:13)
+
+  ● additional email SQL candidate containment retains existing behavior for client@example.test
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:282:15
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:282:15
+
+  ● additional email SQL candidate containment retains existing behavior for CLIENT@example.test
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:282:15
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:282:15
+
+  ● deleted Person can match while automatic targets use live people only
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:295:13)
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:295:13)
+
+  ● ordinary APP skips person rematch but remains eligible for member rematch
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:313:13)
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:313:13)
+
+  ● rematch preserves actual binding-owned rows in both modes
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:332:15
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:332:15
+
+  ● rematch preserves actual link-owned rows in both modes
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:332:15
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:332:15
+
+  ● rematch preserves actual conversation-owned rows in both modes
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:332:15
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:332:15
+
+  ● all-skipped full member page still advances to the next discovered candidate
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:345:13)
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:345:13)
+
+  ● participant source trigger cannot become a fresh target-stage baseline
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:394:15
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:394:15
+
+  ● participant target trigger cannot become a fresh target-stage baseline
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:394:15
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:394:15
+
+  ● member target immutability is checked after audit and deferred effects (false)
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:413:15
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:413:15
+
+  ● member target immutability is checked after audit and deferred effects (true)
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:413:15
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:413:15
+
+  ● audit failure rolls back participant and target effects together
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:429:13)
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:429:13)
+
+  ● late APP channel policy mutation rolls back matching and target changes
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:443:13)
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:443:13)
+
+  ● retains committed rematch and audit after real COMMIT acknowledgement loss
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:466:13)
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:466:13)
+
+  ● skipped participant updates retain old links and emit no false mutation audit
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:490:13)
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:490:13)
+
+  ● skipped original Message remains in proof after moving outside admitted roots
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:501:13)
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:501:13)
+
+  ● raw member writer is fenced until rematch commit
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:550:15
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:550:15
+
+  ● raw channel writer is fenced until rematch commit
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:550:15
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:550:15
+
+  ● matching validates generated Participant postimages against the actual selected Person
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:670:15
+      at withGeneratedParticipant (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:653:5)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:669:3)
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:670:15
+      at withGeneratedParticipant (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:653:5)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:669:3)
+
+  ● generated incoming UPDATE cascade is proved physically then refused by the audited rematch
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:691:15
+      at withGeneratedParticipant (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:653:5)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:690:3)
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:691:15
+      at withGeneratedParticipant (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:653:5)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:690:3)
+
+  ● unrequested thread participant targets survive rematch and its late new Opportunity is refused before target derivation
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:735:13)
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:735:13)
+
+  ● member rematch needs no Person Company or Opportunity matching metadata
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:785:13)
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:785:13)
+
+  ● deferred insertion of an APP association invalidates captured matching policy
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:813:13)
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:813:13)
+
+  ● excluded APP handles cannot expand Person candidates for an eligible message
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:833:13)
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:833:13)
+
+  ● member rematch derives candidates from the locked handle after discovery changes it
+
+    null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      121 |   if (isDefined(constraintViolationMessage)) {
+      122 |     return withCause(
+    > 123 |       new TwentyOrmException(
+          |       ^
+      124 |         error.message,
+      125 |         TwentyOrmExceptionCode.INVALID_INPUT,
+      126 |         { userFriendlyMessage: constraintViolationMessage },
+
+      at computeTwentyOrmException (src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util.ts:123:7)
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:22:38)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:873:13)
+
+    Cause:
+    error: null value in column "userId" of relation "workspaceMember" violates not-null constraint
+
+      16 |   ): Promise<Record<string, unknown>[]> {
+      17 |     try {
+    > 18 |       const result = await this.client.query(statement);
+         |                      ^
+      19 |
+      20 |       return result.rows as Record<string, unknown>[];
+      21 |     } catch (error) {
+
+      at ../../../app/node_modules/pg/lib/client.js:526:17
+      at ClientQueryExecutor.execute (src/engine/twenty-orm/executor/client-query-executor.ts:18:22)
+      at WorkspaceRepository.performInsert (src/engine/twenty-orm/repository/workspace-repository.ts:1269:21)
+      at WorkspaceRepository.insert (src/engine/twenty-orm/repository/workspace-repository.ts:677:49)
+      at runInRollbackSafeTransaction (src/engine/twenty-orm/datasource/utils/run-in-rollback-safe-transaction.util.ts:48:20)
+      at WorkspaceDataSource.transaction (src/engine/twenty-orm/datasource/workspace-data-source.ts:144:20)
+      at insert (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:87:3)
+      at seed (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:101:23)
+      at Object.<anonymous> (test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts:873:13)
+
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-rematch-entrypoints.spec.ts
+
+Test Suites: 1 failed, 1 passed, 2 total
+Tests:       33 failed, 7 passed, 40 total
+Snapshots:   0 total
+Time:        14.334 s
+Ran all test suites matching /crm-audit-native-message-rematch|crm-audit-message-rematch-entrypoints/i.
+Traceback (most recent call last):
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log148-target.py", line 6, in <module>
+    m['node'](['/tools/node_modules/jest/bin/jest.js','--config','/source/packages/twenty-server/jest-fork-migration.config.mjs','--runInBand','--testPathPattern='+pattern],{'FORK_MIGRATION_TEST_REDIS_URL':'redis://redis:6379','FORK_MIGRATION_TEST_URL':'postgres://test_owner:isolated-test-only@postgres/'+s['database']})
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log148-run.py", line 16, in node
+    return ssh(cmd+['--entrypoint','node','marketozk/twenty:log088-server-fixed',*args])
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log148-run.py", line 4, in ssh
+    def ssh(args,**kw):return call(['ssh',HOST,shlex.join(args)],**kw)
+                              ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Temp\twenty-log148-run.py", line 3, in call
+    def call(args,**kw):return subprocess.run(args,check=True,**kw)
+                               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\regis\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['ssh', 'root@176.114.84.194', "docker run --rm --user 0:0 --network twenty-rob764-3e371e20ab394c2b-net --memory 3g --cpus 2 -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source:/source:ro -v /opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools:/tools:ro -v /opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/out:/out:rw -e NODE_PATH=/out/tools/node_modules:/tools/node_modules:/app/node_modules -e FORK_MIGRATION_TEST_REDIS_URL=redis://redis:6379 -e FORK_MIGRATION_TEST_URL=postgres://test_owner:isolated-test-only@postgres/twenty_rob764_test_3e371e20ab394c2b --entrypoint node marketozk/twenty:log088-server-fixed /tools/node_modules/jest/bin/jest.js --config /source/packages/twenty-server/jest-fork-migration.config.mjs --runInBand '--testPathPattern=crm-audit-native-message-rematch|crm-audit-message-rematch-entrypoints'"]' returned non-zero exit status 1.

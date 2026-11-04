@@ -1,4 +1,10 @@
 import {
+  rematchNativeMessageParticipantsWithAudit,
+  captureMessageParticipantRematchSelector,
+  type MessageParticipantRematchSelector,
+} from 'src/engine/core-modules/crm-audit/rematch-native-message-participants-with-audit';
+import { captureCrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
+import {
   readCalendarProofGraph,
   castCalendarProofImage,
 } from 'src/engine/core-modules/crm-audit/calendar-target-proof';
@@ -148,6 +154,40 @@ export class MatchParticipantService<
     @InjectDataSource()
     private readonly coreDataSource: DataSource,
   ) {}
+
+  public async rematchMessageParticipantsWithAudit({
+    workspaceId,
+    operation,
+    selector,
+    afterParticipantId,
+  }: {
+    workspaceId: string;
+    operation: CrmAuditOperation;
+    selector: MessageParticipantRematchSelector;
+    afterParticipantId?: string;
+  }): Promise<{ nextCursor: string | null }> {
+    operation = captureCrmAuditOperation(operation);
+    selector = captureMessageParticipantRematchSelector(selector);
+    if (
+      !isUUID(workspaceId) ||
+      operation.workspaceId !== workspaceId.toLowerCase()
+    )
+      throw new Error('Native message rematch workspace mismatch');
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      () =>
+        this.workspaceOrmManager.runInWorkspaceTransaction(
+          (scope) =>
+            rematchNativeMessageParticipantsWithAudit({
+              scope,
+              operation,
+              selector,
+              afterParticipantId,
+            }),
+          { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
+        ),
+      buildSystemAuthContext(workspaceId.toLowerCase()),
+    );
+  }
 
   public async matchCalendarImportParticipantsWithAudit({
     workspaceId,

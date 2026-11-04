@@ -1,3 +1,10 @@
+import {
+  captureMessageParticipantRematchSelector,
+  type MessageParticipantRematchSelector,
+} from 'src/engine/core-modules/crm-audit/message-participant-rematch-selector';
+import { castCalendarProofImage } from 'src/engine/core-modules/crm-audit/calendar-target-proof';
+import { calendarSaveActualIds } from 'src/engine/core-modules/crm-audit/calendar-save-proof';
+import { findPersonByPrimaryOrAdditionalEmail } from 'src/modules/match-participant/utils/find-person-by-primary-or-additional-email';
 import { lockOrdinaryNativeSyncRun } from 'src/modules/omnichannel/services/lock-ordinary-native-sync-run';
 import { type OrdinaryMetadataSyncRun } from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
 import {
@@ -65,7 +72,7 @@ type TargetReconciliationScope = Parameters<
     updateMany: (
       inputs: {
         criteria: string;
-        partialEntity: { isAutomaticallyAssigned: boolean };
+        partialEntity: Record<string, unknown>;
       }[],
     ) => Promise<{ raw: unknown; affected?: number | null }>;
     delete: (
@@ -1983,6 +1990,533 @@ export const reconcileNativeMessageThreadTargetsForPeopleWithAudit = async ({
     ),
   ].sort();
   await reconcileTargetsStage(session, threadIds, hints);
+  await finalizeSession(session);
+  return {
+    nextCursor: hints.length === 200 ? hints[hints.length - 1].id : null,
+  };
+};
+
+export const rematchNativeMessageParticipantsWithAudit = async ({
+  scope,
+  operation,
+  selector,
+  afterParticipantId,
+}: {
+  scope: TargetReconciliationScope;
+  operation: CrmAuditOperation;
+  selector: MessageParticipantRematchSelector;
+  afterParticipantId?: string;
+}): Promise<{ nextCursor: string | null }> => {
+  const captured = captureMessageParticipantRematchSelector(selector);
+  if (
+    afterParticipantId !== undefined &&
+    (typeof afterParticipantId !== 'string' || !isUUID(afterParticipantId))
+  )
+    throw new Error('Native message rematch requires UUID cursor');
+  const personMode = captured.kind === 'personOnly';
+  const selection =
+    captured.kind === 'personOnly'
+      ? captured.personEmails
+      : captured.workspaceMemberIds;
+  const graphNames = [
+    'messageThread',
+    'message',
+    'messageParticipant',
+    'messageThreadTarget',
+  ] as const;
+  const sourceNames: CleanupTableName[] = personMode
+    ? ['person', 'company', 'opportunity', 'messageChannelMessageAssociation']
+    : ['workspaceMember'];
+  const session = createSession(scope, operation, [
+    ...graphNames,
+    ...sourceNames,
+  ]);
+  await prepareSession(session);
+  if (personMode)
+    await scope.executeRawQuery(
+      'LOCK TABLE core."messageChannel" IN SHARE MODE',
+    );
+  await scope.executeRawQuery(
+    'LOCK TABLE ' +
+      sourceNames
+        .map((name) => tableExpression(session.shapes.get(name)!))
+        .sort()
+        .join(',') +
+      ' IN SHARE MODE',
+  );
+  const expression = (name: CleanupTableName) =>
+    tableExpression(session.shapes.get(name)!);
+  const sql = {
+    execute: ({ text, values }: { text: string; values: unknown[] }) =>
+      scope.executeRawQuery(text, values),
+  };
+  const discovered = await scope.executeRawQuery(
+    `SELECT participant.id,participant.handle,participant."workspaceMemberId",participant."messageId",message."messageThreadId" FROM ${expression('messageParticipant')} participant LEFT JOIN ${expression('message')} message ON message.id=participant."messageId" WHERE participant."deletedAt" IS NULL AND ${personMode ? 'LOWER(participant.handle)=ANY($1::text[])' : 'participant."workspaceMemberId"=ANY($1::uuid[])'} AND ($2::uuid IS NULL OR participant.id>$2::uuid) ORDER BY participant.id LIMIT 200`,
+    [[...selection], afterParticipantId?.toLowerCase() ?? null],
+  );
+  const nullableId = (value: unknown): string | null => {
+    if (value === null) return null;
+    if (typeof value !== 'string' || !isUUID(value))
+      throw new Error('Native message rematch invalid identity');
+    return value.toLowerCase();
+  };
+  const hints = discovered.map((row) => {
+    const id = nullableId(row.id);
+    if (id === null || (row.handle !== null && typeof row.handle !== 'string'))
+      throw new Error('Native message rematch invalid participant');
+    return {
+      id,
+      handle: row.handle as string | null,
+      workspaceMemberId: nullableId(row.workspaceMemberId),
+      messageId: nullableId(row.messageId),
+      threadId: nullableId(row.messageThreadId),
+    };
+  });
+  const rootIds = [
+    ...new Set(hints.flatMap((hint) => (hint.threadId ? [hint.threadId] : []))),
+  ].sort();
+  const originalIds = new Map<CleanupTableName, string[]>([
+    ['messageThread', rootIds],
+    [
+      'message',
+      [
+        ...new Set(
+          hints.flatMap((hint) => (hint.messageId ? [hint.messageId] : [])),
+        ),
+      ],
+    ],
+    ['messageParticipant', hints.map((hint) => hint.id)],
+  ]);
+  const expected = new Map<CleanupTableName, Snapshot[]>();
+  const lockedIds = new Map<CleanupTableName, string[]>();
+  const graphPredicate = (name: (typeof graphNames)[number]) => {
+    if (name === 'messageThread') return { column: 'id', ids: rootIds };
+    if (name === 'messageParticipant')
+      return { column: 'messageId', ids: lockedIds.get('message') ?? [] };
+    return { column: 'messageThreadId', ids: rootIds };
+  };
+  const readRows = async (
+    name: CleanupTableName,
+    predicate: string,
+    values: unknown[],
+    lock = false,
+  ) => {
+    const ids = (
+      await scope.executeRawQuery(
+        `SELECT id FROM ${expression(name)} WHERE ${predicate} ORDER BY id${lock ? ' FOR UPDATE' : ''}`,
+        values,
+      )
+    ).map((row) => {
+      const id = nullableId(row.id);
+      if (id === null)
+        throw new Error('Native message rematch missing row identity');
+      return id;
+    });
+    const rows = await readNativeCrmAuditRows(
+      sql,
+      session.shapes.get(name)!,
+      ids,
+    );
+    if (rows.length !== ids.length)
+      throw new Error('Native message rematch graph changed');
+    return rows;
+  };
+  const readGraph = (name: (typeof graphNames)[number]) => {
+    const predicate = graphPredicate(name);
+    return readRows(
+      name,
+      `${quote(predicate.column)}=ANY($1::uuid[]) OR id=ANY($2::uuid[])`,
+      [predicate.ids, originalIds.get(name) ?? []],
+    );
+  };
+  for (const [parent, child, column] of [
+    ['messageThread', 'message', 'messageThreadId'],
+    ['message', 'messageParticipant', 'messageId'],
+    ['messageThread', 'messageThreadTarget', 'messageThreadId'],
+    [
+      personMode ? 'person' : 'workspaceMember',
+      'messageParticipant',
+      personMode ? 'personId' : 'workspaceMemberId',
+    ],
+  ] as [CleanupTableName, CleanupTableName, string][]) {
+    await requireSourceForeignKey(session, parent, child, column);
+  }
+  for (const name of graphNames) {
+    const predicate = graphPredicate(name);
+    const parentIds =
+      name === 'messageThread'
+        ? rootIds
+        : name === 'messageParticipant'
+          ? lockedIds.get('message')!
+          : lockedIds.get('messageThread')!;
+    const locked = await readRows(
+      name,
+      `${quote(predicate.column)}=ANY($1::uuid[])`,
+      [parentIds],
+      true,
+    );
+    lockedIds.set(
+      name,
+      locked.map((row) => row.id),
+    );
+    const rows = await readGraph(name);
+    expected.set(name, rows);
+    originalIds.set(name, [
+      ...new Set([
+        ...(originalIds.get(name) ?? []),
+        ...rows.map((row) => row.id),
+      ]),
+    ]);
+  }
+  const fixedMessageIds = [
+    ...new Set([
+      ...(originalIds.get('message') ?? []),
+      ...(lockedIds.get('message') ?? []),
+    ]),
+  ];
+  let channelIds: string[] = [];
+  const readChannels = () =>
+    scope.executeRawQuery(
+      'SELECT id,to_jsonb(channel)::text AS snapshot FROM core."messageChannel" channel WHERE "workspaceId"=$1 OR id=ANY($2::uuid[]) ORDER BY id',
+      [scope.workspaceId, channelIds],
+    );
+  const channels = personMode ? await readChannels() : [];
+  channelIds = channels.map((row) => String(row.id));
+  if (personMode)
+    expected.set(
+      'messageChannelMessageAssociation',
+      await readRows(
+        'messageChannelMessageAssociation',
+        '"messageId"=ANY($1::uuid[])',
+        [fixedMessageIds],
+      ),
+    );
+  const appChannelIds = new Set(
+    channels
+      .filter((row) => JSON.parse(String(row.snapshot)).type === 'APP')
+      .map((row) => String(row.id)),
+  );
+  const appMessageIds = new Set(
+    personMode
+      ? expected
+          .get('messageChannelMessageAssociation')!
+          .map(decode)
+          .filter(
+            (row) =>
+              row.deletedAt === null &&
+              appChannelIds.has(String(row.messageChannelId)),
+          )
+          .map((row) => String(row.messageId))
+      : [],
+  );
+  const ownedMessageIds = new Set(
+    (
+      await findOmniNativeWriteOwnedRecords(
+        scope,
+        scope.workspaceId,
+        'message',
+        expected.get('message')!.map(decode),
+      )
+    ).map((row) => String(row.id)),
+  );
+  const participants = new Map(
+    expected.get('messageParticipant')!.map((row) => [row.id, row]),
+  );
+  const messages = new Map(
+    expected.get('message')!.map((row) => [row.id, decode(row)]),
+  );
+  const threads = new Map(
+    expected.get('messageThread')!.map((row) => [row.id, decode(row)]),
+  );
+  const admitted = hints.filter((hint) => {
+    const participant = participants.get(hint.id);
+    if (!participant || !lockedIds.get('messageParticipant')!.includes(hint.id))
+      return false;
+    const row = decode(participant),
+      message = messages.get(hint.messageId ?? ''),
+      thread = threads.get(hint.threadId ?? '');
+    return (
+      row.deletedAt === null &&
+      row.messageId === hint.messageId &&
+      message?.deletedAt === null &&
+      message.messageThreadId === hint.threadId &&
+      thread?.deletedAt === null &&
+      !ownedMessageIds.has(String(hint.messageId)) &&
+      !(personMode && appMessageIds.has(String(hint.messageId))) &&
+      (personMode
+        ? row.handle === hint.handle
+        : row.workspaceMemberId === hint.workspaceMemberId)
+    );
+  });
+  const handles = [
+    ...new Set(
+      admitted
+        .map((hint) => decode(participants.get(hint.id)!).handle)
+        .filter((handle): handle is string => typeof handle === 'string'),
+    ),
+  ];
+  const fixedMemberIds = referenceIds(
+    expected.get('messageParticipant')!,
+    'workspaceMemberId',
+  );
+  const lowerHandles = handles.map((handle) => handle.toLowerCase());
+  let matchingPeople: {
+    id: string;
+    emails: { primaryEmail: string | null; additionalEmails: string[] | null };
+  }[] = [];
+  let matchingMembers: Record<string, unknown>[] = [];
+  const fixedPersonIds = new Set(
+    referenceIds(expected.get('messageParticipant')!, 'personId'),
+  );
+  let fixedCompanyIds: string[] = [];
+  const candidatePeoplePredicate =
+    'LOWER("emailsPrimaryEmail")=ANY($1::text[]) OR EXISTS (SELECT 1 FROM unnest($1::text[]) email WHERE "emailsAdditionalEmails" @> jsonb_build_array(email))';
+  if (personMode) {
+    const candidates = await scope.executeRawQuery(
+      `SELECT id FROM ${expression('person')} WHERE ${candidatePeoplePredicate} ORDER BY "createdAt" ASC`,
+      [lowerHandles],
+    );
+    const candidateRows = await readNativeCrmAuditRows(
+      sql,
+      session.shapes.get('person')!,
+      candidates.map((row) => String(row.id)),
+    );
+    const byId = new Map(candidateRows.map((row) => [row.id, decode(row)]));
+    matchingPeople = candidates.map((candidate) => {
+      const row = byId.get(String(candidate.id));
+      if (!row)
+        throw new Error('Native message rematch matching source disappeared');
+      fixedPersonIds.add(String(row.id));
+      return {
+        id: String(row.id),
+        emails: {
+          primaryEmail: row.emailsPrimaryEmail as string | null,
+          additionalEmails: row.emailsAdditionalEmails as string[] | null,
+        },
+      };
+    });
+    const people = await readRows(
+      'person',
+      `(${candidatePeoplePredicate}) OR id=ANY($2::uuid[])`,
+      [lowerHandles, [...fixedPersonIds]],
+    );
+    expected.set('person', people);
+    fixedCompanyIds = referenceIds(people, 'companyId');
+  } else {
+    matchingMembers = (
+      await readRows(
+        'workspaceMember',
+        '"deletedAt" IS NULL AND "userEmail"=ANY($1::text[])',
+        [handles],
+      )
+    ).map(decode);
+  }
+  const readSource = (name: CleanupTableName) => {
+    const originals = originalIds.get(name) ?? [];
+    if (name === 'person')
+      return readRows(
+        name,
+        `(${candidatePeoplePredicate}) OR id=ANY($2::uuid[]) OR id=ANY($3::uuid[])`,
+        [lowerHandles, [...fixedPersonIds], originals],
+      );
+    if (name === 'company')
+      return readRows(name, 'id=ANY($1::uuid[]) OR id=ANY($2::uuid[])', [
+        fixedCompanyIds,
+        originals,
+      ]);
+    if (name === 'opportunity')
+      return readRows(
+        name,
+        '"pointOfContactId"=ANY($1::uuid[]) OR id=ANY($2::uuid[])',
+        [[...fixedPersonIds], originals],
+      );
+    if (name === 'workspaceMember')
+      return readRows(
+        name,
+        '"userEmail"=ANY($1::text[]) OR id=ANY($2::uuid[]) OR id=ANY($3::uuid[])',
+        [handles, fixedMemberIds, originals],
+      );
+    return readRows(name, '"messageId"=ANY($1::uuid[]) OR id=ANY($2::uuid[])', [
+      fixedMessageIds,
+      originals,
+    ]);
+  };
+  for (const name of sourceNames) {
+    const rows = await readSource(name);
+    expected.set(name, rows);
+    originalIds.set(
+      name,
+      rows.map((row) => row.id),
+    );
+  }
+  const admittedRootIds = [...new Set(admitted.map((hint) => hint.threadId!))];
+  const retainedTargetIds = new Set(
+    expected
+      .get('messageThreadTarget')!
+      .filter(
+        (row) => !admittedRootIds.includes(String(decode(row).messageThreadId)),
+      )
+      .map((row) => row.id),
+  );
+  let targetsOwnedByStage = false;
+  const verify = async () => {
+    for (const name of graphNames) {
+      let current = await readGraph(name);
+      let previous = expected.get(name)!;
+      if (name === 'messageThreadTarget' && targetsOwnedByStage) {
+        current = current.filter(
+          (row) =>
+            retainedTargetIds.has(row.id) ||
+            !admittedRootIds.includes(String(decode(row).messageThreadId)),
+        );
+        previous = previous.filter((row) => retainedTargetIds.has(row.id));
+      }
+      if (canonicalAuditJson(current) !== canonicalAuditJson(previous))
+        throw new Error('Native message rematch proof changed');
+    }
+    for (const name of sourceNames)
+      if (
+        canonicalAuditJson(await readSource(name)) !==
+        canonicalAuditJson(expected.get(name)!)
+      )
+        throw new Error('Native message rematch proof changed');
+    if (
+      personMode &&
+      canonicalAuditJson(await readChannels()) !== canonicalAuditJson(channels)
+    )
+      throw new Error('Native message rematch channel policy changed');
+    if (
+      (
+        await findOmniNativeWriteOwnedRecords(
+          scope,
+          scope.workspaceId,
+          'message',
+          admitted.map((hint) => messages.get(hint.messageId!)!),
+        )
+      ).length
+    )
+      throw new Error('Native message rematch ownership changed');
+  };
+  session.validators.push(verify);
+  await verify();
+  const field = personMode ? 'personId' : 'workspaceMemberId';
+  const participantShape = session.shapes.get('messageParticipant')!;
+  const fieldShape = participantShape.columnShapeByColumnName[field];
+  if (
+    !fieldShape ||
+    fieldShape.compositeParentFieldName ||
+    fieldShape.fieldMetadataType === 'FILES'
+  )
+    throw new Error('Native message rematch field metadata mismatch');
+  const changes = new Map<string, Snapshot>();
+  const updates: {
+    criteria: string;
+    partialEntity: Record<string, unknown>;
+  }[] = [];
+  for (const hint of admitted) {
+    const before = participants.get(hint.id)!;
+    const row = decode(before),
+      handle = String(row.handle ?? '');
+    const match = personMode
+      ? findPersonByPrimaryOrAdditionalEmail({
+          people: matchingPeople,
+          email: handle,
+        })
+      : matchingMembers.find((member) => member.userEmail === handle);
+    const value = match ? String(match.id) : null;
+    if (row[field] === value) continue;
+    const image = await castCalendarProofImage(
+      scope,
+      participantShape,
+      { id: hint.id, [field]: value },
+      before,
+    );
+    const changedColumns = Object.keys(image).filter(
+      (column) => column !== 'id' && image[column] !== before[column],
+    );
+    const patch =
+      '{' +
+      changedColumns
+        .map((column) => JSON.stringify(column) + ':' + String(image[column]))
+        .join(',') +
+      '}';
+    await assertNoReferentialUpdateEffects(
+      sql,
+      {
+        kind: 'update',
+        alias: 'rematch_participant',
+        tableShape: participantShape,
+        setClauses: changedColumns.map((columnName) => ({
+          columnName,
+          valueExpression: `(jsonb_populate_record(NULL::${expression('messageParticipant')},$2::jsonb)).${quote(columnName)}`,
+        })),
+      },
+      {},
+      '"rematch_participant".id=$1::uuid AND $2::jsonb IS NOT NULL',
+      (text) => ({ text, values: [hint.id, patch] }),
+    );
+    changes.set(hint.id, image);
+    updates.push({ criteria: hint.id, partialEntity: { [field]: value } });
+  }
+  await verify();
+  const result = updates.length
+    ? await scope
+        .getRepository('messageParticipant', {
+          shouldBypassPermissionChecks: true,
+        })
+        .updateMany(updates)
+    : { raw: [] };
+  const actualIds = new Set(
+    calendarSaveActualIds(
+      result,
+      updates.map((update) => update.criteria),
+    ),
+  );
+  expected.set(
+    'messageParticipant',
+    expected
+      .get('messageParticipant')!
+      .map((row) => (actualIds.has(row.id) ? changes.get(row.id)! : row)),
+  );
+  const actualRows = await readGraph('messageParticipant');
+  if (
+    canonicalAuditJson(actualRows) !==
+    canonicalAuditJson(expected.get('messageParticipant')!)
+  )
+    throw new Error('Native message rematch participant effects changed');
+  assertNativeCrmDeleteFilesEmpty(
+    participantShape,
+    actualRows.filter((row) => actualIds.has(row.id)),
+  );
+  await verify();
+  for (const id of actualIds) {
+    session.audit.record({
+      resourceKind: 'crmRecord',
+      resourceId: id,
+      action: 'update',
+      before: captureNativeCrmAuditSnapshot(
+        participantShape,
+        participants.get(id)!,
+      ),
+      after: captureNativeCrmAuditSnapshot(participantShape, changes.get(id)!),
+      ...(participantShape.columnShapeByColumnName.updatedAt
+        ? {
+            implicitUpdatedAtFieldId:
+              participantShape.columnShapeByColumnName.updatedAt
+                .fieldMetadataId,
+          }
+        : {}),
+      securityDescriptor: {
+        resourceKind: 'crmRecord',
+        resourceId: id,
+        objectMetadataId: participantShape.objectMetadataId,
+      },
+    });
+  }
+  if (personMode) {
+    targetsOwnedByStage = true;
+    await reconcileTargetsStage(session, admittedRootIds);
+  }
   await finalizeSession(session);
   return {
     nextCursor: hints.length === 200 ? hints[hints.length - 1].id : null,

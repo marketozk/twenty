@@ -4030,3 +4030,37 @@ LOG147 добавляет аудит автоматических связей �
 Публикация и Linear фиксируются после push. Далее — [messaging rematch](implementation/log147/next-boundary.md).
 
 03.11.2026 LOG147 publication. Code e4f4fd84316b178197058113423ffd831e34b9cb pushed, GitHub API ref verified. Linear comment eaf8087b-1e2c-4e4f-a28d-3ce7dfc1a660 verified by readback together with description and all 11 issue states. ROB765 remains In Progress.
+
+## LOG148 — повторное сопоставление участников переписки
+
+04.11.2026 начата реализация MessageParticipantMatchParticipantJob для режимов
+personOnly и workspaceMemberOnly. Подтверждён дефект сравнения с подставленным
+null, из-за которого устаревшая связь с сотрудником могла сохраняться.
+[Дизайн](implementation/log148/design.md) и
+[независимое ревью](implementation/log148/design-review.md) фиксируют закрытый
+owner, фактический результат обновления и аудит в одной транзакции.
+Оба массива параметров проверяются до первой страницы. Исходные Target и
+Person/Company/Opportunity проверяются после обновления Participant до расчёта
+новых связей. Member-only сохраняет проверку неизменности Target до COMMIT.
+
+Восстановлены два существующих изолированных тестовых контейнера PostgreSQL и
+Redis. Baseline LOG147 сохранён отдельно для сравнения типов. Контрольный прогон
+LOG147 прошёл 17 tests/1 suite за 16.009s. Локальные guard tests прошли 26/26,
+контрольные суммы 10 миграций совпали. Новая реализация и её проверки выполняются.
+Критерии ROB765 остаются открытыми в общей таблице приёмки.
+
+04.11.2026 проверки LOG148 завершены. 2844 tests/88 suites PASS (564.547s). 187 targeted/7 suites PASS (77.168s), 40 новых случаев, включая 33 PostgreSQL и 7 job tests. 26 guard tests PASS, 10 migration checksums неизменны. Types 429/433 roots, baseline/current 225 diagnostics, 0 новых/changed-file. Совпали 8 local/remote source hashes.
+
+Независимое ревью выявило гонку смены handle между discovery и блокировкой.
+Кандидаты теперь выбираются по актуальной заблокированной строке; реальный PG
+регрессионный тест прошёл. Первые 33 падения относились к отсутствующему userId
+в тестовом WorkspaceMember. Следующий прогон дал 39/40; проверка с удалёнными
+метаданными Person нарушала контракт форматирования ORM. Критерий уточнён до
+отсутствия запросов к источникам Person/Company/Opportunity в member-only.
+Одна ошибка типов в negative UUID fixture устранена явным типом входа job.
+Начальные логи сохранены рядом с итоговыми результатами.
+
+[Результаты](implementation/log148/results.json), [ревью](implementation/log148/review.md),
+[следующий участок](implementation/log148/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

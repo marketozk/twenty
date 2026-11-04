@@ -1,0 +1,4 @@
+Checking baseline
+Baseline complete 429 225
+Checking current
+{"status":"fail","baselineDiagnostics":225,"currentDiagnostics":226,"newDiagnostics":[{"file":"test/fork-migration/crm-audit-message-rematch-entrypoints.spec.ts","code":2322,"message":"Type '\"invalid\"' is not assignable to type '`${string}-${string}-${string}-${string}-${string}`'.","line":95}],"changedFileDiagnostics":[{"file":"test/fork-migration/crm-audit-message-rematch-entrypoints.spec.ts","code":2322,"message":"Type '\"invalid\"' is not assignable to type '`${string}-${string}-${string}-${string}-${string}`'.","line":95}],"baselineOnlyUnchangedMethodDiagnostics":[],"changedCodeDiagnostics":[{"file":"test/fork-migration/crm-audit-message-rematch-entrypoints.spec.ts","code":2322,"message":"Type '\"invalid\"' is not assignable to type '`${string}-${string}-${string}-${string}-${string}`'.","line":95}],"currentRootFiles":433}

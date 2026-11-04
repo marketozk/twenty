@@ -1,4 +1,9 @@
 import { Scope } from '@nestjs/common';
+import { captureMessageParticipantRematchSelector } from 'src/engine/core-modules/crm-audit/message-participant-rematch-selector';
+import {
+  membershipCleanupOperation,
+  systemMembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 
 import { Process } from 'src/engine/core-modules/message-queue/decorators/process.decorator';
 import { Processor } from 'src/engine/core-modules/message-queue/decorators/processor.decorator';
@@ -25,22 +30,38 @@ export class MessageParticipantMatchParticipantJob {
 
   @Process(MessageParticipantMatchParticipantJob.name)
   async handle(data: MessageParticipantMatchParticipantJobData): Promise<void> {
-    const { participantMatching, workspaceId } = data;
-
-    if (participantMatching.personEmails.length > 0) {
-      await this.matchParticipantService.matchParticipantsForPeople({
-        participantMatching,
-        objectMetadataName: 'messageParticipant',
-        workspaceId,
-      });
-    }
-
-    if (participantMatching.workspaceMemberIds.length > 0) {
-      await this.matchParticipantService.matchParticipantsForWorkspaceMembers({
-        participantMatching,
-        objectMetadataName: 'messageParticipant',
-        workspaceId,
-      });
+    const workspaceId = data.workspaceId;
+    const personSelector = captureMessageParticipantRematchSelector({
+      kind: 'personOnly',
+      personEmails: data.participantMatching.personEmails,
+    });
+    const memberSelector = captureMessageParticipantRematchSelector({
+      kind: 'workspaceMemberOnly',
+      workspaceMemberIds: data.participantMatching.workspaceMemberIds,
+    });
+    const identity = systemMembershipCleanupIdentity(
+      workspaceId,
+      MessageParticipantMatchParticipantJob.name,
+    );
+    for (const selector of [personSelector, memberSelector]) {
+      const values =
+        selector.kind === 'personOnly'
+          ? selector.personEmails
+          : selector.workspaceMemberIds;
+      if (!values.length) continue;
+      let afterParticipantId: string | undefined;
+      do {
+        const { nextCursor } =
+          await this.matchParticipantService.rematchMessageParticipantsWithAudit(
+            {
+              workspaceId,
+              operation: membershipCleanupOperation(workspaceId, identity)!,
+              selector,
+              afterParticipantId,
+            },
+          );
+        afterParticipantId = nextCursor ?? undefined;
+      } while (afterParticipantId !== undefined);
     }
   }
 }

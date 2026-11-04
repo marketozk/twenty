@@ -77,8 +77,12 @@ source SHARE, actual effects и queue-before-matching сохранены. LOG145
 LOG146 закрывает календарные person-company targets с current source/parent proof,
 actual effects и generated/FK проверками. LOG147 подключает messaging target pages
 к существующему owner с current selector proof и отдельным аудитом каждой страницы.
-Rematch/import matching, contact creation, свежесть import policy и durable cache открыты.
-Далее — [messaging rematch](../implementation/log147/next-boundary.md).
+LOG148 подключает оба режима messaging rematch job, исправляет stale-member-link
+и проверяет реальные связи, APP policy и источники до изменения Participant, перед
+расчётом Target и после deferred drain. Import matching, contact creation, свежесть
+import policy и durable cache открыты. Зафиксирован пробел восстановления исходного
+набора участников после сохранения сообщения и сбоя последующего сопоставления.
+Далее — [post-save import matching](../implementation/log148/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

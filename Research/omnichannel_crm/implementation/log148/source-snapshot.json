@@ -1,0 +1,14 @@
+{
+  "baseCommit": "89344e567876223a0426cb663295ba5a9edffcf3",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-message-cleanup-with-audit.ts": "89c97224f386e3ef5f24a44279ff9ee23ebc86884d63676e3002db6b218724fb",
+    "packages/twenty-server/src/modules/match-participant/match-participant.service.ts": "3c275f345a99b13073f51d181bc55ffe55890db2420e9362a70ea054116cef16",
+    "packages/twenty-server/src/modules/match-participant/utils/find-person-by-primary-or-additional-email.ts": "39d383dc00020001f8a19f2f297383ca9594e97c5f67e15504ccd8589aea45d4",
+    "packages/twenty-server/src/modules/messaging/message-participant-manager/jobs/message-participant-match-participant.job.ts": "44371cfc3e9470d97f52a129b2d17d61a9db43f6201a04fdbec37184b8fef31b",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/message-participant-rematch-selector.ts": "b69860940af9177436e5ac4a90bde08852654264296329220214062a2eb4b18e",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/rematch-native-message-participants-with-audit.ts": "d6d330424be899abe27986b7feb49fcda292ed55cc2dcf2f9da70ddadf0850c6",
+    "packages/twenty-server/test/fork-migration/crm-audit-message-rematch-entrypoints.spec.ts": "bc9e5241f9281b4a4c8257d0f056185274ea3c573182c9b16526be58d2c118c6",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts": "fc2dd3cc20dbfcd028e142c81466cee067801ec7f2fc3c31cc70ee64d8538aac"
+  },
+  "uploadedSourceHashesVerified": true
+}

@@ -1,0 +1,24 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-person-target-reconciliation.postgres-spec.ts (15.844 s)
+  ✓ person selector derives all thread participants, audits targets and retains every source and owned thread (465 ms)
+  ✓ person selector admits ordinary APP but excludes actual omni ownership and deleted threads (485 ms)
+  ✓ person selector retains manual and tombstoned targets (283 ms)
+  ✓ person selector skips exact original person drift without following the new chain or deleting old targets (304 ms)
+  ✓ person selector skips exact original message drift without following the new chain or deleting old targets (328 ms)
+  ✓ person selector skips exact original thread drift without following the new chain or deleting old targets (314 ms)
+  ✓ person selector cursor advances after an entire 200-row page is skipped (945 ms)
+  ✓ person selector rolls back target writes if audit append fails (284 ms)
+  ✓ person selector rejects late participant edits after audit/deferred flush (false) (330 ms)
+  ✓ person selector rejects late participant edits after audit/deferred flush (true) (273 ms)
+  ✓ person selector retains proof of an initially moved original through audit flush (263 ms)
+  ✓ person selector retains proof of an initially absent original through audit flush (306 ms)
+  ✓ person selector preserves fail-closed handling of generated target flag effects (309 ms)
+  ✓ person selector rejects late new opportunity for an unrequested thread participant (302 ms)
+  ✓ person selector retains committed data and audit on real lost COMMIT ACK (270 ms)
+  ✓ person selector holds source SHARE so a raw opportunity insert cannot cross target derivation (393 ms)
+  ✓ person selector proves a skipped original Message outside the admitted graph through deferred audit effects (281 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       17 passed, 17 total
+Snapshots:   0 total
+Time:        16.009 s
+Ran all test suites matching /crm-audit-native-person-target-reconciliation/i.
