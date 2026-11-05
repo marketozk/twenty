@@ -1,16 +1,18 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 
 import { isNonEmptyString } from '@sniptt/guards';
 import { type AxiosInstance } from 'axios';
-import uniqBy from 'lodash.uniqby';
 import { TWENTY_COMPANIES_BASE_URL } from 'twenty-shared/constants';
 import {
   type ConnectedAccountProvider,
   type FieldActorSource,
+  type LinksMetadata,
 } from 'twenty-shared/types';
 import { isDefined, normalizeDomain } from 'twenty-shared/utils';
 import { type DeepPartial, In } from 'typeorm';
 
+import { type ContactCreationSnapshot } from 'src/engine/core-modules/crm-audit/contact-creation-proof';
 import { SecureHttpClientService } from 'src/engine/core-modules/secure-http-client/secure-http-client.service';
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
 import { type WorkspaceRepository } from 'src/engine/twenty-orm/repository/workspace-repository';
@@ -21,6 +23,25 @@ import { getDomainNamesFromLinks } from 'src/modules/contact-creation-manager/ut
 import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
 import { computeDisplayName } from 'src/utils/compute-display-name';
 
+type ContactCreationScope = Parameters<
+  Parameters<WorkspaceOrmManager['runInWorkspaceTransaction']>[0]
+>[0];
+
+const uniqueByKey = <TItem, TKey extends keyof TItem>(
+  items: readonly TItem[],
+  key: TKey,
+): TItem[] => {
+  const seen = new Set<TItem[TKey]>();
+  const result: TItem[] = [];
+  for (const item of items) {
+    const value = item[key];
+    if (seen.has(value)) continue;
+    seen.add(value);
+    result.push(item);
+  }
+  return result;
+};
+
 export type CompanyToCreate = {
   domainName: string | undefined;
   createdBySource: FieldActorSource;
@@ -29,6 +50,31 @@ export type CompanyToCreate = {
     provider: ConnectedAccountProvider;
   };
 };
+
+export type PrefetchedCompanyDomainInfo = Readonly<{
+  name: string;
+  city: string | undefined;
+}>;
+
+export type PreparedCompanyRecordToCreate = Readonly<{
+  id: string;
+  domainName: {
+    primaryLinkUrl: string;
+  };
+  name: string;
+  createdBy: {
+    source: FieldActorSource;
+    workspaceMemberId: string | null;
+    name: string;
+    context: {
+      provider: ConnectedAccountProvider;
+    };
+  };
+  address?: {
+    addressCity: string;
+  };
+  position: number;
+}>;
 
 @Injectable()
 export class CreateCompanyService {
@@ -41,6 +87,258 @@ export class CreateCompanyService {
     this.httpService = this.secureHttpClientService.getHttpClient({
       baseURL: TWENTY_COMPANIES_BASE_URL,
     });
+  }
+
+  async prefetchCompanyInfoByDomainNames(
+    rawDomainNames: readonly string[],
+    workspaceId: string,
+  ): Promise<ReadonlyMap<string, PrefetchedCompanyDomainInfo>> {
+    const normalizedDomains = [
+      ...new Set(
+        rawDomainNames
+          .map((domain) => (domain ? normalizeDomain(domain) : ''))
+          .filter(isNonEmptyString),
+      ),
+    ];
+    if (normalizedDomains.length === 0) {
+      return new Map();
+    }
+
+    const authContext = buildSystemAuthContext(workspaceId);
+    const existingCompanies =
+      await this.workspaceOrmManager.executeInWorkspaceContext(
+        async () => {
+          const companyRepository =
+            this.workspaceOrmManager.getRepository<CompanyWorkspaceEntity>(
+              'company',
+              { shouldBypassPermissionChecks: true },
+            );
+          const primaryMatches = await companyRepository.find({
+            where: {
+              domainName: {
+                primaryLinkUrl: In(normalizedDomains),
+              },
+            },
+            withDeleted: true,
+          });
+          const secondaryMatches =
+            await this.findCompaniesBySecondaryDomainNames({
+              domainNames: normalizedDomains,
+              companyRepository,
+            });
+          return [...primaryMatches, ...secondaryMatches];
+        },
+        authContext,
+        { lite: true },
+      );
+
+    const missingDomains = normalizedDomains.filter(
+      (domainName) =>
+        !isDefined(
+          this.findExistingCompanyByDomainName({
+            existingCompanies,
+            domainName,
+          }),
+        ),
+    );
+    const entries = await Promise.all(
+      missingDomains.map(async (domainName) => {
+        const info = await this.getCompanyInfoFromDomainName(domainName);
+        return [
+          domainName,
+          Object.freeze({ name: info.name, city: info.city }),
+        ] as const;
+      }),
+    );
+    return new Map(entries);
+  }
+
+  async prepareCompaniesWithinTransaction({
+    companies,
+    workspaceId,
+    transactionScope,
+    prefetchedInfoByDomain,
+  }: {
+    companies: readonly CompanyToCreate[];
+    workspaceId: string;
+    transactionScope: ContactCreationScope;
+    prefetchedInfoByDomain: ReadonlyMap<string, PrefetchedCompanyDomainInfo>;
+  }): Promise<{
+    discoveredCompanyIds: readonly string[];
+    companiesToCreate: readonly PreparedCompanyRecordToCreate[];
+    companiesToRestore: readonly { id: string; domainName: string }[];
+  }> {
+    if (companies.length === 0) {
+      return Object.freeze({
+        discoveredCompanyIds: Object.freeze([]),
+        companiesToCreate: Object.freeze([]),
+        companiesToRestore: Object.freeze([]),
+      });
+    }
+
+    const authContext = buildSystemAuthContext(workspaceId);
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        const companyRepository =
+          transactionScope.getRepository<CompanyWorkspaceEntity>('company', {
+            shouldBypassPermissionChecks: true,
+          });
+        const normalizedCompanies = companies.map((company) => ({
+          ...company,
+          domainName: company.domainName
+            ? normalizeDomain(company.domainName)
+            : undefined,
+        }));
+        const uniqueCompanies = uniqueByKey(normalizedCompanies, 'domainName');
+        const domainNames = uniqueCompanies
+          .map((companyToCreate) => companyToCreate.domainName)
+          .filter(isNonEmptyString);
+
+        if (domainNames.length === 0) {
+          return Object.freeze({
+            discoveredCompanyIds: Object.freeze([]),
+            companiesToCreate: Object.freeze([]),
+            companiesToRestore: Object.freeze([]),
+          });
+        }
+
+        const companiesMatchedOnPrimaryLink = await companyRepository.find({
+          where: {
+            domainName: {
+              primaryLinkUrl: In(domainNames),
+            },
+          },
+          withDeleted: true,
+        });
+        const domainNamesWithoutLiveCompany = domainNames.filter(
+          (domainName) =>
+            !isDefined(
+              this.findExistingCompanyByDomainName({
+                existingCompanies: companiesMatchedOnPrimaryLink.filter(
+                  (company) => !isDefined(company.deletedAt),
+                ),
+                domainName,
+              }),
+            ),
+        );
+        const companiesMatchedOnSecondaryLinks =
+          await this.findCompaniesBySecondaryDomainNames({
+            domainNames: domainNamesWithoutLiveCompany,
+            companyRepository,
+          });
+        const companyIdsMatchedOnPrimaryLink = new Set(
+          companiesMatchedOnPrimaryLink.map((company) => company.id),
+        );
+        const matchedCompanies = [
+          ...companiesMatchedOnPrimaryLink,
+          ...companiesMatchedOnSecondaryLinks.filter(
+            (company) => !companyIdsMatchedOnPrimaryLink.has(company.id),
+          ),
+        ];
+        const existingCompanies = [
+          ...matchedCompanies.filter(
+            (company) => !isDefined(company.deletedAt),
+          ),
+          ...matchedCompanies.filter((company) => isDefined(company.deletedAt)),
+        ];
+        const newCompaniesToCreate = uniqueCompanies.filter(
+          (company) =>
+            isNonEmptyString(company.domainName) &&
+            !isDefined(
+              this.findExistingCompanyByDomainName({
+                existingCompanies,
+                domainName: company.domainName,
+              }),
+            ),
+        );
+        const companiesToRestore = uniqueByKey(
+          this.filterCompaniesToRestore(uniqueCompanies, existingCompanies),
+          'id',
+        ).flatMap((row) =>
+          isNonEmptyString(row.domainName)
+            ? [
+                Object.freeze({
+                  id: row.id.toLowerCase(),
+                  domainName: row.domainName,
+                }),
+              ]
+            : [],
+        );
+
+        let lastCompanyPosition =
+          newCompaniesToCreate.length > 0
+            ? await this.getLastCompanyPosition(companyRepository)
+            : 0;
+        const companiesToCreate: PreparedCompanyRecordToCreate[] =
+          newCompaniesToCreate.map((company) => {
+            const domainName = company.domainName!;
+            const info = prefetchedInfoByDomain.get(domainName) ?? {
+              name: getCompanyNameFromDomainName(domainName),
+              city: '',
+            };
+            const createdByName = computeDisplayName(
+              company.createdByWorkspaceMember?.name,
+            );
+            return Object.freeze({
+              id: randomUUID(),
+              domainName: Object.freeze({
+                primaryLinkUrl: domainName,
+              }),
+              name: info.name,
+              createdBy: Object.freeze({
+                source: company.createdBySource,
+                workspaceMemberId:
+                  company.createdByWorkspaceMember?.id?.toLowerCase() ?? null,
+                name: createdByName,
+                context: Object.freeze({
+                  provider: company.createdByContext.provider,
+                }),
+              }),
+              ...(info.city !== undefined
+                ? { address: Object.freeze({ addressCity: info.city }) }
+                : {}),
+              position: ++lastCompanyPosition,
+            });
+          });
+
+        return Object.freeze({
+          discoveredCompanyIds: Object.freeze(
+            [
+              ...new Set(
+                existingCompanies.map((company) => company.id.toLowerCase()),
+              ),
+            ].sort(),
+          ),
+          companiesToCreate: Object.freeze(companiesToCreate),
+          companiesToRestore: Object.freeze(companiesToRestore),
+        });
+      },
+      authContext,
+      { lite: true },
+    );
+  }
+
+  createCompanyMapFromSnapshots(
+    snapshots: readonly ContactCreationSnapshot[],
+  ): Record<string, string> {
+    const companies = snapshots
+      .filter((row) => row.deletedAt === 'null')
+      .map((row) => ({
+        id: row.id,
+        domainName: {
+          primaryLinkUrl: (row.domainNamePrimaryLinkUrl === undefined
+            ? null
+            : JSON.parse(String(row.domainNamePrimaryLinkUrl))) as
+            | string
+            | null,
+          secondaryLinks: (row.domainNameSecondaryLinks === undefined
+            ? null
+            : JSON.parse(String(row.domainNameSecondaryLinks))) as
+            | LinksMetadata['secondaryLinks']
+            | null,
+        } as LinksMetadata,
+      }));
+    return this.createCompanyMap(companies);
   }
 
   async createOrRestoreCompanies(
@@ -70,7 +368,7 @@ export class CreateCompanyService {
           : undefined,
       }));
 
-      const uniqueCompanies = uniqBy(normalizedCompanies, 'domainName');
+      const uniqueCompanies = uniqueByKey(normalizedCompanies, 'domainName');
 
       const domainNames = uniqueCompanies
         .map((companyToCreate) => companyToCreate.domainName)
@@ -192,19 +490,23 @@ export class CreateCompanyService {
 
   private async findCompaniesBySecondaryDomainNames({
     domainNames,
+    companyRepository: providedRepository,
   }: {
     domainNames: string[];
+    companyRepository?: WorkspaceRepository<CompanyWorkspaceEntity>;
   }): Promise<CompanyWorkspaceEntity[]> {
     if (domainNames.length === 0) {
       return [];
     }
 
-    const companyRepository = this.workspaceOrmManager.getRepository(
-      CompanyWorkspaceEntity,
-      {
-        shouldBypassPermissionChecks: true,
-      },
-    );
+    const companyRepository =
+      providedRepository ??
+      this.workspaceOrmManager.getRepository<CompanyWorkspaceEntity>(
+        'company',
+        {
+          shouldBypassPermissionChecks: true,
+        },
+      );
 
     const containmentConditions = domainNames
       .map(
@@ -254,7 +556,8 @@ export class CreateCompanyService {
           domainName: company.domainName,
         });
 
-        return isDefined(existingCompany)
+        return isDefined(existingCompany) &&
+          isDefined(existingCompany.deletedAt)
           ? {
               domainName: company.domainName,
               id: existingCompany.id,

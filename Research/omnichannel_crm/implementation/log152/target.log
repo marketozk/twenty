@@ -1,0 +1,43 @@
+[32m[Nest] 1  - [39m11/05/2026, 4:25:19 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggering message list fetch for workspace 5ff159d8-96f2-48fe-8da9-f31f3f4ab655 (all pending channels)[39m
+[32m[Nest] 1  - [39m11/05/2026, 4:25:19 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mFound 2 message channel(s) to process[39m
+[32m[Nest] 1  - [39m11/05/2026, 4:25:19 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggered fetch for message channel daa575d4-8862-478a-8425-e677eb7cc57a[39m
+[32m[Nest] 1  - [39m11/05/2026, 4:25:19 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mSuccessfully triggered 1 message list fetch job(s)[39m
+[32m[Nest] 1  - [39m11/05/2026, 4:25:19 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggering message list fetch for workspace 5ff159d8-96f2-48fe-8da9-f31f3f4ab655 (all pending channels)[39m
+[32m[Nest] 1  - [39m11/05/2026, 4:25:19 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mFound 2 message channel(s) to process[39m
+[32m[Nest] 1  - [39m11/05/2026, 4:25:36 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel a7dbed16-ca03-414b-a045-8746ac7869ab, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/05/2026, 4:25:36 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel 99744e94-053a-49aa-9b5b-89c15d02854b, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/05/2026, 4:25:37 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel ada1b97e-9004-4747-9ec7-821654fe7eef, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/05/2026, 4:25:37 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel 11b1e318-4355-49e3-8ebd-13e4107f7b74, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/05/2026, 4:25:38 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mDeferring 100000 calendar events to the import cron for calendar channel 596b26c5-0ece-4b2c-94db-555f6be0284f[39m
+[32m[Nest] 1  - [39m11/05/2026, 4:25:38 AM [32m    LOG[39m [38;5;3m[MessagingMessageWebhookSyncService] [39m[32mSkipping webhook sync for message channel af8ada98-5c9f-4cc9-9e73-b0f6d7a1ecb6, a sync is already in progress[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts (59.679 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts (29.71 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts (27.06 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/calendar-save-audit.postgres-spec.ts (13.075 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-matching.postgres-spec.ts (17.224 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-ordinary-message-save.postgres-spec.ts (15.318 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts (15.287 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-apply.postgres-spec.ts (14.332 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-recovery.postgres-spec.ts (14.54 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-history-first-conversation.postgres-spec.ts (10.584 s)
+[33m[Nest] 1  - [39m11/05/2026, 4:28:39 AM [33m   WARN[39m [38;5;3m[CreateCompanyAndPersonService] [39m[33mSkipping contact creation for connected account 9f5d5a53-a3e5-4625-aa14-9bd3143bca0c in workspace 0d92aa83-c94e-4812-8e61-86d2438f028a: userWorkspace 2ddd9da8-a74c-48dc-ad10-8f89cc4c4ab6 not found[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-contact-creation.postgres-spec.ts (8.986 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-message.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-sent-draft-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-sent-apply-facade.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-orchestration.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-app-ingestion-guard.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-sent-tool-entrypoint.spec.ts
+[32m[Nest] 1  - [39m11/05/2026, 4:28:49 AM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m
+[32m[Nest] 1  - [39m11/05/2026, 4:28:49 AM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m
+[32m[Nest] 1  - [39m11/05/2026, 4:28:49 AM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m
+[32m[Nest] 1  - [39m11/05/2026, 4:28:49 AM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m
+[32m[Nest] 1  - [39m11/05/2026, 4:28:49 AM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-contact-creation-entrypoints.spec.ts
+
+Test Suites: 19 passed, 19 total
+Tests:       817 passed, 817 total
+Snapshots:   0 total
+Time:        232.996 s
+Ran all test suites matching /crm-audit-contact-creation|crm-audit-ordinary-message-save|ordinary-native-sync-run|crm-audit-message-import|omni-native-message|omni-history-apply|omni-history-first-conversation|omni-sent-apply-facade|crm-audit-sent-draft|crm-audit-sent-tool|omni-app-ingestion|crm-audit-native-message-rematch|omni-sync-status|calendar-save-audit|calendar-import-matching-audit/i.

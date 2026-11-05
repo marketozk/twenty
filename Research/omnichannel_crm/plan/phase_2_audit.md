@@ -90,9 +90,13 @@ owner с единым аудитом в одной strict/exclusive транза
 `reconcile_messageImportMatching` в `core.deferredWorkspaceMigrationAction` внутри
 транзакции сохранения, атомарно продвигает `nextPageIndex` или удаляет завершённое
 намерение в каждой транзакции страницы сопоставления, блокирует `unsafeOutcome` и
-восстанавливает незавершённые страницы с проверкой актуальных полномочий. Создание
-контактов, свежесть import policy и durable cache открыты.
-Далее — [audited contact and company auto-creation](../implementation/log151/next-boundary.md).
+восстанавливает незавершённые страницы с проверкой актуальных полномочий. LOG152
+закрывает двухфазное автоматическое создание компаний и контактов (`CreateCompanyAndContactJob`,
+`CreateCompanyAndPersonService`) для `EMAIL` и `CALENDAR` в strict/exclusive транзакции с
+предвыборкой внешних метаданных домена вне блокировок БД, проверкой актуальных `core`-полномочий,
+дедупликацией восстановления и пробросом `unsafeOutcome`. Долговечное намерение сопоставления
+календаря, свежесть import policy и durable cache открыты.
+Далее — [durable post-save calendar matching intent](../implementation/log152/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

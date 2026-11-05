@@ -1,5 +1,10 @@
-import { type FieldActorSource } from 'twenty-shared/types';
+import { isUUID } from 'class-validator';
+import { FieldActorSource } from 'twenty-shared/types';
 
+import {
+  membershipCleanupOperation,
+  systemMembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 import { Process } from 'src/engine/core-modules/message-queue/decorators/process.decorator';
 import { Processor } from 'src/engine/core-modules/message-queue/decorators/processor.decorator';
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
@@ -24,16 +29,53 @@ export class CreateCompanyAndContactJob {
 
   @Process(CreateCompanyAndContactJob.name)
   async handle(data: CreateCompanyAndContactJobData): Promise<void> {
-    const { workspaceId, connectedAccount, contactsToCreate, source } = data;
+    const workspaceId = data?.workspaceId;
+    const source = data?.source;
+    if (
+      typeof workspaceId !== 'string' ||
+      !isUUID(workspaceId) ||
+      !data?.connectedAccount ||
+      typeof data.connectedAccount !== 'object' ||
+      typeof data.connectedAccount.id !== 'string' ||
+      !isUUID(data.connectedAccount.id) ||
+      !Array.isArray(data?.contactsToCreate) ||
+      (source !== FieldActorSource.EMAIL &&
+        source !== FieldActorSource.CALENDAR)
+    )
+      throw new Error('Contact creation job requires valid scoped input');
+
+    const connectedAccount: ConnectedAccountEntity = {
+      ...data.connectedAccount,
+      id: data.connectedAccount.id.toLowerCase(),
+      handleAliases: Array.isArray(data.connectedAccount.handleAliases)
+        ? [...data.connectedAccount.handleAliases]
+        : [],
+    };
+    const contactsToCreate = data.contactsToCreate.map((contact) => {
+      if (
+        !contact ||
+        typeof contact !== 'object' ||
+        typeof contact.handle !== 'string' ||
+        typeof contact.displayName !== 'string'
+      )
+        throw new Error('Contact creation job requires valid contact entries');
+      return {
+        handle: contact.handle,
+        displayName: contact.displayName,
+      };
+    });
+    const identity = systemMembershipCleanupIdentity(
+      workspaceId,
+      CreateCompanyAndContactJob.name,
+    );
+    const operation = membershipCleanupOperation(workspaceId, identity)!;
 
     await this.createCompanyAndPersonService.createCompaniesAndPeopleAndUpdateParticipants(
       connectedAccount,
-      contactsToCreate.map((contact) => ({
-        handle: contact.handle,
-        displayName: contact.displayName,
-      })),
+      contactsToCreate,
       workspaceId,
       source,
+      operation,
     );
   }
 }

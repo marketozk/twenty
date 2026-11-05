@@ -4182,3 +4182,34 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 218eb1fc-d16f-48df-9129-8424873316c4 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log151/publication.json).
 Следующий участок — аудит автоматического создания контактов и компаний по LOG152.
+
+## LOG152 — аудит автоматического создания компаний и контактов
+
+05.11.2026 зафиксированы [дизайн](implementation/log152/design.md),
+[независимое ревью](implementation/log152/design-review.md) и
+[план проверок](implementation/log152/test-research.md).
+В `contact-creation-proof.ts` выделены маска разрешённых скалярных и составных
+полей `company` / `person` (`contactCreationColumns`) и строгая проверка
+`RETURNING` (`contactCreationActualIds`). В `CreateCompanyService`,
+`CreatePersonService`, `CreateCompanyAndPersonService` и `CreateCompanyAndContactJob`
+реализовано двухфазное выполнение: внешняя HTTP-предвыборка метаданных домена
+выполняется вне блокировок БД только для отсутствующих доменов, а внутри
+strict/exclusive транзакции блокируются и проверяются `core.workspace`,
+`core.connectedAccount`, `core.userWorkspace`, `core.user`, каналы и отсутствие
+привязки к omnichannel, после чего создание, восстановление и обогащение имени
+`company` и `person` верифицируются по полному образу PostgreSQL,
+`assertNoReferentialUpdateEffects` и `SET CONSTRAINTS ALL IMMEDIATE`.
+
+05.11.2026 проверки LOG152 завершены. 2994 tests/97 suites PASS (636.398s). 817 targeted/19 suites PASS (232.996s), 17 новых PostgreSQL и 4 unit случая. 26 guard tests PASS, 10 migration checksums неизменны. Types 445/448 roots, baseline 225 / current 219 diagnostics, 0 новых/changed-file. Совпали 7 local/remote source hashes.
+
+Независимое ревью подтвердило разделение внешней HTTP-предвыборки и повторной
+проверки под блокировками `SHARE ROW EXCLUSIVE`, исключение повторного
+обновления уже живых компаний (`deletedAt !== null`), дедупликацию целей
+восстановления `company` и `person`, корректную обработку `RAW_JSON` и составных
+полей в `castCalendarProofImage`, проброс `NativeTransactionOutcomeUnknownError` /
+`CoreAuditPostCommitError` без перехвата и чистоту границ зависимостей Enterprise.
+
+[Результаты](implementation/log152/results.json), [ревью](implementation/log152/review.md),
+[следующий участок](implementation/log152/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

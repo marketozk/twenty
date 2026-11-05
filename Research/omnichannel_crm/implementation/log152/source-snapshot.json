@@ -1,0 +1,13 @@
+{
+  "baseCommit": "42772b8fbaffa43d225e074ca751ee8828378669",
+  "lfSha256": {
+    "packages/twenty-server/src/modules/contact-creation-manager/jobs/create-company-and-contact.job.ts": "17cbdb14fa2e5db0998d33d90180215bbe1f5418397d451bfde237cc7eba1a21",
+    "packages/twenty-server/src/modules/contact-creation-manager/services/create-company-and-contact.service.ts": "97414ebb81c14c18553624a92e3c4cf1523fbe3ae305f963596f92d983e45ddb",
+    "packages/twenty-server/src/modules/contact-creation-manager/services/create-company.service.ts": "6d3e14d7245cd0b7b49a7714bcca7f375df57443eb113e4fdfbfb7da08d1948a",
+    "packages/twenty-server/src/modules/contact-creation-manager/services/create-person.service.ts": "867ddc4e7275fd8312ccfca761cb49c9b05c9f2e5dbd5ac88b9a4887a9496c46",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/contact-creation-proof.ts": "b0d75f3ffe11aa820910c5495fa834cd759d073f35e2c61cd6cf9c8cf959d9cd",
+    "packages/twenty-server/test/fork-migration/crm-audit-contact-creation-entrypoints.spec.ts": "6d71d4f1fedcb3db2c51b9d70f1e36ed83b3f4ec6a43b274ebc09cd7a906a2b5",
+    "packages/twenty-server/test/fork-migration/crm-audit-contact-creation.postgres-spec.ts": "ecac5ea4394c7723ffacb51fc4187407a4757b4d0a620d7e7d4684539b18349c"
+  },
+  "uploadedSourceHashesVerified": true
+}

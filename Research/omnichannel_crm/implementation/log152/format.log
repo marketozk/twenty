@@ -1,0 +1,10 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/modules/contact-creation-manager/jobs/create-company-and-contact.job.ts 138ms (unchanged)
+../../../source/packages/twenty-server/src/modules/contact-creation-manager/services/create-company-and-contact.service.ts 378ms (unchanged)
+../../../source/packages/twenty-server/src/modules/contact-creation-manager/services/create-company.service.ts 115ms (unchanged)
+../../../source/packages/twenty-server/src/modules/contact-creation-manager/services/create-person.service.ts 52ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/contact-creation-proof.ts 15ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-contact-creation-entrypoints.spec.ts 23ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-contact-creation.postgres-spec.ts 86ms (unchanged)
+
+{"formattedFiles": 7, "singleSshSession": true}

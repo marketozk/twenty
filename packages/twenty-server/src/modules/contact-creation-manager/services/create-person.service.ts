@@ -8,9 +8,31 @@ import { type WorkspaceRepository } from 'src/engine/twenty-orm/repository/works
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
 import { PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
 
+type ContactCreationScope = Parameters<
+  Parameters<WorkspaceOrmManager['runInWorkspaceTransaction']>[0]
+>[0];
+
 @Injectable()
 export class CreatePersonService {
   constructor(private readonly workspaceOrmManager: WorkspaceOrmManager) {}
+
+  public async getLastPersonPositionWithinTransaction(
+    workspaceId: string,
+    transactionScope: ContactCreationScope,
+  ): Promise<number> {
+    const authContext = buildSystemAuthContext(workspaceId);
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        const personRepository =
+          transactionScope.getRepository<PersonWorkspaceEntity>('person', {
+            shouldBypassPermissionChecks: true,
+          });
+        return this.getLastPersonPosition(personRepository);
+      },
+      authContext,
+      { lite: true },
+    );
+  }
 
   public async createPeople(
     peopleToCreate: Partial<PersonWorkspaceEntity>[],
