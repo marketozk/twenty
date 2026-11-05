@@ -1,0 +1,18 @@
+{
+  "verifiedFileCount": 12,
+  "allMatched": true,
+  "files": {
+    "packages/twenty-server/src/engine/core-modules/api-key/api-key.resolver.ts": "fd3729d02e7f605c3939cea5b844c7b64813575be097096cc0b1b8d6d1980f7b",
+    "packages/twenty-server/src/engine/core-modules/api-key/commands/generate-api-key.command.ts": "13bc2d78e769f35e8ba067778f0dda32935eed13b2b8f56e673a947f5bd72dbc",
+    "packages/twenty-server/src/engine/core-modules/api-key/controllers/api-key.controller.ts": "58a67c920b06012ee85421664985b0fff80dfbf6a68df2bbf1c69b0f932b6b7d",
+    "packages/twenty-server/src/engine/core-modules/api-key/services/api-key.service.ts": "4c89e262ee4e6c2c61e317e65a6e7ae42c32726121939e5d719ddb1748292238",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/api-key-audit.ts": "75b0073f827da25a376ec1308108d4f99e4351cd163ceca0e906ed27d1aa3606",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "ba1b86ca94115171f11eb5eed66663c7aa749a26a3cfdec5ec612422f697ddb8",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "93baafc0c5769dd3919795b386c9e4ec26dde45a88a230e43bf571bd3aa87040",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/role-assignment-audit.ts": "fe0b75f99ccf75806b082accc500db2487b9ad59b146a1f93ac001ad0c531f70",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/role-permission-audit.ts": "0cedc1031a0231dbe55be18d9bcd2de9f9ac1fd27a6004fccbd674a05e3f5a1c",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/role-update-audit.ts": "faab56b56cee4b7b044153f6e788ea9d582bd0e8d4c7b8d5f6ab722b451db81a",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts": "c8e26c895af6124f49a2a4fe30080fa96c8f526411a6d08fcf6b2202c2dd0324",
+    "packages/twenty-server/test/fork-migration/crm-audit-api-key-lifecycle.postgres-spec.ts": "d6e31fa49ad5125d1b41deea9a4c96cd3343d1d6af301f477d28fa807f747d6e"
+  }
+}

@@ -110,6 +110,7 @@ export class ApiKeyResolver {
   async createApiKey(
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Args('input') input: CreateApiKeyInput,
+    @Context() context: { req: Request },
   ): Promise<ApiKeyEntity> {
     return this.apiKeyService.create({
       name: input.name,
@@ -117,6 +118,7 @@ export class ApiKeyResolver {
       revokedAt: input.revokedAt ? new Date(input.revokedAt) : undefined,
       workspaceId: workspace.id,
       roleId: input.roleId,
+      auditIdentity: roleAuditIdentityFromRequest(context.req),
     });
   }
 
@@ -137,6 +139,7 @@ export class ApiKeyResolver {
   async updateApiKey(
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Args('input') input: UpdateApiKeyInput,
+    @Context() context: { req: Request },
   ): Promise<ApiKeyEntity | null> {
     const updateData: QueryDeepPartialEntity<ApiKeyEntity> = {};
 
@@ -152,9 +155,10 @@ export class ApiKeyResolver {
         input.id,
         workspace.id,
         updateData,
+        roleAuditIdentityFromRequest(context.req),
       );
     } catch (error) {
-      apiKeyGraphqlApiExceptionHandler(error);
+      apiKeyGraphqlApiExceptionHandler(error as Error);
       throw error;
     }
   }
@@ -176,8 +180,13 @@ export class ApiKeyResolver {
   async revokeApiKey(
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Args('input') input: RevokeApiKeyInput,
+    @Context() context: { req: Request },
   ): Promise<ApiKeyEntity | null> {
-    return this.apiKeyService.revoke(input.id, workspace.id);
+    return this.apiKeyService.revoke(
+      input.id,
+      workspace.id,
+      roleAuditIdentityFromRequest(context.req),
+    );
   }
 
   // Binding a role to an API key requires ROLES to prevent privilege escalation.

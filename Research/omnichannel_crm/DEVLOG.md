@@ -4415,3 +4415,37 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 d48c06cb-9719-434a-b685-66c6806d261b и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log157/publication.json).
 Следующий участок — аудит создания, обновления и отзыва API-ключей с атомарной привязкой `roleTarget` по LOG158.
+
+## LOG158 — аудит создания, обновления и отзыва API-ключей с атомарной привязкой roleTarget
+
+06.11.2026 зафиксированы [дизайн](implementation/log158/design.md),
+[независимое ревью](implementation/log158/design-review.md) и
+[план проверок](implementation/log158/test-research.md).
+В `crm-audit.types.ts` и `crm-audit-transaction-context.ts` добавлен
+административный вид ресурса `apiKey` (`actions: ['create', 'update']`,
+`values: []`, `redacted: ['name', 'expiresAt', 'revokedAt']`). В
+`role-update-audit.ts`, `role-assignment-audit.ts`, `role-permission-audit.ts` и
+`api-key-audit.ts` добавлены поддержка `systemActorId` для CLI и симметричная
+проверка взаимного исключения контекстов метаданных
+(`registerMetadataAuditScopeCheck`). В `api-key-audit.ts`,
+`WorkspaceMigrationRunnerService`, `ApiKeyService`, `ApiKeyResolver`,
+`ApiKeyController` и `GenerateApiKeyCommand` подключены `withApiKeyCreateAudit`,
+`runAuditedApiKeyCreate` (вставка `core."apiKey"`, создание `core."roleTarget"` и
+запись событий `apiKey` `create` + `roleTarget` `create` в одной транзакции) и
+`runAuditedApiKeyUpdate` (обновление и отзыв `core."apiKey"` под блокировкой
+`FOR UPDATE` с запретом реактивации и записью события `apiKey` `update`).
+
+06.11.2026 проверки LOG158 завершены. 3058 tests/103 suites PASS (670.323s). 249 targeted/6 suites PASS (22.68s), 12 новых PostgreSQL случаев. 26 guard tests PASS, 10 migration checksums неизменны. Types 456/458 roots, baseline 238 / current 237 diagnostics, 0 новых/changed-code. Совпали 12 local/remote source hashes.
+
+Независимое ревью подтвердило однотранзакционную атомарность `core."apiKey"` +
+`core."roleTarget"` + `crm_audit."crmAuditEntry"`, сверку микросекундных
+`timestamptz` и построение `projectApiKeyAuditFields` из `to_jsonb(k)` без ложных
+диффов дат, клонирование экземпляров `Date` до первого `await`, запрет
+реактивации под `FOR UPDATE`, защиту от дедлоков через `core.workspace FOR NO KEY UPDATE`,
+инвалидацию `apiKeyMap` в `finally` при `NativeTransactionOutcomeUnknownError` и
+изоляцию зависимостей Enterprise (`0` нарушений).
+
+[Результаты](implementation/log158/results.json), [ревью](implementation/log158/review.md),
+[следующий участок](implementation/log158/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

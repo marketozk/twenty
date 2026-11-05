@@ -100,6 +100,10 @@ const CATALOG: Record<
     values: ['roleId', 'userWorkspaceId', 'agentId', 'apiKeyId'],
     redacted: [],
   },
+  apiKey: {
+    values: [],
+    redacted: ['name', 'expiresAt', 'revokedAt'],
+  },
   rolePermissionFlag: {
     values: ['roleId', 'permissionFlagId'],
     redacted: [],
@@ -474,6 +478,7 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   coreUser: ['update'],
   role: ['create', 'update', 'delete'],
   roleTarget: ['create', 'delete'],
+  apiKey: ['create', 'update'],
   rolePermissionFlag: ['create', 'delete'],
   objectPermission: ['create', 'update', 'delete'],
   fieldPermission: ['create', 'update', 'delete'],

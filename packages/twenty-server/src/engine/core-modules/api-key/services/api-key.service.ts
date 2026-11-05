@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
 import { msg } from '@lingui/core/macro';
-import { isNull } from '@sniptt/guards';
 import { isDefined } from 'twenty-shared/utils';
 import { IsNull } from 'typeorm';
 import { type QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
@@ -15,8 +14,17 @@ import { isApiKeyActive } from 'src/engine/core-modules/api-key/utils/is-api-key
 import { isApiKeyExpired } from 'src/engine/core-modules/api-key/utils/is-api-key-expired.util';
 import { type ApiKeyToken } from 'src/engine/core-modules/auth/dto/api-key-token.dto';
 import { JwtTokenTypeEnum } from 'src/engine/core-modules/auth/types/jwt-token-type.enum';
+import {
+  ApiKeyAuditError,
+  captureApiKeyCreateInput,
+  runAuditedApiKeyUpdate,
+  withApiKeyCreateAudit,
+  type PersistedApiKeyRow,
+} from 'src/engine/core-modules/crm-audit/api-key-audit';
+import { type RoleUpdateAuditIdentity } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { JwtWrapperService } from 'src/engine/core-modules/jwt/services/jwt-wrapper.service';
 import { RoleTargetService } from 'src/engine/metadata-modules/role-target/services/role-target.service';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
 import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
@@ -35,31 +43,56 @@ export class ApiKeyService {
     apiKeyData: Pick<ApiKeyEntity, 'name' | 'expiresAt' | 'revokedAt'> & {
       roleId: string;
       workspaceId: string;
+      auditIdentity: RoleUpdateAuditIdentity;
     },
   ): Promise<ApiKeyEntity> {
-    const { roleId, workspaceId, ...apiKeyFields } = apiKeyData;
-    const savedApiKey = await this.apiKeyRepository.insertAndReturnOne(
-      workspaceId,
-      apiKeyFields,
-    );
+    const captured = captureApiKeyCreateInput(apiKeyData);
+    let shouldInvalidateCache = false;
+    let caughtError: unknown;
 
     try {
-      await this.roleTargetService.create({
-        createRoleTargetInput: {
-          roleId,
-          targetId: savedApiKey.id,
-          targetMetadataForeignKey: 'apiKeyId',
+      const persisted = await withApiKeyCreateAudit(
+        {
+          workspaceId: captured.workspaceId,
+          apiKeyId: captured.apiKeyId,
+          roleId: captured.roleId,
+          name: captured.name,
+          expiresAtIso: captured.expiresAtIso,
+          revokedAtIso: captured.revokedAtIso,
         },
-        workspaceId: savedApiKey.workspaceId,
-      });
+        captured.identity,
+        () =>
+          this.roleTargetService.create({
+            createRoleTargetInput: {
+              roleId: captured.roleId,
+              targetId: captured.apiKeyId,
+              targetMetadataForeignKey: 'apiKeyId',
+            },
+            workspaceId: captured.workspaceId,
+          }),
+      );
+      shouldInvalidateCache = true;
+
+      return this.toApiKeyEntity(persisted);
     } catch (error) {
-      await this.apiKeyRepository.delete(workspaceId, { id: savedApiKey.id });
+      caughtError = error;
+      if (error instanceof NativeTransactionOutcomeUnknownError) {
+        shouldInvalidateCache = true;
+      }
       throw error;
+    } finally {
+      if (shouldInvalidateCache) {
+        if (caughtError !== undefined) {
+          try {
+            await this.invalidateApiKeyCache(captured.workspaceId);
+          } catch {
+            // Preserve the original unknown transaction outcome error.
+          }
+        } else {
+          await this.invalidateApiKeyCache(captured.workspaceId);
+        }
+      }
     }
-
-    await this.invalidateApiKeyCache(savedApiKey.workspaceId);
-
-    return savedApiKey;
   }
 
   async findById(
@@ -88,38 +121,72 @@ export class ApiKeyService {
     id: string,
     workspaceId: string,
     updateData: QueryDeepPartialEntity<ApiKeyEntity>,
+    auditIdentity: RoleUpdateAuditIdentity,
   ): Promise<ApiKeyEntity | null> {
-    const apiKey = await this.findById(id, workspaceId);
+    const capturedWorkspaceId = workspaceId;
+    let shouldInvalidateCache = false;
+    let caughtError: unknown;
 
-    if (!apiKey) {
-      return null;
+    try {
+      const updated = await runAuditedApiKeyUpdate({
+        dataSource: this.apiKeyRepository.createQueryBuilder().connection,
+        id,
+        workspaceId: capturedWorkspaceId,
+        updateData,
+        auditIdentity,
+      });
+
+      if (!updated) {
+        return null;
+      }
+
+      shouldInvalidateCache = true;
+
+      return this.toApiKeyEntity(updated);
+    } catch (error) {
+      caughtError = error;
+      if (error instanceof NativeTransactionOutcomeUnknownError) {
+        shouldInvalidateCache = true;
+      }
+      if (
+        error instanceof ApiKeyAuditError &&
+        error.code === 'API_KEY_REVOKED'
+      ) {
+        throw new ApiKeyException(
+          `API Key with id ${id} is revoked and cannot be reactivated`,
+          ApiKeyExceptionCode.API_KEY_REVOKED,
+          {
+            userFriendlyMessage: msg`This API key has been revoked and cannot be reactivated. Please create a new API key.`,
+          },
+        );
+      }
+      throw error;
+    } finally {
+      if (shouldInvalidateCache) {
+        if (caughtError !== undefined) {
+          try {
+            await this.invalidateApiKeyCache(capturedWorkspaceId);
+          } catch {
+            // Preserve the original unknown transaction outcome error.
+          }
+        } else {
+          await this.invalidateApiKeyCache(capturedWorkspaceId);
+        }
+      }
     }
-
-    const { revokedAt, ...updateDataWithoutRevokedAt } = updateData;
-    const isClearingRevokedAt = isNull(revokedAt);
-
-    if (isClearingRevokedAt && this.isRevoked(apiKey)) {
-      throw new ApiKeyException(
-        `API Key with id ${id} is revoked and cannot be reactivated`,
-        ApiKeyExceptionCode.API_KEY_REVOKED,
-        {
-          userFriendlyMessage: msg`This API key has been revoked and cannot be reactivated. Please create a new API key.`,
-        },
-      );
-    }
-
-    await this.apiKeyRepository.update(
-      workspaceId,
-      { id },
-      isClearingRevokedAt ? updateDataWithoutRevokedAt : updateData,
-    );
-    await this.invalidateApiKeyCache(workspaceId);
-
-    return this.findById(id, workspaceId);
   }
 
-  async revoke(id: string, workspaceId: string): Promise<ApiKeyEntity | null> {
-    return this.update(id, workspaceId, { revokedAt: new Date() });
+  async revoke(
+    id: string,
+    workspaceId: string,
+    auditIdentity: RoleUpdateAuditIdentity,
+  ): Promise<ApiKeyEntity | null> {
+    return this.update(
+      id,
+      workspaceId,
+      { revokedAt: new Date() },
+      auditIdentity,
+    );
   }
 
   async validateApiKey(id: string, workspaceId: string): Promise<ApiKeyEntity> {
@@ -201,6 +268,18 @@ export class ApiKeyService {
 
   isActive(apiKey: ApiKeyEntity): boolean {
     return isApiKeyActive(apiKey);
+  }
+
+  private toApiKeyEntity(row: PersistedApiKeyRow): ApiKeyEntity {
+    return Object.assign(new ApiKeyEntity(), {
+      id: row.id,
+      name: row.name,
+      expiresAt: new Date(row.expiresAt.getTime()),
+      revokedAt: row.revokedAt ? new Date(row.revokedAt.getTime()) : null,
+      workspaceId: row.workspaceId,
+      createdAt: new Date(row.createdAt.getTime()),
+      updatedAt: new Date(row.updatedAt.getTime()),
+    });
   }
 
   private async invalidateApiKeyCache(workspaceId: string): Promise<void> {

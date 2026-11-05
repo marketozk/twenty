@@ -25,6 +25,7 @@ export type CrmAuditResourceKind =
   | 'coreView'
   | 'role'
   | 'roleTarget'
+  | 'apiKey'
   | 'rolePermissionFlag'
   | 'objectPermission'
   | 'fieldPermission'

@@ -9,6 +9,8 @@ import { getRoleAssignmentAudit } from 'src/engine/core-modules/crm-audit/role-a
 import {
   captureRoleAuditOperation,
   getRoleMutationAudit,
+  hasConflictingMetadataAuditScope,
+  registerMetadataAuditScopeCheck,
   resolveRoleAuditInitiator,
   verifyRoleAuditApplication,
   type RoleUpdateAuditIdentity,
@@ -146,7 +148,8 @@ const withRolePermissionAudit = async <T>(
   if (
     storage.getStore() ||
     getRoleMutationAudit(workspaceId) ||
-    getRoleAssignmentAudit(workspaceId)
+    getRoleAssignmentAudit(workspaceId) ||
+    hasConflictingMetadataAuditScope(workspaceId, getRolePermissionAudit)
   )
     throw new Error('Nested role permission audit is unsupported');
   const operation = captureRoleAuditOperation(workspaceId, identity);
@@ -314,6 +317,7 @@ export const getRolePermissionAudit = (workspaceId: string) => {
     );
   return request;
 };
+registerMetadataAuditScopeCheck(getRolePermissionAudit);
 
 const scalarWithoutTimestamps = (row: Record<string, unknown>) =>
   Object.fromEntries(

@@ -126,6 +126,13 @@ export class GenerateApiKeyCommand extends CommandRunner {
         expiresAt,
         workspaceId: workspace.id,
         roleId: adminRole.id,
+        auditIdentity: {
+          auth: {
+            workspace: { id: workspace.id },
+            type: 'system',
+          },
+          systemActorId: 'workspace:generate-api-key',
+        },
       });
     } catch (error) {
       this.logger.error(`Failed to create API key: ${error}`);

@@ -8,7 +8,9 @@ import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-au
 import {
   captureRoleAuditOperation,
   getRoleMutationAudit,
+  hasConflictingMetadataAuditScope,
   projectRoleTargetAuditFields,
+  registerMetadataAuditScopeCheck,
   resolveRoleAuditInitiator,
   verifyRoleAuditApplication,
   type RoleUpdateAuditIdentity,
@@ -87,7 +89,14 @@ export const withRoleAssignmentAudit = async <T>(
   identity: RoleUpdateAuditIdentity,
   work: () => Promise<T>,
 ): Promise<T> => {
-  if (storage.getStore() || getRoleMutationAudit(assignment.workspaceId))
+  if (
+    storage.getStore() ||
+    getRoleMutationAudit(assignment.workspaceId) ||
+    hasConflictingMetadataAuditScope(
+      assignment.workspaceId,
+      getRoleAssignmentAudit,
+    )
+  )
     throw new Error('Nested role assignment audit unsupported');
   const targetKind = assignment.targetKind ?? 'userWorkspace';
   const mode = assignment.mode ?? 'assign';
@@ -166,6 +175,7 @@ export const getRoleAssignmentAudit = (
     throw new Error('Role assignment audit scope inactive or foreign');
   return request;
 };
+registerMetadataAuditScopeCheck(getRoleAssignmentAudit);
 
 export const runAuditedRoleAssignment = async <T>(
   dataSource: DataSource,

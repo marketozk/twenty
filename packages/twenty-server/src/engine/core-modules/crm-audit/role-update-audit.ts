@@ -16,6 +16,7 @@ export type RoleUpdateAuditIdentity = {
   auth: Parameters<typeof captureNativeCrmAuditOperation>[1];
   agentId?: string;
   impersonatorUserWorkspaceId?: string;
+  systemActorId?: string;
 };
 
 export type RoleAuditMappings = {
@@ -31,6 +32,15 @@ export const captureRoleAuditIdentity = (
   if (!identity?.auth)
     throw new Error('Role mutation requires authenticated audit identity');
   const auth = identity.auth;
+  if (
+    auth.type === 'system' &&
+    (typeof identity.systemActorId !== 'string' ||
+      identity.systemActorId.length === 0 ||
+      identity.systemActorId.length > 256)
+  )
+    throw new Error('System role audit requires a valid systemActorId');
+  if (auth.type !== 'system' && identity.systemActorId !== undefined)
+    throw new Error('Only system authentication can name a systemActorId');
   const base = { workspace: { id: auth.workspace.id } };
   return {
     auth:
@@ -50,6 +60,9 @@ export const captureRoleAuditIdentity = (
             : { ...base, type: auth.type },
     agentId: identity.agentId,
     impersonatorUserWorkspaceId: identity.impersonatorUserWorkspaceId,
+    ...(identity.systemActorId !== undefined
+      ? { systemActorId: identity.systemActorId }
+      : {}),
   };
 };
 
@@ -104,6 +117,21 @@ type RoleAuditRequest = Readonly<
 const storage = new AsyncLocalStorage<RoleAuditRequest>();
 const active = new WeakSet<RoleAuditRequest>();
 const consumed = new WeakSet<RoleAuditRequest>();
+const metadataScopeChecks = new Set<(workspaceId: string) => unknown>();
+export const registerMetadataAuditScopeCheck = (
+  check: (workspaceId: string) => unknown,
+): void => {
+  metadataScopeChecks.add(check);
+};
+export const hasConflictingMetadataAuditScope = (
+  workspaceId: string,
+  ignore?: (workspaceId: string) => unknown,
+): boolean => {
+  for (const check of metadataScopeChecks) {
+    if (check !== ignore && Boolean(check(workspaceId))) return true;
+  }
+  return false;
+};
 const uuid = (value: string) => {
   if (!isUUID(value)) throw new Error('Role audit identity is invalid');
   return value.toLowerCase();
@@ -230,6 +258,9 @@ export const captureRoleAuditOperation = (
     throw new Error('Role update requires authenticated audit identity');
   const captured = captureNativeCrmAuditOperation(workspaceId, identity.auth, {
     operationId: randomUUID(),
+    ...(identity.systemActorId !== undefined
+      ? { systemActorId: identity.systemActorId }
+      : {}),
   });
   return identity.agentId
     ? Object.freeze({
@@ -296,7 +327,11 @@ const withRoleAudit = async <T>(
       },
   work: () => Promise<T>,
 ): Promise<T> => {
-  if (storage.getStore()) throw new Error('Nested role audit is unsupported');
+  if (
+    storage.getStore() ||
+    hasConflictingMetadataAuditScope(workspaceId, getRoleMutationAudit)
+  )
+    throw new Error('Nested role audit is unsupported');
   const operation = captureRoleAuditOperation(workspaceId, identity);
   const request = Object.freeze({
     ...mutation,
@@ -330,6 +365,7 @@ export const getRoleMutationAudit = (workspaceId: string) => {
     );
   return request;
 };
+registerMetadataAuditScopeCheck(getRoleMutationAudit);
 
 const BOOLEAN_FIELDS = [
   'canUpdateAllSettings',

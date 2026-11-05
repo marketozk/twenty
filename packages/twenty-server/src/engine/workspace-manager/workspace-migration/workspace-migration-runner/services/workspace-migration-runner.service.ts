@@ -6,6 +6,10 @@ import { FeatureFlagKey, FieldMetadataType } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 import { DataSource, type QueryRunner } from 'typeorm';
 import {
+  getApiKeyCreateAudit,
+  runAuditedApiKeyCreate,
+} from 'src/engine/core-modules/crm-audit/api-key-audit';
+import {
   getRoleAssignmentAudit,
   runAuditedRoleAssignment,
 } from 'src/engine/core-modules/crm-audit/role-assignment-audit';
@@ -387,11 +391,14 @@ export class WorkspaceMigrationRunnerService {
     const roleAudit = getRoleMutationAudit(workspaceId);
     const assignmentAudit = getRoleAssignmentAudit(workspaceId);
     const permissionAudit = getRolePermissionAudit(workspaceId);
+    const apiKeyCreateAudit = getApiKeyCreateAudit(workspaceId);
     if (
-      [roleAudit, assignmentAudit, permissionAudit].filter(Boolean).length > 1
+      [roleAudit, assignmentAudit, permissionAudit, apiKeyCreateAudit].filter(
+        Boolean,
+      ).length > 1
     )
       throw new Error('Conflicting metadata audit owners');
-    if (roleAudit || assignmentAudit || permissionAudit) {
+    if (roleAudit || assignmentAudit || permissionAudit || apiKeyCreateAudit) {
       try {
         const mappings = {
           application: flatApplication,
@@ -502,13 +509,21 @@ export class WorkspaceMigrationRunnerService {
                 mappings,
                 execute,
               )
-            : await runAuditedRolePermissionUpsert(
-                this.coreDataSource,
-                permissionAudit!,
-                actions,
-                mappings,
-                execute,
-              );
+            : permissionAudit
+              ? await runAuditedRolePermissionUpsert(
+                  this.coreDataSource,
+                  permissionAudit,
+                  actions,
+                  mappings,
+                  execute,
+                )
+              : await runAuditedApiKeyCreate(
+                  this.coreDataSource,
+                  apiKeyCreateAudit!,
+                  actions,
+                  mappings,
+                  execute,
+                );
       } finally {
         // A lost COMMIT acknowledgement can still have changed permissions.
         try {

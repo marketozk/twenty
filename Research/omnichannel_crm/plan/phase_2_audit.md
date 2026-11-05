@@ -116,8 +116,12 @@ LOG157 закрывает атомарный аудит всех четырёх 
 `UpsertObjectPermissionsTool`, `UpsertRowLevelPermissionRulesTool`) с блокировками БД,
 защитой от самоблокировки, проверкой зеркальных полей связей, защитой от `ON DELETE CASCADE`
 и редактированием литерального фильтра `value`.
-Жизненный цикл API-ключей и durable cache открыты.
-Далее — [audited API-key lifecycle](../implementation/log157/next-boundary.md).
+LOG158 закрывает атомарный аудит создания, обновления и отзыва API-ключей
+(`ApiKeyService.create` / `update` / `revoke`, `ApiKeyResolver.createApiKey` / `updateApiKey` / `revokeApiKey`,
+`ApiKeyController.create` / `update` / `remove`, `GenerateApiKeyCommand`) с однотранзакционной
+привязкой `core."roleTarget"` и запретом реактивации отозванного ключа под блокировкой БД.
+Пакетные и первичные назначения `assignRoleToManyUserWorkspace` и durable cache открыты.
+Далее — [audited bulk and initial member role assignments](../implementation/log158/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

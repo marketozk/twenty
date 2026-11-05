@@ -23,6 +23,7 @@ import { type ApiKeyEntity } from 'src/engine/core-modules/api-key/api-key.entit
 import { CreateApiKeyInput } from 'src/engine/core-modules/api-key/dtos/create-api-key.input';
 import { UpdateApiKeyInput } from 'src/engine/core-modules/api-key/dtos/update-api-key.input';
 import { ApiKeyService } from 'src/engine/core-modules/api-key/services/api-key.service';
+import { roleAuditIdentityFromRequest } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
 import { JwtAuthGuard } from 'src/engine/guards/jwt-auth.guard';
@@ -98,6 +99,7 @@ export class ApiKeyController {
   async create(
     @Body() createApiKeyDto: CreateApiKeyInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Req() request: AuthenticatedRequest,
   ): Promise<ApiKeyEntity> {
     return this.apiKeyService.create({
       name: createApiKeyDto.name,
@@ -107,6 +109,7 @@ export class ApiKeyController {
         : undefined,
       workspaceId: workspace.id,
       roleId: createApiKeyDto.roleId,
+      auditIdentity: roleAuditIdentityFromRequest(request),
     });
   }
 
@@ -128,6 +131,7 @@ export class ApiKeyController {
     @Param('id') id: string,
     @Body() updateApiKeyDto: UpdateApiKeyInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Req() request: AuthenticatedRequest,
   ): Promise<ApiKeyEntity | null> {
     const updateData: QueryDeepPartialEntity<ApiKeyEntity> = {};
 
@@ -141,7 +145,12 @@ export class ApiKeyController {
         : null;
     }
 
-    return this.apiKeyService.update(id, workspace.id, updateData);
+    return this.apiKeyService.update(
+      id,
+      workspace.id,
+      updateData,
+      roleAuditIdentityFromRequest(request),
+    );
   }
 
   @UseGuards(
@@ -161,7 +170,12 @@ export class ApiKeyController {
   async remove(
     @Param('id') id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Req() request: AuthenticatedRequest,
   ): Promise<ApiKeyEntity | null> {
-    return this.apiKeyService.revoke(id, workspace.id);
+    return this.apiKeyService.revoke(
+      id,
+      workspace.id,
+      roleAuditIdentityFromRequest(request),
+    );
   }
 }
