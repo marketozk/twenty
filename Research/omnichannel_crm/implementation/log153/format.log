@@ -1,0 +1,9 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/calendar-save-proof.ts 231ms (unchanged)
+../../../source/packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-save-events.service.ts 240ms (unchanged)
+../../../source/packages/twenty-server/src/modules/calendar/calendar-event-participant-manager/services/calendar-event-participant.service.ts 24ms (unchanged)
+../../../source/packages/twenty-server/src/modules/match-participant/match-participant.service.ts 328ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-matching-entrypoints.spec.ts 21ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-import-recovery.postgres-spec.ts 45ms (unchanged)
+
+{"formattedFiles": 6, "singleSshSession": true}

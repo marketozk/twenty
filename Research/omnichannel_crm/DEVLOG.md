@@ -4219,3 +4219,35 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 8ea0ec75-0781-4ecc-bbc9-c4957c1df757 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log152/publication.json).
 Следующий участок — долговечное сохранение и восстановление манифеста сопоставления календаря по LOG153.
+
+## LOG153 — долговечное намерение и восстановление сопоставления календаря после сохранения
+
+05.11.2026 зафиксированы [дизайн](implementation/log153/design.md),
+[независимое ревью](implementation/log153/design-review.md) и
+[план проверок](implementation/log153/test-research.md).
+В `calendar-save-proof.ts` добавлены контракт `CALENDAR_IMPORT_MATCHING_INTENT_NAME`
+(`reconcile_calendarImportMatching`) и валидатор `captureCalendarImportMatchingIntentPayload`.
+В `CalendarSaveEventsService.saveCalendarEventsAndEnqueueContactCreationJob` внутри
+strict/exclusive транзакции сохранения событий перед `finishSaveAudit` записывается
+намерение `PENDING` в `core."deferredWorkspaceMigrationAction"` с проверкой в
+`verifySaveGraph` до `audit.flush()` и после `SET CONSTRAINTS ALL IMMEDIATE`.
+В `MatchParticipantService` и `CalendarEventParticipantService` реализованы
+координация `IN_PROGRESS`, атомарное удаление завершённого намерения до `COMMIT`,
+блокировка `unsafeOutcome` в `FAILED` и восстановление
+`reconcileCalendarImportMatchingIntentsWithAudit` с проверкой актуальных полномочий
+`core.workspace`, `core.connectedAccount`, `core.calendarChannel` и отсутствия
+привязки к omnichannel.
+
+05.11.2026 проверки LOG153 завершены. 3007 tests/98 suites PASS (644.622s). 711 targeted/17 suites PASS (163.942s), 12 новых PostgreSQL и 1 unit случай. 26 guard tests PASS, 10 migration checksums неизменны. Types 446/447 roots, baseline 219 / current 219 diagnostics, 0 новых/changed-file. Совпали 6 local/remote source hashes.
+
+Независимое ревью подтвердило согласованность обёртки `CoreAuditPostCommitError`
+в `CalendarSaveEventsService` с обработкой первичных ошибок внутри
+`matchCalendarImportParticipantsWithAudit`, сохранение `causationId` операции
+сохранения и исходного списка `savedParticipantIds` при повторном сохранении той
+же пачки, двухфазную проверку строки намерения в `verifyMatchingGraph` и полноту
+проверки актуальных полномочий канала и аккаунта при восстановлении.
+
+[Результаты](implementation/log153/results.json), [ревью](implementation/log153/review.md),
+[следующий участок](implementation/log153/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

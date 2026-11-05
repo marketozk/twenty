@@ -59,6 +59,7 @@ export class CalendarEventParticipantService {
     workspaceId,
     calendarEventIds,
     auditOperation,
+    intentId,
   }: {
     savedParticipantIds: string[];
     participantsOfLinkedEvents: FetchedCalendarEventParticipant[];
@@ -67,6 +68,7 @@ export class CalendarEventParticipantService {
     workspaceId: string;
     calendarEventIds: string[];
     auditOperation: CrmAuditOperation;
+    intentId?: string;
   }): Promise<void> {
     if (!auditOperation || auditOperation.workspaceId !== workspaceId)
       throw new Error('Calendar matching requires scoped save audit operation');
@@ -81,6 +83,7 @@ export class CalendarEventParticipantService {
     };
     savedParticipantIds = [...savedParticipantIds];
     calendarEventIds = [...calendarEventIds];
+    intentId = intentId === undefined ? undefined : String(intentId);
     participantsOfLinkedEvents = participantsOfLinkedEvents.map((row) => ({
       ...row,
     }));
@@ -140,11 +143,30 @@ export class CalendarEventParticipantService {
             participantIds: savedParticipantIds,
             eventIds: calendarEventIds,
             operation,
+            ...(intentId === undefined ? {} : { intentId }),
           },
         );
       },
       authContext,
       { lite: true },
+    );
+  }
+
+  public async reconcileCalendarImportMatchingIntents({
+    workspaceId,
+    intentId,
+  }: {
+    workspaceId: string;
+    intentId?: string;
+  }): Promise<{
+    processedIntents: number;
+    completedIntents: number;
+  }> {
+    return this.matchParticipantService.reconcileCalendarImportMatchingIntentsWithAudit(
+      {
+        workspaceId,
+        ...(intentId === undefined ? {} : { intentId }),
+      },
     );
   }
 }

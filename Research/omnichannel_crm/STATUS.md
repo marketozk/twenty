@@ -3,7 +3,7 @@
 ROB764 завершена по [приёмке LOG088](implementation/rob764-acceptance.md).
 ROB765 — In Progress: общий аудит действий ещё не принят.
 
-Проверенное покрытие к LOG152:
+Проверенное покрытие к LOG153:
 
 - Covered native CRM create/update/FILES/soft-delete/restore и внутренний hard-delete с проверенными FK effects.
 - Workspace sessions и refresh lifecycle; public/AI role CREATE/UPDATE и public member assignment.
@@ -12,16 +12,16 @@ ROB765 — In Progress: общий аудит действий ещё не пр�
 - OAuth/application attribution и отказ от automatic queue retry для распознанных unsafe outcomes.
 - Очистка associations удалённого канала; общий orphan sweep с message/participant, target reconciliation и empty-thread audit. Реальные jobs/CLI подключены.
 
-LOG152 переводит автоматическое создание компаний и контактов (`CreateCompanyAndContactJob`, `CreateCompanyAndPersonService`, `CreateCompanyService`, `CreatePersonService`) для источников `EMAIL` и `CALENDAR` на двухфазный закрытый owner в strict/exclusive транзакции: внешний HTTP-запрос метаданных домена выполняется до захвата блокировок БД, внутри транзакции проверяются актуальные `core.workspace`, `core.connectedAccount`, `core.userWorkspace`, `core.user`, каналы и отсутствие привязки к omnichannel, а создание, восстановление и обогащение имени `company` и `person` проверяются по полному образу PostgreSQL, точному `RETURNING` и `assertNoReferentialUpdateEffects` с пробросом `unsafeOutcome`.
+LOG153 закрывает долговечное намерение и восстановление post-save сопоставления календаря (`reconcile_calendarImportMatching` в `core.deferredWorkspaceMigrationAction`): `CalendarSaveEventsService` сохраняет и верифицирует `PENDING`-намерение внутри strict/exclusive транзакции сохранения до `COMMIT`, `MatchParticipantService.matchCalendarImportParticipantsWithAudit` координирует `IN_PROGRESS` и атомарно удаляет завершённое намерение до `COMMIT`, изолирует `NativeTransactionOutcomeUnknownError` / `CoreAuditPostCommitError` в `FAILED` с `payload.unsafeOutcome`, а `reconcileCalendarImportMatchingIntentsWithAudit` воспроизводит незавершённые намерения с проверкой актуальных `core.workspace`, `core.connectedAccount`, `core.calendarChannel` и отсутствия привязки к omnichannel.
 
-2994 tests/97 suites PASS (636.398s). 817 targeted/19 suites PASS (232.996s), 17 новых PostgreSQL и 4 unit случая. 26 guard tests PASS, 10 migration checksums неизменны. Types 445/448 roots, baseline 225 / current 219 diagnostics, 0 новых/changed-file. Совпали 7 local/remote source hashes.
+3007 tests/98 suites PASS (644.622s). 711 targeted/17 suites PASS (163.942s), 12 новых PostgreSQL и 1 unit случай. 26 guard tests PASS, 10 migration checksums неизменны. Types 446/447 roots, baseline 219 / current 219 diagnostics, 0 новых/changed-file. Совпали 6 local/remote source hashes.
 Это целевые проверки кода, не чистый full-server typecheck и не полный HTTP/JWT тест.
-[Результаты LOG152](implementation/log152/results.json) · [исходники и ревью](implementation/log152/README.md).
+[Результаты LOG153](implementation/log153/results.json) · [исходники и ревью](implementation/log153/README.md).
 
-Контур сохранения, автосоздания контактов/компаний и постраничного сопоставления сообщений полностью закрыт (`LOG148`–`LOG152`). Долговечное намерение сопоставления календаря после сохранения событий, полная HTTP/JWT приёмка и выкат остаются открытыми критериями ROB765.
+Контур сохранения, автосоздания контактов/компаний и долговечного post-save сопоставления для сообщений и календаря закрыт (`LOG143`–`LOG153`). Интеграция общего runner/recovery отложенных действий с намерениями сопоставления импорта, полная HTTP/JWT приёмка и выкат остаются открытыми критериями ROB765.
 
-Далее - долговечное сохранение и восстановление манифеста сопоставления календаря.
-[Следующая граница](implementation/log152/next-boundary.md).
+Далее - интеграция runner/recovery отложенных действий с намерениями сопоставления импорта.
+[Следующая граница](implementation/log153/next-boundary.md).
 Остальные открытые критерии и ограничения находятся в единственной
 [таблице приёмки ROB765](implementation/rob765-progress.md).
 
@@ -29,7 +29,7 @@ ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.
 Собственные права, интерфейс чатов, коннекторы, ИИ и автоматизация ещё не приняты.
 
 Демо остаётся прежним. Последний собранный изолированный кандидат — LOG088;
-код LOG089–152 ожидает выката. Клиентские сообщения не отправлялись.
+код LOG089–153 ожидает выката. Клиентские сообщения не отправлялись.
 При будущем построении индекса migration10 writers останавливаются.
 GitHub Actions не используется.
 

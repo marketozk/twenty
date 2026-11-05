@@ -1,5 +1,159 @@
 import { isUUID } from 'class-validator';
+import { captureCrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
+import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { type NativeCrmAuditTableShape } from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
+import { type OrdinaryMetadataSyncRun } from 'src/modules/omnichannel/services/ordinary-metadata-sync-run';
+
+export const CALENDAR_IMPORT_MATCHING_INTENT_NAME =
+  'reconcile_calendarImportMatching' as const;
+
+export type CalendarImportMatchingAuthority = Readonly<{
+  workspaceId: string;
+  connectedAccountId: string;
+  channelId: string;
+  run?: OrdinaryMetadataSyncRun;
+}>;
+
+export type CalendarImportMatchingIntentUnsafeOutcome = Readonly<{
+  reason: string;
+}>;
+
+export type CalendarImportMatchingIntentPayload = Readonly<{
+  version: 1;
+  operation: CrmAuditOperation;
+  authority: CalendarImportMatchingAuthority;
+  participantIds: readonly string[];
+  eventIds: readonly string[];
+  unsafeOutcome?: CalendarImportMatchingIntentUnsafeOutcome;
+}>;
+
+const uuid = (value: unknown): string => {
+  if (typeof value !== 'string' || !isUUID(value))
+    throw new Error('Calendar save intent requires UUID identity');
+  return value.toLowerCase();
+};
+
+export const captureCalendarImportMatchingIntentPayload = (
+  input: unknown,
+): CalendarImportMatchingIntentPayload => {
+  if (!input || typeof input !== 'object' || Array.isArray(input))
+    throw new Error('Calendar import matching intent payload invalid');
+  const raw = input as Record<string, unknown>;
+  const allowedKeys = new Set([
+    'version',
+    'operation',
+    'authority',
+    'participantIds',
+    'eventIds',
+    'unsafeOutcome',
+  ]);
+  if (
+    raw.version !== 1 ||
+    !Array.isArray(raw.participantIds) ||
+    !Array.isArray(raw.eventIds) ||
+    !raw.authority ||
+    typeof raw.authority !== 'object' ||
+    Array.isArray(raw.authority) ||
+    Object.keys(raw).some((key) => !allowedKeys.has(key))
+  )
+    throw new Error('Calendar import matching intent payload invalid');
+  const operation = captureCrmAuditOperation(
+    raw.operation as CrmAuditOperation,
+  );
+  const rawAuthority = raw.authority as Record<string, unknown>;
+  const allowedAuthorityKeys = new Set([
+    'workspaceId',
+    'connectedAccountId',
+    'channelId',
+    'run',
+  ]);
+  if (Object.keys(rawAuthority).some((key) => !allowedAuthorityKeys.has(key)))
+    throw new Error('Calendar import matching intent authority invalid');
+  const workspaceId = uuid(rawAuthority.workspaceId);
+  const connectedAccountId = uuid(rawAuthority.connectedAccountId);
+  const channelId = uuid(rawAuthority.channelId);
+  if (operation.workspaceId !== workspaceId)
+    throw new Error('Calendar import matching intent workspace mismatch');
+  let run: OrdinaryMetadataSyncRun | undefined;
+  if (rawAuthority.run !== undefined) {
+    if (
+      !rawAuthority.run ||
+      typeof rawAuthority.run !== 'object' ||
+      Array.isArray(rawAuthority.run)
+    )
+      throw new Error('Calendar import matching intent run invalid');
+    const rawRun = rawAuthority.run as Record<string, unknown>;
+    const allowedRunKeys = new Set([
+      'workspaceId',
+      'channelId',
+      'connectedAccountId',
+      'kind',
+      'stage',
+      'startedAt',
+    ]);
+    if (
+      Object.keys(rawRun).some((key) => !allowedRunKeys.has(key)) ||
+      rawRun.kind !== 'calendar' ||
+      uuid(rawRun.workspaceId) !== workspaceId ||
+      uuid(rawRun.channelId) !== channelId ||
+      uuid(rawRun.connectedAccountId) !== connectedAccountId ||
+      typeof rawRun.stage !== 'string' ||
+      !rawRun.stage.length ||
+      typeof rawRun.startedAt !== 'string' ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/.test(rawRun.startedAt)
+    )
+      throw new Error('Calendar import matching intent run invalid');
+    run = Object.freeze({
+      workspaceId,
+      channelId,
+      connectedAccountId,
+      kind: 'calendar' as const,
+      stage: rawRun.stage as OrdinaryMetadataSyncRun['stage'],
+      startedAt: rawRun.startedAt,
+    });
+  }
+  const participantIds = Object.freeze([
+    ...new Set(raw.participantIds.map((id) => uuid(id))),
+  ]);
+  const eventIds = Object.freeze([
+    ...new Set(raw.eventIds.map((id) => uuid(id))),
+  ]);
+  if (
+    eventIds.length > 1000 ||
+    (participantIds.length === 0 && eventIds.length === 0)
+  )
+    throw new Error('Calendar import matching intent scope invalid');
+  let unsafeOutcome: CalendarImportMatchingIntentUnsafeOutcome | undefined;
+  if (raw.unsafeOutcome !== undefined) {
+    if (
+      !raw.unsafeOutcome ||
+      typeof raw.unsafeOutcome !== 'object' ||
+      Array.isArray(raw.unsafeOutcome)
+    )
+      throw new Error('Calendar import matching intent outcome invalid');
+    const outcome = raw.unsafeOutcome as Record<string, unknown>;
+    if (
+      Object.keys(outcome).some((key) => key !== 'reason') ||
+      typeof outcome.reason !== 'string' ||
+      !outcome.reason.length
+    )
+      throw new Error('Calendar import matching intent outcome invalid');
+    unsafeOutcome = Object.freeze({ reason: outcome.reason });
+  }
+  return Object.freeze({
+    version: 1,
+    operation,
+    authority: Object.freeze({
+      workspaceId,
+      connectedAccountId,
+      channelId,
+      ...(run === undefined ? {} : { run }),
+    }),
+    participantIds,
+    eventIds,
+    ...(unsafeOutcome === undefined ? {} : { unsafeOutcome }),
+  });
+};
 
 export const CALENDAR_SAVE_TABLES = [
   'calendarEvent',

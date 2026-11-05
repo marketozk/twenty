@@ -94,9 +94,13 @@ owner с единым аудитом в одной strict/exclusive транза
 закрывает двухфазное автоматическое создание компаний и контактов (`CreateCompanyAndContactJob`,
 `CreateCompanyAndPersonService`) для `EMAIL` и `CALENDAR` в strict/exclusive транзакции с
 предвыборкой внешних метаданных домена вне блокировок БД, проверкой актуальных `core`-полномочий,
-дедупликацией восстановления и пробросом `unsafeOutcome`. Долговечное намерение сопоставления
-календаря, свежесть import policy и durable cache открыты.
-Далее — [durable post-save calendar matching intent](../implementation/log152/next-boundary.md).
+дедупликацией восстановления и пробросом `unsafeOutcome`. LOG153 сохраняет манифест сопоставления
+календаря как долговечное намерение `reconcile_calendarImportMatching` в транзакции сохранения
+`CalendarSaveEventsService`, атомарно удаляет завершённое намерение в коммите сопоставления,
+блокирует `unsafeOutcome` и восстанавливает незавершённые намерения с проверкой актуальных
+полномочий канала и аккаунта. Интеграция с общим runner/recovery отложенных действий, свежесть
+import policy и durable cache открыты.
+Далее — [deferred action runner and recovery integration](../implementation/log153/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

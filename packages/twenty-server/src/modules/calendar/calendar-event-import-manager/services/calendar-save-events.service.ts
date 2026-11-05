@@ -26,12 +26,15 @@ import {
   type NativeCrmAuditTableShape,
 } from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
 import {
+  CALENDAR_IMPORT_MATCHING_INTENT_NAME,
   CALENDAR_SAVE_TABLES,
   calendarSaveTableSql,
   quoteCalendarSaveIdentifier,
   calendarSaveColumns,
   calendarSaveActualIds,
   calendarSaveSnapshotJson,
+  captureCalendarImportMatchingIntentPayload,
+  type CalendarImportMatchingIntentPayload,
   type CalendarSaveTable,
   type CalendarSaveSnapshot,
 } from 'src/engine/core-modules/crm-audit/calendar-save-proof';
@@ -77,6 +80,8 @@ type CalendarSaveAuditState = {
   accountIds: string[];
   sourceProof?: Record<string, unknown>[];
   expectedRun?: OrdinaryMetadataSyncRun;
+  intentId?: string;
+  intentPayload?: CalendarImportMatchingIntentPayload;
 };
 
 @Injectable()
@@ -524,6 +529,42 @@ export class CalendarSaveEventsService {
                   .map(({ calendarEventId }) => calendarEventId),
               ]),
             ];
+            let intentId: string | undefined;
+            if (calendarEventIds.length > 0 || savedParticipantIds.length > 0) {
+              intentId = randomUUID();
+              const intentPayload = captureCalendarImportMatchingIntentPayload({
+                version: 1,
+                operation: {
+                  ...auditOperation,
+                  causationId: auditOperation.operationId,
+                },
+                authority: {
+                  workspaceId,
+                  connectedAccountId: connectedAccount.id,
+                  channelId: calendarChannel.id,
+                  ...(expectedRun ? { run: expectedRun } : {}),
+                },
+                participantIds: savedParticipantIds,
+                eventIds: calendarEventIds,
+              });
+              const insertedIntent = await transactionScope.executeRawQuery(
+                'INSERT INTO core."deferredWorkspaceMigrationAction"(id,"workspaceId","applicationUniversalIdentifier",name,payload,position,"runByVersion",status,attempts) VALUES($1,$2,$3,$4,$5::jsonb,0,NULL,\'PENDING\',0) RETURNING id',
+                [
+                  intentId,
+                  workspaceId,
+                  TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER,
+                  CALENDAR_IMPORT_MATCHING_INTENT_NAME,
+                  JSON.stringify(intentPayload),
+                ],
+              );
+              if (
+                insertedIntent.length !== 1 ||
+                insertedIntent[0]?.id !== intentId
+              )
+                throw new Error('Calendar save matching intent insert failed');
+              auditState.intentId = intentId;
+              auditState.intentPayload = intentPayload;
+            }
             await this.finishSaveAudit(auditState);
             return {
               savedParticipantIds,
@@ -531,6 +572,7 @@ export class CalendarSaveEventsService {
                 (row) => calendarEventIds.includes(row.calendarEventId),
               ),
               calendarEventIds,
+              intentId,
             };
           },
           { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
@@ -544,6 +586,7 @@ export class CalendarSaveEventsService {
       savedParticipantIds,
       participantsOfLinkedEvents,
       calendarEventIds,
+      intentId,
     } = saved;
 
     try {
@@ -556,6 +599,7 @@ export class CalendarSaveEventsService {
           connectedAccount,
           workspaceId,
           auditOperation,
+          ...(intentId === undefined ? {} : { intentId }),
         },
       );
     } catch (error) {
@@ -767,6 +811,31 @@ export class CalendarSaveEventsService {
         canonicalAuditJson(expected)
       )
         throw new Error('Calendar save graph effects mismatch');
+    }
+    if (state.intentId !== undefined && state.intentPayload !== undefined) {
+      const intentRows = await state.scope.executeRawQuery(
+        'SELECT id,"workspaceId","applicationUniversalIdentifier",name,payload,position,"runByVersion",status,attempts,"lastError","startedAt" FROM core."deferredWorkspaceMigrationAction" WHERE id=$1',
+        [state.intentId],
+      );
+      if (intentRows.length !== 1)
+        throw new Error('Calendar save matching intent changed before commit');
+      const intentRow = intentRows[0];
+      if (
+        intentRow.id !== state.intentId ||
+        intentRow.workspaceId !== state.scope.workspaceId ||
+        intentRow.applicationUniversalIdentifier !==
+          TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER ||
+        intentRow.name !== CALENDAR_IMPORT_MATCHING_INTENT_NAME ||
+        Number(intentRow.position) !== 0 ||
+        intentRow.runByVersion !== null ||
+        intentRow.status !== 'PENDING' ||
+        Number(intentRow.attempts) !== 0 ||
+        intentRow.lastError !== null ||
+        intentRow.startedAt !== null ||
+        canonicalAuditJson(intentRow.payload) !==
+          canonicalAuditJson(state.intentPayload)
+      )
+        throw new Error('Calendar save matching intent changed before commit');
     }
   }
 

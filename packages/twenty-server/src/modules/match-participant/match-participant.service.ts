@@ -36,10 +36,13 @@ import {
   type NativeCrmAuditTableShape,
 } from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
 import {
+  CALENDAR_IMPORT_MATCHING_INTENT_NAME,
   CALENDAR_SAVE_TABLES,
   calendarSaveTableSql,
   quoteCalendarSaveIdentifier,
   calendarSaveActualIds,
+  captureCalendarImportMatchingIntentPayload,
+  type CalendarImportMatchingIntentPayload,
   type CalendarSaveTable,
   type CalendarSaveSnapshot,
 } from 'src/engine/core-modules/crm-audit/calendar-save-proof';
@@ -74,6 +77,7 @@ import { type MessageChannelMessageAssociationWorkspaceEntity } from 'src/module
 import { type MessageParticipantWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-participant.workspace-entity';
 import { type PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
 import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
+import { findOmniOwnedConnectedAccountIds } from 'src/modules/omnichannel/services/find-omni-owned-metadata-ids';
 import { findOmniOwnedMessageIds } from 'src/modules/omnichannel/services/find-omni-owned-native-record-ids';
 
 type ObjectMetadataName = 'messageParticipant' | 'calendarEventParticipant';
@@ -138,6 +142,14 @@ const MATCHING_SOURCE_TABLES = [
 ] as const;
 type CalendarMatchingSource = (typeof MATCHING_SOURCE_TABLES)[number];
 type CalendarMatchingTable = CalendarSaveTable | CalendarMatchingSource;
+type CalendarMatchingIntentControl = Readonly<{
+  intentId: string;
+  isRecoveryReplay: boolean;
+  operation: CrmAuditOperation;
+  participantIds: readonly string[];
+  eventIds: readonly string[];
+}>;
+
 type CalendarMatchingState = {
   scope: WorkspaceTransactionScope;
   audit: CrmAuditTransactionContext;
@@ -151,6 +163,16 @@ type CalendarMatchingState = {
   memberIds: string[];
   originalSourceIds: Map<CalendarMatchingSource, string[]>;
   sources: Map<CalendarMatchingSource, CalendarSaveSnapshot[]>;
+  intent?: {
+    intentId: string;
+    isRecoveryReplay: boolean;
+    payload: CalendarImportMatchingIntentPayload;
+    completed: boolean;
+    recoveryAuthoritySnapshot?: {
+      account: Record<string, unknown>;
+      channel: Record<string, unknown>;
+    };
+  };
 };
 
 @Injectable()
@@ -587,11 +609,13 @@ export class MatchParticipantService<
     participantIds,
     eventIds,
     operation,
+    intentId,
   }: {
     workspaceId: string;
     participantIds: readonly string[];
     eventIds: readonly string[];
     operation: CrmAuditOperation;
+    intentId?: string;
   }): Promise<void> {
     if (
       !isUUID(workspaceId) ||
@@ -603,40 +627,353 @@ export class MatchParticipantService<
       eventIds.length > 1000 ||
       [...participantIds, ...eventIds].some(
         (id) => typeof id !== 'string' || !isUUID(id),
-      )
+      ) ||
+      (intentId !== undefined &&
+        (typeof intentId !== 'string' || !isUUID(intentId)))
     )
       throw new Error(
         'Calendar matching requires scoped input and audit identity',
       );
+    const canonicalWorkspaceId = workspaceId.toLowerCase();
+    const normalizedIntentId = intentId?.toLowerCase();
     participantIds = [...new Set(participantIds.map((id) => id.toLowerCase()))];
     eventIds = [...new Set(eventIds.map((id) => id.toLowerCase()))];
+    if (
+      normalizedIntentId !== undefined &&
+      participantIds.length === 0 &&
+      eventIds.length === 0
+    )
+      throw new Error('Calendar matching intent requires scope');
     operation = {
       ...operation,
+      workspaceId: canonicalWorkspaceId,
       operationId: randomUUID(),
       actor: { ...operation.actor },
       ...(operation.initiator ? { initiator: { ...operation.initiator } } : {}),
     };
     await this.workspaceOrmManager.executeInWorkspaceContext(
-      () =>
-        this.workspaceOrmManager.runInWorkspaceTransaction(
-          async (scope) => {
-            const state = await this.prepareCalendarMatching(
-              scope,
-              operation,
-              [...eventIds],
-              [...participantIds],
+      async () => {
+        if (normalizedIntentId !== undefined) {
+          const claim = await this.claimInBandCalendarImportMatchingIntent(
+            canonicalWorkspaceId,
+            normalizedIntentId,
+            operation,
+            participantIds,
+            eventIds,
+          );
+          if (claim.completedByRecovery) return;
+        }
+        try {
+          await this.workspaceOrmManager.runInWorkspaceTransaction(
+            async (scope) => {
+              const state = await this.prepareCalendarMatching(
+                scope,
+                operation,
+                [...eventIds],
+                [...participantIds],
+                normalizedIntentId === undefined
+                  ? undefined
+                  : {
+                      intentId: normalizedIntentId,
+                      isRecoveryReplay: false,
+                      operation,
+                      participantIds,
+                      eventIds,
+                    },
+              );
+              await this.runCalendarMatchingStage(state, {
+                participantIds: [...participantIds],
+                eventIds: [...eventIds],
+                matchWith: 'both',
+              });
+            },
+            { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
+          );
+        } catch (error) {
+          if (normalizedIntentId !== undefined) {
+            if (isTransactionUnsafeToRetry(error)) {
+              await this.fenceUnsafeCalendarImportMatchingIntent(
+                canonicalWorkspaceId,
+                normalizedIntentId,
+                error,
+              );
+              throw error;
+            }
+            await this.releaseCalendarImportMatchingIntentAfterError(
+              canonicalWorkspaceId,
+              normalizedIntentId,
+              error,
+              false,
             );
-            await this.runCalendarMatchingStage(state, {
-              participantIds: [...participantIds],
-              eventIds: [...eventIds],
-              matchWith: 'both',
-            });
-          },
-          { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
-        ),
-      buildSystemAuthContext(workspaceId),
+          }
+          throw error;
+        }
+      },
+      buildSystemAuthContext(canonicalWorkspaceId),
       { lite: true },
     );
+  }
+
+  public async reconcileCalendarImportMatchingIntentsWithAudit({
+    workspaceId,
+    intentId,
+  }: {
+    workspaceId: string;
+    intentId?: string;
+  }): Promise<{
+    processedIntents: number;
+    completedIntents: number;
+  }> {
+    if (
+      typeof workspaceId !== 'string' ||
+      !isUUID(workspaceId) ||
+      (intentId !== undefined &&
+        (typeof intentId !== 'string' || !isUUID(intentId)))
+    )
+      throw new Error('Calendar matching recovery requires valid workspace');
+    const canonicalWorkspaceId = workspaceId.toLowerCase();
+    const normalizedIntentId = intentId?.toLowerCase();
+    return this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        const candidates = await this.executeCoreIntentQuery(
+          normalizedIntentId === undefined
+            ? 'SELECT id FROM core."deferredWorkspaceMigrationAction" WHERE "workspaceId"=$1 AND name=$2 AND status=\'PENDING\' AND NOT (payload ? \'unsafeOutcome\') ORDER BY "createdAt" ASC,position ASC,id ASC'
+            : 'SELECT id FROM core."deferredWorkspaceMigrationAction" WHERE "workspaceId"=$1 AND name=$2 AND id=$3 AND status=\'PENDING\' AND NOT (payload ? \'unsafeOutcome\') ORDER BY "createdAt" ASC,position ASC,id ASC',
+          normalizedIntentId === undefined
+            ? [canonicalWorkspaceId, CALENDAR_IMPORT_MATCHING_INTENT_NAME]
+            : [
+                canonicalWorkspaceId,
+                CALENDAR_IMPORT_MATCHING_INTENT_NAME,
+                normalizedIntentId,
+              ],
+        );
+        let processedIntents = 0;
+        let completedIntents = 0;
+        for (const candidate of candidates) {
+          const candidateId = String(candidate.id).toLowerCase();
+          const claimed = await this.executeCoreIntentQuery(
+            'UPDATE core."deferredWorkspaceMigrationAction" SET status=\'IN_PROGRESS\',attempts=attempts+1,"startedAt"=now(),"updatedAt"=now() WHERE id=$1 AND "workspaceId"=$2 AND name=$3 AND status=\'PENDING\' AND NOT (payload ? \'unsafeOutcome\') RETURNING id,payload,attempts',
+            [
+              candidateId,
+              canonicalWorkspaceId,
+              CALENDAR_IMPORT_MATCHING_INTENT_NAME,
+            ],
+          );
+          if (claimed.length === 0) continue;
+          processedIntents += 1;
+          let payload: CalendarImportMatchingIntentPayload;
+          try {
+            payload = captureCalendarImportMatchingIntentPayload(
+              claimed[0].payload,
+            );
+            if (payload.unsafeOutcome !== undefined)
+              throw new Error(
+                'Calendar matching intent fenced by unsafe outcome',
+              );
+          } catch (error) {
+            await this.releaseCalendarImportMatchingIntentAfterError(
+              canonicalWorkspaceId,
+              candidateId,
+              error,
+              true,
+            );
+            throw error;
+          }
+          const replayOperation: CrmAuditOperation = {
+            ...payload.operation,
+            operationId: randomUUID(),
+            actor: { ...payload.operation.actor },
+            ...(payload.operation.initiator
+              ? { initiator: { ...payload.operation.initiator } }
+              : {}),
+          };
+          try {
+            await this.workspaceOrmManager.runInWorkspaceTransaction(
+              async (scope) => {
+                const state = await this.prepareCalendarMatching(
+                  scope,
+                  replayOperation,
+                  [...payload.eventIds],
+                  [...payload.participantIds],
+                  {
+                    intentId: candidateId,
+                    isRecoveryReplay: true,
+                    operation: replayOperation,
+                    participantIds: payload.participantIds,
+                    eventIds: payload.eventIds,
+                  },
+                );
+                await this.runCalendarMatchingStage(state, {
+                  participantIds: [...payload.participantIds],
+                  eventIds: [...payload.eventIds],
+                  matchWith: 'both',
+                });
+              },
+              { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
+            );
+            completedIntents += 1;
+          } catch (error) {
+            if (isTransactionUnsafeToRetry(error)) {
+              await this.fenceUnsafeCalendarImportMatchingIntent(
+                canonicalWorkspaceId,
+                candidateId,
+                error,
+              );
+              throw error;
+            }
+            await this.releaseCalendarImportMatchingIntentAfterError(
+              canonicalWorkspaceId,
+              candidateId,
+              error,
+              true,
+            );
+            throw error;
+          }
+        }
+        return {
+          processedIntents,
+          completedIntents,
+        };
+      },
+      buildSystemAuthContext(canonicalWorkspaceId),
+      { lite: true },
+    );
+  }
+
+  private async claimInBandCalendarImportMatchingIntent(
+    workspaceId: string,
+    intentId: string,
+    operation: CrmAuditOperation,
+    participantIds: readonly string[],
+    eventIds: readonly string[],
+  ): Promise<{ completedByRecovery: boolean }> {
+    const claimed = await this.executeCoreIntentQuery(
+      'UPDATE core."deferredWorkspaceMigrationAction" SET status=\'IN_PROGRESS\',"startedAt"=now(),"updatedAt"=now() WHERE id=$1 AND "workspaceId"=$2 AND name=$3 AND status=\'PENDING\' AND NOT (payload ? \'unsafeOutcome\') RETURNING payload',
+      [intentId, workspaceId, CALENDAR_IMPORT_MATCHING_INTENT_NAME],
+    );
+    if (claimed.length === 1) {
+      try {
+        const payload = captureCalendarImportMatchingIntentPayload(
+          claimed[0].payload,
+        );
+        this.verifyClaimedCalendarIntentPayload(
+          payload,
+          operation,
+          participantIds,
+          eventIds,
+        );
+        return { completedByRecovery: false };
+      } catch (error) {
+        await this.releaseCalendarImportMatchingIntentAfterError(
+          workspaceId,
+          intentId,
+          error,
+          false,
+        );
+        throw error;
+      }
+    }
+    return this.workspaceOrmManager.runInWorkspaceTransaction(
+      async (scope) => {
+        const existing = await scope.executeRawQuery(
+          'SELECT status,payload FROM core."deferredWorkspaceMigrationAction" WHERE id=$1 AND "workspaceId"=$2 AND name=$3 FOR UPDATE',
+          [intentId, workspaceId, CALENDAR_IMPORT_MATCHING_INTENT_NAME],
+        );
+        if (existing.length === 0) return { completedByRecovery: true };
+        const row = existing[0];
+        const payload = captureCalendarImportMatchingIntentPayload(row.payload);
+        this.verifyClaimedCalendarIntentPayload(
+          payload,
+          operation,
+          participantIds,
+          eventIds,
+        );
+        if (payload.unsafeOutcome !== undefined || row.status !== 'PENDING')
+          throw new Error('Calendar matching intent unavailable for claim');
+        await scope.executeRawQuery(
+          'UPDATE core."deferredWorkspaceMigrationAction" SET status=\'IN_PROGRESS\',"startedAt"=now(),"updatedAt"=now() WHERE id=$1 AND "workspaceId"=$2 AND name=$3',
+          [intentId, workspaceId, CALENDAR_IMPORT_MATCHING_INTENT_NAME],
+        );
+        return { completedByRecovery: false };
+      },
+      { commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' },
+    );
+  }
+
+  private verifyClaimedCalendarIntentPayload(
+    payload: CalendarImportMatchingIntentPayload,
+    operation: CrmAuditOperation,
+    participantIds: readonly string[],
+    eventIds: readonly string[],
+  ): void {
+    if (
+      payload.unsafeOutcome !== undefined ||
+      canonicalAuditJson(payload.participantIds) !==
+        canonicalAuditJson(participantIds) ||
+      canonicalAuditJson(payload.eventIds) !== canonicalAuditJson(eventIds) ||
+      payload.operation.workspaceId !== operation.workspaceId ||
+      canonicalAuditJson(payload.operation.actor) !==
+        canonicalAuditJson(operation.actor) ||
+      canonicalAuditJson(payload.operation.initiator ?? null) !==
+        canonicalAuditJson(operation.initiator ?? null) ||
+      (payload.operation.correlationId ?? null) !==
+        (operation.correlationId ?? null) ||
+      (payload.operation.causationId ?? null) !==
+        (operation.causationId ?? null)
+    )
+      throw new Error('Calendar matching intent payload mismatch');
+  }
+
+  private async releaseCalendarImportMatchingIntentAfterError(
+    workspaceId: string,
+    intentId: string,
+    error: unknown,
+    incrementMaxAttemptFailure: boolean,
+  ): Promise<void> {
+    const reason =
+      error instanceof Error && error.message
+        ? error.message
+        : String(error ?? 'Calendar matching failed');
+    try {
+      await this.executeCoreIntentQuery(
+        'UPDATE core."deferredWorkspaceMigrationAction" SET status=CASE WHEN $4::boolean AND attempts >= $5 THEN \'FAILED\' ELSE \'PENDING\' END,"startedAt"=NULL,"lastError"=$6,"updatedAt"=now() WHERE id=$1 AND "workspaceId"=$2 AND name=$3 AND status=\'IN_PROGRESS\' AND NOT (payload ? \'unsafeOutcome\')',
+        [
+          intentId,
+          workspaceId,
+          CALENDAR_IMPORT_MATCHING_INTENT_NAME,
+          incrementMaxAttemptFailure,
+          DEFERRED_WORKSPACE_MIGRATION_ACTION_MAX_ATTEMPTS,
+          reason,
+        ],
+      );
+    } catch {
+      return;
+    }
+  }
+
+  private async fenceUnsafeCalendarImportMatchingIntent(
+    workspaceId: string,
+    intentId: string,
+    error: unknown,
+  ): Promise<void> {
+    const reason =
+      error instanceof Error && error.message
+        ? error.message
+        : String(error ?? 'NativeTransactionOutcomeUnknownError');
+    try {
+      await this.executeCoreIntentQuery(
+        'UPDATE core."deferredWorkspaceMigrationAction" SET status=\'FAILED\',"startedAt"=NULL,"lastError"=$4,payload=jsonb_set(payload,\'{unsafeOutcome}\',$5::jsonb,true),"updatedAt"=now() WHERE id=$1 AND "workspaceId"=$2 AND name=$3',
+        [
+          intentId,
+          workspaceId,
+          CALENDAR_IMPORT_MATCHING_INTENT_NAME,
+          reason,
+          JSON.stringify({ reason }),
+        ],
+      );
+    } catch {
+      return;
+    }
   }
 
   public async rematchCalendarParticipantsWithAudit({
@@ -995,6 +1332,7 @@ export class MatchParticipantService<
     operation: CrmAuditOperation,
     rootIds: string[],
     participantIds: string[],
+    intentControl?: CalendarMatchingIntentControl,
   ): Promise<CalendarMatchingState> {
     const context = getIssuedNativeCleanupMetadata(scope);
     if (
@@ -1039,6 +1377,77 @@ export class MatchParticipantService<
     );
     if (!workspace || workspace.deletedAt !== null)
       throw new Error('Calendar matching requires active workspace');
+    let intentState: CalendarMatchingState['intent'];
+    if (intentControl !== undefined) {
+      const intentRows = await scope.executeRawQuery(
+        'SELECT id,"workspaceId","applicationUniversalIdentifier",name,payload,position,"runByVersion",status,attempts,"lastError","startedAt" FROM core."deferredWorkspaceMigrationAction" WHERE id=$1 AND "workspaceId"=$2 AND name=$3 FOR UPDATE',
+        [
+          intentControl.intentId,
+          scope.workspaceId,
+          CALENDAR_IMPORT_MATCHING_INTENT_NAME,
+        ],
+      );
+      if (
+        intentRows.length !== 1 ||
+        intentRows[0]?.id !== intentControl.intentId ||
+        intentRows[0]?.workspaceId !== scope.workspaceId ||
+        intentRows[0]?.applicationUniversalIdentifier !==
+          TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER ||
+        intentRows[0]?.name !== CALENDAR_IMPORT_MATCHING_INTENT_NAME ||
+        intentRows[0]?.status !== 'IN_PROGRESS'
+      )
+        throw new Error('Calendar matching intent missing or not in progress');
+      const intentPayload = captureCalendarImportMatchingIntentPayload(
+        intentRows[0].payload,
+      );
+      this.verifyClaimedCalendarIntentPayload(
+        intentPayload,
+        intentControl.operation,
+        intentControl.participantIds,
+        intentControl.eventIds,
+      );
+      let recoveryAuthoritySnapshot:
+        | {
+            account: Record<string, unknown>;
+            channel: Record<string, unknown>;
+          }
+        | undefined;
+      if (intentControl.isRecoveryReplay) {
+        const [account] = await scope.executeRawQuery(
+          'SELECT id,"workspaceId",provider,"applicationId","connectionProviderId","archivedAt"::text AS "archivedAt" FROM core."connectedAccount" WHERE id=$1 AND "workspaceId"=$2 FOR SHARE',
+          [intentPayload.authority.connectedAccountId, scope.workspaceId],
+        );
+        const [channel] = await scope.executeRawQuery(
+          'SELECT id,"workspaceId","connectedAccountId","isSyncEnabled" FROM core."calendarChannel" WHERE id=$1 AND "workspaceId"=$2 FOR SHARE',
+          [intentPayload.authority.channelId, scope.workspaceId],
+        );
+        if (
+          !account ||
+          !channel ||
+          String(channel.connectedAccountId).toLowerCase() !==
+            intentPayload.authority.connectedAccountId ||
+          account.provider === 'app' ||
+          account.archivedAt !== null ||
+          channel.isSyncEnabled !== true ||
+          (
+            await findOmniOwnedConnectedAccountIds(scope, scope.workspaceId, [
+              intentPayload.authority.connectedAccountId,
+            ])
+          ).size > 0
+        )
+          throw new Error('Calendar matching recovery channel unavailable');
+        recoveryAuthoritySnapshot = { account, channel };
+      }
+      intentState = {
+        intentId: intentControl.intentId,
+        isRecoveryReplay: intentControl.isRecoveryReplay,
+        payload: intentPayload,
+        completed: false,
+        ...(recoveryAuthoritySnapshot === undefined
+          ? {}
+          : { recoveryAuthoritySnapshot }),
+      };
+    }
     // Freeze candidate absence as well as rows. No provider or queue work occurs under these locks.
     await scope.executeRawQuery(
       'LOCK TABLE ' +
@@ -1091,6 +1500,7 @@ export class MatchParticipantService<
       memberIds: [],
       originalSourceIds: new Map(),
       sources: new Map(),
+      ...(intentState === undefined ? {} : { intent: intentState }),
       audit: new CrmAuditTransactionContext(
         createCrmAuditWorkspaceExecutor(scope),
         operation,
@@ -1271,6 +1681,60 @@ export class MatchParticipantService<
         )
       )
         throw new Error('Calendar matching graph effects mismatch');
+    if (state.intent !== undefined) {
+      if (state.intent.recoveryAuthoritySnapshot !== undefined) {
+        const [account] = await state.scope.executeRawQuery(
+          'SELECT id,"workspaceId",provider,"applicationId","connectionProviderId","archivedAt"::text AS "archivedAt" FROM core."connectedAccount" WHERE id=$1 AND "workspaceId"=$2',
+          [
+            state.intent.payload.authority.connectedAccountId,
+            state.scope.workspaceId,
+          ],
+        );
+        const [channel] = await state.scope.executeRawQuery(
+          'SELECT id,"workspaceId","connectedAccountId","isSyncEnabled" FROM core."calendarChannel" WHERE id=$1 AND "workspaceId"=$2',
+          [state.intent.payload.authority.channelId, state.scope.workspaceId],
+        );
+        if (
+          canonicalAuditJson(account ?? null) !==
+            canonicalAuditJson(
+              state.intent.recoveryAuthoritySnapshot.account,
+            ) ||
+          canonicalAuditJson(channel ?? null) !==
+            canonicalAuditJson(
+              state.intent.recoveryAuthoritySnapshot.channel,
+            ) ||
+          (
+            await findOmniOwnedConnectedAccountIds(
+              state.scope,
+              state.scope.workspaceId,
+              [state.intent.payload.authority.connectedAccountId],
+            )
+          ).size > 0
+        )
+          throw new Error('Calendar matching recovery authority changed');
+      }
+      const intentRows = await state.scope.executeRawQuery(
+        'SELECT id,"workspaceId","applicationUniversalIdentifier",name,payload,status FROM core."deferredWorkspaceMigrationAction" WHERE id=$1',
+        [state.intent.intentId],
+      );
+      if (state.intent.completed) {
+        if (intentRows.length !== 0)
+          throw new Error('Calendar matching intent remained after completion');
+      } else {
+        if (
+          intentRows.length !== 1 ||
+          intentRows[0]?.id !== state.intent.intentId ||
+          intentRows[0]?.workspaceId !== state.scope.workspaceId ||
+          intentRows[0]?.applicationUniversalIdentifier !==
+            TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER ||
+          intentRows[0]?.name !== CALENDAR_IMPORT_MATCHING_INTENT_NAME ||
+          intentRows[0]?.status !== 'IN_PROGRESS' ||
+          canonicalAuditJson(intentRows[0]?.payload) !==
+            canonicalAuditJson(state.intent.payload)
+        )
+          throw new Error('Calendar matching intent changed during execution');
+      }
+    }
   }
 
   private matchingColumns(
@@ -1546,6 +2010,22 @@ export class MatchParticipantService<
           },
         });
       }
+    }
+    if (state.intent !== undefined) {
+      const deletedIntent = await state.scope.executeRawQuery(
+        'DELETE FROM core."deferredWorkspaceMigrationAction" WHERE id=$1 AND "workspaceId"=$2 AND name=$3 RETURNING id',
+        [
+          state.intent.intentId,
+          state.scope.workspaceId,
+          CALENDAR_IMPORT_MATCHING_INTENT_NAME,
+        ],
+      );
+      if (
+        deletedIntent.length !== 1 ||
+        deletedIntent[0]?.id !== state.intent.intentId
+      )
+        throw new Error('Calendar matching intent completion delete failed');
+      state.intent.completed = true;
     }
     await state.audit.flush();
     await state.scope.executeRawQuery('SET CONSTRAINTS ALL IMMEDIATE');

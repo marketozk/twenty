@@ -36,12 +36,19 @@ const build = (autoCreate = true) => {
   const match = jest.fn().mockImplementation(async () => {
     trace.push('match');
   });
+  const reconcile = jest.fn().mockResolvedValue({
+    processedIntents: 1,
+    completedIntents: 1,
+  });
   const service = new CalendarEventParticipantService(
     {
       executeInWorkspaceContext: async (work: () => Promise<unknown>) => work(),
       getRepository: () => ({ find }),
     } as never,
-    { matchCalendarImportParticipantsWithAudit: match } as never,
+    {
+      matchCalendarImportParticipantsWithAudit: match,
+      reconcileCalendarImportMatchingIntentsWithAudit: reconcile,
+    } as never,
     { add: enqueue } as never,
   );
   const input = {
@@ -82,6 +89,7 @@ const build = (autoCreate = true) => {
     find,
     enqueue,
     match,
+    reconcile,
     service,
     input,
     run,
@@ -213,3 +221,32 @@ it.each(['missing', 'foreign'] as const)(
     expect(f.match).not.toHaveBeenCalled();
   },
 );
+
+it('forwards a durable intentId into matchCalendarImportParticipantsWithAudit and delegates reconcileCalendarImportMatchingIntents', async () => {
+  const f = build();
+  const intentId = randomUUID();
+  await f.service.matchParticipantsAndEnqueueContactCreationJob({
+    ...f.input,
+    intentId,
+  } as never);
+  expect(f.match.mock.calls[0][0]).toEqual(
+    expect.objectContaining({
+      workspaceId: f.workspaceId,
+      participantIds: [f.participantId],
+      eventIds: [f.eventId],
+      intentId,
+    }),
+  );
+  const reconciled = await f.service.reconcileCalendarImportMatchingIntents({
+    workspaceId: f.workspaceId,
+    intentId,
+  });
+  expect(reconciled).toEqual({
+    processedIntents: 1,
+    completedIntents: 1,
+  });
+  expect(f.reconcile).toHaveBeenCalledWith({
+    workspaceId: f.workspaceId,
+    intentId,
+  });
+});

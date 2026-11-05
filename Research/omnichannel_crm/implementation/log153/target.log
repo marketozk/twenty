@@ -1,0 +1,54 @@
+[32m[Nest] 1  - [39m11/05/2026, 8:24:01 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggering message list fetch for workspace 087278f3-29af-4236-88bc-401db0a195e3 (all pending channels)[39m
+[32m[Nest] 1  - [39m11/05/2026, 8:24:01 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mFound 2 message channel(s) to process[39m
+[32m[Nest] 1  - [39m11/05/2026, 8:24:01 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggered fetch for message channel 55995baa-df25-45a2-af1b-785b3bd6df03[39m
+[32m[Nest] 1  - [39m11/05/2026, 8:24:01 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mSuccessfully triggered 1 message list fetch job(s)[39m
+[32m[Nest] 1  - [39m11/05/2026, 8:24:01 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggering message list fetch for workspace 087278f3-29af-4236-88bc-401db0a195e3 (all pending channels)[39m
+[32m[Nest] 1  - [39m11/05/2026, 8:24:01 AM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mFound 2 message channel(s) to process[39m
+[32m[Nest] 1  - [39m11/05/2026, 8:24:18 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel e1c131b8-2256-4cb9-b1c2-c6b3d5fa74a3, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/05/2026, 8:24:18 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel 8c99e856-5535-415d-a747-1560de73b664, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/05/2026, 8:24:18 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel 5080065b-a25d-4958-bbf2-28eb097431ad, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/05/2026, 8:24:18 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel 34b2d26c-3eaa-45fb-b080-5ee7f8a0bf95, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/05/2026, 8:24:19 AM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mDeferring 100000 calendar events to the import cron for calendar channel 19793d2f-3dd8-4bb1-95ce-0dbab00ccb3f[39m
+[32m[Nest] 1  - [39m11/05/2026, 8:24:20 AM [32m    LOG[39m [38;5;3m[MessagingMessageWebhookSyncService] [39m[32mSkipping webhook sync for message channel 51bef61e-a6dc-4af6-9ab8-f366f801f836, a sync is already in progress[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts (59.261 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts (29.891 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts (26.15 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/calendar-save-audit.postgres-spec.ts (13.677 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-import-recovery.postgres-spec.ts (7.827 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-recovery.postgres-spec.ts (15.303 s)
+[33m[Nest] 1  - [39m11/05/2026, 8:26:16 AM [33m   WARN[39m [38;5;3m[CreateCompanyAndPersonService] [39m[33mSkipping contact creation for connected account c65eb8ff-e525-47c6-809b-472270d7b706 in workspace fdaaec1b-683d-4ddd-b1c4-04b032de0c2d: userWorkspace bafa7a3d-9018-42bf-9858-a13644f4eb7a not found[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-contact-creation.postgres-spec.ts (8.795 s)
+[31m[Nest] 1  - [39m11/05/2026, 8:26:20 AM [31m  ERROR[39m [38;5;3m[CreateCalendarEventResolver] [39m[31mFailed to create calendar event: Error: identity unavailable[39m
+[31m[Nest] 1  - [39m11/05/2026, 8:26:20 AM [31m  ERROR[39m [38;5;3m[CreateCalendarEventResolver] [39m[31mFailed to create calendar event: Error: provider rejected[39m
+[31m[Nest] 1  - [39m11/05/2026, 8:26:20 AM [31m  ERROR[39m [38;5;3m[CreateCalendarEventTool] [39m[31mFailed to create calendar event: Error: Calendar creation requires authenticated tool audit identity[39m
+[31m[Nest] 1  - [39m11/05/2026, 8:26:20 AM [31m  ERROR[39m [38;5;3m[CreateCalendarEventTool] [39m[31mFailed to create calendar event: Error: Calendar creation requires authenticated tool audit identity[39m
+[31m[Nest] 1  - [39m11/05/2026, 8:26:20 AM [31m  ERROR[39m [38;5;3m[CreateCalendarEventTool] [39m[31mFailed to create calendar event: Error: Calendar creation requires authenticated tool audit identity[39m
+[31m[Nest] 1  - [39m11/05/2026, 8:26:20 AM [31m  ERROR[39m [38;5;3m[CreateCalendarEventTool] [39m[31mFailed to create calendar event: Error: Calendar creation requires authenticated tool audit identity[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-save-entrypoints.spec.ts
+[32m[Nest] 1  - [39m11/05/2026, 8:26:20 AM [32m    LOG[39m [38;5;3m[CreateCalendarEventTool] [39m[32mCalendar event created.[39m
+[32m[Nest] 1  - [39m11/05/2026, 8:26:20 AM [32m    LOG[39m [38;5;3m[CreateCalendarEventTool] [39m[32mCalendar event created.[39m
+[32m[Nest] 1  - [39m11/05/2026, 8:26:20 AM [32m    LOG[39m [38;5;3m[CreateCalendarEventTool] [39m[32mCalendar event created.[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-settings-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-sync-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-sweep-entrypoints.spec.ts
+[95m[Nest] 1  - [39m11/05/2026, 8:26:21 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 45549b09-4a2f-49e4-a47a-915228b82430 Cleaning up calendar channel event associations for channel 83463bdd-fc52-4466-929d-c09cf59d4647[39m
+[95m[Nest] 1  - [39m11/05/2026, 8:26:21 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: f4296cef-67f1-40a6-8bde-bcbec13f098a Cleaning up calendar channel event associations for channel 01b9f534-2bdb-4ebc-ab79-29bc49101d1c[39m
+[95m[Nest] 1  - [39m11/05/2026, 8:26:21 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 9f0f6589-8704-49cd-b307-82a26d0443b0 Cleaning up calendar channel event associations for channel 5c239011-74fe-48e1-8bfc-6acd71119e9f[39m
+[95m[Nest] 1  - [39m11/05/2026, 8:26:21 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: a4b601e8-2fc7-4c4a-8e01-9c8ac3e58961 Cleaning up calendar channel event associations for channel 3fe0521d-4ffb-4e36-a342-42b90c460fae[39m
+[95m[Nest] 1  - [39m11/05/2026, 8:26:21 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 3e09c6ea-1831-48eb-b4b2-72243d4439aa Cleaning up calendar channel event associations for channel 90c3d488-5bf6-4bdb-81c4-8e3f81ceb9c3[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-matching-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-cleanup-entrypoints.spec.ts
+[95m[Nest] 1  - [39m11/05/2026, 8:26:22 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 4a822f08-ee09-4182-993c-61ec3f8a1f69 Cleaning up calendar channel event associations for channel d85a18c1-25ec-440a-b997-99ce2aa36fb5[39m
+[95m[Nest] 1  - [39m11/05/2026, 8:26:22 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: fc01e023-93a0-4386-95b8-bbd6cfef18d5 Cleaning up calendar channel event associations for channel cce4a81e-f382-4d3f-a84e-25d50be71ee9[39m
+[95m[Nest] 1  - [39m11/05/2026, 8:26:22 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 03d5b7c9-1801-4a87-a73a-7343ceef6c08 Cleaning up calendar channel event associations for channel 26e2f2c2-ee38-406b-a964-376e528b596b[39m
+[95m[Nest] 1  - [39m11/05/2026, 8:26:22 AM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: ca9d5d7e-98f4-4982-8f91-53e28fda7646 Cleaning up calendar channel event associations for channel caa0f4c4-3a0a-4e6d-8675-4423ff2b0e51[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-rematch-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-contact-creation-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/calendar-save-proof.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-target-enrichment-entrypoints.spec.ts
+
+Test Suites: 17 passed, 17 total
+Tests:       711 passed, 711 total
+Snapshots:   0 total
+Time:        163.942 s
+Ran all test suites matching /crm-audit-calendar-import-recovery|crm-audit-calendar-matching-entrypoints|calendar-save-audit|calendar-import-matching-audit|calendar-save-proof|crm-audit-calendar-save-entrypoints|crm-audit-calendar-rematch-entrypoints|crm-audit-calendar-target-enrichment-entrypoints|crm-audit-calendar-cleanup-entrypoints|crm-audit-calendar-sweep-entrypoints|crm-audit-calendar-sync-entrypoints|crm-audit-calendar-settings-entrypoints|crm-audit-contact-creation|crm-audit-message-import-recovery|ordinary-native-sync-run|omni-sync-status/i.

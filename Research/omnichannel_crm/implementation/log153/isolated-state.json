@@ -1,0 +1,17 @@
+{
+  "name": "twenty-rob764-3e371e20ab394c2b",
+  "remote": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b",
+  "source": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "database": "twenty_rob764_test_3e371e20ab394c2b",
+  "nativeDatabase": "twenty_rob764_test_986821205b15434c",
+  "network": "twenty-rob764-3e371e20ab394c2b-net",
+  "tools": "/opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools",
+  "files": [
+    "src/engine/core-modules/crm-audit/calendar-save-proof.ts",
+    "src/modules/calendar/calendar-event-import-manager/services/calendar-save-events.service.ts",
+    "src/modules/calendar/calendar-event-participant-manager/services/calendar-event-participant.service.ts",
+    "src/modules/match-participant/match-participant.service.ts",
+    "test/fork-migration/crm-audit-calendar-matching-entrypoints.spec.ts",
+    "test/fork-migration/crm-audit-calendar-import-recovery.postgres-spec.ts"
+  ]
+}

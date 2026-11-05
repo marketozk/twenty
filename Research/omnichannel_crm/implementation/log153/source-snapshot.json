@@ -1,0 +1,12 @@
+{
+  "baseCommit": "e75e4fb5f6080faa4faee27d7621d74e66462869",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/calendar-save-proof.ts": "4665ca43ba8557d036218afb2cc16867f9787d92623b57a3716447bb1186b8e2",
+    "packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-save-events.service.ts": "d3adf394eb62290175e16ec02e160fba5a77df4c88ab4a082943df2124f03424",
+    "packages/twenty-server/src/modules/calendar/calendar-event-participant-manager/services/calendar-event-participant.service.ts": "39c8b55fe1ae6d881c346e5cf1147b0ad870cfd9158e887de4ea897b191d4589",
+    "packages/twenty-server/src/modules/match-participant/match-participant.service.ts": "d1360fb3af425c33edfcdb02c706db876ff25e63d2e75311d4e3d437768b0108",
+    "packages/twenty-server/test/fork-migration/crm-audit-calendar-matching-entrypoints.spec.ts": "8058418eab6c7a871afac9358cbd37bb7538fc0df3f3de65fb8db05e3fb9d68a",
+    "packages/twenty-server/test/fork-migration/crm-audit-calendar-import-recovery.postgres-spec.ts": "dac76dc0d6729335060cdf0fa09462b5fe175748736f6d2b3b291267947f69ce"
+  },
+  "uploadedSourceHashesVerified": true
+}
