@@ -325,11 +325,13 @@ export class RoleResolver {
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Args('upsertObjectPermissionsInput')
     upsertObjectPermissionsInput: UpsertObjectPermissionsInput,
+    @Context() context: { req: Request },
   ): Promise<ObjectPermissionDTO[]> {
     const flatObjectPermissions =
       await this.objectPermissionService.upsertObjectPermissions({
         workspaceId: workspace.id,
         input: upsertObjectPermissionsInput,
+        auditIdentity: roleAuditIdentityFromRequest(context.req),
       });
     return flatObjectPermissions.map(
       fromFlatObjectPermissionToObjectPermissionDto,
@@ -354,11 +356,21 @@ export class RoleResolver {
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Args('upsertPermissionFlagsInput')
     upsertPermissionFlagsInput: UpsertPermissionFlagsInput,
+    @Context() context: { req: Request },
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    actingUserWorkspaceId?: string,
   ): Promise<RolePermissionFlagDTO[]> {
+    const auditIdentity = roleAuditIdentityFromRequest(context.req);
     const flatRolePermissionFlags =
       await this.rolePermissionFlagService.upsertPermissionFlags({
         workspaceId: workspace.id,
         input: upsertPermissionFlagsInput,
+        auditIdentity,
+        actingUserWorkspaceId,
+        actingRoleIds: await this.getActingRoleIds({
+          workspaceId: workspace.id,
+          actingUserWorkspaceId,
+        }),
       });
     const { flatPermissionFlagMaps } =
       await this.workspaceManyOrAllFlatEntityMapsCacheService.getOrRecomputeManyOrAllFlatEntityMaps(
@@ -394,11 +406,13 @@ export class RoleResolver {
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Args('upsertFieldPermissionsInput')
     upsertFieldPermissionsInput: UpsertFieldPermissionsInput,
+    @Context() context: { req: Request },
   ): Promise<FieldPermissionDTO[]> {
     const flatFieldPermissions =
       await this.fieldPermissionService.upsertFieldPermissions({
         workspaceId: workspace.id,
         input: upsertFieldPermissionsInput,
+        auditIdentity: roleAuditIdentityFromRequest(context.req),
       });
     return flatFieldPermissions.map(
       fromFlatFieldPermissionToFieldPermissionDto,
@@ -423,11 +437,13 @@ export class RoleResolver {
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Args('input')
     input: UpsertRowLevelPermissionPredicatesInput,
+    @Context() context: { req: Request },
   ): Promise<UpsertRowLevelPermissionPredicatesResultDTO> {
     return this.rowLevelPermissionPredicateService.upsertRowLevelPermissionPredicates(
       {
         workspaceId: workspace.id,
         input,
+        auditIdentity: roleAuditIdentityFromRequest(context.req),
       },
     );
   }

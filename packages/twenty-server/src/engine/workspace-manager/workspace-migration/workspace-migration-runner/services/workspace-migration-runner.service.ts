@@ -10,6 +10,10 @@ import {
   runAuditedRoleAssignment,
 } from 'src/engine/core-modules/crm-audit/role-assignment-audit';
 import {
+  getRolePermissionAudit,
+  runAuditedRolePermissionUpsert,
+} from 'src/engine/core-modules/crm-audit/role-permission-audit';
+import {
   getRoleMutationAudit,
   runAuditedRoleMutation,
 } from 'src/engine/core-modules/crm-audit/role-update-audit';
@@ -88,7 +92,9 @@ export class WorkspaceMigrationRunnerService {
         flatEntityMapsKey === 'flatRoleTargetMaps' ||
         flatEntityMapsKey === 'flatObjectPermissionMaps' ||
         flatEntityMapsKey === 'flatFieldPermissionMaps' ||
-        flatEntityMapsKey === 'flatRolePermissionFlagMaps',
+        flatEntityMapsKey === 'flatRolePermissionFlagMaps' ||
+        flatEntityMapsKey === 'flatRowLevelPermissionPredicateMaps' ||
+        flatEntityMapsKey === 'flatRowLevelPermissionPredicateGroupMaps',
     );
 
     const hasWorkflowVersionsChanged = allFlatEntityMapsKeys.includes(
@@ -380,9 +386,12 @@ export class WorkspaceMigrationRunnerService {
 
     const roleAudit = getRoleMutationAudit(workspaceId);
     const assignmentAudit = getRoleAssignmentAudit(workspaceId);
-    if (roleAudit && assignmentAudit)
+    const permissionAudit = getRolePermissionAudit(workspaceId);
+    if (
+      [roleAudit, assignmentAudit, permissionAudit].filter(Boolean).length > 1
+    )
       throw new Error('Conflicting metadata audit owners');
-    if (roleAudit || assignmentAudit) {
+    if (roleAudit || assignmentAudit || permissionAudit) {
       try {
         const mappings = {
           application: flatApplication,
@@ -390,6 +399,30 @@ export class WorkspaceMigrationRunnerService {
           targets:
             allFlatEntityMaps.flatRoleTargetMaps?.byUniversalIdentifier ?? {},
           agents: allFlatEntityMaps.flatAgentMaps?.byUniversalIdentifier ?? {},
+          permissionFlags:
+            allFlatEntityMaps.flatPermissionFlagMaps?.byUniversalIdentifier ??
+            {},
+          rolePermissionFlags:
+            allFlatEntityMaps.flatRolePermissionFlagMaps
+              ?.byUniversalIdentifier ?? {},
+          objectMetadatas:
+            allFlatEntityMaps.flatObjectMetadataMaps?.byUniversalIdentifier ??
+            {},
+          fieldMetadatas:
+            allFlatEntityMaps.flatFieldMetadataMaps?.byUniversalIdentifier ??
+            {},
+          objectPermissions:
+            allFlatEntityMaps.flatObjectPermissionMaps?.byUniversalIdentifier ??
+            {},
+          fieldPermissions:
+            allFlatEntityMaps.flatFieldPermissionMaps?.byUniversalIdentifier ??
+            {},
+          rowLevelPermissionPredicates:
+            allFlatEntityMaps.flatRowLevelPermissionPredicateMaps
+              ?.byUniversalIdentifier ?? {},
+          rowLevelPermissionPredicateGroups:
+            allFlatEntityMaps.flatRowLevelPermissionPredicateGroupMaps
+              ?.byUniversalIdentifier ?? {},
         };
         const execute = async (queryRunner: QueryRunner) => {
           const metadataEvents: MetadataEvent[] = [];
@@ -461,13 +494,21 @@ export class WorkspaceMigrationRunnerService {
               execute,
               mappings,
             )
-          : await runAuditedRoleAssignment(
-              this.coreDataSource,
-              assignmentAudit!,
-              actions,
-              mappings,
-              execute,
-            );
+          : assignmentAudit
+            ? await runAuditedRoleAssignment(
+                this.coreDataSource,
+                assignmentAudit,
+                actions,
+                mappings,
+                execute,
+              )
+            : await runAuditedRolePermissionUpsert(
+                this.coreDataSource,
+                permissionAudit!,
+                actions,
+                mappings,
+                execute,
+              );
       } finally {
         // A lost COMMIT acknowledgement can still have changed permissions.
         try {

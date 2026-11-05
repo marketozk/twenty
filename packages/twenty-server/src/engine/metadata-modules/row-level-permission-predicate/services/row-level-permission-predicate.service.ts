@@ -7,6 +7,12 @@ import { v4 } from 'uuid';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
+import { withRowLevelPermissionUpsertAudit } from 'src/engine/core-modules/crm-audit/role-permission-audit';
+import {
+  captureRoleAuditIdentity,
+  captureRoleAuditOperation,
+  type RoleUpdateAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { BillingEntitlementKey } from 'src/engine/core-modules/billing/enums/billing-entitlement-key.enum';
 import { BillingService } from 'src/engine/core-modules/billing/services/billing.service';
 import { EnterprisePlanService } from 'src/engine/core-modules/enterprise/services/enterprise-plan.service';
@@ -83,16 +89,34 @@ export class RowLevelPermissionPredicateService {
       .map(fromFlatRowLevelPermissionPredicateToDto);
   }
 
-  async upsertRowLevelPermissionPredicates({
-    input,
-    workspaceId,
-  }: {
+  async upsertRowLevelPermissionPredicates(args: {
     input: UpsertRowLevelPermissionPredicatesInput;
     workspaceId: string;
+    auditIdentity: RoleUpdateAuditIdentity;
   }): Promise<{
     predicates: RowLevelPermissionPredicateDTO[];
     predicateGroups: RowLevelPermissionPredicateGroupDTO[];
   }> {
+    const { workspaceId } = args;
+    const input: UpsertRowLevelPermissionPredicatesInput = {
+      roleId: args.input.roleId,
+      objectMetadataId: args.input.objectMetadataId,
+      predicates: args.input.predicates.map((predicate) => ({
+        ...predicate,
+        id: predicate.id ?? v4(),
+        value:
+          predicate.value === undefined
+            ? undefined
+            : structuredClone(predicate.value),
+      })),
+      predicateGroups: args.input.predicateGroups.map((group) => ({
+        ...group,
+        id: group.id ?? v4(),
+      })),
+    };
+    const capturedIdentity = captureRoleAuditIdentity(args.auditIdentity);
+    captureRoleAuditOperation(workspaceId, capturedIdentity);
+
     await this.hasRowLevelPermissionFeatureOrThrow(workspaceId);
 
     const { roleId, objectMetadataId, predicates, predicateGroups } = input;
@@ -191,15 +215,30 @@ export class RowLevelPermissionPredicateService {
         flatFieldMetadataMaps,
       });
 
-    await this.runUpsertMigration({
-      workspaceId,
-      predicatesToCreate,
-      predicatesToUpdate,
-      predicatesToDelete,
-      groupsToCreate,
-      groupsToUpdate,
-      groupsToDelete,
-    });
+    await withRowLevelPermissionUpsertAudit(
+      {
+        workspaceId,
+        roleId,
+        objectMetadataId,
+        desiredGroupIds: [...groupsToCreate, ...groupsToUpdate].map(
+          (group) => group.id,
+        ),
+        desiredPredicateIds: [...predicatesToCreate, ...predicatesToUpdate].map(
+          (predicate) => predicate.id,
+        ),
+      },
+      capturedIdentity,
+      () =>
+        this.runUpsertMigration({
+          workspaceId,
+          predicatesToCreate,
+          predicatesToUpdate,
+          predicatesToDelete,
+          groupsToCreate,
+          groupsToUpdate,
+          groupsToDelete,
+        }),
+    );
 
     const {
       flatRowLevelPermissionPredicateMaps: updatedPredicateMaps,

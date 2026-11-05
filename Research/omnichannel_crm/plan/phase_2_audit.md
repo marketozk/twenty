@@ -110,8 +110,14 @@ owner с единым аудитом в одной strict/exclusive транза
 ролей (`RoleService.deleteRole`, `RoleResolver.deleteOneRole`, `DeleteRoleTool.execute`) с
 проверкой перепривязки активных участников, агентов и API-ключей к `defaultRoleId`, а также
 назначение и снятие ролей агентов (`AiAgentRoleService`) и API-ключей (`ApiKeyRoleService`).
-Upsert прав роли и durable cache открыты.
-Далее — [audited role permission upserts](../implementation/log156/next-boundary.md).
+LOG157 закрывает атомарный аудит всех четырёх поверхностей изменения прав роли
+(`RolePermissionFlagService.upsertPermissionFlags`, `ObjectPermissionService.upsertObjectPermissions`,
+`FieldPermissionService.upsertFieldPermissions`, `RowLevelPermissionPredicateService.upsertRowLevelPermissionPredicates`,
+`UpsertObjectPermissionsTool`, `UpsertRowLevelPermissionRulesTool`) с блокировками БД,
+защитой от самоблокировки, проверкой зеркальных полей связей, защитой от `ON DELETE CASCADE`
+и редактированием литерального фильтра `value`.
+Жизненный цикл API-ключей и durable cache открыты.
+Далее — [audited API-key lifecycle](../implementation/log157/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

@@ -100,6 +100,55 @@ const CATALOG: Record<
     values: ['roleId', 'userWorkspaceId', 'agentId', 'apiKeyId'],
     redacted: [],
   },
+  rolePermissionFlag: {
+    values: ['roleId', 'permissionFlagId'],
+    redacted: [],
+  },
+  objectPermission: {
+    values: [
+      'roleId',
+      'objectMetadataId',
+      'canReadObjectRecords',
+      'canUpdateObjectRecords',
+      'canSoftDeleteObjectRecords',
+      'canDestroyObjectRecords',
+    ],
+    redacted: [],
+  },
+  fieldPermission: {
+    values: [
+      'roleId',
+      'objectMetadataId',
+      'fieldMetadataId',
+      'canReadFieldValue',
+      'canUpdateFieldValue',
+    ],
+    redacted: [],
+  },
+  rowLevelPermissionPredicateGroup: {
+    values: [
+      'roleId',
+      'objectMetadataId',
+      'parentRowLevelPermissionPredicateGroupId',
+      'logicalOperator',
+      'positionInRowLevelPermissionPredicateGroup',
+    ],
+    redacted: ['deletedAt'],
+  },
+  rowLevelPermissionPredicate: {
+    values: [
+      'roleId',
+      'objectMetadataId',
+      'fieldMetadataId',
+      'operand',
+      'subFieldName',
+      'workspaceMemberFieldMetadataId',
+      'workspaceMemberSubFieldName',
+      'rowLevelPermissionPredicateGroupId',
+      'positionInRowLevelPermissionPredicateGroup',
+    ],
+    redacted: ['value', 'deletedAt'],
+  },
   role: {
     values: [
       'canUpdateAllSettings',
@@ -425,6 +474,11 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   coreUser: ['update'],
   role: ['create', 'update', 'delete'],
   roleTarget: ['create', 'delete'],
+  rolePermissionFlag: ['create', 'delete'],
+  objectPermission: ['create', 'update', 'delete'],
+  fieldPermission: ['create', 'update', 'delete'],
+  rowLevelPermissionPredicateGroup: ['create', 'update', 'delete'],
+  rowLevelPermissionPredicate: ['create', 'update', 'delete'],
   userWorkspace: ['update', 'delete'],
   applicationAuthorization: ['delete'],
   userApplicationVariableValue: ['delete'],

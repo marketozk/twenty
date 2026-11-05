@@ -4,6 +4,12 @@ import { msg } from '@lingui/core/macro';
 import { isDefined } from 'twenty-shared/utils';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
+import { withObjectPermissionUpsertAudit } from 'src/engine/core-modules/crm-audit/role-permission-audit';
+import {
+  captureRoleAuditIdentity,
+  captureRoleAuditOperation,
+  type RoleUpdateAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
 import { type FlatObjectPermission } from 'src/engine/metadata-modules/flat-object-permission/types/flat-object-permission.type';
@@ -30,13 +36,31 @@ export class ObjectPermissionService {
     private readonly applicationService: ApplicationService,
   ) {}
 
-  public async upsertObjectPermissions({
-    workspaceId,
-    input,
-  }: {
+  public async upsertObjectPermissions(args: {
     workspaceId: string;
     input: UpsertObjectPermissionsInput;
+    auditIdentity?: RoleUpdateAuditIdentity;
   }): Promise<FlatObjectPermission[]> {
+    const { workspaceId } = args;
+    const input: UpsertObjectPermissionsInput = {
+      roleId: args.input.roleId,
+      objectPermissions: args.input.objectPermissions.map((item) => ({
+        objectMetadataId: item.objectMetadataId,
+        canReadObjectRecords: item.canReadObjectRecords,
+        canUpdateObjectRecords: item.canUpdateObjectRecords,
+        canSoftDeleteObjectRecords: item.canSoftDeleteObjectRecords,
+        canDestroyObjectRecords: item.canDestroyObjectRecords,
+      })),
+    };
+    const isAudited =
+      Object.hasOwn(args, 'auditIdentity') || args.auditIdentity !== undefined;
+    const capturedIdentity = isAudited
+      ? captureRoleAuditIdentity(args.auditIdentity!)
+      : undefined;
+    if (capturedIdentity) {
+      captureRoleAuditOperation(workspaceId, capturedIdentity);
+    }
+
     const { flatObjectPermissionMaps, flatRoleMaps, flatObjectMetadataMaps } =
       await this.workspaceManyOrAllFlatEntityMapsCacheService.getOrRecomputeManyOrAllFlatEntityMaps(
         {
@@ -205,8 +229,8 @@ export class ObjectPermissionService {
       return unchanged;
     }
 
-    const buildAndRunResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+    const executeMigration = () =>
+      this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
         {
           allFlatEntityOperationByMetadataName: {
             objectPermission: {
@@ -220,6 +244,18 @@ export class ObjectPermissionService {
           applicationUniversalIdentifier: flatApplication.universalIdentifier,
         },
       );
+
+    const buildAndRunResult = capturedIdentity
+      ? await withObjectPermissionUpsertAudit(
+          {
+            workspaceId,
+            roleId: input.roleId,
+            desiredObjectMetadataIds: [...desiredByObjectMetadataId.keys()],
+          },
+          capturedIdentity,
+          executeMigration,
+        )
+      : await executeMigration();
 
     if (buildAndRunResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

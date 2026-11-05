@@ -4375,3 +4375,37 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 b5a12dac-ef8c-4e5e-81d0-1c4ca686e3fc и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log156/publication.json).
 Следующий участок — аудит upsert флагов прав, объектных/полевых прав и предикатов строкового доступа роли по LOG157.
+
+## LOG157 — аудит upsert флагов прав, объектных/полевых прав и предикатов строкового доступа роли
+
+05.11.2026 зафиксированы [дизайн](implementation/log157/design.md),
+[независимое ревью](implementation/log157/design-review.md) и
+[план проверок](implementation/log157/test-research.md).
+В `crm-audit.types.ts` и `crm-audit-transaction-context.ts` добавлены пять
+административных видов ресурсов (`rolePermissionFlag`, `objectPermission`,
+`fieldPermission`, `rowLevelPermissionPredicateGroup`,
+`rowLevelPermissionPredicate`) с редактированием `value` и `deletedAt` в
+предикатах строкового доступа. В `role-permission-audit.ts` и
+`WorkspaceMigrationRunnerService` добавлены `withRolePermissionFlagUpsertAudit`,
+`withObjectPermissionUpsertAudit`, `withFieldPermissionUpsertAudit`,
+`withRowLevelPermissionUpsertAudit` и `runAuditedRolePermissionUpsert`, а также
+сброс кэша `rolesPermissions` при изменении `flatRowLevelPermissionPredicateMaps`
+и `flatRowLevelPermissionPredicateGroupMaps`. Подключены
+`RolePermissionFlagService`, `ObjectPermissionService`, `FieldPermissionService`,
+`RowLevelPermissionPredicateService`, `RoleResolver`,
+`UpsertObjectPermissionsTool` и `UpsertRowLevelPermissionRulesTool`.
+
+05.11.2026 проверки LOG157 завершены. 3046 tests/102 suites PASS (678.027s). 128 targeted/4 suites PASS (9.811s), 11 unit/1 suite PASS (4.922s), 12 новых PostgreSQL случаев. 26 guard tests PASS, 10 migration checksums неизменны. Types 458/460 roots, baseline 250 / current 250 diagnostics, 0 новых/changed-code. Совпали 13 local/remote source hashes.
+
+Независимое ревью подтвердило изоляцию зависимостей Enterprise (проверка
+самоблокировки `ROLES` встроена в `RolePermissionFlagService` без нового ребра к
+`validate-role-mutation-does-not-lock-out-actor.util.ts`), разрешение
+сопоставлений `universalIdentifier -> id` до выполнения миграции, проверку
+зеркальных полей связей для `fieldPermission`, защиту от скрытого
+`ON DELETE CASCADE` на группах и предикатах строкового доступа, редактирование
+`value` и повторную проверку состояния после `audit.flush()`.
+
+[Результаты](implementation/log157/results.json), [ревью](implementation/log157/review.md),
+[следующий участок](implementation/log157/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

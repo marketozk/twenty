@@ -64,13 +64,18 @@ export class UpsertObjectPermissionsTool extends BaseTool<
 
   async execute({
     input,
-    context: { workspaceId },
+    context,
   }: ToolExecuteArgs<
     typeof upsertObjectPermissionsInputSchema
   >): Promise<ToolOutput> {
+    const { workspaceId } = context;
     const objectPermissions =
       await this.objectPermissionService.upsertObjectPermissions({
         workspaceId,
+        auditIdentity: {
+          auth: context.authContext!,
+          agentId: context.agentId,
+        },
         input: {
           roleId: input.roleId,
           objectPermissions: input.objectPermissions,

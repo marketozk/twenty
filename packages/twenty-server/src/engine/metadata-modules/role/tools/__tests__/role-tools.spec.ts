@@ -377,6 +377,7 @@ describe('Role tools', () => {
         services.objectPermissionService.upsertObjectPermissions,
       ).toHaveBeenCalledWith({
         workspaceId,
+        auditIdentity: { auth: context.authContext, agentId: undefined },
         input: {
           roleId: supportRoleId,
           objectPermissions: [objectPermission],
@@ -420,6 +421,7 @@ describe('Role tools', () => {
           .upsertRowLevelPermissionPredicates,
       ).toHaveBeenCalledWith({
         workspaceId,
+        auditIdentity: { auth: context.authContext, agentId: undefined },
         input: expect.objectContaining({
           roleId: supportRoleId,
           objectMetadataId: objectMetadataId,

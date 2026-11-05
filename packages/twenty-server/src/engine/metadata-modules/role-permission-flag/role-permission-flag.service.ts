@@ -4,6 +4,12 @@ import { msg } from '@lingui/core/macro';
 import { isDefined } from 'twenty-shared/utils';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
+import { withRolePermissionFlagUpsertAudit } from 'src/engine/core-modules/crm-audit/role-permission-audit';
+import {
+  captureRoleAuditIdentity,
+  captureRoleAuditOperation,
+  type RoleUpdateAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { type FlatRolePermissionFlag } from 'src/engine/metadata-modules/flat-role-permission-flag/types/flat-role-permission-flag.type';
 import { fromCreateRolePermissionFlagInputToFlatRolePermissionFlagToCreate } from 'src/engine/metadata-modules/flat-role-permission-flag/utils/from-create-role-permission-flag-input-to-flat-role-permission-flag-to-create.util';
@@ -24,13 +30,31 @@ export class RolePermissionFlagService {
     private readonly applicationService: ApplicationService,
   ) {}
 
-  public async upsertPermissionFlags({
-    workspaceId,
-    input,
-  }: {
+  public async upsertPermissionFlags(args: {
     workspaceId: string;
     input: UpsertPermissionFlagsInput;
+    actingRoleIds?: string[];
+    actingUserWorkspaceId?: string;
+    auditIdentity?: RoleUpdateAuditIdentity;
   }): Promise<FlatRolePermissionFlag[]> {
+    const { workspaceId } = args;
+    const input: UpsertPermissionFlagsInput = {
+      roleId: args.input.roleId,
+      permissionFlagKeys: [...args.input.permissionFlagKeys],
+    };
+    const actingRoleIds = args.actingRoleIds
+      ? [...args.actingRoleIds]
+      : undefined;
+    const actingUserWorkspaceId = args.actingUserWorkspaceId;
+    const isAudited =
+      Object.hasOwn(args, 'auditIdentity') || args.auditIdentity !== undefined;
+    const capturedIdentity = isAudited
+      ? captureRoleAuditIdentity(args.auditIdentity!)
+      : undefined;
+    if (capturedIdentity) {
+      captureRoleAuditOperation(workspaceId, capturedIdentity);
+    }
+
     const { flatPermissionFlagMaps, flatRolePermissionFlagMaps, flatRoleMaps } =
       await this.workspaceManyOrAllFlatEntityMapsCacheService.getOrRecomputeManyOrAllFlatEntityMaps(
         {
@@ -100,6 +124,23 @@ export class RolePermissionFlagService {
       ),
     );
 
+    const rolesPermissionFlagUniversalId = permissionFlagByKey.get(
+      'ROLES' as never,
+    )?.universalIdentifier;
+    if (
+      role.isEditable &&
+      actingRoleIds?.includes(role.id) &&
+      !role.canUpdateAllSettings &&
+      isDefined(rolesPermissionFlagUniversalId) &&
+      existingSet.has(rolesPermissionFlagUniversalId) &&
+      !inputSet.has(rolesPermissionFlagUniversalId)
+    ) {
+      throw new PermissionsException(
+        PermissionsExceptionMessage.CANNOT_REVOKE_OWN_SETTINGS_ACCESS,
+        PermissionsExceptionCode.CANNOT_REVOKE_OWN_SETTINGS_ACCESS,
+      );
+    }
+
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         { workspaceId },
@@ -134,8 +175,8 @@ export class RolePermissionFlagService {
       );
     }
 
-    const buildAndRunResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+    const executeMigration = () =>
+      this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
         {
           allFlatEntityOperationByMetadataName: {
             rolePermissionFlag: {
@@ -150,6 +191,20 @@ export class RolePermissionFlagService {
             workspaceCustomFlatApplication.universalIdentifier,
         },
       );
+
+    const buildAndRunResult = capturedIdentity
+      ? await withRolePermissionFlagUpsertAudit(
+          {
+            workspaceId,
+            roleId: input.roleId,
+            permissionFlagKeys: input.permissionFlagKeys,
+            actingRoleIds,
+            actingUserWorkspaceId,
+          },
+          capturedIdentity,
+          executeMigration,
+        )
+      : await executeMigration();
 
     if (buildAndRunResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

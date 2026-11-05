@@ -134,14 +134,19 @@ export class UpsertRowLevelPermissionRulesTool extends BaseTool<
 
   async execute({
     input,
-    context: { workspaceId },
+    context,
   }: ToolExecuteArgs<
     typeof upsertRowLevelPermissionRulesInputSchema
   >): Promise<ToolOutput> {
+    const { workspaceId } = context;
     const { predicates, predicateGroups } =
       await this.rowLevelPermissionPredicateService.upsertRowLevelPermissionPredicates(
         {
           workspaceId,
+          auditIdentity: {
+            auth: context.authContext!,
+            agentId: context.agentId,
+          },
           input: {
             roleId: input.roleId,
             objectMetadataId: input.objectMetadataId,

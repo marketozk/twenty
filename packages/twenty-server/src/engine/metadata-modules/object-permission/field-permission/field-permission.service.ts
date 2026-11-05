@@ -5,6 +5,12 @@ import { FieldMetadataType } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
+import { withFieldPermissionUpsertAudit } from 'src/engine/core-modules/crm-audit/role-permission-audit';
+import {
+  captureRoleAuditIdentity,
+  captureRoleAuditOperation,
+  type RoleUpdateAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { UserInputError } from 'src/engine/core-modules/graphql/utils/graphql-errors.util';
 import { RelationType } from 'src/engine/metadata-modules/field-metadata/interfaces/relation-type.interface';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
@@ -63,13 +69,30 @@ export class FieldPermissionService {
     private readonly applicationService: ApplicationService,
   ) {}
 
-  public async upsertFieldPermissions({
-    workspaceId,
-    input,
-  }: {
+  public async upsertFieldPermissions(args: {
     workspaceId: string;
     input: UpsertFieldPermissionsInput;
+    auditIdentity?: RoleUpdateAuditIdentity;
   }): Promise<FlatFieldPermission[]> {
+    const { workspaceId } = args;
+    const input: UpsertFieldPermissionsInput = {
+      roleId: args.input.roleId,
+      fieldPermissions: args.input.fieldPermissions.map((item) => ({
+        objectMetadataId: item.objectMetadataId,
+        fieldMetadataId: item.fieldMetadataId,
+        canReadFieldValue: item.canReadFieldValue,
+        canUpdateFieldValue: item.canUpdateFieldValue,
+      })),
+    };
+    const isAudited =
+      Object.hasOwn(args, 'auditIdentity') || args.auditIdentity !== undefined;
+    const capturedIdentity = isAudited
+      ? captureRoleAuditIdentity(args.auditIdentity!)
+      : undefined;
+    if (capturedIdentity) {
+      captureRoleAuditOperation(workspaceId, capturedIdentity);
+    }
+
     const [flatMapsForRoleObjectField, flatFieldPermissionMapsResult] =
       await Promise.all([
         this.workspaceManyOrAllFlatEntityMapsCacheService.getOrRecomputeManyOrAllFlatEntityMaps(
@@ -285,8 +308,47 @@ export class FieldPermissionService {
       );
     }
 
-    const buildAndRunResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+    const touchedFieldKeys = new Set<string>(inputFieldKeys);
+    const desiredActiveFieldKeys = new Set<string>();
+    for (const [key, desired] of desiredMap) {
+      const current = currentByKey.get(
+        keyFrom(desired.objectMetadataId, desired.fieldMetadataId),
+      );
+      if (isDefined(current)) {
+        const effectiveCanRead =
+          desired.canReadFieldValue !== undefined
+            ? desired.canReadFieldValue
+            : current.canReadFieldValue;
+        const effectiveCanUpdate =
+          desired.canUpdateFieldValue !== undefined
+            ? desired.canUpdateFieldValue
+            : current.canUpdateFieldValue;
+        const isForeignMirroredRow =
+          !isDefined(effectiveCanRead) &&
+          !isDefined(effectiveCanUpdate) &&
+          mirroredFieldKeys.has(key) &&
+          !inputFieldKeys.has(key) &&
+          current.applicationUniversalIdentifier !==
+            workspaceCustomFlatApplication.universalIdentifier;
+        if (!isForeignMirroredRow) {
+          touchedFieldKeys.add(key);
+          if (isDefined(effectiveCanRead) || isDefined(effectiveCanUpdate)) {
+            desiredActiveFieldKeys.add(key);
+          }
+        }
+      } else if (
+        isDefined(desired.canReadFieldValue) ||
+        isDefined(desired.canUpdateFieldValue)
+      ) {
+        touchedFieldKeys.add(key);
+        desiredActiveFieldKeys.add(key);
+      } else {
+        touchedFieldKeys.add(key);
+      }
+    }
+
+    const executeMigration = () =>
+      this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
         {
           allFlatEntityOperationByMetadataName: {
             fieldPermission: {
@@ -303,6 +365,19 @@ export class FieldPermissionService {
           WorkspaceMigrationValidateBuildAndRunService['validateBuildAndRunWorkspaceMigration']
         >[0],
       );
+
+    const buildAndRunResult = capturedIdentity
+      ? await withFieldPermissionUpsertAudit(
+          {
+            workspaceId,
+            roleId: input.roleId,
+            touchedFieldKeys: [...touchedFieldKeys],
+            desiredActiveFieldKeys: [...desiredActiveFieldKeys],
+          },
+          capturedIdentity,
+          executeMigration,
+        )
+      : await executeMigration();
 
     if (buildAndRunResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

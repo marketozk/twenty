@@ -1,0 +1,19 @@
+{
+  "baseCommit": "6547c7eaf4f912f64844babd89ed24ae3c9575db",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "3a601977ef680e9e7d5f79f0591975ab9af82bf0ce18fd08a0620e3ee1e61fc8",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "7768c42002ab3111d0b00a40fef587c642229baa9ddb8c8b9419bade58c90ab3",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/role-permission-audit.ts": "9f9453693e1fd31a72f8f88f52d21b5bd3daa5b56c06b3ccc0ce2a637d855798",
+    "packages/twenty-server/src/engine/metadata-modules/object-permission/field-permission/field-permission.service.ts": "22468e6df3883e0e6d66deb0af74beb075584ba0405d90f3a7816467658b67f9",
+    "packages/twenty-server/src/engine/metadata-modules/object-permission/object-permission.service.ts": "60b764fd14889b30cd3f40115b08d839fc7e665e447c8343b8d25346565ac8a5",
+    "packages/twenty-server/src/engine/metadata-modules/role-permission-flag/role-permission-flag.service.ts": "c617059addcf5dbd52e3732156caa803ea87bf6f32bfea2588c24df33d346967",
+    "packages/twenty-server/src/engine/metadata-modules/role/role.resolver.ts": "d8349cd49b38192212fb78770e9c263ccd5f588602662c5414c589c7fb5020db",
+    "packages/twenty-server/src/engine/metadata-modules/role/tools/__tests__/role-tools.spec.ts": "f5804ee7eca418f347050d44be94b57de0e3bc17d62a72742c10ea066b356958",
+    "packages/twenty-server/src/engine/metadata-modules/role/tools/upsert-object-permissions.tool.ts": "2320a051001459eb1e9d1f33a8bd10e39672914d1f440004f7f8ae650a17becd",
+    "packages/twenty-server/src/engine/metadata-modules/role/tools/upsert-row-level-permission-rules.tool.ts": "88f540d73b6553b30dfdc9877fdecfa744ffc19b59a4e57905cce59f2125d7a5",
+    "packages/twenty-server/src/engine/metadata-modules/row-level-permission-predicate/services/row-level-permission-predicate.service.ts": "74e9a174f412e6926eb5fb035813871aa25ad593ef7360133233c5a858f3832a",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts": "e70b0e17f3ff78cca035172a4f16692023dc7c133ac1d0b32941d929ea04659e",
+    "packages/twenty-server/test/fork-migration/crm-audit-role-permissions.postgres-spec.ts": "80e8edd9875096124e444148fb43779f134411531071f64b5c6f3db35416acd3"
+  },
+  "uploadedSourceHashesVerified": true
+}
