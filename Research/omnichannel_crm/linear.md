@@ -32,9 +32,9 @@ ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.
 Описание ROB765 синхронизируется с [планом этапа](plan/phase_2_audit.md);
 подробный отчёт о каждой публикации сохраняется в комментарии задачи и DEVLOG.
 
-Последняя подтверждённая сверка — [LOG154 publication](implementation/log154/publication.json).
+Последняя подтверждённая сверка — [LOG155 publication](implementation/log155/publication.json).
 Описание, комментарий и все 11 статусов прочитаны обратно. Commit/push подтверждены GitHub API.
-LOG155 проверен; публикация и сверка Linear фиксируются после push.
+LOG155 опубликован. Описание и отчёт Linear прочитаны обратно после push.
 Следующая работа — аудит удаления ролей и назначения ролей агентам и API-ключам. ROB765 остаётся In Progress.
 История прежних R13–R16/LOG-публикаций сохраняется в [DEVLOG](DEVLOG.md) и каталогах evidence.
 GitHub Actions не используется.
