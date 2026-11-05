@@ -1,0 +1,4 @@
+Checking baseline
+Baseline complete 456 253
+Checking current
+{"status":"pass-no-new-diagnostics","baselineDiagnostics":253,"currentDiagnostics":252,"newDiagnostics":[],"changedFileDiagnostics":[{"file":"src/engine/core-modules/api-key/api-key.resolver.ts","code":2345,"message":"Argument of type 'unknown' is not assignable to parameter of type 'Error'.","line":87},{"file":"src/engine/core-modules/api-key/api-key.resolver.ts","code":2345,"message":"Argument of type 'unknown' is not assignable to parameter of type 'Error'.","line":157}],"baselineOnlyUnchangedMethodDiagnostics":[{"file":"src/engine/core-modules/api-key/api-key.resolver.ts","code":2345,"message":"Argument of type 'unknown' is not assignable to parameter of type 'Error'.","line":87},{"file":"src/engine/core-modules/api-key/api-key.resolver.ts","code":2345,"message":"Argument of type 'unknown' is not assignable to parameter of type 'Error'.","line":157}],"changedCodeDiagnostics":[],"currentRootFiles":457}

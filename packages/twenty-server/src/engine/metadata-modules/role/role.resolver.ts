@@ -267,12 +267,16 @@ export class RoleResolver {
   async deleteOneRole(
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Args('roleId', { type: () => UUIDScalarType }) roleId: string,
+    @Context() context: { req: Request },
     @AuthUserWorkspaceId({ allowUndefined: true })
     actingUserWorkspaceId?: string,
   ): Promise<string> {
+    const auditIdentity = roleAuditIdentityFromRequest(context.req);
     const deletedRole = await this.roleService.deleteRole({
       roleId,
       workspaceId: workspace.id,
+      auditIdentity,
+      actingUserWorkspaceId,
       actingRoleIds: await this.getActingRoleIds({
         workspaceId: workspace.id,
         actingUserWorkspaceId,
@@ -446,11 +450,13 @@ export class RoleResolver {
     @Args('agentId', { type: () => UUIDScalarType }) agentId: string,
     @Args('roleId', { type: () => UUIDScalarType }) roleId: string,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context() context: { req: Request },
   ) {
     await this.agentRoleService.assignRoleToAgent({
       agentId,
       roleId,
       workspaceId,
+      auditIdentity: roleAuditIdentityFromRequest(context.req),
     });
 
     return true;
@@ -473,10 +479,12 @@ export class RoleResolver {
   async removeRoleFromAgent(
     @Args('agentId', { type: () => UUIDScalarType }) agentId: string,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context() context: { req: Request },
   ) {
     await this.agentRoleService.removeRoleFromAgent({
       agentId,
       workspaceId,
+      auditIdentity: roleAuditIdentityFromRequest(context.req),
     });
 
     return true;

@@ -96,7 +96,10 @@ const CATALOG: Record<
   },
   coreWorkflow: { values: ['createdByUserWorkspaceId'], redacted: [] },
   coreView: { values: ['createdByUserWorkspaceId'], redacted: [] },
-  roleTarget: { values: ['roleId', 'userWorkspaceId'], redacted: [] },
+  roleTarget: {
+    values: ['roleId', 'userWorkspaceId', 'agentId', 'apiKeyId'],
+    redacted: [],
+  },
   role: {
     values: [
       'canUpdateAllSettings',
@@ -420,7 +423,7 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   calendarChannel: ['update', 'delete'],
   messageFolder: ['delete'],
   coreUser: ['update'],
-  role: ['create', 'update'],
+  role: ['create', 'update', 'delete'],
   roleTarget: ['create', 'delete'],
   userWorkspace: ['update', 'delete'],
   applicationAuthorization: ['delete'],
@@ -435,7 +438,8 @@ const descriptor = (
   mutation: Pick<
     CrmAuditMutation,
     'resourceKind' | 'resourceId' | 'action' | 'securityDescriptor'
-  >,
+  > &
+    Partial<Pick<CrmAuditMutation, 'before' | 'after'>>,
   bindingConfigEvent?: OmniBindingConfigChangedEvent,
 ): CrmAuditSecurityDescriptor => {
   const source = mutation.securityDescriptor;
@@ -445,10 +449,17 @@ const descriptor = (
     ADMINISTRATIVE_ACTIONS[mutation.resourceKind] !== undefined ||
     source.metadataAccess !== undefined
   ) {
+    const hasSnapshots = 'before' in mutation || 'after' in mutation;
     if (
       !ADMINISTRATIVE_ACTIONS[mutation.resourceKind]?.includes(
         mutation.action,
       ) ||
+      (hasSnapshots &&
+        (mutation.action === 'create'
+          ? mutation.before !== null || mutation.after === null
+          : mutation.action === 'delete'
+            ? mutation.before === null || mutation.after !== null
+            : mutation.before === null || mutation.after === null)) ||
       source.metadataAccess !== 'currentWorkspaceAdministration' ||
       Object.keys(source).sort().join(',') !==
         'metadataAccess,resourceId,resourceKind'

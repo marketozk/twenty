@@ -4336,3 +4336,36 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 16ed9a33-7c30-4b1b-8291-62ad008a03c9 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log155/publication.json).
 Следующий участок — аудит удаления ролей и назначения ролей агентам и API-ключам по LOG156.
+
+## LOG156 — аудит удаления ролей и назначения ролей агентам и API-ключам
+
+05.11.2026 зафиксированы [дизайн](implementation/log156/design.md),
+[независимое ревью](implementation/log156/design-review.md) и
+[план проверок](implementation/log156/test-research.md).
+В `crm-audit-transaction-context.ts` действие `'delete'` добавлено в
+`ADMINISTRATIVE_ACTIONS.role`, а `CATALOG.roleTarget.values` расширен полями
+`'agentId'` и `'apiKeyId'`. В `role-update-audit.ts` добавлены
+`withRoleDeleteAudit` и обработка `action === 'delete'` в
+`runAuditedRoleMutation`, проверяющая под блокировками БД `core.workspace`,
+`core.application`, удаляемую роль, `defaultRole`, защиту от самоблокировки,
+точное совпадение набора `core."roleTarget"` и перепривязку всех активных
+участников, активных API-ключей и неудалённых агентов к `defaultRoleId` с
+записью атомарного аудита `roleTarget` (`delete` + `create`) и `role` (`delete`).
+В `role-assignment-audit.ts`, `AiAgentRoleService`, `ApiKeyRoleService`,
+`RoleResolver`, `ApiKeyResolver` и `DeleteRoleTool` подключены
+`withAgentRoleAssignmentAudit`, `withAgentRoleRemovalAudit` и
+`withApiKeyRoleAssignmentAudit`.
+
+05.11.2026 проверки LOG156 завершены. 3034 tests/101 suites PASS (671.015s). 116 targeted/3 suites PASS (8.675s), 16 новых PostgreSQL случаев. 26 guard tests PASS, 10 migration checksums неизменны. Types 456/457 roots, baseline 253 / current 252 diagnostics, 0 новых/changed-code. Совпали 12 local/remote source hashes.
+
+Независимое ревью подтвердило изоляцию зависимостей Enterprise, разрешение
+сопоставлений `universalIdentifier -> id` до мутации `allFlatEntityMaps` в
+обработчиках удаления, защиту от скрытого `ON DELETE CASCADE` на
+`core."roleTarget"."roleId"`, корректность перепривязки `userWorkspace`/`apiKey`/`agent`
+к `defaultRoleId` и захват `auditIdentity` до первого `await` во всех точках
+входа.
+
+[Результаты](implementation/log156/results.json), [ревью](implementation/log156/review.md),
+[следующий участок](implementation/log156/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

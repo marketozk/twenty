@@ -319,6 +319,8 @@ describe('Role tools', () => {
       expect(services.roleService.deleteRole).toHaveBeenCalledWith({
         roleId: otherRoleId,
         workspaceId,
+        actingUserWorkspaceId: callerUserWorkspaceId,
+        auditIdentity: { auth: context.authContext, agentId: undefined },
         actingRoleIds: [callerRoleId],
       });
     });

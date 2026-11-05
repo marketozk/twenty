@@ -8,6 +8,12 @@ import {
   ApiKeyException,
   ApiKeyExceptionCode,
 } from 'src/engine/core-modules/api-key/exceptions/api-key.exception';
+import { withApiKeyRoleAssignmentAudit } from 'src/engine/core-modules/crm-audit/role-assignment-audit';
+import {
+  captureRoleAuditIdentity,
+  captureRoleAuditOperation,
+  type RoleUpdateAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
 import { RoleTargetEntity } from 'src/engine/metadata-modules/role-target/role-target.entity';
 import { RoleTargetService } from 'src/engine/metadata-modules/role-target/services/role-target.service';
@@ -36,29 +42,46 @@ export class ApiKeyRoleService {
     apiKeyId,
     roleId,
     workspaceId,
+    auditIdentity,
   }: {
     apiKeyId: string;
     roleId: string;
     workspaceId: string;
+    auditIdentity: RoleUpdateAuditIdentity;
   }): Promise<void> {
+    const capturedApiKeyId = apiKeyId;
+    const capturedRoleId = roleId;
+    const capturedWorkspaceId = workspaceId;
+    const capturedIdentity = captureRoleAuditIdentity(auditIdentity);
+    captureRoleAuditOperation(capturedWorkspaceId, capturedIdentity);
+
     const validationResult = await this.validateAssignRoleInput({
-      apiKeyId,
-      workspaceId,
-      roleId,
+      apiKeyId: capturedApiKeyId,
+      workspaceId: capturedWorkspaceId,
+      roleId: capturedRoleId,
     });
 
     if (validationResult?.roleToAssignIsSameAsCurrentRole) {
       return;
     }
 
-    await this.roleTargetService.create({
-      createRoleTargetInput: {
-        roleId,
-        targetId: apiKeyId,
-        targetMetadataForeignKey: 'apiKeyId',
+    await withApiKeyRoleAssignmentAudit(
+      {
+        workspaceId: capturedWorkspaceId,
+        apiKeyId: capturedApiKeyId,
+        roleId: capturedRoleId,
       },
-      workspaceId,
-    });
+      capturedIdentity,
+      () =>
+        this.roleTargetService.create({
+          createRoleTargetInput: {
+            roleId: capturedRoleId,
+            targetId: capturedApiKeyId,
+            targetMetadataForeignKey: 'apiKeyId',
+          },
+          workspaceId: capturedWorkspaceId,
+        }),
+    );
   }
 
   async getRoleIdForApiKeyId(

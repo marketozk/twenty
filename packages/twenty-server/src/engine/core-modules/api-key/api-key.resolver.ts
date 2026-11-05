@@ -1,12 +1,21 @@
 import { UseFilters, UseGuards, UseInterceptors } from '@nestjs/common';
-import { Args, Mutation, Parent, Query, ResolveField } from '@nestjs/graphql';
+import {
+  Args,
+  Context,
+  Mutation,
+  Parent,
+  Query,
+  ResolveField,
+} from '@nestjs/graphql';
 
+import { type Request } from 'express';
 import { type QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { PermissionFlagType } from 'twenty-shared/constants';
 
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
 import { ApiKeyEntity } from 'src/engine/core-modules/api-key/api-key.entity';
+import { roleAuditIdentityFromRequest } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
 import { CreateApiKeyInput } from 'src/engine/core-modules/api-key/dtos/create-api-key.input';
 import { GetApiKeyInput } from 'src/engine/core-modules/api-key/dtos/get-api-key.input';
@@ -191,17 +200,19 @@ export class ApiKeyResolver {
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Args('apiKeyId', { type: () => UUIDScalarType }) apiKeyId: string,
     @Args('roleId', { type: () => UUIDScalarType }) roleId: string,
+    @Context() context: { req: Request },
   ): Promise<boolean> {
     try {
       await this.apiKeyRoleService.assignRoleToApiKey({
         apiKeyId,
         roleId,
         workspaceId: workspace.id,
+        auditIdentity: roleAuditIdentityFromRequest(context.req),
       });
 
       return true;
     } catch (error) {
-      apiKeyGraphqlApiExceptionHandler(error);
+      apiKeyGraphqlApiExceptionHandler(error as Error);
       throw error;
     }
   }

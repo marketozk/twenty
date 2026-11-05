@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   withRoleUpdateAudit,
   withRoleCreateAudit,
+  withRoleDeleteAudit,
   type RoleUpdateAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { captureNativeCrmAuditWriteData } from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
@@ -378,19 +379,39 @@ export class RoleService {
     workspaceId,
     ownerFlatApplication,
     actingRoleIds,
+    actingUserWorkspaceId,
+    auditIdentity,
   }: {
     roleId: string;
     workspaceId: string;
     ownerFlatApplication?: FlatApplication;
     actingRoleIds?: string[];
+    actingUserWorkspaceId?: string;
+    auditIdentity: RoleUpdateAuditIdentity;
   }): Promise<RoleDTO> {
-    const deletedRoles = await this.deleteManyRoles({
-      ids: [roleId],
-      workspaceId,
-      isSystemBuild: false,
-      ownerFlatApplication,
-      actingRoleIds,
-    });
+    const capturedRoleId = roleId;
+    const capturedWorkspaceId = workspaceId;
+    const capturedActingRoleIds = actingRoleIds
+      ? [...actingRoleIds]
+      : undefined;
+    const capturedActingUserWorkspaceId = actingUserWorkspaceId;
+    const deletedRoles = await withRoleDeleteAudit(
+      {
+        workspaceId: capturedWorkspaceId,
+        roleId: capturedRoleId,
+        actingRoleIds: capturedActingRoleIds,
+        actingUserWorkspaceId: capturedActingUserWorkspaceId,
+      },
+      auditIdentity,
+      () =>
+        this.deleteManyRoles({
+          ids: [capturedRoleId],
+          workspaceId: capturedWorkspaceId,
+          isSystemBuild: false,
+          ownerFlatApplication,
+          actingRoleIds: capturedActingRoleIds,
+        }),
+    );
 
     const [deletedRole] = deletedRoles;
 

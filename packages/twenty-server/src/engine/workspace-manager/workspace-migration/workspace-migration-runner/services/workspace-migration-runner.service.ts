@@ -384,22 +384,39 @@ export class WorkspaceMigrationRunnerService {
       throw new Error('Conflicting metadata audit owners');
     if (roleAudit || assignmentAudit) {
       try {
+        const mappings = {
+          application: flatApplication,
+          roles: allFlatEntityMaps.flatRoleMaps?.byUniversalIdentifier ?? {},
+          targets:
+            allFlatEntityMaps.flatRoleTargetMaps?.byUniversalIdentifier ?? {},
+          agents: allFlatEntityMaps.flatAgentMaps?.byUniversalIdentifier ?? {},
+        };
         const execute = async (queryRunner: QueryRunner) => {
           const metadataEvents: MetadataEvent[] = [];
           for (const action of actions) {
             if (
               roleAudit &&
-              (action.metadataName !== 'role' ||
-                (action.type === 'update'
-                  ? allFlatEntityMaps.flatRoleMaps?.byUniversalIdentifier[
-                      action.universalIdentifier
-                    ]?.id !== roleAudit.roleId
-                  : action.type !== 'create' ||
-                    action.id !== roleAudit.roleId ||
-                    roleAudit.action !== 'create' ||
-                    flatApplication.id !== roleAudit.expected.applicationId ||
-                    flatApplication.universalIdentifier !==
-                      roleAudit.expected.applicationUniversalIdentifier))
+              (roleAudit.action === 'delete'
+                ? !(
+                    (action.metadataName === 'role' &&
+                      action.type === 'delete' &&
+                      allFlatEntityMaps.flatRoleMaps?.byUniversalIdentifier[
+                        action.universalIdentifier
+                      ]?.id === roleAudit.roleId) ||
+                    (action.metadataName === 'roleTarget' &&
+                      (action.type === 'delete' || action.type === 'create'))
+                  )
+                : action.metadataName !== 'role' ||
+                  (action.type === 'update'
+                    ? allFlatEntityMaps.flatRoleMaps?.byUniversalIdentifier[
+                        action.universalIdentifier
+                      ]?.id !== roleAudit.roleId
+                    : action.type !== 'create' ||
+                      action.id !== roleAudit.roleId ||
+                      roleAudit.action !== 'create' ||
+                      flatApplication.id !== roleAudit.expected.applicationId ||
+                      flatApplication.universalIdentifier !==
+                        roleAudit.expected.applicationUniversalIdentifier))
             )
               throw new Error(
                 'Audited role mutation resolved a different record or application',
@@ -442,19 +459,13 @@ export class WorkspaceMigrationRunnerService {
               roleAudit,
               actions,
               execute,
+              mappings,
             )
           : await runAuditedRoleAssignment(
               this.coreDataSource,
               assignmentAudit!,
               actions,
-              {
-                application: flatApplication,
-                roles:
-                  allFlatEntityMaps.flatRoleMaps?.byUniversalIdentifier ?? {},
-                targets:
-                  allFlatEntityMaps.flatRoleTargetMaps?.byUniversalIdentifier ??
-                  {},
-              },
+              mappings,
               execute,
             );
       } finally {

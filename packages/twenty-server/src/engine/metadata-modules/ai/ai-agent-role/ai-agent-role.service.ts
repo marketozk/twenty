@@ -5,6 +5,15 @@ import { isDefined } from 'twenty-shared/utils';
 import { In, IsNull, Not } from 'typeorm';
 
 import {
+  withAgentRoleAssignmentAudit,
+  withAgentRoleRemovalAudit,
+} from 'src/engine/core-modules/crm-audit/role-assignment-audit';
+import {
+  captureRoleAuditIdentity,
+  captureRoleAuditOperation,
+  type RoleUpdateAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/role-update-audit';
+import {
   AiException,
   AiExceptionCode,
 } from 'src/engine/metadata-modules/ai/ai.exception';
@@ -43,15 +52,22 @@ export class AiAgentRoleService {
     return flatRoleTargetByAgentIdMaps[agentId]?.roleId;
   }
 
-  public async assignRoleToAgent({
-    workspaceId,
-    agentId,
-    roleId,
-  }: {
+  public async assignRoleToAgent(args: {
     workspaceId: string;
     agentId: string;
     roleId: string;
+    auditIdentity?: RoleUpdateAuditIdentity;
   }): Promise<void> {
+    const { workspaceId, agentId, roleId } = args;
+    const isAudited =
+      Object.hasOwn(args, 'auditIdentity') || args.auditIdentity !== undefined;
+    const capturedIdentity = isAudited
+      ? captureRoleAuditIdentity(args.auditIdentity!)
+      : undefined;
+    if (capturedIdentity) {
+      captureRoleAuditOperation(workspaceId, capturedIdentity);
+    }
+
     const validationResult = await this.validateAssignRoleInput({
       agentId,
       workspaceId,
@@ -62,43 +78,71 @@ export class AiAgentRoleService {
       return;
     }
 
-    await this.roleTargetService.create({
-      createRoleTargetInput: {
-        roleId,
-        targetId: agentId,
-        targetMetadataForeignKey: 'agentId',
-      },
-      workspaceId,
-    });
+    const executeCreate = () =>
+      this.roleTargetService.create({
+        createRoleTargetInput: {
+          roleId,
+          targetId: agentId,
+          targetMetadataForeignKey: 'agentId',
+        },
+        workspaceId,
+      });
+
+    if (capturedIdentity) {
+      await withAgentRoleAssignmentAudit(
+        { workspaceId, agentId, roleId },
+        capturedIdentity,
+        executeCreate,
+      );
+      return;
+    }
+
+    await executeCreate();
   }
 
   public async removeRoleFromAgent({
     workspaceId,
     agentId,
+    auditIdentity,
   }: {
     workspaceId: string;
     agentId: string;
+    auditIdentity: RoleUpdateAuditIdentity;
   }): Promise<void> {
+    const capturedWorkspaceId = workspaceId;
+    const capturedAgentId = agentId;
+    const capturedIdentity = captureRoleAuditIdentity(auditIdentity);
+    captureRoleAuditOperation(capturedWorkspaceId, capturedIdentity);
+
     const existingRoleTarget = await this.roleTargetRepository.findOne(
-      workspaceId,
+      capturedWorkspaceId,
       {
         where: {
-          agentId,
+          agentId: capturedAgentId,
         },
       },
     );
 
     if (!isDefined(existingRoleTarget)) {
       throw new AiException(
-        `Role target not found for agent ${agentId}`,
+        `Role target not found for agent ${capturedAgentId}`,
         AiExceptionCode.ROLE_NOT_FOUND,
       );
     }
 
-    await this.roleTargetService.delete({
-      id: existingRoleTarget.id,
-      workspaceId,
-    });
+    await withAgentRoleRemovalAudit(
+      {
+        workspaceId: capturedWorkspaceId,
+        agentId: capturedAgentId,
+        roleTargetId: existingRoleTarget.id,
+      },
+      capturedIdentity,
+      () =>
+        this.roleTargetService.delete({
+          id: existingRoleTarget.id,
+          workspaceId: capturedWorkspaceId,
+        }),
+    );
   }
 
   public async getAgentsAssignedToRole(

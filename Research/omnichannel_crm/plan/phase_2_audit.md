@@ -106,8 +106,12 @@ owner с единым аудитом в одной strict/exclusive транза
 свежесть import policy и `blocklist` (`import-policy-proof.ts`) при сохранении сообщений
 (`saveOrdinaryMessageBatchWithAudit`, `InboundEmailImportService`), сохранении событий календаря
 (`CalendarSaveEventsService`) и очистке связей синхронизации календаря
-(`deleteOrdinarySyncCalendarAssociationsWithAudit`). Удаление ролей и durable cache открыты.
-Далее — [audited role delete and agent/API-key role assignment](../implementation/log155/next-boundary.md).
+(`deleteOrdinarySyncCalendarAssociationsWithAudit`). LOG156 закрывает атомарный аудит удаления
+ролей (`RoleService.deleteRole`, `RoleResolver.deleteOneRole`, `DeleteRoleTool.execute`) с
+проверкой перепривязки активных участников, агентов и API-ключей к `defaultRoleId`, а также
+назначение и снятие ролей агентов (`AiAgentRoleService`) и API-ключей (`ApiKeyRoleService`).
+Upsert прав роли и durable cache открыты.
+Далее — [audited role permission upserts](../implementation/log156/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

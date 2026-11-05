@@ -1,0 +1,23 @@
+{
+  "name": "twenty-rob764-3e371e20ab394c2b",
+  "remote": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b",
+  "source": "/opt/twenty-tests/twenty-rob764-3e371e20ab394c2b/source",
+  "database": "twenty_rob764_test_3e371e20ab394c2b",
+  "nativeDatabase": "twenty_rob764_test_986821205b15434c",
+  "network": "twenty-rob764-3e371e20ab394c2b-net",
+  "tools": "/opt/twenty-tests/twenty-rob764-e9f2b662ed54420d/tools",
+  "files": [
+    "src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts",
+    "src/engine/core-modules/crm-audit/role-update-audit.ts",
+    "src/engine/core-modules/crm-audit/role-assignment-audit.ts",
+    "src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts",
+    "src/engine/metadata-modules/role/role.service.ts",
+    "src/engine/metadata-modules/role/role.resolver.ts",
+    "src/engine/metadata-modules/role/tools/delete-role.tool.ts",
+    "src/engine/metadata-modules/role/tools/__tests__/role-tools.spec.ts",
+    "src/engine/metadata-modules/ai/ai-agent-role/ai-agent-role.service.ts",
+    "src/engine/core-modules/api-key/services/api-key-role.service.ts",
+    "src/engine/core-modules/api-key/api-key.resolver.ts",
+    "test/fork-migration/crm-audit-role-delete-and-targets.postgres-spec.ts"
+  ]
+}

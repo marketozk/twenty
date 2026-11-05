@@ -1,0 +1,18 @@
+{
+  "baseCommit": "59a3acac513e5841c812819f8dcf7412c3586c1a",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/api-key/api-key.resolver.ts": "fcb044538e64302cbdc1a9c44e2322fbc8979d05091dd7913bb790cd7d8f5a60",
+    "packages/twenty-server/src/engine/core-modules/api-key/services/api-key-role.service.ts": "1957ad02d76d8d41758467be0190049879655070de18a9835db1016e5817274d",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "ce1f379dde966c3044100e14e7f0a5814886112f3253c48e00df910cf49a216c",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/role-assignment-audit.ts": "b32cc2617af09c4cee2c31d3557356ec2448b07e246f598b8861278511beadf8",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/role-update-audit.ts": "f1cc5fd830e2f2cee16a2566a3f22f89eb7145e170044d415541fab880b7d9dd",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-agent-role/ai-agent-role.service.ts": "cdf3282fb6e906d80e7ddf81470792ca0ffddd69980531b019189670a1fd677b",
+    "packages/twenty-server/src/engine/metadata-modules/role/role.resolver.ts": "ccc7b728e46a111271929ef19e4e2e5102061a73b9fa3b7a252c82e4cfa38938",
+    "packages/twenty-server/src/engine/metadata-modules/role/role.service.ts": "6c36dab649c64770951b9d75e6c6d62a9ae0e9fe05d71245aed48722e00d0fe0",
+    "packages/twenty-server/src/engine/metadata-modules/role/tools/__tests__/role-tools.spec.ts": "ee20f85ca10ecd584553fdfa2b7f5f0e87797f4887a999d756dabed1b8df0c27",
+    "packages/twenty-server/src/engine/metadata-modules/role/tools/delete-role.tool.ts": "c26f5d6c8640084dfc1e6cb8d4bd9314595dc6e321254d451e33cfcfbbadb40a",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts": "ba49b5f78ddeeb34fb78b6101388c67c1751e907eb9a9d0f30dddb71e0c8e983",
+    "packages/twenty-server/test/fork-migration/crm-audit-role-delete-and-targets.postgres-spec.ts": "4e77c525d04671d6439169ea7885fa15c3f678b3598b093c9c3a20427d3f3b07"
+  },
+  "uploadedSourceHashesVerified": true
+}
