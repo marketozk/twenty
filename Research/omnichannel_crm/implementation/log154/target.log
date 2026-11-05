@@ -1,0 +1,20 @@
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts (34.322 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/calendar-save-audit.postgres-spec.ts (13.961 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-matching.postgres-spec.ts (17.371 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-import-matching-deferred-runner.postgres-spec.ts (9.964 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-ordinary-message-save.postgres-spec.ts (16.355 s)
+[31m[Nest] 1  - [39m11/05/2026, 9:56:19 AM [31m  ERROR[39m [38;5;3m[DeferredWorkspaceMigrationActionRunnerService] [39m[31mFailed to enqueue deferred workspace migration actions for workspace ce2d98e0-0870-44aa-be0c-43d5ef2bb09b: redis unavailable[39m
+[32m[Nest] 1  - [39m11/05/2026, 9:56:19 AM [32m    LOG[39m [38;5;3m[DeferredWorkspaceMigrationActionRunnerService] [39m[32mDeferred action sync_workflowRunShares f9772a32-0b1e-4087-8958-7aaed1aa0730 completed for workspace ce2d98e0-0870-44aa-be0c-43d5ef2bb09b in 5ms[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-cleanup.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-import-recovery.postgres-spec.ts (7.653 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-recovery.postgres-spec.ts (15.133 s)
+[33m[Nest] 1  - [39m11/05/2026, 9:56:48 AM [33m   WARN[39m [38;5;3m[CreateCompanyAndPersonService] [39m[33mSkipping contact creation for connected account beba170d-9c1f-4bba-9628-1a11856cc359 in workspace 9e057400-0ee0-4a32-9f48-bde190226d0f: userWorkspace 5ddb3ee3-40c6-40f8-8dd6-0a3efd734029 not found[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-contact-creation.postgres-spec.ts (8.804 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-matching-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-contact-creation-entrypoints.spec.ts
+
+Test Suites: 11 passed, 11 total
+Tests:       275 passed, 275 total
+Snapshots:   0 total
+Time:        125.942 s
+Ran all test suites matching /crm-audit-import-matching-deferred-runner|crm-audit-membership-cleanup|crm-audit-message-import-recovery|crm-audit-calendar-import-recovery|crm-audit-calendar-matching-entrypoints|calendar-save-audit|calendar-import-matching-audit|crm-audit-ordinary-message-save|crm-audit-message-import-matching|crm-audit-contact-creation/i.

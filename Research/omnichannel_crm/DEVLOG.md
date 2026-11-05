@@ -4257,3 +4257,35 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 22d3508e-433a-4cba-8a92-3872f540447b и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log153/publication.json).
 Следующий участок — интеграция runner/recovery отложенных действий с намерениями сопоставления импорта по LOG154.
+
+## LOG154 — интеграция runner и recovery отложенных действий с намерениями сопоставления импорта
+
+05.11.2026 зафиксированы [дизайн](implementation/log154/design.md),
+[независимое ревью](implementation/log154/design-review.md) и
+[план проверок](implementation/log154/test-research.md).
+В `reconcile-import-matching-deferred-action-handler.service.ts` добавлены
+обработчики `ReconcileMessageImportMatchingDeferredActionHandlerService` и
+`ReconcileCalendarImportMatchingDeferredActionHandlerService` (`managesOwnPersistence = true`),
+подключённые через токен `IMPORT_MATCHING_INTENT_RECONCILIATION` в
+`MatchParticipantModule` и регистрируемые в
+`DeferredWorkspaceMigrationActionHandlerRegistryService`. В
+`DeferredWorkspaceMigrationActionRunnerService.claimAndExecute` добавлена ветка
+для `managesOwnPersistence = true`, сохраняющая собственное управление
+`IN_PROGRESS`, `nextPageIndex`, удалением до `COMMIT` и `unsafeOutcome` внутри
+`MatchParticipantService`. В `DeferredWorkspaceMigrationActionRecoveryService`
+методы `resetStaleInProgressActions`, `enqueueWorkspacesWithPendingActions`,
+`retryFailedActions` и `findWorkspaceIdsByStatus` защищены условием
+`NOT (payload ? 'unsafeOutcome')`.
+
+05.11.2026 проверки LOG154 завершены. 3013 tests/99 suites PASS (656.643s). 275 targeted/11 suites PASS (125.942s), 6 новых PostgreSQL случаев. 26 guard tests PASS, 10 migration checksums неизменны. Types 453/455 roots, baseline 220 / current 220 diagnostics, 0 новых/changed-file. Совпали 11 local/remote source hashes.
+
+Независимое ревью подтвердило изоляцию зависимостей Enterprise через токен
+`IMPORT_MATCHING_INTENT_RECONCILIATION`, сохранение `nextPageIndex` при
+частичном сбое в `runner.runPendingActions`, очистку устаревших `PENDING`-намерений
+при удалённом `core.workspace` и неизменность статуса `FAILED` для строк с
+`payload.unsafeOutcome` во всех путях восстановления и ручного повтора.
+
+[Результаты](implementation/log154/results.json), [ревью](implementation/log154/review.md),
+[следующий участок](implementation/log154/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

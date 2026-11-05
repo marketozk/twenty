@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { isDefined } from 'twenty-shared/utils';
-import { LessThan, MoreThanOrEqual } from 'typeorm';
+import { LessThan } from 'typeorm';
 
 import { DeferredWorkspaceMigrationActionEntity } from 'src/engine/metadata-modules/deferred-workspace-migration-action/deferred-workspace-migration-action.entity';
 import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
@@ -28,23 +28,27 @@ export class DeferredWorkspaceMigrationActionRecoveryService {
     const failedResult = await this.deferredWorkspaceMigrationActionRepository
       .createQueryBuilder()
       .update()
-      .set({ status: 'FAILED', lastError })
+      .set({ status: 'FAILED', startedAt: null, lastError })
       .where({
         status: 'IN_PROGRESS',
         startedAt: LessThan(staleBefore),
-        attempts: MoreThanOrEqual(
-          DEFERRED_WORKSPACE_MIGRATION_ACTION_MAX_ATTEMPTS,
-        ),
+      })
+      .andWhere('(attempts >= :maxAttempts OR (payload ? :unsafeOutcomeKey))', {
+        maxAttempts: DEFERRED_WORKSPACE_MIGRATION_ACTION_MAX_ATTEMPTS,
+        unsafeOutcomeKey: 'unsafeOutcome',
       })
       .execute();
 
     const pendingResult = await this.deferredWorkspaceMigrationActionRepository
       .createQueryBuilder()
       .update()
-      .set({ status: 'PENDING', lastError })
+      .set({ status: 'PENDING', startedAt: null, lastError })
       .where({
         status: 'IN_PROGRESS',
         startedAt: LessThan(staleBefore),
+      })
+      .andWhere('NOT (payload ? :unsafeOutcomeKey)', {
+        unsafeOutcomeKey: 'unsafeOutcome',
       })
       .execute();
 
@@ -71,12 +75,18 @@ export class DeferredWorkspaceMigrationActionRecoveryService {
     let retriedActionCount = 0;
 
     for (const workspaceIdToRetry of workspaceIds) {
-      const { affected } =
-        await this.deferredWorkspaceMigrationActionRepository.update(
-          workspaceIdToRetry,
-          { status: 'FAILED' },
-          { status: 'PENDING', attempts: 0, startedAt: null },
-        );
+      const { affected } = await this.deferredWorkspaceMigrationActionRepository
+        .createQueryBuilder()
+        .update()
+        .set({ status: 'PENDING', attempts: 0, startedAt: null })
+        .where({
+          workspaceId: workspaceIdToRetry,
+          status: 'FAILED',
+        })
+        .andWhere('NOT (payload ? :unsafeOutcomeKey)', {
+          unsafeOutcomeKey: 'unsafeOutcome',
+        })
+        .execute();
 
       if ((affected ?? 0) > 0) {
         retriedActionCount += affected ?? 0;
@@ -97,6 +107,10 @@ export class DeferredWorkspaceMigrationActionRecoveryService {
       .select('deferredWorkspaceMigrationAction.workspaceId', 'workspaceId')
       .distinct(true)
       .where('deferredWorkspaceMigrationAction.status = :status', { status })
+      .andWhere(
+        'NOT (deferredWorkspaceMigrationAction.payload ? :unsafeOutcomeKey)',
+        { unsafeOutcomeKey: 'unsafeOutcome' },
+      )
       .getRawMany<{ workspaceId: string }>();
 
     return rows.map(({ workspaceId }) => workspaceId);

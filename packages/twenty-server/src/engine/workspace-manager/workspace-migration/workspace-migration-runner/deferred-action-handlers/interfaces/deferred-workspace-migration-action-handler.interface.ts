@@ -7,10 +7,11 @@ import {
 } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/types/deferred-workspace-migration-action.type';
 
 export type DeferredWorkspaceMigrationActionHandler<
-  TName extends DeferredWorkspaceMigrationActionName =
-    DeferredWorkspaceMigrationActionName,
+  TName extends
+    DeferredWorkspaceMigrationActionName = DeferredWorkspaceMigrationActionName,
 > = {
   metadataNamesToLoad: AllMetadataName[];
+  managesOwnPersistence?: boolean;
   execute(
     args: DeferredWorkspaceMigrationActionExecutionArgs<
       DeferredWorkspaceMigrationActionPayload<TName>

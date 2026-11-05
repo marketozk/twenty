@@ -98,9 +98,12 @@ owner с единым аудитом в одной strict/exclusive транза
 календаря как долговечное намерение `reconcile_calendarImportMatching` в транзакции сохранения
 `CalendarSaveEventsService`, атомарно удаляет завершённое намерение в коммите сопоставления,
 блокирует `unsafeOutcome` и восстанавливает незавершённые намерения с проверкой актуальных
-полномочий канала и аккаунта. Интеграция с общим runner/recovery отложенных действий, свежесть
-import policy и durable cache открыты.
-Далее — [deferred action runner and recovery integration](../implementation/log153/next-boundary.md).
+полномочий канала и аккаунта. LOG154 подключает `DeferredWorkspaceMigrationActionRunnerService`,
+`DeferredWorkspaceMigrationActionRecoveryService` и `DeferredWorkspaceMigrationActionHandlerRegistryService`
+к намерениям `reconcile_messageImportMatching` и `reconcile_calendarImportMatching` через обработчики
+с `managesOwnPersistence = true` и защищает `resetStaleInProgressActions`, `enqueueWorkspacesWithPendingActions`
+и `retryFailedActions` условием `NOT (payload ? 'unsafeOutcome')`. Свежесть import policy и durable cache открыты.
+Далее — [transactional import-policy and blocklist freshness](../implementation/log154/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

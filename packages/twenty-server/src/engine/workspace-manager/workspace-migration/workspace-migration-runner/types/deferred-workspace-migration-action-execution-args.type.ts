@@ -8,4 +8,5 @@ export type DeferredWorkspaceMigrationActionExecutionArgs<TPayload> = Pick<
   applicationUniversalIdentifier: string;
   payload: TPayload;
   attempt: number;
+  actionId?: string;
 };

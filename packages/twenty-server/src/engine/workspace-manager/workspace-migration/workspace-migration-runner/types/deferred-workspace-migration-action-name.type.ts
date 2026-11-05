@@ -3,4 +3,6 @@ export type DeferredWorkspaceMigrationActionName =
   | 'validate_foreignKey'
   | 'delete_logicFunctionResources'
   | 'delete_workflowRuns'
-  | 'sync_workflowRunShares';
+  | 'sync_workflowRunShares'
+  | 'reconcile_messageImportMatching'
+  | 'reconcile_calendarImportMatching';

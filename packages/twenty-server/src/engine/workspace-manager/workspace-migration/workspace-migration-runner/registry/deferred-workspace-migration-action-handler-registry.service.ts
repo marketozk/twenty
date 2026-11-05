@@ -1,4 +1,8 @@
 import { Injectable, type OnModuleInit } from '@nestjs/common';
+import {
+  ReconcileCalendarImportMatchingDeferredActionHandlerService,
+  ReconcileMessageImportMatchingDeferredActionHandlerService,
+} from 'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/deferred-action-handlers/services/reconcile-import-matching-deferred-action-handler.service';
 import { SyncWorkflowRunSharesDeferredActionHandlerService } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/deferred-action-handlers/services/sync-workflow-run-shares-deferred-action-handler.service';
 import { DiscoveryService } from '@nestjs/core';
 
@@ -33,7 +37,11 @@ export class DeferredWorkspaceMigrationActionHandlerRegistryService
         .getProviders()
         .filter(
           ({ metatype }) =>
-            metatype === SyncWorkflowRunSharesDeferredActionHandlerService,
+            metatype === SyncWorkflowRunSharesDeferredActionHandlerService ||
+            metatype ===
+              ReconcileMessageImportMatchingDeferredActionHandlerService ||
+            metatype ===
+              ReconcileCalendarImportMatchingDeferredActionHandlerService,
         ),
     );
     providers.forEach(({ instance, metatype }) => {

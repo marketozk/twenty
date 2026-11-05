@@ -232,6 +232,55 @@ export class DeferredWorkspaceMigrationActionRunnerService {
   }): Promise<boolean> {
     const { id, workspaceId } = pendingAction;
     const attempt = pendingAction.attempts + 1;
+    const handler =
+      this.deferredWorkspaceMigrationActionHandlerRegistry.getHandler(
+        pendingAction.name,
+      );
+
+    if (handler.managesOwnPersistence === true) {
+      const queryRunner = deferredActionDataSource.createQueryRunner();
+      const executionStart = performance.now();
+
+      try {
+        await queryRunner.connect();
+
+        await handler.execute({
+          workspaceId,
+          applicationUniversalIdentifier:
+            pendingAction.applicationUniversalIdentifier,
+          payload: pendingAction.payload,
+          allFlatEntityMaps,
+          attempt,
+          queryRunner,
+          actionId: id,
+        });
+
+        this.recordExecutionDuration({
+          status: 'success',
+          durationMs: performance.now() - executionStart,
+        });
+
+        this.logger.log(
+          `Deferred action ${pendingAction.name} ${id} completed for workspace ${workspaceId} in ${(performance.now() - executionStart).toFixed(0)}ms`,
+        );
+
+        return true;
+      } catch (error) {
+        this.recordExecutionDuration({
+          status: 'fail',
+          durationMs: performance.now() - executionStart,
+        });
+
+        this.logger.error(
+          `Deferred action ${pendingAction.name} ${id} failed for workspace ${workspaceId} (attempt ${attempt}/${DEFERRED_WORKSPACE_MIGRATION_ACTION_MAX_ATTEMPTS})`,
+          error instanceof Error ? error.stack : undefined,
+        );
+
+        return false;
+      } finally {
+        await queryRunner.release();
+      }
+    }
 
     const claimResult =
       await this.deferredWorkspaceMigrationActionRepository.update(
@@ -250,17 +299,16 @@ export class DeferredWorkspaceMigrationActionRunnerService {
     try {
       await queryRunner.connect();
 
-      await this.deferredWorkspaceMigrationActionHandlerRegistry
-        .getHandler(pendingAction.name)
-        .execute({
-          workspaceId,
-          applicationUniversalIdentifier:
-            pendingAction.applicationUniversalIdentifier,
-          payload: pendingAction.payload,
-          allFlatEntityMaps,
-          attempt,
-          queryRunner,
-        });
+      await handler.execute({
+        workspaceId,
+        applicationUniversalIdentifier:
+          pendingAction.applicationUniversalIdentifier,
+        payload: pendingAction.payload,
+        allFlatEntityMaps,
+        attempt,
+        queryRunner,
+        actionId: id,
+      });
 
       await this.deferredWorkspaceMigrationActionRepository.delete(
         workspaceId,

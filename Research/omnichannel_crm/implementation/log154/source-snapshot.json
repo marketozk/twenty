@@ -1,0 +1,17 @@
+{
+  "baseCommit": "60ae5ae29b64177de5a8837682ad8d74e0acf4c1",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/deferred-action-handlers/interfaces/deferred-workspace-migration-action-handler.interface.ts": "1e1bc97d0c9f1250084cf4e789cdb67b44df85c764c84a1cc3a8fc4b33ce2422",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/registry/deferred-workspace-migration-action-handler-registry.service.ts": "80f8bea8f5f50d7287ced9dc23f47a814aeb1425ed3bb87bf43958ad6ff297b7",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/deferred-workspace-migration-action-recovery.service.ts": "49c823330f45e1f1be59e4a627cfff5d1eb9495a7b308aec8b900ee101b9397a",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/deferred-workspace-migration-action-runner.service.ts": "116eef50330fda8ea403609ea87af2f619de016ff6bfc4f6783f1fb80ed56461",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/types/deferred-workspace-migration-action-execution-args.type.ts": "c704dc23ed4050387649826eb468d60f9fd718ed204625b89ceb2ffaf7995654",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/types/deferred-workspace-migration-action-name.type.ts": "f2db502b01d6f997e7271d90029c81437fe061dcb43b1c7db0cdf59bff42a2c8",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/types/deferred-workspace-migration-action.type.ts": "a45e003943e7cf3218282fe1af060eca813463dfcde68e9637ce885d831c979a",
+    "packages/twenty-server/src/modules/match-participant/match-participant.module.ts": "09e27ba42d014a9bd7ec0d94be8099b0d9788e3ceefff53072928b3872d37201",
+    "packages/twenty-server/src/modules/match-participant/match-participant.service.ts": "ded0e866e131da01b374bee3e73107b27249358785e2318bf332129174619b23",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/deferred-action-handlers/services/reconcile-import-matching-deferred-action-handler.service.ts": "9f88e2ce77791ada4994b4c6bb25b747b146c21b0fdcbf1a033d910da79f2f3e",
+    "packages/twenty-server/test/fork-migration/crm-audit-import-matching-deferred-runner.postgres-spec.ts": "666396d3bd2d7e5298dc6b52c04f1572ed86c4e184952f561f4ba6fe79a6bb29"
+  },
+  "uploadedSourceHashesVerified": true
+}

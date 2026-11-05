@@ -4,6 +4,8 @@ export { type DeferredWorkspaceMigrationActionName } from 'src/engine/workspace-
 
 type DeferredWorkspaceMigrationActionPayloadByName = {
   sync_workflowRunShares: { version: 1; coreWorkflowId: string };
+  reconcile_messageImportMatching: Record<string, unknown>;
+  reconcile_calendarImportMatching: Record<string, unknown>;
   build_index: { indexMetadataId: string };
   validate_foreignKey: { fieldMetadataId: string };
   delete_logicFunctionResources: { flatLogicFunction: FlatLogicFunction };

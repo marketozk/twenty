@@ -347,6 +347,19 @@ export class MatchParticipantService<
     const canonicalWorkspaceId = workspaceId.toLowerCase();
     const normalizedIntentId = intentId?.toLowerCase() ?? null;
     return this.workspaceOrmManager.executeInWorkspaceContext(async () => {
+      const fencedPending = await this.executeCoreIntentQuery(
+        `UPDATE core."deferredWorkspaceMigrationAction" SET status='FAILED',"startedAt"=NULL,"lastError"=$4,"updatedAt"=now() WHERE "workspaceId"=$1 AND name=$2 AND status='PENDING' AND (payload ? 'unsafeOutcome') AND ($3::uuid IS NULL OR id=$3::uuid) RETURNING id`,
+        [
+          canonicalWorkspaceId,
+          MESSAGE_IMPORT_MATCHING_INTENT_NAME,
+          normalizedIntentId,
+          'Native message import matching intent fenced by unsafe outcome',
+        ],
+      );
+      if (fencedPending.length > 0)
+        throw new Error(
+          'Native message import matching intent fenced by unsafe outcome',
+        );
       const candidates = await this.executeCoreIntentQuery(
         `SELECT id FROM core."deferredWorkspaceMigrationAction" WHERE "workspaceId"=$1 AND name=$2 AND status='PENDING' AND NOT (payload ? 'unsafeOutcome') AND ($3::uuid IS NULL OR id=$3::uuid) ORDER BY "createdAt" ASC, position ASC, id ASC`,
         [
@@ -735,6 +748,25 @@ export class MatchParticipantService<
     const normalizedIntentId = intentId?.toLowerCase();
     return this.workspaceOrmManager.executeInWorkspaceContext(
       async () => {
+        const fencedPending = await this.executeCoreIntentQuery(
+          normalizedIntentId === undefined
+            ? 'UPDATE core."deferredWorkspaceMigrationAction" SET status=\'FAILED\',"startedAt"=NULL,"lastError"=$3,"updatedAt"=now() WHERE "workspaceId"=$1 AND name=$2 AND status=\'PENDING\' AND (payload ? \'unsafeOutcome\') RETURNING id'
+            : 'UPDATE core."deferredWorkspaceMigrationAction" SET status=\'FAILED\',"startedAt"=NULL,"lastError"=$4,"updatedAt"=now() WHERE "workspaceId"=$1 AND name=$2 AND id=$3 AND status=\'PENDING\' AND (payload ? \'unsafeOutcome\') RETURNING id',
+          normalizedIntentId === undefined
+            ? [
+                canonicalWorkspaceId,
+                CALENDAR_IMPORT_MATCHING_INTENT_NAME,
+                'Calendar matching intent fenced by unsafe outcome',
+              ]
+            : [
+                canonicalWorkspaceId,
+                CALENDAR_IMPORT_MATCHING_INTENT_NAME,
+                normalizedIntentId,
+                'Calendar matching intent fenced by unsafe outcome',
+              ],
+        );
+        if (fencedPending.length > 0)
+          throw new Error('Calendar matching intent fenced by unsafe outcome');
         const candidates = await this.executeCoreIntentQuery(
           normalizedIntentId === undefined
             ? 'SELECT id FROM core."deferredWorkspaceMigrationAction" WHERE "workspaceId"=$1 AND name=$2 AND status=\'PENDING\' AND NOT (payload ? \'unsafeOutcome\') ORDER BY "createdAt" ASC,position ASC,id ASC'
