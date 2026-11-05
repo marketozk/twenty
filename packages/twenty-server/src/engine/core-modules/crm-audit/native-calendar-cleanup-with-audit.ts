@@ -7,6 +7,7 @@ import {
   TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER,
 } from 'twenty-shared/application-runtime';
 import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
+import { captureLockedBlocklistPolicyProof } from 'src/engine/core-modules/crm-audit/import-policy-proof';
 import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
 import { createCrmAuditWorkspaceExecutor } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-executor';
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
@@ -519,14 +520,14 @@ const lockCalendarSyncAuthority = async (
 ): Promise<boolean> => {
   const { scope } = session;
   if (!(await lockOrdinaryNativeSyncRun(scope, run))) return false;
-  // Capture only authority fields, never provider credentials or unrelated timestamps.
+  // Capture only authority and policy fields, never provider credentials or unrelated timestamps.
   const read = async () => {
     const accounts = await scope.executeRawQuery(
-      'SELECT id,provider,"applicationId","connectionProviderId" FROM core."connectedAccount" WHERE "workspaceId"=$1 AND id=$2',
+      `SELECT id,provider,"applicationId","connectionProviderId",to_jsonb("connectedAccount")->>'userWorkspaceId' AS "userWorkspaceId",to_jsonb("connectedAccount")->'handleAliases' AS "handleAliases" FROM core."connectedAccount" WHERE "workspaceId"=$1 AND id=$2`,
       [scope.workspaceId, run.connectedAccountId],
     );
     const channels = await scope.executeRawQuery(
-      'SELECT id,"connectedAccountId","isSyncEnabled","syncStage",to_char("syncStageStartedAt" AT TIME ZONE \'UTC\',\'YYYY-MM-DD"T"HH24:MI:SS.US"Z"\') AS "startedAt" FROM core."calendarChannel" WHERE "workspaceId"=$1 AND id=$2',
+      `SELECT id,"connectedAccountId","isSyncEnabled","syncStage",to_char("syncStageStartedAt" AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "startedAt",to_jsonb("calendarChannel")->>'handle' AS handle,to_jsonb("calendarChannel")->'excludePrivateEvents' AS "excludePrivateEvents" FROM core."calendarChannel" WHERE "workspaceId"=$1 AND id=$2`,
       [scope.workspaceId, run.channelId],
     );
     return { accounts, channels };
@@ -534,12 +535,20 @@ const lockCalendarSyncAuthority = async (
   const before = await read();
   if (before.accounts.length !== 1 || before.channels.length !== 1)
     throw new Error('Native sync calendar cleanup authority changed');
+  const blocklistProof = await captureLockedBlocklistPolicyProof({
+    scope,
+    userWorkspaceId:
+      typeof before.accounts[0]?.userWorkspaceId === 'string'
+        ? before.accounts[0].userWorkspaceId
+        : null,
+  });
   session.validators.push(async () => {
     if (
       !(await lockOrdinaryNativeSyncRun(scope, run)) ||
       canonicalAuditJson(await read()) !== canonicalAuditJson(before)
     )
       throw new Error('Native sync calendar cleanup authority changed');
+    await blocklistProof.verify();
   });
   return true;
 };

@@ -1,0 +1,33 @@
+{
+  "status": "pass-scoped-not-phase-complete",
+  "issue": "ROB-765",
+  "newCases": 5,
+  "newPostgresCases": 4,
+  "newUnitCases": 1,
+  "targetedTests": 170,
+  "targetedSuites": 6,
+  "targetedSeconds": 84.991,
+  "regressionTests": 3018,
+  "regressionSuites": 100,
+  "regressionSeconds": 668.834,
+  "guardUnitTests": 26,
+  "unchangedMigrations": 10,
+  "typecheck": {
+    "baselineRoots": 449,
+    "currentRoots": 451,
+    "baselineDiagnostics": 220,
+    "currentDiagnostics": 220,
+    "newDiagnostics": 0,
+    "changedFileDiagnostics": 0,
+    "fullServerTypecheck": false
+  },
+  "uploadedSourceHashesVerified": 7,
+  "transactionalImportPolicyFreshnessEnforced": true,
+  "transactionalBlocklistFreshnessEnforced": true,
+  "initialTypeDiagnostics": 3,
+  "durableDelivery": false,
+  "fullHttpAcceptance": false,
+  "productionDeployment": false,
+  "enterpriseBaselineChanged": false,
+  "githubActionsUsed": false
+}

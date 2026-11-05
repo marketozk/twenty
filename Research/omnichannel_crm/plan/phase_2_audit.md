@@ -102,8 +102,12 @@ owner с единым аудитом в одной strict/exclusive транза
 `DeferredWorkspaceMigrationActionRecoveryService` и `DeferredWorkspaceMigrationActionHandlerRegistryService`
 к намерениям `reconcile_messageImportMatching` и `reconcile_calendarImportMatching` через обработчики
 с `managesOwnPersistence = true` и защищает `resetStaleInProgressActions`, `enqueueWorkspacesWithPendingActions`
-и `retryFailedActions` условием `NOT (payload ? 'unsafeOutcome')`. Свежесть import policy и durable cache открыты.
-Далее — [transactional import-policy and blocklist freshness](../implementation/log154/next-boundary.md).
+и `retryFailedActions` условием `NOT (payload ? 'unsafeOutcome')`. LOG155 закрывает транзакционную
+свежесть import policy и `blocklist` (`import-policy-proof.ts`) при сохранении сообщений
+(`saveOrdinaryMessageBatchWithAudit`, `InboundEmailImportService`), сохранении событий календаря
+(`CalendarSaveEventsService`) и очистке связей синхронизации календаря
+(`deleteOrdinarySyncCalendarAssociationsWithAudit`). Удаление ролей и durable cache открыты.
+Далее — [audited role delete and agent/API-key role assignment](../implementation/log155/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

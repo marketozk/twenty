@@ -9,6 +9,7 @@ import {
   type MessageImportMatchingManifest,
 } from 'src/engine/core-modules/crm-audit/message-import-matching-context';
 import { captureMessageImportAuthorityProof } from 'src/engine/core-modules/crm-audit/message-import-authority-proof';
+import { captureLockedMessageImportPolicyProof } from 'src/engine/core-modules/crm-audit/import-policy-proof';
 import {
   MESSAGE_SAVE_TABLES,
   MESSAGE_SAVE_WRITE_TABLES,
@@ -2095,7 +2096,7 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
 
     if (!isDefined(savedMessagesResult)) return undefined;
 
-    if (messageChannel.isContactAutoCreationEnabled) {
+    if (savedMessagesResult.messageChannel.isContactAutoCreationEnabled) {
       const contactsToCreate =
         savedMessagesResult.participantsWithMessageId.flatMap((participant) =>
           participant.shouldCreateContact && participant.handle
@@ -2112,7 +2113,7 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
         CreateCompanyAndContactJob.name,
         {
           workspaceId,
-          connectedAccount,
+          connectedAccount: savedMessagesResult.connectedAccount,
           contactsToCreate,
           source: FieldActorSource.EMAIL,
         },
@@ -2154,6 +2155,8 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
     | {
         manifest: MessageImportMatchingManifest;
         intentId?: string;
+        messageChannel: MessageChannelEntity;
+        connectedAccount: ConnectedAccountEntity;
         participantsWithMessageId: {
           messageId: string;
           handle: string | null;
@@ -2177,7 +2180,7 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
       }
     | undefined
   > {
-    const handleAliases = connectedAccount.handleAliases || [];
+    let handleAliases = connectedAccount.handleAliases || [];
     const authContext = buildSystemAuthContext(workspaceId);
     const operation: CrmAuditOperation = {
       ...context.operation,
@@ -2205,6 +2208,25 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
             });
             if (!authorityProof.applied) return undefined;
             state.validators.push(authorityProof.verify);
+            const policyProof = await captureLockedMessageImportPolicyProof({
+              scope: transactionScope,
+              workspaceId,
+              connectedAccountId: connectedAccount.id,
+              channelId: messageChannel.id,
+              fallbackChannel: messageChannel,
+              fallbackAccount: connectedAccount,
+            });
+            state.validators.push(policyProof.verify);
+            messageChannel = policyProof.channel;
+            connectedAccount = policyProof.account;
+            handleAliases = connectedAccount.handleAliases || [];
+            if (
+              !policyProof.areMessagesAdmitted(
+                context.authority.kind,
+                messagesToSave,
+              )
+            )
+              return undefined;
             await this.lockMessageSaveFolders(
               state,
               messagesToSave,
@@ -2686,6 +2708,8 @@ export class MessagingSaveMessagesAndEnqueueContactCreationService {
             return {
               manifest,
               ...(intentId ? { intentId } : {}),
+              messageChannel,
+              connectedAccount,
               participantsWithMessageId,
               savedMessageParticipants,
               messageExternalIdsAndIdsMap,

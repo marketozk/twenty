@@ -147,7 +147,7 @@ export class InboundEmailImportService {
       };
     }
 
-    await this.workspaceOrmManager.executeInWorkspaceContext(
+    const saved = await this.workspaceOrmManager.executeInWorkspaceContext(
       async () => {
         const existingThreadExternalId =
           await this.findExistingThreadExternalId(message, messageChannel.id);
@@ -156,7 +156,7 @@ export class InboundEmailImportService {
           message.messageThreadExternalId = existingThreadExternalId;
         }
 
-        await this.messagingSaveMessagesAndEnqueueContactCreationService.saveMessagesAndEnqueueContactCreation(
+        return this.messagingSaveMessagesAndEnqueueContactCreationService.saveMessagesAndEnqueueContactCreation(
           [message],
           messageChannel,
           connectedAccount,
@@ -169,6 +169,14 @@ export class InboundEmailImportService {
     );
 
     await messageSource.cleanup(messageReference.reference);
+
+    if (!isDefined(saved)) {
+      return {
+        kind: 'excluded',
+        workspaceId,
+        messageChannelId: messageChannel.id,
+      };
+    }
 
     return {
       kind: 'imported',

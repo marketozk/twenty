@@ -4295,3 +4295,38 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 d5a8c91d-b503-4593-bbda-26345bbf922c и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log154/publication.json).
 Следующий участок — транзакционная проверка свежести import policy и blocklist при сохранении сообщений и календаря по LOG155.
+
+## LOG155 — транзакционная проверка свежести import policy и blocklist при сохранении сообщений и календаря
+
+05.11.2026 зафиксированы [дизайн](implementation/log155/design.md),
+[независимое ревью](implementation/log155/design-review.md) и
+[план проверок](implementation/log155/test-research.md).
+В `import-policy-proof.ts` добавлены `captureLockedBlocklistPolicyProof` и
+`captureLockedMessageImportPolicyProof` без рёбер в Enterprise-граф: под
+транзакционными блокировками `IN SHARE MODE` / `FOR SHARE` фиксируются `blocklist`,
+`workspaceMember` и `core."userWorkspace"`, проверяется внешний ключ
+`blocklist."workspaceMemberId" -> workspaceMember.id`, вычисляются применимые
+правила `WORKSPACE` и правила участника для `userWorkspaceId` (с отказом при
+неоднозначном членстве), а также проекции политики `core.workspace`,
+`core."connectedAccount"` и `core."messageChannel"`. В
+`saveOrdinaryMessageBatchWithAudit`, `InboundEmailImportService`,
+`CalendarSaveEventsService` и `deleteOrdinarySyncCalendarAssociationsWithAudit`
+обновляются поля политики из заблокированных строк БД, отклоняются пачки,
+исключённые актуальной политикой или `blocklist`, до любых native-записей, и
+проверяется отсутствие дрейфа политики и `blocklist` перед `audit.flush()` и
+после `SET CONSTRAINTS ALL IMMEDIATE`.
+
+05.11.2026 проверки LOG155 завершены. 3018 tests/100 suites PASS (668.834s). 170 targeted/6 suites PASS (84.991s), 4 новых PostgreSQL и 1 unit случай. 26 guard tests PASS, 10 migration checksums неизменны. Types 449/451 roots, baseline 220 / current 220 diagnostics, 0 новых/changed-file. Совпали 7 local/remote source hashes.
+
+Независимое ревью подтвердило изоляцию зависимостей Enterprise в
+`import-policy-proof.ts`, корректность блокировок `IN SHARE MODE` / `FOR SHARE`
+и разрешения правил `blocklist` уровня `WORKSPACE` и `WORKSPACE_MEMBER`,
+обновление политики автосоздания контактов из заблокированной строки канала,
+очистку внешнего источника и возврат `{ kind: 'excluded' }` в
+`InboundEmailImportService` и откат транзакций сохранения/очистки при позднем
+дрейфе политики или `blocklist`.
+
+[Результаты](implementation/log155/results.json), [ревью](implementation/log155/review.md),
+[следующий участок](implementation/log155/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

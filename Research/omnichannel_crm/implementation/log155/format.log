@@ -1,0 +1,10 @@
+{"sshRecentMaxStartupsLines": 0, "sshRecentDropLines": 0}
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/native-calendar-cleanup-with-audit.ts 376ms (unchanged)
+../../../source/packages/twenty-server/src/modules/calendar/calendar-event-import-manager/services/calendar-save-events.service.ts 227ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-import-manager/drivers/inbound-email/services/inbound-email-import.service.ts 26ms (unchanged)
+../../../source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-save-messages-and-enqueue-contact-creation.service.ts 455ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-entrypoints.spec.ts 105ms (unchanged)
+../../../source/packages/twenty-server/src/engine/core-modules/crm-audit/import-policy-proof.ts 89ms (unchanged)
+../../../source/packages/twenty-server/test/fork-migration/crm-audit-import-policy-freshness.postgres-spec.ts 46ms (unchanged)
+
+{"formattedFiles": 7, "singleSshSession": true}

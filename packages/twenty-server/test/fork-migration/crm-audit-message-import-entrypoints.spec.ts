@@ -360,6 +360,18 @@ it('actual inbound origin captures its resolved identity before fetching and cle
   );
 });
 
+it('actual inbound origin cleans up external source and returns excluded when live save policy declines message', async () => {
+  const f = inboundFixture();
+  f.save.mockResolvedValueOnce(undefined as never);
+  expect(await f.invoke()).toEqual({
+    kind: 'excluded',
+    workspaceId: f.workspaceId,
+    messageChannelId: f.channelId,
+  });
+  expect(f.save).toHaveBeenCalledTimes(1);
+  expect(f.source.cleanup).toHaveBeenCalledWith('source-ref');
+});
+
 it.each([false, true])(
   'actual inbound matching failure prevents external cleanup, confirmed=%s',
   async (confirmed) => {

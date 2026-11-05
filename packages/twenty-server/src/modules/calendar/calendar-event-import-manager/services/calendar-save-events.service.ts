@@ -38,6 +38,7 @@ import {
   type CalendarSaveTable,
   type CalendarSaveSnapshot,
 } from 'src/engine/core-modules/crm-audit/calendar-save-proof';
+import { captureLockedBlocklistPolicyProof } from 'src/engine/core-modules/crm-audit/import-policy-proof';
 import { getIssuedNativeCleanupMetadata } from 'src/engine/twenty-orm/repository/omni-native-write-capability';
 import { getIncomingRecordForeignKeys } from 'src/engine/twenty-orm/utils/has-referencing-records';
 import { assertNoReferentialUpdateEffects } from 'src/engine/twenty-orm/utils/assert-no-referential-update-effects';
@@ -58,6 +59,7 @@ import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace
 import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
 import { type CalendarEventSharingChannel } from 'src/modules/calendar/calendar-event-import-manager/types/calendar-event-sharing-channel.type';
 import { buildCalendarEventSaveOperations } from 'src/modules/calendar/calendar-event-import-manager/utils/build-calendar-event-save-operations.util';
+import { filterEventsAndReturnEventsToRemove } from 'src/modules/calendar/calendar-event-import-manager/utils/filter-events-and-return-events-to-remove.util';
 import { getCalendarChannelHandles } from 'src/modules/calendar/calendar-event-import-manager/utils/get-calendar-channel-handles.util';
 import { resolveCalendarEventSharing } from 'src/modules/calendar/calendar-event-import-manager/utils/resolve-calendar-event-sharing.util';
 import { CalendarEventParticipantService } from 'src/modules/calendar/calendar-event-participant-manager/services/calendar-event-participant.service';
@@ -80,6 +82,7 @@ type CalendarSaveAuditState = {
   accountIds: string[];
   sourceProof?: Record<string, unknown>[];
   expectedRun?: OrdinaryMetadataSyncRun;
+  verifyPolicy?: () => Promise<void>;
   intentId?: string;
   intentPayload?: CalendarImportMatchingIntentPayload;
 };
@@ -306,6 +309,24 @@ export class CalendarSaveEventsService {
               calendarChannel,
               connectedAccount,
             });
+            if (expectedRun) {
+              const blocklistProof = await captureLockedBlocklistPolicyProof({
+                scope: transactionScope,
+                userWorkspaceId:
+                  typeof selectedSource.userWorkspaceId === 'string'
+                    ? selectedSource.userWorkspaceId
+                    : null,
+              });
+              auditState.verifyPolicy = blocklistProof.verify;
+              const { filteredEvents } = filterEventsAndReturnEventsToRemove(
+                channelHandles,
+                fetchedCalendarEvents,
+                blocklistProof.applicableBlocklistHandles,
+                Boolean(calendarChannel.excludePrivateEvents),
+              );
+              if (filteredEvents.length !== fetchedCalendarEvents.length)
+                return null;
+            }
 
             const otherCalendarChannels: CalendarEventSharingChannel[] =
               otherAssociations.length > 0
@@ -700,7 +721,7 @@ export class CalendarSaveEventsService {
     state: CalendarSaveAuditState,
   ): Promise<Record<string, unknown>[]> {
     return state.scope.executeRawQuery(
-      `SELECT channel.id,channel."workspaceId",channel."connectedAccountId",channel.handle,channel."isSyncEnabled",channel."syncStatus",channel."syncStage",channel."syncStageStartedAt"::text,channel."isContactAutoCreationEnabled",channel."contactAutoCreationPolicy",channel."excludePrivateEvents",account.provider,account."handleAliases",account."applicationId",account."connectionProviderId",account."archivedAt"::text FROM core."calendarChannel" channel JOIN core."connectedAccount" account ON account.id=channel."connectedAccountId" AND account."workspaceId"=channel."workspaceId" WHERE channel."workspaceId"=$1 AND channel.id=ANY($2::uuid[]) ORDER BY channel.id`,
+      `SELECT channel.id,channel."workspaceId",channel."connectedAccountId",channel.handle,channel."isSyncEnabled",channel."syncStatus",channel."syncStage",channel."syncStageStartedAt"::text,channel."isContactAutoCreationEnabled",channel."contactAutoCreationPolicy",channel."excludePrivateEvents",account.provider,account."handleAliases",account."applicationId",account."connectionProviderId",account."archivedAt"::text,to_jsonb(account)->>'userWorkspaceId' AS "userWorkspaceId" FROM core."calendarChannel" channel JOIN core."connectedAccount" account ON account.id=channel."connectedAccountId" AND account."workspaceId"=channel."workspaceId" WHERE channel."workspaceId"=$1 AND channel.id=ANY($2::uuid[]) ORDER BY channel.id`,
       [state.scope.workspaceId, state.sourceIds],
     );
   }
@@ -802,6 +823,7 @@ export class CalendarSaveEventsService {
         canonicalAuditJson(state.sourceProof)
     )
       throw new Error('Calendar save authority changed before commit');
+    if (state.verifyPolicy) await state.verifyPolicy();
     for (const name of CALENDAR_SAVE_TABLES) {
       const expected = [...(state.expected.get(name) ?? [])].sort((a, b) =>
         a.id.localeCompare(b.id),
