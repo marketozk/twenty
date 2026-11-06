@@ -128,8 +128,12 @@ LOG160 закрывает атомарный аудит системного и 
 (`RoleService.createRole` / `createMemberRole` / `createGuestRole` / `createWorkspaceCustomApplicationRole` с `isEditable: false`),
 согласование `applicationUniversalIdentifier` в `RoleTargetService.createMany` и системный аудит в
 `WorkspaceManagerService` и `DevSeederPermissionsService`.
-Операции ролей агентов в шагах workflow и durable cache открыты.
-Далее — [remaining workflow-step agent role operations and core metadata writers](../implementation/log160/next-boundary.md).
+LOG161 закрывает атомарный аудит удаления неиспользуемых агентских ролей
+(`AiAgentRoleService.deleteAgentOnlyRoleIfUnused` / `runAuditedUnusedAgentRoleDelete`),
+безусловную fail-closed валидацию `AiAgentRoleService.assignRoleToAgent` и системный аудит
+операций ролей агентов в `WorkflowVersionStepOperationsWorkspaceService` (`createDraftStep`, `runWorkflowVersionStepDeletionSideEffects`).
+Встроенные мутации `roleTarget` в `AgentService` и durable cache открыты.
+Далее — [inline roleTarget mutations in AgentService and remaining core metadata writers](../implementation/log161/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

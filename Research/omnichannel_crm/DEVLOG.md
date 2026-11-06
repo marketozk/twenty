@@ -4526,3 +4526,34 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 1568d0f0-09cf-4b7f-83a8-31764eacd9e1 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log160/publication.json).
 Следующий участок — аудит оставшихся операций ролей агентов в шагах workflow и core metadata writers по LOG161.
+
+## LOG161 — аудит удаления неиспользуемых агентских ролей (`deleteAgentOnlyRoleIfUnused`) и операций ролей агентов в шагах workflow
+
+06.11.2026 зафиксированы [дизайн](implementation/log161/design.md),
+[независимое ревью](implementation/log161/design-review.md) и
+[план проверок](implementation/log161/test-research.md).
+В `role-update-audit.ts` добавлена закрытая транзакционная функция
+`runAuditedUnusedAgentRoleDelete`, блокирующая `core.workspace` (`FOR NO KEY UPDATE`),
+`core.role` (`FOR UPDATE`) и `core."roleTarget"` (`ORDER BY id FOR UPDATE`) в
+`runInCoreAuditTransaction`, защищающая стандартные/нередактируемые/общие роли и
+`defaultRoleId`, отменяющая удаление при наличии параллельных привязок и явно
+удаляющая и аудирующая остаточный `roleTargetId` до `DELETE FROM core.role`. В
+`AiAgentRoleService` удалена неаудируемая резервная ветка в `assignRoleToAgent`,
+оба метода переведены на синхронную валидацию `auditIdentity` до первого `await`,
+а в `WorkflowVersionStepOperationsWorkspaceService` (`createDraftStep` и
+`runWorkflowVersionStepDeletionSideEffects`) подключён системный `auditIdentity`.
+
+06.11.2026 проверки LOG161 завершены. 3087 tests/106 suites PASS (677.916s). 278 targeted/9 suites PASS (26.32s), 8 новых PostgreSQL случаев. 26 guard tests PASS, 10 migration checksums неизменны. Types 458/459 roots, baseline 240 / current 240 diagnostics, 0 новых/changed-code. Совпали 5 local/remote source hashes.
+
+Независимое ревью подтвердило отсутствие неаудируемой резервной ветки в
+`assignRoleToAgent`, корректность транзакционных блокировок и защиты от
+параллельного назначения роли другому агенту в `runAuditedUnusedAgentRoleDelete`,
+исключение скрытого `ON DELETE CASCADE` при остаточном `roleTargetId`,
+инвалидацию `['flatRoleMaps', 'flatRolePermissionFlagMaps', 'rolesPermissions']`
+после коммита и при `NativeTransactionOutcomeUnknownError` и чистоту границ
+зависимостей Enterprise (`0` нарушений).
+
+[Результаты](implementation/log161/results.json), [ревью](implementation/log161/review.md),
+[следующий участок](implementation/log161/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

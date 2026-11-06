@@ -146,6 +146,13 @@ export class WorkflowVersionStepOperationsWorkspaceService {
             roleId: roleTarget.roleId,
             roleTargetId: roleTarget.id,
             workspaceId,
+            auditIdentity: {
+              auth: {
+                workspace: { id: workspaceId },
+                type: 'system',
+              },
+              systemActorId: 'workflow-version-step:delete-agent-step',
+            },
           });
         }
         break;
@@ -1132,6 +1139,13 @@ export class WorkflowVersionStepOperationsWorkspaceService {
             agentId: newAgent.id,
             roleId,
             workspaceId,
+            auditIdentity: {
+              auth: {
+                workspace: { id: workspaceId },
+                type: 'system',
+              },
+              systemActorId: 'workflow-version-step:clone-agent-step',
+            },
           });
         }
 

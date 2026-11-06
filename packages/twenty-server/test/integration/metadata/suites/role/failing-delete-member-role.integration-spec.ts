@@ -158,6 +158,13 @@ describe('Member role deletion should fail', () => {
         roleId: agentOnlyMemberRoleId,
         roleTargetId: agentRoleTargetId,
         workspaceId: SEED_APPLE_WORKSPACE_ID,
+        auditIdentity: {
+          auth: {
+            workspace: { id: SEED_APPLE_WORKSPACE_ID },
+            type: 'system',
+          },
+          systemActorId: 'workflow-version-step:delete-agent-step',
+        },
       });
 
       expect(await findRoleIds(agentOnlyMemberRoleId)).toEqual([

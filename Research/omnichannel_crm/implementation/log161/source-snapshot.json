@@ -1,0 +1,11 @@
+{
+  "baseCommit": "f936c2034096fcb3d93760ba4150670043273fb5",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/role-update-audit.ts": "f4ca226ebac16594e64bff7e671cb6e3bc79dffc7568630493790e2e87e31c74",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-agent-role/ai-agent-role.service.ts": "ecd61c36341b28167d92767820bf3ec43f613393f02fdc3f1e33d33026013dae",
+    "packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-operations.workspace-service.ts": "776122f4c17c1857279293002bd66349847a719c78ce5f3fe9ea97f9e8fc6bc4",
+    "packages/twenty-server/test/fork-migration/crm-audit-agent-role-lifecycle.postgres-spec.ts": "2f790aa38a8ae730367905c227e424d3deda39efd4e6e9d84a17687e2dec26aa",
+    "packages/twenty-server/test/integration/metadata/suites/role/failing-delete-member-role.integration-spec.ts": "b42257e378203149c7b9e34e9ecd724b19f8656054aee03e38f4454de6fba496"
+  },
+  "uploadedSourceHashesVerified": true
+}

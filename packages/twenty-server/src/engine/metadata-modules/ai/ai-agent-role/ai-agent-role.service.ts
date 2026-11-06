@@ -1,16 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { isUUID } from 'class-validator';
 
 import { MEMBER_ROLE_UNIVERSAL_IDENTIFIER } from 'twenty-shared/constants';
 import { isDefined } from 'twenty-shared/utils';
-import { In, IsNull, Not } from 'typeorm';
+import { DataSource, In, IsNull, Not } from 'typeorm';
 
+import { WORKSPACE_CUSTOM_APPLICATION_ROLE_UNIVERSAL_IDENTIFIER } from 'src/engine/core-modules/application/constants/workspace-custom-application-role.constant';
 import {
+  getRoleAssignmentAudit,
   withAgentRoleAssignmentAudit,
   withAgentRoleRemovalAudit,
 } from 'src/engine/core-modules/crm-audit/role-assignment-audit';
 import {
   captureRoleAuditIdentity,
   captureRoleAuditOperation,
+  getRoleMutationAudit,
+  hasConflictingMetadataAuditScope,
+  runAuditedUnusedAgentRoleDelete,
   type RoleUpdateAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import {
@@ -21,9 +28,12 @@ import { AgentEntity } from 'src/engine/metadata-modules/ai/ai-agent/entities/ag
 import { RoleTargetEntity } from 'src/engine/metadata-modules/role-target/role-target.entity';
 import { RoleTargetService } from 'src/engine/metadata-modules/role-target/services/role-target.service';
 import { RoleEntity } from 'src/engine/metadata-modules/role/role.entity';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
 import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
+import { STANDARD_ROLE } from 'src/engine/workspace-manager/twenty-standard-application/constants/standard-role.constant';
+
 @Injectable()
 export class AiAgentRoleService {
   constructor(
@@ -35,6 +45,9 @@ export class AiAgentRoleService {
     private readonly roleTargetRepository: WorkspaceScopedRepository<RoleTargetEntity>,
     private readonly roleTargetService: RoleTargetService,
     private readonly workspaceCacheService: WorkspaceCacheService,
+    @Optional()
+    @InjectDataSource()
+    private readonly coreDataSource?: DataSource,
   ) {}
 
   public async findAgentRoleId({
@@ -58,46 +71,61 @@ export class AiAgentRoleService {
     roleId: string;
     auditIdentity?: RoleUpdateAuditIdentity;
   }): Promise<void> {
-    const { workspaceId, agentId, roleId } = args;
-    const isAudited =
-      Object.hasOwn(args, 'auditIdentity') || args.auditIdentity !== undefined;
-    const capturedIdentity = isAudited
-      ? captureRoleAuditIdentity(args.auditIdentity!)
-      : undefined;
-    if (capturedIdentity) {
-      captureRoleAuditOperation(workspaceId, capturedIdentity);
+    const capturedWorkspaceId = args.workspaceId;
+    const capturedAgentId = args.agentId;
+    const capturedRoleId = args.roleId;
+    if (
+      typeof capturedWorkspaceId !== 'string' ||
+      !isUUID(capturedWorkspaceId) ||
+      typeof capturedAgentId !== 'string' ||
+      !isUUID(capturedAgentId) ||
+      typeof capturedRoleId !== 'string' ||
+      !isUUID(capturedRoleId)
+    ) {
+      throw new Error('Role assignment audit identity invalid');
     }
+    if (
+      getRoleMutationAudit(capturedWorkspaceId) ||
+      hasConflictingMetadataAuditScope(
+        capturedWorkspaceId,
+        getRoleAssignmentAudit,
+      ) ||
+      getRoleAssignmentAudit(capturedWorkspaceId)
+    ) {
+      throw new Error('Nested role assignment audit unsupported');
+    }
+    const capturedIdentity = captureRoleAuditIdentity(
+      args.auditIdentity as RoleUpdateAuditIdentity,
+    );
+    captureRoleAuditOperation(capturedWorkspaceId, capturedIdentity);
 
     const validationResult = await this.validateAssignRoleInput({
-      agentId,
-      workspaceId,
-      roleId,
+      agentId: capturedAgentId,
+      workspaceId: capturedWorkspaceId,
+      roleId: capturedRoleId,
     });
 
     if (validationResult?.roleToAssignIsSameAsCurrentRole) {
       return;
     }
 
-    const executeCreate = () =>
-      this.roleTargetService.create({
-        createRoleTargetInput: {
-          roleId,
-          targetId: agentId,
-          targetMetadataForeignKey: 'agentId',
-        },
-        workspaceId,
-      });
-
-    if (capturedIdentity) {
-      await withAgentRoleAssignmentAudit(
-        { workspaceId, agentId, roleId },
-        capturedIdentity,
-        executeCreate,
-      );
-      return;
-    }
-
-    await executeCreate();
+    await withAgentRoleAssignmentAudit(
+      {
+        workspaceId: capturedWorkspaceId,
+        agentId: capturedAgentId,
+        roleId: capturedRoleId,
+      },
+      capturedIdentity,
+      () =>
+        this.roleTargetService.create({
+          createRoleTargetInput: {
+            roleId: capturedRoleId,
+            targetId: capturedAgentId,
+            targetMetadataForeignKey: 'agentId',
+          },
+          workspaceId: capturedWorkspaceId,
+        }),
+    );
   }
 
   public async removeRoleFromAgent({
@@ -228,18 +256,51 @@ export class AiAgentRoleService {
     roleId,
     roleTargetId,
     workspaceId,
+    auditIdentity,
   }: {
     roleId: string;
     roleTargetId: string;
     workspaceId: string;
+    auditIdentity?: RoleUpdateAuditIdentity;
   }): Promise<void> {
-    const role = await this.roleRepository.findOne(workspaceId, {
-      where: { id: roleId },
+    const capturedWorkspaceId = workspaceId;
+    const capturedRoleId = roleId;
+    const capturedRoleTargetId = roleTargetId;
+    if (
+      typeof capturedWorkspaceId !== 'string' ||
+      !isUUID(capturedWorkspaceId) ||
+      typeof capturedRoleId !== 'string' ||
+      !isUUID(capturedRoleId) ||
+      typeof capturedRoleTargetId !== 'string' ||
+      !isUUID(capturedRoleTargetId)
+    ) {
+      throw new Error('Role audit identity is invalid');
+    }
+    if (
+      getRoleMutationAudit(capturedWorkspaceId) ||
+      hasConflictingMetadataAuditScope(
+        capturedWorkspaceId,
+        getRoleMutationAudit,
+      )
+    ) {
+      throw new Error('Nested role audit is unsupported');
+    }
+    const capturedIdentity = captureRoleAuditIdentity(
+      auditIdentity as RoleUpdateAuditIdentity,
+    );
+    captureRoleAuditOperation(capturedWorkspaceId, capturedIdentity);
+
+    const role = await this.roleRepository.findOne(capturedWorkspaceId, {
+      where: { id: capturedRoleId },
     });
 
     if (
       !isDefined(role) ||
+      role.isEditable === false ||
       role.universalIdentifier === MEMBER_ROLE_UNIVERSAL_IDENTIFIER ||
+      role.universalIdentifier === STANDARD_ROLE.admin.universalIdentifier ||
+      role.universalIdentifier ===
+        WORKSPACE_CUSTOM_APPLICATION_ROLE_UNIVERSAL_IDENTIFIER ||
       !role.canBeAssignedToAgents ||
       role.canBeAssignedToUsers ||
       role.canBeAssignedToApiKeys
@@ -248,21 +309,43 @@ export class AiAgentRoleService {
     }
 
     const remainingAssignments = await this.roleTargetRepository.count(
-      workspaceId,
+      capturedWorkspaceId,
       {
         where: {
-          roleId,
-          id: Not(roleTargetId),
+          roleId: capturedRoleId,
+          id: Not(capturedRoleTargetId),
         },
       },
     );
 
-    if (remainingAssignments === 0) {
-      await this.roleRepository.delete(workspaceId, { id: roleId });
-      await this.workspaceCacheService.invalidateAndRecompute(workspaceId, [
-        'flatRoleMaps',
-        'flatRolePermissionFlagMaps',
-      ]);
+    if (remainingAssignments !== 0) {
+      return;
+    }
+
+    let shouldInvalidateCache = false;
+    try {
+      const deleted = await runAuditedUnusedAgentRoleDelete(
+        this.coreDataSource,
+        {
+          workspaceId: capturedWorkspaceId,
+          roleId: capturedRoleId,
+          roleTargetId: capturedRoleTargetId,
+        },
+        capturedIdentity,
+      );
+      shouldInvalidateCache = deleted;
+    } catch (error) {
+      if (error instanceof NativeTransactionOutcomeUnknownError) {
+        shouldInvalidateCache = true;
+      }
+      throw error;
+    } finally {
+      if (shouldInvalidateCache) {
+        await this.workspaceCacheService.invalidateAndRecompute(
+          capturedWorkspaceId,
+          ['flatRoleMaps', 'flatRolePermissionFlagMaps', 'rolesPermissions'],
+        );
+      }
     }
   }
 }
