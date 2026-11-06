@@ -8,9 +8,16 @@ import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user
 import {
   captureRoleAuditIdentity,
   captureRoleAuditOperation,
+  getRoleMutationAudit,
+  hasConflictingMetadataAuditScope,
   type RoleUpdateAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/role-update-audit';
-import { withRoleAssignmentAudit } from 'src/engine/core-modules/crm-audit/role-assignment-audit';
+import {
+  getRoleAssignmentAudit,
+  withBulkUserRoleAssignmentAudit,
+  withRoleAssignmentAudit,
+  type BulkUserAssignmentTarget,
+} from 'src/engine/core-modules/crm-audit/role-assignment-audit';
 import { type FlatWorkspaceMember } from 'src/engine/core-modules/user/types/flat-workspace-member.type';
 import {
   PermissionsException,
@@ -122,42 +129,209 @@ export class UserRoleService {
     userWorkspaceIds,
     roleId,
     actingUserWorkspaceId,
+    auditIdentity,
+    requireWorkspaceMember = true,
   }: {
     workspaceId: string;
     userWorkspaceIds: string[];
     roleId: string;
     actingUserWorkspaceId?: string;
+    auditIdentity?: RoleUpdateAuditIdentity;
+    requireWorkspaceMember?: boolean;
   }): Promise<void> {
-    if (userWorkspaceIds.length === 0) {
+    if (!Array.isArray(userWorkspaceIds)) {
+      throw new Error('userWorkspaceIds must be an array');
+    }
+    const capturedWorkspaceId = workspaceId;
+    const capturedRoleId = roleId;
+    const capturedActingUserWorkspaceId = actingUserWorkspaceId;
+    const capturedRequireWorkspaceMember = requireWorkspaceMember !== false;
+    const capturedUserWorkspaceIds = [...new Set(Array.from(userWorkspaceIds))];
+
+    const existingAudit = getRoleAssignmentAudit(capturedWorkspaceId);
+
+    if (isDefined(existingAudit)) {
+      if (
+        existingAudit.targetKind !== 'userWorkspace' ||
+        existingAudit.mode !== 'assign' ||
+        !capturedRequireWorkspaceMember ||
+        existingAudit.workspaceId !== capturedWorkspaceId.toLowerCase() ||
+        existingAudit.roleId !== capturedRoleId.toLowerCase() ||
+        capturedUserWorkspaceIds.length !== 1 ||
+        capturedUserWorkspaceIds[0]?.toLowerCase() !==
+          existingAudit.userWorkspaceId ||
+        (capturedActingUserWorkspaceId?.toLowerCase() ?? undefined) !==
+          existingAudit.actingUserWorkspaceId
+      ) {
+        throw new Error(
+          'Bulk role assignment conflicts with active role assignment audit scope',
+        );
+      }
+
+      this.validateNotSelfAssignmentOrThrow({
+        userWorkspaceIds: capturedUserWorkspaceIds,
+        actingUserWorkspaceId: capturedActingUserWorkspaceId,
+      });
+
+      const { userWorkspaceIdsToAssign } =
+        await this.validateAssignRoleInputsAndGetUserWorkspaceIdsToAssign({
+          userWorkspaceIds: capturedUserWorkspaceIds,
+          workspaceId: capturedWorkspaceId,
+          roleId: capturedRoleId,
+        });
+
+      if (userWorkspaceIdsToAssign.length === 0) {
+        return;
+      }
+
+      await this.roleTargetService.createMany({
+        createRoleTargetInputs: userWorkspaceIdsToAssign.map(
+          (userWorkspaceId) => ({
+            roleId: capturedRoleId,
+            targetId: userWorkspaceId,
+            targetMetadataForeignKey: 'userWorkspaceId' as const,
+          }),
+        ),
+        workspaceId: capturedWorkspaceId,
+      });
+
+      return;
+    }
+
+    if (
+      getRoleMutationAudit(capturedWorkspaceId) ||
+      hasConflictingMetadataAuditScope(
+        capturedWorkspaceId,
+        getRoleAssignmentAudit,
+      )
+    ) {
+      throw new Error('Nested role assignment audit unsupported');
+    }
+
+    const capturedIdentity = captureRoleAuditIdentity(
+      auditIdentity as RoleUpdateAuditIdentity,
+    );
+    captureRoleAuditOperation(capturedWorkspaceId, capturedIdentity);
+
+    if (
+      !capturedRequireWorkspaceMember &&
+      capturedIdentity.auth.type !== 'system'
+    ) {
+      throw new Error(
+        'Only system authentication can assign roles without workspaceMember verification',
+      );
+    }
+
+    if (capturedUserWorkspaceIds.length === 0) {
       return;
     }
 
     this.validateNotSelfAssignmentOrThrow({
-      userWorkspaceIds,
-      actingUserWorkspaceId,
+      userWorkspaceIds: capturedUserWorkspaceIds,
+      actingUserWorkspaceId: capturedActingUserWorkspaceId,
     });
 
-    const userWorkspaceIdsToAssign =
+    const { userWorkspaceIdsToAssign, userWorkspacesById } =
       await this.validateAssignRoleInputsAndGetUserWorkspaceIdsToAssign({
-        userWorkspaceIds,
-        workspaceId,
-        roleId,
+        userWorkspaceIds: capturedUserWorkspaceIds,
+        workspaceId: capturedWorkspaceId,
+        roleId: capturedRoleId,
       });
 
     if (userWorkspaceIdsToAssign.length === 0) {
       return;
     }
 
-    await this.roleTargetService.createMany({
-      createRoleTargetInputs: userWorkspaceIdsToAssign.map(
-        (userWorkspaceId) => ({
-          roleId,
-          targetId: userWorkspaceId,
-          targetMetadataForeignKey: 'userWorkspaceId' as const,
+    await this.roleAssignmentValidationService.validateRoleAssignableToUsersOrThrow(
+      {
+        roleId: capturedRoleId,
+        workspaceId: capturedWorkspaceId,
+      },
+    );
+
+    const targets: BulkUserAssignmentTarget[] = [];
+
+    if (capturedRequireWorkspaceMember) {
+      const { flatWorkspaceMemberMaps } =
+        await this.workspaceCacheService.getOrRecompute(capturedWorkspaceId, [
+          'flatWorkspaceMemberMaps',
+        ]);
+
+      for (const userWorkspaceId of userWorkspaceIdsToAssign) {
+        const userWorkspace = userWorkspacesById.get(userWorkspaceId);
+        const workspaceMemberId =
+          flatWorkspaceMemberMaps.idByUserWorkspaceId[userWorkspaceId];
+        const workspaceMember = isDefined(workspaceMemberId)
+          ? flatWorkspaceMemberMaps.byId[workspaceMemberId]
+          : undefined;
+
+        if (!isDefined(userWorkspace) || !isDefined(workspaceMember)) {
+          throw new PermissionsException(
+            'Workspace member not found',
+            PermissionsExceptionCode.WORKSPACE_MEMBER_NOT_FOUND,
+          );
+        }
+
+        if (
+          capturedIdentity.auth.type === 'user' &&
+          capturedIdentity.auth.workspaceMemberId.toLowerCase() ===
+            workspaceMember.id.toLowerCase()
+        ) {
+          throw new PermissionsException(
+            PermissionsExceptionMessage.CANNOT_UPDATE_SELF_ROLE,
+            PermissionsExceptionCode.CANNOT_UPDATE_SELF_ROLE,
+            {
+              userFriendlyMessage: msg`You cannot change your own role. Please ask another administrator to update your role.`,
+            },
+          );
+        }
+
+        targets.push({
+          userWorkspaceId,
+          userId: userWorkspace.userId,
+          workspaceMemberId: workspaceMember.id,
+        });
+      }
+    } else {
+      for (const userWorkspaceId of userWorkspaceIdsToAssign) {
+        const userWorkspace = userWorkspacesById.get(userWorkspaceId);
+
+        if (!isDefined(userWorkspace)) {
+          throw new PermissionsException(
+            `User workspaces not found: ${userWorkspaceId}`,
+            PermissionsExceptionCode.USER_WORKSPACE_NOT_FOUND,
+          );
+        }
+
+        targets.push({
+          userWorkspaceId,
+          userId: userWorkspace.userId,
+          workspaceMemberId: null,
+        });
+      }
+    }
+
+    await withBulkUserRoleAssignmentAudit(
+      {
+        workspaceId: capturedWorkspaceId,
+        roleId: capturedRoleId,
+        targets,
+        actingUserWorkspaceId: capturedActingUserWorkspaceId,
+        requireWorkspaceMember: capturedRequireWorkspaceMember,
+      },
+      capturedIdentity,
+      () =>
+        this.roleTargetService.createMany({
+          createRoleTargetInputs: userWorkspaceIdsToAssign.map(
+            (userWorkspaceId) => ({
+              roleId: capturedRoleId,
+              targetId: userWorkspaceId,
+              targetMetadataForeignKey: 'userWorkspaceId' as const,
+            }),
+          ),
+          workspaceId: capturedWorkspaceId,
         }),
-      ),
-      workspaceId,
-    });
+    );
   }
 
   public async getRoleIdForUserWorkspace({
@@ -365,19 +539,28 @@ export class UserRoleService {
     userWorkspaceIds: string[];
     workspaceId: string;
     roleId: string;
-  }): Promise<string[]> {
+  }): Promise<{
+    userWorkspaceIdsToAssign: string[];
+    userWorkspacesById: Map<string, UserWorkspaceEntity>;
+  }> {
     const userWorkspaces = await this.userWorkspaceRepository.find({
       where: {
         id: In(userWorkspaceIds),
       },
     });
 
-    const foundUserWorkspaceIds = new Set(
-      userWorkspaces.map((userWorkspace) => userWorkspace.id),
+    const userWorkspacesById = new Map<string, UserWorkspaceEntity>(
+      userWorkspaces
+        .filter(
+          (userWorkspace) =>
+            userWorkspace.workspaceId === workspaceId &&
+            (userWorkspace.deletedAt ?? null) === null,
+        )
+        .map((userWorkspace) => [userWorkspace.id, userWorkspace]),
     );
 
     const missingUserWorkspaceIds = userWorkspaceIds.filter(
-      (id) => !foundUserWorkspaceIds.has(id),
+      (id) => !userWorkspacesById.has(id),
     );
 
     if (missingUserWorkspaceIds.length > 0) {
@@ -397,6 +580,7 @@ export class UserRoleService {
 
     const userWorkspaceIdsToAssign: string[] = [];
     let adminRoleIdToValidate: string | undefined;
+    const demotedAdminUserWorkspaceIds = new Set<string>();
 
     for (const userWorkspaceId of userWorkspaceIds) {
       const currentRole = rolesByUserWorkspaces.get(userWorkspaceId)?.[0];
@@ -411,6 +595,7 @@ export class UserRoleService {
           STANDARD_ROLE.admin.universalIdentifier
       ) {
         adminRoleIdToValidate = currentRole.id;
+        demotedAdminUserWorkspaceIds.add(userWorkspaceId);
       }
 
       userWorkspaceIdsToAssign.push(userWorkspaceId);
@@ -420,23 +605,31 @@ export class UserRoleService {
       await this.validateMoreThanOneWorkspaceMemberHasAdminRoleOrThrow({
         workspaceId,
         adminRoleId: adminRoleIdToValidate,
+        demotedAdminUserWorkspaceIds,
       });
     }
 
-    return userWorkspaceIdsToAssign;
+    return { userWorkspaceIdsToAssign, userWorkspacesById };
   }
 
   private async validateMoreThanOneWorkspaceMemberHasAdminRoleOrThrow({
     adminRoleId,
     workspaceId,
+    demotedAdminUserWorkspaceIds,
   }: {
     adminRoleId: string;
     workspaceId: string;
+    demotedAdminUserWorkspaceIds?: ReadonlySet<string>;
   }) {
     const workspaceMembersWithAdminRole =
       await this.getWorkspaceMembersAssignedToRole(adminRoleId, workspaceId);
 
-    if (workspaceMembersWithAdminRole.length === 1) {
+    const demotedCount = demotedAdminUserWorkspaceIds?.size ?? 1;
+
+    if (
+      workspaceMembersWithAdminRole.length > 0 &&
+      workspaceMembersWithAdminRole.length <= demotedCount
+    ) {
       throw new PermissionsException(
         PermissionsExceptionMessage.CANNOT_UNASSIGN_LAST_ADMIN,
         PermissionsExceptionCode.CANNOT_UNASSIGN_LAST_ADMIN,

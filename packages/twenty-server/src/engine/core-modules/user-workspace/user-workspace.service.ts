@@ -302,6 +302,13 @@ export class UserWorkspaceService {
       workspaceId: workspace.id,
       userWorkspaceIds: [userWorkspace.id],
       roleId: resolvedRoleId,
+      auditIdentity: {
+        auth: {
+          workspace: { id: workspace.id },
+          type: 'system',
+        },
+        systemActorId: 'user-workspace:add-user-to-workspace',
+      },
     });
 
     await this.workspaceInvitationService.invalidateWorkspaceInvitation(

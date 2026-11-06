@@ -115,6 +115,14 @@ export class DevSeederPermissionsService {
           workspaceId,
           userWorkspaceIds: [guestUserWorkspaceId],
           roleId: guestRole.id,
+          requireWorkspaceMember: false,
+          auditIdentity: {
+            auth: {
+              workspace: { id: workspaceId },
+              type: 'system',
+            },
+            systemActorId: 'dev-seeder:init-permissions',
+          },
         });
 
         // The limited role restricts access to Pet and Rocket objects,
@@ -128,6 +136,14 @@ export class DevSeederPermissionsService {
           workspaceId,
           userWorkspaceIds: [limitedUserWorkspaceId],
           roleId: limitedRole.id,
+          requireWorkspaceMember: false,
+          auditIdentity: {
+            auth: {
+              workspace: { id: workspaceId },
+              type: 'system',
+            },
+            systemActorId: 'dev-seeder:init-permissions',
+          },
         });
 
         const impersonateOnlyRole =
@@ -140,6 +156,14 @@ export class DevSeederPermissionsService {
           workspaceId,
           userWorkspaceIds: [USER_WORKSPACE_DATA_SEED_IDS.SCOTT],
           roleId: impersonateOnlyRole.id,
+          requireWorkspaceMember: false,
+          auditIdentity: {
+            auth: {
+              workspace: { id: workspaceId },
+              type: 'system',
+            },
+            systemActorId: 'dev-seeder:init-permissions',
+          },
         });
       }
     } else if (workspaceId === SEED_YCOMBINATOR_WORKSPACE_ID) {
@@ -161,6 +185,14 @@ export class DevSeederPermissionsService {
       workspaceId,
       userWorkspaceIds: [adminUserWorkspaceId],
       roleId: adminRole.id,
+      requireWorkspaceMember: false,
+      auditIdentity: {
+        auth: {
+          workspace: { id: workspaceId },
+          type: 'system',
+        },
+        systemActorId: 'dev-seeder:init-permissions',
+      },
     });
 
     const memberRole = await this.initMinimalPermissionsAndActivateWorkspace({
@@ -173,6 +205,14 @@ export class DevSeederPermissionsService {
         workspaceId,
         userWorkspaceIds: memberUserWorkspaceIds,
         roleId: memberRole.id,
+        requireWorkspaceMember: false,
+        auditIdentity: {
+          auth: {
+            workspace: { id: workspaceId },
+            type: 'system',
+          },
+          systemActorId: 'dev-seeder:init-permissions',
+        },
       });
     }
   }

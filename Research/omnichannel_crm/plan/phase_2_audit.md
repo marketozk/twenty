@@ -120,8 +120,12 @@ LOG158 закрывает атомарный аудит создания, обн
 (`ApiKeyService.create` / `update` / `revoke`, `ApiKeyResolver.createApiKey` / `updateApiKey` / `revokeApiKey`,
 `ApiKeyController.create` / `update` / `remove`, `GenerateApiKeyCommand`) с однотранзакционной
 привязкой `core."roleTarget"` и запретом реактивации отозванного ключа под блокировкой БД.
-Пакетные и первичные назначения `assignRoleToManyUserWorkspace` и durable cache открыты.
-Далее — [audited bulk and initial member role assignments](../implementation/log158/next-boundary.md).
+LOG159 закрывает атомарный аудит всех прямых и пакетных назначений ролей участникам
+(`UserRoleService.assignRoleToManyUserWorkspace`, `UserWorkspaceService.addUserToWorkspaceIfUserNotInWorkspace`,
+`WorkspaceManagerService.setupDefaultRoles`, `DevSeederPermissionsService.initPermissions`)
+с блокировками БД и защитой от пакетного разжалования всех администраторов.
+Оставшиеся metadata writers и durable cache открыты.
+Далее — [remaining metadata and roleTarget writers](../implementation/log159/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

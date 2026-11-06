@@ -4455,3 +4455,33 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 a3f62150-632d-41fe-b788-423e8ee86a01 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log158/publication.json).
 Следующий участок — аудит пакетного и первичного назначения ролей участникам (`assignRoleToManyUserWorkspace`) по LOG159.
+
+## LOG159 — аудит пакетного и первичного назначения ролей участникам (`assignRoleToManyUserWorkspace`)
+
+06.11.2026 зафиксированы [дизайн](implementation/log159/design.md),
+[независимое ревью](implementation/log159/design-review.md) и
+[план проверок](implementation/log159/test-research.md).
+В `role-assignment-audit.ts` добавлены `BulkUserAssignmentTarget`,
+`withBulkUserRoleAssignmentAudit` и обработка `targetKind === 'userWorkspaceBulk'`
+в `runAuditedRoleAssignment`. В `UserRoleService.assignRoleToManyUserWorkspace`
+подключены синхронный захват `userWorkspaceIds` и `auditIdentity` до первого
+`await`, кооперация с открытым одиночным контекстом `withRoleAssignmentAudit`
+при вызове из `assignRoleToWorkspaceMember`, защита от пакетного разжалования
+всех администраторов и режим `requireWorkspaceMember: false` только для
+`auth.type === 'system'`. Подключены `UserWorkspaceService.addUserToWorkspaceIfUserNotInWorkspace`,
+`WorkspaceManagerService.setupDefaultRoles` и `DevSeederPermissionsService.initPermissions`.
+
+06.11.2026 проверки LOG159 завершены. 4805 tests/164 suites PASS (1395.066s). 262 targeted/7 suites PASS (23.74s), 12 новых PostgreSQL случаев. 26 guard tests PASS, 10 migration checksums неизменны. Types 457/458 roots, baseline 237 / current 237 diagnostics, 0 новых/changed-code. Совпали 7 local/remote source hashes.
+
+Независимое ревью подтвердило обязательность `auditIdentity` при прямом вызове
+даже на пустом массиве или полном no-op, строгую сверку параметров при
+делегировании из `assignRoleToWorkspaceMember`, транзакционные блокировки
+`FOR NO KEY UPDATE` / `FOR SHARE` / `FOR UPDATE`, защиту от пакетного
+разжалования всех администраторов (`NOT (u.id=ANY($3::uuid[]))`), ограничение
+`requireWorkspaceMember: false` только для `auth.type === 'system'` и чистоту
+границ зависимостей Enterprise (`0` нарушений).
+
+[Результаты](implementation/log159/results.json), [ревью](implementation/log159/review.md),
+[следующий участок](implementation/log159/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

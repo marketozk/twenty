@@ -6,6 +6,7 @@ import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-
 import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import {
+  captureRoleAuditIdentity,
   captureRoleAuditOperation,
   getRoleMutationAudit,
   hasConflictingMetadataAuditScope,
@@ -27,6 +28,22 @@ type UserAssignment = Readonly<{
   userWorkspaceId: string;
   roleId: string;
   actingUserWorkspaceId?: string;
+}>;
+
+export type BulkUserAssignmentTarget = Readonly<{
+  userWorkspaceId: string;
+  userId: string;
+  workspaceMemberId?: string | null;
+}>;
+
+type BulkUserAssignment = Readonly<{
+  targetKind: 'userWorkspaceBulk';
+  mode?: 'assign';
+  workspaceId: string;
+  targets: readonly BulkUserAssignmentTarget[];
+  roleId: string;
+  actingUserWorkspaceId?: string;
+  requireWorkspaceMember: boolean;
 }>;
 
 type AgentAssignment = Readonly<{
@@ -55,13 +72,14 @@ type ApiKeyAssignment = Readonly<{
 
 type Assignment =
   | UserAssignment
+  | BulkUserAssignment
   | AgentAssignment
   | AgentRemoval
   | ApiKeyAssignment;
 
 type Request = Readonly<
   Assignment & {
-    targetKind: 'userWorkspace' | 'agent' | 'apiKey';
+    targetKind: 'userWorkspace' | 'userWorkspaceBulk' | 'agent' | 'apiKey';
     mode: 'assign' | 'remove';
     operation: CrmAuditOperation;
     impersonatorUserWorkspaceId?: string;
@@ -100,6 +118,79 @@ export const withRoleAssignmentAudit = async <T>(
     throw new Error('Nested role assignment audit unsupported');
   const targetKind = assignment.targetKind ?? 'userWorkspace';
   const mode = assignment.mode ?? 'assign';
+  const workspaceId = uuid(assignment.workspaceId);
+  const capturedIdentity = captureRoleAuditIdentity(identity);
+
+  if (targetKind === 'userWorkspaceBulk') {
+    const bulk = assignment as BulkUserAssignment;
+    const requireWorkspaceMember = bulk.requireWorkspaceMember !== false;
+    if (!requireWorkspaceMember && capturedIdentity.auth.type !== 'system')
+      throw new Error(
+        'Only system authentication can assign roles without workspaceMember verification',
+      );
+    if (!Array.isArray(bulk.targets) || bulk.targets.length === 0)
+      throw new Error(
+        'Bulk role assignment audit requires at least one target',
+      );
+    const seenUserWorkspaceIds = new Set<string>();
+    const seenWorkspaceMemberIds = new Set<string>();
+    const normalizedTargets = Object.freeze(
+      bulk.targets.map((target) => {
+        if (!target || typeof target !== 'object')
+          throw new Error('Bulk role assignment target invalid');
+        const userWorkspaceId = uuid(target.userWorkspaceId);
+        const userId = uuid(target.userId);
+        if (seenUserWorkspaceIds.has(userWorkspaceId))
+          throw new Error('Bulk role assignment duplicate userWorkspaceId');
+        seenUserWorkspaceIds.add(userWorkspaceId);
+        let workspaceMemberId: string | null = null;
+        if (
+          target.workspaceMemberId !== undefined &&
+          target.workspaceMemberId !== null
+        ) {
+          workspaceMemberId = uuid(target.workspaceMemberId);
+          if (seenWorkspaceMemberIds.has(workspaceMemberId))
+            throw new Error('Bulk role assignment duplicate workspaceMemberId');
+          seenWorkspaceMemberIds.add(workspaceMemberId);
+        } else if (requireWorkspaceMember) {
+          throw new Error(
+            'Bulk role assignment requires workspaceMemberId for every target',
+          );
+        }
+        return Object.freeze({
+          userWorkspaceId,
+          userId,
+          workspaceMemberId,
+        });
+      }),
+    );
+    const request = Object.freeze({
+      targetKind: 'userWorkspaceBulk' as const,
+      mode: 'assign' as const,
+      workspaceId,
+      roleId: uuid(bulk.roleId),
+      targets: normalizedTargets,
+      requireWorkspaceMember,
+      ...(bulk.actingUserWorkspaceId !== undefined
+        ? { actingUserWorkspaceId: uuid(bulk.actingUserWorkspaceId) }
+        : {}),
+      operation: captureRoleAuditOperation(workspaceId, capturedIdentity),
+      ...(capturedIdentity.impersonatorUserWorkspaceId
+        ? {
+            impersonatorUserWorkspaceId: uuid(
+              capturedIdentity.impersonatorUserWorkspaceId,
+            ),
+          }
+        : {}),
+    }) as Request;
+    active.add(request);
+    try {
+      return await storage.run(request, work);
+    } finally {
+      active.delete(request);
+    }
+  }
+
   const capturedUuidFields = Object.fromEntries(
     Object.entries(assignment)
       .filter(
@@ -108,17 +199,16 @@ export const withRoleAssignmentAudit = async <T>(
       )
       .map(([key, value]) => [key, uuid(value)]),
   );
-  const workspaceId = uuid(assignment.workspaceId);
   const request = Object.freeze({
     ...capturedUuidFields,
     targetKind,
     mode,
     workspaceId,
-    operation: captureRoleAuditOperation(workspaceId, identity),
-    ...(identity.impersonatorUserWorkspaceId
+    operation: captureRoleAuditOperation(workspaceId, capturedIdentity),
+    ...(capturedIdentity.impersonatorUserWorkspaceId
       ? {
           impersonatorUserWorkspaceId: uuid(
-            identity.impersonatorUserWorkspaceId,
+            capturedIdentity.impersonatorUserWorkspaceId,
           ),
         }
       : {}),
@@ -130,6 +220,28 @@ export const withRoleAssignmentAudit = async <T>(
     active.delete(request);
   }
 };
+
+export const withBulkUserRoleAssignmentAudit = async <T>(
+  input: {
+    workspaceId: string;
+    roleId: string;
+    targets: readonly BulkUserAssignmentTarget[];
+    actingUserWorkspaceId?: string;
+    requireWorkspaceMember?: boolean;
+  },
+  identity: RoleUpdateAuditIdentity,
+  work: () => Promise<T>,
+): Promise<T> =>
+  withRoleAssignmentAudit(
+    {
+      ...input,
+      targetKind: 'userWorkspaceBulk',
+      mode: 'assign',
+      requireWorkspaceMember: input.requireWorkspaceMember !== false,
+    },
+    identity,
+    work,
+  );
 
 export const withAgentRoleAssignmentAudit = async <T>(
   input: { workspaceId: string; agentId: string; roleId: string },
@@ -200,6 +312,407 @@ export const runAuditedRoleAssignment = async <T>(
   const applicationUniversalIdentifier = uuid(
     mappings.application.universalIdentifier,
   );
+
+  if (request.targetKind === 'userWorkspaceBulk') {
+    const expectedCount = request.targets.length;
+    if (
+      creates.length !== expectedCount ||
+      deletes.length > expectedCount ||
+      actions.length !== creates.length + deletes.length ||
+      actions.some((action) => action.metadataName !== 'roleTarget') ||
+      actions
+        .slice(0, deletes.length)
+        .some((action) => action.type !== 'delete') ||
+      actions.slice(deletes.length).some((action) => action.type !== 'create')
+    )
+      throw new Error(
+        'Bulk role assignment audit requires bounded roleTarget deletes followed by creates',
+      );
+
+    const targetByUserWorkspaceId = new Map(
+      request.targets.map((target) => [target.userWorkspaceId, target]),
+    );
+    const plannedDeletes = deletes.map((deleteAction) => {
+      const universalIdentifier = uuid(deleteAction.universalIdentifier);
+      const mappedId = mappings.targets[universalIdentifier]?.id;
+      if (!mappedId)
+        throw new Error('Bulk role assignment delete target mapping missing');
+      return { id: uuid(mappedId), universalIdentifier };
+    });
+    if (
+      new Set(plannedDeletes.map((item) => item.id)).size !==
+        plannedDeletes.length ||
+      new Set(plannedDeletes.map((item) => item.universalIdentifier)).size !==
+        plannedDeletes.length
+    )
+      throw new Error('Bulk role assignment duplicate delete action');
+
+    const plannedCreates = creates.map((createAction) => {
+      const input = createAction.flatEntity
+        ? ({ ...createAction.flatEntity } as Record<string, unknown>)
+        : undefined;
+      if (!input || !createAction.id)
+        throw new Error(
+          'Bulk role assignment requires enriched create identity',
+        );
+      const id = uuid(createAction.id);
+      const universalIdentifier = uuid(input.universalIdentifier);
+      const userWorkspaceId = uuid(input.userWorkspaceId);
+      const roleUniversalIdentifier = uuid(input.roleUniversalIdentifier);
+      const mappedRoleId =
+        mappings.roles[String(input.roleUniversalIdentifier)]?.id;
+      if (
+        !targetByUserWorkspaceId.has(userWorkspaceId) ||
+        input.apiKeyId !== null ||
+        input.agentUniversalIdentifier !== null ||
+        uuid(input.applicationUniversalIdentifier) !==
+          applicationUniversalIdentifier ||
+        !mappedRoleId ||
+        uuid(mappedRoleId) !== request.roleId ||
+        typeof input.createdAt !== 'string' ||
+        !Number.isFinite(Date.parse(input.createdAt)) ||
+        typeof input.updatedAt !== 'string' ||
+        !Number.isFinite(Date.parse(input.updatedAt))
+      )
+        throw new Error(
+          'Bulk role assignment final plan points to a different target',
+        );
+      return {
+        id,
+        universalIdentifier,
+        userWorkspaceId,
+        roleUniversalIdentifier,
+        createdAt: input.createdAt,
+        updatedAt: input.updatedAt,
+      };
+    });
+    if (
+      new Set(plannedCreates.map((item) => item.id)).size !==
+        plannedCreates.length ||
+      new Set(plannedCreates.map((item) => item.universalIdentifier)).size !==
+        plannedCreates.length ||
+      new Set(plannedCreates.map((item) => item.userWorkspaceId)).size !==
+        plannedCreates.length
+    )
+      throw new Error('Bulk role assignment duplicate create action');
+
+    consumed.add(request);
+    return runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'databaseSchema' AS "databaseSchema",to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (
+        !workspace ||
+        workspace.deletedAt !== null ||
+        (request.requireWorkspaceMember && !workspace.databaseSchema)
+      )
+        throw new Error('Role assignment workspace unavailable');
+      const verifyApplication = () =>
+        verifyRoleAuditApplication(
+          runner,
+          request.workspaceId,
+          applicationId,
+          applicationUniversalIdentifier,
+        );
+      await verifyApplication();
+
+      const memberTable = workspace.databaseSchema
+        ? `${dataSource.driver.escape(workspace.databaseSchema)}."workspaceMember"`
+        : '';
+      const targetUserWorkspaceIds = request.targets.map(
+        (target) => target.userWorkspaceId,
+      );
+      const targetMemberIds = request.targets
+        .map((target) => target.workspaceMemberId)
+        .filter((id): id is string => typeof id === 'string');
+
+      const verifyBulkTargetOwners = async () => {
+        const memberships = await runner.query(
+          'SELECT id,"userId","workspaceId","deletedAt" FROM core."userWorkspace" WHERE id=ANY($1::uuid[]) ORDER BY id FOR SHARE',
+          [targetUserWorkspaceIds],
+        );
+        if (memberships.length !== request.targets.length)
+          throw new Error('Role assignment membership changed or unavailable');
+        for (const membership of memberships) {
+          const expectedTarget = targetByUserWorkspaceId.get(
+            uuid(membership.id),
+          );
+          if (
+            !expectedTarget ||
+            uuid(membership.userId) !== expectedTarget.userId ||
+            uuid(membership.workspaceId) !== request.workspaceId ||
+            membership.deletedAt !== null
+          )
+            throw new Error(
+              'Role assignment membership changed or unavailable',
+            );
+        }
+        if (request.requireWorkspaceMember || targetMemberIds.length > 0) {
+          if (!memberTable)
+            throw new Error(
+              'Role assignment membership changed or unavailable',
+            );
+          const members = await runner.query(
+            `SELECT id,"userId","deletedAt" FROM ${memberTable} WHERE id=ANY($1::uuid[]) ORDER BY id FOR SHARE`,
+            [targetMemberIds],
+          );
+          const memberById = new Map<
+            string,
+            { id: string; userId: string; deletedAt: unknown }
+          >(
+            members.map(
+              (m: { id: string; userId: string; deletedAt: unknown }) => [
+                uuid(m.id),
+                m,
+              ],
+            ),
+          );
+          for (const target of request.targets) {
+            if (!target.workspaceMemberId) {
+              if (request.requireWorkspaceMember)
+                throw new Error(
+                  'Role assignment membership changed or unavailable',
+                );
+              continue;
+            }
+            const member = memberById.get(target.workspaceMemberId);
+            if (
+              !member ||
+              uuid(member.userId) !== target.userId ||
+              member.deletedAt !== null
+            )
+              throw new Error(
+                'Role assignment membership changed or unavailable',
+              );
+          }
+        }
+      };
+      await verifyBulkTargetOwners();
+
+      for (const target of request.targets) {
+        if (
+          request.actingUserWorkspaceId === target.userWorkspaceId ||
+          (target.workspaceMemberId &&
+            request.operation.actor.kind === 'workspaceMember' &&
+            request.operation.actor.id === target.workspaceMemberId) ||
+          (target.workspaceMemberId &&
+            request.operation.initiator?.kind === 'workspaceMember' &&
+            request.operation.initiator.id === target.workspaceMemberId)
+        )
+          throw new Error('Role assignment cannot change your own role');
+      }
+
+      const readTargets = () =>
+        runner.query(
+          'SELECT to_jsonb(t) AS row FROM core."roleTarget" t WHERE "workspaceId"=$1 AND ("userWorkspaceId"=ANY($2::uuid[]) OR id=ANY($3::uuid[])) ORDER BY id FOR UPDATE',
+          [
+            request.workspaceId,
+            targetUserWorkspaceIds,
+            plannedDeletes.map((item) => item.id),
+          ],
+        );
+      const beforeRows = await readTargets();
+      if (beforeRows.length !== plannedDeletes.length)
+        throw new Error('Role assignment old target changed');
+      const beforeTargets: Record<string, unknown>[] = beforeRows.map(
+        (entry: { row: Record<string, unknown> }) => entry.row,
+      );
+      const seenBeforeUserWorkspaces = new Set<string>();
+      for (const before of beforeTargets) {
+        const beforeId = uuid(before.id);
+        const beforeUniversalIdentifier = uuid(before.universalIdentifier);
+        const beforeUserWorkspaceId =
+          typeof before.userWorkspaceId === 'string'
+            ? uuid(before.userWorkspaceId)
+            : null;
+        const planned = plannedDeletes.find((item) => item.id === beforeId);
+        if (
+          !planned ||
+          planned.universalIdentifier !== beforeUniversalIdentifier ||
+          !beforeUserWorkspaceId ||
+          !targetByUserWorkspaceId.has(beforeUserWorkspaceId) ||
+          seenBeforeUserWorkspaces.has(beforeUserWorkspaceId) ||
+          before.agentId !== null ||
+          before.apiKeyId !== null
+        )
+          throw new Error('Role assignment old target changed');
+        seenBeforeUserWorkspaces.add(beforeUserWorkspaceId);
+      }
+
+      const roleIdsToLock = [
+        ...new Set([
+          request.roleId,
+          ...beforeTargets.map((before) => uuid(before.roleId)),
+        ]),
+      ];
+      const roles = await runner.query(
+        'SELECT to_jsonb(r) AS row FROM core.role r WHERE "workspaceId"=$1 AND id=ANY($2::uuid[]) ORDER BY id FOR SHARE',
+        [request.workspaceId, roleIdsToLock],
+      );
+      const roleById = new Map<string, Record<string, unknown>>(
+        roles.map((entry: { row: Record<string, unknown> }) => [
+          uuid(entry.row.id),
+          entry.row,
+        ]),
+      );
+      const destination = roleById.get(request.roleId);
+      if (
+        !destination ||
+        destination.canBeAssignedToUsers !== true ||
+        plannedCreates.some(
+          (item) =>
+            uuid(destination.universalIdentifier) !==
+            item.roleUniversalIdentifier,
+        ) ||
+        beforeTargets.some((before) => !roleById.has(uuid(before.roleId)))
+      )
+        throw new Error(
+          'Role assignment destination is unavailable or not assignable',
+        );
+
+      const demotedAdminUserWorkspaceIds = beforeTargets
+        .filter((before) => {
+          const sourceRole = roleById.get(uuid(before.roleId));
+          return (
+            sourceRole?.universalIdentifier ===
+              STANDARD_ROLE.admin.universalIdentifier &&
+            destination.universalIdentifier !==
+              STANDARD_ROLE.admin.universalIdentifier
+          );
+        })
+        .map((before) => uuid(before.userWorkspaceId));
+
+      if (demotedAdminUserWorkspaceIds.length > 0) {
+        if (!memberTable)
+          throw new Error(
+            'Role assignment cannot remove the last administrator',
+          );
+        const [count] = await runner.query(
+          `SELECT count(DISTINCT u.id)::int AS total FROM core."roleTarget" t JOIN core.role r ON r.id=t."roleId" AND r."workspaceId"=t."workspaceId" JOIN core."userWorkspace" u ON u.id=t."userWorkspaceId" AND u."workspaceId"=t."workspaceId" AND u."deletedAt" IS NULL JOIN ${memberTable} m ON m."userId"=u."userId" AND m."deletedAt" IS NULL WHERE t."workspaceId"=$1 AND r."universalIdentifier"=$2 AND NOT (u.id=ANY($3::uuid[]))`,
+          [
+            request.workspaceId,
+            STANDARD_ROLE.admin.universalIdentifier,
+            demotedAdminUserWorkspaceIds,
+          ],
+        );
+        if ((count?.total ?? 0) < 1)
+          throw new Error(
+            'Role assignment cannot remove the last administrator',
+          );
+      }
+
+      const operation = await resolveRoleAuditInitiator(
+        runner,
+        request.operation,
+        request.impersonatorUserWorkspaceId,
+      );
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      const result = await work(runner);
+
+      const afterRows = await readTargets();
+      if (afterRows.length !== plannedCreates.length)
+        throw new Error('Role assignment persisted replacement mismatch');
+      if (
+        plannedDeletes.length > 0 &&
+        (
+          await runner.query(
+            'SELECT id FROM core."roleTarget" WHERE id=ANY($1::uuid[])',
+            [plannedDeletes.map((item) => item.id)],
+          )
+        ).length > 0
+      )
+        throw new Error('Role assignment old target still exists');
+
+      const afterById = new Map<string, Record<string, unknown>>(
+        afterRows.map((entry: { row: Record<string, unknown> }) => [
+          uuid(entry.row.id),
+          entry.row,
+        ]),
+      );
+      const scalar = (row: Record<string, unknown>) =>
+        Object.fromEntries(
+          Object.entries(row).filter(
+            ([key]) => key !== 'createdAt' && key !== 'updatedAt',
+          ),
+        );
+      for (const plannedCreate of plannedCreates) {
+        const after = afterById.get(plannedCreate.id);
+        const expected = {
+          id: plannedCreate.id,
+          universalIdentifier: plannedCreate.universalIdentifier,
+          workspaceId: request.workspaceId,
+          applicationId,
+          roleId: request.roleId,
+          userWorkspaceId: plannedCreate.userWorkspaceId,
+          agentId: null,
+          apiKeyId: null,
+        };
+        if (
+          !after ||
+          canonicalAuditJson(scalar(after)) !== canonicalAuditJson(expected)
+        )
+          throw new Error('Role assignment persisted replacement mismatch');
+        const [timestamps] = await runner.query(
+          'SELECT "createdAt"=$2::timestamptz AND "updatedAt"=$3::timestamptz AS matches FROM core."roleTarget" WHERE id=$1',
+          [plannedCreate.id, plannedCreate.createdAt, plannedCreate.updatedAt],
+        );
+        if (timestamps?.matches !== true)
+          throw new Error('Role assignment timestamps changed');
+      }
+
+      const record = (
+        row: Record<string, unknown>,
+        action: 'create' | 'delete',
+      ) =>
+        audit.record({
+          resourceKind: 'roleTarget',
+          resourceId: uuid(row.id),
+          action,
+          before:
+            action === 'delete' ? projectRoleTargetAuditFields(row) : null,
+          after: action === 'create' ? projectRoleTargetAuditFields(row) : null,
+          securityDescriptor: {
+            resourceKind: 'roleTarget',
+            resourceId: uuid(row.id),
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+      for (const before of beforeTargets) record(before, 'delete');
+      for (const plannedCreate of plannedCreates) {
+        record(afterById.get(plannedCreate.id)!, 'create');
+      }
+      await audit.flush();
+
+      if (
+        canonicalAuditJson(afterRows) !==
+        canonicalAuditJson(await readTargets())
+      )
+        throw new Error('Role assignment changed during audit flush');
+      if (
+        plannedDeletes.length > 0 &&
+        (
+          await runner.query(
+            'SELECT id FROM core."roleTarget" WHERE id=ANY($1::uuid[])',
+            [plannedDeletes.map((item) => item.id)],
+          )
+        ).length > 0
+      )
+        throw new Error('Role assignment deleted target reappeared');
+      const currentRoles = await runner.query(
+        'SELECT to_jsonb(r) AS row FROM core.role r WHERE "workspaceId"=$1 AND id=ANY($2::uuid[]) ORDER BY id',
+        [request.workspaceId, roleIdsToLock],
+      );
+      if (canonicalAuditJson(roles) !== canonicalAuditJson(currentRoles))
+        throw new Error(
+          'Role assignment role state changed during audit flush',
+        );
+      await verifyBulkTargetOwners();
+      await verifyApplication();
+      return result;
+    });
+  }
 
   if (request.mode === 'remove') {
     if (
@@ -626,7 +1139,7 @@ export const runAuditedRoleAssignment = async <T>(
       ],
     );
     if (canonicalAuditJson(roles) !== canonicalAuditJson(currentRoles))
-      throw new Error('Role assignment role changed during mutation');
+      throw new Error('Role assignment role state changed during audit flush');
     await verifyTargetOwner();
     await verifyApplication();
     return result;

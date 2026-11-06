@@ -1078,16 +1078,26 @@ it('captures the actual AI tool identity and input before member lookup', async 
   });
 });
 
-it('keeps bulk bootstrap assignment on its explicit legacy path', async () => {
+it('requires auditIdentity on direct assignRoleToManyUserWorkspace and audits bulk assignment', async () => {
   const { service } = serviceFixture();
+  await expect(
+    service.assignRoleToManyUserWorkspace({
+      workspaceId,
+      userWorkspaceIds: [userWorkspaceId],
+      roleId: destinationId,
+    }),
+  ).rejects.toThrow('Role mutation requires authenticated audit identity');
+  expect(await audits()).toEqual([]);
+
   await service.assignRoleToManyUserWorkspace({
     workspaceId,
     userWorkspaceIds: [userWorkspaceId],
     roleId: destinationId,
+    auditIdentity: identity(),
   });
   expect(
     (await targets()).find((r) => r.userWorkspaceId === userWorkspaceId)
       ?.roleId,
   ).toBe(destinationId);
-  expect(await audits()).toEqual([]);
+  expect(await audits()).toHaveLength(2);
 });

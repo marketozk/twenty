@@ -118,6 +118,14 @@ export class WorkspaceManagerService {
         workspaceId,
         userWorkspaceIds: [userWorkspace.id],
         roleId: adminRole.id,
+        requireWorkspaceMember: false,
+        auditIdentity: {
+          auth: {
+            workspace: { id: workspaceId },
+            type: 'system',
+          },
+          systemActorId: 'workspace-manager:setup-default-roles',
+        },
       });
     }
 
