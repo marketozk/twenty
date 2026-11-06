@@ -92,6 +92,19 @@ export class RoleTargetService {
       allFlatRoleTargetsToDelete.push(...flatRoleTargetsToDelete);
     }
 
+    const uniqueApplicationUniversalIdentifiers = [
+      ...new Set(
+        allFlatRoleTargetsToCreate.map(
+          ({ applicationUniversalIdentifier }) =>
+            applicationUniversalIdentifier,
+        ),
+      ),
+    ];
+    const migrationApplicationUniversalIdentifier =
+      uniqueApplicationUniversalIdentifiers.length === 1
+        ? uniqueApplicationUniversalIdentifiers[0]
+        : workspaceCustomFlatApplication.universalIdentifier;
+
     const validateAndBuildResult =
       await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
         {
@@ -105,7 +118,7 @@ export class RoleTargetService {
           workspaceId,
           isSystemBuild: false,
           applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
+            migrationApplicationUniversalIdentifier,
         },
       );
 

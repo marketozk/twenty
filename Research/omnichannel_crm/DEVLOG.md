@@ -4491,3 +4491,32 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 32143fa8-f44f-4c74-80c8-48752e9a8060 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log159/publication.json).
 Следующий участок — аудит оставшихся метаданных и привязок `roleTarget` по LOG160.
+
+## LOG160 — аудит системного и bootstrap-создания ролей, прав и привязок `roleTarget`
+
+06.11.2026 зафиксированы [дизайн](implementation/log160/design.md),
+[независимое ревью](implementation/log160/design-review.md) и
+[план проверок](implementation/log160/test-research.md).
+В `role-update-audit.ts` в `withRoleCreateAudit` добавлен допуск `isEditable: false`
+исключительно для `auth.type === 'system'` и `universalIdentifier === WORKSPACE_CUSTOM_APPLICATION_ROLE_UNIVERSAL_IDENTIFIER`.
+В `RoleService` методы `createRole`, `createMemberRole`, `createGuestRole` и
+`createWorkspaceCustomApplicationRole` переведены на синхронную валидацию
+`auditIdentity` и проверку конфликтующих аудит-контекстов до первого `await`.
+В `RoleTargetService.createMany` согласован `applicationUniversalIdentifier` для
+привязок с явным `applicationId`, а в `WorkspaceManagerService` и
+`DevSeederPermissionsService` подключён системный `auditIdentity` во всех
+вызовах создания ролей, привязки API-ключа и upsert прав ролей.
+
+06.11.2026 проверки LOG160 завершены. 3079 tests/105 suites PASS (679.211s). 270 targeted/8 suites PASS (24.892s), 9 новых PostgreSQL случаев. 26 guard tests PASS, 10 migration checksums неизменны. Types 458/459 roots, baseline 237 / current 237 diagnostics, 0 новых/changed-code. Совпали 7 local/remote source hashes.
+
+Независимое ревью подтвердило строгую изоляцию `isEditable: false` для
+системной роли кастомного приложения, синхронную валидацию `auditIdentity` до
+первого `await` (включая идемпотентную ветку `createWorkspaceCustomApplicationRole`),
+согласованность `applicationUniversalIdentifier` в `RoleTargetService.createMany`,
+неизменность исторической миграции `2-50` и чистоту границ зависимостей
+Enterprise (`0` нарушений).
+
+[Результаты](implementation/log160/results.json), [ревью](implementation/log160/review.md),
+[следующий участок](implementation/log160/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

@@ -124,8 +124,12 @@ LOG159 закрывает атомарный аудит всех прямых и
 (`UserRoleService.assignRoleToManyUserWorkspace`, `UserWorkspaceService.addUserToWorkspaceIfUserNotInWorkspace`,
 `WorkspaceManagerService.setupDefaultRoles`, `DevSeederPermissionsService.initPermissions`)
 с блокировками БД и защитой от пакетного разжалования всех администраторов.
-Оставшиеся metadata writers и durable cache открыты.
-Далее — [remaining metadata and roleTarget writers](../implementation/log159/next-boundary.md).
+LOG160 закрывает атомарный аудит системного и bootstrap-создания ролей
+(`RoleService.createRole` / `createMemberRole` / `createGuestRole` / `createWorkspaceCustomApplicationRole` с `isEditable: false`),
+согласование `applicationUniversalIdentifier` в `RoleTargetService.createMany` и системный аудит в
+`WorkspaceManagerService` и `DevSeederPermissionsService`.
+Операции ролей агентов в шагах workflow и durable cache открыты.
+Далее — [remaining workflow-step agent role operations and core metadata writers](../implementation/log160/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { isUUID } from 'class-validator';
 import { type DataSource, type QueryRunner } from 'typeorm';
 
+import { WORKSPACE_CUSTOM_APPLICATION_ROLE_UNIVERSAL_IDENTIFIER } from 'src/engine/core-modules/application/constants/workspace-custom-application-role.constant';
 import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
 import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
@@ -202,6 +203,7 @@ export const withRoleCreateAudit = async <T>(
   identity: RoleUpdateAuditIdentity,
   work: () => Promise<T>,
 ): Promise<T> => {
+  const capturedIdentity = captureRoleAuditIdentity(identity);
   const fields = flatRole as Record<string, unknown>;
   const expected = Object.fromEntries(
     [
@@ -225,8 +227,15 @@ export const withRoleCreateAudit = async <T>(
     'applicationUniversalIdentifier',
   ])
     expected[key] = uuid(expected[key] as string);
+  const isSystemWorkspaceCustomApplicationRole =
+    capturedIdentity.auth.type === 'system' &&
+    expected.universalIdentifier ===
+      WORKSPACE_CUSTOM_APPLICATION_ROLE_UNIVERSAL_IDENTIFIER.toLowerCase();
+  const hasValidEditability =
+    expected.isEditable === true ||
+    (isSystemWorkspaceCustomApplicationRole && expected.isEditable === false);
   if (
-    expected.isEditable !== true ||
+    !hasValidEditability ||
     BOOLEAN_FIELDS.some((key) => typeof expected[key] !== 'boolean') ||
     typeof expected.label !== 'string' ||
     ['description', 'icon'].some(
@@ -244,7 +253,7 @@ export const withRoleCreateAudit = async <T>(
   return withRoleAudit(
     flatRole.workspaceId,
     flatRole.id,
-    identity,
+    capturedIdentity,
     { action: 'create', expected: Object.freeze(expected) },
     work,
   );

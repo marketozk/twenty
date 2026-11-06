@@ -982,15 +982,41 @@ it('refuses unauthenticated create tool before application lookup', async () => 
   expect(await audits()).toEqual([]);
 });
 
-it('keeps internal bootstrap creation without falsely attributing a user', async () => {
+it('requires auditIdentity on createRole and audits system bootstrap creation without falsely attributing a user', async () => {
   const { service } = createRoleServiceFixture();
-  await service.createRole({
+  await expect(
+    service.createRole({
+      workspaceId,
+      input: { label: 'bootstrap role' },
+      ownerFlatApplication: application as never,
+    }),
+  ).rejects.toThrow('Role mutation requires authenticated audit identity');
+  expect(await audits()).toEqual([]);
+
+  const created = await service.createRole({
     workspaceId,
     input: { label: 'bootstrap role' },
     ownerFlatApplication: application as never,
+    auditIdentity: {
+      auth: {
+        type: 'system',
+        workspace: { id: workspaceId },
+      },
+      systemActorId: 'dev-seeder:init-permissions',
+    },
   });
   expect(await rows()).toHaveLength(2);
-  expect(await audits()).toEqual([]);
+  const entries = await audits();
+  expect(entries).toHaveLength(1);
+  expect(entries[0]).toMatchObject({
+    action: 'create',
+    resourceKind: 'role',
+    resourceId: created.id,
+    actor: {
+      kind: 'system',
+      id: 'dev-seeder:init-permissions',
+    },
+  });
 });
 
 it('rejects an existing role ID without changing its row', async () => {

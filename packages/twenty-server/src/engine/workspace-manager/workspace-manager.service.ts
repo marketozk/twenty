@@ -85,6 +85,13 @@ export class WorkspaceManagerService {
     await this.roleService.createWorkspaceCustomApplicationRole({
       workspaceId,
       workspaceCustomFlatApplication,
+      auditIdentity: {
+        auth: {
+          workspace: { id: workspaceId },
+          type: 'system',
+        },
+        systemActorId: 'workspace-manager:init',
+      },
     });
 
     await this.setupDefaultRoles({
@@ -138,6 +145,13 @@ export class WorkspaceManagerService {
       (await this.roleService.createMemberRole({
         workspaceId,
         ownerFlatApplication: workspaceCustomFlatApplication,
+        auditIdentity: {
+          auth: {
+            workspace: { id: workspaceId },
+            type: 'system',
+          },
+          systemActorId: 'workspace-manager:setup-default-roles',
+        },
       }));
 
     await this.workspaceRepository.update(workspaceId, {

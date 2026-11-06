@@ -6,6 +6,7 @@ import { WorkspaceActivationStatus } from 'twenty-shared/workspace';
 import { DataSource } from 'typeorm';
 
 import { FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
+import { withApiKeyRoleAssignmentAudit } from 'src/engine/core-modules/crm-audit/role-assignment-audit';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 import { FieldPermissionService } from 'src/engine/metadata-modules/object-permission/field-permission/field-permission.service';
@@ -71,15 +72,32 @@ export class DevSeederPermissionsService {
       );
     }
 
-    await this.roleTargetService.create({
-      createRoleTargetInput: {
-        roleId: adminRole.id,
-        targetId: API_KEY_DATA_SEED_IDS.ID_1,
-        targetMetadataForeignKey: 'apiKeyId',
-        applicationId: twentyStandardFlatApplication.id,
+    const seederAuditIdentity = {
+      auth: {
+        workspace: { id: workspaceId },
+        type: 'system' as const,
       },
-      workspaceId,
-    });
+      systemActorId: 'dev-seeder:init-permissions',
+    };
+
+    await withApiKeyRoleAssignmentAudit(
+      {
+        workspaceId,
+        apiKeyId: API_KEY_DATA_SEED_IDS.ID_1,
+        roleId: adminRole.id,
+      },
+      seederAuditIdentity,
+      () =>
+        this.roleTargetService.create({
+          createRoleTargetInput: {
+            roleId: adminRole.id,
+            targetId: API_KEY_DATA_SEED_IDS.ID_1,
+            targetMetadataForeignKey: 'apiKeyId',
+            applicationId: twentyStandardFlatApplication.id,
+          },
+          workspaceId,
+        }),
+    );
 
     let adminUserWorkspaceId: string | undefined;
     let memberUserWorkspaceIds: string[] = [];
@@ -109,6 +127,7 @@ export class DevSeederPermissionsService {
         const guestRole = await this.roleService.createGuestRole({
           workspaceId,
           ownerFlatApplication: workspaceCustomFlatApplication,
+          auditIdentity: seederAuditIdentity,
         });
 
         await this.userRoleService.assignRoleToManyUserWorkspace({
@@ -224,14 +243,24 @@ export class DevSeederPermissionsService {
     workspaceId: string;
     workspaceCustomFlatApplication: FlatApplication;
   }): Promise<RoleDTO> {
+    const minimalSeederAuditIdentity = {
+      auth: {
+        workspace: { id: workspaceId },
+        type: 'system' as const,
+      },
+      systemActorId: 'dev-seeder:init-minimal-permissions',
+    };
+
     await this.roleService.createWorkspaceCustomApplicationRole({
       workspaceId,
       workspaceCustomFlatApplication,
+      auditIdentity: minimalSeederAuditIdentity,
     });
 
     const memberRole = await this.roleService.createMemberRole({
       workspaceId,
       ownerFlatApplication: workspaceCustomFlatApplication,
+      auditIdentity: minimalSeederAuditIdentity,
     });
 
     await this.coreDataSource
@@ -255,9 +284,18 @@ export class DevSeederPermissionsService {
     workspaceId: string;
     ownerFlatApplication: FlatApplication;
   }): Promise<RoleDTO> {
+    const seederAuditIdentity = {
+      auth: {
+        workspace: { id: workspaceId },
+        type: 'system' as const,
+      },
+      systemActorId: 'dev-seeder:init-permissions',
+    };
+
     const impersonateOnlyRole = await this.roleService.createRole({
       ownerFlatApplication,
       workspaceId,
+      auditIdentity: seederAuditIdentity,
       input: {
         label: 'Impersonate-only',
         description: 'Member role granted only the impersonate permission',
@@ -274,6 +312,7 @@ export class DevSeederPermissionsService {
 
     await this.rolePermissionFlagService.upsertPermissionFlags({
       workspaceId,
+      auditIdentity: seederAuditIdentity,
       input: {
         roleId: impersonateOnlyRole.id,
         permissionFlagKeys: [PermissionFlagType.IMPERSONATE],
@@ -290,9 +329,18 @@ export class DevSeederPermissionsService {
     workspaceId: string;
     ownerFlatApplication: FlatApplication;
   }) {
+    const seederAuditIdentity = {
+      auth: {
+        workspace: { id: workspaceId },
+        type: 'system' as const,
+      },
+      systemActorId: 'dev-seeder:init-permissions',
+    };
+
     const customRole = await this.roleService.createRole({
       ownerFlatApplication,
       workspaceId,
+      auditIdentity: seederAuditIdentity,
       input: {
         label: 'Object-restricted',
         description:
@@ -336,6 +384,7 @@ export class DevSeederPermissionsService {
 
     await this.objectPermissionService.upsertObjectPermissions({
       workspaceId,
+      auditIdentity: seederAuditIdentity,
       input: {
         roleId: customRole.id,
         objectPermissions: [
@@ -389,6 +438,7 @@ export class DevSeederPermissionsService {
 
     await this.fieldPermissionService.upsertFieldPermissions({
       workspaceId,
+      auditIdentity: seederAuditIdentity,
       input: {
         roleId: customRole.id,
         fieldPermissions: [

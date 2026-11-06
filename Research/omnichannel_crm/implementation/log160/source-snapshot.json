@@ -1,0 +1,13 @@
+{
+  "baseCommit": "c06266a0ceb62bbbfe53c9d99912d271d780c397",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/role-update-audit.ts": "199661ad2c47cf33224e6c90dd18de1d2f6bf3885208e2694b14e7e296837e5e",
+    "packages/twenty-server/src/engine/metadata-modules/role-target/services/role-target.service.ts": "1793d2156b1227944954f265f3824f0e279620176751327abc7446ad038031b6",
+    "packages/twenty-server/src/engine/metadata-modules/role/role.service.ts": "70fe8a6e74c4e130a9a6b63b0446ab8c1403249aaf0d39a0e72b5c084ce65631",
+    "packages/twenty-server/src/engine/workspace-manager/dev-seeder/core/services/dev-seeder-permissions.service.ts": "d0768254b07eb10696b1eb525d6acda5a762931efa0723aa13af983920a106fd",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-manager.service.ts": "96d5fc70415b9c7c20802a7c8d625addcdd37618eff51727f2ae6b6840327613",
+    "packages/twenty-server/test/fork-migration/crm-audit-role-update.postgres-spec.ts": "214f4ea47b6995fd038e1d0e98608ffa511adaeef57ccf1c0a6d554c81f9946e",
+    "packages/twenty-server/test/fork-migration/crm-audit-system-role-and-seeder.postgres-spec.ts": "001435252a00c518841386cb0f29a8cbb9f5a7e6bbc08b2807612871b5222a9d"
+  },
+  "uploadedSourceHashesVerified": true
+}

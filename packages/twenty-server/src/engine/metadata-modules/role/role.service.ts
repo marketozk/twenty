@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import {
+  captureRoleAuditIdentity,
+  captureRoleAuditOperation,
+  getRoleMutationAudit,
+  hasConflictingMetadataAuditScope,
   withRoleUpdateAudit,
   withRoleCreateAudit,
   withRoleDeleteAudit,
@@ -185,18 +189,34 @@ export class RoleService {
     input,
     workspaceId,
     ownerFlatApplication,
+    auditIdentity,
   }: {
     input: CreateRoleInput;
     workspaceId: string;
     ownerFlatApplication: FlatApplication;
+    auditIdentity?: RoleUpdateAuditIdentity;
   }): Promise<RoleDTO> {
+    if (
+      getRoleMutationAudit(workspaceId) ||
+      hasConflictingMetadataAuditScope(workspaceId, getRoleMutationAudit)
+    ) {
+      throw new Error('Nested role audit is unsupported');
+    }
+
+    const capturedIdentity = captureRoleAuditIdentity(
+      auditIdentity as RoleUpdateAuditIdentity,
+    );
+    captureRoleAuditOperation(workspaceId, capturedIdentity);
+
     const flatRoleToCreate = fromCreateRoleInputToFlatRoleToCreate({
       createRoleInput: input,
       workspaceId,
       flatApplication: ownerFlatApplication,
     });
 
-    return this.createRoleFromFlat(flatRoleToCreate);
+    return withRoleCreateAudit(flatRoleToCreate, capturedIdentity, () =>
+      this.createRoleFromFlat(flatRoleToCreate),
+    );
   }
 
   public async createAuditedRole({
@@ -210,14 +230,12 @@ export class RoleService {
     ownerFlatApplication: FlatApplication;
     auditIdentity: RoleUpdateAuditIdentity;
   }): Promise<RoleDTO> {
-    const flatRoleToCreate = fromCreateRoleInputToFlatRoleToCreate({
-      createRoleInput: input,
+    return this.createRole({
+      input,
       workspaceId,
-      flatApplication: ownerFlatApplication,
+      ownerFlatApplication,
+      auditIdentity,
     });
-    return withRoleCreateAudit(flatRoleToCreate, auditIdentity, () =>
-      this.createRoleFromFlat(flatRoleToCreate),
-    );
   }
 
   private async createRoleFromFlat(
@@ -542,10 +560,12 @@ export class RoleService {
     workspaceId,
     ownerFlatApplication,
     label = MEMBER_ROLE_LABEL,
+    auditIdentity,
   }: {
     ownerFlatApplication: FlatApplication;
     workspaceId: string;
     label?: string;
+    auditIdentity?: RoleUpdateAuditIdentity;
   }): Promise<RoleDTO> {
     return this.createRole({
       input: {
@@ -566,16 +586,31 @@ export class RoleService {
       },
       ownerFlatApplication,
       workspaceId,
+      auditIdentity,
     });
   }
 
   public async createWorkspaceCustomApplicationRole({
     workspaceId,
     workspaceCustomFlatApplication,
+    auditIdentity,
   }: {
     workspaceId: string;
     workspaceCustomFlatApplication: FlatApplication;
+    auditIdentity?: RoleUpdateAuditIdentity;
   }): Promise<void> {
+    if (
+      getRoleMutationAudit(workspaceId) ||
+      hasConflictingMetadataAuditScope(workspaceId, getRoleMutationAudit)
+    ) {
+      throw new Error('Nested role audit is unsupported');
+    }
+
+    const capturedIdentity = captureRoleAuditIdentity(
+      auditIdentity as RoleUpdateAuditIdentity,
+    );
+    captureRoleAuditOperation(workspaceId, capturedIdentity);
+
     const { flatRoleMaps } =
       await this.flatEntityMapsCacheService.getOrRecomputeManyOrAllFlatEntityMaps(
         {
@@ -596,6 +631,7 @@ export class RoleService {
       (await this.createWorkspaceCustomApplicationFlatRole({
         workspaceId,
         workspaceCustomFlatApplication,
+        auditIdentity: capturedIdentity,
       }));
 
     if (workspaceCustomFlatApplication.defaultRoleId === roleId) {
@@ -611,31 +647,37 @@ export class RoleService {
   private async createWorkspaceCustomApplicationFlatRole({
     workspaceId,
     workspaceCustomFlatApplication,
+    auditIdentity,
   }: {
     workspaceId: string;
     workspaceCustomFlatApplication: FlatApplication;
+    auditIdentity: RoleUpdateAuditIdentity;
   }): Promise<string> {
     const flatRoleToCreate = buildWorkspaceCustomApplicationFlatRole({
       workspaceId,
       workspaceCustomFlatApplication,
     });
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            role: {
-              flatEntityToCreate: [flatRoleToCreate],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [],
+    const validateAndBuildResult = await withRoleCreateAudit(
+      flatRoleToCreate,
+      auditIdentity,
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              role: {
+                flatEntityToCreate: [flatRoleToCreate],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [],
+              },
             },
+            workspaceId,
+            isSystemBuild: true,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: true,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -650,9 +692,11 @@ export class RoleService {
   public async createGuestRole({
     workspaceId,
     ownerFlatApplication,
+    auditIdentity,
   }: {
     workspaceId: string;
     ownerFlatApplication: FlatApplication;
+    auditIdentity?: RoleUpdateAuditIdentity;
   }): Promise<RoleDTO> {
     return this.createRole({
       input: {
@@ -672,6 +716,7 @@ export class RoleService {
       },
       workspaceId,
       ownerFlatApplication,
+      auditIdentity,
     });
   }
 
