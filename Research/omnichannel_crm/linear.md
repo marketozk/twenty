@@ -32,9 +32,9 @@ ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.
 Описание ROB765 синхронизируется с [планом этапа](plan/phase_2_audit.md);
 подробный отчёт о каждой публикации сохраняется в комментарии задачи и DEVLOG.
 
-Последняя подтверждённая сверка — [LOG159 publication](implementation/log159/publication.json).
+Последняя подтверждённая сверка — [LOG160 publication](implementation/log160/publication.json).
 Описание, комментарий и все 11 статусов прочитаны обратно. Commit/push подтверждены GitHub API.
-LOG159 опубликован. Описание и отчёт Linear прочитаны обратно после push.
-Следующая работа — аудит оставшихся метаданных и привязок `roleTarget`. ROB765 остаётся In Progress.
+LOG160 опубликован. Описание и отчёт Linear прочитаны обратно после push.
+Следующая работа — аудит оставшихся операций ролей агентов в шагах workflow и core metadata writers. ROB765 остаётся In Progress.
 История прежних R13–R16/LOG-публикаций сохраняется в [DEVLOG](DEVLOG.md) и каталогах evidence.
 GitHub Actions не используется.

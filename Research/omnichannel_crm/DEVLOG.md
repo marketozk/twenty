@@ -4520,3 +4520,9 @@ Enterprise (`0` нарушений).
 [следующий участок](implementation/log160/next-boundary.md). ROB765 остаётся
 In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
 Публикация и сверка Linear фиксируются после push.
+
+06.11.2026 LOG160 опубликован. Code 7a2684595c738f3d766e2e21f08d634ee2c1305d
+отправлен в GitHub, ref подтверждён через API. Описание ROB765, комментарий
+1568d0f0-09cf-4b7f-83a8-31764eacd9e1 и все 11 состояний задач прочитаны обратно
+и совпали. [Публикация](implementation/log160/publication.json).
+Следующий участок — аудит оставшихся операций ролей агентов в шагах workflow и core metadata writers по LOG161.
