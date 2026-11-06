@@ -4557,3 +4557,9 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 [следующий участок](implementation/log161/next-boundary.md). ROB765 остаётся
 In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
 Публикация и сверка Linear фиксируются после push.
+
+06.11.2026 LOG161 опубликован. Code 419f2559f85fe3eeece2d6f68797cc8708541bf1
+отправлен в GitHub, ref подтверждён через API. Описание ROB765, комментарий
+b0f39f7a-8067-4f51-ace6-0721c6b792bc и все 11 состояний задач прочитаны обратно
+и совпали. [Публикация](implementation/log161/publication.json).
+Следующий участок — аудит встроенных мутаций `roleTarget` в `AgentService` и оставшихся core metadata writers по LOG162.
