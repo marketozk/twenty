@@ -3,6 +3,13 @@ import { Injectable } from '@nestjs/common';
 import { isDefined } from 'twenty-shared/utils';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
+import { withAgentMetadataRoleTargetAudit } from 'src/engine/core-modules/crm-audit/role-assignment-audit';
+import {
+  captureRoleAuditIdentity,
+  captureRoleAuditOperation,
+  hasConflictingMetadataAuditScope,
+  type RoleUpdateAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { type CreateAgentInput } from 'src/engine/metadata-modules/ai/ai-agent/dtos/create-agent.input';
 import { type UpdateAgentInput } from 'src/engine/metadata-modules/ai/ai-agent/dtos/update-agent.input';
 import { fromCreateAgentInputToFlatAgent } from 'src/engine/metadata-modules/ai/ai-agent/utils/from-create-agent-input-to-flat-agent.util';
@@ -79,10 +86,46 @@ export class AgentService {
     return { ...flatAgent, roleId: roleId ?? null };
   }
 
+  // Captured before the first await and required for any roleId input and any
+  // delete (deleting an agent cascades its roleTarget). Other agent edits
+  // stay open to callers that cannot write audit entries.
+  private captureAgentRoleAuditIdentity(
+    workspaceId: string,
+    auditIdentity: RoleUpdateAuditIdentity | undefined,
+  ): () => RoleUpdateAuditIdentity {
+    if (hasConflictingMetadataAuditScope(workspaceId)) {
+      throw new Error('Nested role assignment audit unsupported');
+    }
+
+    try {
+      const capturedIdentity = captureRoleAuditIdentity(
+        auditIdentity as RoleUpdateAuditIdentity,
+      );
+
+      captureRoleAuditOperation(workspaceId, capturedIdentity);
+
+      return () => capturedIdentity;
+    } catch (error) {
+      return () => {
+        throw error;
+      };
+    }
+  }
+
   async createOneAgent(
     { isSystem = false, ...input }: CreateAgentInput & { isSystem?: boolean },
     workspaceId: string,
+    auditIdentity?: RoleUpdateAuditIdentity,
   ): Promise<FlatAgentWithRoleId> {
+    const requireAuditIdentity = this.captureAgentRoleAuditIdentity(
+      workspaceId,
+      auditIdentity,
+    );
+
+    if (isDefined(input.roleId)) {
+      requireAuditIdentity();
+    }
+
     const { flatApplicationMaps, flatRoleMaps } =
       await this.workspaceCacheService.getOrRecompute(workspaceId, [
         'flatApplicationMaps',
@@ -112,8 +155,8 @@ export class AgentService {
         flatRoleMaps,
       });
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+    const runCreateMigration = () =>
+      this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
         {
           allFlatEntityOperationByMetadataName: {
             agent: {
@@ -135,6 +178,20 @@ export class AgentService {
             workspaceCustomFlatApplication.universalIdentifier,
         },
       );
+
+    const validateAndBuildResult = isDefined(flatRoleTargetToCreate)
+      ? await withAgentMetadataRoleTargetAudit(
+          {
+            agentMode: 'create',
+            workspaceId,
+            agentId: flatAgentToCreate.id,
+            agentUniversalIdentifier: flatAgentToCreate.universalIdentifier,
+            roleId: flatRoleTargetToCreate.roleId,
+          },
+          requireAuditIdentity(),
+          runCreateMigration,
+        )
+      : await runCreateMigration();
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -162,10 +219,21 @@ export class AgentService {
   async updateOneAgent({
     input,
     workspaceId,
+    auditIdentity,
   }: {
     input: UpdateAgentInput;
     workspaceId: string;
+    auditIdentity?: RoleUpdateAuditIdentity;
   }): Promise<FlatAgentWithRoleId> {
+    const requireAuditIdentity = this.captureAgentRoleAuditIdentity(
+      workspaceId,
+      auditIdentity,
+    );
+
+    if (input.roleId !== undefined) {
+      requireAuditIdentity();
+    }
+
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         {
@@ -184,16 +252,20 @@ export class AgentService {
       flatAgentToUpdate,
       flatRoleTargetToCreate,
       flatRoleTargetToDelete,
-      flatRoleTargetToUpdate,
     } = fromUpdateAgentInputToFlatAgentToUpdate({
       updateAgentInput: input,
       flatAgentMaps,
       flatRoleTargetByAgentIdMaps,
       flatRoleMaps,
+      roleTargetApplication: {
+        applicationId: workspaceCustomFlatApplication.id,
+        applicationUniversalIdentifier:
+          workspaceCustomFlatApplication.universalIdentifier,
+      },
     });
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+    const runUpdateMigration = () =>
+      this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
         {
           allFlatEntityOperationByMetadataName: {
             agent: {
@@ -208,9 +280,7 @@ export class AgentService {
               flatEntityToDelete: isDefined(flatRoleTargetToDelete)
                 ? [flatRoleTargetToDelete]
                 : [],
-              flatEntityToUpdate: isDefined(flatRoleTargetToUpdate)
-                ? [flatRoleTargetToUpdate]
-                : [],
+              flatEntityToUpdate: [],
             },
           },
           workspaceId,
@@ -219,6 +289,22 @@ export class AgentService {
             workspaceCustomFlatApplication.universalIdentifier,
         },
       );
+
+    const validateAndBuildResult =
+      isDefined(flatRoleTargetToCreate) || isDefined(flatRoleTargetToDelete)
+        ? await withAgentMetadataRoleTargetAudit(
+            {
+              agentMode: 'update',
+              workspaceId,
+              agentId: flatAgentToUpdate.id,
+              agentUniversalIdentifier: flatAgentToUpdate.universalIdentifier,
+              roleId: flatRoleTargetToCreate?.roleId ?? null,
+              expectedDeletedRoleTargetId: flatRoleTargetToDelete?.id ?? null,
+            },
+            requireAuditIdentity(),
+            runUpdateMigration,
+          )
+        : await runUpdateMigration();
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -252,10 +338,12 @@ export class AgentService {
   async deleteOneAgent(
     id: string,
     workspaceId: string,
+    auditIdentity?: RoleUpdateAuditIdentity,
   ): Promise<FlatAgentWithRoleId> {
     const deletedAgents = await this.deleteManyAgents({
       ids: [id],
       workspaceId,
+      auditIdentity,
     });
 
     if (deletedAgents.length !== 1) {
@@ -274,14 +362,23 @@ export class AgentService {
     ids,
     workspaceId,
     isSystemBuild = false,
+    auditIdentity,
   }: {
     ids: string[];
     workspaceId: string;
     isSystemBuild?: boolean;
+    auditIdentity?: RoleUpdateAuditIdentity;
   }): Promise<FlatAgentWithRoleId[]> {
+    const requireAuditIdentity = this.captureAgentRoleAuditIdentity(
+      workspaceId,
+      auditIdentity,
+    );
+
     if (ids.length === 0) {
       return [];
     }
+
+    const deleteAuditIdentity = requireAuditIdentity();
 
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
@@ -313,8 +410,8 @@ export class AgentService {
       .map((agent) => flatRoleTargetByAgentIdMaps[agent.id])
       .filter(isDefined);
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+    const runDeleteMigration = () =>
+      this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
         {
           allFlatEntityOperationByMetadataName: {
             agent: {
@@ -334,6 +431,22 @@ export class AgentService {
             workspaceCustomFlatApplication.universalIdentifier,
         },
       );
+
+    const validateAndBuildResult = await withAgentMetadataRoleTargetAudit(
+      {
+        agentMode: 'delete',
+        workspaceId,
+        targets: agentsToDelete.flatMap((agent) => {
+          const roleTarget = flatRoleTargetByAgentIdMaps[agent.id];
+
+          return isDefined(roleTarget)
+            ? [{ agentId: agent.id, roleTargetId: roleTarget.id }]
+            : [];
+        }),
+      },
+      deleteAuditIdentity,
+      runDeleteMigration,
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

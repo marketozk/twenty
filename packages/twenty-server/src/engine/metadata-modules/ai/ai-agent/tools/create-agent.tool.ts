@@ -1,3 +1,4 @@
+import { isUndefined } from '@sniptt/guards';
 import {
   AUTO_SELECT_WORKSPACE_DEFAULT_MODEL_ID,
   ToolCategory,
@@ -67,7 +68,7 @@ export class CreateAgentTool extends BaseTool<typeof createAgentInputSchema> {
 
   async execute({
     input: { triggers, ...parameters },
-    context: { workspaceId },
+    context,
   }: ToolExecuteArgs<typeof createAgentInputSchema>): Promise<ToolOutput> {
     const modelId =
       parameters.modelId ?? AUTO_SELECT_WORKSPACE_DEFAULT_MODEL_ID;
@@ -80,7 +81,10 @@ export class CreateAgentTool extends BaseTool<typeof createAgentInputSchema> {
         modelId,
         triggers: toAgentTriggers(triggers ?? []),
       },
-      workspaceId,
+      context.workspaceId,
+      isUndefined(context.authContext)
+        ? undefined
+        : { auth: context.authContext, agentId: context.agentId },
     );
 
     return {

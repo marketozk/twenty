@@ -139,6 +139,13 @@ export class WorkflowVersionStepOperationsWorkspaceService {
         await this.agentService.deleteManyAgents({
           ids: [step.settings.input.agentId],
           workspaceId,
+          auditIdentity: {
+            auth: {
+              workspace: { id: workspaceId },
+              type: 'system',
+            },
+            systemActorId: 'workflow-version-step:delete-agent-step',
+          },
         });
 
         if (isDefined(roleTarget?.roleId) && isDefined(roleTarget?.id)) {
@@ -575,6 +582,13 @@ export class WorkflowVersionStepOperationsWorkspaceService {
             isSystem: true,
           },
           workspaceId,
+          {
+            auth: {
+              workspace: { id: workspaceId },
+              type: 'system',
+            },
+            systemActorId: 'workflow-version-step:create-agent-step',
+          },
         );
 
         return {
@@ -1192,6 +1206,13 @@ export class WorkflowVersionStepOperationsWorkspaceService {
         isSystem: true,
       },
       workspaceId,
+      {
+        auth: {
+          workspace: { id: workspaceId },
+          type: 'system',
+        },
+        systemActorId: 'workflow-version-step:duplicate-agent',
+      },
     );
   }
 }

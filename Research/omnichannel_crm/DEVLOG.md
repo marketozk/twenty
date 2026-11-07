@@ -4563,3 +4563,46 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 b0f39f7a-8067-4f51-ace6-0721c6b792bc и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log161/publication.json).
 Следующий участок — аудит встроенных мутаций `roleTarget` в `AgentService` и оставшихся core metadata writers по LOG162.
+
+## LOG162 - аудит встроенных мутаций `roleTarget` в `AgentService`
+
+07.11.2026 зафиксированы [дизайн](implementation/log162/design.md),
+[независимое ревью решения](implementation/log162/design-review.md) и
+[план проверок](implementation/log162/test-research.md).
+В `role-assignment-audit.ts` добавлен закрытый однотранзакционный аудит
+`withAgentMetadataRoleTargetAudit` (`targetKind: 'agentMetadata'`, режимы `create`, `update`,
+`delete`). До транзакции проверяется форма плана миграции: только `agent` и `roleTarget`
+(`create`/`delete`), `0..1` действие `agent.update` и `delete` перед `create`. Внутри
+`runInCoreAuditTransaction` блокируются `core.workspace` (`FOR NO KEY UPDATE`),
+`core.application`, `core.agent`, все привязки затронутых агентов (`FOR UPDATE`) и роли
+(`FOR SHARE`). `before`-образ снимается до миграции, состояние сверяется после миграции и
+после записи аудита. `computeAgentFlatRoleTargetToUpdate` заменяет `roleTarget.update` на
+`delete` + `create` под приложением миграции и пропускает повтор той же роли. `AgentService`
+снимает `auditIdentity` до первого `await`, её передают `AgentResolver`, `CreateAgentTool` /
+`UpdateAgentTool` / `DeleteAgentTool` и `WorkflowVersionStepOperationsWorkspaceService`.
+Приложение миграции осталось приложением рабочего пространства: рекомендация 3 ревью
+решения отклонена, обоснование в дизайне.
+
+Независимое ревью кода нашло одну серьёзную дыру (F1): `deleteManyAgents` выбирал
+неаудируемый путь по снимку кэша, и при устаревшем кэше `ON DELETE CASCADE` удалял
+привязку без записи аудита. Исправлено: любое удаление агента идёт через аудируемую
+транзакцию, которая блокирует агентов `FOR UPDATE` (конфликтует с `KEY SHARE` при вставке
+`roleTarget`) и сверяет их привязки в БД с планом; пустой план привязок допустим. Также
+исправлены комментарий о правиле identity (F2), пробелы в тестах (F3) и приложение новой
+привязки при смене роли (F4). Ранний отказ до первого `await` при любом `roleId` во входе
+(даже если привязка не изменится) и при любом удалении агента - осознанное fail-closed
+свойство. `delete_agent` без `authContext` теперь отклоняется, как инструменты ролей.
+`check_enterprise_dependencies.py` поймал новое ребро от утилиты обновления агента к
+`flat-application.type.ts`; параметр заменён на `Pick<FlatRoleTarget, ...>`.
+
+07.11.2026 проверки LOG162 завершены. 3099 tests/107 suites PASS (678.24s). 181 targeted/9 PostgreSQL suites PASS (18.142s) и 18 unit/2 suites PASS, 12 новых PostgreSQL случаев. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 464/465 roots, baseline 237 / current 237 diagnostics, 0 новых/changed-code. Совпали 10 local/remote source hashes.
+
+Ограничения: билдер миграции в стенде написан вручную (без валидаторов и побочных
+эффектов), формы действий сверены по коду. Ресинк манифеста после замены роли у агента
+приложения может упереться в `IDX_ROLE_TARGET_UNIQUE_AGENT`, как после `assignRoleToAgent`;
+это перенесено в следующий участок.
+
+[Результаты](implementation/log162/results.json), [ревью](implementation/log162/review.md),
+[следующий участок](implementation/log162/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

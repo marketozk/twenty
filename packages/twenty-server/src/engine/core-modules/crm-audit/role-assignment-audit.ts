@@ -70,16 +70,61 @@ type ApiKeyAssignment = Readonly<{
   roleId: string;
 }>;
 
+export type AgentMetadataDeleteTarget = Readonly<{
+  agentId: string;
+  roleTargetId: string;
+}>;
+
+type AgentMetadataCreateAssignment = Readonly<{
+  targetKind: 'agentMetadata';
+  mode?: 'assign' | 'remove';
+  agentMode: 'create';
+  workspaceId: string;
+  agentId: string;
+  agentUniversalIdentifier: string;
+  roleId: string;
+}>;
+
+type AgentMetadataUpdateAssignment = Readonly<{
+  targetKind: 'agentMetadata';
+  mode?: 'assign' | 'remove';
+  agentMode: 'update';
+  workspaceId: string;
+  agentId: string;
+  agentUniversalIdentifier: string;
+  roleId: string | null;
+  expectedDeletedRoleTargetId: string | null;
+}>;
+
+type AgentMetadataDeleteAssignment = Readonly<{
+  targetKind: 'agentMetadata';
+  mode?: 'assign' | 'remove';
+  agentMode: 'delete';
+  workspaceId: string;
+  targets: readonly AgentMetadataDeleteTarget[];
+}>;
+
+type AgentMetadataAssignment =
+  | AgentMetadataCreateAssignment
+  | AgentMetadataUpdateAssignment
+  | AgentMetadataDeleteAssignment;
+
 type Assignment =
   | UserAssignment
   | BulkUserAssignment
   | AgentAssignment
   | AgentRemoval
-  | ApiKeyAssignment;
+  | ApiKeyAssignment
+  | AgentMetadataAssignment;
 
 type Request = Readonly<
   Assignment & {
-    targetKind: 'userWorkspace' | 'userWorkspaceBulk' | 'agent' | 'apiKey';
+    targetKind:
+      | 'userWorkspace'
+      | 'userWorkspaceBulk'
+      | 'agent'
+      | 'apiKey'
+      | 'agentMetadata';
     mode: 'assign' | 'remove';
     operation: CrmAuditOperation;
     impersonatorUserWorkspaceId?: string;
@@ -191,6 +236,93 @@ export const withRoleAssignmentAudit = async <T>(
     }
   }
 
+  if (targetKind === 'agentMetadata') {
+    const agentMeta = assignment as AgentMetadataAssignment;
+    const operation = captureRoleAuditOperation(workspaceId, capturedIdentity);
+    const impersonatorField = capturedIdentity.impersonatorUserWorkspaceId
+      ? {
+          impersonatorUserWorkspaceId: uuid(
+            capturedIdentity.impersonatorUserWorkspaceId,
+          ),
+        }
+      : {};
+    let request: Request;
+    if (agentMeta.agentMode === 'create') {
+      request = Object.freeze({
+        targetKind: 'agentMetadata' as const,
+        mode: 'assign' as const,
+        agentMode: 'create' as const,
+        workspaceId,
+        agentId: uuid(agentMeta.agentId),
+        agentUniversalIdentifier: uuid(agentMeta.agentUniversalIdentifier),
+        roleId: uuid(agentMeta.roleId),
+        operation,
+        ...impersonatorField,
+      }) as Request;
+    } else if (agentMeta.agentMode === 'update') {
+      const roleId = agentMeta.roleId !== null ? uuid(agentMeta.roleId) : null;
+      const expectedDeletedRoleTargetId =
+        agentMeta.expectedDeletedRoleTargetId !== null
+          ? uuid(agentMeta.expectedDeletedRoleTargetId)
+          : null;
+      if (roleId === null && expectedDeletedRoleTargetId === null)
+        throw new Error(
+          'Agent metadata role update audit requires at least one roleTarget change',
+        );
+      request = Object.freeze({
+        targetKind: 'agentMetadata' as const,
+        mode: (roleId !== null ? 'assign' : 'remove') as 'assign' | 'remove',
+        agentMode: 'update' as const,
+        workspaceId,
+        agentId: uuid(agentMeta.agentId),
+        agentUniversalIdentifier: uuid(agentMeta.agentUniversalIdentifier),
+        roleId,
+        expectedDeletedRoleTargetId,
+        operation,
+        ...impersonatorField,
+      }) as Request;
+    } else if (agentMeta.agentMode === 'delete') {
+      // Empty targets still lock and verify the agents' roleTargets, because
+      // deleting an agent cascades any binding the plan did not see.
+      if (!Array.isArray(agentMeta.targets))
+        throw new Error('Agent metadata role delete audit targets invalid');
+      const seenAgentIds = new Set<string>();
+      const seenRoleTargetIds = new Set<string>();
+      const normalizedTargets = Object.freeze(
+        agentMeta.targets.map((target) => {
+          if (!target || typeof target !== 'object')
+            throw new Error('Agent metadata role delete target invalid');
+          const agentId = uuid(target.agentId);
+          const roleTargetId = uuid(target.roleTargetId);
+          if (seenAgentIds.has(agentId) || seenRoleTargetIds.has(roleTargetId))
+            throw new Error(
+              'Agent metadata role delete duplicate agentId or roleTargetId',
+            );
+          seenAgentIds.add(agentId);
+          seenRoleTargetIds.add(roleTargetId);
+          return Object.freeze({ agentId, roleTargetId });
+        }),
+      );
+      request = Object.freeze({
+        targetKind: 'agentMetadata' as const,
+        mode: 'remove' as const,
+        agentMode: 'delete' as const,
+        workspaceId,
+        targets: normalizedTargets,
+        operation,
+        ...impersonatorField,
+      }) as Request;
+    } else {
+      throw new Error('Agent metadata role assignment mode invalid');
+    }
+    active.add(request);
+    try {
+      return await storage.run(request, work);
+    } finally {
+      active.delete(request);
+    }
+  }
+
   const capturedUuidFields = Object.fromEntries(
     Object.entries(assignment)
       .filter(
@@ -276,6 +408,37 @@ export const withApiKeyRoleAssignmentAudit = async <T>(
     work,
   );
 
+export const withAgentMetadataRoleTargetAudit = async <T>(
+  input:
+    | {
+        agentMode: 'create';
+        workspaceId: string;
+        agentId: string;
+        agentUniversalIdentifier: string;
+        roleId: string;
+      }
+    | {
+        agentMode: 'update';
+        workspaceId: string;
+        agentId: string;
+        agentUniversalIdentifier: string;
+        roleId: string | null;
+        expectedDeletedRoleTargetId: string | null;
+      }
+    | {
+        agentMode: 'delete';
+        workspaceId: string;
+        targets: readonly AgentMetadataDeleteTarget[];
+      },
+  identity: RoleUpdateAuditIdentity,
+  work: () => Promise<T>,
+): Promise<T> =>
+  withRoleAssignmentAudit(
+    { ...input, targetKind: 'agentMetadata' },
+    identity,
+    work,
+  );
+
 export const getRoleAssignmentAudit = (
   workspaceId: string,
 ): Request | undefined => {
@@ -312,6 +475,709 @@ export const runAuditedRoleAssignment = async <T>(
   const applicationUniversalIdentifier = uuid(
     mappings.application.universalIdentifier,
   );
+
+  if (request.targetKind === 'agentMetadata') {
+    const agentActions = actions.filter(
+      (action) => action.metadataName === 'agent',
+    );
+    const roleTargetActions = actions.filter(
+      (action) => action.metadataName === 'roleTarget',
+    );
+    if (
+      actions.length !== agentActions.length + roleTargetActions.length ||
+      roleTargetActions.some(
+        (action) => action.type !== 'create' && action.type !== 'delete',
+      )
+    )
+      throw new Error(
+        'Agent metadata role audit requires only agent and roleTarget create/delete actions',
+      );
+
+    if (request.agentMode === 'create') {
+      if (
+        agentActions.length !== 1 ||
+        roleTargetActions.length !== 1 ||
+        agentActions[0].type !== 'create' ||
+        roleTargetActions[0].type !== 'create'
+      )
+        throw new Error(
+          'Agent metadata role create audit requires one agent create and one roleTarget create',
+        );
+      const agentCreate = agentActions[0];
+      const agentInput = agentCreate.flatEntity
+        ? ({ ...agentCreate.flatEntity } as Record<string, unknown>)
+        : undefined;
+      const targetCreate = roleTargetActions[0];
+      const targetInput = targetCreate.flatEntity
+        ? ({ ...targetCreate.flatEntity } as Record<string, unknown>)
+        : undefined;
+      if (!agentInput || !agentCreate.id || !targetInput || !targetCreate.id)
+        throw new Error(
+          'Agent metadata role create audit requires enriched create identity',
+        );
+      const createdTargetId = uuid(targetCreate.id);
+      const createdTargetUniversalIdentifier = uuid(
+        targetInput.universalIdentifier,
+      );
+      const mappedRoleId =
+        mappings.roles[String(targetInput.roleUniversalIdentifier)]?.id;
+      // The runner writes the migration application as applicationId; the
+      // planned universal application only has to agree between both rows.
+      if (
+        uuid(agentCreate.id) !== request.agentId ||
+        uuid(agentInput.universalIdentifier) !==
+          request.agentUniversalIdentifier ||
+        targetInput.userWorkspaceId !== null ||
+        targetInput.apiKeyId !== null ||
+        uuid(targetInput.agentUniversalIdentifier) !==
+          request.agentUniversalIdentifier ||
+        uuid(targetInput.applicationUniversalIdentifier) !==
+          uuid(agentInput.applicationUniversalIdentifier) ||
+        !mappedRoleId ||
+        uuid(mappedRoleId) !== request.roleId ||
+        typeof targetInput.createdAt !== 'string' ||
+        !Number.isFinite(Date.parse(targetInput.createdAt)) ||
+        typeof targetInput.updatedAt !== 'string' ||
+        !Number.isFinite(Date.parse(targetInput.updatedAt))
+      )
+        throw new Error(
+          'Agent metadata role create final plan points to a different target',
+        );
+      const roleUniversalIdentifier = uuid(targetInput.roleUniversalIdentifier);
+      const createdAt = targetInput.createdAt;
+      const updatedAt = targetInput.updatedAt;
+
+      consumed.add(request);
+      return runInCoreAuditTransaction(dataSource, async (runner) => {
+        await runner.query("SET LOCAL lock_timeout = '8s'");
+        const [workspace] = await runner.query(
+          `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+          [request.workspaceId],
+        );
+        if (!workspace || workspace.deletedAt !== null)
+          throw new Error('Role assignment workspace unavailable');
+        const verifyApplication = () =>
+          verifyRoleAuditApplication(
+            runner,
+            request.workspaceId,
+            applicationId,
+            applicationUniversalIdentifier,
+          );
+        await verifyApplication();
+        if (
+          (
+            await runner.query(
+              'SELECT id FROM core.agent WHERE "workspaceId"=$1 AND (id=$2 OR "universalIdentifier"=$3) FOR UPDATE',
+              [
+                request.workspaceId,
+                request.agentId,
+                request.agentUniversalIdentifier,
+              ],
+            )
+          ).length > 0 ||
+          (
+            await runner.query(
+              'SELECT id FROM core."roleTarget" WHERE "workspaceId"=$1 AND ("agentId"=$2 OR id=$3 OR "universalIdentifier"=$4) FOR UPDATE',
+              [
+                request.workspaceId,
+                request.agentId,
+                createdTargetId,
+                createdTargetUniversalIdentifier,
+              ],
+            )
+          ).length > 0
+        )
+          throw new Error('Role assignment old target changed');
+        const roles = await runner.query(
+          'SELECT to_jsonb(r) AS row FROM core.role r WHERE "workspaceId"=$1 AND id=$2 FOR SHARE',
+          [request.workspaceId, request.roleId],
+        );
+        const destination: Record<string, unknown> | undefined = roles[0]?.row;
+        if (
+          roles.length !== 1 ||
+          !destination ||
+          destination.canBeAssignedToAgents !== true ||
+          uuid(destination.universalIdentifier) !== roleUniversalIdentifier
+        )
+          throw new Error(
+            'Role assignment destination is unavailable or not assignable',
+          );
+
+        const operation = await resolveRoleAuditInitiator(
+          runner,
+          request.operation,
+          request.impersonatorUserWorkspaceId,
+        );
+        const audit = new CrmAuditTransactionContext(runner, operation);
+        const result = await work(runner);
+
+        const readAgent = () =>
+          runner.query(
+            'SELECT id,"workspaceId","applicationId","universalIdentifier","deletedAt" FROM core.agent WHERE id=$1 AND "workspaceId"=$2 FOR SHARE',
+            [request.agentId, request.workspaceId],
+          );
+        const afterAgents = await readAgent();
+        if (
+          afterAgents.length !== 1 ||
+          afterAgents[0].deletedAt !== null ||
+          uuid(afterAgents[0].applicationId) !== applicationId ||
+          uuid(afterAgents[0].universalIdentifier) !==
+            request.agentUniversalIdentifier
+        )
+          throw new Error('Role assignment agent changed or unavailable');
+
+        const readTargets = () =>
+          runner.query(
+            'SELECT to_jsonb(t) AS row FROM core."roleTarget" t WHERE "workspaceId"=$1 AND ("agentId"=$2 OR id=$3) ORDER BY id FOR UPDATE',
+            [request.workspaceId, request.agentId, createdTargetId],
+          );
+        const afterRows = await readTargets();
+        const after: Record<string, unknown> | undefined = afterRows[0]?.row;
+        const expected = {
+          id: createdTargetId,
+          universalIdentifier: createdTargetUniversalIdentifier,
+          workspaceId: request.workspaceId,
+          applicationId,
+          roleId: request.roleId,
+          userWorkspaceId: null,
+          agentId: request.agentId,
+          apiKeyId: null,
+        };
+        const scalar = (row: Record<string, unknown>) =>
+          Object.fromEntries(
+            Object.entries(row).filter(
+              ([key]) => key !== 'createdAt' && key !== 'updatedAt',
+            ),
+          );
+        if (
+          afterRows.length !== 1 ||
+          !after ||
+          canonicalAuditJson(scalar(after)) !== canonicalAuditJson(expected)
+        )
+          throw new Error('Role assignment persisted replacement mismatch');
+        const [timestamps] = await runner.query(
+          'SELECT "createdAt"=$2::timestamptz AND "updatedAt"=$3::timestamptz AS matches FROM core."roleTarget" WHERE id=$1',
+          [createdTargetId, createdAt, updatedAt],
+        );
+        if (timestamps?.matches !== true)
+          throw new Error('Role assignment timestamps changed');
+
+        audit.record({
+          resourceKind: 'roleTarget',
+          resourceId: createdTargetId,
+          action: 'create',
+          before: null,
+          after: projectRoleTargetAuditFields(after),
+          securityDescriptor: {
+            resourceKind: 'roleTarget',
+            resourceId: createdTargetId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        await audit.flush();
+
+        if (
+          canonicalAuditJson(afterRows) !==
+            canonicalAuditJson(await readTargets()) ||
+          canonicalAuditJson(afterAgents) !==
+            canonicalAuditJson(await readAgent())
+        )
+          throw new Error('Role assignment changed during audit flush');
+        const currentRoles = await runner.query(
+          'SELECT to_jsonb(r) AS row FROM core.role r WHERE "workspaceId"=$1 AND id=$2',
+          [request.workspaceId, request.roleId],
+        );
+        if (canonicalAuditJson(roles) !== canonicalAuditJson(currentRoles))
+          throw new Error(
+            'Role assignment role state changed during audit flush',
+          );
+        await verifyApplication();
+        return result;
+      });
+    }
+
+    if (request.agentMode === 'update') {
+      const targetDeletes = roleTargetActions.filter(
+        (action) => action.type === 'delete',
+      );
+      const targetCreates = roleTargetActions.filter(
+        (action) => action.type === 'create',
+      );
+      if (
+        agentActions.length > 1 ||
+        agentActions.some(
+          (action) =>
+            action.type !== 'update' ||
+            action.id !== undefined ||
+            uuid(action.universalIdentifier) !==
+              request.agentUniversalIdentifier,
+        ) ||
+        targetDeletes.length !==
+          (request.expectedDeletedRoleTargetId ? 1 : 0) ||
+        targetCreates.length !== (request.roleId ? 1 : 0) ||
+        targetDeletes.length + targetCreates.length < 1 ||
+        roleTargetActions
+          .slice(0, targetDeletes.length)
+          .some((action) => action.type !== 'delete') ||
+        roleTargetActions
+          .slice(targetDeletes.length)
+          .some((action) => action.type !== 'create')
+      )
+        throw new Error(
+          'Agent metadata role update audit requires bounded roleTarget actions',
+        );
+
+      let deletedTargetUniversalIdentifier: string | null = null;
+      if (targetDeletes.length === 1) {
+        deletedTargetUniversalIdentifier = uuid(
+          targetDeletes[0].universalIdentifier,
+        );
+        const mappedDeletedId =
+          mappings.targets[deletedTargetUniversalIdentifier]?.id;
+        if (
+          !mappedDeletedId ||
+          uuid(mappedDeletedId) !== request.expectedDeletedRoleTargetId
+        )
+          throw new Error(
+            'Agent metadata role update delete target mapping mismatch',
+          );
+      }
+
+      let plannedTargetCreate: {
+        id: string;
+        universalIdentifier: string;
+        roleUniversalIdentifier: string;
+        createdAt: string;
+        updatedAt: string;
+      } | null = null;
+      if (targetCreates.length === 1) {
+        const targetCreate = targetCreates[0];
+        const targetInput = targetCreate.flatEntity
+          ? ({ ...targetCreate.flatEntity } as Record<string, unknown>)
+          : undefined;
+        if (!targetInput || !targetCreate.id)
+          throw new Error(
+            'Agent metadata role update requires enriched create identity',
+          );
+        const mappedAgentId =
+          mappings.agents?.[request.agentUniversalIdentifier]?.id;
+        const mappedRoleId =
+          mappings.roles[String(targetInput.roleUniversalIdentifier)]?.id;
+        if (
+          targetInput.userWorkspaceId !== null ||
+          targetInput.apiKeyId !== null ||
+          uuid(targetInput.agentUniversalIdentifier) !==
+            request.agentUniversalIdentifier ||
+          !mappedAgentId ||
+          uuid(mappedAgentId) !== request.agentId ||
+          uuid(targetInput.applicationUniversalIdentifier) !==
+            applicationUniversalIdentifier ||
+          !mappedRoleId ||
+          uuid(mappedRoleId) !== request.roleId ||
+          typeof targetInput.createdAt !== 'string' ||
+          !Number.isFinite(Date.parse(targetInput.createdAt)) ||
+          typeof targetInput.updatedAt !== 'string' ||
+          !Number.isFinite(Date.parse(targetInput.updatedAt))
+        )
+          throw new Error(
+            'Agent metadata role update final plan points to a different target',
+          );
+        plannedTargetCreate = {
+          id: uuid(targetCreate.id),
+          universalIdentifier: uuid(targetInput.universalIdentifier),
+          roleUniversalIdentifier: uuid(targetInput.roleUniversalIdentifier),
+          createdAt: targetInput.createdAt,
+          updatedAt: targetInput.updatedAt,
+        };
+      }
+
+      consumed.add(request);
+      return runInCoreAuditTransaction(dataSource, async (runner) => {
+        await runner.query("SET LOCAL lock_timeout = '8s'");
+        const [workspace] = await runner.query(
+          `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+          [request.workspaceId],
+        );
+        if (!workspace || workspace.deletedAt !== null)
+          throw new Error('Role assignment workspace unavailable');
+        const verifyApplication = () =>
+          verifyRoleAuditApplication(
+            runner,
+            request.workspaceId,
+            applicationId,
+            applicationUniversalIdentifier,
+          );
+        await verifyApplication();
+
+        const readAgent = () =>
+          runner.query(
+            'SELECT id,"workspaceId","applicationId","universalIdentifier","deletedAt" FROM core.agent WHERE id=$1 AND "workspaceId"=$2 FOR SHARE',
+            [request.agentId, request.workspaceId],
+          );
+        const beforeAgents = await readAgent();
+        if (
+          beforeAgents.length !== 1 ||
+          beforeAgents[0].deletedAt !== null ||
+          uuid(beforeAgents[0].universalIdentifier) !==
+            request.agentUniversalIdentifier
+        )
+          throw new Error('Role assignment agent changed or unavailable');
+
+        const readTargets = () =>
+          runner.query(
+            'SELECT to_jsonb(t) AS row FROM core."roleTarget" t WHERE "workspaceId"=$1 AND ("agentId"=$2 OR ($3::uuid IS NOT NULL AND id=$3::uuid) OR ($4::uuid IS NOT NULL AND id=$4::uuid)) ORDER BY id FOR UPDATE',
+            [
+              request.workspaceId,
+              request.agentId,
+              request.expectedDeletedRoleTargetId,
+              plannedTargetCreate?.id ?? null,
+            ],
+          );
+        const beforeRows = await readTargets();
+        if (beforeRows.length !== (request.expectedDeletedRoleTargetId ? 1 : 0))
+          throw new Error('Role assignment old target changed');
+        const beforeTarget: Record<string, unknown> | null =
+          beforeRows[0]?.row ?? null;
+        if (
+          beforeTarget &&
+          (uuid(beforeTarget.id) !== request.expectedDeletedRoleTargetId ||
+            uuid(beforeTarget.universalIdentifier) !==
+              deletedTargetUniversalIdentifier ||
+            uuid(beforeTarget.agentId) !== request.agentId ||
+            beforeTarget.userWorkspaceId !== null ||
+            beforeTarget.apiKeyId !== null)
+        )
+          throw new Error('Role assignment old target changed');
+
+        const roleIdsToLock = [
+          ...new Set([
+            ...(request.roleId ? [request.roleId] : []),
+            ...(beforeTarget ? [uuid(beforeTarget.roleId)] : []),
+          ]),
+        ];
+        const roles = await runner.query(
+          'SELECT to_jsonb(r) AS row FROM core.role r WHERE "workspaceId"=$1 AND id=ANY($2::uuid[]) ORDER BY id FOR SHARE',
+          [request.workspaceId, roleIdsToLock],
+        );
+        const roleById = new Map<string, Record<string, unknown>>(
+          roles.map((entry: { row: Record<string, unknown> }) => [
+            uuid(entry.row.id),
+            entry.row,
+          ]),
+        );
+        if (plannedTargetCreate && request.roleId) {
+          const destination = roleById.get(request.roleId);
+          if (
+            !destination ||
+            destination.canBeAssignedToAgents !== true ||
+            uuid(destination.universalIdentifier) !==
+              plannedTargetCreate.roleUniversalIdentifier
+          )
+            throw new Error(
+              'Role assignment destination is unavailable or not assignable',
+            );
+        }
+        if (beforeTarget && !roleById.has(uuid(beforeTarget.roleId)))
+          throw new Error('Role assignment source role unavailable');
+
+        const operation = await resolveRoleAuditInitiator(
+          runner,
+          request.operation,
+          request.impersonatorUserWorkspaceId,
+        );
+        const audit = new CrmAuditTransactionContext(runner, operation);
+        const result = await work(runner);
+
+        const afterAgents = await readAgent();
+        if (
+          canonicalAuditJson(afterAgents) !== canonicalAuditJson(beforeAgents)
+        )
+          throw new Error('Role assignment agent changed or unavailable');
+
+        const afterRows = await readTargets();
+        if (
+          request.expectedDeletedRoleTargetId &&
+          (
+            await runner.query('SELECT id FROM core."roleTarget" WHERE id=$1', [
+              request.expectedDeletedRoleTargetId,
+            ])
+          ).length > 0
+        )
+          throw new Error('Role assignment old target still exists');
+
+        let afterTarget: Record<string, unknown> | null = null;
+        if (plannedTargetCreate && request.roleId) {
+          const after: Record<string, unknown> | undefined = afterRows[0]?.row;
+          const expected = {
+            id: plannedTargetCreate.id,
+            universalIdentifier: plannedTargetCreate.universalIdentifier,
+            workspaceId: request.workspaceId,
+            applicationId,
+            roleId: request.roleId,
+            userWorkspaceId: null,
+            agentId: request.agentId,
+            apiKeyId: null,
+          };
+          const scalar = (row: Record<string, unknown>) =>
+            Object.fromEntries(
+              Object.entries(row).filter(
+                ([key]) => key !== 'createdAt' && key !== 'updatedAt',
+              ),
+            );
+          if (
+            afterRows.length !== 1 ||
+            !after ||
+            canonicalAuditJson(scalar(after)) !== canonicalAuditJson(expected)
+          )
+            throw new Error('Role assignment persisted replacement mismatch');
+          const [timestamps] = await runner.query(
+            'SELECT "createdAt"=$2::timestamptz AND "updatedAt"=$3::timestamptz AS matches FROM core."roleTarget" WHERE id=$1',
+            [
+              plannedTargetCreate.id,
+              plannedTargetCreate.createdAt,
+              plannedTargetCreate.updatedAt,
+            ],
+          );
+          if (timestamps?.matches !== true)
+            throw new Error('Role assignment timestamps changed');
+          afterTarget = after;
+        } else if (afterRows.length > 0) {
+          throw new Error('Role assignment old target still exists');
+        }
+
+        const record = (
+          row: Record<string, unknown>,
+          action: 'create' | 'delete',
+        ) =>
+          audit.record({
+            resourceKind: 'roleTarget',
+            resourceId: uuid(row.id),
+            action,
+            before:
+              action === 'delete' ? projectRoleTargetAuditFields(row) : null,
+            after:
+              action === 'create' ? projectRoleTargetAuditFields(row) : null,
+            securityDescriptor: {
+              resourceKind: 'roleTarget',
+              resourceId: uuid(row.id),
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+        if (beforeTarget) record(beforeTarget, 'delete');
+        if (afterTarget) record(afterTarget, 'create');
+        await audit.flush();
+
+        if (
+          canonicalAuditJson(afterRows) !==
+            canonicalAuditJson(await readTargets()) ||
+          canonicalAuditJson(afterAgents) !==
+            canonicalAuditJson(await readAgent())
+        )
+          throw new Error('Role assignment changed during audit flush');
+        if (
+          request.expectedDeletedRoleTargetId &&
+          (
+            await runner.query('SELECT id FROM core."roleTarget" WHERE id=$1', [
+              request.expectedDeletedRoleTargetId,
+            ])
+          ).length > 0
+        )
+          throw new Error('Role assignment deleted target reappeared');
+        const currentRoles = await runner.query(
+          'SELECT to_jsonb(r) AS row FROM core.role r WHERE "workspaceId"=$1 AND id=ANY($2::uuid[]) ORDER BY id',
+          [request.workspaceId, roleIdsToLock],
+        );
+        if (canonicalAuditJson(roles) !== canonicalAuditJson(currentRoles))
+          throw new Error(
+            'Role assignment role state changed during audit flush',
+          );
+        await verifyApplication();
+        return result;
+      });
+    }
+
+    if (
+      request.agentMode !== 'delete' ||
+      agentActions.length === 0 ||
+      agentActions.length < request.targets.length ||
+      roleTargetActions.length !== request.targets.length ||
+      agentActions.some((action) => action.type !== 'delete') ||
+      roleTargetActions.some((action) => action.type !== 'delete')
+    )
+      throw new Error(
+        'Agent metadata role delete audit requires bounded agent and roleTarget delete actions',
+      );
+
+    const plannedAgentDeleteIds = agentActions.map((action) => {
+      const universalIdentifier = uuid(action.universalIdentifier);
+      const mappedId = mappings.agents?.[universalIdentifier]?.id;
+      if (!mappedId)
+        throw new Error('Agent metadata role delete agent mapping missing');
+      return uuid(mappedId);
+    });
+    const plannedAgentDeleteIdSet = new Set(plannedAgentDeleteIds);
+    if (
+      plannedAgentDeleteIdSet.size !== plannedAgentDeleteIds.length ||
+      request.targets.some(
+        (target) => !plannedAgentDeleteIdSet.has(target.agentId),
+      )
+    )
+      throw new Error('Agent metadata role delete agent set mismatch');
+
+    const expectedAgentByRoleTargetId = new Map(
+      request.targets.map((target) => [target.roleTargetId, target.agentId]),
+    );
+    const plannedTargetDeletes = roleTargetActions.map((deleteAction) => {
+      const universalIdentifier = uuid(deleteAction.universalIdentifier);
+      const mappedId = mappings.targets[universalIdentifier]?.id;
+      if (!mappedId)
+        throw new Error('Agent metadata role delete target mapping missing');
+      const id = uuid(mappedId);
+      const expectedAgentId = expectedAgentByRoleTargetId.get(id);
+      if (!expectedAgentId)
+        throw new Error(
+          'Agent metadata role delete final plan points to a different target',
+        );
+      return { id, universalIdentifier, agentId: expectedAgentId };
+    });
+    if (
+      new Set(plannedTargetDeletes.map((item) => item.id)).size !==
+        plannedTargetDeletes.length ||
+      new Set(plannedTargetDeletes.map((item) => item.universalIdentifier))
+        .size !== plannedTargetDeletes.length
+    )
+      throw new Error('Agent metadata role delete duplicate delete action');
+
+    consumed.add(request);
+    return runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null)
+        throw new Error('Role assignment workspace unavailable');
+      const verifyApplication = () =>
+        verifyRoleAuditApplication(
+          runner,
+          request.workspaceId,
+          applicationId,
+          applicationUniversalIdentifier,
+        );
+      await verifyApplication();
+
+      // FOR UPDATE conflicts with the KEY SHARE lock of any roleTarget insert,
+      // so no binding can appear between this check and the cascading delete.
+      const beforeAgents = await runner.query(
+        'SELECT id,"deletedAt" FROM core.agent WHERE "workspaceId"=$1 AND id=ANY($2::uuid[]) ORDER BY id FOR UPDATE',
+        [request.workspaceId, plannedAgentDeleteIds],
+      );
+      if (
+        beforeAgents.length !== plannedAgentDeleteIds.length ||
+        beforeAgents.some(
+          (agent: { deletedAt: unknown }) => agent.deletedAt !== null,
+        )
+      )
+        throw new Error('Role assignment agent changed or unavailable');
+
+      const readTargets = () =>
+        runner.query(
+          'SELECT to_jsonb(t) AS row FROM core."roleTarget" t WHERE "workspaceId"=$1 AND ("agentId"=ANY($2::uuid[]) OR id=ANY($3::uuid[])) ORDER BY id FOR UPDATE',
+          [
+            request.workspaceId,
+            plannedAgentDeleteIds,
+            plannedTargetDeletes.map((item) => item.id),
+          ],
+        );
+      const beforeRows = await readTargets();
+      if (beforeRows.length !== plannedTargetDeletes.length)
+        throw new Error('Role assignment old target changed');
+      const beforeTargets: Record<string, unknown>[] = beforeRows.map(
+        (entry: { row: Record<string, unknown> }) => entry.row,
+      );
+      const plannedById = new Map(
+        plannedTargetDeletes.map((item) => [item.id, item]),
+      );
+      for (const before of beforeTargets) {
+        const beforeId = uuid(before.id);
+        const planned = plannedById.get(beforeId);
+        if (
+          !planned ||
+          uuid(before.universalIdentifier) !== planned.universalIdentifier ||
+          uuid(before.agentId) !== planned.agentId ||
+          before.userWorkspaceId !== null ||
+          before.apiKeyId !== null
+        )
+          throw new Error('Role assignment old target changed');
+      }
+
+      const roleIdsToLock = [
+        ...new Set(beforeTargets.map((before) => uuid(before.roleId))),
+      ];
+      const roles = await runner.query(
+        'SELECT to_jsonb(r) AS row FROM core.role r WHERE "workspaceId"=$1 AND id=ANY($2::uuid[]) ORDER BY id FOR SHARE',
+        [request.workspaceId, roleIdsToLock],
+      );
+      if (roles.length !== roleIdsToLock.length)
+        throw new Error('Role assignment source role unavailable');
+
+      const operation = await resolveRoleAuditInitiator(
+        runner,
+        request.operation,
+        request.impersonatorUserWorkspaceId,
+      );
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      const result = await work(runner);
+
+      if (
+        (await readTargets()).length > 0 ||
+        (
+          await runner.query(
+            'SELECT id FROM core.agent WHERE id=ANY($1::uuid[])',
+            [plannedAgentDeleteIds],
+          )
+        ).length > 0
+      )
+        throw new Error('Role assignment old target still exists');
+
+      for (const before of beforeTargets) {
+        audit.record({
+          resourceKind: 'roleTarget',
+          resourceId: uuid(before.id),
+          action: 'delete',
+          before: projectRoleTargetAuditFields(before),
+          after: null,
+          securityDescriptor: {
+            resourceKind: 'roleTarget',
+            resourceId: uuid(before.id),
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+      }
+      await audit.flush();
+
+      if (
+        (await readTargets()).length > 0 ||
+        (
+          await runner.query(
+            'SELECT id FROM core.agent WHERE id=ANY($1::uuid[])',
+            [plannedAgentDeleteIds],
+          )
+        ).length > 0
+      )
+        throw new Error('Role assignment deleted target reappeared');
+      const currentRoles = await runner.query(
+        'SELECT to_jsonb(r) AS row FROM core.role r WHERE "workspaceId"=$1 AND id=ANY($2::uuid[]) ORDER BY id',
+        [request.workspaceId, roleIdsToLock],
+      );
+      if (canonicalAuditJson(roles) !== canonicalAuditJson(currentRoles))
+        throw new Error(
+          'Role assignment role state changed during audit flush',
+        );
+      await verifyApplication();
+      return result;
+    });
+  }
 
   if (request.targetKind === 'userWorkspaceBulk') {
     const expectedCount = request.targets.length;

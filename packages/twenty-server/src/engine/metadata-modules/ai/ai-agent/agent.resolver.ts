@@ -1,12 +1,14 @@
 import { UseGuards, UseInterceptors, UseFilters } from '@nestjs/common';
-import { Args, Mutation, Query } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query } from '@nestjs/graphql';
 
+import { type Request } from 'express';
 import { PermissionFlagType } from 'twenty-shared/constants';
 import { isNonEmptyString } from '@sniptt/guards';
 
 import { ApplicationExceptionFilter } from 'src/engine/core-modules/application/application-exception-filter';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
 import { canCallerReachApplication } from 'src/engine/core-modules/application/utils/can-caller-reach-application.util';
+import { roleAuditIdentityFromRequest } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { ApplicationTargetArg } from 'src/engine/decorators/auth/application-target-arg.decorator';
 import { AuthApplication } from 'src/engine/decorators/auth/auth-application.decorator';
@@ -98,6 +100,7 @@ export class AgentResolver {
   async createOneAgent(
     @Args('input') input: CreateAgentInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Context() context: { req: Request },
   ): Promise<AgentDTO> {
     if (isNonEmptyString(input.modelId)) {
       this.aiModelRegistryService.validateModelAvailability(input.modelId);
@@ -106,6 +109,7 @@ export class AgentResolver {
     const createdAgent = await this.agentService.createOneAgent(
       input,
       workspace.id,
+      roleAuditIdentityFromRequest(context.req),
     );
 
     return fromFlatAgentWithRoleIdToAgentDto(createdAgent);
@@ -125,6 +129,7 @@ export class AgentResolver {
     })
     input: UpdateAgentInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Context() context: { req: Request },
   ): Promise<AgentDTO> {
     if (isNonEmptyString(input.modelId)) {
       this.aiModelRegistryService.validateModelAvailability(input.modelId);
@@ -133,6 +138,7 @@ export class AgentResolver {
     const updatedAgent = await this.agentService.updateOneAgent({
       input,
       workspaceId: workspace.id,
+      auditIdentity: roleAuditIdentityFromRequest(context.req),
     });
 
     return fromFlatAgentWithRoleIdToAgentDto(updatedAgent);
@@ -152,10 +158,12 @@ export class AgentResolver {
     })
     { id }: AgentIdInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context() context: { req: Request },
   ): Promise<AgentDTO> {
     const deletedFlatAgent = await this.agentService.deleteOneAgent(
       id,
       workspaceId,
+      roleAuditIdentityFromRequest(context.req),
     );
 
     return fromFlatAgentWithRoleIdToAgentDto(deletedFlatAgent);

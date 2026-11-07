@@ -22,22 +22,29 @@ import { type FlatRoleTarget } from 'src/engine/metadata-modules/flat-role-targe
 import { computeMetadataNameFromLabelOrThrow } from 'src/engine/metadata-modules/utils/compute-metadata-name-from-label-or-throw.util';
 import { mergeUpdateInExistingRecord } from 'src/utils/merge-update-in-existing-record.util';
 
-type FlatRoleTargetToUpdateCreateDelete = {
-  flatRoleTargetToUpdate?: FlatRoleTarget;
+type FlatRoleTargetToCreateDelete = {
   flatRoleTargetToCreate?: FlatRoleTarget;
   flatRoleTargetToDelete?: FlatRoleTarget;
 };
+
+type RoleTargetApplication = Pick<
+  FlatRoleTarget,
+  'applicationId' | 'applicationUniversalIdentifier'
+>;
+
 const computeAgentFlatRoleTargetToUpdate = ({
   roleId,
   flatAgent,
   flatRoleTargetByAgentIdMaps,
   flatRoleMaps,
+  roleTargetApplication,
 }: {
   roleId: string | null | undefined;
   flatRoleTargetByAgentIdMaps: FlatRoleTargetByAgentIdMaps;
   flatAgent: FlatAgent;
   flatRoleMaps: AllFlatEntityMaps['flatRoleMaps'];
-}): FlatRoleTargetToUpdateCreateDelete => {
+  roleTargetApplication: RoleTargetApplication;
+}): FlatRoleTargetToCreateDelete => {
   if (roleId === undefined) {
     return {};
   }
@@ -60,34 +67,39 @@ const computeAgentFlatRoleTargetToUpdate = ({
     flatEntityId: roleId,
   });
 
+  if (
+    isDefined(existingRoleTarget) &&
+    existingRoleTarget.roleId.toLowerCase() === flatRole.id.toLowerCase()
+  ) {
+    return {};
+  }
+
+  const flatRoleTargetToCreate: FlatRoleTarget = {
+    id: v4(),
+    roleId: flatRole.id,
+    roleUniversalIdentifier: flatRole.universalIdentifier,
+    userWorkspaceId: null,
+    agentId: flatAgent.id,
+    agentUniversalIdentifier: flatAgent.universalIdentifier,
+    apiKeyId: null,
+    createdAt: updatedAt,
+    updatedAt,
+    universalIdentifier: v4(),
+    workspaceId: flatAgent.workspaceId,
+    applicationId: roleTargetApplication.applicationId,
+    applicationUniversalIdentifier:
+      roleTargetApplication.applicationUniversalIdentifier,
+  };
+
   if (isDefined(existingRoleTarget)) {
     return {
-      flatRoleTargetToUpdate: {
-        ...existingRoleTarget,
-        roleId,
-        roleUniversalIdentifier: flatRole.universalIdentifier,
-        agentUniversalIdentifier: flatAgent.universalIdentifier,
-        updatedAt,
-      },
+      flatRoleTargetToDelete: existingRoleTarget,
+      flatRoleTargetToCreate,
     };
   }
 
   return {
-    flatRoleTargetToCreate: {
-      id: v4(),
-      roleId,
-      roleUniversalIdentifier: flatRole.universalIdentifier,
-      userWorkspaceId: null,
-      agentId: flatAgent.id,
-      agentUniversalIdentifier: flatAgent.universalIdentifier,
-      apiKeyId: null,
-      createdAt: updatedAt,
-      updatedAt,
-      universalIdentifier: v4(),
-      workspaceId: flatAgent.workspaceId,
-      applicationId: flatAgent.applicationId,
-      applicationUniversalIdentifier: flatAgent.applicationUniversalIdentifier,
-    },
+    flatRoleTargetToCreate,
   };
 };
 
@@ -95,6 +107,8 @@ export type FromUpdateAgentInputToFlatAgentToUpdateArgs = {
   updateAgentInput: UpdateAgentInput;
   flatAgentMaps: FlatAgentMaps;
   flatRoleTargetByAgentIdMaps: FlatRoleTargetByAgentIdMaps;
+  // The runner stores new role targets under the migration application.
+  roleTargetApplication: RoleTargetApplication;
 } & Pick<AllFlatEntityMaps, 'flatRoleMaps'>;
 
 export const fromUpdateAgentInputToFlatAgentToUpdate = ({
@@ -102,9 +116,10 @@ export const fromUpdateAgentInputToFlatAgentToUpdate = ({
   flatAgentMaps,
   flatRoleTargetByAgentIdMaps,
   flatRoleMaps,
+  roleTargetApplication,
 }: FromUpdateAgentInputToFlatAgentToUpdateArgs): {
   flatAgentToUpdate: FlatAgent;
-} & FlatRoleTargetToUpdateCreateDelete => {
+} & FlatRoleTargetToCreateDelete => {
   const { id: agentIdToUpdate } =
     trimAndRemoveDuplicatedWhitespacesFromObjectStringProperties(
       rawUpdateAgentInput,
@@ -142,20 +157,17 @@ export const fromUpdateAgentInputToFlatAgentToUpdate = ({
     update: updatedEditableAgentProperties,
   });
 
-  const {
-    flatRoleTargetToUpdate,
-    flatRoleTargetToCreate,
-    flatRoleTargetToDelete,
-  } = computeAgentFlatRoleTargetToUpdate({
-    roleId: rawUpdateAgentInput.roleId,
-    flatAgent: existingFlatAgent,
-    flatRoleTargetByAgentIdMaps,
-    flatRoleMaps,
-  });
+  const { flatRoleTargetToCreate, flatRoleTargetToDelete } =
+    computeAgentFlatRoleTargetToUpdate({
+      roleId: rawUpdateAgentInput.roleId,
+      flatAgent: existingFlatAgent,
+      flatRoleTargetByAgentIdMaps,
+      flatRoleMaps,
+      roleTargetApplication,
+    });
 
   return {
     flatAgentToUpdate,
-    flatRoleTargetToUpdate,
     flatRoleTargetToCreate,
     flatRoleTargetToDelete,
   };

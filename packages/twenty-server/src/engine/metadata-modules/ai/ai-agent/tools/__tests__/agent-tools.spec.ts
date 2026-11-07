@@ -424,5 +424,53 @@ describe('Agent tools', () => {
       ).rejects.toMatchObject({ code: AiExceptionCode.INVALID_AGENT_INPUT });
       expect(agentService.deleteOneAgent).not.toHaveBeenCalled();
     });
+
+    it('forwards auditIdentity across create_agent, update_agent, and delete_agent when authContext is present', async () => {
+      const { executeTool, agentService } = buildAgentTools();
+      const callingAgentId = '20202020-0000-4000-8000-000000000099';
+      const authContext = {
+        type: 'user',
+        workspace: { id: workspaceId },
+        workspaceMemberId: 'caller-workspace-member-id',
+      } as unknown as NonNullable<ToolProviderContext['authContext']>;
+      const toolContextWithAuth: ToolProviderContext = {
+        ...context,
+        authContext,
+        agentId: callingAgentId,
+      };
+
+      await executeTool({
+        toolName: 'create_agent',
+        args: { label: 'New agent', prompt: 'Act', roleId },
+        toolContext: toolContextWithAuth,
+      });
+      expect(agentService.createOneAgent).toHaveBeenCalledWith(
+        expect.objectContaining({ label: 'New agent', roleId }),
+        workspaceId,
+        { auth: authContext, agentId: callingAgentId },
+      );
+
+      await executeTool({
+        toolName: 'update_agent',
+        args: { id: agentId, roleId },
+        toolContext: toolContextWithAuth,
+      });
+      expect(agentService.updateOneAgent).toHaveBeenCalledWith({
+        input: { id: agentId, roleId },
+        workspaceId,
+        auditIdentity: { auth: authContext, agentId: callingAgentId },
+      });
+
+      await executeTool({
+        toolName: 'delete_agent',
+        args: { id: agentId },
+        toolContext: toolContextWithAuth,
+      });
+      expect(agentService.deleteOneAgent).toHaveBeenCalledWith(
+        agentId,
+        workspaceId,
+        { auth: authContext, agentId: callingAgentId },
+      );
+    });
   });
 });

@@ -1,0 +1,16 @@
+{
+  "baseCommit": "277df14491f6c84cab16d11c261fea9b21e544fc",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/role-assignment-audit.ts": "a0170e54ecbfb3746c53c4183235db69f0105c456e5dc82101de0286e626f434",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-agent/agent.resolver.ts": "4f2244efece5cbecdcfc9cb4bc782eed65cb94648ed1432020614826f09c2a69",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-agent/agent.service.ts": "c50c372a7a2c70ce18a8ee87b7fcf0e0e7db86dac4901b43a3a83150cc896a8e",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-agent/tools/__tests__/agent-tools.spec.ts": "1c969cb1e8e2494d86d2c6253f1e0cb6fc07ae407e2d1562a48fe04df1b4feb0",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-agent/tools/create-agent.tool.ts": "c6772ad1f1fcf3a4d9e9d9b93412b95cdb08ddc2c6e9d1385c11156eaaee6120",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-agent/tools/delete-agent.tool.ts": "35f1096e2dac629e1500c3b16497577a81fca28318e05aa4e6c4e28f57abb8c8",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-agent/tools/update-agent.tool.ts": "91180b5729f99f8d9cb87b88a9d532c97cc9c55c5f1828b622899ed4473fc9a6",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-agent/utils/from-update-agent-input-to-flat-agent-to-update.util.ts": "cf7830785846322f2d8c4f5abdbb2770afc3d7238c62dded5c6ba7d08c941d28",
+    "packages/twenty-server/src/modules/workflow/workflow-builder/workflow-version-step/workflow-version-step-operations.workspace-service.ts": "0b28886b098f08d95e80da591307771e93e2d1dee97151e8f98786ee45559af4",
+    "packages/twenty-server/test/fork-migration/crm-audit-agent-service-role-targets.postgres-spec.ts": "de14a25bbc9a95cd76b38d6d2c6a529812788abd4316498e1b62cbddb1804ff1"
+  },
+  "uploadedSourceHashesVerified": true
+}

@@ -1,3 +1,4 @@
+import { isUndefined } from '@sniptt/guards';
 import { ToolCategory } from 'twenty-shared/ai';
 import { PermissionFlagType } from 'twenty-shared/constants';
 import { FeatureFlagKey } from 'twenty-shared/types';
@@ -38,10 +39,12 @@ export class DeleteAgentTool extends BaseTool<typeof deleteAgentInputSchema> {
       context,
     });
 
-    const agent = await this.agentService.deleteOneAgent(
-      input.id,
-      context.workspaceId,
-    );
+    const agent = isUndefined(context.authContext)
+      ? await this.agentService.deleteOneAgent(input.id, context.workspaceId)
+      : await this.agentService.deleteOneAgent(input.id, context.workspaceId, {
+          auth: context.authContext,
+          agentId: context.agentId,
+        });
 
     return {
       success: true,
