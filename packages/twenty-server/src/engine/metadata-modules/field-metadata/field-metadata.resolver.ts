@@ -13,6 +13,7 @@ import { isDefined } from 'twenty-shared/utils';
 
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
+import { roleAuditIdentityFromRequest } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { PreventNestToAutoLogGraphqlErrorsFilter } from 'src/engine/core-modules/graphql/filters/prevent-nest-to-auto-log-graphql-errors.filter';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
 import {
@@ -296,6 +297,10 @@ export class FieldMetadataResolver {
   async deleteOneField(
     @Args('input') deleteOneFieldInput: DeleteOneFieldInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context()
+    context?: {
+      req?: Parameters<typeof roleAuditIdentityFromRequest>[0];
+    },
   ) {
     if (!isDefined(workspaceId)) {
       throw new ForbiddenError('Could not retrieve workspace ID');
@@ -305,6 +310,9 @@ export class FieldMetadataResolver {
       const flatFieldMetadata = await this.fieldMetadataService.deleteOneField({
         deleteOneFieldInput,
         workspaceId,
+        auditIdentity: context?.req
+          ? roleAuditIdentityFromRequest(context.req)
+          : undefined,
       });
 
       return fromFlatFieldMetadataToFieldMetadataDto(flatFieldMetadata);

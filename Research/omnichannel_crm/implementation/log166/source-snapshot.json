@@ -1,0 +1,20 @@
+{
+  "baseCommit": "4a229d52a784c37483d384d6867edc125dfdff58",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/application/application-manifest/application-manifest-migration.service.ts": "67a2e95dba76487c63b7062e022bbdca865836e1acd6bf15de36f9def811b857",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/application-metadata-audit.ts": "c5e17ae103db82fec6618b5e2c925e3ef826c440828b037ea967403068a634de",
+    "packages/twenty-server/src/engine/metadata-modules/field-metadata/controllers/field-metadata.controller.ts": "9e1daf47d22f2a936f8ae07845209c03b7b6bf9a6318b8b624859e354c30cead",
+    "packages/twenty-server/src/engine/metadata-modules/field-metadata/field-metadata.resolver.ts": "66626048555accb20db109d974cd2dea0f48f235458c41a2b33c2eaace782bc8",
+    "packages/twenty-server/src/engine/metadata-modules/field-metadata/services/field-metadata.service.ts": "c33012c4df5c974f8f1693917ec4fc40b4e2297aa41aa21455f6acecdb1c1d82",
+    "packages/twenty-server/src/engine/metadata-modules/field-metadata/tools/delete-field-metadata.tool.ts": "1d579d58cc6125bb9742c7f595935a05f006d612f393f5898629202a7210dc56",
+    "packages/twenty-server/src/engine/metadata-modules/object-metadata/controllers/object-metadata.controller.ts": "9b096a5bce002356e2208ce99a2190bdbedebb4fbc6e5eae5ab2ef490e544ebe",
+    "packages/twenty-server/src/engine/metadata-modules/object-metadata/object-metadata.resolver.ts": "237486d6f176363993a2b2c626d746756cae05abbb4963aea5a06f3c2e306930",
+    "packages/twenty-server/src/engine/metadata-modules/object-metadata/object-metadata.service.ts": "35e7d055c81eb4dadd7d9a93c373e132102cdf03f9ad32879589f1d4f641878a",
+    "packages/twenty-server/src/engine/metadata-modules/object-metadata/tools/delete-object-metadata.tool.ts": "6fe769eafea80ffc9d636dc717bab69f641ea1fcc2d302c0b245dee84e8600a0",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-builder/validators/services/flat-field-permission-validator.service.ts": "013ef6b4f803e0a1f8bdd22c50cf6d9f07a8cd5d40577a22016345c12dc9b451",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-builder/validators/services/flat-object-permission-validator.service.ts": "b861be065954361f813f8aceb0e7b5b60e8a18d8c297de50e5b6df89c0301da3",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts": "e7f51cec269fd25fe1c5558c9ebc5dcec141e524c31fa5218c1d5119e87edbba",
+    "packages/twenty-server/test/fork-migration/crm-audit-object-and-field-delete-permissions.postgres-spec.ts": "d744572f03e6c0633318a7f0ed97836a0d2ba2b22a8c7c966d386bef5ffabc11"
+  },
+  "uploadedSourceHashesVerified": true
+}

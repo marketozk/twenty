@@ -13,6 +13,7 @@ import { isDefined } from 'twenty-shared/utils';
 
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
+import { roleAuditIdentityFromRequest } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { NotFoundError } from 'src/engine/core-modules/graphql/utils/graphql-errors.util';
 import { PreventNestToAutoLogGraphqlErrorsFilter } from 'src/engine/core-modules/graphql/filters/prevent-nest-to-auto-log-graphql-errors.filter';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
@@ -381,12 +382,19 @@ export class ObjectMetadataResolver {
   async deleteOneObject(
     @Args('input') deleteObjectInput: DeleteOneObjectInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context()
+    context?: {
+      req?: Parameters<typeof roleAuditIdentityFromRequest>[0];
+    },
   ) {
     try {
       const flatobjectMetadata =
         await this.objectMetadataService.deleteOneObject({
           deleteObjectInput,
           workspaceId,
+          auditIdentity: context?.req
+            ? roleAuditIdentityFromRequest(context.req)
+            : undefined,
         });
 
       return fromFlatObjectMetadataToObjectMetadataDto(flatobjectMetadata);

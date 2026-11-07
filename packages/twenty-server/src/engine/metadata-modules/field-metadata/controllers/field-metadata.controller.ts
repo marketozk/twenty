@@ -22,6 +22,7 @@ import { type RestCursorPageInfo } from 'src/engine/api/rest/metadata/types/rest
 import { paginateByIdCursor } from 'src/engine/api/rest/metadata/utils/paginate-by-id-cursor.util';
 import { type AuthenticatedRequest } from 'src/engine/api/rest/types/authenticated-request.type';
 import { ApplicationRestApiExceptionFilter } from 'src/engine/core-modules/application/application-rest-api-exception.filter';
+import { roleAuditIdentityFromRequest } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { FeatureFlagService } from 'src/engine/core-modules/feature-flag/services/feature-flag.service';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
@@ -224,10 +225,14 @@ export class FieldMetadataController {
   async deleteOne(
     @Param('id', new ParseUUIDPipe()) id: string,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Req() request?: AuthenticatedRequest,
   ) {
     const flatField = await this.fieldMetadataService.deleteOneField({
       deleteOneFieldInput: { id },
       workspaceId,
+      auditIdentity: request
+        ? roleAuditIdentityFromRequest(request)
+        : undefined,
     });
 
     const result = fromFlatFieldMetadataToFieldMetadataDto(flatField);

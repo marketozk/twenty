@@ -10,6 +10,7 @@ import {
   runAuditedApiKeyCreate,
 } from 'src/engine/core-modules/crm-audit/api-key-audit';
 import {
+  AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES,
   AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES,
   getApplicationMetadataAudit,
   runAuditedApplicationMetadataMigration,
@@ -302,10 +303,27 @@ export class WorkspaceMigrationRunnerService {
     const searchVectorRebuildMetadataNames: AllMetadataName[] =
       hasSearchVectorRebuildAction ? ['index'] : [];
 
+    const hasObjectOrFieldDeleteAction = actions.some(
+      (action) =>
+        action.type === 'delete' &&
+        (action.metadataName === 'objectMetadata' ||
+          action.metadataName === 'fieldMetadata'),
+    );
+    const permissionCascadeMetadataNames: AllMetadataName[] =
+      hasObjectOrFieldDeleteAction
+        ? [
+            'objectPermission',
+            'fieldPermission',
+            'rowLevelPermissionPredicateGroup',
+            'rowLevelPermissionPredicate',
+          ]
+        : [];
+
     const actionsMetadataAndRelatedMetadataNames: AllMetadataName[] = [
       ...new Set([
         ...getMetadataNamesToLoadForWorkspaceMigration(actionMetadataNames),
         ...searchVectorRebuildMetadataNames,
+        ...permissionCascadeMetadataNames,
       ]),
     ];
     const allFlatEntityMapsKeys = actionsMetadataAndRelatedMetadataNames.map(
@@ -718,8 +736,13 @@ export class WorkspaceMigrationRunnerService {
     }
 
     if (
-      actions.some((action) =>
-        AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES.has(action.metadataName),
+      actions.some(
+        (action) =>
+          AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES.has(action.metadataName) ||
+          (action.type === 'delete' &&
+            AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES.has(
+              action.metadataName,
+            )),
       )
     ) {
       throw new Error(

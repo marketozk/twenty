@@ -30,14 +30,21 @@ export class DeleteObjectMetadataTool extends BaseTool<
 
   async execute({
     input,
-    context: { workspaceId },
+    context,
   }: ToolExecuteArgs<
     typeof deleteObjectMetadataInputSchema
   >): Promise<ToolOutput> {
+    const { workspaceId } = context;
     const flatObjectMetadata = await this.objectMetadataService.deleteOneObject(
       {
         deleteObjectInput: { id: input.id },
         workspaceId,
+        auditIdentity: context.authContext
+          ? {
+              auth: context.authContext,
+              agentId: context.agentId,
+            }
+          : undefined,
       },
     );
 

@@ -229,6 +229,7 @@ export class FlatObjectPermissionValidatorService {
     optimisticFlatEntityMapsAndRelatedFlatEntityMaps: {
       flatObjectPermissionMaps: optimisticFlatObjectPermissionMaps,
       flatRoleMaps,
+      flatObjectMetadataMaps,
     },
   }: UniversalFlatEntityValidationArgs<
     typeof ALL_METADATA_NAME.objectPermission
@@ -253,13 +254,22 @@ export class FlatObjectPermissionValidatorService {
         userFriendlyMessage: msg`Object permission not found`,
       });
     } else {
+      const referencedObjectMetadata = findFlatEntityByUniversalIdentifier({
+        universalIdentifier:
+          existingFlatObjectPermission.objectMetadataUniversalIdentifier,
+        flatEntityMaps: flatObjectMetadataMaps,
+      });
       const referencedRole = findFlatEntityByUniversalIdentifier({
         universalIdentifier:
           existingFlatObjectPermission.roleUniversalIdentifier,
         flatEntityMaps: flatRoleMaps,
       });
 
-      if (isDefined(referencedRole) && !referencedRole.isEditable) {
+      if (
+        isDefined(referencedObjectMetadata) &&
+        isDefined(referencedRole) &&
+        !referencedRole.isEditable
+      ) {
         validationResult.errors.push({
           code: PermissionsExceptionCode.ROLE_NOT_EDITABLE,
           message: t`Role is not editable`,

@@ -31,12 +31,31 @@ export type ApplicationMetadataAuditIdentity =
   | RoleUpdateAuditIdentity
   | MembershipCleanupIdentity;
 
+export type ApplicationMetadataAuditMode =
+  | 'manifest'
+  | 'objectDelete'
+  | 'fieldDelete';
+
 export type ApplicationMetadataAuditRequest = Readonly<{
   workspaceId: string;
   applicationId: string;
   applicationUniversalIdentifier: string;
   operation: CrmAuditOperation;
   impersonatorUserWorkspaceId?: string;
+  mode?: ApplicationMetadataAuditMode;
+  expectedDeletedObjectIds?: readonly string[];
+  expectedDeletedFieldId?: string;
+  isSystemBuild?: boolean;
+}>;
+
+export type CapturedApplicationMetadataAuditOperation = Readonly<{
+  workspaceId: string;
+  operation: CrmAuditOperation;
+  impersonatorUserWorkspaceId?: string;
+  mode: ApplicationMetadataAuditMode;
+  expectedDeletedObjectIds?: readonly string[];
+  expectedDeletedFieldId?: string;
+  isSystemBuild: boolean;
 }>;
 
 export type ApplicationMetadataAuditMappings = {
@@ -72,6 +91,14 @@ export const AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES = new Set<string>([
   'rowLevelPermissionPredicateGroup',
   'rowLevelPermissionPredicate',
 ]);
+
+export const AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES =
+  new Set<string>([
+    'objectMetadata',
+    'fieldMetadata',
+    'permissionFlag',
+    'agent',
+  ]);
 
 const ROLE_BOOLEAN_FIELDS = [
   'canUpdateAllSettings',
@@ -183,6 +210,129 @@ const resolveCapturedOperation = (
         }
       : {}),
   };
+};
+
+export const captureApplicationMetadataAuditOperation = ({
+  workspaceId,
+  auditIdentity,
+  mode = 'manifest',
+  expectedDeletedObjectIds,
+  expectedDeletedFieldId,
+  isSystemBuild = false,
+  defaultSystemActorId,
+}: {
+  workspaceId: string;
+  auditIdentity?: ApplicationMetadataAuditIdentity;
+  mode?: ApplicationMetadataAuditMode;
+  expectedDeletedObjectIds?: readonly string[];
+  expectedDeletedFieldId?: string;
+  isSystemBuild?: boolean;
+  defaultSystemActorId?: string;
+}): CapturedApplicationMetadataAuditOperation => {
+  const normalizedWorkspaceId = uuid(workspaceId);
+  if (
+    getApplicationMetadataAudit(normalizedWorkspaceId) ||
+    hasConflictingMetadataAuditScope(
+      normalizedWorkspaceId,
+      getApplicationMetadataAudit,
+    )
+  ) {
+    throw new Error('Nested application metadata audit is unsupported');
+  }
+
+  const normalizedObjectIds =
+    expectedDeletedObjectIds !== undefined
+      ? Object.freeze(expectedDeletedObjectIds.map((id) => uuid(id)))
+      : undefined;
+  if (
+    mode === 'objectDelete' &&
+    normalizedObjectIds !== undefined &&
+    new Set(normalizedObjectIds).size !== normalizedObjectIds.length
+  ) {
+    throw new Error(
+      'Application metadata audit duplicate expected object delete ID',
+    );
+  }
+  const normalizedFieldId =
+    expectedDeletedFieldId !== undefined
+      ? uuid(expectedDeletedFieldId)
+      : undefined;
+
+  const resolvedIdentity =
+    auditIdentity !== undefined
+      ? auditIdentity
+      : isSystemBuild &&
+          defaultSystemActorId !== undefined &&
+          captureCurrentCrmAuditOperation(normalizedWorkspaceId) === undefined
+        ? {
+            auth: {
+              workspace: { id: normalizedWorkspaceId },
+              type: 'system' as const,
+            },
+            systemActorId: defaultSystemActorId,
+          }
+        : undefined;
+
+  const { operation, impersonatorUserWorkspaceId } = resolveCapturedOperation(
+    normalizedWorkspaceId,
+    resolvedIdentity,
+  );
+
+  return Object.freeze({
+    workspaceId: normalizedWorkspaceId,
+    operation,
+    ...(impersonatorUserWorkspaceId ? { impersonatorUserWorkspaceId } : {}),
+    mode,
+    ...(normalizedObjectIds !== undefined
+      ? { expectedDeletedObjectIds: normalizedObjectIds }
+      : {}),
+    ...(normalizedFieldId !== undefined
+      ? { expectedDeletedFieldId: normalizedFieldId }
+      : {}),
+    isSystemBuild: Boolean(isSystemBuild),
+  });
+};
+
+export const bindApplicationMetadataAuditOperation = (
+  captured: CapturedApplicationMetadataAuditOperation,
+  {
+    applicationId,
+    applicationUniversalIdentifier,
+  }: {
+    applicationId: string;
+    applicationUniversalIdentifier: string;
+  },
+): ApplicationMetadataAuditRequest => {
+  if (!captured || typeof captured !== 'object') {
+    throw new Error('Application metadata audit operation is invalid');
+  }
+  const normalizedApplicationId = uuid(applicationId);
+  const normalizedApplicationUniversalId = uuid(applicationUniversalIdentifier);
+  return Object.freeze({
+    workspaceId: uuid(captured.workspaceId),
+    applicationId: normalizedApplicationId,
+    applicationUniversalIdentifier: normalizedApplicationUniversalId,
+    operation: captured.operation,
+    ...(captured.impersonatorUserWorkspaceId
+      ? {
+          impersonatorUserWorkspaceId: uuid(
+            captured.impersonatorUserWorkspaceId,
+          ),
+        }
+      : {}),
+    mode: captured.mode,
+    ...(captured.expectedDeletedObjectIds !== undefined
+      ? {
+          expectedDeletedObjectIds: Object.freeze(
+            captured.expectedDeletedObjectIds.map((id) => uuid(id)),
+          ),
+        }
+      : {}),
+    ...(captured.expectedDeletedFieldId !== undefined
+      ? { expectedDeletedFieldId: uuid(captured.expectedDeletedFieldId) }
+      : {}),
+    isSystemBuild: Boolean(captured.isSystemBuild),
+  });
 };
 
 export const captureApplicationMetadataAudit = ({
@@ -620,12 +770,52 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       }
     }
 
+    const mode = request.mode ?? 'manifest';
+    const standardAppRow = appRows.find(
+      (row: { universalIdentifier: string; deletedAt: string | null }) =>
+        row.deletedAt === null &&
+        uuid(row.universalIdentifier) ===
+          TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER,
+    );
+    const standardAppId = standardAppRow ? uuid(standardAppRow.id) : null;
+
+    if (
+      (mode === 'objectDelete' || mode === 'fieldDelete') &&
+      (!existingTables.has('objectMetadata') ||
+        !existingTables.has('fieldMetadata'))
+    ) {
+      throw new Error(
+        'Application metadata audit objectMetadata or fieldMetadata table is unavailable',
+      );
+    }
+
     const before = await readFullMetadataSnapshot(
       runner,
       existingTables,
       workspaceId,
       true,
     );
+
+    const beforeObjects =
+      mode === 'objectDelete' || mode === 'fieldDelete'
+        ? await readTableSnapshot(
+            runner,
+            existingTables,
+            'objectMetadata',
+            workspaceId,
+            true,
+          )
+        : new Map<string, Record<string, unknown>>();
+    const beforeFields =
+      mode === 'objectDelete' || mode === 'fieldDelete'
+        ? await readTableSnapshot(
+            runner,
+            existingTables,
+            'fieldMetadata',
+            workspaceId,
+            true,
+          )
+        : new Map<string, Record<string, unknown>>();
 
     const plannedRoleCreates = resolveMappedIds(
       actions,
@@ -743,6 +933,263 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       'delete',
       mappings.permissionFlags,
     );
+
+    if (mode === 'objectDelete') {
+      const expectedIds = request.expectedDeletedObjectIds ?? [];
+      if (
+        expectedIds.length === 0 ||
+        plannedObjectDeletes.size !== expectedIds.length ||
+        expectedIds.some((id) => !plannedObjectDeletes.has(uuid(id)))
+      ) {
+        throw new Error(
+          'Application metadata objectDelete plan does not match expected object IDs',
+        );
+      }
+      for (const action of actions) {
+        if (
+          action.metadataName === 'role' ||
+          action.metadataName === 'roleTarget' ||
+          action.metadataName === 'agent' ||
+          action.metadataName === 'permissionFlag' ||
+          action.metadataName === 'rolePermissionFlag'
+        ) {
+          throw new Error(
+            'Application metadata objectDelete cannot mutate roles, targets, agents, or permission flags',
+          );
+        }
+        if (
+          (action.metadataName === 'objectMetadata' ||
+            action.metadataName === 'fieldMetadata' ||
+            action.metadataName === 'objectPermission' ||
+            action.metadataName === 'fieldPermission' ||
+            action.metadataName === 'rowLevelPermissionPredicateGroup' ||
+            action.metadataName === 'rowLevelPermissionPredicate') &&
+          action.type !== 'delete'
+        ) {
+          throw new Error(
+            'Application metadata objectDelete allows only delete actions on object, field, and permission metadata',
+          );
+        }
+      }
+      for (const objId of plannedObjectDeletes) {
+        const objRow = beforeObjects.get(objId);
+        if (!objRow) {
+          throw new Error(
+            'Application metadata objectDelete target object unavailable',
+          );
+        }
+        if (
+          !request.isSystemBuild &&
+          (objRow.isSystem === true ||
+            (standardAppId !== null &&
+              uuid(objRow.applicationId) === standardAppId))
+        ) {
+          throw new Error(
+            'Application metadata objectDelete cannot delete standard or system object',
+          );
+        }
+      }
+      for (const [fieldId, fieldRow] of beforeFields.entries()) {
+        const fieldObjectId = uuid(fieldRow.objectMetadataId);
+        const targetObjectId = nullableUuid(
+          fieldRow.relationTargetObjectMetadataId,
+        );
+        if (
+          (plannedObjectDeletes.has(fieldObjectId) ||
+            (targetObjectId !== null &&
+              plannedObjectDeletes.has(targetObjectId))) &&
+          !plannedFieldDeletes.has(fieldId)
+        ) {
+          throw new Error(
+            'Application metadata objectDelete detected unplanned fieldMetadata cascade',
+          );
+        }
+      }
+      const deletedMorphHeadKeys = new Set<string>();
+      for (const fieldId of plannedFieldDeletes) {
+        const fieldRow = beforeFields.get(fieldId);
+        if (!fieldRow) {
+          throw new Error(
+            'Application metadata objectDelete target field unavailable',
+          );
+        }
+        const morphId = nullableUuid(fieldRow.morphId);
+        const fieldUid = uuid(fieldRow.universalIdentifier);
+        if (morphId !== null && morphId !== fieldUid) {
+          const objId = uuid(fieldRow.objectMetadataId);
+          const hasSurvivingTarget = [...beforeFields.entries()].some(
+            ([otherId, otherRow]) =>
+              !plannedFieldDeletes.has(otherId) &&
+              uuid(otherRow.objectMetadataId) === objId &&
+              nullableUuid(otherRow.morphId) === morphId &&
+              uuid(otherRow.universalIdentifier) !== morphId,
+          );
+          if (!hasSurvivingTarget) {
+            deletedMorphHeadKeys.add(`${objId}:${morphId}`);
+          }
+        }
+      }
+      for (const fieldId of plannedFieldDeletes) {
+        const fieldRow = beforeFields.get(fieldId)!;
+        const fieldObjectId = uuid(fieldRow.objectMetadataId);
+        const targetObjectId = nullableUuid(
+          fieldRow.relationTargetObjectMetadataId,
+        );
+        const targetFieldId = nullableUuid(
+          fieldRow.relationTargetFieldMetadataId,
+        );
+        const fieldUid = uuid(fieldRow.universalIdentifier);
+        const isAllowed =
+          plannedObjectDeletes.has(fieldObjectId) ||
+          (targetObjectId !== null &&
+            plannedObjectDeletes.has(targetObjectId)) ||
+          (targetFieldId !== null && plannedFieldDeletes.has(targetFieldId)) ||
+          deletedMorphHeadKeys.has(`${fieldObjectId}:${fieldUid}`);
+        if (!isAllowed) {
+          throw new Error(
+            'Application metadata objectDelete detected unauthorized fieldMetadata deletion',
+          );
+        }
+      }
+    } else if (mode === 'fieldDelete') {
+      const expectedFieldId = request.expectedDeletedFieldId
+        ? uuid(request.expectedDeletedFieldId)
+        : undefined;
+      if (
+        !expectedFieldId ||
+        plannedObjectDeletes.size > 0 ||
+        !plannedFieldDeletes.has(expectedFieldId)
+      ) {
+        throw new Error(
+          'Application metadata fieldDelete plan does not match expected field ID',
+        );
+      }
+      for (const action of actions) {
+        if (
+          action.metadataName === 'role' ||
+          action.metadataName === 'roleTarget' ||
+          action.metadataName === 'agent' ||
+          action.metadataName === 'permissionFlag' ||
+          action.metadataName === 'rolePermissionFlag' ||
+          action.metadataName === 'objectMetadata' ||
+          action.metadataName === 'objectPermission' ||
+          action.metadataName === 'rowLevelPermissionPredicateGroup'
+        ) {
+          throw new Error(
+            'Application metadata fieldDelete cannot mutate roles, objects, object permissions, or predicate groups',
+          );
+        }
+        if (
+          (action.metadataName === 'fieldMetadata' ||
+            action.metadataName === 'fieldPermission' ||
+            action.metadataName === 'rowLevelPermissionPredicate') &&
+          action.type !== 'delete'
+        ) {
+          throw new Error(
+            'Application metadata fieldDelete allows only delete actions on field and field permission metadata',
+          );
+        }
+      }
+      const primaryField = beforeFields.get(expectedFieldId);
+      if (!primaryField) {
+        throw new Error(
+          'Application metadata fieldDelete target field unavailable',
+        );
+      }
+      const primaryObjectId = uuid(primaryField.objectMetadataId);
+      const parentObj = beforeObjects.get(primaryObjectId);
+      if (!parentObj) {
+        throw new Error(
+          'Application metadata fieldDelete parent object unavailable',
+        );
+      }
+      const primaryUid = uuid(primaryField.universalIdentifier);
+      const primaryMorphId = nullableUuid(primaryField.morphId);
+      const isPrimaryMorphHead =
+        primaryMorphId !== null && primaryMorphId === primaryUid;
+      if (!request.isSystemBuild) {
+        if (
+          (standardAppId !== null &&
+            uuid(primaryField.applicationId) === standardAppId) ||
+          (primaryField.isSystem === true && !isPrimaryMorphHead) ||
+          (primaryField.isSystemSideEffect === true && !isPrimaryMorphHead)
+        ) {
+          throw new Error(
+            'Application metadata fieldDelete cannot delete standard or system field',
+          );
+        }
+        if (
+          nullableUuid(parentObj.labelIdentifierFieldMetadataId) ===
+          expectedFieldId
+        ) {
+          throw new Error(
+            'Application metadata fieldDelete cannot delete label identifier field',
+          );
+        }
+      }
+      const allowedFieldIds = new Set<string>([expectedFieldId]);
+      if (primaryMorphId !== null) {
+        for (const [fid, frow] of beforeFields.entries()) {
+          if (
+            uuid(frow.objectMetadataId) === primaryObjectId &&
+            (nullableUuid(frow.morphId) === primaryMorphId ||
+              uuid(frow.universalIdentifier) === primaryMorphId)
+          ) {
+            allowedFieldIds.add(fid);
+          }
+        }
+      }
+      for (const fid of [...allowedFieldIds]) {
+        const frow = beforeFields.get(fid);
+        const relTargetId = frow
+          ? nullableUuid(frow.relationTargetFieldMetadataId)
+          : null;
+        if (relTargetId !== null) {
+          allowedFieldIds.add(relTargetId);
+        }
+      }
+      for (const [fid, frow] of beforeFields.entries()) {
+        const relTargetId = nullableUuid(frow.relationTargetFieldMetadataId);
+        if (relTargetId !== null && allowedFieldIds.has(relTargetId)) {
+          allowedFieldIds.add(fid);
+        }
+      }
+      for (const fid of [...allowedFieldIds]) {
+        const frow = beforeFields.get(fid);
+        if (!frow) continue;
+        const morphId = nullableUuid(frow.morphId);
+        if (morphId !== null) {
+          const objId = uuid(frow.objectMetadataId);
+          for (const [hid, hrow] of beforeFields.entries()) {
+            if (
+              uuid(hrow.objectMetadataId) === objId &&
+              uuid(hrow.universalIdentifier) === morphId
+            ) {
+              allowedFieldIds.add(hid);
+            }
+          }
+        }
+      }
+      const primaryRelTargetId = nullableUuid(
+        primaryField.relationTargetFieldMetadataId,
+      );
+      if (
+        primaryRelTargetId !== null &&
+        beforeFields.has(primaryRelTargetId) &&
+        !plannedFieldDeletes.has(primaryRelTargetId)
+      ) {
+        throw new Error(
+          'Application metadata fieldDelete requires paired relation target field deletion',
+        );
+      }
+      for (const fieldId of plannedFieldDeletes) {
+        if (!beforeFields.has(fieldId) || !allowedFieldIds.has(fieldId)) {
+          throw new Error(
+            'Application metadata fieldDelete detected unauthorized fieldMetadata deletion',
+          );
+        }
+      }
+    }
 
     for (const [targetId, targetRow] of before.roleTargets.entries()) {
       const roleId = uuid(targetRow.roleId);
@@ -910,7 +1357,23 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       mappings.rowLevelPermissionPredicates,
     );
 
-    const expectedDeletedGroupIds = new Set<string>(plannedGroupDeletes);
+    const expectedDeletedGroupIds = new Set<string>();
+    for (const id of plannedGroupDeletes) {
+      const groupRow = before.predicateGroups.get(id);
+      if (!groupRow) {
+        throw new Error(
+          'Application metadata audit rowLevelPermissionPredicateGroup to delete not found',
+        );
+      }
+      if (groupRow.deletedAt !== null && groupRow.deletedAt !== undefined) {
+        throw new Error(
+          'Application metadata audit cannot cascade-delete soft-deleted row-level permission rows',
+        );
+      }
+      if (uuid(groupRow.applicationId) === applicationId) {
+        expectedDeletedGroupIds.add(id);
+      }
+    }
     let addedGroupDelete = true;
     while (addedGroupDelete) {
       addedGroupDelete = false;
@@ -936,16 +1399,36 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
         }
       }
     }
+    for (const id of plannedGroupDeletes) {
+      if (!expectedDeletedGroupIds.has(id)) {
+        throw new Error(
+          'Application metadata audit cannot delete another application rowLevelPermissionPredicateGroup without parent cascade',
+        );
+      }
+    }
 
-    for (const [predId, predRow] of before.predicates.entries()) {
-      if (
-        predRow.deletedAt !== null &&
-        predRow.deletedAt !== undefined &&
-        !plannedPredDeletes.has(predId)
-      ) {
+    for (const id of plannedPredDeletes) {
+      const predRow = before.predicates.get(id);
+      if (!predRow) {
+        throw new Error(
+          'Application metadata audit rowLevelPermissionPredicate to delete not found',
+        );
+      }
+      if (predRow.deletedAt !== null && predRow.deletedAt !== undefined) {
+        throw new Error(
+          'Application metadata audit cannot cascade-delete soft-deleted row-level permission rows',
+        );
+      }
+    }
+
+    for (const [, predRow] of before.predicates.entries()) {
+      if (predRow.deletedAt !== null && predRow.deletedAt !== undefined) {
         const roleId = uuid(predRow.roleId);
         const objectMetadataId = uuid(predRow.objectMetadataId);
         const fieldMetadataId = uuid(predRow.fieldMetadataId);
+        const memberFieldMetadataId = nullableUuid(
+          predRow.workspaceMemberFieldMetadataId,
+        );
         const groupId = nullableUuid(
           predRow.rowLevelPermissionPredicateGroupId,
         );
@@ -953,6 +1436,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           plannedRoleDeletes.has(roleId) ||
           plannedObjectDeletes.has(objectMetadataId) ||
           plannedFieldDeletes.has(fieldMetadataId) ||
+          (memberFieldMetadataId !== null &&
+            plannedFieldDeletes.has(memberFieldMetadataId)) ||
           (groupId !== null && expectedDeletedGroupIds.has(groupId))
         ) {
           throw new Error(
@@ -1032,6 +1517,96 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       workspaceId,
       false,
     );
+
+    let expectedObjectsAndFieldsSerialized: string | undefined;
+    if (mode === 'objectDelete' || mode === 'fieldDelete') {
+      const afterObjects = await readTableSnapshot(
+        runner,
+        existingTables,
+        'objectMetadata',
+        workspaceId,
+        false,
+      );
+      const afterFields = await readTableSnapshot(
+        runner,
+        existingTables,
+        'fieldMetadata',
+        workspaceId,
+        false,
+      );
+      for (const objId of plannedObjectDeletes) {
+        if (afterObjects.has(objId)) {
+          throw new Error(
+            'Application metadata objectDelete did not remove target object',
+          );
+        }
+      }
+      for (const [objId, beforeObj] of beforeObjects.entries()) {
+        const afterObj = afterObjects.get(objId);
+        if (!afterObj) {
+          if (!plannedObjectDeletes.has(objId)) {
+            throw new Error(
+              'Application metadata audit detected unexpected objectMetadata deletion',
+            );
+          }
+        } else if (
+          canonicalAuditJson(scalarWithoutTimestamps(beforeObj)) !==
+          canonicalAuditJson(scalarWithoutTimestamps(afterObj))
+        ) {
+          throw new Error(
+            'Application metadata audit detected unexpected objectMetadata mutation',
+          );
+        }
+      }
+      for (const objId of afterObjects.keys()) {
+        if (!beforeObjects.has(objId)) {
+          throw new Error(
+            'Application metadata audit detected unexpected objectMetadata creation',
+          );
+        }
+      }
+      for (const fieldId of plannedFieldDeletes) {
+        if (afterFields.has(fieldId)) {
+          throw new Error(
+            'Application metadata delete did not remove target fieldMetadata',
+          );
+        }
+      }
+      for (const [fieldId, beforeField] of beforeFields.entries()) {
+        const afterField = afterFields.get(fieldId);
+        if (!afterField) {
+          if (!plannedFieldDeletes.has(fieldId)) {
+            throw new Error(
+              'Application metadata audit detected unexpected fieldMetadata deletion',
+            );
+          }
+        } else if (
+          canonicalAuditJson(scalarWithoutTimestamps(beforeField)) !==
+          canonicalAuditJson(scalarWithoutTimestamps(afterField))
+        ) {
+          throw new Error(
+            'Application metadata audit detected unexpected fieldMetadata mutation',
+          );
+        }
+      }
+      for (const fieldId of afterFields.keys()) {
+        if (!beforeFields.has(fieldId)) {
+          throw new Error(
+            'Application metadata audit detected unexpected fieldMetadata creation',
+          );
+        }
+      }
+      expectedObjectsAndFieldsSerialized = canonicalAuditJson({
+        objects: [...afterObjects.entries()].map(([id, row]) => [
+          id,
+          scalarWithoutTimestamps(row),
+        ]),
+        fields: [...afterFields.entries()].map(([id, row]) => [
+          id,
+          scalarWithoutTimestamps(row),
+        ]),
+      });
+    }
 
     let recordedMutations = 0;
     const recordMutation = (
@@ -1197,7 +1772,10 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
         const isPlannedCascade =
           plannedRoleDeletes.has(uuid(beforeRow.roleId)) ||
           plannedPermissionFlagDeletes.has(uuid(beforeRow.permissionFlagId));
-        if (!plannedFlagDeletes.has(id) && !isPlannedCascade) {
+        const isPlannedDirectDelete =
+          plannedFlagDeletes.has(id) &&
+          uuid(beforeRow.applicationId) === applicationId;
+        if (!isPlannedDirectDelete && !isPlannedCascade) {
           throw new Error(
             'Application metadata audit detected unexpected rolePermissionFlag deletion',
           );
@@ -1245,7 +1823,10 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
         const isPlannedCascade =
           plannedRoleDeletes.has(uuid(beforeRow.roleId)) ||
           plannedObjectDeletes.has(uuid(beforeRow.objectMetadataId));
-        if (!plannedObjPermDeletes.has(id) && !isPlannedCascade) {
+        const isPlannedDirectDelete =
+          plannedObjPermDeletes.has(id) &&
+          uuid(beforeRow.applicationId) === applicationId;
+        if (!isPlannedDirectDelete && !isPlannedCascade) {
           throw new Error(
             'Application metadata audit detected unexpected objectPermission deletion',
           );
@@ -1310,7 +1891,10 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           plannedRoleDeletes.has(uuid(beforeRow.roleId)) ||
           plannedObjectDeletes.has(uuid(beforeRow.objectMetadataId)) ||
           plannedFieldDeletes.has(uuid(beforeRow.fieldMetadataId));
-        if (!plannedFieldPermDeletes.has(id) && !isPlannedCascade) {
+        const isPlannedDirectDelete =
+          plannedFieldPermDeletes.has(id) &&
+          uuid(beforeRow.applicationId) === applicationId;
+        if (!isPlannedDirectDelete && !isPlannedCascade) {
           throw new Error(
             'Application metadata audit detected unexpected fieldPermission deletion',
           );
@@ -1440,7 +2024,10 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           plannedObjectDeletes.has(uuid(beforeRow.objectMetadataId)) ||
           plannedFieldDeletes.has(uuid(beforeRow.fieldMetadataId)) ||
           (groupId !== null && expectedDeletedGroupIds.has(groupId));
-        if (!plannedPredDeletes.has(id) && !isPlannedCascade) {
+        const isPlannedDirectDelete =
+          plannedPredDeletes.has(id) &&
+          uuid(beforeRow.applicationId) === applicationId;
+        if (!isPlannedDirectDelete && !isPlannedCascade) {
           throw new Error(
             'Application metadata audit detected unexpected rowLevelPermissionPredicate deletion',
           );
@@ -1459,12 +2046,16 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
         const beforeMemberFieldId = nullableUuid(
           beforeRow.workspaceMemberFieldMetadataId,
         );
-        const isPlannedMemberFieldSetNull =
+        const isOnlyMemberFieldSetNull =
           beforeMemberFieldId !== null &&
           plannedFieldDeletes.has(beforeMemberFieldId) &&
-          nullableUuid(afterRow.workspaceMemberFieldMetadataId) === null;
+          nullableUuid(afterRow.workspaceMemberFieldMetadataId) === null &&
+          canonicalAuditJson({
+            ...scalarWithoutTimestamps(beforeRow),
+            workspaceMemberFieldMetadataId: null,
+          }) === canonicalAuditJson(scalarWithoutTimestamps(afterRow));
         if (
-          !isPlannedMemberFieldSetNull &&
+          !isOnlyMemberFieldSetNull &&
           (!plannedPredUpdates.has(id) ||
             uuid(afterRow.applicationId) !== applicationId)
         ) {
@@ -1518,6 +2109,37 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
         throw new Error(
           'Application metadata state changed during audit flush',
         );
+      }
+      if (expectedObjectsAndFieldsSerialized !== undefined) {
+        const postFlushObjects = await readTableSnapshot(
+          runner,
+          existingTables,
+          'objectMetadata',
+          workspaceId,
+          false,
+        );
+        const postFlushFields = await readTableSnapshot(
+          runner,
+          existingTables,
+          'fieldMetadata',
+          workspaceId,
+          false,
+        );
+        const postFlushSerialized = canonicalAuditJson({
+          objects: [...postFlushObjects.entries()].map(([id, row]) => [
+            id,
+            scalarWithoutTimestamps(row),
+          ]),
+          fields: [...postFlushFields.entries()].map(([id, row]) => [
+            id,
+            scalarWithoutTimestamps(row),
+          ]),
+        });
+        if (postFlushSerialized !== expectedObjectsAndFieldsSerialized) {
+          throw new Error(
+            'Application metadata state changed during audit flush',
+          );
+        }
       }
     }
 
@@ -1640,6 +2262,7 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
 };
 
 type ReconcilableEntity = {
+  id?: string;
   universalIdentifier: string;
   roleUniversalIdentifier?: string;
   agentUniversalIdentifier?: string | null;
@@ -1648,8 +2271,12 @@ type ReconcilableEntity = {
   permissionFlagUniversalIdentifier?: string;
   objectMetadataUniversalIdentifier?: string;
   fieldMetadataUniversalIdentifier?: string;
+  relationTargetObjectMetadataUniversalIdentifier?: string | null;
+  relationTargetFieldMetadataUniversalIdentifier?: string | null;
+  morphId?: string | null;
   parentRowLevelPermissionPredicateGroupUniversalIdentifier?: string | null;
   rowLevelPermissionPredicateGroupUniversalIdentifier?: string | null;
+  deletedAt?: string | Date | null;
 };
 
 type ReconcilableBucket = {
@@ -1687,6 +2314,9 @@ export const reconcileApplicationRoleAndPermissionOperations = ({
 }: {
   allFlatEntityOperationRecordByMetadataName: object;
   existingAllFlatEntityMaps: {
+    flatFieldMetadataMaps?: {
+      byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
+    };
     flatRoleTargetMaps?: {
       byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
     };
@@ -1732,6 +2362,81 @@ export const reconcileApplicationRoleAndPermissionOperations = ({
   const deletedPermissionFlagUniversalIdentifiers = new Set(
     Object.keys(record.permissionFlag?.flatEntityToDelete ?? {}),
   );
+
+  const allExistingFields = Object.values(
+    existingAllFlatEntityMaps.flatFieldMetadataMaps?.byUniversalIdentifier ??
+      {},
+  ).filter(isPresent);
+  const createdFields = Object.values(
+    record.fieldMetadata?.flatEntityToCreate ?? {},
+  ).filter(isPresent);
+  let fieldAdded = true;
+  while (fieldAdded) {
+    fieldAdded = false;
+    for (const existingField of allExistingFields) {
+      if (
+        deletedFieldUniversalIdentifiers.has(existingField.universalIdentifier)
+      ) {
+        continue;
+      }
+      const objUid = existingField.objectMetadataUniversalIdentifier;
+      const relTargetObjUid =
+        existingField.relationTargetObjectMetadataUniversalIdentifier;
+      const relTargetFieldUid =
+        existingField.relationTargetFieldMetadataUniversalIdentifier;
+      if (
+        (isPresent(objUid) && deletedObjectUniversalIdentifiers.has(objUid)) ||
+        (isPresent(relTargetObjUid) &&
+          deletedObjectUniversalIdentifiers.has(relTargetObjUid)) ||
+        (isPresent(relTargetFieldUid) &&
+          deletedFieldUniversalIdentifiers.has(relTargetFieldUid))
+      ) {
+        deletedFieldUniversalIdentifiers.add(existingField.universalIdentifier);
+        fieldAdded = true;
+      }
+    }
+    for (const existingField of allExistingFields) {
+      if (
+        !deletedFieldUniversalIdentifiers.has(existingField.universalIdentifier)
+      ) {
+        continue;
+      }
+      const relTargetFieldUid =
+        existingField.relationTargetFieldMetadataUniversalIdentifier;
+      if (
+        isPresent(relTargetFieldUid) &&
+        !deletedFieldUniversalIdentifiers.has(relTargetFieldUid)
+      ) {
+        deletedFieldUniversalIdentifiers.add(relTargetFieldUid);
+        fieldAdded = true;
+      }
+      const morphId = existingField.morphId;
+      const objUid = existingField.objectMetadataUniversalIdentifier;
+      if (
+        !isPresent(morphId) ||
+        !isPresent(objUid) ||
+        morphId === existingField.universalIdentifier ||
+        deletedFieldUniversalIdentifiers.has(morphId)
+      ) {
+        continue;
+      }
+      const hasRemainingTarget = [
+        ...allExistingFields.filter(
+          (f) => !deletedFieldUniversalIdentifiers.has(f.universalIdentifier),
+        ),
+        ...createdFields,
+      ].some(
+        (f) =>
+          f.objectMetadataUniversalIdentifier === objUid &&
+          f.morphId === morphId &&
+          f.universalIdentifier !== morphId,
+      );
+      if (!hasRemainingTarget) {
+        deletedFieldUniversalIdentifiers.add(morphId);
+        fieldAdded = true;
+      }
+    }
+  }
 
   for (const existingTarget of Object.values(
     existingAllFlatEntityMaps.flatRoleTargetMaps?.byUniversalIdentifier ?? {},
@@ -1854,7 +2559,9 @@ export const reconcileApplicationRoleAndPermissionOperations = ({
   const allGroups = Object.values(
     existingAllFlatEntityMaps.flatRowLevelPermissionPredicateGroupMaps
       ?.byUniversalIdentifier ?? {},
-  ).filter(isPresent);
+  )
+    .filter(isPresent)
+    .filter((group) => !isPresent(group.deletedAt));
 
   let groupAdded = true;
   while (groupAdded) {
@@ -1895,7 +2602,8 @@ export const reconcileApplicationRoleAndPermissionOperations = ({
     existingAllFlatEntityMaps.flatRowLevelPermissionPredicateMaps
       ?.byUniversalIdentifier ?? {},
   )) {
-    if (!isPresent(existingPredicate)) continue;
+    if (!isPresent(existingPredicate) || isPresent(existingPredicate.deletedAt))
+      continue;
     const groupUid =
       existingPredicate.rowLevelPermissionPredicateGroupUniversalIdentifier;
     if (

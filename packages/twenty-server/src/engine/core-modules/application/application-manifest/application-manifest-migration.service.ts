@@ -205,7 +205,7 @@ export class ApplicationManifestMigrationService {
           applicationUniversalIdentifier:
             capturedOwnerFlatApplication.universalIdentifier,
           auditIdentity,
-        })()
+        })
       : undefined;
     const now = new Date().toISOString();
 
@@ -333,7 +333,7 @@ export class ApplicationManifestMigrationService {
 
       return isDryRun
         ? execute()
-        : withApplicationMetadataAudit(capturedMetadataAudit!, execute);
+        : withApplicationMetadataAudit(capturedMetadataAudit!(), execute);
     };
 
     const validateBuildRunStart = performance.now();

@@ -30,13 +30,20 @@ export class DeleteFieldMetadataTool extends BaseTool<
 
   async execute({
     input,
-    context: { workspaceId },
+    context,
   }: ToolExecuteArgs<
     typeof deleteFieldMetadataInputSchema
   >): Promise<ToolOutput> {
+    const { workspaceId } = context;
     const flatFieldMetadata = await this.fieldMetadataService.deleteOneField({
       deleteOneFieldInput: { id: input.id },
       workspaceId,
+      auditIdentity: context.authContext
+        ? {
+            auth: context.authContext,
+            agentId: context.agentId,
+          }
+        : undefined,
     });
 
     return {

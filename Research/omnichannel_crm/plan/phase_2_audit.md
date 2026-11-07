@@ -155,8 +155,18 @@ LOG165 закрывает атомарный аудит пакетных миг�
 `TwentyStandardApplicationService.synchronizeTwentyStandardApplicationOrThrow`,
 fail-closed барьер в `WorkspaceMigrationRunnerService.executeRun` и
 `runAuditedApplicationMetadataMigration` в `application-metadata-audit.ts`).
+LOG166 закрывает атомарный аудит каскадного удаления и обнуления записей прав
+(`core."objectPermission"`, `core."fieldPermission"`,
+`core."rowLevelPermissionPredicateGroup"`, `core."rowLevelPermissionPredicate"`) при
+отдельном удалении объектов (`ObjectMetadataService.deleteOneObject` / `deleteManyObjectMetadatas`,
+резолвер, контроллер, AI-инструмент) и полей (`FieldMetadataService.deleteOneField`, резолвер,
+контроллер, AI-инструмент), разрешение каскадного удаления прав на нередактируемых ролях при
+удалении целевого объекта или поля (`FlatObjectPermissionValidatorService`,
+`FlatFieldPermissionValidatorService`), инвалидацию кэшей прав и `rolesPermissions` и
+fail-closed барьер на неаудируемые удаления `objectMetadata`, `fieldMetadata`, `permissionFlag`
+и `agent` в `WorkspaceMigrationRunnerService.executeRun`.
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log165/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log166/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

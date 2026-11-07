@@ -4745,6 +4745,55 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 отправлен в GitHub, ref подтверждён через API. Описание ROB765, комментарий
 a0d7e3ce-50aa-4723-973e-da8634655465 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log165/publication.json).
-Следующий участок - закрытие оставшихся открытых границ ROB765.
+Следующий участок - аудит каскадного удаления и обнуления прав при удалении
+объектов и полей по LOG166.
+
+## LOG166 - аудит каскадного удаления и обнуления прав при удалении объектов и полей
+
+08.11.2026 зафиксированы [дизайн](implementation/log166/design.md),
+[независимое ревью решения](implementation/log166/design-review.md) и
+[план проверок](implementation/log166/test-research.md).
+Расширен модуль `application-metadata-audit.ts` (`captureApplicationMetadataAuditOperation`,
+`bindApplicationMetadataAuditOperation`, `ApplicationMetadataAuditMode`,
+`AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES`, режимы `objectDelete` и
+`fieldDelete` в `runAuditedApplicationMetadataMigration`, цикл неподвижной точки для
+расширения связанных полей в `reconcileApplicationRoleAndPermissionOperations`),
+интегрированный в `ObjectMetadataService.deleteOneObject` / `deleteManyObjectMetadatas`
+(`ObjectMetadataResolver.deleteOneObject`, `ObjectMetadataController.deleteOne`,
+`DeleteObjectMetadataTool.execute`), `FieldMetadataService.deleteOneField`
+(`FieldMetadataResolver.deleteOneField`, `FieldMetadataController.deleteOne`,
+`DeleteFieldMetadataTool.execute`), `FlatObjectPermissionValidatorService.validateFlatObjectPermissionDeletion`,
+`FlatFieldPermissionValidatorService.validateFlatFieldPermissionDeletion` и
+`WorkspaceMigrationRunnerService.executeRun`.
+Внутри `runInCoreAuditTransaction` захватываются блокировки `core.workspace` (`FOR NO KEY UPDATE`),
+`core.application` (`ORDER BY id FOR UPDATE`), всех 7 таблиц ролей, привязок и прав
+(`ORDER BY id FOR UPDATE`), `core."objectMetadata"` (`ORDER BY id FOR UPDATE`) и
+`core."fieldMetadata"` (`ORDER BY id FOR UPDATE`).
+Учтены все замечания ревью дизайна и кода (M1-M3, T1-T3): каскадное удаление прав на
+нередактируемых системных ролях разрешено только при отсутствии целевого объекта/поля в
+оптимистичных картах миграции (с сохранением `ROLE_NOT_EDITABLE` при отдельном удалении
+права на живом объекте/поле), согласованы все поля multi-target `MORPH_RELATION` (включая
+головное поле `morphId` и обратные поля второго целевого объекта), запрещено некаскадное
+удаление групп предикатов других приложений, запрещено скрытое каскадное удаление или
+обнуление soft-deleted строк предикатов (включая `ON DELETE SET NULL` на
+`workspaceMemberFieldMetadataId` и при загрузке кэша с `withDeleted: true`), принудительно
+инвалидируются кэши 4 таблиц прав и `rolesPermissions` при любом удалении объекта или поля,
+и установлен fail-closed барьер в `WorkspaceMigrationRunnerService.executeRun` на неаудируемые
+удаления `objectMetadata`, `fieldMetadata`, `permissionFlag` и `agent`.
+
+08.11.2026 проверки LOG166 завершены. 3126 tests/111 suites PASS (688.35s). 208 targeted/13 PostgreSQL suites PASS (28.754s), 6 новых PostgreSQL случаев. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 475/476 roots, baseline 270 / current 270 diagnostics, 0 новых/changed-code. Совпали 14 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех входных точек удаления объектов
+и полей (`ObjectMetadataService`, `FieldMetadataService`, резолверы, контроллеры, AI-инструменты,
+системные пути `isSystemBuild: true`) и fail-closed барьера в `WorkspaceMigrationRunnerService.executeRun`,
+устранение замечаний M1-M3 и T1-T3, корректную обработку `NativeTransactionOutcomeUnknownError` и
+`CoreAuditPostCommitError`, редактирование секретных литералов `value` и чистоту границы
+Enterprise (`0` нарушений).
+
+[Результаты](implementation/log166/results.json), [ревью](implementation/log166/review.md),
+[следующий участок](implementation/log166/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
+
 
 

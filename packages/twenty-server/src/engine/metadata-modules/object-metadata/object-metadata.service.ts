@@ -1,11 +1,22 @@
 import { Injectable } from '@nestjs/common';
 
-import { fromArrayToUniqueKeyRecord, isDefined } from 'twenty-shared/utils';
+import {
+  fromArrayToUniqueKeyRecord,
+  isDefined,
+  trimAndRemoveDuplicatedWhitespacesFromObjectStringProperties,
+} from 'twenty-shared/utils';
 import { FindManyOptions, FindOneOptions } from 'typeorm';
 import { v4 } from 'uuid';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
+import {
+  bindApplicationMetadataAuditOperation,
+  captureApplicationMetadataAuditOperation,
+  reconcileApplicationRoleAndPermissionOperations,
+  withApplicationMetadataAudit,
+  type ApplicationMetadataAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/application-metadata-audit';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
 import { findFlatEntityByUniversalIdentifierOrThrow } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-universal-identifier-or-throw.util';
@@ -299,17 +310,20 @@ export class ObjectMetadataService {
     workspaceId,
     isSystemBuild = false,
     ownerFlatApplication,
+    auditIdentity,
   }: {
     deleteObjectInput: DeleteOneObjectInput;
     workspaceId: string;
     isSystemBuild?: boolean;
     ownerFlatApplication?: FlatApplication;
+    auditIdentity?: ApplicationMetadataAuditIdentity;
   }): Promise<FlatObjectMetadata> {
     const deletedObjectMetadataDtos = await this.deleteManyObjectMetadatas({
       deleteObjectInputs: [deleteObjectInput],
       workspaceId,
       isSystemBuild,
       ownerFlatApplication,
+      auditIdentity,
     });
 
     if (deletedObjectMetadataDtos.length !== 1) {
@@ -329,12 +343,30 @@ export class ObjectMetadataService {
     deleteObjectInputs,
     isSystemBuild = false,
     ownerFlatApplication,
+    auditIdentity,
   }: {
     deleteObjectInputs: DeleteOneObjectInput[];
     workspaceId: string;
     isSystemBuild?: boolean;
     ownerFlatApplication?: FlatApplication;
+    auditIdentity?: ApplicationMetadataAuditIdentity;
   }): Promise<FlatObjectMetadata[]> {
+    const expectedDeletedObjectIds = deleteObjectInputs.map(
+      (deleteObjectInput) =>
+        trimAndRemoveDuplicatedWhitespacesFromObjectStringProperties(
+          deleteObjectInput,
+          ['id'],
+        ).id,
+    );
+    const capturedAuditOperation = captureApplicationMetadataAuditOperation({
+      workspaceId,
+      auditIdentity,
+      mode: 'objectDelete',
+      expectedDeletedObjectIds,
+      isSystemBuild,
+      defaultSystemActorId: 'object-metadata:system-delete',
+    });
+
     if (deleteObjectInputs.length === 0) {
       return [];
     }
@@ -347,11 +379,24 @@ export class ObjectMetadataService {
         )
       ).workspaceCustomFlatApplication;
 
+    const metadataAuditRequest = bindApplicationMetadataAuditOperation(
+      capturedAuditOperation,
+      {
+        applicationId: resolvedOwnerFlatApplication.id,
+        applicationUniversalIdentifier:
+          resolvedOwnerFlatApplication.universalIdentifier,
+      },
+    );
+
     const {
       flatObjectMetadataMaps,
       flatFieldMetadataMaps,
       flatIndexMaps,
       flatViewMaps,
+      flatObjectPermissionMaps,
+      flatFieldPermissionMaps,
+      flatRowLevelPermissionPredicateGroupMaps,
+      flatRowLevelPermissionPredicateMaps,
     } =
       await this.flatEntityMapsCacheService.getOrRecomputeManyOrAllFlatEntityMaps(
         {
@@ -361,6 +406,10 @@ export class ObjectMetadataService {
             'flatIndexMaps',
             'flatFieldMetadataMaps',
             'flatViewMaps',
+            'flatObjectPermissionMaps',
+            'flatFieldPermissionMaps',
+            'flatRowLevelPermissionPredicateGroupMaps',
+            'flatRowLevelPermissionPredicateMaps',
           ],
         },
       );
@@ -454,39 +503,149 @@ export class ObjectMetadataService {
         }),
     );
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            objectMetadata: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: flatObjectMetadatasToDelete,
-              flatEntityToUpdate: [],
+    const permissionReconciliationRecord: {
+      objectMetadata: {
+        flatEntityToCreate: Record<string, never>;
+        flatEntityToUpdate: Record<string, never>;
+        flatEntityToDelete: Record<string, UniversalFlatObjectMetadata>;
+      };
+      fieldMetadata: {
+        flatEntityToCreate: Record<string, never>;
+        flatEntityToUpdate: Record<string, never>;
+        flatEntityToDelete: Record<string, UniversalFlatFieldMetadata>;
+      };
+      objectPermission?: {
+        flatEntityToCreate: Record<string, never>;
+        flatEntityToUpdate: Record<string, never>;
+        flatEntityToDelete: Record<string, never>;
+      };
+      fieldPermission?: {
+        flatEntityToCreate: Record<string, never>;
+        flatEntityToUpdate: Record<string, never>;
+        flatEntityToDelete: Record<string, never>;
+      };
+      rowLevelPermissionPredicateGroup?: {
+        flatEntityToCreate: Record<string, never>;
+        flatEntityToUpdate: Record<string, never>;
+        flatEntityToDelete: Record<string, never>;
+      };
+      rowLevelPermissionPredicate?: {
+        flatEntityToCreate: Record<string, never>;
+        flatEntityToUpdate: Record<string, never>;
+        flatEntityToDelete: Record<string, never>;
+      };
+    } = {
+      objectMetadata: {
+        flatEntityToCreate: {},
+        flatEntityToUpdate: {},
+        flatEntityToDelete: flatObjectMetadatasToDeleteByUniversalIdentifier,
+      },
+      fieldMetadata: {
+        flatEntityToCreate: {},
+        flatEntityToUpdate: {},
+        flatEntityToDelete: flatFieldMetadatasToDeleteByUniversalIdentifier,
+      },
+    };
+    reconcileApplicationRoleAndPermissionOperations({
+      allFlatEntityOperationRecordByMetadataName:
+        permissionReconciliationRecord,
+      existingAllFlatEntityMaps: {
+        flatFieldMetadataMaps,
+        flatObjectPermissionMaps,
+        flatFieldPermissionMaps,
+        flatRowLevelPermissionPredicateGroupMaps,
+        flatRowLevelPermissionPredicateMaps,
+      },
+    });
+    const flatObjectPermissionsToDelete = Object.values(
+      permissionReconciliationRecord.objectPermission?.flatEntityToDelete ?? {},
+    );
+    const flatFieldPermissionsToDelete = Object.values(
+      permissionReconciliationRecord.fieldPermission?.flatEntityToDelete ?? {},
+    );
+    const flatRowLevelPermissionPredicateGroupsToDelete = Object.values(
+      permissionReconciliationRecord.rowLevelPermissionPredicateGroup
+        ?.flatEntityToDelete ?? {},
+    );
+    const flatRowLevelPermissionPredicatesToDelete = Object.values(
+      permissionReconciliationRecord.rowLevelPermissionPredicate
+        ?.flatEntityToDelete ?? {},
+    );
+
+    const validateAndBuildResult = await withApplicationMetadataAudit(
+      metadataAuditRequest,
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              objectMetadata: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: flatObjectMetadatasToDelete,
+                flatEntityToUpdate: [],
+              },
+              index: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: flatIndexToDelete,
+                flatEntityToUpdate: [],
+              },
+              fieldMetadata: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: flatFieldMetadatasToDelete,
+                flatEntityToUpdate: [],
+              },
+              view: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: Object.values(
+                  flatViewToDeleteByUniversalIdentifier,
+                ),
+                flatEntityToUpdate: [],
+              },
+              ...(flatObjectPermissionsToDelete.length > 0
+                ? {
+                    objectPermission: {
+                      flatEntityToCreate: [],
+                      flatEntityToDelete: flatObjectPermissionsToDelete,
+                      flatEntityToUpdate: [],
+                    },
+                  }
+                : {}),
+              ...(flatFieldPermissionsToDelete.length > 0
+                ? {
+                    fieldPermission: {
+                      flatEntityToCreate: [],
+                      flatEntityToDelete: flatFieldPermissionsToDelete,
+                      flatEntityToUpdate: [],
+                    },
+                  }
+                : {}),
+              ...(flatRowLevelPermissionPredicateGroupsToDelete.length > 0
+                ? {
+                    rowLevelPermissionPredicateGroup: {
+                      flatEntityToCreate: [],
+                      flatEntityToDelete:
+                        flatRowLevelPermissionPredicateGroupsToDelete,
+                      flatEntityToUpdate: [],
+                    },
+                  }
+                : {}),
+              ...(flatRowLevelPermissionPredicatesToDelete.length > 0
+                ? {
+                    rowLevelPermissionPredicate: {
+                      flatEntityToCreate: [],
+                      flatEntityToDelete:
+                        flatRowLevelPermissionPredicatesToDelete,
+                      flatEntityToUpdate: [],
+                    },
+                  }
+                : {}),
             },
-            index: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: flatIndexToDelete,
-              flatEntityToUpdate: [],
-            },
-            fieldMetadata: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: flatFieldMetadatasToDelete,
-              flatEntityToUpdate: [],
-            },
-            view: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: Object.values(
-                flatViewToDeleteByUniversalIdentifier,
-              ),
-              flatEntityToUpdate: [],
-            },
+            workspaceId,
+            isSystemBuild,
+            applicationUniversalIdentifier:
+              resolvedOwnerFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild,
-          applicationUniversalIdentifier:
-            resolvedOwnerFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

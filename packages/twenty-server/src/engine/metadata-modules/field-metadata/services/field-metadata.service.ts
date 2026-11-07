@@ -1,10 +1,21 @@
 import { Injectable } from '@nestjs/common';
 
 import { FieldMetadataType } from 'twenty-shared/types';
-import { isDefined } from 'twenty-shared/utils';
+import {
+  fromArrayToUniqueKeyRecord,
+  isDefined,
+  trimAndRemoveDuplicatedWhitespacesFromObjectStringProperties,
+} from 'twenty-shared/utils';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
+import {
+  bindApplicationMetadataAuditOperation,
+  captureApplicationMetadataAuditOperation,
+  reconcileApplicationRoleAndPermissionOperations,
+  withApplicationMetadataAudit,
+  type ApplicationMetadataAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/application-metadata-audit';
 import { type CreateFieldInput } from 'src/engine/metadata-modules/field-metadata/dtos/create-field.input';
 import { type DeleteOneFieldInput } from 'src/engine/metadata-modules/field-metadata/dtos/delete-field.input';
 import { type UpdateFieldInput } from 'src/engine/metadata-modules/field-metadata/dtos/update-field.input';
@@ -91,12 +102,28 @@ export class FieldMetadataService {
     workspaceId,
     isSystemBuild = false,
     ownerFlatApplication,
+    auditIdentity,
   }: {
     deleteOneFieldInput: DeleteOneFieldInput;
     workspaceId: string;
     isSystemBuild?: boolean;
     ownerFlatApplication?: FlatApplication;
+    auditIdentity?: ApplicationMetadataAuditIdentity;
   }): Promise<FlatFieldMetadata> {
+    const expectedDeletedFieldId =
+      trimAndRemoveDuplicatedWhitespacesFromObjectStringProperties(
+        deleteOneFieldInput,
+        ['id'],
+      ).id;
+    const capturedAuditOperation = captureApplicationMetadataAuditOperation({
+      workspaceId,
+      auditIdentity,
+      mode: 'fieldDelete',
+      expectedDeletedFieldId,
+      isSystemBuild,
+      defaultSystemActorId: 'field-metadata:system-delete',
+    });
+
     const resolvedOwnerFlatApplication =
       ownerFlatApplication ??
       (
@@ -105,11 +132,23 @@ export class FieldMetadataService {
         )
       ).workspaceCustomFlatApplication;
 
+    const metadataAuditRequest = bindApplicationMetadataAuditOperation(
+      capturedAuditOperation,
+      {
+        applicationId: resolvedOwnerFlatApplication.id,
+        applicationUniversalIdentifier:
+          resolvedOwnerFlatApplication.universalIdentifier,
+      },
+    );
+
     const {
       flatObjectMetadataMaps: existingFlatObjectMetadataMaps,
       flatIndexMaps: existingFlatIndexMaps,
       flatFieldMetadataMaps: existingFlatFieldMetadataMaps,
       flatPageLayoutWidgetMaps: existingFlatPageLayoutWidgetMaps,
+      flatFieldPermissionMaps: existingFlatFieldPermissionMaps,
+      flatRowLevelPermissionPredicateMaps:
+        existingFlatRowLevelPermissionPredicateMaps,
     } = await this.flatEntityMapsCacheService.getOrRecomputeManyOrAllFlatEntityMaps(
       {
         workspaceId,
@@ -118,6 +157,8 @@ export class FieldMetadataService {
           'flatIndexMaps',
           'flatFieldMetadataMaps',
           'flatPageLayoutWidgetMaps',
+          'flatFieldPermissionMaps',
+          'flatRowLevelPermissionPredicateMaps',
         ],
       },
     );
@@ -165,36 +206,102 @@ export class FieldMetadataService {
           deletedFieldIds.has(widget.configuration.fieldMetadataId),
       );
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            fieldMetadata: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: flatFieldMetadatasToDelete,
-              flatEntityToUpdate: [],
+    const permissionReconciliationRecord: {
+      fieldMetadata: {
+        flatEntityToCreate: Record<string, never>;
+        flatEntityToUpdate: Record<string, never>;
+        flatEntityToDelete: Record<string, unknown>;
+      };
+      fieldPermission?: {
+        flatEntityToCreate: Record<string, never>;
+        flatEntityToUpdate: Record<string, never>;
+        flatEntityToDelete: Record<string, never>;
+      };
+      rowLevelPermissionPredicate?: {
+        flatEntityToCreate: Record<string, never>;
+        flatEntityToUpdate: Record<string, never>;
+        flatEntityToDelete: Record<string, never>;
+      };
+    } = {
+      fieldMetadata: {
+        flatEntityToCreate: {},
+        flatEntityToUpdate: {},
+        flatEntityToDelete: fromArrayToUniqueKeyRecord({
+          array: flatFieldMetadatasToDelete,
+          uniqueKey: 'universalIdentifier',
+        }),
+      },
+    };
+    reconcileApplicationRoleAndPermissionOperations({
+      allFlatEntityOperationRecordByMetadataName:
+        permissionReconciliationRecord,
+      existingAllFlatEntityMaps: {
+        flatFieldMetadataMaps: existingFlatFieldMetadataMaps,
+        flatFieldPermissionMaps: existingFlatFieldPermissionMaps,
+        flatRowLevelPermissionPredicateMaps:
+          existingFlatRowLevelPermissionPredicateMaps,
+      },
+    });
+    const flatFieldPermissionsToDelete = Object.values(
+      permissionReconciliationRecord.fieldPermission?.flatEntityToDelete ?? {},
+    );
+    const flatRowLevelPermissionPredicatesToDelete = Object.values(
+      permissionReconciliationRecord.rowLevelPermissionPredicate
+        ?.flatEntityToDelete ?? {},
+    );
+
+    const validateAndBuildResult = await withApplicationMetadataAudit(
+      metadataAuditRequest,
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              fieldMetadata: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: flatFieldMetadatasToDelete,
+                flatEntityToUpdate: [],
+              },
+              index: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: flatIndexesToDelete,
+                flatEntityToUpdate: flatIndexesToUpdate,
+              },
+              ...(flatPageLayoutWidgetsToDelete.length > 0
+                ? {
+                    pageLayoutWidget: {
+                      flatEntityToCreate: [],
+                      flatEntityToDelete: flatPageLayoutWidgetsToDelete,
+                      flatEntityToUpdate: [],
+                    },
+                  }
+                : {}),
+              ...(flatFieldPermissionsToDelete.length > 0
+                ? {
+                    fieldPermission: {
+                      flatEntityToCreate: [],
+                      flatEntityToDelete: flatFieldPermissionsToDelete,
+                      flatEntityToUpdate: [],
+                    },
+                  }
+                : {}),
+              ...(flatRowLevelPermissionPredicatesToDelete.length > 0
+                ? {
+                    rowLevelPermissionPredicate: {
+                      flatEntityToCreate: [],
+                      flatEntityToDelete:
+                        flatRowLevelPermissionPredicatesToDelete,
+                      flatEntityToUpdate: [],
+                    },
+                  }
+                : {}),
             },
-            index: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: flatIndexesToDelete,
-              flatEntityToUpdate: flatIndexesToUpdate,
-            },
-            ...(flatPageLayoutWidgetsToDelete.length > 0
-              ? {
-                  pageLayoutWidget: {
-                    flatEntityToCreate: [],
-                    flatEntityToDelete: flatPageLayoutWidgetsToDelete,
-                    flatEntityToUpdate: [],
-                  },
-                }
-              : {}),
+            workspaceId,
+            isSystemBuild,
+            applicationUniversalIdentifier:
+              resolvedOwnerFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild,
-          applicationUniversalIdentifier:
-            resolvedOwnerFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

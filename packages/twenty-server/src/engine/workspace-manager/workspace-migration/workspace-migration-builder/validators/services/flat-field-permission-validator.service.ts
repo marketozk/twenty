@@ -267,6 +267,8 @@ export class FlatFieldPermissionValidatorService {
     optimisticFlatEntityMapsAndRelatedFlatEntityMaps: {
       flatFieldPermissionMaps: optimisticFlatFieldPermissionMaps,
       flatRoleMaps,
+      flatObjectMetadataMaps,
+      flatFieldMetadataMaps,
     },
   }: UniversalFlatEntityValidationArgs<
     typeof ALL_METADATA_NAME.fieldPermission
@@ -291,13 +293,28 @@ export class FlatFieldPermissionValidatorService {
         userFriendlyMessage: msg`Field permission not found`,
       });
     } else {
+      const referencedObjectMetadata = findFlatEntityByUniversalIdentifier({
+        universalIdentifier:
+          existingFlatFieldPermission.objectMetadataUniversalIdentifier,
+        flatEntityMaps: flatObjectMetadataMaps,
+      });
+      const referencedFieldMetadata = findFlatEntityByUniversalIdentifier({
+        universalIdentifier:
+          existingFlatFieldPermission.fieldMetadataUniversalIdentifier,
+        flatEntityMaps: flatFieldMetadataMaps,
+      });
       const referencedRole = findFlatEntityByUniversalIdentifier({
         universalIdentifier:
           existingFlatFieldPermission.roleUniversalIdentifier,
         flatEntityMaps: flatRoleMaps,
       });
 
-      if (isDefined(referencedRole) && !referencedRole.isEditable) {
+      if (
+        isDefined(referencedObjectMetadata) &&
+        isDefined(referencedFieldMetadata) &&
+        isDefined(referencedRole) &&
+        !referencedRole.isEditable
+      ) {
         validationResult.errors.push({
           code: PermissionsExceptionCode.ROLE_NOT_EDITABLE,
           message: t`Role is not editable`,
