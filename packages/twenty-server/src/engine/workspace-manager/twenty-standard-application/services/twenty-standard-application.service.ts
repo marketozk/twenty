@@ -7,6 +7,11 @@ import {
   ApplicationExceptionCode,
 } from 'src/engine/core-modules/application/application.exception';
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
+import {
+  captureRoleAuditIdentity,
+  captureRoleAuditOperation,
+  type RoleUpdateAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { findFlatEntityByUniversalIdentifier } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-universal-identifier.util';
 import { MetadataFlatEntity } from 'src/engine/metadata-modules/flat-entity/types/metadata-flat-entity.type';
 import { getMetadataFlatEntityMapsKey } from 'src/engine/metadata-modules/flat-entity/utils/get-metadata-flat-entity-maps-key.util';
@@ -35,9 +40,22 @@ export class TwentyStandardApplicationService {
 
   async synchronizeTwentyStandardApplicationOrThrow({
     workspaceId,
+    auditIdentity,
   }: {
     workspaceId: string;
+    auditIdentity?: RoleUpdateAuditIdentity;
   }) {
+    const capturedAuditIdentity = captureRoleAuditIdentity(
+      auditIdentity ?? {
+        auth: {
+          workspace: { id: workspaceId },
+          type: 'system',
+        },
+        systemActorId: 'twenty-standard-application:sync',
+      },
+    );
+    captureRoleAuditOperation(workspaceId, capturedAuditIdentity);
+
     const { twentyStandardFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         {
@@ -121,6 +139,7 @@ export class TwentyStandardApplicationService {
       await this.setStandardApplicationDefaultRoleOrThrow({
         workspaceId,
         twentyStandardApplicationId: twentyStandardFlatApplication.id,
+        auditIdentity: capturedAuditIdentity,
       });
     }
 
@@ -136,9 +155,11 @@ export class TwentyStandardApplicationService {
   private async setStandardApplicationDefaultRoleOrThrow({
     workspaceId,
     twentyStandardApplicationId,
+    auditIdentity,
   }: {
     workspaceId: string;
     twentyStandardApplicationId: string;
+    auditIdentity: RoleUpdateAuditIdentity;
   }): Promise<void> {
     const { flatRoleMaps } = await this.workspaceCacheService.getOrRecompute(
       workspaceId,
@@ -157,10 +178,16 @@ export class TwentyStandardApplicationService {
       );
     }
 
-    await this.applicationService.update(twentyStandardApplicationId, {
-      workspaceId,
-      defaultRoleId: adminFlatRole.id,
-    });
+    await this.applicationService.update(
+      twentyStandardApplicationId,
+      {
+        workspaceId,
+        defaultRoleId: adminFlatRole.id,
+      },
+      {
+        auditIdentity,
+      },
+    );
   }
 
   private async seedStandardObjectInitialViewsOrThrow({

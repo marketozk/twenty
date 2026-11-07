@@ -1,0 +1,18 @@
+{
+  "baseCommit": "68de1888ba0bd593e88402cbb3e01ec8e48879b6",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/application/application-manifest/application-manifest-migration.service.ts": "bcece77a36f7dc87f71a5741e2b25c9492a47ed0da3b82013ea2141a88ed8788",
+    "packages/twenty-server/src/engine/core-modules/application/application.service.ts": "025fd1a6dedccd821c1991801e3b126f682a0a7f0c9388ad5c5e45cdabfb22ee",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/application-default-role-audit.ts": "b08a9df86737c35b42ccd2592c121a5d2afc6c828b9ac1dcf3aa286c90661575",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-attribution-context.ts": "f273b3ffd5be641fedc08c4358f3a17d2fd613e4d77e46554dc863f11332be52",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "2ffc8dd23bdf6cf6f24b19de3b8b641aec446e92816789131c1b45cca2a6fd29",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "6ab2a19f844b531f37b39ac22064717aad181eee9f1fae20c6a096db6a7f5d65",
+    "packages/twenty-server/src/engine/metadata-modules/role/role.service.ts": "f7fce8f637c29f8409e978b771125d9d065dee4e6f2c3645cc2eba5f907297d3",
+    "packages/twenty-server/src/engine/workspace-manager/dev-seeder/services/dev-seeder.workspace-service.ts": "a77ff26be479f7aca1c80c2e7851abccb529609a360692f70d0d4b0770ec9a59",
+    "packages/twenty-server/src/engine/workspace-manager/twenty-standard-application/services/twenty-standard-application.service.ts": "c32f63bcf28645f79c98f3e663467e51c9b534a32025805f71112e89724c6603",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-manager.service.ts": "bcaa329e0b171e8dacc0c6387d9017a128821aa986478408d52488b249eaa07f",
+    "packages/twenty-server/test/fork-migration/crm-audit-application-default-role.postgres-spec.ts": "9c08b1a2532bc7ff7e053f14a81cdf62587fe8f08446829e0ba002ebf6e233ca",
+    "packages/twenty-server/test/fork-migration/crm-audit-system-role-and-seeder.postgres-spec.ts": "b0eaed692bce5564f951b233d6d059a5d08852450e84124ab952d59db27effe6"
+  },
+  "uploadedSourceHashesVerified": true
+}

@@ -139,6 +139,13 @@ export class DevSeederWorkspaceService {
     await this.twentyStandardApplicationService.synchronizeTwentyStandardApplicationOrThrow(
       {
         workspaceId,
+        auditIdentity: {
+          auth: {
+            workspace: { id: workspaceId },
+            type: 'system',
+          },
+          systemActorId: 'dev-seeder:seed-twenty-standard-application',
+        },
       },
     );
 

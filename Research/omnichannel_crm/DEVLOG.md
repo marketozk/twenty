@@ -4653,3 +4653,42 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 и совпали. [Публикация](implementation/log163/publication.json).
 Следующий участок - аудит `core.application."defaultRoleId"` и записей метаданных
 при установке, синхронизации и удалении приложений по LOG164.
+
+## LOG164 - аудит смены роли приложения по умолчанию (`core.application."defaultRoleId"`)
+
+07.11.2026 зафиксированы [дизайн](implementation/log164/design.md),
+[независимое ревью решения](implementation/log164/design-review.md) и
+[план проверок](implementation/log164/test-research.md).
+Добавлен модуль `application-default-role-audit.ts` (`captureApplicationDefaultRoleAudit`,
+`runAuditedApplicationDefaultRoleUpdate`, `getApplicationDefaultRoleAudit` с регистрацией в
+`registerMetadataAuditScopeCheck`), в `crm-audit.types.ts` и `crm-audit-transaction-context.ts`
+подключён вид ресурса `'application'` (`CATALOG.application = { values: ['defaultRoleId'], redacted: [] }`,
+`ADMINISTRATIVE_ACTIONS.application = ['update']`), а в `crm-audit-attribution-context.ts`
+добавлен синхронный захват `captureCurrentCrmAuditOperation`. Внутри `runInCoreAuditTransaction`
+захватываются блокировки `core.workspace` (`FOR NO KEY UPDATE`), `core.application` (`FOR UPDATE`)
+и `core.role` (`FOR SHARE`, проверка существования в том же пространстве и принадлежности роли
+приложению `targetRole.applicationId === applicationId`), проверяется сохранённое состояние до и
+после `audit.flush()`, а при фактическом изменении записывается событие `application`
+(`update`, `metadataAccess: 'currentWorkspaceAdministration'`). Подключены все runtime-точки
+записи `core.application."defaultRoleId"`: `ApplicationService.update`,
+`RoleService.createWorkspaceCustomApplicationRole`,
+`TwentyStandardApplicationService.setStandardApplicationDefaultRoleOrThrow`
+(`WorkspaceManagerService.init`, `DevSeederWorkspaceService.seedDev`) и
+`ApplicationManifestMigrationService.syncApplicationReferencesFromManifest`.
+По замечаниям ревью (R1-R5) закрыты сброс `defaultRoleId` в `null` при удалении
+`defaultRoleUniversalIdentifier` из манифеста, отказ `ApplicationService.create` при непустом
+`defaultRoleId` и проверка области `workspaceId` для явного `MembershipCleanupIdentity`.
+
+07.11.2026 проверки LOG164 завершены. 3114 tests/109 suites PASS (679.207s). 196 targeted/11 PostgreSQL suites PASS (20.845s), 7 новых PostgreSQL случаев. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 465/467 roots, baseline 245 / current 245 diagnostics, 0 новых/changed-code. Совпали 12 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту охвата всех точек записи `core.application."defaultRoleId"`,
+устранение замечаний R1-R5, защиту от TOCTOU-мутации `data` и `ownerFlatApplication.id`,
+согласованный порядок блокировок `core.workspace` -> `core.application` -> `core.role`,
+корректную обработку `NativeTransactionOutcomeUnknownError` и `CoreAuditPostCommitError`
+(инвалидация кэша `flatApplicationMaps` в `try / catch`, отсутствие ложного `broadcastApplicationEvent`)
+и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log164/results.json), [ревью](implementation/log164/review.md),
+[следующий участок](implementation/log164/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

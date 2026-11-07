@@ -4,9 +4,11 @@ import { randomUUID } from 'node:crypto';
 import {
   captureMembershipCleanupIdentity,
   copyMembershipCleanupIdentity,
+  membershipCleanupOperation,
   type MembershipCleanupAuthentication,
   type MembershipCleanupIdentity,
 } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
+import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 
 type RequestFields = {
   workspace?: object;
@@ -113,4 +115,73 @@ export const captureCurrentCrmAuditIdentity = async (
     },
     scope,
   );
+};
+
+export type CapturedCrmAuditOperation = Readonly<{
+  operation: CrmAuditOperation;
+  impersonatorUserWorkspaceId?: string;
+}>;
+
+export const captureCurrentCrmAuditOperation = (
+  workspaceId: string,
+): CapturedCrmAuditOperation | undefined => {
+  const snapshot = storage.getStore();
+  if (!snapshot) return undefined;
+  const scope = workspaceId.toLowerCase();
+  const snapshotWorkspace =
+    snapshot.kind === 'request'
+      ? snapshot.authentication.workspaceId?.toLowerCase()
+      : snapshot.workspaceId;
+  if (snapshotWorkspace !== scope)
+    throw new Error('CRM audit context workspace mismatch');
+  if (snapshot.kind === 'resolved') {
+    const operation = membershipCleanupOperation(scope, snapshot.identity);
+    return operation
+      ? Object.freeze({ operation: Object.freeze(operation) })
+      : undefined;
+  }
+  const { user, apiKey, application, impersonatorUserWorkspaceId } =
+    snapshot.authentication;
+  const userId = user?.id;
+  const apiKeyId = apiKey?.id;
+  const applicationId = application?.id;
+  if (
+    (apiKeyId && (userId || applicationId)) ||
+    (impersonatorUserWorkspaceId && (!userId || apiKeyId || applicationId))
+  )
+    throw new Error('Ambiguous membership audit authentication');
+  if (!userId && !apiKeyId && !applicationId)
+    throw new Error('Membership audit authentication is unavailable');
+  if (snapshot.agentId && !applicationId)
+    throw new Error('CRM audit agent requires an authenticated application');
+  const baseActor = applicationId
+    ? ({ kind: 'application', id: applicationId } as const)
+    : apiKeyId
+      ? ({ kind: 'apiKey', id: apiKeyId } as const)
+      : ({ kind: 'coreUser', id: userId! } as const);
+  const baseInitiator =
+    applicationId && userId
+      ? ({ kind: 'coreUser', id: userId } as const)
+      : undefined;
+  const identity = copyMembershipCleanupIdentity(
+    {
+      workspaceId: scope,
+      actor: snapshot.agentId
+        ? { kind: 'agent', id: snapshot.agentId }
+        : baseActor,
+      ...(snapshot.agentId
+        ? { initiator: baseInitiator ?? baseActor }
+        : baseInitiator
+          ? { initiator: baseInitiator }
+          : {}),
+      correlationId: snapshot.correlationId,
+    },
+    scope,
+  )!;
+  const operation = membershipCleanupOperation(scope, identity)!;
+
+  return Object.freeze({
+    operation: Object.freeze(operation),
+    ...(impersonatorUserWorkspaceId ? { impersonatorUserWorkspaceId } : {}),
+  });
 };

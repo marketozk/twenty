@@ -777,10 +777,22 @@ describe('LOG160 audited system and bootstrap role creation and roleTarget bindi
       canBeAssignedToAgents: false,
       canBeAssignedToApiKeys: false,
     });
-    expect(applicationService.update).toHaveBeenCalledWith(customAppId, {
-      workspaceId,
-      defaultRoleId: customAppRole!.id,
-    });
+    expect(applicationService.update).toHaveBeenCalledWith(
+      customAppId,
+      {
+        workspaceId,
+        defaultRoleId: customAppRole!.id,
+      },
+      {
+        auditIdentity: expect.objectContaining({
+          auth: {
+            workspace: { id: workspaceId },
+            type: 'system',
+          },
+          systemActorId: 'workspace-manager:init',
+        }),
+      },
+    );
 
     const auditRows = await audits();
     expect(auditRows).toHaveLength(1);

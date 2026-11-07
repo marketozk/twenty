@@ -70,6 +70,13 @@ export class WorkspaceManagerService {
     await this.twentyStandardApplicationService.synchronizeTwentyStandardApplicationOrThrow(
       {
         workspaceId,
+        auditIdentity: {
+          auth: {
+            workspace: { id: workspaceId },
+            type: 'system',
+          },
+          systemActorId: 'workspace-manager:init',
+        },
       },
     );
 

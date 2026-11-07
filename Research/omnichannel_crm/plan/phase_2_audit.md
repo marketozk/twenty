@@ -140,8 +140,14 @@ LOG163 закрывает атомарный аудит смены роли по
 (`core.workspace."defaultRoleId"` в `WorkspaceService.updateWorkspaceById` / `WorkspaceResolver.updateWorkspace`,
 `WorkspaceManagerService.setupDefaultRoles` и `DevSeederPermissionsService.initMinimalPermissionsAndActivateWorkspace`,
 `runAuditedWorkspaceDefaultRoleUpdate` в `workspace-default-role-audit.ts`).
-Поле `core.application."defaultRoleId"`, записи метаданных при установке, синхронизации и удалении приложений и durable cache открыты.
-Далее - [application defaultRoleId and application manifest metadata writers](../implementation/log163/next-boundary.md).
+LOG164 закрывает атомарный аудит смены роли приложения по умолчанию
+(`core.application."defaultRoleId"` в `ApplicationService.update`,
+`RoleService.createWorkspaceCustomApplicationRole`,
+`TwentyStandardApplicationService.setStandardApplicationDefaultRoleOrThrow` и
+`ApplicationManifestMigrationService.syncApplicationReferencesFromManifest`,
+`runAuditedApplicationDefaultRoleUpdate` в `application-default-role-audit.ts`).
+Записи метаданных при установке, синхронизации и удалении приложений и durable cache открыты.
+Далее - [application manifest metadata writers](../implementation/log164/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

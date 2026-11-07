@@ -638,10 +638,16 @@ export class RoleService {
       return;
     }
 
-    await this.applicationService.update(workspaceCustomFlatApplication.id, {
-      workspaceId,
-      defaultRoleId: roleId,
-    });
+    await this.applicationService.update(
+      workspaceCustomFlatApplication.id,
+      {
+        workspaceId,
+        defaultRoleId: roleId,
+      },
+      {
+        auditIdentity: capturedIdentity,
+      },
+    );
   }
 
   private async createWorkspaceCustomApplicationFlatRole({

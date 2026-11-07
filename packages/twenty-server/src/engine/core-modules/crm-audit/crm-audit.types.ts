@@ -24,6 +24,7 @@ export type CrmAuditResourceKind =
   | 'coreWorkflow'
   | 'coreView'
   | 'workspace'
+  | 'application'
   | 'role'
   | 'roleTarget'
   | 'apiKey'

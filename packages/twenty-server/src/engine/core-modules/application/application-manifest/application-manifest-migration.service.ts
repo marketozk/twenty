@@ -19,6 +19,7 @@ import {
 } from 'src/engine/core-modules/application/application.exception';
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
+import { type ApplicationDefaultRoleAuditIdentity } from 'src/engine/core-modules/crm-audit/application-default-role-audit';
 import { LoggerService } from 'src/engine/core-modules/logger/logger.service';
 import { WorkflowVersionCoreSyncService } from 'src/engine/core-modules/workflow/services/workflow-version-core-sync.service';
 import { ConnectedAccountMetadataService } from 'src/engine/metadata-modules/connected-account/connected-account-metadata.service';
@@ -175,17 +176,23 @@ export class ApplicationManifestMigrationService {
     ownerFlatApplication,
     dryRun = false,
     inferDeletionFromMissingEntities = true,
+    auditIdentity,
   }: {
     manifest: Manifest;
     workspaceId: string;
     ownerFlatApplication: FlatApplication;
     dryRun?: boolean;
     inferDeletionFromMissingEntities?: boolean;
+    auditIdentity?: ApplicationDefaultRoleAuditIdentity;
   }): Promise<{
     workspaceMigration: WorkspaceMigration;
     hasSchemaMetadataChanged: boolean;
   }> {
     const ownerApplicationId = ownerFlatApplication.id;
+    const capturedOwnerFlatApplication: FlatApplication = {
+      ...ownerFlatApplication,
+      id: ownerApplicationId,
+    };
     const now = new Date().toISOString();
 
     const recomputeStart = performance.now();
@@ -314,8 +321,9 @@ export class ApplicationManifestMigrationService {
       await this.syncApplicationReferencesFromManifest({
         manifest,
         workspaceId,
-        ownerFlatApplication,
+        ownerFlatApplication: capturedOwnerFlatApplication,
         inferDeletionFromMissingEntities,
+        auditIdentity,
       });
 
       await this.workflowVersionCoreSyncService.publishCronTriggerCacheEntries(
@@ -357,12 +365,15 @@ export class ApplicationManifestMigrationService {
     workspaceId,
     ownerFlatApplication,
     inferDeletionFromMissingEntities,
+    auditIdentity,
   }: {
     manifest: Manifest;
     workspaceId: string;
     ownerFlatApplication: FlatApplication;
     inferDeletionFromMissingEntities: boolean;
+    auditIdentity?: ApplicationDefaultRoleAuditIdentity;
   }) {
+    const ownerApplicationId = ownerFlatApplication.id;
     const {
       flatRoleMaps: refreshedFlatRoleMaps,
       flatFrontComponentMaps: refreshedFlatFrontComponentMaps,
@@ -381,6 +392,7 @@ export class ApplicationManifestMigrationService {
         universalIdentifier: role.universalIdentifier,
         referenceLabel: 'role',
         exceptionCode: ApplicationExceptionCode.ENTITY_NOT_FOUND,
+        ownerApplicationId,
       });
 
       if (
@@ -389,6 +401,20 @@ export class ApplicationManifestMigrationService {
       ) {
         defaultRoleId = flatRoleId;
       }
+    }
+
+    if (
+      isDefined(manifest.application.defaultRoleUniversalIdentifier) &&
+      !isDefined(defaultRoleId)
+    ) {
+      defaultRoleId = resolveApplicationReferenceIdOrThrow({
+        flatEntityMaps: refreshedFlatRoleMaps,
+        universalIdentifier:
+          manifest.application.defaultRoleUniversalIdentifier,
+        referenceLabel: 'role',
+        exceptionCode: ApplicationExceptionCode.ENTITY_NOT_FOUND,
+        ownerApplicationId,
+      });
     }
 
     const settingsFrontComponentUniversalIdentifier =
@@ -416,7 +442,7 @@ export class ApplicationManifestMigrationService {
           universalIdentifier: healthCheckLogicFunctionUniversalIdentifier,
           referenceLabel: 'health check logic function',
           exceptionCode: ApplicationExceptionCode.LOGIC_FUNCTION_NOT_FOUND,
-          ownerApplicationId: ownerFlatApplication.id,
+          ownerApplicationId,
         })
       : null;
 
@@ -431,25 +457,33 @@ export class ApplicationManifestMigrationService {
           universalIdentifier: uninstallLogicFunctionUniversalIdentifier,
           referenceLabel: 'uninstall logic function',
           exceptionCode: ApplicationExceptionCode.LOGIC_FUNCTION_NOT_FOUND,
-          ownerApplicationId: ownerFlatApplication.id,
+          ownerApplicationId,
         })
       : null;
 
-    await this.applicationService.update(ownerFlatApplication.id, {
-      workspaceId,
-      ...(isDefined(settingsCustomTabFrontComponentId) ||
-      inferDeletionFromMissingEntities
-        ? { settingsCustomTabFrontComponentId }
-        : {}),
-      ...(isDefined(uninstallLogicFunctionId) ||
-      inferDeletionFromMissingEntities
-        ? { uninstallLogicFunctionId }
-        : {}),
-      ...(isDefined(healthCheckLogicFunctionId) ||
-      inferDeletionFromMissingEntities
-        ? { healthCheckLogicFunctionId }
-        : {}),
-      ...(isDefined(defaultRoleId) ? { defaultRoleId } : {}),
-    });
+    await this.applicationService.update(
+      ownerApplicationId,
+      {
+        workspaceId,
+        ...(isDefined(settingsCustomTabFrontComponentId) ||
+        inferDeletionFromMissingEntities
+          ? { settingsCustomTabFrontComponentId }
+          : {}),
+        ...(isDefined(uninstallLogicFunctionId) ||
+        inferDeletionFromMissingEntities
+          ? { uninstallLogicFunctionId }
+          : {}),
+        ...(isDefined(healthCheckLogicFunctionId) ||
+        inferDeletionFromMissingEntities
+          ? { healthCheckLogicFunctionId }
+          : {}),
+        ...(isDefined(defaultRoleId) ||
+        (inferDeletionFromMissingEntities &&
+          isDefined(ownerFlatApplication.defaultRoleId))
+          ? { defaultRoleId }
+          : {}),
+      },
+      auditIdentity !== undefined ? { auditIdentity } : undefined,
+    );
   }
 }
