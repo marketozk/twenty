@@ -1,0 +1,13 @@
+{
+  "baseCommit": "f2a3ba43678c2fd5dcf997dd03300a4d3ea06e21",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/application/application-manifest/application-manifest-migration.service.ts": "479194bc151ae6de5e54a9f083d1e430d7e659b1f830255fa0437438ddc1fcf2",
+    "packages/twenty-server/src/engine/core-modules/application/application-manifest/application-sync.service.ts": "9ef798d41601689fa19e23974852f5f7b5138ef9a44062a5b5c7055dad9beb1e",
+    "packages/twenty-server/src/engine/core-modules/application/application.service.ts": "cf166c93479aad1af0b232e42cf9d259b2b9b69b9a1fbe9a79ce87cc7fb8894c",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/application-metadata-audit.ts": "9ce2269362929fe79f9cf6ca6778fe3958863eee235df80dbc5c849246f795d4",
+    "packages/twenty-server/src/engine/workspace-manager/twenty-standard-application/services/twenty-standard-application.service.ts": "468ae90914eaeaaae52ed59b9de15a77bd6d8b72ffc1d1a91911bf6b0c57ea84",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts": "785a0e819eb58c93115fd2ba6c692641148194c36135c3cf526ee6b62dc4dccd",
+    "packages/twenty-server/test/fork-migration/crm-audit-application-metadata.postgres-spec.ts": "438d239ecf6f39ae67f9cc1e91441859e5764197276d8d1fa112c04d7752eb26"
+  },
+  "uploadedSourceHashesVerified": true
+}

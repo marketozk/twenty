@@ -8,6 +8,10 @@ import {
 } from 'src/engine/core-modules/application/application.exception';
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
 import {
+  captureApplicationMetadataAudit,
+  withApplicationMetadataAudit,
+} from 'src/engine/core-modules/crm-audit/application-metadata-audit';
+import {
   captureRoleAuditIdentity,
   captureRoleAuditOperation,
   type RoleUpdateAuditIdentity,
@@ -109,24 +113,35 @@ export class TwentyStandardApplicationService {
       fromToAllFlatEntityMaps[flatEntityMapsKey] = fromTo;
     }
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigrationFromTo(
-        {
-          buildOptions: {
-            isSystemBuild: true,
-            inferDeletionFromMissingEntities: true,
-            applicationUniversalIdentifier:
-              twentyStandardFlatApplication.universalIdentifier,
+    const metadataAudit = captureApplicationMetadataAudit({
+      workspaceId,
+      applicationId: twentyStandardFlatApplication.id,
+      applicationUniversalIdentifier:
+        twentyStandardFlatApplication.universalIdentifier,
+      auditIdentity: capturedAuditIdentity,
+    })();
+
+    const validateAndBuildResult = await withApplicationMetadataAudit(
+      metadataAudit,
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigrationFromTo(
+          {
+            buildOptions: {
+              isSystemBuild: true,
+              inferDeletionFromMissingEntities: true,
+              applicationUniversalIdentifier:
+                twentyStandardFlatApplication.universalIdentifier,
+            },
+            fromToAllFlatEntityMaps,
+            workspaceId,
+            additionalCacheDataMaps: {
+              featureFlagsMap,
+              billingEntitlements,
+            },
+            idByUniversalIdentifierByMetadataName,
           },
-          fromToAllFlatEntityMaps,
-          workspaceId,
-          additionalCacheDataMaps: {
-            featureFlagsMap,
-            billingEntitlements,
-          },
-          idByUniversalIdentifierByMetadataName,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

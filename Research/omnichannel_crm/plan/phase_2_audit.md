@@ -146,8 +146,17 @@ LOG164 закрывает атомарный аудит смены роли пр
 `TwentyStandardApplicationService.setStandardApplicationDefaultRoleOrThrow` и
 `ApplicationManifestMigrationService.syncApplicationReferencesFromManifest`,
 `runAuditedApplicationDefaultRoleUpdate` в `application-default-role-audit.ts`).
-Записи метаданных при установке, синхронизации и удалении приложений и durable cache открыты.
-Далее - [application manifest metadata writers](../implementation/log164/next-boundary.md).
+LOG165 закрывает атомарный аудит пакетных миграций метаданных ролей (`core.role`),
+привязок агентов (`core."roleTarget"`) и 5 таблиц прав (`core."rolePermissionFlag"`,
+`core."objectPermission"`, `core."fieldPermission"`, `core."rowLevelPermissionPredicateGroup"`,
+`core."rowLevelPermissionPredicate"`) при синхронизации манифеста, стандартного приложения и
+удалении приложений (`ApplicationManifestMigrationService.syncMetadataFromManifest`,
+`ApplicationSyncService.uninstallApplication`, `ApplicationService.delete`,
+`TwentyStandardApplicationService.synchronizeTwentyStandardApplicationOrThrow`,
+fail-closed барьер в `WorkspaceMigrationRunnerService.executeRun` и
+`runAuditedApplicationMetadataMigration` в `application-metadata-audit.ts`).
+Оставшиеся native/core writers и durable cache открыты.
+Далее - [следующая граница ROB765](../implementation/log165/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

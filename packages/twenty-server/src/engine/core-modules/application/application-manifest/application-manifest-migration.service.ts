@@ -20,6 +20,11 @@ import {
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
 import { type ApplicationDefaultRoleAuditIdentity } from 'src/engine/core-modules/crm-audit/application-default-role-audit';
+import {
+  captureApplicationMetadataAudit,
+  reconcileApplicationRoleAndPermissionOperations,
+  withApplicationMetadataAudit,
+} from 'src/engine/core-modules/crm-audit/application-metadata-audit';
 import { LoggerService } from 'src/engine/core-modules/logger/logger.service';
 import { WorkflowVersionCoreSyncService } from 'src/engine/core-modules/workflow/services/workflow-version-core-sync.service';
 import { ConnectedAccountMetadataService } from 'src/engine/metadata-modules/connected-account/connected-account-metadata.service';
@@ -193,6 +198,15 @@ export class ApplicationManifestMigrationService {
       ...ownerFlatApplication,
       id: ownerApplicationId,
     };
+    const capturedMetadataAudit = !dryRun
+      ? captureApplicationMetadataAudit({
+          workspaceId,
+          applicationId: ownerApplicationId,
+          applicationUniversalIdentifier:
+            capturedOwnerFlatApplication.universalIdentifier,
+          auditIdentity,
+        })()
+      : undefined;
     const now = new Date().toISOString();
 
     const recomputeStart = performance.now();
@@ -257,9 +271,37 @@ export class ApplicationManifestMigrationService {
             ? true
             : undefined,
           applicationUniversalIdentifier:
-            ownerFlatApplication.universalIdentifier,
+            capturedOwnerFlatApplication.universalIdentifier,
         },
       });
+
+    const ownedAgentUniversalIdentifiers = [
+      ...new Set([
+        ...Object.keys(
+          fromAllFlatEntityMaps.flatAgentMaps?.byUniversalIdentifier ?? {},
+        ),
+        ...Object.keys(
+          toAllUniversalFlatEntityMaps.flatAgentMaps?.byUniversalIdentifier ??
+            {},
+        ),
+      ]),
+    ];
+    const toRoleTargetByAgentUniversalIdentifier = Object.fromEntries(
+      Object.values(
+        toAllUniversalFlatEntityMaps.flatRoleTargetMaps
+          ?.byUniversalIdentifier ?? {},
+      )
+        .filter(isDefined)
+        .filter((target) => isDefined(target.agentUniversalIdentifier))
+        .map((target) => [target.agentUniversalIdentifier!, target]),
+    );
+    reconcileApplicationRoleAndPermissionOperations({
+      allFlatEntityOperationRecordByMetadataName,
+      existingAllFlatEntityMaps,
+      ownedAgentUniversalIdentifiers,
+      toRoleTargetByAgentUniversalIdentifier,
+      inferDeletionFromMissingEntities,
+    });
 
     const connectionProviderIdsToDelete = Object.values(
       allFlatEntityOperationRecordByMetadataName.connectionProvider
@@ -277,16 +319,22 @@ export class ApplicationManifestMigrationService {
     const shouldDeleteConnectedAccounts =
       !dryRun && connectionProviderIdsToDelete.length > 0;
 
-    const validateBuildAndRunMigration = (isDryRun: boolean) =>
-      this.validateBuildAndRunOrThrow({
-        allFlatEntityOperationRecordByMetadataName,
-        workspaceId,
-        isSystemBuild: false,
-        applicationUniversalIdentifier:
-          ownerFlatApplication.universalIdentifier,
-        idByUniversalIdentifierByMetadataName,
-        dryRun: isDryRun,
-      });
+    const validateBuildAndRunMigration = (isDryRun: boolean) => {
+      const execute = () =>
+        this.validateBuildAndRunOrThrow({
+          allFlatEntityOperationRecordByMetadataName,
+          workspaceId,
+          isSystemBuild: false,
+          applicationUniversalIdentifier:
+            capturedOwnerFlatApplication.universalIdentifier,
+          idByUniversalIdentifierByMetadataName,
+          dryRun: isDryRun,
+        });
+
+      return isDryRun
+        ? execute()
+        : withApplicationMetadataAudit(capturedMetadataAudit!, execute);
+    };
 
     const validateBuildRunStart = performance.now();
     let validateAndBuildResult = await validateBuildAndRunMigration(
@@ -477,9 +525,7 @@ export class ApplicationManifestMigrationService {
         inferDeletionFromMissingEntities
           ? { healthCheckLogicFunctionId }
           : {}),
-        ...(isDefined(defaultRoleId) ||
-        (inferDeletionFromMissingEntities &&
-          isDefined(ownerFlatApplication.defaultRoleId))
+        ...(isDefined(defaultRoleId) || inferDeletionFromMissingEntities
           ? { defaultRoleId }
           : {}),
       },

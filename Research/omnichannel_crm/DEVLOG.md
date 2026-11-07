@@ -4699,3 +4699,45 @@ c68b94f7-d72f-4237-b18f-053c3cf51f18 и все 11 состояний задач 
 и совпали. [Публикация](implementation/log164/publication.json).
 Следующий участок - аудит записей метаданных ролей, прав и `roleTarget`
 при установке, синхронизации и удалении приложений по LOG165.
+
+## LOG165 - аудит записей метаданных ролей, прав и `roleTarget` при установке, синхронизации и удалении приложений
+
+07.11.2026 зафиксированы [дизайн](implementation/log165/design.md),
+[независимое ревью решения](implementation/log165/design-review.md) и
+[план проверок](implementation/log165/test-research.md).
+Добавлен модуль `application-metadata-audit.ts` (`captureApplicationMetadataAudit`,
+`withApplicationMetadataAudit`, `runAuditedApplicationMetadataMigration`,
+`assertNoRemainingApplicationRoleOrPermissionMetadata`,
+`reconcileApplicationRoleAndPermissionOperations`, регистрация в
+`registerMetadataAuditScopeCheck`), интегрированный в
+`WorkspaceMigrationRunnerService.executeRun`,
+`ApplicationManifestMigrationService.syncMetadataFromManifest`,
+`ApplicationSyncService.uninstallApplication` (`runUninstall`),
+`ApplicationService.delete` и
+`TwentyStandardApplicationService.synchronizeTwentyStandardApplicationOrThrow`.
+Внутри `runInCoreAuditTransaction` захватываются блокировки `core.workspace` (`FOR NO KEY UPDATE`),
+`core.application` (`ORDER BY id FOR UPDATE`) и всех 7 таблиц ролей, привязок и прав
+(`role`, `roleTarget`, `rolePermissionFlag`, `objectPermission`, `fieldPermission`,
+`rowLevelPermissionPredicateGroup`, `rowLevelPermissionPredicate`, `ORDER BY id FOR UPDATE`).
+Учтены все замечания ревью дизайна и кода (M1-M3, T1-T2): сохранение привязки `core."roleTarget"`
+при одновременном `role.delete` и `roleTarget.update`, согласование кросс-приложенческих
+агентских привязок `roleTarget` и зависимых прав при удалении, транзитивное замыкание
+каскадного удаления групп предикатов, запись `rowLevelPermissionPredicate:update` при
+`ON DELETE SET NULL` на `workspaceMemberFieldMetadataId`, немедленная проверка субъекта
+аудита до удаления `connectedAccount`, проверка `workspaceMemberFieldMetadataId` и
+`SET LOCAL lock_timeout = '8s'` в `ApplicationService.delete`, fail-closed барьер в
+`WorkspaceMigrationRunnerService.executeRun` и отсутствие новых рёбер в `@license Enterprise`.
+
+07.11.2026 проверки LOG165 завершены. 3120 tests/110 suites PASS (682.085s). 202 targeted/12 PostgreSQL suites PASS (22.704s), 6 новых PostgreSQL случаев. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 466/468 roots, baseline 236 / current 234 diagnostics, 0 новых/changed-code. Совпали 7 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех трёх путей пакетных миграций
+приложений и fail-closed барьера в `WorkspaceMigrationRunnerService.executeRun`,
+устранение замечаний M1-M3 и T1-T2, корректную обработку смешанных миграций,
+`NativeTransactionOutcomeUnknownError` и `CoreAuditPostCommitError`, редактирование
+секретных литералов `value` и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log165/results.json), [ревью](implementation/log165/review.md),
+[следующий участок](implementation/log165/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
+

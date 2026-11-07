@@ -30,6 +30,12 @@ import { ApplicationLookupService } from 'src/engine/core-modules/application/ap
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
 import { ApplicationState } from 'src/engine/core-modules/application/enums/application-state.enum';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
+import {
+  captureApplicationMetadataAudit,
+  reconcileApplicationRoleAndPermissionOperations,
+  withApplicationMetadataAudit,
+  type ApplicationMetadataAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/application-metadata-audit';
 import { FileStorageService } from 'src/engine/core-modules/file-storage/services/file-storage.service';
 import { LOGIC_FUNCTION_DRIVER_FACTORY_TOKEN } from 'src/engine/core-modules/logic-function/logic-function-drivers/constants/logic-function-driver-factory.token';
 import { type LogicFunctionDriverFactory } from 'src/engine/core-modules/logic-function/logic-function-drivers/logic-function-driver.factory';
@@ -372,11 +378,13 @@ export class ApplicationSyncService {
     progressReporter = createApplicationLifecycleProgressReporter({
       steps: APPLICATION_UNINSTALL_STEPS,
     }),
+    auditIdentity,
   }: {
     workspaceId: string;
     applicationUniversalIdentifier: string;
     shouldRunUninstallHook?: boolean;
     progressReporter?: ApplicationLifecycleProgressReporter<ApplicationUninstallStep>;
+    auditIdentity?: ApplicationMetadataAuditIdentity;
   }): Promise<WorkspaceMigration> {
     const application =
       await this.applicationService.findOneApplicationWithRelationsOrThrow({
@@ -391,12 +399,20 @@ export class ApplicationSyncService {
       );
     }
 
+    const capturedAudit = captureApplicationMetadataAudit({
+      workspaceId,
+      applicationId: application.id,
+      applicationUniversalIdentifier: application.universalIdentifier,
+      auditIdentity,
+    })();
+
     return await this.runUninstall({
       application,
       workspaceId,
       applicationUniversalIdentifier,
       shouldRunUninstallHook,
       progressReporter,
+      capturedAudit,
     });
   }
 
@@ -406,12 +422,16 @@ export class ApplicationSyncService {
     applicationUniversalIdentifier,
     shouldRunUninstallHook,
     progressReporter,
+    capturedAudit,
   }: {
     application: ApplicationEntity;
     workspaceId: string;
     applicationUniversalIdentifier: string;
     shouldRunUninstallHook: boolean;
     progressReporter: ApplicationLifecycleProgressReporter<ApplicationUninstallStep>;
+    capturedAudit: ReturnType<
+      ReturnType<typeof captureApplicationMetadataAudit>
+    >;
   }): Promise<WorkspaceMigration> {
     if (shouldRunUninstallHook) {
       await this.applicationUninstallService.runUninstallHookBestEffort({
@@ -448,25 +468,39 @@ export class ApplicationSyncService {
           {
             flatEntityToCreate: {},
             flatEntityToUpdate: {},
-            flatEntityToDelete:
-              applicationFromAllFlatEntityMaps[
+            flatEntityToDelete: {
+              ...applicationFromAllFlatEntityMaps[
                 getMetadataFlatEntityMapsKey(metadataName)
               ].byUniversalIdentifier,
+            },
           },
         ]),
       );
 
+    reconcileApplicationRoleAndPermissionOperations({
+      allFlatEntityOperationRecordByMetadataName,
+      existingAllFlatEntityMaps: fromAllFlatEntityMaps,
+      ownedAgentUniversalIdentifiers: Object.keys(
+        applicationFromAllFlatEntityMaps.flatAgentMaps?.byUniversalIdentifier ??
+          {},
+      ),
+      inferDeletionFromMissingEntities: true,
+    });
+
     await progressReporter.reportStepCompleted('COMPUTE_METADATA_TO_DELETE');
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigrationFromRecord(
-        {
-          isSystemBuild: true,
-          applicationUniversalIdentifier,
-          allFlatEntityOperationRecordByMetadataName,
-          workspaceId,
-        },
-      );
+    const validateAndBuildResult = await withApplicationMetadataAudit(
+      capturedAudit,
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigrationFromRecord(
+          {
+            isSystemBuild: true,
+            applicationUniversalIdentifier,
+            allFlatEntityOperationRecordByMetadataName,
+            workspaceId,
+          },
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

@@ -10,6 +10,13 @@ import {
   runAuditedApiKeyCreate,
 } from 'src/engine/core-modules/crm-audit/api-key-audit';
 import {
+  AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES,
+  getApplicationMetadataAudit,
+  runAuditedApplicationMetadataMigration,
+  type ApplicationMetadataAuditMappings,
+} from 'src/engine/core-modules/crm-audit/application-metadata-audit';
+import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
+import {
   getRoleAssignmentAudit,
   runAuditedRoleAssignment,
 } from 'src/engine/core-modules/crm-audit/role-assignment-audit';
@@ -21,6 +28,7 @@ import {
   getRoleMutationAudit,
   runAuditedRoleMutation,
 } from 'src/engine/core-modules/crm-audit/role-update-audit';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 
 import { FeatureFlagService } from 'src/engine/core-modules/feature-flag/services/feature-flag.service';
 import { LoggerService } from 'src/engine/core-modules/logger/logger.service';
@@ -392,10 +400,15 @@ export class WorkspaceMigrationRunnerService {
     const assignmentAudit = getRoleAssignmentAudit(workspaceId);
     const permissionAudit = getRolePermissionAudit(workspaceId);
     const apiKeyCreateAudit = getApiKeyCreateAudit(workspaceId);
+    const applicationMetadataAudit = getApplicationMetadataAudit(workspaceId);
     if (
-      [roleAudit, assignmentAudit, permissionAudit, apiKeyCreateAudit].filter(
-        Boolean,
-      ).length > 1
+      [
+        roleAudit,
+        assignmentAudit,
+        permissionAudit,
+        apiKeyCreateAudit,
+        applicationMetadataAudit,
+      ].filter(Boolean).length > 1
     )
       throw new Error('Conflicting metadata audit owners');
     if (roleAudit || assignmentAudit || permissionAudit || apiKeyCreateAudit) {
@@ -539,6 +552,179 @@ export class WorkspaceMigrationRunnerService {
           );
         }
       }
+    }
+
+    if (applicationMetadataAudit) {
+      const mappings: ApplicationMetadataAuditMappings = {
+        application: flatApplication,
+        roles: allFlatEntityMaps.flatRoleMaps?.byUniversalIdentifier ?? {},
+        targets:
+          allFlatEntityMaps.flatRoleTargetMaps?.byUniversalIdentifier ?? {},
+        agents: allFlatEntityMaps.flatAgentMaps?.byUniversalIdentifier ?? {},
+        permissionFlags:
+          allFlatEntityMaps.flatPermissionFlagMaps?.byUniversalIdentifier ?? {},
+        rolePermissionFlags:
+          allFlatEntityMaps.flatRolePermissionFlagMaps?.byUniversalIdentifier ??
+          {},
+        objectMetadatas:
+          allFlatEntityMaps.flatObjectMetadataMaps?.byUniversalIdentifier ?? {},
+        fieldMetadatas:
+          allFlatEntityMaps.flatFieldMetadataMaps?.byUniversalIdentifier ?? {},
+        objectPermissions:
+          allFlatEntityMaps.flatObjectPermissionMaps?.byUniversalIdentifier ??
+          {},
+        fieldPermissions:
+          allFlatEntityMaps.flatFieldPermissionMaps?.byUniversalIdentifier ??
+          {},
+        rowLevelPermissionPredicates:
+          allFlatEntityMaps.flatRowLevelPermissionPredicateMaps
+            ?.byUniversalIdentifier ?? {},
+        rowLevelPermissionPredicateGroups:
+          allFlatEntityMaps.flatRowLevelPermissionPredicateGroupMaps
+            ?.byUniversalIdentifier ?? {},
+      };
+      const allMetadataEvents: MetadataEvent[] = [];
+      const allDeferredActions: DeferredWorkspaceMigrationAction[] = [];
+      const searchFieldMetadatasByTsVectorFieldIdAccessor =
+        createSearchFieldMetadatasByTsVectorFieldIdAccessor(
+          () => allFlatEntityMaps.flatSearchFieldMetadataMaps,
+        );
+      try {
+        await runAuditedApplicationMetadataMigration(
+          this.coreDataSource,
+          applicationMetadataAudit,
+          actions as never,
+          mappings,
+          async (queryRunner: QueryRunner) => {
+            for (const action of actions) {
+              const {
+                partialOptimisticCache,
+                metadataEvents,
+                deferredActions,
+              } =
+                await this.workspaceMigrationRunnerActionHandlerRegistry.executeActionHandler(
+                  {
+                    action,
+                    context: {
+                      flatApplication,
+                      action,
+                      allFlatEntityMaps,
+                      queryRunner,
+                      workspaceId,
+                      preallocatedIdByUniversalIdentifierByMetadataName,
+                      getSearchFieldMetadatasByTsVectorFieldId:
+                        searchFieldMetadatasByTsVectorFieldIdAccessor.get,
+                      featureFlagsMap,
+                    },
+                  },
+                );
+              allFlatEntityMaps = {
+                ...allFlatEntityMaps,
+                ...partialOptimisticCache,
+              } as typeof allFlatEntityMaps;
+              if (action.metadataName === 'searchFieldMetadata') {
+                searchFieldMetadatasByTsVectorFieldIdAccessor.invalidate();
+              }
+              allMetadataEvents.push(...metadataEvents);
+              allDeferredActions.push(...deferredActions);
+            }
+            if (shouldPersistDeferredActions) {
+              await this.deferredWorkspaceMigrationActionRunnerService.persist({
+                deferredActions: allDeferredActions,
+                workspaceId,
+                applicationUniversalIdentifier,
+                queryRunner,
+              });
+            }
+          },
+        );
+      } catch (error) {
+        const mayHaveCommitted =
+          error instanceof NativeTransactionOutcomeUnknownError ||
+          error instanceof CoreAuditPostCommitError;
+        if (!mayHaveCommitted) {
+          const invertedActions = [...actions].reverse();
+          for (const invertedAction of invertedActions) {
+            await this.workspaceMigrationRunnerActionHandlerRegistry.executeActionRollbackHandler(
+              {
+                action: invertedAction,
+                context: {
+                  flatApplication,
+                  action: invertedAction,
+                  allFlatEntityMaps,
+                  workspaceId,
+                },
+              },
+            );
+          }
+        }
+        try {
+          await this.invalidateCache({
+            allFlatEntityMapsKeys,
+            workspaceId,
+            hasSchemaMetadataChanged,
+            hasMorphRelationFieldChanged,
+          });
+        } catch (cacheError) {
+          this.logger.error(
+            `Cache invalidation failed after application metadata migration error: ${cacheError}`,
+            'Runner',
+          );
+        }
+        const exceptionContext = getFlatEntityMapsExceptionContext(error);
+        if (
+          mayHaveCommitted ||
+          error instanceof WorkspaceMigrationRunnerException ||
+          !isDefined(exceptionContext)
+        ) {
+          throw error;
+        }
+        throw new WorkspaceMigrationRunnerException({
+          message: error instanceof Error ? error.message : String(error),
+          code: WorkspaceMigrationRunnerExceptionCode.INTERNAL_SERVER_ERROR,
+          context: exceptionContext,
+        });
+      }
+
+      try {
+        await this.invalidateCache({
+          allFlatEntityMapsKeys,
+          workspaceId,
+          hasSchemaMetadataChanged,
+          hasMorphRelationFieldChanged,
+        });
+      } catch (cacheError) {
+        this.logger.error(
+          `Cache invalidation failed after committed transaction: ${cacheError}`,
+          'Runner',
+        );
+      }
+
+      await this.deferredWorkspaceMigrationActionRunnerService.dispatchAfterCommit(
+        {
+          deferredActions: allDeferredActions,
+          hasPersistedDeferredActions: shouldPersistDeferredActions,
+          workspaceId,
+          applicationUniversalIdentifier,
+          allFlatEntityMaps,
+        },
+      );
+
+      return {
+        allFlatEntityMaps,
+        metadataEvents: allMetadataEvents,
+        hasSchemaMetadataChanged,
+      };
+    }
+
+    if (
+      actions.some((action) =>
+        AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES.has(action.metadataName),
+      )
+    ) {
+      throw new Error(
+        'Workspace migration touching role or permission metadata requires an active CRM audit scope',
+      );
     }
 
     const queryRunner = this.coreDataSource.createQueryRunner();

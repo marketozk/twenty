@@ -4,6 +4,7 @@ import {
   runAuditedApplicationDefaultRoleUpdate,
   type ApplicationDefaultRoleAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/application-default-role-audit';
+import { assertNoRemainingApplicationRoleOrPermissionMetadata } from 'src/engine/core-modules/crm-audit/application-metadata-audit';
 import { captureCurrentCrmAuditIdentity } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
 import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
@@ -948,6 +949,21 @@ export class ApplicationService {
     await queryRunner.startTransaction();
 
     try {
+      await queryRunner.query("SET LOCAL lock_timeout = '8s'");
+      await queryRunner.query(
+        `SELECT id FROM core.workspace WHERE id=$1 FOR NO KEY UPDATE`,
+        [workspaceId],
+      );
+      await queryRunner.query(
+        `SELECT id FROM core.application WHERE id=$1 AND "workspaceId"=$2 FOR UPDATE`,
+        [application.id, workspaceId],
+      );
+      await assertNoRemainingApplicationRoleOrPermissionMetadata(
+        queryRunner,
+        workspaceId,
+        application.id,
+      );
+
       await queryRunner.manager.update(
         ApplicationEntity,
         { id: application.id },
@@ -996,7 +1012,9 @@ export class ApplicationService {
     ]);
 
     await this.workspaceCacheService.invalidateAndRecompute(workspaceId, [
-      ...ALL_FLAT_ENTITY_MAPS_PROPERTIES,
+      ...(ALL_FLAT_ENTITY_MAPS_PROPERTIES as Parameters<
+        WorkspaceCacheService['invalidateAndRecompute']
+      >[1]),
       'userApplicationVariableValueMaps',
     ]);
 

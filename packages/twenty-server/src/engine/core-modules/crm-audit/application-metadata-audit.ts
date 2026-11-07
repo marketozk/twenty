@@ -1,0 +1,1924 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { isUUID } from 'class-validator';
+import { type DataSource, type QueryRunner } from 'typeorm';
+
+import { captureCurrentCrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
+import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
+import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
+import {
+  type CrmAuditAction,
+  type CrmAuditOperation,
+  type CrmAuditResourceKind,
+} from 'src/engine/core-modules/crm-audit/crm-audit.types';
+import {
+  membershipCleanupOperation,
+  type MembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
+import {
+  captureRoleAuditIdentity,
+  captureRoleAuditOperation,
+  hasConflictingMetadataAuditScope,
+  registerMetadataAuditScopeCheck,
+  resolveRoleAuditInitiator,
+  type RoleUpdateAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/role-update-audit';
+import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
+
+const TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER =
+  '20202020-64aa-4b6f-b003-9c74b97cee20';
+
+export type ApplicationMetadataAuditIdentity =
+  | RoleUpdateAuditIdentity
+  | MembershipCleanupIdentity;
+
+export type ApplicationMetadataAuditRequest = Readonly<{
+  workspaceId: string;
+  applicationId: string;
+  applicationUniversalIdentifier: string;
+  operation: CrmAuditOperation;
+  impersonatorUserWorkspaceId?: string;
+}>;
+
+export type ApplicationMetadataAuditMappings = {
+  application: { id: string; universalIdentifier: string };
+  roles: Record<string, { id: string } | undefined>;
+  targets: Record<string, { id: string } | undefined>;
+  agents: Record<string, { id: string } | undefined>;
+  permissionFlags: Record<string, { id: string } | undefined>;
+  rolePermissionFlags: Record<string, { id: string } | undefined>;
+  objectMetadatas: Record<string, { id: string } | undefined>;
+  fieldMetadatas: Record<string, { id: string } | undefined>;
+  objectPermissions: Record<string, { id: string } | undefined>;
+  fieldPermissions: Record<string, { id: string } | undefined>;
+  rowLevelPermissionPredicates: Record<string, { id: string } | undefined>;
+  rowLevelPermissionPredicateGroups: Record<string, { id: string } | undefined>;
+};
+
+type MigrationAction = {
+  type: string;
+  metadataName: string;
+  universalIdentifier?: string;
+  update?: Record<string, unknown>;
+  id?: string;
+  flatEntity?: Record<string, unknown>;
+};
+
+export const AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES = new Set<string>([
+  'role',
+  'roleTarget',
+  'rolePermissionFlag',
+  'objectPermission',
+  'fieldPermission',
+  'rowLevelPermissionPredicateGroup',
+  'rowLevelPermissionPredicate',
+]);
+
+const ROLE_BOOLEAN_FIELDS = [
+  'canUpdateAllSettings',
+  'canAccessAllTools',
+  'canAccessAllAgentChatChannels',
+  'canReadAllObjectRecords',
+  'canUpdateAllObjectRecords',
+  'canSoftDeleteAllObjectRecords',
+  'canDestroyAllObjectRecords',
+  'canBeAssignedToUsers',
+  'canBeAssignedToAgents',
+  'canBeAssignedToApiKeys',
+] as const;
+
+const ROLE_TEXT_FIELDS = ['label', 'description', 'icon'] as const;
+
+const storage = new AsyncLocalStorage<ApplicationMetadataAuditRequest>();
+const active = new WeakSet<ApplicationMetadataAuditRequest>();
+const consumed = new WeakSet<ApplicationMetadataAuditRequest>();
+
+const uuid = (value: unknown): string => {
+  if (typeof value !== 'string' || !isUUID(value)) {
+    throw new Error('Application metadata audit identity is invalid');
+  }
+
+  return value.toLowerCase();
+};
+
+const nullableUuid = (value: unknown): string | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  return uuid(value);
+};
+
+export const getApplicationMetadataAudit = (workspaceId: string) => {
+  const request = storage.getStore();
+  if (!request) return undefined;
+  if (!active.has(request) || request.workspaceId !== uuid(workspaceId)) {
+    throw new Error('Application metadata audit context mismatch');
+  }
+
+  return request;
+};
+
+registerMetadataAuditScopeCheck(getApplicationMetadataAudit);
+
+const resolveCapturedOperation = (
+  normalizedWorkspaceId: string,
+  identity: ApplicationMetadataAuditIdentity | undefined,
+): {
+  operation: CrmAuditOperation;
+  impersonatorUserWorkspaceId?: string;
+} => {
+  if (identity !== undefined) {
+    if (
+      identity &&
+      typeof identity === 'object' &&
+      'actor' in identity &&
+      !('auth' in identity)
+    ) {
+      if ((identity as MembershipCleanupIdentity).workspaceId === undefined) {
+        throw new Error('CRM audit context requires scoped identity');
+      }
+      const operation = membershipCleanupOperation(
+        normalizedWorkspaceId,
+        identity as MembershipCleanupIdentity,
+      );
+      if (!operation) {
+        throw new Error('Role mutation requires authenticated audit identity');
+      }
+
+      return { operation };
+    }
+
+    const capturedIdentity = captureRoleAuditIdentity(
+      identity as RoleUpdateAuditIdentity,
+    );
+    const operation = captureRoleAuditOperation(
+      normalizedWorkspaceId,
+      capturedIdentity,
+    );
+
+    return {
+      operation,
+      ...(capturedIdentity.impersonatorUserWorkspaceId
+        ? {
+            impersonatorUserWorkspaceId: uuid(
+              capturedIdentity.impersonatorUserWorkspaceId,
+            ),
+          }
+        : {}),
+    };
+  }
+
+  const ambient = captureCurrentCrmAuditOperation(normalizedWorkspaceId);
+  if (!ambient) {
+    throw new Error('Role mutation requires authenticated audit identity');
+  }
+
+  return {
+    operation: ambient.operation,
+    ...(ambient.impersonatorUserWorkspaceId
+      ? {
+          impersonatorUserWorkspaceId: uuid(
+            ambient.impersonatorUserWorkspaceId,
+          ),
+        }
+      : {}),
+  };
+};
+
+export const captureApplicationMetadataAudit = ({
+  workspaceId,
+  applicationId,
+  applicationUniversalIdentifier,
+  auditIdentity,
+}: {
+  workspaceId: string;
+  applicationId: string;
+  applicationUniversalIdentifier: string;
+  auditIdentity?: ApplicationMetadataAuditIdentity;
+}): (() => ApplicationMetadataAuditRequest) => {
+  const normalizedWorkspaceId = uuid(workspaceId);
+  const normalizedApplicationId = uuid(applicationId);
+  const normalizedApplicationUniversalId = uuid(applicationUniversalIdentifier);
+  if (
+    getApplicationMetadataAudit(normalizedWorkspaceId) ||
+    hasConflictingMetadataAuditScope(
+      normalizedWorkspaceId,
+      getApplicationMetadataAudit,
+    )
+  ) {
+    throw new Error('Nested application metadata audit is unsupported');
+  }
+
+  try {
+    const { operation, impersonatorUserWorkspaceId } = resolveCapturedOperation(
+      normalizedWorkspaceId,
+      auditIdentity,
+    );
+    const request: ApplicationMetadataAuditRequest = Object.freeze({
+      workspaceId: normalizedWorkspaceId,
+      applicationId: normalizedApplicationId,
+      applicationUniversalIdentifier: normalizedApplicationUniversalId,
+      operation,
+      ...(impersonatorUserWorkspaceId ? { impersonatorUserWorkspaceId } : {}),
+    });
+
+    return () => request;
+  } catch (error) {
+    return () => {
+      throw error;
+    };
+  }
+};
+
+export const withApplicationMetadataAudit = async <TResult>(
+  request: ApplicationMetadataAuditRequest,
+  work: () => Promise<TResult>,
+): Promise<TResult> => {
+  if (
+    !request ||
+    typeof request !== 'object' ||
+    consumed.has(request) ||
+    getApplicationMetadataAudit(request.workspaceId) ||
+    hasConflictingMetadataAuditScope(
+      request.workspaceId,
+      getApplicationMetadataAudit,
+    )
+  ) {
+    throw new Error('Nested application metadata audit is unsupported');
+  }
+
+  active.add(request);
+  try {
+    return await storage.run(request, work);
+  } finally {
+    active.delete(request);
+  }
+};
+
+const scalarWithoutTimestamps = (row: Record<string, unknown>) =>
+  Object.fromEntries(
+    Object.entries(row).filter(
+      ([key]) => key !== 'createdAt' && key !== 'updatedAt',
+    ),
+  );
+
+const projectRole = (row: Record<string, unknown>) =>
+  Object.fromEntries(
+    [...ROLE_BOOLEAN_FIELDS, ...ROLE_TEXT_FIELDS].map((key) => [
+      key,
+      key === 'canAccessAllAgentChatChannels' ? Boolean(row[key]) : row[key],
+    ]),
+  );
+
+const projectRoleTarget = (row: Record<string, unknown>) => ({
+  roleId: uuid(row.roleId),
+  userWorkspaceId: nullableUuid(row.userWorkspaceId),
+  agentId: nullableUuid(row.agentId),
+  apiKeyId: nullableUuid(row.apiKeyId),
+});
+
+const projectRolePermissionFlag = (row: Record<string, unknown>) => ({
+  roleId: uuid(row.roleId),
+  permissionFlagId: uuid(row.permissionFlagId),
+});
+
+const projectObjectPermission = (row: Record<string, unknown>) => ({
+  roleId: uuid(row.roleId),
+  objectMetadataId: uuid(row.objectMetadataId),
+  canReadObjectRecords:
+    row.canReadObjectRecords === undefined ? null : row.canReadObjectRecords,
+  canUpdateObjectRecords:
+    row.canUpdateObjectRecords === undefined
+      ? null
+      : row.canUpdateObjectRecords,
+  canSoftDeleteObjectRecords:
+    row.canSoftDeleteObjectRecords === undefined
+      ? null
+      : row.canSoftDeleteObjectRecords,
+  canDestroyObjectRecords:
+    row.canDestroyObjectRecords === undefined
+      ? null
+      : row.canDestroyObjectRecords,
+});
+
+const projectFieldPermission = (row: Record<string, unknown>) => ({
+  roleId: uuid(row.roleId),
+  objectMetadataId: uuid(row.objectMetadataId),
+  fieldMetadataId: uuid(row.fieldMetadataId),
+  canReadFieldValue:
+    row.canReadFieldValue === undefined ? null : row.canReadFieldValue,
+  canUpdateFieldValue:
+    row.canUpdateFieldValue === undefined ? null : row.canUpdateFieldValue,
+});
+
+const projectPredicateGroup = (row: Record<string, unknown>) => ({
+  roleId: uuid(row.roleId),
+  objectMetadataId: uuid(row.objectMetadataId),
+  parentRowLevelPermissionPredicateGroupId: nullableUuid(
+    row.parentRowLevelPermissionPredicateGroupId,
+  ),
+  logicalOperator: row.logicalOperator,
+  positionInRowLevelPermissionPredicateGroup:
+    row.positionInRowLevelPermissionPredicateGroup === undefined
+      ? null
+      : row.positionInRowLevelPermissionPredicateGroup,
+  deletedAt: row.deletedAt === undefined ? null : row.deletedAt,
+});
+
+const projectPredicate = (row: Record<string, unknown>) => ({
+  roleId: uuid(row.roleId),
+  objectMetadataId: uuid(row.objectMetadataId),
+  fieldMetadataId: uuid(row.fieldMetadataId),
+  operand: row.operand,
+  value: row.value === undefined ? null : row.value,
+  subFieldName: row.subFieldName === undefined ? null : row.subFieldName,
+  workspaceMemberFieldMetadataId: nullableUuid(
+    row.workspaceMemberFieldMetadataId,
+  ),
+  workspaceMemberSubFieldName:
+    row.workspaceMemberSubFieldName === undefined
+      ? null
+      : row.workspaceMemberSubFieldName,
+  rowLevelPermissionPredicateGroupId: nullableUuid(
+    row.rowLevelPermissionPredicateGroupId,
+  ),
+  positionInRowLevelPermissionPredicateGroup:
+    row.positionInRowLevelPermissionPredicateGroup === undefined
+      ? null
+      : row.positionInRowLevelPermissionPredicateGroup,
+  deletedAt: row.deletedAt === undefined ? null : row.deletedAt,
+});
+
+type TableSnapshot = Map<string, Record<string, unknown>>;
+
+type FullMetadataSnapshot = {
+  roles: TableSnapshot;
+  roleTargets: TableSnapshot;
+  rolePermissionFlags: TableSnapshot;
+  objectPermissions: TableSnapshot;
+  fieldPermissions: TableSnapshot;
+  predicateGroups: TableSnapshot;
+  predicates: TableSnapshot;
+};
+
+const readExistingTables = async (
+  runner: QueryRunner,
+): Promise<Set<string>> => {
+  const [reg] = await runner.query(
+    `SELECT
+      to_regclass('core.role') IS NOT NULL AS "role",
+      to_regclass('core."roleTarget"') IS NOT NULL AS "roleTarget",
+      to_regclass('core."rolePermissionFlag"') IS NOT NULL AS "rolePermissionFlag",
+      to_regclass('core."objectPermission"') IS NOT NULL AS "objectPermission",
+      to_regclass('core."fieldPermission"') IS NOT NULL AS "fieldPermission",
+      to_regclass('core."rowLevelPermissionPredicateGroup"') IS NOT NULL AS "rowLevelPermissionPredicateGroup",
+      to_regclass('core."rowLevelPermissionPredicate"') IS NOT NULL AS "rowLevelPermissionPredicate",
+      to_regclass('core.agent') IS NOT NULL AS "agent",
+      to_regclass('core."objectMetadata"') IS NOT NULL AS "objectMetadata",
+      to_regclass('core."fieldMetadata"') IS NOT NULL AS "fieldMetadata",
+      to_regclass('core."permissionFlag"') IS NOT NULL AS "permissionFlag"`,
+  );
+  const existing = new Set<string>();
+  for (const [key, present] of Object.entries(reg ?? {})) {
+    if (present === true) existing.add(key);
+  }
+  return existing;
+};
+
+const readTableSnapshot = async (
+  runner: QueryRunner,
+  existingTables: Set<string>,
+  tableName: string,
+  workspaceId: string,
+  lock: boolean,
+): Promise<TableSnapshot> => {
+  if (!existingTables.has(tableName)) {
+    return new Map();
+  }
+  const rows = await runner.query(
+    `SELECT to_jsonb(t) AS row FROM core."${tableName}" t WHERE "workspaceId"=$1 ORDER BY id${lock ? ' FOR UPDATE' : ''}`,
+    [workspaceId],
+  );
+  return new Map(
+    rows.map((entry: { row: Record<string, unknown> }) => [
+      uuid(entry.row.id),
+      entry.row,
+    ]),
+  );
+};
+
+const readFullMetadataSnapshot = async (
+  runner: QueryRunner,
+  existingTables: Set<string>,
+  workspaceId: string,
+  lock: boolean,
+): Promise<FullMetadataSnapshot> => ({
+  roles: await readTableSnapshot(
+    runner,
+    existingTables,
+    'role',
+    workspaceId,
+    lock,
+  ),
+  roleTargets: await readTableSnapshot(
+    runner,
+    existingTables,
+    'roleTarget',
+    workspaceId,
+    lock,
+  ),
+  rolePermissionFlags: await readTableSnapshot(
+    runner,
+    existingTables,
+    'rolePermissionFlag',
+    workspaceId,
+    lock,
+  ),
+  objectPermissions: await readTableSnapshot(
+    runner,
+    existingTables,
+    'objectPermission',
+    workspaceId,
+    lock,
+  ),
+  fieldPermissions: await readTableSnapshot(
+    runner,
+    existingTables,
+    'fieldPermission',
+    workspaceId,
+    lock,
+  ),
+  predicateGroups: await readTableSnapshot(
+    runner,
+    existingTables,
+    'rowLevelPermissionPredicateGroup',
+    workspaceId,
+    lock,
+  ),
+  predicates: await readTableSnapshot(
+    runner,
+    existingTables,
+    'rowLevelPermissionPredicate',
+    workspaceId,
+    lock,
+  ),
+});
+
+const serializeFullSnapshot = (snapshot: FullMetadataSnapshot): string =>
+  canonicalAuditJson(
+    Object.fromEntries(
+      Object.entries(snapshot).map(([tableKey, map]) => [
+        tableKey,
+        [...map.entries()].map(([id, row]) => [
+          id,
+          scalarWithoutTimestamps(row),
+        ]),
+      ]),
+    ),
+  );
+
+const resolveMappedIds = (
+  actions: MigrationAction[],
+  metadataName: string,
+  type: 'create' | 'update' | 'delete',
+  mappingRecord: Record<string, { id: string } | undefined>,
+  expectedApplicationUniversalIdentifier?: string,
+): Set<string> => {
+  const matched = actions.filter(
+    (action) => action.metadataName === metadataName && action.type === type,
+  );
+  const ids = new Set<string>();
+  for (const action of matched) {
+    if (type === 'create') {
+      if (!action.id || !action.flatEntity) {
+        throw new Error(
+          `Application metadata audit requires enriched ${metadataName} create action`,
+        );
+      }
+      if (
+        expectedApplicationUniversalIdentifier !== undefined &&
+        uuid(action.flatEntity.applicationUniversalIdentifier) !==
+          expectedApplicationUniversalIdentifier
+      ) {
+        throw new Error(
+          `Application metadata audit ${metadataName} create belongs to another application`,
+        );
+      }
+      const id = uuid(action.id);
+      if (ids.has(id)) {
+        throw new Error(
+          `Application metadata audit duplicate ${metadataName} create ID`,
+        );
+      }
+      ids.add(id);
+    } else {
+      const universalIdentifier = uuid(action.universalIdentifier);
+      const mappedId = mappingRecord[universalIdentifier]?.id;
+      if (!mappedId) {
+        throw new Error(
+          `Application metadata audit missing ${metadataName} ${type} mapping`,
+        );
+      }
+      const id = uuid(mappedId);
+      if (ids.has(id)) {
+        throw new Error(
+          `Application metadata audit duplicate ${metadataName} ${type} ID`,
+        );
+      }
+      ids.add(id);
+    }
+  }
+  return ids;
+};
+
+export const runAuditedApplicationMetadataMigration = async <TResult>(
+  dataSource: DataSource | undefined,
+  request: ApplicationMetadataAuditRequest,
+  actions: MigrationAction[],
+  mappings: ApplicationMetadataAuditMappings | undefined,
+  work: (runner: QueryRunner) => Promise<TResult>,
+): Promise<TResult> => {
+  if (
+    !request ||
+    typeof request !== 'object' ||
+    !active.has(request) ||
+    consumed.has(request) ||
+    hasConflictingMetadataAuditScope(
+      request.workspaceId,
+      getApplicationMetadataAudit,
+    )
+  ) {
+    throw new Error('Application metadata audit scope is invalid or reused');
+  }
+  if (!dataSource) {
+    throw new Error('Application metadata audit requires core DataSource');
+  }
+  if (
+    !mappings?.application?.id ||
+    !mappings?.application?.universalIdentifier ||
+    uuid(mappings.application.id) !== request.applicationId ||
+    uuid(mappings.application.universalIdentifier) !==
+      request.applicationUniversalIdentifier
+  ) {
+    throw new Error('Application metadata audit application mapping mismatch');
+  }
+
+  consumed.add(request);
+  const { workspaceId, applicationId, applicationUniversalIdentifier } =
+    request;
+  const isStandardApplication =
+    applicationUniversalIdentifier ===
+    TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER;
+
+  return runInCoreAuditTransaction(dataSource, async (runner) => {
+    await runner.query("SET LOCAL lock_timeout = '8s'");
+
+    const [workspace] = await runner.query(
+      `SELECT id,to_jsonb(w)->>'defaultRoleId' AS "defaultRoleId",to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+      [workspaceId],
+    );
+    if (!workspace || workspace.deletedAt !== null) {
+      throw new Error('Application metadata audit workspace unavailable');
+    }
+    const workspaceDefaultRoleId = nullableUuid(workspace.defaultRoleId);
+
+    const appRows = await runner.query(
+      `SELECT id,"universalIdentifier",to_jsonb(a)->>'defaultRoleId' AS "defaultRoleId",to_jsonb(a)->>'deletedAt' AS "deletedAt" FROM core.application a WHERE a."workspaceId"=$1 ORDER BY id FOR UPDATE`,
+      [workspaceId],
+    );
+    const targetApp = appRows.find(
+      (row: { id: string }) => uuid(row.id) === applicationId,
+    );
+    if (
+      !targetApp ||
+      targetApp.deletedAt !== null ||
+      uuid(targetApp.universalIdentifier) !== applicationUniversalIdentifier
+    ) {
+      throw new Error('Application metadata audit application unavailable');
+    }
+    const otherAppDefaultRoleIds = new Set<string>(
+      appRows
+        .filter(
+          (row: { id: string; deletedAt: string | null }) =>
+            uuid(row.id) !== applicationId && row.deletedAt === null,
+        )
+        .map((row: { defaultRoleId: string | null }) =>
+          nullableUuid(row.defaultRoleId),
+        )
+        .filter((id: string | null): id is string => id !== null),
+    );
+
+    const existingTables = await readExistingTables(runner);
+    for (const action of actions) {
+      if (
+        AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES.has(action.metadataName) &&
+        !existingTables.has(action.metadataName)
+      ) {
+        throw new Error(
+          `Application metadata audit table ${action.metadataName} is unavailable`,
+        );
+      }
+    }
+
+    const before = await readFullMetadataSnapshot(
+      runner,
+      existingTables,
+      workspaceId,
+      true,
+    );
+
+    const plannedRoleCreates = resolveMappedIds(
+      actions,
+      'role',
+      'create',
+      mappings.roles,
+      applicationUniversalIdentifier,
+    );
+    const plannedRoleUpdates = resolveMappedIds(
+      actions,
+      'role',
+      'update',
+      mappings.roles,
+    );
+    const plannedRoleDeletes = resolveMappedIds(
+      actions,
+      'role',
+      'delete',
+      mappings.roles,
+    );
+
+    for (const action of actions) {
+      if (action.metadataName !== 'role') continue;
+      if (action.type === 'create') {
+        const flatEntity = action.flatEntity!;
+        if (flatEntity.isEditable === false) {
+          if (
+            !isStandardApplication ||
+            request.operation.actor.kind !== 'system'
+          ) {
+            throw new Error(
+              'Non-editable role creation requires system twenty-standard sync',
+            );
+          }
+        } else if (flatEntity.isEditable !== true) {
+          throw new Error(
+            'Application metadata role requires boolean isEditable',
+          );
+        }
+      } else if (action.type === 'update') {
+        const id = uuid(mappings.roles[uuid(action.universalIdentifier)]?.id);
+        const existingRole = before.roles.get(id);
+        if (
+          !existingRole ||
+          uuid(existingRole.applicationId) !== applicationId ||
+          (!isStandardApplication &&
+            (existingRole.isEditable !== true ||
+              action.update?.isEditable === false))
+        ) {
+          throw new Error(
+            'Application metadata role update targets an unavailable or non-editable role',
+          );
+        }
+      } else if (action.type === 'delete') {
+        const id = uuid(mappings.roles[uuid(action.universalIdentifier)]?.id);
+        const existingRole = before.roles.get(id);
+        if (
+          !existingRole ||
+          uuid(existingRole.applicationId) !== applicationId ||
+          (!isStandardApplication && existingRole.isEditable !== true)
+        ) {
+          throw new Error(
+            'Application metadata role delete targets an unavailable or non-editable role',
+          );
+        }
+        if (id === workspaceDefaultRoleId || otherAppDefaultRoleIds.has(id)) {
+          throw new Error(
+            'Application metadata audit cannot delete an active default role',
+          );
+        }
+      }
+    }
+
+    const plannedTargetCreates = resolveMappedIds(
+      actions,
+      'roleTarget',
+      'create',
+      mappings.targets,
+      applicationUniversalIdentifier,
+    );
+    const plannedTargetUpdates = resolveMappedIds(
+      actions,
+      'roleTarget',
+      'update',
+      mappings.targets,
+    );
+    const plannedTargetDeletes = resolveMappedIds(
+      actions,
+      'roleTarget',
+      'delete',
+      mappings.targets,
+    );
+
+    const plannedAgentDeletes = resolveMappedIds(
+      actions,
+      'agent',
+      'delete',
+      mappings.agents,
+    );
+    const plannedObjectDeletes = resolveMappedIds(
+      actions,
+      'objectMetadata',
+      'delete',
+      mappings.objectMetadatas,
+    );
+    const plannedFieldDeletes = resolveMappedIds(
+      actions,
+      'fieldMetadata',
+      'delete',
+      mappings.fieldMetadatas,
+    );
+    const plannedPermissionFlagDeletes = resolveMappedIds(
+      actions,
+      'permissionFlag',
+      'delete',
+      mappings.permissionFlags,
+    );
+
+    for (const [targetId, targetRow] of before.roleTargets.entries()) {
+      const roleId = uuid(targetRow.roleId);
+      const agentId = nullableUuid(targetRow.agentId);
+      const userWorkspaceId = nullableUuid(targetRow.userWorkspaceId);
+      const apiKeyId = nullableUuid(targetRow.apiKeyId);
+      if (plannedRoleDeletes.has(roleId)) {
+        if (userWorkspaceId !== null || apiKeyId !== null) {
+          throw new Error(
+            'Application metadata audit cannot delete role assigned to workspace member or API key',
+          );
+        }
+        if (
+          !plannedTargetDeletes.has(targetId) &&
+          !plannedTargetUpdates.has(targetId)
+        ) {
+          throw new Error(
+            'Application metadata audit detected unplanned roleTarget cascade',
+          );
+        }
+      }
+      if (
+        agentId !== null &&
+        plannedAgentDeletes.has(agentId) &&
+        !plannedTargetDeletes.has(targetId)
+      ) {
+        throw new Error(
+          'Application metadata audit detected unplanned roleTarget cascade',
+        );
+      }
+    }
+
+    for (const id of [...plannedTargetUpdates, ...plannedTargetDeletes]) {
+      const existingTarget = before.roleTargets.get(id);
+      if (
+        !existingTarget ||
+        nullableUuid(existingTarget.userWorkspaceId) !== null ||
+        nullableUuid(existingTarget.apiKeyId) !== null ||
+        nullableUuid(existingTarget.agentId) === null
+      ) {
+        throw new Error(
+          'Application metadata roleTarget action must target an existing agent binding',
+        );
+      }
+    }
+
+    for (const action of actions) {
+      if (action.metadataName === 'roleTarget' && action.type === 'create') {
+        const flatEntity = action.flatEntity!;
+        if (
+          nullableUuid(flatEntity.userWorkspaceId) !== null ||
+          nullableUuid(flatEntity.apiKeyId) !== null ||
+          typeof flatEntity.agentUniversalIdentifier !== 'string' ||
+          !isUUID(flatEntity.agentUniversalIdentifier)
+        ) {
+          throw new Error(
+            'Application metadata roleTarget create must target an agent',
+          );
+        }
+      }
+    }
+
+    const plannedFlagCreates = resolveMappedIds(
+      actions,
+      'rolePermissionFlag',
+      'create',
+      mappings.rolePermissionFlags,
+      applicationUniversalIdentifier,
+    );
+    const plannedFlagDeletes = resolveMappedIds(
+      actions,
+      'rolePermissionFlag',
+      'delete',
+      mappings.rolePermissionFlags,
+    );
+    if (
+      actions.some(
+        (action) =>
+          action.metadataName === 'rolePermissionFlag' &&
+          action.type === 'update',
+      )
+    ) {
+      throw new Error(
+        'Application metadata rolePermissionFlag cannot be updated',
+      );
+    }
+
+    const plannedObjPermCreates = resolveMappedIds(
+      actions,
+      'objectPermission',
+      'create',
+      mappings.objectPermissions,
+      applicationUniversalIdentifier,
+    );
+    const plannedObjPermUpdates = resolveMappedIds(
+      actions,
+      'objectPermission',
+      'update',
+      mappings.objectPermissions,
+    );
+    const plannedObjPermDeletes = resolveMappedIds(
+      actions,
+      'objectPermission',
+      'delete',
+      mappings.objectPermissions,
+    );
+
+    const plannedFieldPermCreates = resolveMappedIds(
+      actions,
+      'fieldPermission',
+      'create',
+      mappings.fieldPermissions,
+      applicationUniversalIdentifier,
+    );
+    const plannedFieldPermUpdates = resolveMappedIds(
+      actions,
+      'fieldPermission',
+      'update',
+      mappings.fieldPermissions,
+    );
+    const plannedFieldPermDeletes = resolveMappedIds(
+      actions,
+      'fieldPermission',
+      'delete',
+      mappings.fieldPermissions,
+    );
+
+    const plannedGroupCreates = resolveMappedIds(
+      actions,
+      'rowLevelPermissionPredicateGroup',
+      'create',
+      mappings.rowLevelPermissionPredicateGroups,
+      applicationUniversalIdentifier,
+    );
+    const plannedGroupUpdates = resolveMappedIds(
+      actions,
+      'rowLevelPermissionPredicateGroup',
+      'update',
+      mappings.rowLevelPermissionPredicateGroups,
+    );
+    const plannedGroupDeletes = resolveMappedIds(
+      actions,
+      'rowLevelPermissionPredicateGroup',
+      'delete',
+      mappings.rowLevelPermissionPredicateGroups,
+    );
+
+    const plannedPredCreates = resolveMappedIds(
+      actions,
+      'rowLevelPermissionPredicate',
+      'create',
+      mappings.rowLevelPermissionPredicates,
+      applicationUniversalIdentifier,
+    );
+    const plannedPredUpdates = resolveMappedIds(
+      actions,
+      'rowLevelPermissionPredicate',
+      'update',
+      mappings.rowLevelPermissionPredicates,
+    );
+    const plannedPredDeletes = resolveMappedIds(
+      actions,
+      'rowLevelPermissionPredicate',
+      'delete',
+      mappings.rowLevelPermissionPredicates,
+    );
+
+    const expectedDeletedGroupIds = new Set<string>(plannedGroupDeletes);
+    let addedGroupDelete = true;
+    while (addedGroupDelete) {
+      addedGroupDelete = false;
+      for (const [groupId, groupRow] of before.predicateGroups.entries()) {
+        if (expectedDeletedGroupIds.has(groupId)) continue;
+        const roleId = uuid(groupRow.roleId);
+        const objectMetadataId = uuid(groupRow.objectMetadataId);
+        const parentGroupId = nullableUuid(
+          groupRow.parentRowLevelPermissionPredicateGroupId,
+        );
+        if (
+          plannedRoleDeletes.has(roleId) ||
+          plannedObjectDeletes.has(objectMetadataId) ||
+          (parentGroupId !== null && expectedDeletedGroupIds.has(parentGroupId))
+        ) {
+          if (groupRow.deletedAt !== null && groupRow.deletedAt !== undefined) {
+            throw new Error(
+              'Application metadata audit cannot cascade-delete soft-deleted row-level permission rows',
+            );
+          }
+          expectedDeletedGroupIds.add(groupId);
+          addedGroupDelete = true;
+        }
+      }
+    }
+
+    for (const [predId, predRow] of before.predicates.entries()) {
+      if (
+        predRow.deletedAt !== null &&
+        predRow.deletedAt !== undefined &&
+        !plannedPredDeletes.has(predId)
+      ) {
+        const roleId = uuid(predRow.roleId);
+        const objectMetadataId = uuid(predRow.objectMetadataId);
+        const fieldMetadataId = uuid(predRow.fieldMetadataId);
+        const groupId = nullableUuid(
+          predRow.rowLevelPermissionPredicateGroupId,
+        );
+        if (
+          plannedRoleDeletes.has(roleId) ||
+          plannedObjectDeletes.has(objectMetadataId) ||
+          plannedFieldDeletes.has(fieldMetadataId) ||
+          (groupId !== null && expectedDeletedGroupIds.has(groupId))
+        ) {
+          throw new Error(
+            'Application metadata audit cannot cascade-delete soft-deleted row-level permission rows',
+          );
+        }
+      }
+    }
+
+    const roleIdByUniversalIdentifier = new Map<string, string>();
+    for (const [uid, mapped] of Object.entries(mappings.roles)) {
+      if (mapped?.id) {
+        roleIdByUniversalIdentifier.set(uuid(uid), uuid(mapped.id));
+      }
+    }
+    for (const action of actions) {
+      if (action.metadataName === 'role' && action.type === 'create') {
+        const flatEntity = action.flatEntity!;
+        const createdId = uuid(action.id ?? flatEntity.id);
+        roleIdByUniversalIdentifier.set(
+          uuid(flatEntity.universalIdentifier),
+          createdId,
+        );
+      }
+    }
+
+    const operation = await resolveRoleAuditInitiator(
+      runner,
+      request.operation,
+      request.impersonatorUserWorkspaceId,
+    );
+    const audit = new CrmAuditTransactionContext(runner, operation);
+    const result = await work(runner);
+
+    for (const action of actions) {
+      if (action.metadataName === 'roleTarget' && action.type === 'update') {
+        const targetId = uuid(
+          mappings.targets[uuid(action.universalIdentifier)]?.id,
+        );
+        const beforeRow = before.roleTargets.get(targetId);
+        if (beforeRow && plannedRoleDeletes.has(uuid(beforeRow.roleId))) {
+          const updateRecord = action.update ?? {};
+          const nextRoleId =
+            updateRecord.roleUniversalIdentifier !== undefined
+              ? roleIdByUniversalIdentifier.get(
+                  uuid(updateRecord.roleUniversalIdentifier),
+                )
+              : updateRecord.roleId !== undefined
+                ? uuid(updateRecord.roleId)
+                : undefined;
+          if (!nextRoleId || plannedRoleDeletes.has(nextRoleId)) {
+            throw new Error(
+              'Application metadata audit detected invalid roleTarget update',
+            );
+          }
+          await runner.query(
+            `INSERT INTO core."roleTarget" ("id","universalIdentifier","workspaceId","roleId","userWorkspaceId","agentId","apiKeyId","applicationId","createdAt","updatedAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,now()) ON CONFLICT ("id") DO UPDATE SET "roleId"=EXCLUDED."roleId","updatedAt"=now()`,
+            [
+              targetId,
+              uuid(beforeRow.universalIdentifier),
+              workspaceId,
+              nextRoleId,
+              nullableUuid(beforeRow.userWorkspaceId),
+              nullableUuid(beforeRow.agentId),
+              nullableUuid(beforeRow.apiKeyId),
+              nullableUuid(beforeRow.applicationId),
+              beforeRow.createdAt,
+            ],
+          );
+        }
+      }
+    }
+
+    const after = await readFullMetadataSnapshot(
+      runner,
+      existingTables,
+      workspaceId,
+      false,
+    );
+
+    let recordedMutations = 0;
+    const recordMutation = (
+      resourceKind: CrmAuditResourceKind,
+      resourceId: string,
+      action: CrmAuditAction,
+      beforeValue: Record<string, unknown> | null,
+      afterValue: Record<string, unknown> | null,
+    ) => {
+      audit.record({
+        resourceKind,
+        resourceId,
+        action,
+        before: beforeValue,
+        after: afterValue,
+        securityDescriptor: {
+          resourceKind,
+          resourceId,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+      recordedMutations += 1;
+    };
+
+    // 1. Verify and record core.role
+    for (const id of plannedRoleDeletes) {
+      if (after.roles.has(id)) {
+        throw new Error('Application metadata role delete did not remove row');
+      }
+    }
+    for (const id of plannedRoleCreates) {
+      if (!after.roles.has(id)) {
+        throw new Error('Application metadata role create did not persist row');
+      }
+    }
+    for (const [id, beforeRow] of before.roles.entries()) {
+      const afterRow = after.roles.get(id);
+      if (!afterRow) {
+        if (!plannedRoleDeletes.has(id)) {
+          throw new Error(
+            'Application metadata audit detected unexpected role deletion',
+          );
+        }
+        recordMutation('role', id, 'delete', projectRole(beforeRow), null);
+      } else if (
+        canonicalAuditJson(scalarWithoutTimestamps(beforeRow)) !==
+        canonicalAuditJson(scalarWithoutTimestamps(afterRow))
+      ) {
+        if (
+          !plannedRoleUpdates.has(id) ||
+          uuid(afterRow.applicationId) !== applicationId
+        ) {
+          throw new Error(
+            'Application metadata audit detected unexpected role update',
+          );
+        }
+        const beforeProj = projectRole(beforeRow);
+        const afterProj = projectRole(afterRow);
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          recordMutation('role', id, 'update', beforeProj, afterProj);
+        }
+      }
+    }
+    for (const [id, afterRow] of after.roles.entries()) {
+      if (!before.roles.has(id)) {
+        if (
+          !plannedRoleCreates.has(id) ||
+          uuid(afterRow.applicationId) !== applicationId
+        ) {
+          throw new Error(
+            'Application metadata audit detected unexpected role creation',
+          );
+        }
+        recordMutation('role', id, 'create', null, projectRole(afterRow));
+      }
+    }
+
+    // 2. Verify and record core."roleTarget"
+    for (const id of plannedTargetDeletes) {
+      if (after.roleTargets.has(id)) {
+        throw new Error(
+          'Application metadata roleTarget delete did not remove row',
+        );
+      }
+    }
+    for (const id of plannedTargetCreates) {
+      if (!after.roleTargets.has(id)) {
+        throw new Error(
+          'Application metadata roleTarget create did not persist row',
+        );
+      }
+    }
+    for (const [id, beforeRow] of before.roleTargets.entries()) {
+      const afterRow = after.roleTargets.get(id);
+      if (!afterRow) {
+        if (!plannedTargetDeletes.has(id)) {
+          throw new Error(
+            'Application metadata audit detected unexpected roleTarget deletion',
+          );
+        }
+        recordMutation(
+          'roleTarget',
+          id,
+          'delete',
+          projectRoleTarget(beforeRow),
+          null,
+        );
+      } else if (
+        canonicalAuditJson(scalarWithoutTimestamps(beforeRow)) !==
+        canonicalAuditJson(scalarWithoutTimestamps(afterRow))
+      ) {
+        const afterRole = after.roles.get(uuid(afterRow.roleId));
+        if (
+          !plannedTargetUpdates.has(id) ||
+          nullableUuid(afterRow.userWorkspaceId) !== null ||
+          nullableUuid(afterRow.apiKeyId) !== null ||
+          nullableUuid(afterRow.agentId) !== nullableUuid(beforeRow.agentId) ||
+          !afterRole ||
+          afterRole.canBeAssignedToAgents !== true
+        ) {
+          throw new Error(
+            'Application metadata audit detected invalid roleTarget update',
+          );
+        }
+        const beforeProj = projectRoleTarget(beforeRow);
+        const afterProj = projectRoleTarget(afterRow);
+        if (beforeProj.roleId !== afterProj.roleId) {
+          recordMutation('roleTarget', id, 'delete', beforeProj, null);
+          recordMutation('roleTarget', id, 'create', null, afterProj);
+        }
+      }
+    }
+    for (const [id, afterRow] of after.roleTargets.entries()) {
+      if (!before.roleTargets.has(id)) {
+        const afterRole = after.roles.get(uuid(afterRow.roleId));
+        if (
+          !plannedTargetCreates.has(id) ||
+          uuid(afterRow.applicationId) !== applicationId ||
+          nullableUuid(afterRow.userWorkspaceId) !== null ||
+          nullableUuid(afterRow.apiKeyId) !== null ||
+          nullableUuid(afterRow.agentId) === null ||
+          !afterRole ||
+          afterRole.canBeAssignedToAgents !== true
+        ) {
+          throw new Error(
+            'Application metadata audit detected invalid roleTarget creation',
+          );
+        }
+        recordMutation(
+          'roleTarget',
+          id,
+          'create',
+          null,
+          projectRoleTarget(afterRow),
+        );
+      }
+    }
+
+    // 3. Verify and record core."rolePermissionFlag"
+    for (const [id, beforeRow] of before.rolePermissionFlags.entries()) {
+      const afterRow = after.rolePermissionFlags.get(id);
+      if (!afterRow) {
+        const isPlannedCascade =
+          plannedRoleDeletes.has(uuid(beforeRow.roleId)) ||
+          plannedPermissionFlagDeletes.has(uuid(beforeRow.permissionFlagId));
+        if (!plannedFlagDeletes.has(id) && !isPlannedCascade) {
+          throw new Error(
+            'Application metadata audit detected unexpected rolePermissionFlag deletion',
+          );
+        }
+        recordMutation(
+          'rolePermissionFlag',
+          id,
+          'delete',
+          projectRolePermissionFlag(beforeRow),
+          null,
+        );
+      } else if (
+        canonicalAuditJson(scalarWithoutTimestamps(beforeRow)) !==
+        canonicalAuditJson(scalarWithoutTimestamps(afterRow))
+      ) {
+        throw new Error(
+          'Application metadata audit detected unexpected rolePermissionFlag mutation',
+        );
+      }
+    }
+    for (const [id, afterRow] of after.rolePermissionFlags.entries()) {
+      if (!before.rolePermissionFlags.has(id)) {
+        if (
+          !plannedFlagCreates.has(id) ||
+          uuid(afterRow.applicationId) !== applicationId
+        ) {
+          throw new Error(
+            'Application metadata audit detected unexpected rolePermissionFlag creation',
+          );
+        }
+        recordMutation(
+          'rolePermissionFlag',
+          id,
+          'create',
+          null,
+          projectRolePermissionFlag(afterRow),
+        );
+      }
+    }
+
+    // 4. Verify and record core."objectPermission"
+    for (const [id, beforeRow] of before.objectPermissions.entries()) {
+      const afterRow = after.objectPermissions.get(id);
+      if (!afterRow) {
+        const isPlannedCascade =
+          plannedRoleDeletes.has(uuid(beforeRow.roleId)) ||
+          plannedObjectDeletes.has(uuid(beforeRow.objectMetadataId));
+        if (!plannedObjPermDeletes.has(id) && !isPlannedCascade) {
+          throw new Error(
+            'Application metadata audit detected unexpected objectPermission deletion',
+          );
+        }
+        recordMutation(
+          'objectPermission',
+          id,
+          'delete',
+          projectObjectPermission(beforeRow),
+          null,
+        );
+      } else if (
+        canonicalAuditJson(scalarWithoutTimestamps(beforeRow)) !==
+        canonicalAuditJson(scalarWithoutTimestamps(afterRow))
+      ) {
+        if (
+          !plannedObjPermUpdates.has(id) ||
+          uuid(afterRow.applicationId) !== applicationId
+        ) {
+          throw new Error(
+            'Application metadata audit detected unexpected objectPermission update',
+          );
+        }
+        const beforeProj = projectObjectPermission(beforeRow);
+        const afterProj = projectObjectPermission(afterRow);
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          recordMutation(
+            'objectPermission',
+            id,
+            'update',
+            beforeProj,
+            afterProj,
+          );
+        }
+      }
+    }
+    for (const [id, afterRow] of after.objectPermissions.entries()) {
+      if (!before.objectPermissions.has(id)) {
+        if (
+          !plannedObjPermCreates.has(id) ||
+          uuid(afterRow.applicationId) !== applicationId
+        ) {
+          throw new Error(
+            'Application metadata audit detected unexpected objectPermission creation',
+          );
+        }
+        recordMutation(
+          'objectPermission',
+          id,
+          'create',
+          null,
+          projectObjectPermission(afterRow),
+        );
+      }
+    }
+
+    // 5. Verify and record core."fieldPermission"
+    for (const [id, beforeRow] of before.fieldPermissions.entries()) {
+      const afterRow = after.fieldPermissions.get(id);
+      if (!afterRow) {
+        const isPlannedCascade =
+          plannedRoleDeletes.has(uuid(beforeRow.roleId)) ||
+          plannedObjectDeletes.has(uuid(beforeRow.objectMetadataId)) ||
+          plannedFieldDeletes.has(uuid(beforeRow.fieldMetadataId));
+        if (!plannedFieldPermDeletes.has(id) && !isPlannedCascade) {
+          throw new Error(
+            'Application metadata audit detected unexpected fieldPermission deletion',
+          );
+        }
+        recordMutation(
+          'fieldPermission',
+          id,
+          'delete',
+          projectFieldPermission(beforeRow),
+          null,
+        );
+      } else if (
+        canonicalAuditJson(scalarWithoutTimestamps(beforeRow)) !==
+        canonicalAuditJson(scalarWithoutTimestamps(afterRow))
+      ) {
+        if (
+          !plannedFieldPermUpdates.has(id) ||
+          uuid(afterRow.applicationId) !== applicationId
+        ) {
+          throw new Error(
+            'Application metadata audit detected unexpected fieldPermission update',
+          );
+        }
+        const beforeProj = projectFieldPermission(beforeRow);
+        const afterProj = projectFieldPermission(afterRow);
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          recordMutation(
+            'fieldPermission',
+            id,
+            'update',
+            beforeProj,
+            afterProj,
+          );
+        }
+      }
+    }
+    for (const [id, afterRow] of after.fieldPermissions.entries()) {
+      if (!before.fieldPermissions.has(id)) {
+        if (
+          !plannedFieldPermCreates.has(id) ||
+          uuid(afterRow.applicationId) !== applicationId
+        ) {
+          throw new Error(
+            'Application metadata audit detected unexpected fieldPermission creation',
+          );
+        }
+        recordMutation(
+          'fieldPermission',
+          id,
+          'create',
+          null,
+          projectFieldPermission(afterRow),
+        );
+      }
+    }
+
+    // 6. Verify and record core."rowLevelPermissionPredicateGroup"
+    for (const [id, beforeRow] of before.predicateGroups.entries()) {
+      const afterRow = after.predicateGroups.get(id);
+      if (!afterRow) {
+        if (!expectedDeletedGroupIds.has(id)) {
+          throw new Error(
+            'Application metadata audit detected unexpected rowLevelPermissionPredicateGroup deletion',
+          );
+        }
+        recordMutation(
+          'rowLevelPermissionPredicateGroup',
+          id,
+          'delete',
+          projectPredicateGroup(beforeRow),
+          null,
+        );
+      } else if (
+        canonicalAuditJson(scalarWithoutTimestamps(beforeRow)) !==
+        canonicalAuditJson(scalarWithoutTimestamps(afterRow))
+      ) {
+        if (
+          !plannedGroupUpdates.has(id) ||
+          uuid(afterRow.applicationId) !== applicationId
+        ) {
+          throw new Error(
+            'Application metadata audit detected unexpected rowLevelPermissionPredicateGroup update',
+          );
+        }
+        const beforeProj = projectPredicateGroup(beforeRow);
+        const afterProj = projectPredicateGroup(afterRow);
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          recordMutation(
+            'rowLevelPermissionPredicateGroup',
+            id,
+            'update',
+            beforeProj,
+            afterProj,
+          );
+        }
+      }
+    }
+    for (const [id, afterRow] of after.predicateGroups.entries()) {
+      if (!before.predicateGroups.has(id)) {
+        if (
+          !plannedGroupCreates.has(id) ||
+          uuid(afterRow.applicationId) !== applicationId
+        ) {
+          throw new Error(
+            'Application metadata audit detected unexpected rowLevelPermissionPredicateGroup creation',
+          );
+        }
+        recordMutation(
+          'rowLevelPermissionPredicateGroup',
+          id,
+          'create',
+          null,
+          projectPredicateGroup(afterRow),
+        );
+      }
+    }
+
+    // 7. Verify and record core."rowLevelPermissionPredicate"
+    for (const [id, beforeRow] of before.predicates.entries()) {
+      const afterRow = after.predicates.get(id);
+      if (!afterRow) {
+        const groupId = nullableUuid(
+          beforeRow.rowLevelPermissionPredicateGroupId,
+        );
+        const isPlannedCascade =
+          plannedRoleDeletes.has(uuid(beforeRow.roleId)) ||
+          plannedObjectDeletes.has(uuid(beforeRow.objectMetadataId)) ||
+          plannedFieldDeletes.has(uuid(beforeRow.fieldMetadataId)) ||
+          (groupId !== null && expectedDeletedGroupIds.has(groupId));
+        if (!plannedPredDeletes.has(id) && !isPlannedCascade) {
+          throw new Error(
+            'Application metadata audit detected unexpected rowLevelPermissionPredicate deletion',
+          );
+        }
+        recordMutation(
+          'rowLevelPermissionPredicate',
+          id,
+          'delete',
+          projectPredicate(beforeRow),
+          null,
+        );
+      } else if (
+        canonicalAuditJson(scalarWithoutTimestamps(beforeRow)) !==
+        canonicalAuditJson(scalarWithoutTimestamps(afterRow))
+      ) {
+        const beforeMemberFieldId = nullableUuid(
+          beforeRow.workspaceMemberFieldMetadataId,
+        );
+        const isPlannedMemberFieldSetNull =
+          beforeMemberFieldId !== null &&
+          plannedFieldDeletes.has(beforeMemberFieldId) &&
+          nullableUuid(afterRow.workspaceMemberFieldMetadataId) === null;
+        if (
+          !isPlannedMemberFieldSetNull &&
+          (!plannedPredUpdates.has(id) ||
+            uuid(afterRow.applicationId) !== applicationId)
+        ) {
+          throw new Error(
+            'Application metadata audit detected unexpected rowLevelPermissionPredicate update',
+          );
+        }
+        const beforeProj = projectPredicate(beforeRow);
+        const afterProj = projectPredicate(afterRow);
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          recordMutation(
+            'rowLevelPermissionPredicate',
+            id,
+            'update',
+            beforeProj,
+            afterProj,
+          );
+        }
+      }
+    }
+    for (const [id, afterRow] of after.predicates.entries()) {
+      if (!before.predicates.has(id)) {
+        if (
+          !plannedPredCreates.has(id) ||
+          uuid(afterRow.applicationId) !== applicationId
+        ) {
+          throw new Error(
+            'Application metadata audit detected unexpected rowLevelPermissionPredicate creation',
+          );
+        }
+        recordMutation(
+          'rowLevelPermissionPredicate',
+          id,
+          'create',
+          null,
+          projectPredicate(afterRow),
+        );
+      }
+    }
+
+    if (recordedMutations > 0) {
+      const expectedSerialized = serializeFullSnapshot(after);
+      await audit.flush();
+      const postFlush = await readFullMetadataSnapshot(
+        runner,
+        existingTables,
+        workspaceId,
+        false,
+      );
+      if (serializeFullSnapshot(postFlush) !== expectedSerialized) {
+        throw new Error(
+          'Application metadata state changed during audit flush',
+        );
+      }
+    }
+
+    return result;
+  });
+};
+
+export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
+  runner: QueryRunner,
+  workspaceId: string,
+  applicationId: string,
+): Promise<void> => {
+  const normalizedWorkspaceId = uuid(workspaceId);
+  const normalizedApplicationId = uuid(applicationId);
+  const existingTables = await readExistingTables(runner);
+
+  if (existingTables.has('role')) {
+    const [roleRow] = await runner.query(
+      'SELECT id FROM core.role WHERE "workspaceId"=$1 AND "applicationId"=$2 LIMIT 1',
+      [normalizedWorkspaceId, normalizedApplicationId],
+    );
+    if (roleRow) {
+      throw new Error(
+        'Application delete requires prior audited removal of role and permission metadata',
+      );
+    }
+  }
+
+  for (const tableName of [
+    'roleTarget',
+    'rolePermissionFlag',
+    'objectPermission',
+    'fieldPermission',
+    'rowLevelPermissionPredicateGroup',
+    'rowLevelPermissionPredicate',
+  ]) {
+    if (!existingTables.has(tableName)) continue;
+    const [ownRow] = await runner.query(
+      `SELECT id FROM core."${tableName}" WHERE "workspaceId"=$1 AND "applicationId"=$2 LIMIT 1`,
+      [normalizedWorkspaceId, normalizedApplicationId],
+    );
+    if (ownRow) {
+      throw new Error(
+        'Application delete requires prior audited removal of role and permission metadata',
+      );
+    }
+  }
+
+  if (existingTables.has('roleTarget') && existingTables.has('agent')) {
+    const [agentTargetRow] = await runner.query(
+      `SELECT rt.id FROM core."roleTarget" rt INNER JOIN core.agent a ON a.id=rt."agentId" WHERE rt."workspaceId"=$1 AND a."workspaceId"=$1 AND a."applicationId"=$2 LIMIT 1`,
+      [normalizedWorkspaceId, normalizedApplicationId],
+    );
+    if (agentTargetRow) {
+      throw new Error(
+        'Application delete requires prior audited removal of role and permission metadata',
+      );
+    }
+  }
+
+  if (existingTables.has('objectMetadata')) {
+    for (const tableName of [
+      'objectPermission',
+      'fieldPermission',
+      'rowLevelPermissionPredicateGroup',
+      'rowLevelPermissionPredicate',
+    ]) {
+      if (!existingTables.has(tableName)) continue;
+      const [depRow] = await runner.query(
+        `SELECT p.id FROM core."${tableName}" p INNER JOIN core."objectMetadata" o ON o.id=p."objectMetadataId" WHERE p."workspaceId"=$1 AND o."workspaceId"=$1 AND o."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+    }
+  }
+
+  if (existingTables.has('fieldMetadata')) {
+    if (existingTables.has('fieldPermission')) {
+      const [depRow] = await runner.query(
+        `SELECT p.id FROM core."fieldPermission" p INNER JOIN core."fieldMetadata" f ON f.id=p."fieldMetadataId" WHERE p."workspaceId"=$1 AND f."workspaceId"=$1 AND f."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+    }
+    if (existingTables.has('rowLevelPermissionPredicate')) {
+      const [depRow] = await runner.query(
+        `SELECT p.id FROM core."rowLevelPermissionPredicate" p INNER JOIN core."fieldMetadata" f ON (f.id=p."fieldMetadataId" OR f.id=p."workspaceMemberFieldMetadataId") WHERE p."workspaceId"=$1 AND f."workspaceId"=$1 AND f."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+    }
+  }
+
+  if (
+    existingTables.has('permissionFlag') &&
+    existingTables.has('rolePermissionFlag')
+  ) {
+    const [depRow] = await runner.query(
+      `SELECT rf.id FROM core."rolePermissionFlag" rf INNER JOIN core."permissionFlag" pf ON pf.id=rf."permissionFlagId" WHERE rf."workspaceId"=$1 AND pf."workspaceId"=$1 AND pf."applicationId"=$2 LIMIT 1`,
+      [normalizedWorkspaceId, normalizedApplicationId],
+    );
+    if (depRow) {
+      throw new Error(
+        'Application delete requires prior audited removal of role and permission metadata',
+      );
+    }
+  }
+};
+
+type ReconcilableEntity = {
+  universalIdentifier: string;
+  roleUniversalIdentifier?: string;
+  agentUniversalIdentifier?: string | null;
+  userWorkspaceId?: string | null;
+  apiKeyId?: string | null;
+  permissionFlagUniversalIdentifier?: string;
+  objectMetadataUniversalIdentifier?: string;
+  fieldMetadataUniversalIdentifier?: string;
+  parentRowLevelPermissionPredicateGroupUniversalIdentifier?: string | null;
+  rowLevelPermissionPredicateGroupUniversalIdentifier?: string | null;
+};
+
+type ReconcilableBucket = {
+  flatEntityToCreate: Record<string, ReconcilableEntity>;
+  flatEntityToUpdate: Record<string, ReconcilableEntity>;
+  flatEntityToDelete: Record<string, ReconcilableEntity>;
+};
+
+const ensureOperationBucket = (
+  record: Record<string, ReconcilableBucket | undefined>,
+  metadataName: string,
+): ReconcilableBucket => {
+  const existing = record[metadataName];
+  if (existing !== undefined && existing !== null) {
+    return existing;
+  }
+  const created: ReconcilableBucket = {
+    flatEntityToCreate: {},
+    flatEntityToUpdate: {},
+    flatEntityToDelete: {},
+  };
+  record[metadataName] = created;
+  return created;
+};
+
+const isPresent = <TValue>(value: TValue | null | undefined): value is TValue =>
+  value !== null && value !== undefined;
+
+export const reconcileApplicationRoleAndPermissionOperations = ({
+  allFlatEntityOperationRecordByMetadataName,
+  existingAllFlatEntityMaps,
+  ownedAgentUniversalIdentifiers = [],
+  toRoleTargetByAgentUniversalIdentifier = {},
+  inferDeletionFromMissingEntities = true,
+}: {
+  allFlatEntityOperationRecordByMetadataName: object;
+  existingAllFlatEntityMaps: {
+    flatRoleTargetMaps?: {
+      byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
+    };
+    flatRolePermissionFlagMaps?: {
+      byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
+    };
+    flatObjectPermissionMaps?: {
+      byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
+    };
+    flatFieldPermissionMaps?: {
+      byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
+    };
+    flatRowLevelPermissionPredicateGroupMaps?: {
+      byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
+    };
+    flatRowLevelPermissionPredicateMaps?: {
+      byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
+    };
+  };
+  ownedAgentUniversalIdentifiers?: readonly string[];
+  toRoleTargetByAgentUniversalIdentifier?: Readonly<
+    Record<string, { universalIdentifier: string } | undefined>
+  >;
+  inferDeletionFromMissingEntities?: boolean;
+}): void => {
+  const record = allFlatEntityOperationRecordByMetadataName as Record<
+    string,
+    ReconcilableBucket | undefined
+  >;
+  const ownedAgentSet = new Set(ownedAgentUniversalIdentifiers);
+  const deletedRoleUniversalIdentifiers = new Set(
+    Object.keys(record.role?.flatEntityToDelete ?? {}),
+  );
+  const deletedAgentUniversalIdentifiers = new Set(
+    Object.keys(record.agent?.flatEntityToDelete ?? {}),
+  );
+  const deletedObjectUniversalIdentifiers = new Set(
+    Object.keys(record.objectMetadata?.flatEntityToDelete ?? {}),
+  );
+  const deletedFieldUniversalIdentifiers = new Set(
+    Object.keys(record.fieldMetadata?.flatEntityToDelete ?? {}),
+  );
+  const deletedPermissionFlagUniversalIdentifiers = new Set(
+    Object.keys(record.permissionFlag?.flatEntityToDelete ?? {}),
+  );
+
+  for (const existingTarget of Object.values(
+    existingAllFlatEntityMaps.flatRoleTargetMaps?.byUniversalIdentifier ?? {},
+  )) {
+    if (!isPresent(existingTarget)) continue;
+    const agentUid = existingTarget.agentUniversalIdentifier;
+    if (!isPresent(agentUid)) continue;
+    if (
+      isPresent(existingTarget.userWorkspaceId) ||
+      isPresent(existingTarget.apiKeyId)
+    ) {
+      continue;
+    }
+
+    const desiredTarget = toRoleTargetByAgentUniversalIdentifier[agentUid];
+    const isReplacedOwnedAgentBinding =
+      ownedAgentSet.has(agentUid) &&
+      (isPresent(desiredTarget)
+        ? desiredTarget.universalIdentifier !==
+          existingTarget.universalIdentifier
+        : inferDeletionFromMissingEntities);
+    const isCascadeDeletedBinding =
+      deletedAgentUniversalIdentifiers.has(agentUid) ||
+      (isPresent(existingTarget.roleUniversalIdentifier) &&
+        deletedRoleUniversalIdentifiers.has(
+          existingTarget.roleUniversalIdentifier,
+        ));
+
+    if (
+      (isReplacedOwnedAgentBinding || isCascadeDeletedBinding) &&
+      !isPresent(
+        record.roleTarget?.flatEntityToCreate[
+          existingTarget.universalIdentifier
+        ],
+      ) &&
+      !isPresent(
+        record.roleTarget?.flatEntityToUpdate[
+          existingTarget.universalIdentifier
+        ],
+      )
+    ) {
+      const bucket = ensureOperationBucket(record, 'roleTarget');
+      bucket.flatEntityToDelete[existingTarget.universalIdentifier] =
+        existingTarget;
+    }
+  }
+
+  for (const existingRoleFlag of Object.values(
+    existingAllFlatEntityMaps.flatRolePermissionFlagMaps
+      ?.byUniversalIdentifier ?? {},
+  )) {
+    if (!isPresent(existingRoleFlag)) continue;
+    if (
+      (isPresent(existingRoleFlag.roleUniversalIdentifier) &&
+        deletedRoleUniversalIdentifiers.has(
+          existingRoleFlag.roleUniversalIdentifier,
+        )) ||
+      (isPresent(existingRoleFlag.permissionFlagUniversalIdentifier) &&
+        deletedPermissionFlagUniversalIdentifiers.has(
+          existingRoleFlag.permissionFlagUniversalIdentifier,
+        ))
+    ) {
+      const bucket = ensureOperationBucket(record, 'rolePermissionFlag');
+      bucket.flatEntityToDelete[existingRoleFlag.universalIdentifier] =
+        existingRoleFlag;
+    }
+  }
+
+  for (const existingObjPerm of Object.values(
+    existingAllFlatEntityMaps.flatObjectPermissionMaps?.byUniversalIdentifier ??
+      {},
+  )) {
+    if (!isPresent(existingObjPerm)) continue;
+    if (
+      (isPresent(existingObjPerm.roleUniversalIdentifier) &&
+        deletedRoleUniversalIdentifiers.has(
+          existingObjPerm.roleUniversalIdentifier,
+        )) ||
+      (isPresent(existingObjPerm.objectMetadataUniversalIdentifier) &&
+        deletedObjectUniversalIdentifiers.has(
+          existingObjPerm.objectMetadataUniversalIdentifier,
+        ))
+    ) {
+      const bucket = ensureOperationBucket(record, 'objectPermission');
+      bucket.flatEntityToDelete[existingObjPerm.universalIdentifier] =
+        existingObjPerm;
+    }
+  }
+
+  for (const existingFieldPerm of Object.values(
+    existingAllFlatEntityMaps.flatFieldPermissionMaps?.byUniversalIdentifier ??
+      {},
+  )) {
+    if (!isPresent(existingFieldPerm)) continue;
+    if (
+      (isPresent(existingFieldPerm.roleUniversalIdentifier) &&
+        deletedRoleUniversalIdentifiers.has(
+          existingFieldPerm.roleUniversalIdentifier,
+        )) ||
+      (isPresent(existingFieldPerm.objectMetadataUniversalIdentifier) &&
+        deletedObjectUniversalIdentifiers.has(
+          existingFieldPerm.objectMetadataUniversalIdentifier,
+        )) ||
+      (isPresent(existingFieldPerm.fieldMetadataUniversalIdentifier) &&
+        deletedFieldUniversalIdentifiers.has(
+          existingFieldPerm.fieldMetadataUniversalIdentifier,
+        ))
+    ) {
+      const bucket = ensureOperationBucket(record, 'fieldPermission');
+      bucket.flatEntityToDelete[existingFieldPerm.universalIdentifier] =
+        existingFieldPerm;
+    }
+  }
+
+  const deletedGroupUniversalIdentifiers = new Set(
+    Object.keys(
+      record.rowLevelPermissionPredicateGroup?.flatEntityToDelete ?? {},
+    ),
+  );
+  const allGroups = Object.values(
+    existingAllFlatEntityMaps.flatRowLevelPermissionPredicateGroupMaps
+      ?.byUniversalIdentifier ?? {},
+  ).filter(isPresent);
+
+  let groupAdded = true;
+  while (groupAdded) {
+    groupAdded = false;
+    for (const existingGroup of allGroups) {
+      if (
+        deletedGroupUniversalIdentifiers.has(existingGroup.universalIdentifier)
+      ) {
+        continue;
+      }
+      const parentGroupUid =
+        existingGroup.parentRowLevelPermissionPredicateGroupUniversalIdentifier;
+      if (
+        (isPresent(existingGroup.roleUniversalIdentifier) &&
+          deletedRoleUniversalIdentifiers.has(
+            existingGroup.roleUniversalIdentifier,
+          )) ||
+        (isPresent(existingGroup.objectMetadataUniversalIdentifier) &&
+          deletedObjectUniversalIdentifiers.has(
+            existingGroup.objectMetadataUniversalIdentifier,
+          )) ||
+        (isPresent(parentGroupUid) &&
+          deletedGroupUniversalIdentifiers.has(parentGroupUid))
+      ) {
+        const bucket = ensureOperationBucket(
+          record,
+          'rowLevelPermissionPredicateGroup',
+        );
+        bucket.flatEntityToDelete[existingGroup.universalIdentifier] =
+          existingGroup;
+        deletedGroupUniversalIdentifiers.add(existingGroup.universalIdentifier);
+        groupAdded = true;
+      }
+    }
+  }
+
+  for (const existingPredicate of Object.values(
+    existingAllFlatEntityMaps.flatRowLevelPermissionPredicateMaps
+      ?.byUniversalIdentifier ?? {},
+  )) {
+    if (!isPresent(existingPredicate)) continue;
+    const groupUid =
+      existingPredicate.rowLevelPermissionPredicateGroupUniversalIdentifier;
+    if (
+      (isPresent(existingPredicate.roleUniversalIdentifier) &&
+        deletedRoleUniversalIdentifiers.has(
+          existingPredicate.roleUniversalIdentifier,
+        )) ||
+      (isPresent(existingPredicate.objectMetadataUniversalIdentifier) &&
+        deletedObjectUniversalIdentifiers.has(
+          existingPredicate.objectMetadataUniversalIdentifier,
+        )) ||
+      (isPresent(existingPredicate.fieldMetadataUniversalIdentifier) &&
+        deletedFieldUniversalIdentifiers.has(
+          existingPredicate.fieldMetadataUniversalIdentifier,
+        )) ||
+      (isPresent(groupUid) && deletedGroupUniversalIdentifiers.has(groupUid))
+    ) {
+      const bucket = ensureOperationBucket(
+        record,
+        'rowLevelPermissionPredicate',
+      );
+      bucket.flatEntityToDelete[existingPredicate.universalIdentifier] =
+        existingPredicate;
+    }
+  }
+};
