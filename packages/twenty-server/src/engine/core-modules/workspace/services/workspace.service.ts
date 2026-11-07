@@ -5,6 +5,13 @@ import {
   membershipCleanupOperation,
   type MembershipCleanupIdentity,
 } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
+import { type RoleUpdateAuditIdentity } from 'src/engine/core-modules/crm-audit/role-update-audit';
+import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
+import {
+  captureWorkspaceDefaultRoleAudit,
+  runAuditedWorkspaceDefaultRoleUpdate,
+} from 'src/engine/core-modules/crm-audit/workspace-default-role-audit';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
@@ -336,23 +343,41 @@ export class WorkspaceService {
   }
 
   async updateWorkspaceById({
-    payload,
+    payload: rawPayload,
     userWorkspaceId,
     apiKey,
     application,
     agentId,
+    auditIdentity,
   }: {
     payload: UpdateWorkspaceInput & { id: string };
     userWorkspaceId?: string;
     apiKey: ApiKeyEntity | undefined;
     application?: FlatApplication;
     agentId?: string;
+    auditIdentity?: RoleUpdateAuditIdentity;
   }) {
+    const payload = { ...rawPayload };
+    const requireDefaultRoleAudit =
+      payload.defaultRoleId !== undefined
+        ? captureWorkspaceDefaultRoleAudit(payload.id, auditIdentity)
+        : undefined;
+    if (isDefined(requireDefaultRoleAudit) && !isDefined(auditIdentity)) {
+      requireDefaultRoleAudit();
+    }
+
     const workspace = await this.workspaceRepository.findOneBy({
       id: payload.id,
     });
 
     assertIsDefinedOrThrow(workspace, WorkspaceNotFoundDefaultError);
+
+    if (
+      isDefined(requireDefaultRoleAudit) &&
+      workspace.activationStatus !== WorkspaceActivationStatus.PENDING_CREATION
+    ) {
+      requireDefaultRoleAudit();
+    }
 
     await this.validateWorkspaceUpdatePermissions({
       payload,
@@ -363,6 +388,8 @@ export class WorkspaceService {
       agentId,
       workspaceActivationStatus: workspace.activationStatus,
     });
+
+    const defaultRoleAudit = requireDefaultRoleAudit?.();
 
     if (
       isDefined(payload.subdomain) &&
@@ -475,20 +502,54 @@ export class WorkspaceService {
     }
 
     let updatedWorkspace: WorkspaceEntity;
+    const workspaceUpdatePayload = {
+      ...payload,
+      ...(payload.customDomain === null
+        ? { isCustomDomainEnabled: false }
+        : {}),
+      ...(payload.logo === null ? { logoFileId: null } : {}),
+    };
 
     try {
-      await this.workspaceRepository.update(workspace.id, {
-        ...payload,
-        ...(payload.customDomain === null
-          ? { isCustomDomainEnabled: false }
-          : {}),
-        ...(payload.logo === null ? { logoFileId: null } : {}),
-      });
-      updatedWorkspace = await this.workspaceRepository.findOneByOrFail({
-        id: workspace.id,
-      });
+      if (isDefined(defaultRoleAudit)) {
+        updatedWorkspace = await runAuditedWorkspaceDefaultRoleUpdate(
+          this.coreDataSource,
+          defaultRoleAudit,
+          payload.defaultRoleId,
+          async (queryRunner) => {
+            await queryRunner.manager.update(
+              WorkspaceEntity,
+              workspace.id,
+              workspaceUpdatePayload,
+            );
+            return queryRunner.manager.findOneByOrFail(WorkspaceEntity, {
+              id: workspace.id,
+            });
+          },
+        );
+      } else {
+        await this.workspaceRepository.update(
+          workspace.id,
+          workspaceUpdatePayload,
+        );
+        updatedWorkspace = await this.workspaceRepository.findOneByOrFail({
+          id: workspace.id,
+        });
+      }
     } catch (error) {
-      if (payload.customDomain && customDomainRegistered) {
+      const mayHaveCommitted =
+        error instanceof NativeTransactionOutcomeUnknownError ||
+        error instanceof CoreAuditPostCommitError;
+      if (mayHaveCommitted) {
+        try {
+          await this.coreEntityCacheService.invalidate(
+            'workspaceEntity',
+            workspace.id,
+          );
+        } catch {
+          // Preserve the commit-outcome error as the primary failure.
+        }
+      } else if (payload.customDomain && customDomainRegistered) {
         this.dnsManagerService
           .deleteHostnameSilently(payload.customDomain)
           .catch((err) => {

@@ -7,6 +7,10 @@ import { DataSource } from 'typeorm';
 
 import { FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
 import { withApiKeyRoleAssignmentAudit } from 'src/engine/core-modules/crm-audit/role-assignment-audit';
+import {
+  captureWorkspaceDefaultRoleAudit,
+  runAuditedWorkspaceDefaultRoleUpdate,
+} from 'src/engine/core-modules/crm-audit/workspace-default-role-audit';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 import { FieldPermissionService } from 'src/engine/metadata-modules/object-permission/field-permission/field-permission.service';
@@ -263,12 +267,22 @@ export class DevSeederPermissionsService {
       auditIdentity: minimalSeederAuditIdentity,
     });
 
-    await this.coreDataSource
-      .getRepository(WorkspaceEntity)
-      .update(workspaceId, {
-        defaultRoleId: memberRole.id,
-        activationStatus: WorkspaceActivationStatus.ACTIVE,
-      });
+    const defaultRoleAudit = captureWorkspaceDefaultRoleAudit(
+      workspaceId,
+      minimalSeederAuditIdentity,
+    )();
+
+    await runAuditedWorkspaceDefaultRoleUpdate(
+      this.coreDataSource,
+      defaultRoleAudit,
+      memberRole.id,
+      async (queryRunner) => {
+        await queryRunner.manager.update(WorkspaceEntity, workspaceId, {
+          defaultRoleId: memberRole.id,
+          activationStatus: WorkspaceActivationStatus.ACTIVE,
+        });
+      },
+    );
 
     return memberRole;
   }

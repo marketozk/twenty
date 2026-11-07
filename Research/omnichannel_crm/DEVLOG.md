@@ -4613,3 +4613,36 @@ ba8762b0-be79-4ba4-8f32-73d0c78fcd28 и все 11 состояний задач 
 и совпали. [Публикация](implementation/log162/publication.json).
 Следующий участок - аудит записей метаданных при установке, синхронизации и удалении
 приложений и `defaultRoleId` по LOG163.
+
+## LOG163 - аудит смены роли по умолчанию рабочего пространства (`core.workspace."defaultRoleId"`)
+
+07.11.2026 зафиксированы [дизайн](implementation/log163/design.md),
+[независимое ревью решения](implementation/log163/design-review.md) и
+[план проверок](implementation/log163/test-research.md).
+Добавлен модуль `workspace-default-role-audit.ts` (`captureWorkspaceDefaultRoleAudit`,
+`runAuditedWorkspaceDefaultRoleUpdate`, `getWorkspaceDefaultRoleAudit` с регистрацией в
+`registerMetadataAuditScopeCheck`), а в `crm-audit.types.ts` и `crm-audit-transaction-context.ts`
+подключён вид ресурса `'workspace'` (`CATALOG.workspace = { values: ['defaultRoleId'], redacted: [] }`,
+`ADMINISTRATIVE_ACTIONS.workspace = ['update']`). Внутри `runInCoreAuditTransaction`
+захватываются блокировки `core.workspace` (`FOR NO KEY UPDATE`) и `core.role` (`FOR SHARE`,
+проверка существования в том же пространстве и `canBeAssignedToUsers === true`), проверяется
+сохранённое состояние до и после `audit.flush()`, а при фактическом изменении записывается
+событие `workspace` (`update`, `metadataAccess: 'currentWorkspaceAdministration'`).
+Подключены все три runtime-точки записи `core.workspace."defaultRoleId"`:
+`WorkspaceService.updateWorkspaceById` (`WorkspaceResolver.updateWorkspace`),
+`WorkspaceManagerService.setupDefaultRoles` и
+`DevSeederPermissionsService.initMinimalPermissionsAndActivateWorkspace`.
+
+07.11.2026 проверки LOG163 завершены. 3107 tests/108 suites PASS (679.92s). 189 targeted/10 PostgreSQL suites PASS (19.504s), 8 новых PostgreSQL случаев. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 460/462 roots, baseline 237 / current 236 diagnostics, 0 новых/changed-code. Совпали 10 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту охвата всех точек записи `core.workspace."defaultRoleId"`,
+защиту от TOCTOU-мутации `payload` и `auditIdentity` во время асинхронных проверок,
+сохранение `PermissionsException` при статусе `PENDING_CREATION`, согласованный порядок
+блокировок `core.workspace` -> `core.role`, корректную обработку `NativeTransactionOutcomeUnknownError`
+и `CoreAuditPostCommitError` (инвалидация кэша `workspaceEntity` в `try / catch`, сохранение
+зарегистрированного `customDomain`) и отсутствие нарушений границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log163/results.json), [ревью](implementation/log163/review.md),
+[следующий участок](implementation/log163/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

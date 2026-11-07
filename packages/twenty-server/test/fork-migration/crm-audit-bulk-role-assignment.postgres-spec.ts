@@ -134,6 +134,9 @@ const {
 const {
   UserWorkspaceEntity,
 } = require('src/engine/core-modules/user-workspace/user-workspace.entity');
+const {
+  WorkspaceEntity,
+} = require('src/engine/core-modules/workspace/workspace.entity');
 const { WorkspaceMigrationRunnerService } =
   require('src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service') as typeof import('src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service');
 const { CreateRoleTargetActionHandlerService } =
@@ -212,10 +215,23 @@ const targetSchema = new EntitySchema({
   ],
 });
 
+const workspaceSchema = new EntitySchema({
+  name: 'WorkspaceEntity',
+  target: WorkspaceEntity,
+  tableName: 'workspace',
+  schema: 'core',
+  columns: {
+    id: { type: 'uuid', primary: true },
+    databaseSchema: { type: 'text', nullable: true },
+    defaultRoleId: { type: 'uuid', nullable: true },
+    deletedAt: { type: 'timestamptz', nullable: true, deleteDate: true },
+  },
+});
+
 const owner = new DataSource({
   type: 'postgres',
   url: databaseUrl,
-  entities: [membershipSchema, targetSchema],
+  entities: [workspaceSchema, membershipSchema, targetSchema],
   extra: { max: 5, statement_timeout: 12000 },
 });
 const restrictedUrl = new URL(databaseUrl);
@@ -224,7 +240,7 @@ restrictedUrl.password = 'isolated-bulk-assignment-fixture';
 const runtime = new DataSource({
   type: 'postgres',
   url: restrictedUrl.toString(),
-  entities: [membershipSchema, targetSchema],
+  entities: [workspaceSchema, membershipSchema, targetSchema],
   extra: { max: 5, statement_timeout: 12000 },
 });
 
@@ -518,7 +534,7 @@ beforeAll(async () => {
   );
   await owner.synchronize();
   await owner.query(
-    'CREATE TABLE core.workspace(id uuid PRIMARY KEY,"databaseSchema" text,"deletedAt" timestamptz); CREATE TABLE core.role(id uuid PRIMARY KEY,"workspaceId" uuid,"universalIdentifier" uuid,"canBeAssignedToUsers" boolean); ALTER TABLE core."roleTarget" ADD FOREIGN KEY ("roleId") REFERENCES core.role(id) ON DELETE CASCADE; CREATE TABLE synthetic_members."workspaceMember"(id uuid PRIMARY KEY,"userId" uuid,"deletedAt" timestamptz); CREATE TABLE core.workflow(id uuid PRIMARY KEY,"workspaceId" uuid,"applicationId" uuid,"createdByUserWorkspaceId" uuid)',
+    'CREATE TABLE core.role(id uuid PRIMARY KEY,"workspaceId" uuid,"universalIdentifier" uuid,"canBeAssignedToUsers" boolean); ALTER TABLE core."roleTarget" ADD FOREIGN KEY ("roleId") REFERENCES core.role(id) ON DELETE CASCADE; CREATE TABLE synthetic_members."workspaceMember"(id uuid PRIMARY KEY,"userId" uuid,"deletedAt" timestamptz); CREATE TABLE core.workflow(id uuid PRIMARY KEY,"workspaceId" uuid,"applicationId" uuid,"createdByUserWorkspaceId" uuid)',
   );
   await owner.query(
     'INSERT INTO core.workspace(id,"databaseSchema") VALUES($1,$2)',
@@ -538,6 +554,9 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   jest.restoreAllMocks();
+  await owner.query(
+    'UPDATE core.workspace SET "defaultRoleId"=NULL,"deletedAt"=NULL',
+  );
   await owner.query('TRUNCATE core.application');
   await owner.query('INSERT INTO core.application VALUES($1,$2,$3,NULL)', [
     applicationId,
@@ -675,7 +694,7 @@ describe('LOG159 audited bulk and initial member role assignments', () => {
       { createMemberRole: async () => ({ id: destinationId }) } as never,
       service,
       {} as never,
-      { update: jest.fn(async () => {}) } as never,
+      runtime.getRepository(WorkspaceEntity),
       {
         findOne: async (
           _wsId: string,
@@ -702,7 +721,7 @@ describe('LOG159 audited bulk and initial member role assignments', () => {
       workspaceCustomFlatApplication: application,
     });
     const afterSetupAudits = await audits();
-    expect(afterSetupAudits).toHaveLength(3);
+    expect(afterSetupAudits).toHaveLength(4);
     expect(afterSetupAudits[2]).toMatchObject({
       action: 'create',
       resourceKind: 'roleTarget',
@@ -715,6 +734,21 @@ describe('LOG159 audited bulk and initial member role assignments', () => {
         values: {
           roleId: { before: null, after: adminRoleId },
           userWorkspaceId: { before: null, after: userWorkspace4Id },
+        },
+      },
+    });
+    expect(afterSetupAudits[3]).toMatchObject({
+      action: 'update',
+      resourceKind: 'workspace',
+      resourceId: workspaceId,
+      actor: {
+        kind: 'system',
+        id: 'workspace-manager:setup-default-roles',
+      },
+      redactedDiff: {
+        changedFields: ['defaultRoleId'],
+        values: {
+          defaultRoleId: { before: null, after: destinationId },
         },
       },
     });

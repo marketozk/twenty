@@ -23,6 +23,7 @@ export type CrmAuditResourceKind =
   | 'navigationMenuItem'
   | 'coreWorkflow'
   | 'coreView'
+  | 'workspace'
   | 'role'
   | 'roleTarget'
   | 'apiKey'

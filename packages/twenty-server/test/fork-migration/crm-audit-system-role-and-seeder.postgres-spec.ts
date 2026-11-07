@@ -170,6 +170,9 @@ const {
 const {
   UserWorkspaceEntity,
 } = require('src/engine/core-modules/user-workspace/user-workspace.entity');
+const {
+  WorkspaceEntity,
+} = require('src/engine/core-modules/workspace/workspace.entity');
 const { WorkspaceMigrationRunnerService } =
   require('src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service') as typeof import('src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service');
 const { CreateRoleActionHandlerService } =
@@ -287,10 +290,24 @@ const targetSchema = new EntitySchema({
   ],
 });
 
+const workspaceSchema = new EntitySchema({
+  name: 'WorkspaceEntity',
+  target: WorkspaceEntity,
+  tableName: 'workspace',
+  schema: 'core',
+  columns: {
+    id: { type: 'uuid', primary: true },
+    databaseSchema: { type: 'text', nullable: true },
+    defaultRoleId: { type: 'uuid', nullable: true },
+    activationStatus: { type: 'text', nullable: true },
+    deletedAt: { type: 'timestamptz', nullable: true, deleteDate: true },
+  },
+});
+
 const owner = new DataSource({
   type: 'postgres',
   url: databaseUrl,
-  entities: [roleSchema, membershipSchema, targetSchema],
+  entities: [workspaceSchema, roleSchema, membershipSchema, targetSchema],
   extra: { max: 5, statement_timeout: 12000 },
 });
 const restrictedUrl = new URL(databaseUrl);
@@ -299,7 +316,7 @@ restrictedUrl.password = 'isolated-sys-role-fixture';
 const runtime = new DataSource({
   type: 'postgres',
   url: restrictedUrl.toString(),
-  entities: [roleSchema, membershipSchema, targetSchema],
+  entities: [workspaceSchema, roleSchema, membershipSchema, targetSchema],
   extra: { max: 5, statement_timeout: 12000 },
 });
 
@@ -611,7 +628,7 @@ beforeAll(async () => {
   );
   await owner.synchronize();
   await owner.query(
-    'CREATE TABLE core.workspace(id uuid PRIMARY KEY,"databaseSchema" text,"defaultRoleId" uuid,"activationStatus" text,"deletedAt" timestamptz); CREATE TABLE core.application(id uuid PRIMARY KEY,"workspaceId" uuid,"universalIdentifier" uuid,"deletedAt" timestamptz); CREATE TABLE core."apiKey"(id uuid PRIMARY KEY,"workspaceId" uuid,"revokedAt" timestamptz); ALTER TABLE core."roleTarget" ADD FOREIGN KEY ("roleId") REFERENCES core.role(id) ON DELETE CASCADE; CREATE TABLE synthetic_members."workspaceMember"(id uuid PRIMARY KEY,"userId" uuid,"deletedAt" timestamptz)',
+    'CREATE TABLE core.application(id uuid PRIMARY KEY,"workspaceId" uuid,"universalIdentifier" uuid,"deletedAt" timestamptz); CREATE TABLE core."apiKey"(id uuid PRIMARY KEY,"workspaceId" uuid,"revokedAt" timestamptz); ALTER TABLE core."roleTarget" ADD FOREIGN KEY ("roleId") REFERENCES core.role(id) ON DELETE CASCADE; CREATE TABLE synthetic_members."workspaceMember"(id uuid PRIMARY KEY,"userId" uuid,"deletedAt" timestamptz)',
   );
   await owner.query(
     'INSERT INTO core.workspace(id,"databaseSchema") VALUES($1,$2)',
@@ -630,6 +647,9 @@ beforeEach(async () => {
   jest.restoreAllMocks();
   customApplication.defaultRoleId = null;
   standardApplication.defaultRoleId = null;
+  await owner.query(
+    'UPDATE core.workspace SET "defaultRoleId"=NULL,"activationStatus"=NULL,"deletedAt"=NULL',
+  );
   await owner.query(
     'TRUNCATE core.application,core."apiKey",core."roleTarget",core.role,core."userWorkspace",synthetic_members."workspaceMember",crm_audit."crmAuditEntry"',
   );
@@ -950,9 +970,7 @@ describe('LOG160 audited system and bootstrap role creation and roleTarget bindi
       {} as never,
       roleTargetService,
       {} as never,
-      {
-        getRepository: () => ({ update: jest.fn(async () => {}) }),
-      } as never,
+      runtime,
     );
 
     await seeder.initPermissions({
@@ -962,16 +980,34 @@ describe('LOG160 audited system and bootstrap role creation and roleTarget bindi
     });
 
     const auditRows = await audits();
-    expect(auditRows).toHaveLength(7);
+    expect(auditRows).toHaveLength(8);
     expect(auditRows.map((r) => `${r.resourceKind}:${r.action}`)).toEqual([
       'roleTarget:create',
       'roleTarget:create',
       'role:create',
       'role:create',
+      'workspace:update',
       'roleTarget:create',
       'roleTarget:create',
       'roleTarget:create',
     ]);
+    expect(auditRows[4]).toMatchObject({
+      action: 'update',
+      resourceKind: 'workspace',
+      resourceId: workspaceId,
+      actor: {
+        kind: 'system',
+        id: 'dev-seeder:init-minimal-permissions',
+      },
+      redactedDiff: {
+        changedFields: ['defaultRoleId'],
+      },
+    });
+
+    await owner.query(
+      'UPDATE core.workspace SET "defaultRoleId"=NULL WHERE id=$1',
+      [workspaceId],
+    );
 
     const setupUserId = randomUUID();
     const setupUserWorkspaceId = randomUUID();
@@ -985,7 +1021,7 @@ describe('LOG160 audited system and bootstrap role creation and roleTarget bindi
       roleService,
       userRoleService,
       {} as never,
-      { update: jest.fn(async () => {}) } as never,
+      runtime.getRepository(WorkspaceEntity),
       roleScopedRepository as never,
       {} as never,
     );
@@ -1005,13 +1041,25 @@ describe('LOG160 audited system and bootstrap role creation and roleTarget bindi
     });
 
     const afterSetupAudits = await audits();
-    expect(afterSetupAudits).toHaveLength(8);
-    expect(afterSetupAudits[7]).toMatchObject({
+    expect(afterSetupAudits).toHaveLength(10);
+    expect(afterSetupAudits[8]).toMatchObject({
       action: 'create',
       resourceKind: 'roleTarget',
       actor: {
         kind: 'system',
         id: 'workspace-manager:setup-default-roles',
+      },
+    });
+    expect(afterSetupAudits[9]).toMatchObject({
+      action: 'update',
+      resourceKind: 'workspace',
+      resourceId: workspaceId,
+      actor: {
+        kind: 'system',
+        id: 'workspace-manager:setup-default-roles',
+      },
+      redactedDiff: {
+        changedFields: ['defaultRoleId'],
       },
     });
   });

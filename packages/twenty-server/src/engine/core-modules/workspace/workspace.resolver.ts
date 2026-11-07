@@ -5,7 +5,15 @@ import {
   UsePipes,
   createParamDecorator,
 } from '@nestjs/common';
-import { Args, Mutation, Parent, Query, ResolveField } from '@nestjs/graphql';
+import {
+  Args,
+  Context,
+  Mutation,
+  Parent,
+  Query,
+  ResolveField,
+} from '@nestjs/graphql';
+import { type Request } from 'express';
 
 import assert from 'assert';
 
@@ -14,6 +22,7 @@ import { FeatureFlagKey, FileFolder } from 'twenty-shared/types';
 import { assertIsDefinedOrThrow, isDefined } from 'twenty-shared/utils';
 
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
+import { roleAuditIdentityFromRequest } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
 import { ApiKeyEntity } from 'src/engine/core-modules/api-key/api-key.entity';
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
@@ -177,6 +186,7 @@ export class WorkspaceResolver {
     @AuthApiKey() apiKey: ApiKeyEntity | undefined,
     @AuthApplication({ allowUndefined: true })
     application: FlatApplication | undefined,
+    @Context() context?: { req?: Request },
   ) {
     try {
       return await this.workspaceService.updateWorkspaceById({
@@ -188,9 +198,12 @@ export class WorkspaceResolver {
         apiKey,
         application,
         agentId: undefined,
+        auditIdentity: isDefined(context?.req)
+          ? roleAuditIdentityFromRequest(context.req)
+          : undefined,
       });
     } catch (error) {
-      workspaceGraphqlApiExceptionHandler(error);
+      workspaceGraphqlApiExceptionHandler(error as Error);
     }
   }
 

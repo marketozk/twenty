@@ -6,6 +6,10 @@ import { Repository } from 'typeorm';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
 import { FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
+import {
+  captureWorkspaceDefaultRoleAudit,
+  runAuditedWorkspaceDefaultRoleUpdate,
+} from 'src/engine/core-modules/crm-audit/workspace-default-role-audit';
 import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { RoleEntity } from 'src/engine/metadata-modules/role/role.entity';
@@ -154,8 +158,23 @@ export class WorkspaceManagerService {
         },
       }));
 
-    await this.workspaceRepository.update(workspaceId, {
-      defaultRoleId: memberRole.id,
-    });
+    const defaultRoleAudit = captureWorkspaceDefaultRoleAudit(workspaceId, {
+      auth: {
+        workspace: { id: workspaceId },
+        type: 'system',
+      },
+      systemActorId: 'workspace-manager:setup-default-roles',
+    })();
+
+    await runAuditedWorkspaceDefaultRoleUpdate(
+      this.workspaceRepository.manager?.connection,
+      defaultRoleAudit,
+      memberRole.id,
+      async (queryRunner) => {
+        await queryRunner.manager.update(WorkspaceEntity, workspaceId, {
+          defaultRoleId: memberRole.id,
+        });
+      },
+    );
   }
 }

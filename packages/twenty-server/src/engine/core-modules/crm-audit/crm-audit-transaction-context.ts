@@ -96,6 +96,7 @@ const CATALOG: Record<
   },
   coreWorkflow: { values: ['createdByUserWorkspaceId'], redacted: [] },
   coreView: { values: ['createdByUserWorkspaceId'], redacted: [] },
+  workspace: { values: ['defaultRoleId'], redacted: [] },
   roleTarget: {
     values: ['roleId', 'userWorkspaceId', 'agentId', 'apiKeyId'],
     redacted: [],
@@ -491,6 +492,7 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   navigationMenuItem: ['delete'],
   coreWorkflow: ['update'],
   coreView: ['update'],
+  workspace: ['update'],
 };
 
 const descriptor = (

@@ -1,0 +1,16 @@
+{
+  "baseCommit": "ab4c6fa2e3c5730ebf028df2d876e5383102c26a",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "67333d9b2ab60c6acab56f8f80b7114f289749b0085f597fe5d3d94d3bbff8ca",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "acd6191e986b2358a5c8acdf1db2fe919afba0e452930fd9e7d2f10606e01b74",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/workspace-default-role-audit.ts": "5773f503fe2a889e025a625f0f2e2460edb03c42363c5a3e907c1c5e2ef4c6b6",
+    "packages/twenty-server/src/engine/core-modules/workspace/services/workspace.service.ts": "370ab2eb6284afe7d26aaf48babbbc7eae9e1ce9aaa73451e8fd42070ba08e44",
+    "packages/twenty-server/src/engine/core-modules/workspace/workspace.resolver.ts": "2946bd63f4852577e68e048fd64eaa7028f31262af62849340fb36267ced5b8e",
+    "packages/twenty-server/src/engine/workspace-manager/dev-seeder/core/services/dev-seeder-permissions.service.ts": "b822c93478b34dfd7ae1c1ae41d16e1f3cf014aaaacd693ae072b0cca67f5b8d",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-manager.service.ts": "5abd6082ef1d605578d66ad2e7e556a6780b566dafae0d66609af37bf09bbd2a",
+    "packages/twenty-server/test/fork-migration/crm-audit-bulk-role-assignment.postgres-spec.ts": "39e23fdfab3619589bc2d38686b24e6ebc1c47dee13308bad55ce6b5497f4e35",
+    "packages/twenty-server/test/fork-migration/crm-audit-system-role-and-seeder.postgres-spec.ts": "79b10320cc3457e1ae7ab5179a4145794e4c10fe726b19d3001e9153baed7765",
+    "packages/twenty-server/test/fork-migration/crm-audit-workspace-default-role.postgres-spec.ts": "5d424a16d2ed8b0baab38f2ae859ff82149a15439bd444c89ea8065b0de086d4"
+  },
+  "uploadedSourceHashesVerified": true
+}
