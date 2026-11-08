@@ -13,7 +13,10 @@ import {
   peekCurrentCrmAuditWorkspaceId,
 } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
 import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
-import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
+import {
+  captureCrmAuditOperation,
+  CrmAuditTransactionContext,
+} from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import {
   membershipCleanupOperation,
@@ -28,6 +31,7 @@ import {
   type RoleUpdateAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
+import { projectPublicDomain } from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 
 export type ApplicationAuthorizationAuditIdentity =
   | ApplicationMetadataAuditIdentity
@@ -128,28 +132,50 @@ const resolveOperationFromIdentity = (
       if ((identity as MembershipCleanupIdentity).workspaceId === undefined) {
         throw new Error('CRM audit context requires scoped identity');
       }
+      const rawCorrelationId = (identity as { correlationId?: unknown })
+        .correlationId;
+      const rawCausationId = (identity as { causationId?: unknown })
+        .causationId;
+      const rawOperationId = (identity as { operationId?: unknown })
+        .operationId;
       const normalizedIdentity: MembershipCleanupIdentity = {
         ...(identity as MembershipCleanupIdentity),
         correlationId:
-          typeof (identity as { correlationId?: unknown }).correlationId ===
-          'string'
-            ? (identity as MembershipCleanupIdentity).correlationId
+          typeof rawCorrelationId === 'string' && isUUID(rawCorrelationId)
+            ? rawCorrelationId
             : randomUUID(),
       };
-      const operation = membershipCleanupOperation(
+      const baseOperation = membershipCleanupOperation(
         normalizedWorkspaceId,
         normalizedIdentity,
       );
-      if (!operation) {
+      if (!baseOperation) {
         throw new Error(errorMessage);
       }
+      const operation = Object.freeze(
+        captureCrmAuditOperation({
+          ...baseOperation,
+          ...(typeof rawOperationId === 'string'
+            ? { operationId: uuid(rawOperationId) }
+            : {}),
+          ...(typeof rawCorrelationId === 'string'
+            ? { correlationId: rawCorrelationId }
+            : {}),
+          ...(typeof rawCausationId === 'string'
+            ? { causationId: rawCausationId }
+            : {}),
+        }),
+      );
       const impersonatorId = (
         identity as { impersonatorUserWorkspaceId?: unknown }
       ).impersonatorUserWorkspaceId;
+      if (impersonatorId !== undefined && typeof impersonatorId !== 'string') {
+        throw new Error(errorMessage);
+      }
 
       return {
         operation,
-        ...(typeof impersonatorId === 'string' && isUUID(impersonatorId)
+        ...(typeof impersonatorId === 'string'
           ? { impersonatorUserWorkspaceId: uuid(impersonatorId) }
           : {}),
       };
@@ -1060,9 +1086,12 @@ export const runAuditedApplicationDelete = async <TResult>(
       );
 
       const [reg] = await runner.query(
-        `SELECT to_regclass('core."applicationAuthorization"') IS NOT NULL AS "hasAuthTable"`,
+        `SELECT
+           to_regclass('core."applicationAuthorization"') IS NOT NULL AS "hasAuthTable",
+           to_regclass('core."publicDomain"') IS NOT NULL AS "hasPublicDomainTable"`,
       );
       const hasAuthTable = reg?.hasAuthTable === true;
+      const hasPublicDomainTable = reg?.hasPublicDomainTable === true;
 
       const beforeAuthorizations = new Map<string, Record<string, unknown>>();
       if (hasAuthTable) {
@@ -1081,7 +1110,27 @@ export const runAuditedApplicationDelete = async <TResult>(
         }
       }
 
-      if (beforeAuthorizations.size > 0 && !request.operation) {
+      const beforePublicDomains = new Map<string, Record<string, unknown>>();
+      if (hasPublicDomainTable) {
+        const publicDomainRows = await runner.query(
+          `SELECT to_jsonb(pd) AS row FROM core."publicDomain" pd WHERE pd."applicationId"=$1 ORDER BY pd.id FOR UPDATE`,
+          [normalizedApplicationId],
+        );
+        for (const entry of publicDomainRows) {
+          const row = entry.row as Record<string, unknown>;
+          if (uuid(row.workspaceId) !== request.workspaceId) {
+            throw new Error(
+              'Application delete audit detected cross-workspace publicDomain',
+            );
+          }
+          beforePublicDomains.set(uuid(row.id), row);
+        }
+      }
+
+      const hasCascadedAuditRows =
+        beforeAuthorizations.size > 0 || beforePublicDomains.size > 0;
+
+      if (hasCascadedAuditRows && !request.operation) {
         throw (
           request.captureError ??
           new Error(
@@ -1091,7 +1140,7 @@ export const runAuditedApplicationDelete = async <TResult>(
       }
 
       let audit: CrmAuditTransactionContext | undefined;
-      if (beforeAuthorizations.size > 0 && request.operation) {
+      if (hasCascadedAuditRows && request.operation) {
         const operation = await resolveRoleAuditInitiator(
           runner,
           request.operation,
@@ -1122,7 +1171,19 @@ export const runAuditedApplicationDelete = async <TResult>(
         }
       }
 
-      if (audit && beforeAuthorizations.size > 0) {
+      if (hasPublicDomainTable) {
+        const remainingPublicDomains = await runner.query(
+          `SELECT id FROM core."publicDomain" WHERE "applicationId"=$1`,
+          [normalizedApplicationId],
+        );
+        if (remainingPublicDomains.length > 0) {
+          throw new Error(
+            'Application delete did not cascade-remove publicDomain rows',
+          );
+        }
+      }
+
+      if (audit && hasCascadedAuditRows) {
         for (const [id, beforeRow] of beforeAuthorizations.entries()) {
           audit.record({
             resourceKind: 'applicationAuthorization',
@@ -1132,6 +1193,20 @@ export const runAuditedApplicationDelete = async <TResult>(
             after: null,
             securityDescriptor: {
               resourceKind: 'applicationAuthorization',
+              resourceId: id,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+        }
+        for (const [id, beforeRow] of beforePublicDomains.entries()) {
+          audit.record({
+            resourceKind: 'publicDomain',
+            resourceId: id,
+            action: 'delete',
+            before: projectPublicDomain(beforeRow),
+            after: null,
+            securityDescriptor: {
+              resourceKind: 'publicDomain',
               resourceId: id,
               metadataAccess: 'currentWorkspaceAdministration',
             },
@@ -1147,6 +1222,15 @@ export const runAuditedApplicationDelete = async <TResult>(
             throw new Error(
               'Application authorization state changed during audit flush',
             );
+          }
+        }
+        if (hasPublicDomainTable) {
+          const postFlushPublicDomains = await runner.query(
+            `SELECT id FROM core."publicDomain" WHERE "applicationId"=$1`,
+            [normalizedApplicationId],
+          );
+          if (postFlushPublicDomains.length > 0) {
+            throw new Error('Public domain state changed during audit flush');
           }
         }
       }

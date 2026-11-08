@@ -1,13 +1,21 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
 import { msg } from '@lingui/core/macro';
 import { SendApprovedAccessDomainValidation, renderEmail } from 'twenty-emails';
 import { FileFolder, SettingsPath } from 'twenty-shared/types';
 import { getSettingsPath, isDefined } from 'twenty-shared/utils';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 
 import { ApprovedAccessDomainEntity } from 'src/engine/core-modules/approved-access-domain/approved-access-domain.entity';
+import {
+  captureWorkspaceDomainAudit,
+  consumeWorkspaceDomainAuditRequest,
+  runAuditedApprovedAccessDomainCreate,
+  runAuditedApprovedAccessDomainDelete,
+  runAuditedApprovedAccessDomainValidate,
+  type WorkspaceDomainAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
 import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
 import {
@@ -49,7 +57,19 @@ export class ApprovedAccessDomainService {
     private readonly workspaceDomainsService: WorkspaceDomainsService,
     private readonly jwtWrapperService: JwtWrapperService,
     private readonly i18nService: I18nService,
+    @Optional()
+    @InjectDataSource()
+    private readonly dataSource?: DataSource,
   ) {}
+
+  private resolveDataSource(): DataSource | undefined {
+    return (
+      this.dataSource ??
+      (this.approvedAccessDomainRepositoryUnscoped?.manager?.connection as
+        | DataSource
+        | undefined)
+    );
+  }
 
   async sendApprovedAccessDomainValidationEmail(
     sender: WorkspaceMemberWorkspaceEntity,
@@ -191,56 +211,122 @@ export class ApprovedAccessDomainService {
     return payload;
   }
 
-  async validateApprovedAccessDomain({
-    validationToken,
-    approvedAccessDomainId,
-  }: {
-    validationToken: string;
-    approvedAccessDomainId: string;
-  }) {
-    const payload = await this.verifyValidationTokenOrThrow(validationToken);
+  async validateApprovedAccessDomain(
+    {
+      validationToken,
+      approvedAccessDomainId,
+      workspaceId,
+    }: {
+      validationToken: string;
+      approvedAccessDomainId: string;
+      workspaceId?: string;
+    },
+    options?: {
+      auditIdentity?: WorkspaceDomainAuditIdentity;
+    },
+  ) {
+    const resolvedDataSource = this.resolveDataSource();
+    const hasExplicitAuditIdentity =
+      options !== undefined && 'auditIdentity' in options;
+    const auditRequest =
+      resolvedDataSource || hasExplicitAuditIdentity
+        ? captureWorkspaceDomainAudit({
+            workspaceId,
+            auditIdentity: options?.auditIdentity,
+          })
+        : undefined;
 
-    if (payload.approvedAccessDomainId !== approvedAccessDomainId) {
-      throw new ApprovedAccessDomainException(
-        'Invalid approved access domain validation token',
-        ApprovedAccessDomainExceptionCode.APPROVED_ACCESS_DOMAIN_VALIDATION_TOKEN_INVALID,
+    try {
+      const payload = await this.verifyValidationTokenOrThrow(validationToken);
+
+      if (payload.approvedAccessDomainId !== approvedAccessDomainId) {
+        throw new ApprovedAccessDomainException(
+          'Invalid approved access domain validation token',
+          ApprovedAccessDomainExceptionCode.APPROVED_ACCESS_DOMAIN_VALIDATION_TOKEN_INVALID,
+        );
+      }
+
+      if (resolvedDataSource && auditRequest) {
+        const validatedRow = await runAuditedApprovedAccessDomainValidate(
+          resolvedDataSource,
+          auditRequest,
+          {
+            approvedAccessDomainId,
+            expectedDomain: payload.domain,
+            expectedWorkspaceId: payload.workspaceId,
+            onNotFound: () => {
+              throw new ApprovedAccessDomainException(
+                'Approved access domain not found',
+                ApprovedAccessDomainExceptionCode.APPROVED_ACCESS_DOMAIN_NOT_FOUND,
+              );
+            },
+            onInvalidToken: () => {
+              throw new ApprovedAccessDomainException(
+                'Invalid approved access domain validation token',
+                ApprovedAccessDomainExceptionCode.APPROVED_ACCESS_DOMAIN_VALIDATION_TOKEN_INVALID,
+              );
+            },
+            onAlreadyValidated: () => {
+              throw new ApprovedAccessDomainException(
+                'Approved access domain has already been validated',
+                ApprovedAccessDomainExceptionCode.APPROVED_ACCESS_DOMAIN_ALREADY_VALIDATED,
+                {
+                  userFriendlyMessage: msg`Approved access domain has already been validated`,
+                },
+              );
+            },
+          },
+        );
+
+        return Object.assign(new ApprovedAccessDomainEntity(), validatedRow);
+      }
+
+      if (workspaceId !== undefined && payload.workspaceId !== workspaceId) {
+        throw new ApprovedAccessDomainException(
+          'Invalid approved access domain validation token',
+          ApprovedAccessDomainExceptionCode.APPROVED_ACCESS_DOMAIN_VALIDATION_TOKEN_INVALID,
+        );
+      }
+
+      const approvedAccessDomain =
+        await this.approvedAccessDomainRepositoryUnscoped.findOneBy({
+          id: approvedAccessDomainId,
+        });
+
+      approvedAccessDomainValidator.assertIsDefinedOrThrow(
+        approvedAccessDomain,
       );
-    }
 
-    const approvedAccessDomain =
-      await this.approvedAccessDomainRepositoryUnscoped.findOneBy({
-        id: approvedAccessDomainId,
-      });
+      if (
+        payload.domain !== approvedAccessDomain.domain ||
+        payload.workspaceId !== approvedAccessDomain.workspaceId
+      ) {
+        throw new ApprovedAccessDomainException(
+          'Invalid approved access domain validation token',
+          ApprovedAccessDomainExceptionCode.APPROVED_ACCESS_DOMAIN_VALIDATION_TOKEN_INVALID,
+        );
+      }
 
-    approvedAccessDomainValidator.assertIsDefinedOrThrow(approvedAccessDomain);
+      if (approvedAccessDomain.isValidated) {
+        throw new ApprovedAccessDomainException(
+          'Approved access domain has already been validated',
+          ApprovedAccessDomainExceptionCode.APPROVED_ACCESS_DOMAIN_ALREADY_VALIDATED,
+          {
+            userFriendlyMessage: msg`Approved access domain has already been validated`,
+          },
+        );
+      }
 
-    if (
-      payload.domain !== approvedAccessDomain.domain ||
-      payload.workspaceId !== approvedAccessDomain.workspaceId
-    ) {
-      throw new ApprovedAccessDomainException(
-        'Invalid approved access domain validation token',
-        ApprovedAccessDomainExceptionCode.APPROVED_ACCESS_DOMAIN_VALIDATION_TOKEN_INVALID,
+      await this.approvedAccessDomainRepository.update(
+        approvedAccessDomain.workspaceId,
+        { id: approvedAccessDomain.id },
+        { isValidated: true },
       );
+
+      return { ...approvedAccessDomain, isValidated: true };
+    } finally {
+      consumeWorkspaceDomainAuditRequest(auditRequest);
     }
-
-    if (approvedAccessDomain.isValidated) {
-      throw new ApprovedAccessDomainException(
-        'Approved access domain has already been validated',
-        ApprovedAccessDomainExceptionCode.APPROVED_ACCESS_DOMAIN_ALREADY_VALIDATED,
-        {
-          userFriendlyMessage: msg`Approved access domain has already been validated`,
-        },
-      );
-    }
-
-    await this.approvedAccessDomainRepository.update(
-      approvedAccessDomain.workspaceId,
-      { id: approvedAccessDomain.id },
-      { isValidated: true },
-    );
-
-    return { ...approvedAccessDomain, isValidated: true };
   }
 
   async createApprovedAccessDomain(
@@ -248,59 +334,148 @@ export class ApprovedAccessDomainService {
     inWorkspace: WorkspaceEntity,
     fromWorkspaceMember: WorkspaceMemberWorkspaceEntity,
     emailToValidateDomain: string,
+    options?: {
+      auditIdentity?: WorkspaceDomainAuditIdentity;
+    },
   ): Promise<ApprovedAccessDomainEntity> {
-    if (!isWorkDomain(domain)) {
-      throw new ApprovedAccessDomainException(
-        'Approved access domain must be a company domain',
-        ApprovedAccessDomainExceptionCode.APPROVED_ACCESS_DOMAIN_MUST_BE_A_COMPANY_DOMAIN,
-      );
-    }
+    const resolvedDataSource = this.resolveDataSource();
+    const hasExplicitAuditIdentity =
+      options !== undefined && 'auditIdentity' in options;
+    const auditRequest =
+      resolvedDataSource || hasExplicitAuditIdentity
+        ? captureWorkspaceDomainAudit({
+            workspaceId: inWorkspace?.id,
+            auditIdentity: options?.auditIdentity,
+          })
+        : undefined;
 
-    const existing = await this.approvedAccessDomainRepository.findOne(
-      inWorkspace.id,
-      { where: { domain } },
-    );
+    try {
+      if (!isWorkDomain(domain)) {
+        throw new ApprovedAccessDomainException(
+          'Approved access domain must be a company domain',
+          ApprovedAccessDomainExceptionCode.APPROVED_ACCESS_DOMAIN_MUST_BE_A_COMPANY_DOMAIN,
+        );
+      }
 
-    if (existing) {
-      throw new ApprovedAccessDomainException(
-        'Approved access domain already registered.',
-        ApprovedAccessDomainExceptionCode.APPROVED_ACCESS_DOMAIN_ALREADY_REGISTERED,
-        {
-          userFriendlyMessage: msg`Approved access domain already registered.`,
-        },
-      );
-    }
+      if (resolvedDataSource && auditRequest) {
+        const createdRow = await runAuditedApprovedAccessDomainCreate(
+          resolvedDataSource,
+          auditRequest,
+          {
+            domain,
+            senderUserId: fromWorkspaceMember?.userId,
+            senderMemberId: fromWorkspaceMember?.id,
+            onAlreadyRegistered: () => {
+              throw new ApprovedAccessDomainException(
+                'Approved access domain already registered.',
+                ApprovedAccessDomainExceptionCode.APPROVED_ACCESS_DOMAIN_ALREADY_REGISTERED,
+                {
+                  userFriendlyMessage: msg`Approved access domain already registered.`,
+                },
+              );
+            },
+            onAfterAuditFlush: (approvedAccessDomain) =>
+              this.sendApprovedAccessDomainValidationEmail(
+                fromWorkspaceMember,
+                emailToValidateDomain,
+                inWorkspace,
+                Object.assign(
+                  new ApprovedAccessDomainEntity(),
+                  approvedAccessDomain,
+                ),
+              ),
+          },
+        );
 
-    const approvedAccessDomain =
-      await this.approvedAccessDomainRepository.insertAndReturnOne(
+        return Object.assign(new ApprovedAccessDomainEntity(), createdRow);
+      }
+
+      const existing = await this.approvedAccessDomainRepository.findOne(
         inWorkspace.id,
-        { domain },
+        { where: { domain } },
       );
 
-    await this.sendApprovedAccessDomainValidationEmail(
-      fromWorkspaceMember,
-      emailToValidateDomain,
-      inWorkspace,
-      approvedAccessDomain,
-    );
+      if (existing) {
+        throw new ApprovedAccessDomainException(
+          'Approved access domain already registered.',
+          ApprovedAccessDomainExceptionCode.APPROVED_ACCESS_DOMAIN_ALREADY_REGISTERED,
+          {
+            userFriendlyMessage: msg`Approved access domain already registered.`,
+          },
+        );
+      }
 
-    return approvedAccessDomain;
+      const approvedAccessDomain =
+        await this.approvedAccessDomainRepository.insertAndReturnOne(
+          inWorkspace.id,
+          { domain },
+        );
+
+      await this.sendApprovedAccessDomainValidationEmail(
+        fromWorkspaceMember,
+        emailToValidateDomain,
+        inWorkspace,
+        approvedAccessDomain,
+      );
+
+      return approvedAccessDomain;
+    } finally {
+      consumeWorkspaceDomainAuditRequest(auditRequest);
+    }
   }
 
   async deleteApprovedAccessDomain(
     workspace: WorkspaceEntity,
     approvedAccessDomainId: string,
+    options?: {
+      auditIdentity?: WorkspaceDomainAuditIdentity;
+    },
   ) {
-    const approvedAccessDomain =
-      await this.approvedAccessDomainRepository.findOne(workspace.id, {
-        where: { id: approvedAccessDomainId },
+    const resolvedDataSource = this.resolveDataSource();
+    const hasExplicitAuditIdentity =
+      options !== undefined && 'auditIdentity' in options;
+    const auditRequest =
+      resolvedDataSource || hasExplicitAuditIdentity
+        ? captureWorkspaceDomainAudit({
+            workspaceId: workspace?.id,
+            auditIdentity: options?.auditIdentity,
+          })
+        : undefined;
+
+    try {
+      if (resolvedDataSource && auditRequest) {
+        await runAuditedApprovedAccessDomainDelete(
+          resolvedDataSource,
+          auditRequest,
+          {
+            approvedAccessDomainId,
+            onNotFound: () => {
+              throw new ApprovedAccessDomainException(
+                'Approved access domain not found',
+                ApprovedAccessDomainExceptionCode.APPROVED_ACCESS_DOMAIN_NOT_FOUND,
+              );
+            },
+          },
+        );
+
+        return;
+      }
+
+      const approvedAccessDomain =
+        await this.approvedAccessDomainRepository.findOne(workspace.id, {
+          where: { id: approvedAccessDomainId },
+        });
+
+      approvedAccessDomainValidator.assertIsDefinedOrThrow(
+        approvedAccessDomain,
+      );
+
+      await this.approvedAccessDomainRepository.delete(workspace.id, {
+        id: approvedAccessDomain.id,
       });
-
-    approvedAccessDomainValidator.assertIsDefinedOrThrow(approvedAccessDomain);
-
-    await this.approvedAccessDomainRepository.delete(workspace.id, {
-      id: approvedAccessDomain.id,
-    });
+    } finally {
+      consumeWorkspaceDomainAuditRequest(auditRequest);
+    }
   }
 
   async getApprovedAccessDomains(workspace: WorkspaceEntity) {

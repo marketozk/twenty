@@ -83,6 +83,14 @@ const CATALOG: Record<
     values: ['userWorkspaceId', 'applicationVariableId', 'scope'],
     redacted: ['value'],
   },
+  approvedAccessDomain: {
+    values: ['isValidated'],
+    redacted: ['domain'],
+  },
+  publicDomain: {
+    values: ['applicationId', 'isValidated'],
+    redacted: ['domain'],
+  },
   twoFactorAuthenticationMethod: {
     values: ['userWorkspaceId', 'strategy', 'status'],
     redacted: ['secret', 'deletedAt'],
@@ -509,6 +517,8 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   userWorkspace: ['create', 'update', 'delete'],
   applicationAuthorization: ['create', 'update', 'delete'],
   userApplicationVariableValue: ['create', 'update', 'delete'],
+  approvedAccessDomain: ['create', 'update', 'delete'],
+  publicDomain: ['create', 'update', 'delete'],
   twoFactorAuthenticationMethod: ['create', 'update', 'delete'],
   navigationMenuItem: ['create', 'update', 'delete'],
   agentChatChannel: ['create', 'update', 'delete'],

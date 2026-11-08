@@ -40,10 +40,20 @@ export class CheckPublicDomainsValidRecordsCronJob {
       try {
         await this.publicDomainService.checkPublicDomainValidRecords(
           publicDomain,
+          undefined,
+          {
+            auditIdentity: {
+              workspaceId: publicDomain.workspaceId,
+              actor: {
+                kind: 'system',
+                id: CheckPublicDomainsValidRecordsCronJob.name,
+              },
+            },
+          },
         );
       } catch (error) {
         throw new Error(
-          `[${CheckPublicDomainsValidRecordsCronJob.name}] Cannot check public domain: ${error.message}`,
+          `[${CheckPublicDomainsValidRecordsCronJob.name}] Cannot check public domain: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
     }

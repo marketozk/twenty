@@ -1,0 +1,17 @@
+{
+  "baseCommit": "166f4e2f69ca47cc4ac75800e061840555093c9f",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/approved-access-domain/approved-access-domain.resolver.ts": "297e2e6643988e9ebee1c77b3a3dc4b92ccdb693e1a2f1b91ec327dc726e9c0d",
+    "packages/twenty-server/src/engine/core-modules/approved-access-domain/services/approved-access-domain.service.ts": "9ac486f33a2ca085af5c0427a52ab9d229f33cd48e6912c5eb440eb3d1c86781",
+    "packages/twenty-server/src/engine/core-modules/cloudflare/services/dns-cloudflare.service.ts": "3814535d542c42286332ebc7b45bfedc03c204ecce34bbf6c99751f22390d6ed",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/application-authorization-and-variable-audit.ts": "7884aca3398e0af2e6daec0adc0e7661dc179e057d9f16a86798f9ed38dd3648",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "f1336ecfd9df48e05b87a05a0a3997b55d7b5499a7336e8cc6f78c567abeb1a7",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "60d968b3ae028b122bb1df80ade59a8ea1634ab5f9281cf7418046edd5f407c9",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/workspace-domain-audit.ts": "8ba5b9d807867d159bfa241451bac856bd9adacde253825700dc299d85d5daec",
+    "packages/twenty-server/src/engine/core-modules/public-domain/crons/jobs/check-public-domains-valid-records.cron.job.ts": "bbe46a31e73c3db08aa715e855e7ac448b0ccd5667fa2dfe1bf3d00b4064bdf9",
+    "packages/twenty-server/src/engine/core-modules/public-domain/public-domain.resolver.ts": "4226a149f9eb9eddd72d3c401eccf7b94a958ed8f2d7016d88251d3dad3af8d6",
+    "packages/twenty-server/src/engine/core-modules/public-domain/public-domain.service.ts": "5c632db0f80daf64c5a9d74b399a8d7be892b06f5c2e84291270a5ead0ec1ff2",
+    "packages/twenty-server/test/fork-migration/crm-audit-workspace-domain.postgres-spec.ts": "a78e4cf78f31c9ddb4aee2e66aef93a1ce30713ec01de5e74771dfe1dc0af274"
+  },
+  "uploadedSourceHashesVerified": true
+}

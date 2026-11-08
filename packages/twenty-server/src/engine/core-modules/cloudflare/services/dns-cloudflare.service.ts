@@ -29,6 +29,16 @@ export class DnsCloudflareService {
     if (isDefined(publicDomain)) {
       await this.publicDomainService.checkPublicDomainValidRecords(
         publicDomain,
+        undefined,
+        {
+          auditIdentity: {
+            workspaceId: publicDomain.workspaceId,
+            actor: {
+              kind: 'system',
+              id: 'DnsCloudflareService.checkHostname',
+            },
+          },
+        },
       );
     }
   }

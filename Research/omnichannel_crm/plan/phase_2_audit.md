@@ -226,8 +226,14 @@ LOG173 закрывает транзакционный аудит полного
 `UserResolver.updateUserEmail`, `SignInUpService.signInUpWithPersonalInvitation`,
 `SSOAuthController` и `runAuditedPasswordUpdate`) с редактированием `email`, `passwordHash` и
 `defaultAvatarUrl`.
+LOG174 закрывает транзакционный аудит полного жизненного цикла доменов одобренного доступа
+(`core."approvedAccessDomain"` в `ApprovedAccessDomainService`, `ApprovedAccessDomainResolver`) и
+публичных доменов приложений (`core."publicDomain"` в `PublicDomainService`, `PublicDomainResolver`,
+`CheckPublicDomainsValidRecordsCronJob`, `DnsCloudflareService` и каскадного удаления при удалении
+`core.application` в `ApplicationService.delete` / `runAuditedApplicationDelete`) с редактированием
+`domain`.
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log173/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log174/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

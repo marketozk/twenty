@@ -5105,6 +5105,22 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 и совпали. [Публикация](implementation/log173/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765.
 
+## LOG-174 - транзакционный аудит полного жизненного цикла `approvedAccessDomain` и `publicDomain` (включая каскадное удаление при удалении `core.application`)
+
+09.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log174/design.md), [design-review.md](implementation/log174/design-review.md)) и реализован участок `LOG-174` (Linear `ROB-765`): транзакционный аудит полного жизненного цикла доменов одобренного доступа (`core."approvedAccessDomain"`) и публичных доменов приложений (`core."publicDomain"`), включая каскадное удаление `core."publicDomain"` при удалении `core.application`.
+
+В `crm-audit.types.ts` и `crm-audit-transaction-context.ts` добавлены виды ресурсов `approvedAccessDomain` (`values: ['isValidated']`, `redacted: ['domain']`, действия `['create', 'update', 'delete']`) и `publicDomain` (`values: ['applicationId', 'isValidated']`, `redacted: ['domain']`, действия `['create', 'update', 'delete']`). В `workspace-domain-audit.ts` реализованы `captureWorkspaceDomainAudit`, `withWorkspaceDomainAudit`, `consumeWorkspaceDomainAuditRequest`, `runAuditedApprovedAccessDomainCreate`, `runAuditedApprovedAccessDomainValidate`, `runAuditedApprovedAccessDomainDelete`, `runAuditedPublicDomainCreate`, `runAuditedPublicDomainValidationUpdate` и `runAuditedPublicDomainDelete`. В `application-authorization-and-variable-audit.ts` (`runAuditedApplicationDelete`) добавлена атомарная фиксация каскадных удалений `core."publicDomain"` при удалении `core.application`. Подключены `ApprovedAccessDomainService`, `ApprovedAccessDomainResolver` (с проверкой `workspaceId` при `validateApprovedAccessDomain`), `PublicDomainService`, `PublicDomainResolver`, `CheckPublicDomainsValidRecordsCronJob.handle` и `DnsCloudflareService.checkHostname`.
+
+09.11.2026 проверки LOG174 завершены. 3166 tests/119 suites PASS (698.803s). 255 targeted/17 PostgreSQL suites PASS (30.787s), 3 новых PostgreSQL случая. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 483/485 roots, baseline 278 / current 277 diagnostics, 0 новых/changed-code. Совпали 11 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех входных точек `approvedAccessDomain` и `publicDomain` (включая каскадное удаление при `ApplicationService.delete`), устранение замечаний D1-D10 и C1-C6, редактирование `domain`, корректную обработку `NativeTransactionOutcomeUnknownError` и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log174/results.json), [ревью](implementation/log174/review.md),
+[следующий участок](implementation/log174/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
+
+
 
 
 

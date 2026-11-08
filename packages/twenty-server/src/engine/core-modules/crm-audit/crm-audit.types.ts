@@ -19,6 +19,8 @@ export type CrmAuditResourceKind =
   | 'userWorkspace'
   | 'applicationAuthorization'
   | 'userApplicationVariableValue'
+  | 'approvedAccessDomain'
+  | 'publicDomain'
   | 'twoFactorAuthenticationMethod'
   | 'navigationMenuItem'
   | 'agentChatChannel'

@@ -8,6 +8,10 @@ import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace
 import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
 import { ApplicationExceptionFilter } from 'src/engine/core-modules/application/application-exception-filter';
+import {
+  captureWorkspaceDomainAudit,
+  consumeWorkspaceDomainAuditRequest,
+} from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { DomainValidRecords } from 'src/engine/core-modules/dns-manager/dtos/domain-valid-records';
 import { DnsManagerService } from 'src/engine/core-modules/dns-manager/services/dns-manager.service';
 import { PreventNestToAutoLogGraphqlErrorsFilter } from 'src/engine/core-modules/graphql/filters/prevent-nest-to-auto-log-graphql-errors.filter';
@@ -24,6 +28,11 @@ import {
 import { PublicDomainService } from 'src/engine/core-modules/public-domain/public-domain.service';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { ApplicationTargetArgs } from 'src/engine/decorators/auth/application-target-args.decorator';
+import { AuthApiKey } from 'src/engine/decorators/auth/auth-api-key.decorator';
+import { AuthApplication } from 'src/engine/decorators/auth/auth-application.decorator';
+import { AuthImpersonationContext } from 'src/engine/decorators/auth/auth-impersonation-context.decorator';
+import { AuthUser } from 'src/engine/decorators/auth/auth-user.decorator';
+import { AuthUserWorkspaceId } from 'src/engine/decorators/auth/auth-user-workspace-id.decorator';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
 import { SettingsPermissionGuard } from 'src/engine/guards/settings-permission.guard';
 import { AuthPrincipalGuard } from 'src/engine/guards/auth-principal.guard';
@@ -90,12 +99,34 @@ export class PublicDomainResolver {
     })
     { domain, applicationId }: CreatePublicDomainInput,
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
+    @AuthUser({ allowUndefined: true }) currentUser?: { id: string },
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
+    @AuthApiKey() apiKey?: { id: string },
+    @AuthApplication() application?: { id: string },
+    @AuthImpersonationContext()
+    impersonationContext?: { impersonatorUserWorkspaceId?: string },
   ): Promise<PublicDomainDTO> {
-    return this.publicDomainService.createPublicDomain({
-      domain,
-      workspace: currentWorkspace,
-      applicationId,
+    const auditRequest = captureWorkspaceDomainAudit({
+      workspaceId: currentWorkspace.id,
+      auditIdentity: {
+        workspace: currentWorkspace,
+        user: currentUser,
+        userWorkspaceId,
+        apiKey,
+        application,
+        impersonationContext,
+      },
     });
+
+    return this.publicDomainService.createPublicDomain(
+      {
+        domain,
+        workspace: currentWorkspace,
+        applicationId,
+      },
+      { auditIdentity: auditRequest },
+    );
   }
 
   @Mutation(() => Boolean)
@@ -115,11 +146,33 @@ export class PublicDomainResolver {
   async deletePublicDomain(
     @Args() { domain }: PublicDomainInput,
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
+    @AuthUser({ allowUndefined: true }) currentUser?: { id: string },
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
+    @AuthApiKey() apiKey?: { id: string },
+    @AuthApplication() application?: { id: string },
+    @AuthImpersonationContext()
+    impersonationContext?: { impersonatorUserWorkspaceId?: string },
   ): Promise<boolean> {
-    await this.publicDomainService.deletePublicDomain({
-      domain,
-      workspace: currentWorkspace,
+    const auditRequest = captureWorkspaceDomainAudit({
+      workspaceId: currentWorkspace.id,
+      auditIdentity: {
+        workspace: currentWorkspace,
+        user: currentUser,
+        userWorkspaceId,
+        apiKey,
+        application,
+        impersonationContext,
+      },
     });
+
+    await this.publicDomainService.deletePublicDomain(
+      {
+        domain,
+        workspace: currentWorkspace,
+      },
+      { auditIdentity: auditRequest },
+    );
 
     return true;
   }
@@ -128,30 +181,55 @@ export class PublicDomainResolver {
   async checkPublicDomainValidRecords(
     @Args() { domain }: PublicDomainInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUser({ allowUndefined: true }) currentUser?: { id: string },
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
+    @AuthApiKey() apiKey?: { id: string },
+    @AuthApplication() application?: { id: string },
+    @AuthImpersonationContext()
+    impersonationContext?: { impersonatorUserWorkspaceId?: string },
   ): Promise<DomainValidRecords | undefined> {
-    const publicDomain = await this.publicDomainRepository.findOne(
-      workspace.id,
-      { where: { domain } },
-    );
-
-    assertIsDefinedOrThrow(
-      publicDomain,
-      new PublicDomainException(
-        `Public domain ${domain} not found`,
-        PublicDomainExceptionCode.PUBLIC_DOMAIN_NOT_FOUND,
-      ),
-    );
-
-    const domainValidRecords = await this.dnsManagerService.refreshHostname(
-      domain,
-      {
-        isPublicDomain: true,
+    const auditRequest = captureWorkspaceDomainAudit({
+      workspaceId: workspace.id,
+      auditIdentity: {
+        workspace,
+        user: currentUser,
+        userWorkspaceId,
+        apiKey,
+        application,
+        impersonationContext,
       },
-    );
+    });
+    const formattedDomain = domain.trim().toLowerCase();
 
-    return this.publicDomainService.checkPublicDomainValidRecords(
-      publicDomain,
-      domainValidRecords,
-    );
+    try {
+      const publicDomain = await this.publicDomainRepository.findOne(
+        workspace.id,
+        { where: { domain: formattedDomain } },
+      );
+
+      assertIsDefinedOrThrow(
+        publicDomain,
+        new PublicDomainException(
+          `Public domain ${domain} not found`,
+          PublicDomainExceptionCode.PUBLIC_DOMAIN_NOT_FOUND,
+        ),
+      );
+
+      const domainValidRecords = await this.dnsManagerService.refreshHostname(
+        formattedDomain,
+        {
+          isPublicDomain: true,
+        },
+      );
+
+      return await this.publicDomainService.checkPublicDomainValidRecords(
+        publicDomain,
+        domainValidRecords,
+        { auditIdentity: auditRequest },
+      );
+    } finally {
+      consumeWorkspaceDomainAuditRequest(auditRequest);
+    }
   }
 }
