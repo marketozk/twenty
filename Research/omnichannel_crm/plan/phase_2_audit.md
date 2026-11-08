@@ -181,8 +181,18 @@ LOG168 закрывает атомарный аудит жизненного ц�
 `TwoFactorAuthenticationRecoveryService.redeemRecoveryCode`) и пакетного отзыва
 `core."appToken"` (`RefreshToken`) при погашении кода восстановления с редактированием
 секрета `secret`.
+LOG169 закрывает атомарный аудит смены владельца (`createdByUserWorkspaceId`) и видимости
+(`visibility`) рабочих процессов (`core.workflow` в
+`CoreWorkflowMutationWorkspaceService.updateWorkflowVisibility` /
+`CoreWorkflowResolver.updateCoreWorkflowVisibility` и `runAuditedApplicationMetadataMigration`)
+и представлений (`core.view` в `ViewService.updateOne`, `ViewResolver.updateView`,
+`ViewController.update`, `UpdateViewTool.execute` и `runAuditedApplicationMetadataMigration`),
+долговечное намерение пересчёта шар запусков (`sync_workflowRunShares` в
+`core."deferredWorkspaceMigrationAction"`) с постановкой в очередь после миграций манифеста и
+очисткой после синхронного пересчёта, а также fail-closed барьер на неаудируемые обновления
+`visibility` и `createdByUserWorkspaceId` в `WorkspaceMigrationRunnerService.executeRun`.
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log168/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log169/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

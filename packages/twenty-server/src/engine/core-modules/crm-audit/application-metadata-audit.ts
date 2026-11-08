@@ -23,6 +23,10 @@ import {
   type RoleUpdateAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
+import {
+  assertWorkflowOrViewVisibility,
+  persistWorkflowRunShareReconciliationIntent,
+} from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
 
 const TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER =
   '20202020-64aa-4b6f-b003-9c74b97cee20';
@@ -72,6 +76,8 @@ export type ApplicationMetadataAuditMappings = {
   rowLevelPermissionPredicates: Record<string, { id: string } | undefined>;
   rowLevelPermissionPredicateGroups: Record<string, { id: string } | undefined>;
   applicationVariables?: Record<string, { id: string } | undefined>;
+  workflows?: Record<string, { id: string } | undefined>;
+  views?: Record<string, { id: string } | undefined>;
 };
 
 type MigrationAction = {
@@ -82,6 +88,19 @@ type MigrationAction = {
   id?: string;
   flatEntity?: Record<string, unknown>;
 };
+
+export const isAuditedWorkflowOrViewUpdateAction = (action: {
+  type: string;
+  metadataName: string;
+  update?: Record<string, unknown>;
+}): boolean =>
+  action.type === 'update' &&
+  (action.metadataName === 'workflow' || action.metadataName === 'view') &&
+  Boolean(
+    action.update &&
+      ('createdByUserWorkspaceId' in action.update ||
+        'visibility' in action.update),
+  );
 
 export const AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES = new Set<string>([
   'role',
@@ -508,6 +527,11 @@ const projectUserApplicationVariableValue = (row: Record<string, unknown>) => ({
   value: String(row.value),
 });
 
+const projectCoreWorkflowOrView = (row: Record<string, unknown>) => ({
+  createdByUserWorkspaceId: nullableUuid(row.createdByUserWorkspaceId),
+  visibility: assertWorkflowOrViewVisibility(row.visibility),
+});
+
 type TableSnapshot = Map<string, Record<string, unknown>>;
 
 type FullMetadataSnapshot = {
@@ -539,7 +563,9 @@ const readExistingTables = async (
       to_regclass('core."fieldMetadata"') IS NOT NULL AS "fieldMetadata",
       to_regclass('core."permissionFlag"') IS NOT NULL AS "permissionFlag",
       to_regclass('core."applicationVariable"') IS NOT NULL AS "applicationVariable",
-      to_regclass('core."userApplicationVariableValue"') IS NOT NULL AS "userApplicationVariableValue"`,
+      to_regclass('core."userApplicationVariableValue"') IS NOT NULL AS "userApplicationVariableValue",
+      to_regclass('core.workflow') IS NOT NULL AS "workflow",
+      to_regclass('core.view') IS NOT NULL AS "view"`,
   );
   const existing = new Set<string>();
   for (const [key, present] of Object.entries(reg ?? {})) {
@@ -966,6 +992,102 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       'delete',
       mappings.applicationVariables ?? {},
     );
+
+    const auditedWorkflowUpdateActions = actions.filter(
+      (action) =>
+        action.metadataName === 'workflow' &&
+        isAuditedWorkflowOrViewUpdateAction(action),
+    );
+    const auditedViewUpdateActions = actions.filter(
+      (action) =>
+        action.metadataName === 'view' &&
+        isAuditedWorkflowOrViewUpdateAction(action),
+    );
+    const plannedAuditedWorkflowUpdates = new Set<string>();
+    for (const action of auditedWorkflowUpdateActions) {
+      if (mode !== 'manifest') {
+        throw new Error(
+          'Application metadata objectDelete/fieldDelete cannot mutate workflow visibility or creator',
+        );
+      }
+      if (!existingTables.has('workflow')) {
+        throw new Error(
+          'Application metadata audit table workflow is unavailable',
+        );
+      }
+      const mappedId =
+        mappings.workflows?.[uuid(action.universalIdentifier)]?.id;
+      if (!mappedId) {
+        throw new Error(
+          'Application metadata audit missing workflow update mapping',
+        );
+      }
+      plannedAuditedWorkflowUpdates.add(uuid(mappedId));
+    }
+    const plannedAuditedViewUpdates = new Set<string>();
+    for (const action of auditedViewUpdateActions) {
+      if (mode !== 'manifest') {
+        throw new Error(
+          'Application metadata objectDelete/fieldDelete cannot mutate view visibility or creator',
+        );
+      }
+      if (!existingTables.has('view')) {
+        throw new Error('Application metadata audit table view is unavailable');
+      }
+      const mappedId = mappings.views?.[uuid(action.universalIdentifier)]?.id;
+      if (!mappedId) {
+        throw new Error(
+          'Application metadata audit missing view update mapping',
+        );
+      }
+      plannedAuditedViewUpdates.add(uuid(mappedId));
+    }
+
+    const hasWorkflowTable = existingTables.has('workflow');
+    const hasViewTable = existingTables.has('view');
+    const beforeWorkflows = hasWorkflowTable
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'workflow',
+          workspaceId,
+          true,
+        )
+      : new Map<string, Record<string, unknown>>();
+    for (const wfId of plannedAuditedWorkflowUpdates) {
+      const beforeWf = beforeWorkflows.get(wfId);
+      if (
+        !beforeWf ||
+        beforeWf.deletedAt !== null ||
+        uuid(beforeWf.applicationId) !== applicationId
+      ) {
+        throw new Error(
+          'Application metadata audit cannot update missing or foreign workflow',
+        );
+      }
+    }
+
+    const beforeViews = hasViewTable
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'view',
+          workspaceId,
+          true,
+        )
+      : new Map<string, Record<string, unknown>>();
+    for (const viewId of plannedAuditedViewUpdates) {
+      const beforeVw = beforeViews.get(viewId);
+      if (
+        !beforeVw ||
+        beforeVw.deletedAt !== null ||
+        uuid(beforeVw.applicationId) !== applicationId
+      ) {
+        throw new Error(
+          'Application metadata audit cannot update missing or foreign view',
+        );
+      }
+    }
 
     if (plannedApplicationVariableDeletes.size > 0) {
       if (!existingTables.has('applicationVariable')) {
@@ -2215,6 +2337,153 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       }
     }
 
+    // 9. Verify and record audited core.workflow and core.view visibility/ownership updates
+    let expectedWorkflowsAndViewsSerialized: string | undefined;
+    const verifyWorkflowShareIntents: (() => Promise<void>)[] = [];
+    if (hasWorkflowTable || hasViewTable) {
+      const afterWorkflows = hasWorkflowTable
+        ? await readTableSnapshot(
+            runner,
+            existingTables,
+            'workflow',
+            workspaceId,
+            false,
+          )
+        : new Map<string, Record<string, unknown>>();
+      const afterViews = hasViewTable
+        ? await readTableSnapshot(
+            runner,
+            existingTables,
+            'view',
+            workspaceId,
+            false,
+          )
+        : new Map<string, Record<string, unknown>>();
+
+      for (const wfId of plannedAuditedWorkflowUpdates) {
+        const afterWf = afterWorkflows.get(wfId);
+        if (
+          !afterWf ||
+          afterWf.deletedAt !== null ||
+          uuid(afterWf.applicationId) !== applicationId
+        ) {
+          throw new Error(
+            'Application metadata workflow update removed or corrupted target workflow',
+          );
+        }
+      }
+      for (const [wfId, beforeWf] of beforeWorkflows.entries()) {
+        const afterWf = afterWorkflows.get(wfId);
+        if (!afterWf || afterWf.deletedAt !== null) continue;
+        const beforeProj = projectCoreWorkflowOrView(beforeWf);
+        const afterProj = projectCoreWorkflowOrView(afterWf);
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          if (
+            !plannedAuditedWorkflowUpdates.has(wfId) ||
+            uuid(afterWf.applicationId) !== applicationId
+          ) {
+            throw new Error(
+              'Application metadata audit detected unplanned workflow visibility or creator mutation',
+            );
+          }
+          if (
+            afterProj.visibility === 'UNLISTED' &&
+            afterProj.createdByUserWorkspaceId === null
+          ) {
+            throw new Error(
+              'Application metadata audit cannot set workflow to UNLISTED without creator',
+            );
+          }
+          const persistedIntent =
+            await persistWorkflowRunShareReconciliationIntent({
+              runner,
+              workspaceId,
+              coreWorkflowId: wfId,
+              applicationUniversalIdentifier,
+            });
+          if (persistedIntent) {
+            verifyWorkflowShareIntents.push(persistedIntent.verify);
+          }
+          recordMutation('coreWorkflow', wfId, 'update', beforeProj, afterProj);
+        }
+      }
+      for (const [wfId, afterWf] of afterWorkflows.entries()) {
+        if (!beforeWorkflows.has(wfId)) {
+          const afterProj = projectCoreWorkflowOrView(afterWf);
+          if (
+            afterProj.visibility !== 'WORKSPACE' ||
+            afterProj.createdByUserWorkspaceId !== null
+          ) {
+            throw new Error(
+              'Application metadata audit cannot create workflow with non-workspace visibility or creator',
+            );
+          }
+        }
+      }
+
+      for (const viewId of plannedAuditedViewUpdates) {
+        const afterVw = afterViews.get(viewId);
+        if (
+          !afterVw ||
+          afterVw.deletedAt !== null ||
+          uuid(afterVw.applicationId) !== applicationId
+        ) {
+          throw new Error(
+            'Application metadata view update removed or corrupted target view',
+          );
+        }
+      }
+      for (const [viewId, beforeVw] of beforeViews.entries()) {
+        const afterVw = afterViews.get(viewId);
+        if (!afterVw || afterVw.deletedAt !== null) continue;
+        const beforeProj = projectCoreWorkflowOrView(beforeVw);
+        const afterProj = projectCoreWorkflowOrView(afterVw);
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          if (
+            !plannedAuditedViewUpdates.has(viewId) ||
+            uuid(afterVw.applicationId) !== applicationId
+          ) {
+            throw new Error(
+              'Application metadata audit detected unplanned view visibility or creator mutation',
+            );
+          }
+          if (
+            afterProj.visibility === 'UNLISTED' &&
+            afterProj.createdByUserWorkspaceId === null
+          ) {
+            throw new Error(
+              'Application metadata audit cannot set view to UNLISTED without creator',
+            );
+          }
+          recordMutation('coreView', viewId, 'update', beforeProj, afterProj);
+        }
+      }
+      for (const [viewId, afterVw] of afterViews.entries()) {
+        if (!beforeViews.has(viewId)) {
+          const afterProj = projectCoreWorkflowOrView(afterVw);
+          if (
+            afterProj.visibility !== 'WORKSPACE' ||
+            afterProj.createdByUserWorkspaceId !== null
+          ) {
+            throw new Error(
+              'Application metadata audit cannot create view with non-workspace visibility or creator',
+            );
+          }
+        }
+      }
+
+      expectedWorkflowsAndViewsSerialized = canonicalAuditJson({
+        workflows: [...afterWorkflows.entries()].map(([id, row]) => [
+          id,
+          projectCoreWorkflowOrView(row),
+        ]),
+        views: [...afterViews.entries()].map(([id, row]) => [
+          id,
+          projectCoreWorkflowOrView(row),
+        ]),
+      });
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized = serializeFullSnapshot(after);
       await audit.flush();
@@ -2258,6 +2527,44 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           throw new Error(
             'Application metadata state changed during audit flush',
           );
+        }
+      }
+      if (expectedWorkflowsAndViewsSerialized !== undefined) {
+        const postFlushWorkflows = hasWorkflowTable
+          ? await readTableSnapshot(
+              runner,
+              existingTables,
+              'workflow',
+              workspaceId,
+              false,
+            )
+          : new Map<string, Record<string, unknown>>();
+        const postFlushViews = hasViewTable
+          ? await readTableSnapshot(
+              runner,
+              existingTables,
+              'view',
+              workspaceId,
+              false,
+            )
+          : new Map<string, Record<string, unknown>>();
+        const postFlushSerialized = canonicalAuditJson({
+          workflows: [...postFlushWorkflows.entries()].map(([id, row]) => [
+            id,
+            projectCoreWorkflowOrView(row),
+          ]),
+          views: [...postFlushViews.entries()].map(([id, row]) => [
+            id,
+            projectCoreWorkflowOrView(row),
+          ]),
+        });
+        if (postFlushSerialized !== expectedWorkflowsAndViewsSerialized) {
+          throw new Error(
+            'Application metadata state changed during audit flush',
+          );
+        }
+        for (const verifyIntent of verifyWorkflowShareIntents) {
+          await verifyIntent();
         }
       }
     }

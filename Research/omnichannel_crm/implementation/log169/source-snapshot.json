@@ -1,0 +1,16 @@
+{
+  "baseCommit": "bde742722b4edeb2ce396cb71ef2ef7416ebb521",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/application-metadata-audit.ts": "1f277a5528997781c705d58fa2155f8c54caac3b29981cb5b1d672d1fd459535",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/core-workflow-and-view-audit.ts": "a33a8b8d97ea3cc0319da95ca519662f6f025ffd2dd57a89848a3d7b17fc8c20",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "d65e2170760d6afb14f65cf3726a466a0eb26f86034605baa7ff4e778fb0b04d",
+    "packages/twenty-server/src/engine/core-modules/workflow/resolvers/core-workflow.resolver.ts": "48d06f27e14450e4402a39e304be5e1bee2e014507c5ef450be7bb6fd28322c4",
+    "packages/twenty-server/src/engine/core-modules/workflow/services/core-workflow-mutation.workspace-service.ts": "24bff5160f0f1e842074e87a742e8da74ebc8aae6a47fc9d1bb6a40c56905ddc",
+    "packages/twenty-server/src/engine/metadata-modules/view/controllers/view.controller.ts": "d67c703a404d6a97ecb9deae0fa2ab4775d2392e0f2031ab8e758764563b961a",
+    "packages/twenty-server/src/engine/metadata-modules/view/resolvers/view.resolver.ts": "9aec7f38ac495bbe7ba254823981a17d45b283943a7aa671fb5e7c5356d236a8",
+    "packages/twenty-server/src/engine/metadata-modules/view/services/view.service.ts": "208188865d0208b09484f87f0037e4110deac84b6e72b57665f68075e1b81929",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts": "3a2e0b19bb9024898b3fb6bcc9ed757b0372847a53418aa3aebef30f64b70901",
+    "packages/twenty-server/test/fork-migration/crm-audit-core-workflow-and-view.postgres-spec.ts": "48338d5a2881cd2338a8cf72f4c534d638e555fe36a477f502b8a417f678240c"
+  },
+  "uploadedSourceHashesVerified": true
+}

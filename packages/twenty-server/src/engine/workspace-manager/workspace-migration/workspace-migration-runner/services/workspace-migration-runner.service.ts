@@ -13,9 +13,14 @@ import {
   AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES,
   AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES,
   getApplicationMetadataAudit,
+  isAuditedWorkflowOrViewUpdateAction,
   runAuditedApplicationMetadataMigration,
   type ApplicationMetadataAuditMappings,
 } from 'src/engine/core-modules/crm-audit/application-metadata-audit';
+import {
+  getCoreViewUpdateAudit,
+  runAuditedCoreViewUpdate,
+} from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
 import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
 import {
   getRoleAssignmentAudit,
@@ -419,6 +424,7 @@ export class WorkspaceMigrationRunnerService {
     const permissionAudit = getRolePermissionAudit(workspaceId);
     const apiKeyCreateAudit = getApiKeyCreateAudit(workspaceId);
     const applicationMetadataAudit = getApplicationMetadataAudit(workspaceId);
+    const coreViewUpdateAudit = getCoreViewUpdateAudit(workspaceId);
     if (
       [
         roleAudit,
@@ -426,10 +432,17 @@ export class WorkspaceMigrationRunnerService {
         permissionAudit,
         apiKeyCreateAudit,
         applicationMetadataAudit,
+        coreViewUpdateAudit,
       ].filter(Boolean).length > 1
     )
       throw new Error('Conflicting metadata audit owners');
-    if (roleAudit || assignmentAudit || permissionAudit || apiKeyCreateAudit) {
+    if (
+      roleAudit ||
+      assignmentAudit ||
+      permissionAudit ||
+      apiKeyCreateAudit ||
+      coreViewUpdateAudit
+    ) {
       try {
         const mappings = {
           application: flatApplication,
@@ -461,6 +474,7 @@ export class WorkspaceMigrationRunnerService {
           rowLevelPermissionPredicateGroups:
             allFlatEntityMaps.flatRowLevelPermissionPredicateGroupMaps
               ?.byUniversalIdentifier ?? {},
+          views: allFlatEntityMaps.flatViewMaps?.byUniversalIdentifier ?? {},
         };
         const execute = async (queryRunner: QueryRunner) => {
           const metadataEvents: MetadataEvent[] = [];
@@ -548,13 +562,21 @@ export class WorkspaceMigrationRunnerService {
                   mappings,
                   execute,
                 )
-              : await runAuditedApiKeyCreate(
-                  this.coreDataSource,
-                  apiKeyCreateAudit!,
-                  actions,
-                  mappings,
-                  execute,
-                );
+              : coreViewUpdateAudit
+                ? await runAuditedCoreViewUpdate(
+                    this.coreDataSource,
+                    coreViewUpdateAudit,
+                    actions as never,
+                    mappings,
+                    execute,
+                  )
+                : await runAuditedApiKeyCreate(
+                    this.coreDataSource,
+                    apiKeyCreateAudit!,
+                    actions,
+                    mappings,
+                    execute,
+                  );
       } finally {
         // A lost COMMIT acknowledgement can still have changed permissions.
         try {
@@ -603,9 +625,17 @@ export class WorkspaceMigrationRunnerService {
         applicationVariables:
           allFlatEntityMaps.flatApplicationVariableMaps
             ?.byUniversalIdentifier ?? {},
+        workflows:
+          allFlatEntityMaps.flatWorkflowMaps?.byUniversalIdentifier ?? {},
+        views: allFlatEntityMaps.flatViewMaps?.byUniversalIdentifier ?? {},
       };
       const allMetadataEvents: MetadataEvent[] = [];
       const allDeferredActions: DeferredWorkspaceMigrationAction[] = [];
+      const hasAuditedWorkflowVisibilityUpdate = actions.some(
+        (action) =>
+          action.metadataName === 'workflow' &&
+          isAuditedWorkflowOrViewUpdateAction(action as never),
+      );
       const searchFieldMetadatasByTsVectorFieldIdAccessor =
         createSearchFieldMetadatasByTsVectorFieldIdAccessor(
           () => allFlatEntityMaps.flatSearchFieldMetadataMaps,
@@ -678,6 +708,17 @@ export class WorkspaceMigrationRunnerService {
               },
             );
           }
+        } else if (hasAuditedWorkflowVisibilityUpdate) {
+          try {
+            await this.deferredWorkspaceMigrationActionRunnerService.enqueue?.(
+              workspaceId,
+            );
+          } catch (enqueueError) {
+            this.logger.error(
+              `Deferred action enqueue failed after application metadata migration error: ${enqueueError}`,
+              'Runner',
+            );
+          }
         }
         try {
           await this.invalidateCache({
@@ -721,6 +762,12 @@ export class WorkspaceMigrationRunnerService {
         );
       }
 
+      if (hasAuditedWorkflowVisibilityUpdate) {
+        await this.deferredWorkspaceMigrationActionRunnerService.enqueue?.(
+          workspaceId,
+        );
+      }
+
       await this.deferredWorkspaceMigrationActionRunnerService.dispatchAfterCommit(
         {
           deferredActions: allDeferredActions,
@@ -745,7 +792,8 @@ export class WorkspaceMigrationRunnerService {
           (action.type === 'delete' &&
             AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES.has(
               action.metadataName,
-            )),
+            )) ||
+          isAuditedWorkflowOrViewUpdateAction(action as never),
       )
     ) {
       throw new Error(

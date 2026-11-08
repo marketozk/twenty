@@ -94,8 +94,14 @@ const CATALOG: Record<
     ],
     redacted: ['name', 'link', 'icon', 'color', 'position'],
   },
-  coreWorkflow: { values: ['createdByUserWorkspaceId'], redacted: [] },
-  coreView: { values: ['createdByUserWorkspaceId'], redacted: [] },
+  coreWorkflow: {
+    values: ['createdByUserWorkspaceId', 'visibility'],
+    redacted: [],
+  },
+  coreView: {
+    values: ['createdByUserWorkspaceId', 'visibility'],
+    redacted: [],
+  },
   workspace: { values: ['defaultRoleId'], redacted: [] },
   application: { values: ['defaultRoleId'], redacted: [] },
   roleTarget: {

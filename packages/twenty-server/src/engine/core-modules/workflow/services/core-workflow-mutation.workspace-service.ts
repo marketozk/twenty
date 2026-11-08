@@ -8,11 +8,20 @@ import { findFlatEntityByIdInFlatEntityMapsOrThrow } from 'src/engine/metadata-m
 import { WorkspaceMigrationBuilderException } from 'src/engine/workspace-manager/workspace-migration/exceptions/workspace-migration-builder-exception';
 import { WorkspaceMigrationValidateBuildAndRunService } from 'src/engine/workspace-manager/workspace-migration/services/workspace-migration-validate-build-and-run-service';
 
-import { Equal, In, IsNull, Or } from 'typeorm';
+import { DataSource, Equal, In, IsNull, Or } from 'typeorm';
 import { msg } from '@lingui/core/macro';
 import { WorkflowVisibility } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 import { v4 as uuidv4 } from 'uuid';
+
+import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
+import {
+  captureCoreWorkflowVisibilityAudit,
+  completeWorkflowRunShareReconciliationIntent,
+  runAuditedCoreWorkflowVisibilityUpdate,
+  type CoreWorkflowAndViewAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 
 import { type CoreWorkflowDTO } from 'src/engine/core-modules/workflow/dtos/core-workflow.dto';
 import { type DeletedCoreWorkflowDTO } from 'src/engine/core-modules/workflow/dtos/deleted-core-workflow.dto';
@@ -714,56 +723,154 @@ export class CoreWorkflowMutationWorkspaceService {
     userWorkspaceId,
     coreWorkflowId,
     visibility,
+    auditIdentity,
   }: UpdateCoreWorkflowVisibilityInput & {
     workspaceId: string;
     userWorkspaceId: string;
+    auditIdentity?: CoreWorkflowAndViewAuditIdentity;
   }): Promise<CoreWorkflowDTO | null> {
+    const capturedWorkspaceId = workspaceId;
+    const capturedUserWorkspaceId = userWorkspaceId;
+    const capturedCoreWorkflowId = coreWorkflowId;
+    const capturedVisibility = visibility;
+    const getAudit = captureCoreWorkflowVisibilityAudit({
+      workspaceId: capturedWorkspaceId,
+      coreWorkflowId: capturedCoreWorkflowId,
+      userWorkspaceId: capturedUserWorkspaceId,
+      visibility: capturedVisibility,
+      auditIdentity,
+    });
+    const auditRequest = getAudit();
+
     await this.coreWorkflowAccessService.assertCoreWorkflowsAreEditableOrThrow({
-      workspaceId,
-      userWorkspaceId,
-      coreWorkflowIds: [coreWorkflowId],
+      workspaceId: capturedWorkspaceId,
+      userWorkspaceId: capturedUserWorkspaceId,
+      coreWorkflowIds: [capturedCoreWorkflowId],
     });
 
-    // ownership is checked in the UPDATE's WHERE, not a prior read, so two concurrent claims of an ownerless workflow cannot both win;
-    // a workspace-visible workflow is already editable by every member, so claiming one grants no new access
-    const claimResult =
+    const dataSource =
+      (
+        this.coreWorkflowRepository as unknown as {
+          repository?: { manager?: { connection?: DataSource } };
+          manager?: { connection?: DataSource };
+        }
+      ).repository?.manager?.connection ??
+      (
+        this.coreWorkflowRepository as unknown as {
+          manager?: { connection?: DataSource };
+        }
+      ).manager?.connection;
+
+    const notFoundSentinel = Symbol('coreWorkflowNotFound');
+    const noOpSentinel = Symbol('coreWorkflowNoOp');
+    let committedIntentId: string | undefined;
+
+    try {
       await this.workflowRunRecordShareService.updateAccessThenSyncRuns({
-        workspaceId,
-        coreWorkflowId,
-        updateAccess: () =>
-          this.coreWorkflowRepository.update(
-            workspaceId,
-            {
-              id: coreWorkflowId,
-              createdByUserWorkspaceId: Or(IsNull(), Equal(userWorkspaceId)),
+        workspaceId: capturedWorkspaceId,
+        coreWorkflowId: capturedCoreWorkflowId,
+        updateAccess: async () => {
+          const outcome = await runAuditedCoreWorkflowVisibilityUpdate(
+            dataSource,
+            auditRequest,
+            async (runner) => {
+              if (
+                typeof this.coreWorkflowRepository.withManager !== 'function'
+              ) {
+                throw new Error(
+                  'Core workflow visibility update requires transactional repository withManager',
+                );
+              }
+              const scopedRepository = this.coreWorkflowRepository.withManager(
+                runner.manager,
+              );
+              await scopedRepository.update(
+                capturedWorkspaceId,
+                {
+                  id: capturedCoreWorkflowId,
+                  createdByUserWorkspaceId: Or(
+                    IsNull(),
+                    Equal(capturedUserWorkspaceId),
+                  ),
+                },
+                {
+                  visibility: capturedVisibility,
+                  createdByUserWorkspaceId: capturedUserWorkspaceId,
+                },
+              );
             },
-            { visibility, createdByUserWorkspaceId: userWorkspaceId },
-          ),
+          );
+
+          if (outcome.status === 'not_found') {
+            throw notFoundSentinel;
+          }
+
+          if (outcome.status === 'forbidden') {
+            throw new WorkflowQueryValidationException(
+              `Core workflow '${capturedCoreWorkflowId}' can only have its visibility changed by its creator`,
+              WorkflowQueryValidationExceptionCode.FORBIDDEN,
+              {
+                userFriendlyMessage: msg`Only the person who created this workflow can change who sees it`,
+              },
+            );
+          }
+
+          if (!outcome.changed) {
+            throw noOpSentinel;
+          }
+
+          committedIntentId = outcome.intentId;
+        },
       });
-
-    if (claimResult.affected === 0) {
-      const coreWorkflowExists = await this.coreWorkflowRepository.exists(
-        workspaceId,
-        { where: { id: coreWorkflowId } },
+      await completeWorkflowRunShareReconciliationIntent(
+        dataSource,
+        capturedWorkspaceId,
+        committedIntentId,
       );
-
-      if (!coreWorkflowExists) {
+    } catch (error) {
+      if (error === notFoundSentinel) {
         return null;
       }
-
-      throw new WorkflowQueryValidationException(
-        `Core workflow '${coreWorkflowId}' can only have its visibility changed by its creator`,
-        WorkflowQueryValidationExceptionCode.FORBIDDEN,
-        {
-          userFriendlyMessage: msg`Only the person who created this workflow can change who sees it`,
-        },
-      );
+      if (error === noOpSentinel) {
+        return this.coreWorkflowListService.findOneById({
+          workspaceId: capturedWorkspaceId,
+          userWorkspaceId: capturedUserWorkspaceId,
+          coreWorkflowId: capturedCoreWorkflowId,
+        });
+      }
+      if (
+        error instanceof NativeTransactionOutcomeUnknownError ||
+        error instanceof CoreAuditPostCommitError
+      ) {
+        try {
+          await this.workflowRunRecordShareService.syncRunsOfCoreWorkflows({
+            workspaceId: capturedWorkspaceId,
+            coreWorkflowIds: [capturedCoreWorkflowId],
+          });
+        } catch (syncError) {
+          this.logger.error(
+            `Failed to sync workflow run shares after uncertain commit for workflow ${capturedCoreWorkflowId}: ${syncError}`,
+          );
+        }
+      }
+      throw error;
+    } finally {
+      try {
+        await this.flatEntityMapsCacheService?.invalidateFlatEntityMaps?.({
+          workspaceId: capturedWorkspaceId,
+          flatMapsKeys: ['flatWorkflowMaps'],
+        });
+      } catch (cacheError) {
+        this.logger.error(
+          `Failed to invalidate flatWorkflowMaps after visibility update for workspace ${capturedWorkspaceId}: ${cacheError}`,
+        );
+      }
     }
 
     return this.coreWorkflowListService.findOneById({
-      workspaceId,
-      userWorkspaceId,
-      coreWorkflowId,
+      workspaceId: capturedWorkspaceId,
+      userWorkspaceId: capturedUserWorkspaceId,
+      coreWorkflowId: capturedCoreWorkflowId,
     });
   }
 }

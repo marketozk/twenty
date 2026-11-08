@@ -170,6 +170,7 @@ export class ViewController {
     @AuthWorkspace() workspace: WorkspaceEntity,
     @AuthUserWorkspaceId({ allowUndefined: true })
     userWorkspaceId: string | undefined,
+    @Req() request?: AuthenticatedRequest,
   ): Promise<ViewDTO> {
     const updatedView = await this.viewService.updateOne({
       updateViewInput: {
@@ -178,6 +179,7 @@ export class ViewController {
       },
       workspaceId: workspace.id,
       userWorkspaceId,
+      auditIdentity: request as never,
     });
 
     const processedViews = await this.processViewsWithTemplates(

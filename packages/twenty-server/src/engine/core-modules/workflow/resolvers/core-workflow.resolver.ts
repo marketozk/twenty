@@ -1,9 +1,10 @@
 import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
-import { Args, Mutation, Query } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query } from '@nestjs/graphql';
 
 import { msg } from '@lingui/core/macro';
 import { PermissionFlagType } from 'twenty-shared/constants';
 
+import { type CoreWorkflowAndViewAuditIdentity } from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
 import { CoreResolver } from 'src/engine/api/graphql/graphql-config/decorators/core-resolver.decorator';
 import { PreventNestToAutoLogGraphqlErrorsFilter } from 'src/engine/core-modules/graphql/filters/prevent-nest-to-auto-log-graphql-errors.filter';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
@@ -144,11 +145,13 @@ export class CoreWorkflowResolver {
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
     @AuthUserWorkspaceId() userWorkspaceId: string,
     @Args('input') input: UpdateCoreWorkflowVisibilityInput,
+    @Context() context?: { req?: CoreWorkflowAndViewAuditIdentity },
   ): Promise<CoreWorkflowDTO | null> {
     return this.coreWorkflowMutationWorkspaceService.updateWorkflowVisibility({
       workspaceId,
       userWorkspaceId,
       ...input,
+      auditIdentity: context?.req,
     });
   }
 
@@ -168,9 +171,8 @@ export class CoreWorkflowResolver {
   )
   async duplicateCoreWorkflow(
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
-    @AuthWorkspaceMember() workspaceMember:
-      | WorkspaceMemberWorkspaceEntity
-      | undefined,
+    @AuthWorkspaceMember()
+    workspaceMember: WorkspaceMemberWorkspaceEntity | undefined,
     @AuthApplication({ allowUndefined: true })
     application: FlatApplication | undefined,
     @AuthUserWorkspaceId({ allowUndefined: true })
@@ -207,9 +209,8 @@ export class CoreWorkflowResolver {
   )
   async createCoreWorkflow(
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
-    @AuthWorkspaceMember() workspaceMember:
-      | WorkspaceMemberWorkspaceEntity
-      | undefined,
+    @AuthWorkspaceMember()
+    workspaceMember: WorkspaceMemberWorkspaceEntity | undefined,
     @AuthApplication({ allowUndefined: true })
     application: FlatApplication | undefined,
     @AuthUserWorkspaceId({ allowUndefined: true })

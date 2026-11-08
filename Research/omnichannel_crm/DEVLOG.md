@@ -4899,8 +4899,47 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 отправлен в GitHub, ref подтверждён через API. Описание ROB765, комментарий
 0134854c-2fa2-47f2-83db-81106125452f и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log168/publication.json).
-Следующий участок - закрытие оставшихся открытых границ ROB765.
+Следующий участок - аудит смены владельца и видимости `coreWorkflow` и `coreView` и долговечное намерение `sync_workflowRunShares` по LOG169.
 
+## LOG169 - аудит смены владельца и видимости `coreWorkflow` и `coreView` и долговечное намерение `sync_workflowRunShares`
 
+08.11.2026 зафиксированы [дизайн](implementation/log169/design.md),
+[независимое ревью решения](implementation/log169/design-review.md) и
+[план проверок](implementation/log169/test-research.md).
+Добавлен модуль `core-workflow-and-view-audit.ts`
+(`captureCoreWorkflowVisibilityAudit`, `runAuditedCoreWorkflowVisibilityUpdate`,
+`persistWorkflowRunShareReconciliationIntent`, `completeWorkflowRunShareReconciliationIntent`,
+`captureCoreViewUpdateAudit`, `withCoreViewUpdateAudit`, `runAuditedCoreViewUpdate`,
+регистрация в `registerMetadataAuditScopeCheck`), а в `crm-audit-transaction-context.ts` в
+`CATALOG.coreWorkflow.values` и `CATALOG.coreView.values` добавлено поле `'visibility'`
+(`['createdByUserWorkspaceId', 'visibility']`).
+Подключены все точки обновления владельца (`createdByUserWorkspaceId`) и видимости (`visibility`)
+рабочих процессов (`core.workflow`) и представлений (`core.view`):
+`CoreWorkflowMutationWorkspaceService.updateWorkflowVisibility`
+(`CoreWorkflowResolver.updateCoreWorkflowVisibility`), `ViewService.updateOne`
+(`ViewResolver.updateView`, `ViewController.update`, `UpdateViewTool.execute`),
+`runAuditedApplicationMetadataMigration` (`application-metadata-audit.ts`) и
+`WorkspaceMigrationRunnerService.executeRun` с fail-closed барьером
+(`isAuditedWorkflowOrViewUpdateAction`).
+Учтены все замечания ревью дизайна и кода (M1-M5, T1-T2): привязка субъекта `workspaceMember` и
+`coreUser` к `userWorkspace.userId` с проверкой активного `workspaceMember` в схеме рабочего
+пространства (M1), безусловный снимок `core.workflow` и `core.view` в миграциях приложений и
+отказ при незапланированных изменениях `visibility` или `createdByUserWorkspaceId` (M2),
+очистка долговечного намерения `sync_workflowRunShares` после успешного синхронного пересчёта шар
+и постановка в очередь `deferredWorkspaceMigrationActionRunnerService.enqueue(workspaceId)` после
+миграций манифеста (M3), проверка прав владельца представления в БД под блокировкой (M4),
+требование транзакционного `coreWorkflowRepository.withManager` (M5), пропуск пересчёта шар на
+идемпотентном повторе без изменений (T1), инвалидация кэша `flatWorkflowMaps` в `finally` и
+сохранение обратной совместимости с `membership-cleanup-audit.ts`.
 
+08.11.2026 проверки LOG169 завершены. 3144 tests/114 suites PASS (692.176s). 385 targeted/17 PostgreSQL suites PASS (31.757s), 6 новых PostgreSQL случаев. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 474/476 roots, baseline 271 / current 271 diagnostics, 0 новых/changed-code. Совпали 10 local/remote source hashes.
 
+Независимое ревью кода подтвердило полноту закрытия всех входных точек `coreWorkflow` и `coreView`
+(`createdByUserWorkspaceId`, `visibility`), устранение замечаний M1-M5 и T1-T2, корректную
+обработку `NativeTransactionOutcomeUnknownError` и `CoreAuditPostCommitError`, долговечное
+намерение `sync_workflowRunShares` и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log169/results.json), [ревью](implementation/log169/review.md),
+[следующий участок](implementation/log169/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

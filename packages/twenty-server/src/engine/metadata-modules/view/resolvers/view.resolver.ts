@@ -16,6 +16,7 @@ import {
 } from 'twenty-shared/i18n';
 import { isDefined } from 'twenty-shared/utils';
 
+import { type CoreWorkflowAndViewAuditIdentity } from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
 import { type I18nContext } from 'src/engine/core-modules/i18n/types/i18n-context.type';
@@ -209,11 +210,13 @@ export class ViewResolver {
     @AuthWorkspace() workspace: WorkspaceEntity,
     @AuthUserWorkspaceId({ allowUndefined: true })
     userWorkspaceId: string | undefined,
+    @Context() context?: { req?: CoreWorkflowAndViewAuditIdentity },
   ): Promise<ViewDTO> {
     return await this.viewService.updateOne({
       updateViewInput: { ...input, id },
       workspaceId: workspace.id,
       userWorkspaceId,
+      auditIdentity: context?.req,
     });
   }
 

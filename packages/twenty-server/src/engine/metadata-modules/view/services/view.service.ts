@@ -4,6 +4,11 @@ import { ViewType } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
+import {
+  captureCoreViewUpdateAudit,
+  withCoreViewUpdateAudit,
+  type CoreWorkflowAndViewAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { findFlatEntityByIdInFlatEntityMapsOrThrow } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps-or-throw.util';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
@@ -133,15 +138,35 @@ export class ViewService {
     updateViewInput,
     workspaceId,
     userWorkspaceId,
+    auditIdentity,
   }: {
     updateViewInput: UpdateViewInput;
     workspaceId: string;
     userWorkspaceId?: string;
+    auditIdentity?: CoreWorkflowAndViewAuditIdentity;
   }): Promise<ViewDTO> {
+    const capturedUpdateViewInput: UpdateViewInput = { ...updateViewInput };
+    const capturedWorkspaceId = workspaceId;
+    const capturedUserWorkspaceId = userWorkspaceId;
+    const getAudit =
+      capturedUpdateViewInput.visibility !== undefined ||
+      auditIdentity !== undefined
+        ? captureCoreViewUpdateAudit({
+            workspaceId: capturedWorkspaceId,
+            viewId: capturedUpdateViewInput.id,
+            userWorkspaceId: capturedUserWorkspaceId,
+            auditIdentity,
+          })
+        : undefined;
+    const prevalidatedAudit =
+      capturedUpdateViewInput.visibility !== undefined
+        ? getAudit!()
+        : undefined;
+
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         {
-          workspaceId,
+          workspaceId: capturedWorkspaceId,
         },
       );
 
@@ -151,7 +176,7 @@ export class ViewService {
       flatViewGroupMaps: existingFlatViewGroupMaps,
     } = await this.flatEntityMapsCacheService.getOrRecomputeManyOrAllFlatEntityMaps(
       {
-        workspaceId,
+        workspaceId: capturedWorkspaceId,
         flatMapsKeys: [
           'flatViewMaps',
           'flatFieldMetadataMaps',
@@ -162,19 +187,30 @@ export class ViewService {
 
     const { flatViewToUpdate, flatViewGroupsToDelete, flatViewGroupsToCreate } =
       fromUpdateViewInputToFlatViewToUpdateOrThrow({
-        updateViewInput,
+        updateViewInput: capturedUpdateViewInput,
         flatViewMaps: existingFlatViewMaps,
         flatViewGroupMaps: existingFlatViewGroupMaps,
         flatFieldMetadataMaps: existingFlatFieldMetadataMaps,
-        userWorkspaceId,
+        userWorkspaceId: capturedUserWorkspaceId,
         callerApplicationUniversalIdentifier:
           workspaceCustomFlatApplication.universalIdentifier,
         workspaceCustomApplicationUniversalIdentifier:
           workspaceCustomFlatApplication.universalIdentifier,
       });
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+    const existingFlatView = findFlatEntityByIdInFlatEntityMaps({
+      flatEntityId: capturedUpdateViewInput.id,
+      flatEntityMaps: existingFlatViewMaps,
+    });
+    const requiresViewAudit =
+      capturedUpdateViewInput.visibility !== undefined ||
+      (isDefined(existingFlatView) &&
+        (flatViewToUpdate.visibility !== existingFlatView.visibility ||
+          flatViewToUpdate.createdByUserWorkspaceId !==
+            existingFlatView.createdByUserWorkspaceId));
+
+    const runMigration = () =>
+      this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
         {
           allFlatEntityOperationByMetadataName: {
             view: {
@@ -188,12 +224,27 @@ export class ViewService {
               flatEntityToUpdate: [],
             },
           },
-          workspaceId,
+          workspaceId: capturedWorkspaceId,
           isSystemBuild: false,
           applicationUniversalIdentifier:
             workspaceCustomFlatApplication.universalIdentifier,
         },
       );
+
+    const validateAndBuildResult = requiresViewAudit
+      ? await withCoreViewUpdateAudit(
+          prevalidatedAudit ??
+            (getAudit
+              ? getAudit()
+              : captureCoreViewUpdateAudit({
+                  workspaceId: capturedWorkspaceId,
+                  viewId: capturedUpdateViewInput.id,
+                  userWorkspaceId: capturedUserWorkspaceId,
+                  auditIdentity,
+                })()),
+          runMigration,
+        )
+      : await runMigration();
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -205,14 +256,14 @@ export class ViewService {
     const { flatViewMaps: recomputedExistingFlatViewMaps } =
       await this.flatEntityMapsCacheService.getOrRecomputeManyOrAllFlatEntityMaps(
         {
-          workspaceId,
+          workspaceId: capturedWorkspaceId,
           flatMapsKeys: ['flatViewMaps'],
         },
       );
 
     return fromFlatViewToViewDto(
       findFlatEntityByIdInFlatEntityMapsOrThrow({
-        flatEntityId: updateViewInput.id,
+        flatEntityId: capturedUpdateViewInput.id,
         flatEntityMaps: recomputedExistingFlatViewMaps,
       }),
     );
