@@ -71,6 +71,7 @@ export type ApplicationMetadataAuditMappings = {
   fieldPermissions: Record<string, { id: string } | undefined>;
   rowLevelPermissionPredicates: Record<string, { id: string } | undefined>;
   rowLevelPermissionPredicateGroups: Record<string, { id: string } | undefined>;
+  applicationVariables?: Record<string, { id: string } | undefined>;
 };
 
 type MigrationAction = {
@@ -98,6 +99,7 @@ export const AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES =
     'fieldMetadata',
     'permissionFlag',
     'agent',
+    'applicationVariable',
   ]);
 
 const ROLE_BOOLEAN_FIELDS = [
@@ -499,6 +501,13 @@ const projectPredicate = (row: Record<string, unknown>) => ({
   deletedAt: row.deletedAt === undefined ? null : row.deletedAt,
 });
 
+const projectUserApplicationVariableValue = (row: Record<string, unknown>) => ({
+  userWorkspaceId: uuid(row.userWorkspaceId),
+  applicationVariableId: uuid(row.applicationVariableId),
+  scope: String(row.scope),
+  value: String(row.value),
+});
+
 type TableSnapshot = Map<string, Record<string, unknown>>;
 
 type FullMetadataSnapshot = {
@@ -509,6 +518,8 @@ type FullMetadataSnapshot = {
   fieldPermissions: TableSnapshot;
   predicateGroups: TableSnapshot;
   predicates: TableSnapshot;
+  applicationVariables: TableSnapshot;
+  userApplicationVariableValues: TableSnapshot;
 };
 
 const readExistingTables = async (
@@ -526,7 +537,9 @@ const readExistingTables = async (
       to_regclass('core.agent') IS NOT NULL AS "agent",
       to_regclass('core."objectMetadata"') IS NOT NULL AS "objectMetadata",
       to_regclass('core."fieldMetadata"') IS NOT NULL AS "fieldMetadata",
-      to_regclass('core."permissionFlag"') IS NOT NULL AS "permissionFlag"`,
+      to_regclass('core."permissionFlag"') IS NOT NULL AS "permissionFlag",
+      to_regclass('core."applicationVariable"') IS NOT NULL AS "applicationVariable",
+      to_regclass('core."userApplicationVariableValue"') IS NOT NULL AS "userApplicationVariableValue"`,
   );
   const existing = new Set<string>();
   for (const [key, present] of Object.entries(reg ?? {})) {
@@ -609,6 +622,20 @@ const readFullMetadataSnapshot = async (
     runner,
     existingTables,
     'rowLevelPermissionPredicate',
+    workspaceId,
+    lock,
+  ),
+  applicationVariables: await readTableSnapshot(
+    runner,
+    existingTables,
+    'applicationVariable',
+    workspaceId,
+    lock,
+  ),
+  userApplicationVariableValues: await readTableSnapshot(
+    runner,
+    existingTables,
+    'userApplicationVariableValue',
     workspaceId,
     lock,
   ),
@@ -933,6 +960,39 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       'delete',
       mappings.permissionFlags,
     );
+    const plannedApplicationVariableDeletes = resolveMappedIds(
+      actions,
+      'applicationVariable',
+      'delete',
+      mappings.applicationVariables ?? {},
+    );
+
+    if (plannedApplicationVariableDeletes.size > 0) {
+      if (!existingTables.has('applicationVariable')) {
+        throw new Error(
+          'Application metadata audit table applicationVariable is unavailable',
+        );
+      }
+      for (const varId of plannedApplicationVariableDeletes) {
+        const beforeVar = before.applicationVariables.get(varId);
+        if (!beforeVar || uuid(beforeVar.applicationId) !== applicationId) {
+          throw new Error(
+            'Application metadata audit cannot delete missing or foreign applicationVariable',
+          );
+        }
+      }
+      if (existingTables.has('userApplicationVariableValue')) {
+        const [foreignVarVal] = await runner.query(
+          `SELECT id FROM core."userApplicationVariableValue" WHERE "applicationVariableId"=ANY($1::uuid[]) AND "workspaceId"<>$2 LIMIT 1`,
+          [[...plannedApplicationVariableDeletes], workspaceId],
+        );
+        if (foreignVarVal) {
+          throw new Error(
+            'Application metadata audit detected cross-workspace userApplicationVariableValue',
+          );
+        }
+      }
+    }
 
     if (mode === 'objectDelete') {
       const expectedIds = request.expectedDeletedObjectIds ?? [];
@@ -951,7 +1011,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           action.metadataName === 'roleTarget' ||
           action.metadataName === 'agent' ||
           action.metadataName === 'permissionFlag' ||
-          action.metadataName === 'rolePermissionFlag'
+          action.metadataName === 'rolePermissionFlag' ||
+          action.metadataName === 'applicationVariable'
         ) {
           throw new Error(
             'Application metadata objectDelete cannot mutate roles, targets, agents, or permission flags',
@@ -1073,7 +1134,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           action.metadataName === 'rolePermissionFlag' ||
           action.metadataName === 'objectMetadata' ||
           action.metadataName === 'objectPermission' ||
-          action.metadataName === 'rowLevelPermissionPredicateGroup'
+          action.metadataName === 'rowLevelPermissionPredicateGroup' ||
+          action.metadataName === 'applicationVariable'
         ) {
           throw new Error(
             'Application metadata fieldDelete cannot mutate roles, objects, object permissions, or predicate groups',
@@ -2096,6 +2158,63 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       }
     }
 
+    // 8. Verify core."applicationVariable" and verify/record core."userApplicationVariableValue"
+    for (const varId of plannedApplicationVariableDeletes) {
+      if (after.applicationVariables.has(varId)) {
+        throw new Error(
+          'Application metadata applicationVariable delete did not remove row',
+        );
+      }
+    }
+    for (const [varId] of before.applicationVariables.entries()) {
+      if (
+        !after.applicationVariables.has(varId) &&
+        !plannedApplicationVariableDeletes.has(varId)
+      ) {
+        throw new Error(
+          'Application metadata audit detected unexpected applicationVariable deletion',
+        );
+      }
+    }
+    for (const [
+      id,
+      beforeRow,
+    ] of before.userApplicationVariableValues.entries()) {
+      const afterRow = after.userApplicationVariableValues.get(id);
+      if (!afterRow) {
+        if (
+          !plannedApplicationVariableDeletes.has(
+            uuid(beforeRow.applicationVariableId),
+          )
+        ) {
+          throw new Error(
+            'Application metadata audit detected unexpected userApplicationVariableValue deletion',
+          );
+        }
+        recordMutation(
+          'userApplicationVariableValue',
+          id,
+          'delete',
+          projectUserApplicationVariableValue(beforeRow),
+          null,
+        );
+      } else if (
+        canonicalAuditJson(scalarWithoutTimestamps(beforeRow)) !==
+        canonicalAuditJson(scalarWithoutTimestamps(afterRow))
+      ) {
+        throw new Error(
+          'Application metadata audit detected unexpected userApplicationVariableValue mutation',
+        );
+      }
+    }
+    for (const [id] of after.userApplicationVariableValues.entries()) {
+      if (!before.userApplicationVariableValues.has(id)) {
+        throw new Error(
+          'Application metadata audit detected unexpected userApplicationVariableValue creation',
+        );
+      }
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized = serializeFullSnapshot(after);
       await audit.flush();
@@ -2251,6 +2370,21 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
   ) {
     const [depRow] = await runner.query(
       `SELECT rf.id FROM core."rolePermissionFlag" rf INNER JOIN core."permissionFlag" pf ON pf.id=rf."permissionFlagId" WHERE rf."workspaceId"=$1 AND pf."workspaceId"=$1 AND pf."applicationId"=$2 LIMIT 1`,
+      [normalizedWorkspaceId, normalizedApplicationId],
+    );
+    if (depRow) {
+      throw new Error(
+        'Application delete requires prior audited removal of role and permission metadata',
+      );
+    }
+  }
+
+  if (
+    existingTables.has('applicationVariable') &&
+    existingTables.has('userApplicationVariableValue')
+  ) {
+    const [depRow] = await runner.query(
+      `SELECT uavv.id FROM core."userApplicationVariableValue" uavv INNER JOIN core."applicationVariable" av ON av.id=uavv."applicationVariableId" WHERE av."workspaceId"=$1 AND av."applicationId"=$2 LIMIT 1`,
       [normalizedWorkspaceId, normalizedApplicationId],
     );
     if (depRow) {

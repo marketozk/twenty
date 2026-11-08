@@ -600,6 +600,9 @@ export class WorkspaceMigrationRunnerService {
         rowLevelPermissionPredicateGroups:
           allFlatEntityMaps.flatRowLevelPermissionPredicateGroupMaps
             ?.byUniversalIdentifier ?? {},
+        applicationVariables:
+          allFlatEntityMaps.flatApplicationVariableMaps
+            ?.byUniversalIdentifier ?? {},
       };
       const allMetadataEvents: MetadataEvent[] = [];
       const allDeferredActions: DeferredWorkspaceMigrationAction[] = [];

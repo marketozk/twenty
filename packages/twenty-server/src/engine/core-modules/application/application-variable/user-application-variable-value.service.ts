@@ -1,7 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
 
 import { isNonEmptyString } from '@sniptt/guards';
 import { isDefined, isNonEmptyArray } from 'twenty-shared/utils';
+import { DataSource } from 'typeorm';
 
 import {
   ApplicationException,
@@ -17,12 +19,19 @@ import { type WorkspaceMemberApplicationVariablesDTO } from 'src/engine/core-mod
 import { UserApplicationVariableValueEntity } from 'src/engine/core-modules/application/application-variable/user-application-variable-value.entity';
 import { toUserApplicationVariableValues } from 'src/engine/core-modules/application/application-variable/utils/to-user-application-variable-values.util';
 import { findActiveFlatApplicationByUniversalIdentifier } from 'src/engine/core-modules/application/utils/find-active-flat-application-by-universal-identifier.util';
+import {
+  captureUserApplicationVariableValueAudit,
+  runAuditedUserApplicationVariableValueMutation,
+  type ApplicationAuthorizationAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/application-authorization-and-variable-audit';
+import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
 import { type PlaintextString } from 'src/engine/core-modules/secret-encryption/branded-strings/plaintext-string.type';
 import { SecretEncryptionService } from 'src/engine/core-modules/secret-encryption/secret-encryption.service';
 import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
 import { resolveWorkspaceMemberIdForUser } from 'src/engine/core-modules/user/utils/resolve-workspace-member-id-for-user.util';
 import { type FlatApplicationVariableMaps } from 'src/engine/metadata-modules/flat-application-variable/types/flat-application-variable-maps.type';
 import { type FlatApplicationVariable } from 'src/engine/metadata-modules/flat-application-variable/types/flat-application-variable.type';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
 import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
@@ -47,7 +56,21 @@ export class UserApplicationVariableValueService {
     private readonly applicationVariableService: ApplicationVariableEntityService,
     private readonly workspaceCacheService: WorkspaceCacheService,
     private readonly secretEncryptionService: SecretEncryptionService,
+    @Optional()
+    @InjectDataSource()
+    private readonly coreDataSource?: DataSource,
   ) {}
+
+  private getDataSource(): DataSource | undefined {
+    return (
+      this.coreDataSource ??
+      (
+        this.userApplicationVariableValueRepository as unknown as {
+          manager?: { connection?: DataSource };
+        }
+      )?.manager?.connection
+    );
+  }
 
   async getServerEnvVariables({
     workspaceId,
@@ -201,13 +224,20 @@ export class UserApplicationVariableValueService {
     userWorkspaceId,
     key,
     plainTextValue,
+    auditIdentity,
   }: {
     workspaceId: string;
     applicationUniversalIdentifier: string;
     userWorkspaceId: string;
     key: string;
     plainTextValue: PlaintextString;
+    auditIdentity?: ApplicationAuthorizationAuditIdentity;
   }): Promise<void> {
+    const auditRequest = captureUserApplicationVariableValueAudit({
+      workspaceId,
+      auditIdentity,
+    });
+
     const applicationId = await this.findApplicationIdOrThrow({
       workspaceId,
       applicationUniversalIdentifier,
@@ -220,23 +250,38 @@ export class UserApplicationVariableValueService {
         key,
       });
 
-    if (!isNonEmptyString(plainTextValue)) {
-      await this.userApplicationVariableValueRepository.delete(workspaceId, {
-        applicationVariableId: flatApplicationVariable.id,
-        userWorkspaceId,
-      });
-    } else {
-      await this.userApplicationVariableValueRepository.upsert(
-        workspaceId,
+    const encryptedValue = !isNonEmptyString(plainTextValue)
+      ? null
+      : this.secretEncryptionService.encryptVersioned(plainTextValue, {
+          workspaceId,
+        });
+
+    try {
+      await runAuditedUserApplicationVariableValueMutation(
+        this.getDataSource(),
+        auditRequest,
         {
+          applicationId,
+          applicationUniversalIdentifier,
           applicationVariableId: flatApplicationVariable.id,
           userWorkspaceId,
-          value: this.secretEncryptionService.encryptVersioned(plainTextValue, {
-            workspaceId,
-          }),
+          encryptedValue,
         },
-        ['applicationVariableId', 'userWorkspaceId'],
       );
+    } catch (error) {
+      if (
+        error instanceof NativeTransactionOutcomeUnknownError ||
+        error instanceof CoreAuditPostCommitError
+      ) {
+        try {
+          await this.workspaceCacheService.invalidateAndRecompute(workspaceId, [
+            'userApplicationVariableValueMaps',
+          ]);
+        } catch {
+          // Preserve the commit uncertainty error over cache refresh failures.
+        }
+      }
+      throw error;
     }
 
     await this.workspaceCacheService.invalidateAndRecompute(workspaceId, [

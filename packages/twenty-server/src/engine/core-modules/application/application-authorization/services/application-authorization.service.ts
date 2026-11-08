@@ -1,17 +1,32 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Injectable, Optional } from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
-import { isDefined } from 'twenty-shared/utils';
-import { IsNull, Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 
 import { ApplicationAuthorizationEntity } from 'src/engine/core-modules/application/application-authorization/application-authorization.entity';
+import {
+  captureApplicationAuthorizationAudit,
+  runAuditedApplicationAuthorizationRevoke,
+  runAuditedApplicationAuthorizationUpsert,
+  type ApplicationAuthorizationAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/application-authorization-and-variable-audit';
 
 @Injectable()
 export class ApplicationAuthorizationService {
   constructor(
     @InjectRepository(ApplicationAuthorizationEntity)
     private readonly applicationAuthorizationRepository: Repository<ApplicationAuthorizationEntity>,
+    @Optional()
+    @InjectDataSource()
+    private readonly coreDataSource?: DataSource,
   ) {}
+
+  private getDataSource(): DataSource | undefined {
+    return (
+      this.coreDataSource ??
+      this.applicationAuthorizationRepository?.manager?.connection
+    );
+  }
 
   async recordAuthorization({
     userId,
@@ -19,29 +34,29 @@ export class ApplicationAuthorizationService {
     userWorkspaceId,
     applicationId,
     scopes,
+    auditIdentity,
   }: {
     userId: string;
     workspaceId: string;
     userWorkspaceId: string;
     applicationId: string;
     scopes: string[];
+    auditIdentity?: ApplicationAuthorizationAuditIdentity;
   }): Promise<void> {
-    const now = new Date();
+    const request = captureApplicationAuthorizationAudit({
+      workspaceId,
+      auditIdentity,
+    });
 
-    await this.applicationAuthorizationRepository.upsert(
+    await runAuditedApplicationAuthorizationUpsert(
+      this.getDataSource(),
+      request,
       {
         userId,
-        workspaceId,
         userWorkspaceId,
         applicationId,
         scopes,
-        lastAuthorizedAt: now,
-        lastUsedAt: now,
-        revokedAt: null,
-      },
-      {
-        conflictPaths: ['userId', 'applicationId'],
-        skipUpdateIfNoValuesChanged: false,
+        mode: 'record',
       },
     );
   }
@@ -53,27 +68,30 @@ export class ApplicationAuthorizationService {
     workspaceId,
     userWorkspaceId,
     applicationId,
+    auditIdentity,
   }: {
     userId: string;
     workspaceId: string;
     userWorkspaceId: string;
     applicationId: string;
+    auditIdentity?: ApplicationAuthorizationAuditIdentity;
   }): Promise<void> {
-    await this.applicationAuthorizationRepository
-      .createQueryBuilder()
-      .insert()
-      .values({
+    const request = captureApplicationAuthorizationAudit({
+      workspaceId,
+      auditIdentity,
+    });
+
+    await runAuditedApplicationAuthorizationUpsert(
+      this.getDataSource(),
+      request,
+      {
         userId,
-        workspaceId,
         userWorkspaceId,
         applicationId,
         scopes: null,
-        lastAuthorizedAt: null,
-        lastUsedAt: new Date(),
-        revokedAt: null,
-      })
-      .orIgnore()
-      .execute();
+        mode: 'backfill',
+      },
+    );
   }
 
   // Includes revoked rows: callers must tell "never authorized" from "revoked"
@@ -122,39 +140,51 @@ export class ApplicationAuthorizationService {
     authorizationId,
     userId,
     workspaceId,
+    auditIdentity,
   }: {
     authorizationId: string;
     userId: string;
     workspaceId: string;
+    auditIdentity?: ApplicationAuthorizationAuditIdentity;
   }): Promise<boolean> {
-    return await this.revokeMatching({
-      id: authorizationId,
-      userId,
+    const request = captureApplicationAuthorizationAudit({
       workspaceId,
+      auditIdentity,
     });
+
+    return await runAuditedApplicationAuthorizationRevoke(
+      this.getDataSource(),
+      request,
+      {
+        id: authorizationId,
+        userId,
+      },
+    );
   }
 
   async revokeAuthorizationForApplication({
     userId,
     applicationId,
+    workspaceId,
+    auditIdentity,
   }: {
     userId: string;
     applicationId: string;
+    workspaceId?: string;
+    auditIdentity?: ApplicationAuthorizationAuditIdentity;
   }): Promise<boolean> {
-    return await this.revokeMatching({ userId, applicationId });
-  }
+    const request = captureApplicationAuthorizationAudit({
+      workspaceId,
+      auditIdentity,
+    });
 
-  // The union rules out empty criteria, which would revoke every row
-  private async revokeMatching(
-    criteria:
-      | { id: string; userId: string; workspaceId: string }
-      | { userId: string; applicationId: string },
-  ): Promise<boolean> {
-    const { affected } = await this.applicationAuthorizationRepository.update(
-      { ...criteria, revokedAt: IsNull() },
-      { revokedAt: new Date() },
+    return await runAuditedApplicationAuthorizationRevoke(
+      this.getDataSource(),
+      request,
+      {
+        userId,
+        applicationId,
+      },
     );
-
-    return isDefined(affected) && affected > 0;
   }
 }

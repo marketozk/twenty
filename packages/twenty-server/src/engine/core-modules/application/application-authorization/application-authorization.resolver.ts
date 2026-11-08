@@ -1,5 +1,5 @@
 import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
-import { Args, Mutation, Query } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query } from '@nestjs/graphql';
 
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
@@ -8,6 +8,7 @@ import { ApplicationAuthorizationDTO } from 'src/engine/core-modules/application
 import { ApplicationAuthorizationService } from 'src/engine/core-modules/application/application-authorization/services/application-authorization.service';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
 import { type AuthContextUser } from 'src/engine/core-modules/auth/types/auth-context.type';
+import { roleAuditIdentityFromRequest } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { type WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
 import { AuthUser } from 'src/engine/decorators/auth/auth-user.decorator';
@@ -58,12 +59,29 @@ export class ApplicationAuthorizationResolver {
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Args('applicationAuthorizationId', { type: () => UUIDScalarType })
     applicationAuthorizationId: string,
+    @Context()
+    context?: {
+      req?: Parameters<typeof roleAuditIdentityFromRequest>[0];
+    },
   ): Promise<boolean> {
     return await this.applicationAuthorizationService.revokeAuthorizationByIdForUserWorkspace(
       {
         authorizationId: applicationAuthorizationId,
         userId: user.id,
         workspaceId: workspace.id,
+        auditIdentity:
+          context?.req &&
+          (context.req.workspaceMemberId ||
+            context.req.apiKey ||
+            context.req.application)
+            ? roleAuditIdentityFromRequest(context.req)
+            : {
+                workspaceId: workspace.id,
+                actor: { kind: 'coreUser', id: user.id },
+                impersonatorUserWorkspaceId:
+                  context?.req?.impersonationContext
+                    ?.impersonatorUserWorkspaceId,
+              },
       },
     );
   }

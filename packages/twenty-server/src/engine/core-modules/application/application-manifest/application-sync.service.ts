@@ -31,10 +31,13 @@ import { ApplicationService } from 'src/engine/core-modules/application/applicat
 import { ApplicationState } from 'src/engine/core-modules/application/enums/application-state.enum';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
 import {
-  captureApplicationMetadataAudit,
+  bindApplicationMetadataAuditOperation,
+  captureApplicationMetadataAuditOperation,
   reconcileApplicationRoleAndPermissionOperations,
   withApplicationMetadataAudit,
   type ApplicationMetadataAuditIdentity,
+  type ApplicationMetadataAuditRequest,
+  type CapturedApplicationMetadataAuditOperation,
 } from 'src/engine/core-modules/crm-audit/application-metadata-audit';
 import { FileStorageService } from 'src/engine/core-modules/file-storage/services/file-storage.service';
 import { LOGIC_FUNCTION_DRIVER_FACTORY_TOKEN } from 'src/engine/core-modules/logic-function/logic-function-drivers/constants/logic-function-driver-factory.token';
@@ -386,6 +389,12 @@ export class ApplicationSyncService {
     progressReporter?: ApplicationLifecycleProgressReporter<ApplicationUninstallStep>;
     auditIdentity?: ApplicationMetadataAuditIdentity;
   }): Promise<WorkspaceMigration> {
+    const capturedAuditOperation = captureApplicationMetadataAuditOperation({
+      workspaceId,
+      auditIdentity,
+      mode: 'manifest',
+    });
+
     const application =
       await this.applicationService.findOneApplicationWithRelationsOrThrow({
         universalIdentifier: applicationUniversalIdentifier,
@@ -399,12 +408,13 @@ export class ApplicationSyncService {
       );
     }
 
-    const capturedAudit = captureApplicationMetadataAudit({
-      workspaceId,
-      applicationId: application.id,
-      applicationUniversalIdentifier: application.universalIdentifier,
-      auditIdentity,
-    })();
+    const capturedAudit = bindApplicationMetadataAuditOperation(
+      capturedAuditOperation,
+      {
+        applicationId: application.id,
+        applicationUniversalIdentifier: application.universalIdentifier,
+      },
+    );
 
     return await this.runUninstall({
       application,
@@ -413,6 +423,7 @@ export class ApplicationSyncService {
       shouldRunUninstallHook,
       progressReporter,
       capturedAudit,
+      capturedAuditOperation,
     });
   }
 
@@ -423,15 +434,15 @@ export class ApplicationSyncService {
     shouldRunUninstallHook,
     progressReporter,
     capturedAudit,
+    capturedAuditOperation,
   }: {
     application: ApplicationEntity;
     workspaceId: string;
     applicationUniversalIdentifier: string;
     shouldRunUninstallHook: boolean;
     progressReporter: ApplicationLifecycleProgressReporter<ApplicationUninstallStep>;
-    capturedAudit: ReturnType<
-      ReturnType<typeof captureApplicationMetadataAudit>
-    >;
+    capturedAudit: ApplicationMetadataAuditRequest;
+    capturedAuditOperation: CapturedApplicationMetadataAuditOperation;
   }): Promise<WorkspaceMigration> {
     if (shouldRunUninstallHook) {
       await this.applicationUninstallService.runUninstallHookBestEffort({
@@ -514,6 +525,9 @@ export class ApplicationSyncService {
     await this.applicationService.delete(
       applicationUniversalIdentifier,
       workspaceId,
+      {
+        auditIdentity: capturedAuditOperation,
+      },
     );
 
     await progressReporter.reportStepCompleted('DELETE_APPLICATION');

@@ -75,7 +75,7 @@ const CATALOG: Record<
   },
   userApplicationVariableValue: {
     values: ['userWorkspaceId', 'applicationVariableId', 'scope'],
-    redacted: [],
+    redacted: ['value'],
   },
   twoFactorAuthenticationMethod: {
     values: ['userWorkspaceId', 'strategy', 'status'],
@@ -487,8 +487,8 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   rowLevelPermissionPredicateGroup: ['create', 'update', 'delete'],
   rowLevelPermissionPredicate: ['create', 'update', 'delete'],
   userWorkspace: ['update', 'delete'],
-  applicationAuthorization: ['delete'],
-  userApplicationVariableValue: ['delete'],
+  applicationAuthorization: ['create', 'update', 'delete'],
+  userApplicationVariableValue: ['create', 'update', 'delete'],
   twoFactorAuthenticationMethod: ['delete'],
   navigationMenuItem: ['delete'],
   coreWorkflow: ['update'],

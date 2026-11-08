@@ -185,3 +185,11 @@ export const captureCurrentCrmAuditOperation = (
     ...(impersonatorUserWorkspaceId ? { impersonatorUserWorkspaceId } : {}),
   });
 };
+
+export const peekCurrentCrmAuditWorkspaceId = (): string | undefined => {
+  const snapshot = storage.getStore();
+  if (!snapshot) return undefined;
+  return snapshot.kind === 'request'
+    ? snapshot.authentication.workspaceId?.toLowerCase()
+    : snapshot.workspaceId;
+};

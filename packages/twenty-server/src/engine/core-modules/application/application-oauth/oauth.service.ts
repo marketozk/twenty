@@ -1,6 +1,11 @@
-import { withCrmAuditIdentity } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
+import {
+  captureCurrentCrmAuditOperation,
+  withCrmAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
+import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
 import { requireOAuthAuditIdentity } from 'src/engine/core-modules/crm-audit/oauth-audit-identity';
 import { type MembershipCleanupIdentity } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { ApplicationRegistrationSourceType } from 'src/engine/core-modules/application/application-registration/enums/application-registration-source-type.enum';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -271,13 +276,15 @@ export class OAuthService {
       applicationRegistration.oAuthScopes.join(' ');
 
     // Recorded first so a refresh token never exists without a revocable grant
-    await this.applicationAuthorizationService.recordAuthorization({
-      userId: authCodeToken.userId,
-      workspaceId: authCodeToken.workspaceId,
-      userWorkspaceId: userWorkspace.id,
-      applicationId: application.id,
-      scopes: this.parseScopes(grantedScope),
-    });
+    await withCrmAuditIdentity(authCodeToken.workspaceId, auditIdentity, () =>
+      this.applicationAuthorizationService.recordAuthorization({
+        userId: authCodeToken.userId!,
+        workspaceId: authCodeToken.workspaceId!,
+        userWorkspaceId: userWorkspace.id,
+        applicationId: application.id,
+        scopes: this.parseScopes(grantedScope),
+      }),
+    );
 
     const { applicationAccessToken, applicationRefreshToken } =
       await this.applicationTokenService.generateApplicationTokenPair({
@@ -447,6 +454,13 @@ export class OAuthService {
         scope: applicationRegistration.oAuthScopes.join(' '),
       };
     } catch (error) {
+      if (
+        error instanceof NativeTransactionOutcomeUnknownError ||
+        error instanceof CoreAuditPostCommitError
+      ) {
+        throw error;
+      }
+
       this.logger.warn(`Refresh token grant failed: client=${clientId}`, error);
 
       return this.errorResponse(
@@ -516,7 +530,13 @@ export class OAuthService {
       this.logger.log(
         `Token revocation requested for application ${payload.applicationId}`,
       );
-    } catch {
+    } catch (error) {
+      if (
+        error instanceof NativeTransactionOutcomeUnknownError ||
+        error instanceof CoreAuditPostCommitError
+      ) {
+        throw error;
+      }
       // RFC 7009 §2.2: respond 200 for both valid and invalid tokens
     }
 
@@ -666,6 +686,38 @@ export class OAuthService {
     return null;
   }
 
+  private resolveTokenUserAuditIdentity(
+    workspaceId: string,
+    userId: string,
+  ): MembershipCleanupIdentity {
+    const normalizedUserId = userId.toLowerCase();
+    try {
+      const ambient = captureCurrentCrmAuditOperation(workspaceId);
+      if (
+        ambient &&
+        ambient.operation.actor.kind === 'coreUser' &&
+        ambient.operation.actor.id === normalizedUserId
+      ) {
+        return {
+          workspaceId,
+          actor: { kind: 'coreUser', id: normalizedUserId },
+          ...(ambient.operation.initiator
+            ? { initiator: ambient.operation.initiator }
+            : {}),
+          correlationId: ambient.operation.correlationId ?? crypto.randomUUID(),
+        };
+      }
+    } catch {
+      // Fall back to the verified refresh token identity when ambient context belongs to another scope or is unauthenticated.
+    }
+
+    return {
+      workspaceId,
+      actor: { kind: 'coreUser', id: normalizedUserId },
+      correlationId: crypto.randomUUID(),
+    };
+  }
+
   // Refresh tokens predating this table have no row: backfill it rather than sign every integration out
   private async consumeUserAuthorization({
     userId,
@@ -676,6 +728,10 @@ export class OAuthService {
     workspaceId: string;
     applicationId: string;
   }): Promise<OAuthErrorResponse | null> {
+    const auditIdentity = this.resolveTokenUserAuditIdentity(
+      workspaceId,
+      userId,
+    );
     const authorization =
       await this.applicationAuthorizationService.findByUserAndApplication({
         userId,
@@ -702,13 +758,15 @@ export class OAuthService {
     }
 
     if (!isDefined(authorization)) {
-      await this.applicationAuthorizationService.backfillAuthorizationFromRefreshToken(
-        {
-          userId,
-          workspaceId,
-          userWorkspaceId: userWorkspace.id,
-          applicationId,
-        },
+      await withCrmAuditIdentity(workspaceId, auditIdentity, () =>
+        this.applicationAuthorizationService.backfillAuthorizationFromRefreshToken(
+          {
+            userId,
+            workspaceId,
+            userWorkspaceId: userWorkspace.id,
+            applicationId,
+          },
+        ),
       );
 
       return null;
@@ -731,27 +789,35 @@ export class OAuthService {
     workspaceId: string;
     applicationId: string;
   }): Promise<void> {
-    const userWorkspace = await this.userWorkspaceRepository.findOne({
-      where: { userId, workspaceId },
-    });
+    const auditIdentity = this.resolveTokenUserAuditIdentity(
+      workspaceId,
+      userId,
+    );
 
-    if (isDefined(userWorkspace)) {
-      await this.applicationAuthorizationService.backfillAuthorizationFromRefreshToken(
+    await withCrmAuditIdentity(workspaceId, auditIdentity, async () => {
+      const userWorkspace = await this.userWorkspaceRepository.findOne({
+        where: { userId, workspaceId },
+      });
+
+      if (isDefined(userWorkspace)) {
+        await this.applicationAuthorizationService.backfillAuthorizationFromRefreshToken(
+          {
+            userId,
+            workspaceId,
+            userWorkspaceId: userWorkspace.id,
+            applicationId,
+          },
+        );
+      }
+
+      await this.applicationAuthorizationService.revokeAuthorizationForApplication(
         {
           userId,
-          workspaceId,
-          userWorkspaceId: userWorkspace.id,
           applicationId,
+          workspaceId,
         },
       );
-    }
-
-    await this.applicationAuthorizationService.revokeAuthorizationForApplication(
-      {
-        userId,
-        applicationId,
-      },
-    );
+    });
   }
 
   private async isAuthorizationRevoked({

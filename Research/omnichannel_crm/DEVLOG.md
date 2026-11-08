@@ -4799,7 +4799,55 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 отправлен в GitHub, ref подтверждён через API. Описание ROB765, комментарий
 e825aecd-5806-4368-8045-82418fe2eb70 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log166/publication.json).
-Следующий участок - закрытие оставшихся открытых границ ROB765.
+Следующий участок - аудит жизненного цикла и каскадного удаления
+`applicationAuthorization` и `userApplicationVariableValue` по LOG167.
+
+## LOG167 - аудит жизненного цикла и каскадного удаления `applicationAuthorization` и `userApplicationVariableValue`
+
+08.11.2026 зафиксированы [дизайн](implementation/log167/design.md),
+[независимое ревью решения](implementation/log167/design-review.md) и
+[план проверок](implementation/log167/test-research.md).
+Добавлен модуль `application-authorization-and-variable-audit.ts`
+(`captureApplicationAuthorizationAudit`, `captureUserApplicationVariableValueAudit`,
+`captureOptionalApplicationDeleteAudit`, `runAuditedApplicationAuthorizationUpsert`,
+`runAuditedApplicationAuthorizationRevoke`, `runAuditedUserApplicationVariableValueMutation`,
+`runAuditedApplicationDelete`, регистрация в `registerMetadataAuditScopeCheck`),
+а в `crm-audit-transaction-context.ts` расширен список разрешённых действий
+(`ADMINISTRATIVE_ACTIONS.applicationAuthorization = ['create', 'update', 'delete']`,
+`ADMINISTRATIVE_ACTIONS.userApplicationVariableValue = ['create', 'update', 'delete']`) и
+в `CATALOG.userApplicationVariableValue.redacted` добавлено поле `'value'`.
+Подключены все точки записи и каскадного удаления `core."applicationAuthorization"` и
+`core."userApplicationVariableValue"`: `ApplicationAuthorizationService` (`recordAuthorization`,
+`backfillAuthorizationFromRefreshToken`, `revokeAuthorizationByIdForUserWorkspace`,
+`revokeAuthorizationForApplication`), `ApplicationAuthorizationResolver.revokeApplicationAuthorization`,
+`OAuthService` (`exchangeAuthorizationCode`, `refreshTokenGrant`, `revokeToken`),
+`UserApplicationVariableValueService.updateMyUserApplicationVariable`,
+`UserApplicationVariableValueResolver.updateMyUserApplicationVariable`,
+`ApplicationService.delete`, `ApplicationSyncService.uninstallApplication` и
+`runAuditedApplicationMetadataMigration` (`WorkspaceMigrationRunnerService.executeRun`).
+Учтены все замечания ревью дизайна и кода (M1-M6, T1-T2): атомарный `INSERT ... ON CONFLICT DO UPDATE`
+с детекцией `update` при совпадении миллисекунды `createdAt` и `updatedAt`, блокировка строк
+`applicationVariable` и `userApplicationVariableValue` под `ORDER BY id FOR UPDATE`, fail-closed
+проверка принадлежности внешних ключей тому же рабочему пространству, привязка вызывающего
+субъекта (`coreUser`, `workspaceMember`, `application`) к `userWorkspaceId` при мутации
+переменных, проброс `NativeTransactionOutcomeUnknownError` и `CoreAuditPostCommitError` во всех
+потоках (с подавлением посмертных побочных эффектов в `ApplicationService.delete` и инвалидацией
+кэша `userApplicationVariableValueMaps`), а также запрет прямого `ApplicationService.delete` при
+наличии оставшихся `userApplicationVariableValue`.
+
+08.11.2026 проверки LOG167 завершены. 3132 tests/112 suites PASS (691.471s). 251 targeted/15 PostgreSQL suites PASS (31.574s), 6 новых PostgreSQL случаев. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 472/474 roots, baseline 270 / current 270 diagnostics, 0 новых/changed-code. Совпали 13 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех входных точек и каскадов
+`core."applicationAuthorization"` и `core."userApplicationVariableValue"`, устранение замечаний
+M1-M6 и T1-T2, корректную обработку `NativeTransactionOutcomeUnknownError` и
+`CoreAuditPostCommitError`, редактирование секретных полей `scopes` и `value` и чистоту границы
+Enterprise (`0` нарушений).
+
+[Результаты](implementation/log167/results.json), [ревью](implementation/log167/review.md),
+[следующий участок](implementation/log167/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
+
 
 
 

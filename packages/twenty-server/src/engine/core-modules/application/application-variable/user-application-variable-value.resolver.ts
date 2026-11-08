@@ -1,5 +1,5 @@
 import { UseFilters, UseGuards } from '@nestjs/common';
-import { Mutation, Query } from '@nestjs/graphql';
+import { Context, Mutation, Query } from '@nestjs/graphql';
 
 import { PermissionFlagType } from 'twenty-shared/constants';
 
@@ -11,6 +11,7 @@ import { UpdateMyUserApplicationVariableInput } from 'src/engine/core-modules/ap
 import { WorkspaceMemberApplicationVariablesDTO } from 'src/engine/core-modules/application/application-variable/dtos/workspace-member-application-variables.dto';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
+import { roleAuditIdentityFromRequest } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { ApplicationTargetArgs } from 'src/engine/decorators/auth/application-target-args.decorator';
 import { AuthApplication } from 'src/engine/decorators/auth/auth-application.decorator';
@@ -75,6 +76,10 @@ export class UserApplicationVariableValueResolver {
     }: UpdateMyUserApplicationVariableInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
     @AuthUserWorkspaceId() userWorkspaceId: string,
+    @Context()
+    context?: {
+      req?: Parameters<typeof roleAuditIdentityFromRequest>[0];
+    },
   ): Promise<boolean> {
     await this.userApplicationVariableValueService.updateMyUserApplicationVariable(
       {
@@ -83,6 +88,21 @@ export class UserApplicationVariableValueResolver {
         userWorkspaceId,
         key,
         plainTextValue: value,
+        auditIdentity: context?.req
+          ? (() => {
+              const baseIdentity = roleAuditIdentityFromRequest(context.req);
+              return {
+                ...baseIdentity,
+                auth: {
+                  ...baseIdentity.auth,
+                  ...(context.req.user ? { user: context.req.user } : {}),
+                  ...(context.req.userWorkspaceId
+                    ? { userWorkspaceId: context.req.userWorkspaceId }
+                    : {}),
+                } as typeof baseIdentity.auth,
+              };
+            })()
+          : undefined,
       },
     );
 
