@@ -128,6 +128,12 @@ export class RefreshTokenService {
     return runInCoreAuditTransaction(
       this.appTokenRepository.manager.connection,
       async (runner) => {
+        await runner.query("SET LOCAL lock_timeout = '8s'");
+        await acquireUserAuthenticationLock({
+          entityManager: runner.manager,
+          userId: payload.userId,
+          mode: 'shared',
+        });
         const audit = await this.createAudit(runner, payload);
         const issued = await this.issueRefreshToken(
           runner,
@@ -154,6 +160,7 @@ export class RefreshTokenService {
     return runInCoreAuditTransaction(
       this.appTokenRepository.manager.connection,
       async (runner) => {
+        await runner.query("SET LOCAL lock_timeout = '8s'");
         await acquireUserAuthenticationLock({
           entityManager: runner.manager,
           userId: payload.userId,

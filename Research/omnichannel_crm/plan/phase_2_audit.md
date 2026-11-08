@@ -191,8 +191,23 @@ LOG169 закрывает атомарный аудит смены владел�
 `core."deferredWorkspaceMigrationAction"`) с постановкой в очередь после миграций манифеста и
 очисткой после синхронного пересчёта, а также fail-closed барьер на неаудируемые обновления
 `visibility` и `createdByUserWorkspaceId` в `WorkspaceMigrationRunnerService.executeRun`.
+LOG170 закрывает транзакционный аудит полного жизненного цикла (`create`, `update`, `delete`) и
+каскадных удалений пунктов навигационного меню (`core."navigationMenuItem"` в
+`NavigationMenuItemService`, `NavigationMenuItemResolver`, AI-инструментах,
+`NavigationMenuItemDeletionService`, `ObjectMetadataService`, `FieldMetadataService`,
+`ViewService`, `PageLayoutService`, `AgentChatChannelMetadataService`, `seedPageLayouts`,
+`runAuditedApplicationMetadataMigration` и `WorkspaceMigrationRunnerService.executeRun`) с
+редактированием отображаемых полей `['name', 'link', 'icon', 'color', 'position']`.
+LOG171 закрывает транзакционный аудит смены и сброса пароля (`AuthService.updatePassword`,
+`AuthResolver.updatePasswordViaResetToken`, `ResetPasswordService`,
+`password-update-audit.ts`) с пакетным отзывом `core."appToken"` (`RefreshToken` и
+`PasswordResetToken`) и записью `refreshToken:update` с причиной `PASSWORD_CHANGED` (включая
+токены в окне `REFRESH_TOKEN_REUSE_GRACE_PERIOD`), сериализацией через
+`acquireUserAuthenticationLock` (`RefreshTokenService`, `UserSessionService`,
+`ResetPasswordService`) и передачей `initiator` при отзыве сессий под имперсонацией
+(`UserSessionResolver`, `UserSessionService`).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log169/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log171/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

@@ -44,9 +44,8 @@ export class UserSessionResolver {
   @Query(() => [UserSessionDTO])
   async currentUserSessions(
     @AuthUser() user: AuthContextUser,
-    @AuthWorkspace({ allowUndefined: true }) workspace:
-      | WorkspaceEntity
-      | undefined,
+    @AuthWorkspace({ allowUndefined: true })
+    workspace: WorkspaceEntity | undefined,
     @Context() context: { req: Request },
   ): Promise<UserSessionDTO[]> {
     // Workspace-agnostic sessions have no workspace to scope to: nothing is in scope rather than everything.
@@ -74,9 +73,8 @@ export class UserSessionResolver {
   @Mutation(() => Boolean)
   async revokeUserSession(
     @AuthUser() user: AuthContextUser,
-    @AuthWorkspace({ allowUndefined: true }) workspace:
-      | WorkspaceEntity
-      | undefined,
+    @AuthWorkspace({ allowUndefined: true })
+    workspace: WorkspaceEntity | undefined,
     @Args('userSessionId', { type: () => UUIDScalarType })
     userSessionId: string,
     @Context() context: { req: Request },
@@ -91,6 +89,15 @@ export class UserSessionResolver {
       user,
       workspace,
     });
+    const initiatorMembershipId =
+      (
+        context.req as Request & {
+          impersonationContext?: { impersonatorUserWorkspaceId?: string };
+        }
+      ).impersonationContext?.impersonatorUserWorkspaceId ??
+      (currentSession?.isImpersonating
+        ? (currentSession.impersonatorUserWorkspaceId ?? undefined)
+        : undefined);
 
     const revoked =
       await this.userSessionService.revokeSessionByIdForUserWorkspace({
@@ -98,6 +105,7 @@ export class UserSessionResolver {
         userId: user.id,
         workspaceId: workspace.id,
         reason: UserSessionRevokedReason.UserRevoked,
+        ...(isDefined(initiatorMembershipId) ? { initiatorMembershipId } : {}),
       });
 
     if (
@@ -143,9 +151,8 @@ export class UserSessionResolver {
   @Mutation(() => Int)
   async revokeAllOtherUserSessions(
     @AuthUser() user: AuthContextUser,
-    @AuthWorkspace({ allowUndefined: true }) workspace:
-      | WorkspaceEntity
-      | undefined,
+    @AuthWorkspace({ allowUndefined: true })
+    workspace: WorkspaceEntity | undefined,
     @Context() context: { req: Request },
   ): Promise<number> {
     if (!isDefined(workspace)) {
@@ -157,12 +164,22 @@ export class UserSessionResolver {
       user,
       workspace,
     });
+    const initiatorMembershipId =
+      (
+        context.req as Request & {
+          impersonationContext?: { impersonatorUserWorkspaceId?: string };
+        }
+      ).impersonationContext?.impersonatorUserWorkspaceId ??
+      (currentSession?.isImpersonating
+        ? (currentSession.impersonatorUserWorkspaceId ?? undefined)
+        : undefined);
 
     return await this.userSessionService.revokeAllSessionsForUser({
       userId: user.id,
       workspaceId: workspace.id,
       reason: UserSessionRevokedReason.UserRevoked,
       exceptSessionId: currentSession?.id,
+      ...(isDefined(initiatorMembershipId) ? { initiatorMembershipId } : {}),
     });
   }
 

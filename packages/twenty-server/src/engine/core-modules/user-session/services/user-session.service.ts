@@ -346,13 +346,43 @@ export class UserSessionService {
     });
     const session = isDefined(candidate.workspaceId)
       ? await this.saveAuditedWorkspaceSession(candidate, input.origin)
-      : await this.userSessionRepository.save(candidate);
+      : await this.saveWorkspaceAgnosticSession(candidate);
 
     if (input.origin === 'sign_in' && isDefined(session.workspaceId)) {
       this.emitAuthSessionEvent(session, 'user_signed_in');
     }
 
     return { sessionToken, session };
+  }
+
+  private async saveWorkspaceAgnosticSession(
+    candidate: UserSessionEntity,
+  ): Promise<UserSessionEntity> {
+    if (this.userSessionRepository.manager?.queryRunner) {
+      throw new Error(
+        'Session audit requires ownership of the core transaction',
+      );
+    }
+    const connection = this.userSessionRepository.manager?.connection;
+    if (!connection) {
+      return await this.userSessionRepository.save(candidate);
+    }
+    if (typeof candidate.userId === 'string') {
+      candidate.userId = candidate.userId.toLowerCase();
+    }
+
+    return await runInCoreAuditTransaction(connection, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+      await acquireUserAuthenticationLock({
+        entityManager: runner.manager,
+        userId: candidate.userId.toLowerCase(),
+        mode: 'shared',
+      });
+
+      return await runner.manager
+        .getRepository(UserSessionEntity)
+        .save(candidate);
+    });
   }
 
   private async saveAuditedWorkspaceSession(
@@ -379,6 +409,12 @@ export class UserSessionService {
     return runInCoreAuditTransaction(
       this.userSessionRepository.manager.connection,
       async (runner) => {
+        await runner.query("SET LOCAL lock_timeout = '8s'");
+        await acquireUserAuthenticationLock({
+          entityManager: runner.manager,
+          userId: candidate.userId.toLowerCase(),
+          mode: 'shared',
+        });
         const membershipIds = [candidate.userWorkspaceId!];
         if (candidate.isImpersonating) {
           if (
@@ -633,11 +669,13 @@ export class UserSessionService {
     userId,
     workspaceId,
     reason,
+    initiatorMembershipId,
   }: {
     sessionId: string;
     userId: string;
     workspaceId: string;
     reason: UserSessionRevokedReason;
+    initiatorMembershipId?: string;
   }): Promise<boolean> {
     const session = await this.userSessionRepository.findOneBy({
       id: sessionId,
@@ -652,7 +690,12 @@ export class UserSessionService {
       );
     }
 
-    return await this.revokeSessionEntity(session, reason);
+    return await this.revokeSessionEntity(
+      session,
+      reason,
+      session.userId,
+      initiatorMembershipId,
+    );
   }
 
   // Account-wide callers (password change) omit workspaceId on purpose.
@@ -661,11 +704,13 @@ export class UserSessionService {
     workspaceId,
     reason,
     exceptSessionId,
+    initiatorMembershipId,
   }: {
     userId: string;
     workspaceId?: string;
     reason: UserSessionRevokedReason;
     exceptSessionId?: string;
+    initiatorMembershipId?: string;
   }): Promise<number> {
     const revoked = await this.revokeSessionsWithAudit({
       userId,
@@ -673,6 +718,7 @@ export class UserSessionService {
       reason,
       exceptSessionId,
       actingUserId: userId,
+      ...(isDefined(initiatorMembershipId) ? { initiatorMembershipId } : {}),
     });
     return revoked.length;
   }
@@ -740,6 +786,7 @@ export class UserSessionService {
       await runInCoreAuditTransaction(
         this.appTokenRepository.manager.connection,
         async (runner) => {
+          await runner.query("SET LOCAL lock_timeout = '8s'");
           await acquireUserAuthenticationLock({
             entityManager: runner.manager,
             userId,
@@ -890,6 +937,12 @@ export class UserSessionService {
       throw new Error(
         'Session revocation requires ownership of the core transaction',
       );
+    if (
+      isDefined(input.initiatorMembershipId) &&
+      !isUUID(input.initiatorMembershipId)
+    ) {
+      throw new Error('Session revocation initiator is invalid');
+    }
     const operationId = randomUUID();
     const cacheKeys: string[] = [];
     let auditLost = false;
@@ -898,6 +951,14 @@ export class UserSessionService {
       revoked = await runInCoreAuditTransaction(
         this.userSessionRepository.manager.connection,
         async (runner) => {
+          await runner.query("SET LOCAL lock_timeout = '8s'");
+          if (isUUID(input.userId ?? input.actingUserId)) {
+            await acquireUserAuthenticationLock({
+              entityManager: runner.manager,
+              userId: (input.userId ?? input.actingUserId).toLowerCase(),
+              mode: 'exclusive',
+            });
+          }
           const repository = runner.manager.getRepository(UserSessionEntity);
           const query = repository
             .createQueryBuilder('session')

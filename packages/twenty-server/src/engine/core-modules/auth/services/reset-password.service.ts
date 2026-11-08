@@ -20,6 +20,11 @@ import {
   AuthException,
   AuthExceptionCode,
 } from 'src/engine/core-modules/auth/auth.exception';
+import { acquireUserAuthenticationLock } from 'src/engine/core-modules/auth/utils/acquire-user-authentication-lock.util';
+import {
+  clearPendingPasswordResetTokenValidation,
+  registerPendingPasswordResetTokenValidation,
+} from 'src/engine/core-modules/crm-audit/password-update-audit';
 import { type EmailPasswordResetLinkDTO } from 'src/engine/core-modules/auth/dto/email-password-reset-link.dto';
 import { type InvalidatePasswordDTO } from 'src/engine/core-modules/auth/dto/invalidate-password.dto';
 import { type ValidatePasswordResetTokenDTO } from 'src/engine/core-modules/auth/dto/validate-password-reset-token.dto';
@@ -142,13 +147,23 @@ export class ResetPasswordService {
       .update(resetToken.passwordResetToken)
       .digest('hex');
 
+    clearPendingPasswordResetTokenValidation(userId);
     await this.appTokenRepository.manager.transaction(async (entityManager) => {
+      if (typeof entityManager.query === 'function') {
+        await entityManager.query("SET LOCAL lock_timeout = '8s'");
+        await acquireUserAuthenticationLock({
+          entityManager,
+          userId: userId.toLowerCase(),
+          mode: 'exclusive',
+        });
+      }
       const appTokenRepository = entityManager.getRepository(AppTokenEntity);
 
       await appTokenRepository.update(
         {
           userId,
           type: AppTokenType.PasswordResetToken,
+          revokedAt: IsNull(),
         },
         {
           revokedAt: new Date(),
@@ -265,6 +280,7 @@ export class ResetPasswordService {
         type: AppTokenType.PasswordResetToken,
         expiresAt: MoreThan(new Date()),
         revokedAt: IsNull(),
+        deletedAt: IsNull(),
       },
     });
 
@@ -279,6 +295,14 @@ export class ResetPasswordService {
       token.userId,
       new AuthException('User not found', AuthExceptionCode.INVALID_INPUT),
     );
+    if (isDefined((user as { deletedAt?: Date | null }).deletedAt)) {
+      throw new AuthException(
+        'User not found',
+        AuthExceptionCode.INVALID_INPUT,
+      );
+    }
+
+    registerPendingPasswordResetTokenValidation(user.id, hashedResetToken);
 
     return {
       id: user.id,
@@ -290,20 +314,49 @@ export class ResetPasswordService {
   async invalidatePasswordResetToken(
     userId: string,
   ): Promise<InvalidatePasswordDTO> {
+    clearPendingPasswordResetTokenValidation(userId);
     const user = await this.userService.findUserByIdOrThrow(
       userId,
       new AuthException('User not found', AuthExceptionCode.INVALID_INPUT),
     );
 
-    await this.appTokenRepository.update(
-      {
-        userId: user.id,
-        type: AppTokenType.PasswordResetToken,
-      },
-      {
-        revokedAt: new Date(),
-      },
-    );
+    if (typeof this.appTokenRepository.manager?.transaction === 'function') {
+      await this.appTokenRepository.manager.transaction(
+        async (entityManager) => {
+          if (typeof entityManager.query === 'function') {
+            await entityManager.query("SET LOCAL lock_timeout = '8s'");
+            await acquireUserAuthenticationLock({
+              entityManager,
+              userId: user.id.toLowerCase(),
+              mode: 'exclusive',
+            });
+          }
+          const appTokenRepository =
+            entityManager.getRepository(AppTokenEntity);
+          await appTokenRepository.update(
+            {
+              userId: user.id,
+              type: AppTokenType.PasswordResetToken,
+              revokedAt: IsNull(),
+            },
+            {
+              revokedAt: new Date(),
+            },
+          );
+        },
+      );
+    } else {
+      await this.appTokenRepository.update(
+        {
+          userId: user.id,
+          type: AppTokenType.PasswordResetToken,
+          revokedAt: IsNull(),
+        },
+        {
+          revokedAt: new Date(),
+        },
+      );
+    }
 
     return { success: true };
   }

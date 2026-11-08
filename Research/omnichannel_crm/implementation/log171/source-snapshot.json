@@ -1,0 +1,13 @@
+{
+  "baseCommit": "47cb535e348714aed585153d54ad0bf895c096c6",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/auth/services/auth.service.ts": "25733a1e5b594673ebf3d5589f45e9f3060bad688bd14ccf90e1146362ed0dc2",
+    "packages/twenty-server/src/engine/core-modules/auth/services/reset-password.service.ts": "07c2c35ca08b501122cf3377d00e418b206253d52c0413377a12864e65d777f2",
+    "packages/twenty-server/src/engine/core-modules/auth/token/services/refresh-token.service.ts": "86f7191db1cee88d661736733057239dc66176ac540ee0c325e2723712e6155f",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/password-update-audit.ts": "f667495c49c064d862827963632b9319c18c28918982967033b23ebf2f278309",
+    "packages/twenty-server/src/engine/core-modules/user-session/services/user-session.service.ts": "694ee3540906fd4b08bbe6397e8c65fe3adfc81968a322b30ef761c5cdbf0cd8",
+    "packages/twenty-server/src/engine/core-modules/user-session/user-session.resolver.ts": "40a2ef5da1ede2a3a89cba1a930c90b6ea9d1fb109d0d047a110603537d338cb",
+    "packages/twenty-server/test/fork-migration/crm-audit-password-update.postgres-spec.ts": "0eb1856b4086c79cbde597897009bc3a662091f0338658548c9615bf6e5028c0"
+  },
+  "uploadedSourceHashesVerified": true
+}

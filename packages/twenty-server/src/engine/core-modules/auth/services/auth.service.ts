@@ -1,7 +1,16 @@
 import { requireOAuthAuditIdentity } from 'src/engine/core-modules/crm-audit/oauth-audit-identity';
 import { type MembershipCleanupIdentity } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
+import {
+  capturePasswordUpdateAudit,
+  clearPendingPasswordResetTokenValidation,
+  peekPendingPasswordResetTokenValidation,
+  runAuditedPasswordUpdate,
+  type PasswordUpdateAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/password-update-audit';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
 import crypto, { randomUUID } from 'node:crypto';
 
@@ -13,7 +22,8 @@ import { PasswordUpdateNotifyEmail, renderEmail } from 'twenty-emails';
 import { PermissionFlagType } from 'twenty-shared/constants';
 import { AppPath, ConnectedAccountProvider } from 'twenty-shared/types';
 import { assertIsDefinedOrThrow, isDefined } from 'twenty-shared/utils';
-import { IsNull, Repository } from 'typeorm';
+import { isUUID } from 'class-validator';
+import { DataSource, IsNull, Repository } from 'typeorm';
 
 import {
   AppTokenEntity,
@@ -83,6 +93,8 @@ import { PermissionsService } from 'src/engine/metadata-modules/permissions/perm
 @Injectable()
 // oxlint-disable-next-line twenty/inject-workspace-repository
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly accessTokenService: AccessTokenService,
     private readonly ssoExchangeTokenService: SsoExchangeTokenService,
@@ -111,7 +123,42 @@ export class AuthService {
     private readonly featureFlagService: FeatureFlagService,
     private readonly createSsoConnectedAccountService: CreateSsoConnectedAccountService,
     private readonly userSessionService: UserSessionService,
+    @Optional()
+    private readonly coreEntityCacheService?: {
+      invalidate: (key: 'user', id: string) => Promise<unknown>;
+    },
+    @Optional()
+    @InjectDataSource()
+    private readonly dataSource?: DataSource,
   ) {}
+
+  private resolveDataSource(): DataSource | undefined {
+    return (
+      this.dataSource ??
+      (this.userRepository?.manager?.connection as DataSource | undefined) ??
+      (this.appTokenRepository?.manager?.connection as DataSource | undefined)
+    );
+  }
+
+  private async invalidateUserCache(userId: string): Promise<void> {
+    const cacheService =
+      this.coreEntityCacheService ??
+      (
+        this.userService as unknown as {
+          coreEntityCacheService?: {
+            invalidate: (key: 'user', id: string) => Promise<unknown>;
+          };
+        }
+      )?.coreEntityCacheService;
+    if (!cacheService) {
+      return;
+    }
+    try {
+      await cacheService.invalidate('user', userId);
+    } catch {
+      this.logger.error('Password update user cache invalidation failed');
+    }
+  }
 
   private async findUserByEmailOrThrow(email: string) {
     const user = await this.userRepository.findOne({
@@ -715,88 +762,216 @@ export class AuthService {
   async updatePassword(
     userId: string,
     newPassword: string,
+    options?: {
+      passwordResetToken?: string;
+      auditIdentity?: PasswordUpdateAuditIdentity;
+    },
   ): Promise<UpdatePasswordDTO> {
-    if (!userId) {
+    if (!userId || !isUUID(userId)) {
       throw new AuthException(
         'User ID is required',
         AuthExceptionCode.INVALID_INPUT,
       );
     }
 
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-      relations: { userWorkspaces: true },
-    });
-
-    if (!user) {
-      throw new AuthException(
-        'User not found',
-        AuthExceptionCode.USER_NOT_FOUND,
+    const normalizedUserId = userId.toLowerCase();
+    if (
+      this.userRepository?.manager?.queryRunner ||
+      this.appTokenRepository?.manager?.queryRunner
+    ) {
+      throw new Error(
+        'Password update requires ownership of the core transaction',
       );
     }
+    const passwordResetTokenHash =
+      typeof options?.passwordResetToken === 'string'
+        ? crypto
+            .createHash('sha256')
+            .update(options.passwordResetToken)
+            .digest('hex')
+        : peekPendingPasswordResetTokenValidation(normalizedUserId);
+    const resolvedDataSource = this.resolveDataSource();
+    const hasExplicitAuditIdentity =
+      options !== undefined && 'auditIdentity' in options;
+    const auditRequest =
+      resolvedDataSource || hasExplicitAuditIdentity
+        ? capturePasswordUpdateAudit(
+            normalizedUserId,
+            hasExplicitAuditIdentity ? options.auditIdentity : undefined,
+          )
+        : undefined;
 
-    const [firstUserWorkspace] = user.userWorkspaces;
+    let committedUser: {
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+    };
+    let committedLocale: Parameters<typeof this.i18nService.getI18nInstance>[0];
 
-    if (!firstUserWorkspace) {
-      throw new AuthException(
-        'User does not have a workspace',
-        AuthExceptionCode.USER_WORKSPACE_NOT_FOUND,
-      );
+    if (resolvedDataSource && auditRequest) {
+      const isPasswordValid = PASSWORD_REGEX.test(newPassword);
+      const newPasswordHash = isPasswordValid
+        ? await hashPassword(newPassword)
+        : null;
+
+      try {
+        const committed = await runAuditedPasswordUpdate({
+          dataSource: resolvedDataSource,
+          request: auditRequest,
+          userId: normalizedUserId,
+          newPasswordHash,
+          onInvalidPassword: () => {
+            throw new AuthException(
+              'Password is too weak',
+              AuthExceptionCode.INVALID_INPUT,
+              {
+                userFriendlyMessage: msg`Password is too weak.`,
+              },
+            );
+          },
+          onInvalidResetToken: () => {
+            throw new AuthException(
+              'Token is invalid',
+              AuthExceptionCode.FORBIDDEN_EXCEPTION,
+            );
+          },
+          onUserNotFound: () => {
+            throw new AuthException(
+              'User not found',
+              AuthExceptionCode.USER_NOT_FOUND,
+            );
+          },
+          onUserWorkspaceNotFound: () => {
+            throw new AuthException(
+              'User does not have a workspace',
+              AuthExceptionCode.USER_WORKSPACE_NOT_FOUND,
+            );
+          },
+          revokedReason: UserSessionRevokedReason.PasswordChanged,
+          ...(passwordResetTokenHash !== undefined
+            ? { passwordResetTokenHash }
+            : {}),
+        });
+        committedUser = committed.user;
+        committedLocale = committed.firstUserWorkspace
+          .locale as typeof committedLocale;
+      } catch (error) {
+        if (
+          error instanceof NativeTransactionOutcomeUnknownError ||
+          error instanceof CoreAuditPostCommitError
+        ) {
+          try {
+            await this.userSessionService.revokeAllSessionsForUser({
+              userId: normalizedUserId,
+              reason: UserSessionRevokedReason.PasswordChanged,
+              ...(auditRequest.impersonatorUserWorkspaceId
+                ? {
+                    initiatorMembershipId:
+                      auditRequest.impersonatorUserWorkspaceId,
+                  }
+                : {}),
+            });
+          } catch {
+            // Preserve the original unknown/post-commit error after best-effort session revocation.
+          }
+        }
+        throw error;
+      } finally {
+        await this.invalidateUserCache(normalizedUserId);
+      }
+    } else {
+      clearPendingPasswordResetTokenValidation(normalizedUserId);
+      const user = await this.userRepository.findOne({
+        where: { id: normalizedUserId },
+        relations: { userWorkspaces: true },
+      });
+
+      if (!user) {
+        throw new AuthException(
+          'User not found',
+          AuthExceptionCode.USER_NOT_FOUND,
+        );
+      }
+
+      const [firstUserWorkspace] = user.userWorkspaces;
+
+      if (!firstUserWorkspace) {
+        throw new AuthException(
+          'User does not have a workspace',
+          AuthExceptionCode.USER_WORKSPACE_NOT_FOUND,
+        );
+      }
+
+      const isPasswordValid = PASSWORD_REGEX.test(newPassword);
+
+      if (!isPasswordValid) {
+        throw new AuthException(
+          'Password is too weak',
+          AuthExceptionCode.INVALID_INPUT,
+          {
+            userFriendlyMessage: msg`Password is too weak.`,
+          },
+        );
+      }
+
+      const newPasswordHash = await hashPassword(newPassword);
+
+      try {
+        await this.userRepository.update(normalizedUserId, {
+          passwordHash: newPasswordHash,
+        });
+
+        await this.appTokenRepository.update(
+          {
+            userId: normalizedUserId,
+            type: AppTokenType.RefreshToken,
+            revokedAt: IsNull(),
+          },
+          {
+            revokedAt: new Date(),
+          },
+        );
+      } finally {
+        await this.invalidateUserCache(normalizedUserId);
+      }
+
+      committedUser = {
+        id: normalizedUserId,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      };
+      committedLocale = firstUserWorkspace.locale;
     }
-
-    const isPasswordValid = PASSWORD_REGEX.test(newPassword);
-
-    if (!isPasswordValid) {
-      throw new AuthException(
-        'Password is too weak',
-        AuthExceptionCode.INVALID_INPUT,
-        {
-          userFriendlyMessage: msg`Password is too weak.`,
-        },
-      );
-    }
-
-    const newPasswordHash = await hashPassword(newPassword);
-
-    await this.userRepository.update(userId, {
-      passwordHash: newPasswordHash,
-    });
-
-    await this.appTokenRepository.update(
-      {
-        userId,
-        type: AppTokenType.RefreshToken,
-        revokedAt: IsNull(),
-      },
-      {
-        revokedAt: new Date(),
-      },
-    );
 
     await this.userSessionService.revokeAllSessionsForUser({
-      userId,
+      userId: normalizedUserId,
       reason: UserSessionRevokedReason.PasswordChanged,
+      ...(auditRequest?.impersonatorUserWorkspaceId
+        ? { initiatorMembershipId: auditRequest.impersonatorUserWorkspaceId }
+        : {}),
     });
 
     const emailTemplate = PasswordUpdateNotifyEmail({
-      userName: `${user.firstName} ${user.lastName}`,
-      email: user.email,
+      userName: `${committedUser.firstName} ${committedUser.lastName}`,
+      email: committedUser.email,
       link: this.domainServerConfigService.getBaseUrl().toString(),
-      locale: firstUserWorkspace.locale,
+      locale: committedLocale,
     });
 
     const html = await renderEmail(emailTemplate, { pretty: true });
     const text = await renderEmail(emailTemplate, { plainText: true });
 
     const passwordChangedMsg = msg`Your Password Has Been Successfully Changed`;
-    const i18n = this.i18nService.getI18nInstance(firstUserWorkspace.locale);
+    const i18n = this.i18nService.getI18nInstance(committedLocale);
     const subject = i18n._(passwordChangedMsg);
 
     await this.emailService.send({
       from: `${this.twentyConfigService.get(
         'EMAIL_FROM_NAME',
       )} <${this.twentyConfigService.get('EMAIL_FROM_ADDRESS')}>`,
-      to: user.email,
+      to: committedUser.email,
       subject,
       text,
       html,

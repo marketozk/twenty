@@ -5005,6 +5005,57 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 отправлен в GitHub, ref подтверждён через API. Описание ROB765, комментарий
 e7c3e9fd-cde1-4550-804b-04c98632d0e3 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log170/publication.json).
-Следующий участок - закрытие оставшихся открытых границ ROB765.
+Следующий участок - аудит смены и сброса пароля, пакетного отзыва `refreshToken` и сериализации `acquireUserAuthenticationLock` по LOG171.
+
+## LOG171 - аудит смены и сброса пароля, пакетного отзыва `refreshToken` и сериализации `acquireUserAuthenticationLock`
+
+08.11.2026 зафиксированы [дизайн](implementation/log171/design.md),
+[независимое ревью решения](implementation/log171/design-review.md) и
+[план проверок](implementation/log171/test-research.md).
+Добавлен модуль `password-update-audit.ts`
+(`capturePasswordUpdateAudit`, `runAuditedPasswordUpdate`,
+`registerPendingPasswordResetTokenValidation`,
+`peekPendingPasswordResetTokenValidation`,
+`clearPendingPasswordResetTokenValidation`), подключённый к
+`AuthService.updatePassword`, `AuthResolver.updatePasswordViaResetToken`,
+`ResetPasswordService` (`validatePasswordResetToken`,
+`invalidatePasswordResetToken`, `rotatePasswordResetToken`),
+`RefreshTokenService` (`generateRefreshToken`, `rotateRefreshToken`),
+`UserSessionService` (`createSession`, `revokeSessionByIdForUserWorkspace`,
+`revokeAllOtherSessionsForUserWorkspace`, `revokeAllSessionsForUser`,
+`revokeSessionsWithAudit`) и `UserSessionResolver` (`revokeUserSession`,
+`revokeAllOtherUserSessions`).
+Учтены все замечания ревью дизайна и кода (B1-B2, M3-M7, m8-m9): вычисление
+`bcrypt`-хэша вне транзакции БД с сохранением канонического порядка ошибок
+`USER_NOT_FOUND` -> `USER_WORKSPACE_NOT_FOUND` -> `Password is too weak`,
+захват `acquireUserAuthenticationLock` (`mode: 'exclusive'`) и
+`SET LOCAL lock_timeout = '8s'` при смене пароля, сбросе пароля и отзыве сессий,
+разделяемая блокировка `acquireUserAuthenticationLock` (`mode: 'shared'`) при
+выпуске `RefreshToken` и создании сессий (включая workspace-agnostic сессии),
+атомарная проверка и блокировка `PASSWORD_RESET_TOKEN` внутри
+`runAuditedPasswordUpdate` с условием `revokedAt: IsNull()` и `deletedAt: IsNull()`,
+сохранение исходного `revokedAt` у ротированных `RefreshToken` в окне
+`REFRESH_TOKEN_REUSE_GRACE_PERIOD` с записью `context.revokedReason = 'PASSWORD_CHANGED'`
+и проверкой `core.workspace."deletedAt" IS NULL`, передача
+`initiatorMembershipId` из `UserSessionResolver` и `AuthService.updatePassword`
+для фиксации `initiator` при имперсонации, принудительный отзыв сессий и
+подавление ложного письма при `NativeTransactionOutcomeUnknownError` /
+`CoreAuditPostCommitError`, инвалидация кэша `user` в `finally` и чистота
+границы Enterprise (`0` нарушений).
+
+08.11.2026 проверки LOG171 завершены. 3156 tests/116 suites PASS (696.681s). 280 targeted/19 PostgreSQL suites PASS (38.352s), 6 новых PostgreSQL случаев. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 476/478 roots, baseline 277 / current 277 diagnostics, 0 новых/changed-code. Совпали 7 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех входных точек смены и
+сброса пароля, пакетного отзыва `refreshToken` и `PasswordResetToken`,
+сериализации `acquireUserAuthenticationLock`, передачи `initiator` при отзыве
+сессий под имперсонацией, устранение замечаний B1-B2, M3-M7 и m8-m9, корректную
+обработку `NativeTransactionOutcomeUnknownError` и `CoreAuditPostCommitError` и
+чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log171/results.json), [ревью](implementation/log171/review.md),
+[следующий участок](implementation/log171/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
+
 
 
