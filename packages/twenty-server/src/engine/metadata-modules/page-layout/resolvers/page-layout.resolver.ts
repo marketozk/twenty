@@ -15,6 +15,7 @@ import {
 
 import { PermissionFlagType } from 'twenty-shared/constants';
 
+import { type NavigationMenuItemAuditIdentity } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
 import { type I18nContext } from 'src/engine/core-modules/i18n/types/i18n-context.type';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
@@ -158,10 +159,12 @@ export class PageLayoutResolver {
   async destroyPageLayout(
     @Args('id', { type: () => String }) id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<boolean> {
     return this.pageLayoutService.destroy({
       id,
       workspaceId: workspace.id,
+      auditIdentity: context?.req,
     });
   }
 

@@ -9,6 +9,11 @@ import {
   withCoreViewUpdateAudit,
   type CoreWorkflowAndViewAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
+import {
+  captureNavigationMenuItemAudit,
+  withNavigationMenuItemAudit,
+  type NavigationMenuItemAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { findFlatEntityByIdInFlatEntityMapsOrThrow } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps-or-throw.util';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
@@ -272,23 +277,35 @@ export class ViewService {
   async deleteOne({
     deleteViewInput,
     workspaceId,
+    auditIdentity,
   }: {
     deleteViewInput: DeleteViewInput;
     workspaceId: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<ViewDTO> {
     return this.destroyOne({
       destroyViewInput: deleteViewInput,
       workspaceId,
+      auditIdentity,
     });
   }
 
   async destroyOne({
     destroyViewInput,
     workspaceId,
+    auditIdentity,
   }: {
     destroyViewInput: DestroyViewInput;
     workspaceId: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<ViewDTO> {
+    const getCascadeAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'cascade',
+      auditIdentity,
+      defaultSystemActorId: 'view:destroy',
+    });
+
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         {
@@ -338,8 +355,8 @@ export class ViewService {
       updatedAt: now,
     };
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+    const runMigration = () =>
+      this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
         {
           allFlatEntityOperationByMetadataName: {
             view: {
@@ -356,6 +373,15 @@ export class ViewService {
             workspaceCustomFlatApplication.universalIdentifier,
         },
       );
+
+    const validateAndBuildResult = shouldDeactivate
+      ? await runMigration()
+      : await withNavigationMenuItemAudit(
+          getCascadeAudit({
+            expectedParentViewDeleteIds: [existingFlatView.id],
+          }),
+          runMigration,
+        );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

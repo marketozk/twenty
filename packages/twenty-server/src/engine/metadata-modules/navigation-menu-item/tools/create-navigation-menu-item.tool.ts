@@ -169,7 +169,15 @@ export class CreateNavigationMenuItemTool extends BaseTool<
 
   async execute({
     input,
-    context: { workspaceId, userWorkspaceId, application, agentId },
+    context: {
+      workspaceId,
+      userWorkspaceId,
+      application,
+      agentId,
+      authContext,
+      userId,
+      actorContext,
+    },
   }: ToolExecuteArgs<
     typeof createNavigationMenuItemInputSchema
   >): Promise<ToolOutput> {
@@ -189,6 +197,18 @@ export class CreateNavigationMenuItemTool extends BaseTool<
         authUserWorkspaceId: userWorkspaceId,
         authApplicationId: application?.id,
         authAgentId: agentId,
+        auditIdentity: authContext
+          ? { auth: authContext, agentId }
+          : {
+              ...(userId ? { user: { id: userId } } : {}),
+              ...(actorContext?.workspaceMemberId
+                ? { workspaceMemberId: actorContext.workspaceMemberId }
+                : {}),
+              ...(application?.id
+                ? { application: { id: application.id } }
+                : {}),
+              ...(agentId ? { agentId } : {}),
+            },
       });
 
       return {

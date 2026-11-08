@@ -4,6 +4,11 @@ import { isDefined } from 'twenty-shared/utils';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
+import {
+  captureNavigationMenuItemAudit,
+  withNavigationMenuItemAudit,
+  type NavigationMenuItemAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { findFlatEntityByIdInFlatEntityMapsOrThrow } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps-or-throw.util';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
@@ -148,6 +153,7 @@ export class NavigationMenuItemService {
     authApiKeyId,
     authApplicationId,
     authAgentId,
+    auditIdentity,
   }: {
     input: CreateNavigationMenuItemInput;
     workspaceId: string;
@@ -155,6 +161,7 @@ export class NavigationMenuItemService {
     authApiKeyId?: string;
     authApplicationId?: string;
     authAgentId?: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<NavigationMenuItemDTO> {
     const createdItems = await this.createMany({
       inputs: [input],
@@ -163,6 +170,7 @@ export class NavigationMenuItemService {
       authApiKeyId,
       authApplicationId,
       authAgentId,
+      auditIdentity,
     });
 
     const created = createdItems[0];
@@ -184,6 +192,7 @@ export class NavigationMenuItemService {
     authApiKeyId,
     authApplicationId,
     authAgentId,
+    auditIdentity,
   }: {
     inputs: CreateNavigationMenuItemInput[];
     workspaceId: string;
@@ -191,7 +200,18 @@ export class NavigationMenuItemService {
     authApiKeyId?: string;
     authApplicationId?: string;
     authAgentId?: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<NavigationMenuItemDTO[]> {
+    const getAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'create',
+      auditIdentity,
+      authUserWorkspaceId,
+      authApiKeyId,
+      authApplicationId,
+      authAgentId,
+    });
+
     if (inputs.length === 0) {
       return [];
     }
@@ -280,22 +300,33 @@ export class NavigationMenuItemService {
       return flatNavigationMenuItemToCreate;
     });
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            navigationMenuItem: {
-              flatEntityToCreate: flatNavigationMenuItemsToCreate,
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [],
+    const baseAudit = getAudit();
+    const auditRequest = Object.freeze({
+      ...baseAudit,
+      expectedCreatedIds: Object.freeze(
+        flatNavigationMenuItemsToCreate.map((item) => item.id.toLowerCase()),
+      ),
+    });
+
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      auditRequest,
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              navigationMenuItem: {
+                flatEntityToCreate: flatNavigationMenuItemsToCreate,
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [],
+              },
             },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -329,6 +360,7 @@ export class NavigationMenuItemService {
     authApiKeyId,
     authApplicationId,
     authAgentId,
+    auditIdentity,
   }: {
     input: UpdateNavigationMenuItemInput & { id: string };
     workspaceId: string;
@@ -336,6 +368,7 @@ export class NavigationMenuItemService {
     authApiKeyId?: string;
     authApplicationId?: string;
     authAgentId?: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<NavigationMenuItemDTO> {
     const { id, ...update } = input;
 
@@ -346,6 +379,7 @@ export class NavigationMenuItemService {
       authApiKeyId,
       authApplicationId,
       authAgentId,
+      auditIdentity,
     });
 
     const updated = updatedItems[0];
@@ -367,6 +401,7 @@ export class NavigationMenuItemService {
     authApiKeyId,
     authApplicationId,
     authAgentId,
+    auditIdentity,
   }: {
     inputs: UpdateOneNavigationMenuItemInput[];
     workspaceId: string;
@@ -374,7 +409,19 @@ export class NavigationMenuItemService {
     authApiKeyId?: string;
     authApplicationId?: string;
     authAgentId?: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<NavigationMenuItemDTO[]> {
+    const getAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'update',
+      auditIdentity,
+      authUserWorkspaceId,
+      authApiKeyId,
+      authApplicationId,
+      authAgentId,
+      expectedUpdatedIds: inputs.map(({ id }) => id),
+    });
+
     if (inputs.length === 0) {
       return [];
     }
@@ -432,22 +479,25 @@ export class NavigationMenuItemService {
       );
     }
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            navigationMenuItem: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: flatNavigationMenuItemsToUpdate,
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getAudit(),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              navigationMenuItem: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: flatNavigationMenuItemsToUpdate,
+              },
             },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -481,6 +531,7 @@ export class NavigationMenuItemService {
     authApiKeyId,
     authApplicationId,
     authAgentId,
+    auditIdentity,
   }: {
     id: string;
     workspaceId: string;
@@ -488,6 +539,7 @@ export class NavigationMenuItemService {
     authApiKeyId?: string;
     authApplicationId?: string;
     authAgentId?: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<NavigationMenuItemDTO> {
     const deletedItems = await this.deleteMany({
       ids: [id],
@@ -496,6 +548,7 @@ export class NavigationMenuItemService {
       authApiKeyId,
       authApplicationId,
       authAgentId,
+      auditIdentity,
     });
 
     const deleted = deletedItems[0];
@@ -517,6 +570,7 @@ export class NavigationMenuItemService {
     authApiKeyId,
     authApplicationId,
     authAgentId,
+    auditIdentity,
   }: {
     ids: string[];
     workspaceId: string;
@@ -524,7 +578,19 @@ export class NavigationMenuItemService {
     authApiKeyId?: string;
     authApplicationId?: string;
     authAgentId?: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<NavigationMenuItemDTO[]> {
+    const getAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'delete',
+      auditIdentity,
+      authUserWorkspaceId,
+      authApiKeyId,
+      authApplicationId,
+      authAgentId,
+      expectedDeletedIds: ids,
+    });
+
     if (ids.length === 0) {
       return [];
     }
@@ -604,22 +670,33 @@ export class NavigationMenuItemService {
       }
     }
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            navigationMenuItem: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: flatEntitiesToDeleteOrdered,
-              flatEntityToUpdate: [],
+    const baseAudit = getAudit();
+    const auditRequest = Object.freeze({
+      ...baseAudit,
+      expectedDeletedIds: Object.freeze(
+        flatEntitiesToDeleteOrdered.map((item) => item.id.toLowerCase()),
+      ),
+    });
+
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      auditRequest,
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              navigationMenuItem: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: flatEntitiesToDeleteOrdered,
+                flatEntityToUpdate: [],
+              },
             },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

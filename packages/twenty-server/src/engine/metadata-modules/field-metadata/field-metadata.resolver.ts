@@ -279,11 +279,18 @@ export class FieldMetadataResolver {
   async updateOneField(
     @Args('input') input: UpdateOneFieldMetadataInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context()
+    context?: {
+      req?: Parameters<typeof roleAuditIdentityFromRequest>[0];
+    },
   ) {
     try {
       const flatFieldMetadata = await this.fieldMetadataService.updateOneField({
         updateFieldInput: { ...input.update, id: input.id },
         workspaceId,
+        auditIdentity: context?.req
+          ? roleAuditIdentityFromRequest(context.req)
+          : undefined,
       });
 
       return fromFlatFieldMetadataToFieldMetadataDto(flatFieldMetadata);

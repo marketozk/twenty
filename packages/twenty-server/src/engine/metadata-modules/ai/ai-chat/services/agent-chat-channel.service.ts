@@ -188,6 +188,9 @@ export class AgentChatChannelService {
         await this.channelMetadataService.deleteChannel({
           workspaceId,
           channelId,
+          auditIdentity: {
+            workspaceMemberId,
+          },
         });
       },
     );

@@ -1,4 +1,8 @@
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
+import {
+  captureNavigationMenuItemAudit,
+  withNavigationMenuItemAudit,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { type ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 import { getNavigationMenuItemFlatEntitySeeds } from 'src/engine/workspace-manager/dev-seeder/core/utils/get-navigation-menu-item-data-seeds.util';
 import { getPageLayoutFlatEntitySeeds } from 'src/engine/workspace-manager/dev-seeder/core/utils/get-page-layout-data-seeds.util';
@@ -39,8 +43,15 @@ export const seedPageLayouts = async ({
     flatApplication,
   });
 
-  const result =
-    await workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+  const getAudit = captureNavigationMenuItemAudit({
+    workspaceId,
+    mode: 'cascade',
+    defaultSystemActorId: 'dev-seeder:page-layouts',
+    expectedCreatedIds: navigationMenuItems.map((item) => item.id),
+  });
+
+  const result = await withNavigationMenuItemAudit(getAudit(), () =>
+    workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
       {
         allFlatEntityOperationByMetadataName: {
           pageLayout: {
@@ -67,7 +78,8 @@ export const seedPageLayouts = async ({
         workspaceId,
         applicationUniversalIdentifier: flatApplication.universalIdentifier,
       },
-    );
+    ),
+  );
 
   if (result.status === 'fail') {
     throw new WorkspaceMigrationBuilderException(

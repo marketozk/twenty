@@ -4,6 +4,11 @@ import { isDefined, removeUndefinedFields } from 'twenty-shared/utils';
 import { v4 } from 'uuid';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
+import {
+  captureNavigationMenuItemAudit,
+  withNavigationMenuItemAudit,
+  type NavigationMenuItemAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { addRoleIdsToFlatAgentChatChannel } from 'src/engine/metadata-modules/agent-chat-channel/utils/add-role-ids-to-flat-agent-chat-channel.util';
 import { buildAgentChatChannelRolesToCreate } from 'src/engine/metadata-modules/agent-chat-channel/utils/build-agent-chat-channel-roles-to-create.util';
 import { findAgentChatChannelRoleUniversalIdentifiersOrThrow } from 'src/engine/metadata-modules/agent-chat-channel/utils/find-agent-chat-channel-role-universal-identifiers-or-throw.util';
@@ -244,10 +249,19 @@ export class AgentChatChannelMetadataService {
   async deleteChannel({
     workspaceId,
     channelId,
+    auditIdentity,
   }: {
     workspaceId: string;
     channelId: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<FlatAgentChatChannelWithRoleIds> {
+    const getCascadeAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'cascade',
+      auditIdentity,
+      defaultSystemActorId: 'agent-chat-channel:delete',
+    });
+
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         { workspaceId },
@@ -263,20 +277,29 @@ export class AgentChatChannelMetadataService {
       channelId,
     });
 
-    await this.runMigration({
-      workspaceId,
-      applicationUniversalIdentifier:
-        workspaceCustomFlatApplication.universalIdentifier,
-      channelsToDelete: [channel],
-      channelRolesToDelete: findManyFlatEntityByIdInFlatEntityMaps({
-        flatEntityIds: channel.channelRoleIds,
-        flatEntityMaps: flatAgentChatChannelRoleMaps,
-      }),
-      navigationMenuItemsToDelete: findManyFlatEntityByIdInFlatEntityMaps({
-        flatEntityIds: channel.navigationMenuItemIds,
-        flatEntityMaps: flatNavigationMenuItemMaps,
-      }),
+    const navigationMenuItemsToDelete = findManyFlatEntityByIdInFlatEntityMaps({
+      flatEntityIds: channel.navigationMenuItemIds,
+      flatEntityMaps: flatNavigationMenuItemMaps,
     });
+
+    await withNavigationMenuItemAudit(
+      getCascadeAudit({
+        expectedParentChannelDeleteIds: [channel.id],
+        expectedDeletedIds: navigationMenuItemsToDelete.map((item) => item.id),
+      }),
+      () =>
+        this.runMigration({
+          workspaceId,
+          applicationUniversalIdentifier:
+            workspaceCustomFlatApplication.universalIdentifier,
+          channelsToDelete: [channel],
+          channelRolesToDelete: findManyFlatEntityByIdInFlatEntityMaps({
+            flatEntityIds: channel.channelRoleIds,
+            flatEntityMaps: flatAgentChatChannelRoleMaps,
+          }),
+          navigationMenuItemsToDelete,
+        }),
+    );
 
     return addRoleIdsToFlatAgentChatChannel({
       channel,

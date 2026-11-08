@@ -363,12 +363,19 @@ export class ObjectMetadataResolver {
   async createOneObject(
     @Args('input') input: CreateOneObjectInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context()
+    context?: {
+      req?: Parameters<typeof roleAuditIdentityFromRequest>[0];
+    },
   ) {
     try {
       const flatobjectMetadata =
         await this.objectMetadataService.createOneObject({
           createObjectInput: input.object,
           workspaceId,
+          auditIdentity: context?.req
+            ? roleAuditIdentityFromRequest(context.req)
+            : undefined,
         });
 
       return fromFlatObjectMetadataToObjectMetadataDto(flatobjectMetadata);

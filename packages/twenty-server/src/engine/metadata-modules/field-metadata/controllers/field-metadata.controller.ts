@@ -208,8 +208,9 @@ export class FieldMetadataController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() update: UpdateFieldInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Req() request?: AuthenticatedRequest,
   ) {
-    return this.handleUpdate({ id, update, workspaceId });
+    return this.handleUpdate({ id, update, workspaceId, request });
   }
 
   @Put(':id')
@@ -217,8 +218,9 @@ export class FieldMetadataController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() update: UpdateFieldInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Req() request?: AuthenticatedRequest,
   ) {
-    return this.handleUpdate({ id, update, workspaceId });
+    return this.handleUpdate({ id, update, workspaceId, request });
   }
 
   @Delete(':id')
@@ -246,14 +248,19 @@ export class FieldMetadataController {
     id,
     update,
     workspaceId,
+    request,
   }: {
     id: string;
     update: UpdateFieldInput;
     workspaceId: string;
+    request?: AuthenticatedRequest;
   }) {
     const flatField = await this.fieldMetadataService.updateOneField({
       updateFieldInput: { ...update, id },
       workspaceId,
+      auditIdentity: request
+        ? roleAuditIdentityFromRequest(request)
+        : undefined,
     });
 
     const result = fromFlatFieldMetadataToFieldMetadataDto(flatField);

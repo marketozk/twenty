@@ -21,6 +21,10 @@ import {
   getCoreViewUpdateAudit,
   runAuditedCoreViewUpdate,
 } from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
+import {
+  getNavigationMenuItemAudit,
+  runAuditedNavigationMenuItemMigration,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
 import {
   getRoleAssignmentAudit,
@@ -314,6 +318,13 @@ export class WorkspaceMigrationRunnerService {
         (action.metadataName === 'objectMetadata' ||
           action.metadataName === 'fieldMetadata'),
     );
+    const hasNavCascadeParentDeleteAction = actions.some(
+      (action) =>
+        action.type === 'delete' &&
+        (action.metadataName === 'view' ||
+          action.metadataName === 'pageLayout' ||
+          action.metadataName === 'agentChatChannel'),
+    );
     const permissionCascadeMetadataNames: AllMetadataName[] =
       hasObjectOrFieldDeleteAction
         ? [
@@ -321,8 +332,13 @@ export class WorkspaceMigrationRunnerService {
             'fieldPermission',
             'rowLevelPermissionPredicateGroup',
             'rowLevelPermissionPredicate',
+            'view',
+            'pageLayout',
+            'navigationMenuItem',
           ]
-        : [];
+        : hasNavCascadeParentDeleteAction
+          ? ['navigationMenuItem']
+          : [];
 
     const actionsMetadataAndRelatedMetadataNames: AllMetadataName[] = [
       ...new Set([
@@ -425,6 +441,7 @@ export class WorkspaceMigrationRunnerService {
     const apiKeyCreateAudit = getApiKeyCreateAudit(workspaceId);
     const applicationMetadataAudit = getApplicationMetadataAudit(workspaceId);
     const coreViewUpdateAudit = getCoreViewUpdateAudit(workspaceId);
+    const navigationMenuItemAudit = getNavigationMenuItemAudit(workspaceId);
     if (
       [
         roleAudit,
@@ -433,6 +450,7 @@ export class WorkspaceMigrationRunnerService {
         apiKeyCreateAudit,
         applicationMetadataAudit,
         coreViewUpdateAudit,
+        navigationMenuItemAudit,
       ].filter(Boolean).length > 1
     )
       throw new Error('Conflicting metadata audit owners');
@@ -441,8 +459,11 @@ export class WorkspaceMigrationRunnerService {
       assignmentAudit ||
       permissionAudit ||
       apiKeyCreateAudit ||
-      coreViewUpdateAudit
+      coreViewUpdateAudit ||
+      navigationMenuItemAudit
     ) {
+      const hasSchemaMetadataChangedForAudit =
+        isSchemaAffectingWorkspaceMigration(actions);
       try {
         const mappings = {
           application: flatApplication,
@@ -475,9 +496,22 @@ export class WorkspaceMigrationRunnerService {
             allFlatEntityMaps.flatRowLevelPermissionPredicateGroupMaps
               ?.byUniversalIdentifier ?? {},
           views: allFlatEntityMaps.flatViewMaps?.byUniversalIdentifier ?? {},
+          navigationMenuItems:
+            allFlatEntityMaps.flatNavigationMenuItemMaps
+              ?.byUniversalIdentifier ?? {},
+          pageLayouts:
+            allFlatEntityMaps.flatPageLayoutMaps?.byUniversalIdentifier ?? {},
+          agentChatChannels:
+            allFlatEntityMaps.flatAgentChatChannelMaps?.byUniversalIdentifier ??
+            {},
         };
+        const searchFieldMetadatasByTsVectorFieldIdAccessor =
+          createSearchFieldMetadatasByTsVectorFieldIdAccessor(
+            () => allFlatEntityMaps.flatSearchFieldMetadataMaps,
+          );
         const execute = async (queryRunner: QueryRunner) => {
           const metadataEvents: MetadataEvent[] = [];
+          const allDeferredActions: DeferredWorkspaceMigrationAction[] = [];
           for (const action of actions) {
             if (
               roleAudit &&
@@ -517,12 +551,15 @@ export class WorkspaceMigrationRunnerService {
                     queryRunner,
                     workspaceId,
                     preallocatedIdByUniversalIdentifierByMetadataName,
-                    getSearchFieldMetadatasByTsVectorFieldId: () => [],
+                    getSearchFieldMetadatasByTsVectorFieldId:
+                      navigationMenuItemAudit
+                        ? searchFieldMetadatasByTsVectorFieldIdAccessor.get
+                        : () => [],
                     featureFlagsMap,
                   },
                 },
               );
-            if (executed.deferredActions.length)
+            if (executed.deferredActions.length && !navigationMenuItemAudit)
               throw new Error(
                 'Audited role mutation cannot dispatch deferred actions',
               );
@@ -530,15 +567,30 @@ export class WorkspaceMigrationRunnerService {
               ...allFlatEntityMaps,
               ...executed.partialOptimisticCache,
             } as typeof allFlatEntityMaps;
+            if (action.metadataName === 'searchFieldMetadata') {
+              searchFieldMetadatasByTsVectorFieldIdAccessor.invalidate();
+            }
             metadataEvents.push(...executed.metadataEvents);
+            allDeferredActions.push(...executed.deferredActions);
+          }
+          if (navigationMenuItemAudit && shouldPersistDeferredActions) {
+            await this.deferredWorkspaceMigrationActionRunnerService.persist({
+              deferredActions: allDeferredActions,
+              workspaceId,
+              applicationUniversalIdentifier,
+              queryRunner,
+            });
           }
           return {
             allFlatEntityMaps,
             metadataEvents,
-            hasSchemaMetadataChanged: false,
+            hasSchemaMetadataChanged: navigationMenuItemAudit
+              ? hasSchemaMetadataChangedForAudit
+              : false,
+            allDeferredActions,
           };
         };
-        return roleAudit
+        const outcome = roleAudit
           ? await runAuditedRoleMutation(
               this.coreDataSource,
               roleAudit,
@@ -570,20 +622,89 @@ export class WorkspaceMigrationRunnerService {
                     mappings,
                     execute,
                   )
-                : await runAuditedApiKeyCreate(
-                    this.coreDataSource,
-                    apiKeyCreateAudit!,
-                    actions,
-                    mappings,
-                    execute,
-                  );
+                : navigationMenuItemAudit
+                  ? await runAuditedNavigationMenuItemMigration(
+                      this.coreDataSource,
+                      navigationMenuItemAudit,
+                      actions as never,
+                      mappings,
+                      execute,
+                    )
+                  : await runAuditedApiKeyCreate(
+                      this.coreDataSource,
+                      apiKeyCreateAudit!,
+                      actions,
+                      mappings,
+                      execute,
+                    );
+        if (navigationMenuItemAudit && outcome.allDeferredActions.length > 0) {
+          await this.deferredWorkspaceMigrationActionRunnerService.dispatchAfterCommit(
+            {
+              deferredActions: outcome.allDeferredActions,
+              hasPersistedDeferredActions: shouldPersistDeferredActions,
+              workspaceId,
+              applicationUniversalIdentifier,
+              allFlatEntityMaps: outcome.allFlatEntityMaps,
+            },
+          );
+        }
+        return {
+          allFlatEntityMaps: outcome.allFlatEntityMaps,
+          metadataEvents: outcome.metadataEvents,
+          hasSchemaMetadataChanged: outcome.hasSchemaMetadataChanged,
+        };
+      } catch (error) {
+        if (!navigationMenuItemAudit) {
+          throw error;
+        }
+        const mayHaveCommitted =
+          error instanceof NativeTransactionOutcomeUnknownError ||
+          error instanceof CoreAuditPostCommitError;
+        if (
+          !mayHaveCommitted &&
+          typeof this.workspaceMigrationRunnerActionHandlerRegistry
+            .executeActionRollbackHandler === 'function'
+        ) {
+          const invertedActions = [...actions].reverse();
+          for (const invertedAction of invertedActions) {
+            await this.workspaceMigrationRunnerActionHandlerRegistry.executeActionRollbackHandler(
+              {
+                action: invertedAction,
+                context: {
+                  flatApplication,
+                  action: invertedAction,
+                  allFlatEntityMaps,
+                  workspaceId,
+                },
+              },
+            );
+          }
+        }
+        const exceptionContext = getFlatEntityMapsExceptionContext(error);
+        if (
+          mayHaveCommitted ||
+          error instanceof WorkspaceMigrationRunnerException ||
+          !isDefined(exceptionContext)
+        ) {
+          throw error;
+        }
+        throw new WorkspaceMigrationRunnerException({
+          message: error instanceof Error ? error.message : String(error),
+          code: WorkspaceMigrationRunnerExceptionCode.INTERNAL_SERVER_ERROR,
+          context: exceptionContext,
+        });
       } finally {
         // A lost COMMIT acknowledgement can still have changed permissions.
         try {
           await this.invalidateCache({
             allFlatEntityMapsKeys,
             workspaceId,
-            hasSchemaMetadataChanged: false,
+            hasSchemaMetadataChanged: navigationMenuItemAudit
+              ? hasSchemaMetadataChangedForAudit
+              : false,
+            hasMorphRelationFieldChanged: navigationMenuItemAudit
+              ? hasMorphRelationFieldChanged
+              : false,
           });
         } catch (cacheError) {
           this.logger.error(
@@ -628,6 +749,14 @@ export class WorkspaceMigrationRunnerService {
         workflows:
           allFlatEntityMaps.flatWorkflowMaps?.byUniversalIdentifier ?? {},
         views: allFlatEntityMaps.flatViewMaps?.byUniversalIdentifier ?? {},
+        navigationMenuItems:
+          allFlatEntityMaps.flatNavigationMenuItemMaps?.byUniversalIdentifier ??
+          {},
+        pageLayouts:
+          allFlatEntityMaps.flatPageLayoutMaps?.byUniversalIdentifier ?? {},
+        agentChatChannels:
+          allFlatEntityMaps.flatAgentChatChannelMaps?.byUniversalIdentifier ??
+          {},
       };
       const allMetadataEvents: MetadataEvent[] = [];
       const allDeferredActions: DeferredWorkspaceMigrationAction[] = [];

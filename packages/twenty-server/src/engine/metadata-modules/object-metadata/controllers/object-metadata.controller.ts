@@ -178,10 +178,14 @@ export class ObjectMetadataController {
   async createOne(
     @Body() input: CreateObjectInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Req() request?: Parameters<typeof roleAuditIdentityFromRequest>[0],
   ) {
     const flatObject = await this.objectMetadataService.createOneObject({
       createObjectInput: input,
       workspaceId,
+      auditIdentity: request
+        ? roleAuditIdentityFromRequest(request)
+        : undefined,
     });
 
     const [fields, derivedFieldMetadataIds] = await Promise.all([

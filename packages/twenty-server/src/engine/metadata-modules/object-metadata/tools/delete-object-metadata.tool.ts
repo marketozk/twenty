@@ -44,7 +44,20 @@ export class DeleteObjectMetadataTool extends BaseTool<
               auth: context.authContext,
               agentId: context.agentId,
             }
-          : undefined,
+          : context.userId ||
+              context.actorContext?.workspaceMemberId ||
+              context.application ||
+              context.agentId
+            ? {
+                user: context.userId ? { id: context.userId } : undefined,
+                workspaceMemberId:
+                  context.actorContext?.workspaceMemberId ?? undefined,
+                application: context.application
+                  ? { id: context.application.id }
+                  : undefined,
+                agentId: context.agentId,
+              }
+            : undefined,
       },
     );
 

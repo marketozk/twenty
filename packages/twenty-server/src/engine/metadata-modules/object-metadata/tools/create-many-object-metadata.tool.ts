@@ -37,23 +37,43 @@ export class CreateManyObjectMetadataTool extends BaseTool<
 
   async execute({
     input,
-    context: { workspaceId },
+    context,
   }: ToolExecuteArgs<
     typeof createManyObjectMetadataInputSchema
   >): Promise<ToolOutput> {
-    await Promise.all(
-      input.objects.map(async ({ icon, ...createObjectInput }) => {
-        await this.objectMetadataService.createOneObject({
-          createObjectInput: {
-            ...createObjectInput,
-            icon: normalizeIconName(icon),
-          } as Parameters<
-            typeof this.objectMetadataService.createOneObject
-          >[0]['createObjectInput'],
-          workspaceId,
-        });
-      }),
-    );
+    const { workspaceId } = context;
+    const auditIdentity = context.authContext
+      ? {
+          auth: context.authContext,
+          agentId: context.agentId,
+        }
+      : context.userId ||
+          context.actorContext?.workspaceMemberId ||
+          context.application ||
+          context.agentId
+        ? {
+            user: context.userId ? { id: context.userId } : undefined,
+            workspaceMemberId:
+              context.actorContext?.workspaceMemberId ?? undefined,
+            application: context.application
+              ? { id: context.application.id }
+              : undefined,
+            agentId: context.agentId,
+          }
+        : undefined;
+
+    for (const { icon, ...createObjectInput } of input.objects) {
+      await this.objectMetadataService.createOneObject({
+        createObjectInput: {
+          ...createObjectInput,
+          icon: normalizeIconName(icon),
+        } as Parameters<
+          typeof this.objectMetadataService.createOneObject
+        >[0]['createObjectInput'],
+        workspaceId,
+        auditIdentity,
+      });
+    }
 
     return {
       success: true,

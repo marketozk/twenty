@@ -14,6 +14,7 @@ import { isDefined } from 'twenty-shared/utils';
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
 import { ApiKeyEntity } from 'src/engine/core-modules/api-key/api-key.entity';
 import { ApplicationEntity } from 'src/engine/core-modules/application/application.entity';
+import { type NavigationMenuItemAuditIdentity } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { getWorkspaceAuthContext } from 'src/engine/core-modules/auth/storage/workspace-auth-context.storage';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
 import { type I18nContext } from 'src/engine/core-modules/i18n/types/i18n-context.type';
@@ -124,15 +125,21 @@ export class NavigationMenuItemResolver {
     @AuthUserWorkspaceId({ allowUndefined: true })
     userWorkspaceId: string | undefined,
     @AuthApiKey() apiKey: ApiKeyEntity | undefined,
-    @Context() context: { req: { application?: ApplicationEntity } },
+    @Context()
+    context: {
+      req: {
+        application?: ApplicationEntity;
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<NavigationMenuItemDTO[]> {
     return await this.navigationMenuItemService.createMany({
       inputs,
       workspaceId: workspace.id,
       authUserWorkspaceId: userWorkspaceId,
       authApiKeyId: apiKey?.id,
-      authApplicationId: context.req.application?.id,
+      authApplicationId: context.req?.application?.id,
       authAgentId: undefined,
+      auditIdentity: context?.req,
     });
   }
 
@@ -144,15 +151,21 @@ export class NavigationMenuItemResolver {
     @AuthUserWorkspaceId({ allowUndefined: true })
     userWorkspaceId: string | undefined,
     @AuthApiKey() apiKey: ApiKeyEntity | undefined,
-    @Context() context: { req: { application?: ApplicationEntity } },
+    @Context()
+    context: {
+      req: {
+        application?: ApplicationEntity;
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<NavigationMenuItemDTO> {
     return await this.navigationMenuItemService.create({
       input,
       workspaceId: workspace.id,
       authUserWorkspaceId: userWorkspaceId,
       authApiKeyId: apiKey?.id,
-      authApplicationId: context.req.application?.id,
+      authApplicationId: context.req?.application?.id,
       authAgentId: undefined,
+      auditIdentity: context?.req,
     });
   }
 
@@ -165,15 +178,21 @@ export class NavigationMenuItemResolver {
     @AuthUserWorkspaceId({ allowUndefined: true })
     userWorkspaceId: string | undefined,
     @AuthApiKey() apiKey: ApiKeyEntity | undefined,
-    @Context() context: { req: { application?: ApplicationEntity } },
+    @Context()
+    context: {
+      req: {
+        application?: ApplicationEntity;
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<NavigationMenuItemDTO[]> {
     return await this.navigationMenuItemService.updateMany({
       inputs,
       workspaceId: workspace.id,
       authUserWorkspaceId: userWorkspaceId,
       authApiKeyId: apiKey?.id,
-      authApplicationId: context.req.application?.id,
+      authApplicationId: context.req?.application?.id,
       authAgentId: undefined,
+      auditIdentity: context?.req,
     });
   }
 
@@ -185,15 +204,21 @@ export class NavigationMenuItemResolver {
     @AuthUserWorkspaceId({ allowUndefined: true })
     userWorkspaceId: string | undefined,
     @AuthApiKey() apiKey: ApiKeyEntity | undefined,
-    @Context() context: { req: { application?: ApplicationEntity } },
+    @Context()
+    context: {
+      req: {
+        application?: ApplicationEntity;
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<NavigationMenuItemDTO> {
     return await this.navigationMenuItemService.update({
       input: { ...input.update, id: input.id },
       workspaceId: workspace.id,
       authUserWorkspaceId: userWorkspaceId,
       authApiKeyId: apiKey?.id,
-      authApplicationId: context.req.application?.id,
+      authApplicationId: context.req?.application?.id,
       authAgentId: undefined,
+      auditIdentity: context?.req,
     });
   }
 
@@ -205,15 +230,21 @@ export class NavigationMenuItemResolver {
     @AuthUserWorkspaceId({ allowUndefined: true })
     userWorkspaceId: string | undefined,
     @AuthApiKey() apiKey: ApiKeyEntity | undefined,
-    @Context() context: { req: { application?: ApplicationEntity } },
+    @Context()
+    context: {
+      req: {
+        application?: ApplicationEntity;
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<NavigationMenuItemDTO[]> {
     return await this.navigationMenuItemService.deleteMany({
       ids,
       workspaceId: workspace.id,
       authUserWorkspaceId: userWorkspaceId,
       authApiKeyId: apiKey?.id,
-      authApplicationId: context.req.application?.id,
+      authApplicationId: context.req?.application?.id,
       authAgentId: undefined,
+      auditIdentity: context?.req,
     });
   }
 
@@ -225,15 +256,21 @@ export class NavigationMenuItemResolver {
     @AuthUserWorkspaceId({ allowUndefined: true })
     userWorkspaceId: string | undefined,
     @AuthApiKey() apiKey: ApiKeyEntity | undefined,
-    @Context() context: { req: { application?: ApplicationEntity } },
+    @Context()
+    context: {
+      req: {
+        application?: ApplicationEntity;
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<NavigationMenuItemDTO> {
     return await this.navigationMenuItemService.delete({
       id,
       workspaceId: workspace.id,
       authUserWorkspaceId: userWorkspaceId,
       authApiKeyId: apiKey?.id,
-      authApplicationId: context.req.application?.id,
+      authApplicationId: context.req?.application?.id,
       authAgentId: undefined,
+      auditIdentity: context?.req,
     });
   }
 

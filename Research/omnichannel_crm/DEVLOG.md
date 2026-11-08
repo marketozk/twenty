@@ -4948,4 +4948,56 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 отправлен в GitHub, ref подтверждён через API. Описание ROB765, комментарий
 c475939a-5c52-4fe3-866c-e9a584e4165a и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log169/publication.json).
-Следующий участок - закрытие оставшихся открытых границ ROB765.
+Следующий участок - аудит полного жизненного цикла (`create`, `update`, `delete`) и каскадных удалений `navigationMenuItem` по LOG170.
+
+## LOG170 - аудит полного жизненного цикла (`create`, `update`, `delete`) и каскадных удалений `navigationMenuItem`
+
+08.11.2026 зафиксированы [дизайн](implementation/log170/design.md),
+[независимое ревью решения](implementation/log170/design-review.md) и
+[план проверок](implementation/log170/test-research.md).
+Добавлен модуль `navigation-menu-item-audit.ts`
+(`captureNavigationMenuItemAudit`, `withNavigationMenuItemAudit`,
+`runAuditedNavigationMenuItemMigration`, `computeCascadeDeletedNavigationMenuItemIds`,
+`projectNavigationMenuItem`, `assertNavigationMenuItemRowInvariants`,
+`scalarNavigationMenuItemWithoutTimestamps`, регистрация в `registerMetadataAuditScopeCheck`),
+а в `crm-audit-transaction-context.ts` список разрешённых действий
+`ADMINISTRATIVE_ACTIONS.navigationMenuItem` расширен до `['create', 'update', 'delete']`.
+Подключены все точки создания, обновления, удаления и каскадного удаления
+`core."navigationMenuItem"`: `NavigationMenuItemService` (`create`, `createMany`,
+`update`, `updateMany`, `delete`, `deleteMany`), `NavigationMenuItemResolver`,
+AI-инструменты (`CreateNavigationMenuItemTool`, `UpdateNavigationMenuItemTool`,
+`DeleteNavigationMenuItemTool`), `NavigationMenuItemDeletionService.deleteNavigationMenuItemsForDeletedRecords`,
+`ObjectMetadataService` (`createOneObject`, `deleteOneObject`, `deleteManyObjectMetadatas`),
+`ObjectMetadataResolver.createOneObject`, `ObjectMetadataController.createOne`,
+`CreateObjectMetadataTool`, `CreateManyObjectMetadataTool`, `DeleteObjectMetadataTool`,
+`FieldMetadataService` (`updateOneField`, `deleteOneField`), `FieldMetadataResolver.updateOneField`,
+`FieldMetadataController.updateOnePatch/updateOnePut`, `UpdateFieldMetadataTool`,
+`DeleteFieldMetadataTool`, `ViewService` (`deleteOne`, `destroyOne`), `ViewResolver`,
+`ViewController`, `PageLayoutService` (`destroy`, `destroyMany`), `PageLayoutResolver`,
+`PageLayoutController`, `AgentChatChannelMetadataService.deleteChannel`,
+`AgentChatChannelService.deleteChannel`, `seedPageLayouts`,
+`runAuditedApplicationMetadataMigration`, `reconcileApplicationRoleAndPermissionOperations`,
+`assertNoRemainingApplicationRoleOrPermissionMetadata` и `WorkspaceMigrationRunnerService.executeRun`.
+Учтены все замечания ревью дизайна и кода (B1-B4, M5-M9, T10-T12): обёртка каскадного удаления
+представлений при деактивации поля в `FieldMetadataService.updateOneField` (B1), учёт каскада
+`plannedFieldDeletes -> view -> navigationMenuItem` в `FieldMetadataService.deleteOneField` и
+`mode === 'fieldDelete'` (B2), загрузка `flatViewMaps`, `flatPageLayoutMaps` и
+`flatNavigationMenuItemMaps` в `WorkspaceMigrationRunnerService` и `ObjectMetadataService` (B3),
+последовательное создание объектов в `CreateManyObjectMetadataTool` (B4), полная сверка полей
+`afterRow` с планом при `create` и `update` в `runAuditedNavigationMenuItemMigration` и
+`runAuditedApplicationMetadataMigration` (M5-M7), явный список ожидаемых операций в режиме
+`mode: 'cascade'` (M8), вызов `executeActionRollbackHandler` при ошибке до коммита в
+`navigationMenuItemAudit` (M9) и изоляция от Enterprise (`0` нарушений).
+
+08.11.2026 проверки LOG170 завершены. 3150 tests/115 suites PASS (691.607s). 348 targeted/18 PostgreSQL suites PASS (36.221s), 6 новых PostgreSQL случаев. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 497/499 roots, baseline 271 / current 271 diagnostics, 0 новых/changed-code. Совпали 31 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех входных точек и каскадных путей
+`navigationMenuItem`, устранение замечаний B1-B4, M5-M9 и T10-T12, корректную обработку
+`NativeTransactionOutcomeUnknownError` и `CoreAuditPostCommitError`, редактирование отображаемых
+полей `['name', 'link', 'icon', 'color', 'position']` и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log170/results.json), [ревью](implementation/log170/review.md),
+[следующий участок](implementation/log170/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
+

@@ -16,6 +16,10 @@ import {
   withApplicationMetadataAudit,
   type ApplicationMetadataAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/application-metadata-audit';
+import {
+  captureNavigationMenuItemAudit,
+  withNavigationMenuItemAudit,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { type CreateFieldInput } from 'src/engine/metadata-modules/field-metadata/dtos/create-field.input';
 import { type DeleteOneFieldInput } from 'src/engine/metadata-modules/field-metadata/dtos/delete-field.input';
 import { type UpdateFieldInput } from 'src/engine/metadata-modules/field-metadata/dtos/update-field.input';
@@ -145,6 +149,8 @@ export class FieldMetadataService {
       flatObjectMetadataMaps: existingFlatObjectMetadataMaps,
       flatIndexMaps: existingFlatIndexMaps,
       flatFieldMetadataMaps: existingFlatFieldMetadataMaps,
+      flatViewMaps: existingFlatViewMaps,
+      flatNavigationMenuItemMaps: existingFlatNavigationMenuItemMaps,
       flatPageLayoutWidgetMaps: existingFlatPageLayoutWidgetMaps,
       flatFieldPermissionMaps: existingFlatFieldPermissionMaps,
       flatRowLevelPermissionPredicateMaps:
@@ -156,6 +162,8 @@ export class FieldMetadataService {
           'flatObjectMetadataMaps',
           'flatIndexMaps',
           'flatFieldMetadataMaps',
+          'flatViewMaps',
+          'flatNavigationMenuItemMaps',
           'flatPageLayoutWidgetMaps',
           'flatFieldPermissionMaps',
           'flatRowLevelPermissionPredicateMaps',
@@ -222,6 +230,11 @@ export class FieldMetadataService {
         flatEntityToUpdate: Record<string, never>;
         flatEntityToDelete: Record<string, never>;
       };
+      navigationMenuItem?: {
+        flatEntityToCreate: Record<string, never>;
+        flatEntityToUpdate: Record<string, never>;
+        flatEntityToDelete: Record<string, never>;
+      };
     } = {
       fieldMetadata: {
         flatEntityToCreate: {},
@@ -240,6 +253,8 @@ export class FieldMetadataService {
         flatFieldPermissionMaps: existingFlatFieldPermissionMaps,
         flatRowLevelPermissionPredicateMaps:
           existingFlatRowLevelPermissionPredicateMaps,
+        flatViewMaps: existingFlatViewMaps,
+        flatNavigationMenuItemMaps: existingFlatNavigationMenuItemMaps,
       },
     });
     const flatFieldPermissionsToDelete = Object.values(
@@ -248,6 +263,10 @@ export class FieldMetadataService {
     const flatRowLevelPermissionPredicatesToDelete = Object.values(
       permissionReconciliationRecord.rowLevelPermissionPredicate
         ?.flatEntityToDelete ?? {},
+    );
+    const flatNavigationMenuItemsToDelete = Object.values(
+      permissionReconciliationRecord.navigationMenuItem?.flatEntityToDelete ??
+        {},
     );
 
     const validateAndBuildResult = await withApplicationMetadataAudit(
@@ -294,6 +313,15 @@ export class FieldMetadataService {
                     },
                   }
                 : {}),
+              ...(flatNavigationMenuItemsToDelete.length > 0
+                ? {
+                    navigationMenuItem: {
+                      flatEntityToCreate: [],
+                      flatEntityToDelete: flatNavigationMenuItemsToDelete,
+                      flatEntityToUpdate: [],
+                    },
+                  }
+                : {}),
             },
             workspaceId,
             isSystemBuild,
@@ -318,12 +346,21 @@ export class FieldMetadataService {
     workspaceId,
     isSystemBuild = false,
     ownerFlatApplication,
+    auditIdentity,
   }: {
     updateFieldInput: Omit<UpdateFieldInput, 'workspaceId'>;
     workspaceId: string;
     isSystemBuild?: boolean;
     ownerFlatApplication?: FlatApplication;
+    auditIdentity?: ApplicationMetadataAuditIdentity;
   }): Promise<FlatFieldMetadata> {
+    const getCascadeAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'cascade',
+      auditIdentity,
+      defaultSystemActorId: 'field-metadata:update',
+    });
+
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         { workspaceId },
@@ -407,8 +444,8 @@ export class FieldMetadataService {
       flatViewsToDelete,
     } = inputTranspilationResult.result;
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+    const runMigration = () =>
+      this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
         {
           allFlatEntityOperationByMetadataName: {
             fieldMetadata: {
@@ -448,6 +485,16 @@ export class FieldMetadataService {
             resolvedOwnerFlatApplication.universalIdentifier,
         },
       );
+
+    const validateAndBuildResult =
+      flatViewsToDelete.length > 0
+        ? await withNavigationMenuItemAudit(
+            getCascadeAudit({
+              expectedParentViewDeleteIds: flatViewsToDelete.map((v) => v.id),
+            }),
+            runMigration,
+          )
+        : await runMigration();
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

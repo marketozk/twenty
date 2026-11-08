@@ -28,10 +28,11 @@ export class UpdateFieldMetadataTool extends BaseTool<
 
   async execute({
     input,
-    context: { workspaceId },
+    context,
   }: ToolExecuteArgs<
     typeof updateFieldMetadataInputSchema
   >): Promise<ToolOutput> {
+    const { workspaceId } = context;
     const { id, icon, ...update } = input;
     const normalizedIcon = normalizeIconName(icon);
 
@@ -44,6 +45,25 @@ export class UpdateFieldMetadataTool extends BaseTool<
         typeof this.fieldMetadataService.updateOneField
       >[0]['updateFieldInput'],
       workspaceId,
+      auditIdentity: context.authContext
+        ? {
+            auth: context.authContext,
+            agentId: context.agentId,
+          }
+        : context.userId ||
+            context.actorContext?.workspaceMemberId ||
+            context.application ||
+            context.agentId
+          ? {
+              user: context.userId ? { id: context.userId } : undefined,
+              workspaceMemberId:
+                context.actorContext?.workspaceMemberId ?? undefined,
+              application: context.application
+                ? { id: context.application.id }
+                : undefined,
+              agentId: context.agentId,
+            }
+          : undefined,
     });
 
     return {

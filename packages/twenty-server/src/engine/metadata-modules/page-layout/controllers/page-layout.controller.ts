@@ -150,10 +150,12 @@ export class PageLayoutController {
   async destroy(
     @Param('id') id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Req() request?: AuthenticatedRequest,
   ): Promise<boolean> {
     return this.pageLayoutService.destroy({
       id,
       workspaceId: workspace.id,
+      auditIdentity: request,
     });
   }
 }

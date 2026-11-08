@@ -17,6 +17,10 @@ import {
   withApplicationMetadataAudit,
   type ApplicationMetadataAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/application-metadata-audit';
+import {
+  captureNavigationMenuItemAudit,
+  withNavigationMenuItemAudit,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
 import { findFlatEntityByUniversalIdentifierOrThrow } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-universal-identifier-or-throw.util';
@@ -393,6 +397,8 @@ export class ObjectMetadataService {
       flatFieldMetadataMaps,
       flatIndexMaps,
       flatViewMaps,
+      flatPageLayoutMaps,
+      flatNavigationMenuItemMaps,
       flatObjectPermissionMaps,
       flatFieldPermissionMaps,
       flatRowLevelPermissionPredicateGroupMaps,
@@ -406,6 +412,8 @@ export class ObjectMetadataService {
             'flatIndexMaps',
             'flatFieldMetadataMaps',
             'flatViewMaps',
+            'flatPageLayoutMaps',
+            'flatNavigationMenuItemMaps',
             'flatObjectPermissionMaps',
             'flatFieldPermissionMaps',
             'flatRowLevelPermissionPredicateGroupMaps',
@@ -534,6 +542,11 @@ export class ObjectMetadataService {
         flatEntityToUpdate: Record<string, never>;
         flatEntityToDelete: Record<string, never>;
       };
+      navigationMenuItem?: {
+        flatEntityToCreate: Record<string, never>;
+        flatEntityToUpdate: Record<string, never>;
+        flatEntityToDelete: Record<string, never>;
+      };
     } = {
       objectMetadata: {
         flatEntityToCreate: {},
@@ -555,6 +568,9 @@ export class ObjectMetadataService {
         flatFieldPermissionMaps,
         flatRowLevelPermissionPredicateGroupMaps,
         flatRowLevelPermissionPredicateMaps,
+        flatViewMaps,
+        flatPageLayoutMaps,
+        flatNavigationMenuItemMaps,
       },
     });
     const flatObjectPermissionsToDelete = Object.values(
@@ -570,6 +586,10 @@ export class ObjectMetadataService {
     const flatRowLevelPermissionPredicatesToDelete = Object.values(
       permissionReconciliationRecord.rowLevelPermissionPredicate
         ?.flatEntityToDelete ?? {},
+    );
+    const flatNavigationMenuItemsToDelete = Object.values(
+      permissionReconciliationRecord.navigationMenuItem?.flatEntityToDelete ??
+        {},
     );
 
     const validateAndBuildResult = await withApplicationMetadataAudit(
@@ -638,6 +658,15 @@ export class ObjectMetadataService {
                     },
                   }
                 : {}),
+              ...(flatNavigationMenuItemsToDelete.length > 0
+                ? {
+                    navigationMenuItem: {
+                      flatEntityToCreate: [],
+                      flatEntityToDelete: flatNavigationMenuItemsToDelete,
+                      flatEntityToUpdate: [],
+                    },
+                  }
+                : {}),
             },
             workspaceId,
             isSystemBuild,
@@ -661,11 +690,20 @@ export class ObjectMetadataService {
     createObjectInput,
     workspaceId,
     ownerFlatApplication,
+    auditIdentity,
   }: {
     createObjectInput: CreateObjectInput;
     workspaceId: string;
     ownerFlatApplication?: FlatApplication;
+    auditIdentity?: ApplicationMetadataAuditIdentity;
   }): Promise<FlatObjectMetadata> {
+    const getAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'cascade',
+      auditIdentity,
+      defaultSystemActorId: 'object-metadata:create',
+    });
+
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         {
@@ -702,58 +740,66 @@ export class ObjectMetadataService {
         })
       : undefined;
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            objectMetadata: {
-              flatEntityToCreate: [flatObjectMetadataToCreate],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getAudit({
+        expectedCreatedObjectId: flatObjectMetadataToCreate.id,
+        expectedCreatedIds: isDefined(flatNavigationMenuItemToCreate)
+          ? [flatNavigationMenuItemToCreate.id]
+          : [],
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              objectMetadata: {
+                flatEntityToCreate: [flatObjectMetadataToCreate],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [],
+              },
+              fieldMetadata: {
+                flatEntityToCreate: [...flatFieldMetadataToCreateOnObject],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [],
+              },
+              index: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [],
+              },
+              ...(isDefined(initialObjectViewOperations)
+                ? {
+                    view: {
+                      flatEntityToCreate: [
+                        initialObjectViewOperations.flatInitialViewToCreate,
+                      ],
+                      flatEntityToDelete: [],
+                      flatEntityToUpdate: [],
+                    },
+                    viewField: {
+                      flatEntityToCreate:
+                        initialObjectViewOperations.flatInitialViewFieldsToCreate,
+                      flatEntityToDelete: [],
+                      flatEntityToUpdate: [],
+                    },
+                  }
+                : {}),
+              ...(isDefined(flatNavigationMenuItemToCreate)
+                ? {
+                    navigationMenuItem: {
+                      flatEntityToCreate: [flatNavigationMenuItemToCreate],
+                      flatEntityToDelete: [],
+                      flatEntityToUpdate: [],
+                    },
+                  }
+                : {}),
             },
-            fieldMetadata: {
-              flatEntityToCreate: [...flatFieldMetadataToCreateOnObject],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [],
-            },
-            index: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [],
-            },
-            ...(isDefined(initialObjectViewOperations)
-              ? {
-                  view: {
-                    flatEntityToCreate: [
-                      initialObjectViewOperations.flatInitialViewToCreate,
-                    ],
-                    flatEntityToDelete: [],
-                    flatEntityToUpdate: [],
-                  },
-                  viewField: {
-                    flatEntityToCreate:
-                      initialObjectViewOperations.flatInitialViewFieldsToCreate,
-                    flatEntityToDelete: [],
-                    flatEntityToUpdate: [],
-                  },
-                }
-              : {}),
-            ...(isDefined(flatNavigationMenuItemToCreate)
-              ? {
-                  navigationMenuItem: {
-                    flatEntityToCreate: [flatNavigationMenuItemToCreate],
-                    flatEntityToDelete: [],
-                    flatEntityToUpdate: [],
-                  },
-                }
-              : {}),
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              resolvedOwnerFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            resolvedOwnerFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

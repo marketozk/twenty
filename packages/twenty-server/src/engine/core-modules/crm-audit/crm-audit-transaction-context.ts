@@ -496,7 +496,7 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   applicationAuthorization: ['create', 'update', 'delete'],
   userApplicationVariableValue: ['create', 'update', 'delete'],
   twoFactorAuthenticationMethod: ['create', 'update', 'delete'],
-  navigationMenuItem: ['delete'],
+  navigationMenuItem: ['create', 'update', 'delete'],
   coreWorkflow: ['update'],
   coreView: ['update'],
   workspace: ['update'],

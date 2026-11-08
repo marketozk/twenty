@@ -196,10 +196,12 @@ export class ViewController {
   async delete(
     @Param('id') id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Req() request?: AuthenticatedRequest,
   ): Promise<{ success: boolean }> {
     const deletedView = await this.viewService.deleteOne({
       deleteViewInput: { id },
       workspaceId: workspace.id,
+      auditIdentity: request,
     });
 
     return { success: isDefined(deletedView) };

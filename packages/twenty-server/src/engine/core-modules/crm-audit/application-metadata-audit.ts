@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { randomUUID } from 'node:crypto';
 import { isUUID } from 'class-validator';
 import { type DataSource, type QueryRunner } from 'typeorm';
 
@@ -27,13 +28,18 @@ import {
   assertWorkflowOrViewVisibility,
   persistWorkflowRunShareReconciliationIntent,
 } from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
+import {
+  assertNavigationMenuItemRowInvariants,
+  computeCascadeDeletedNavigationMenuItemIds,
+  projectNavigationMenuItem,
+  scalarNavigationMenuItemWithoutTimestamps,
+  type NavigationMenuItemAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 
 const TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER =
   '20202020-64aa-4b6f-b003-9c74b97cee20';
 
-export type ApplicationMetadataAuditIdentity =
-  | RoleUpdateAuditIdentity
-  | MembershipCleanupIdentity;
+export type ApplicationMetadataAuditIdentity = NavigationMenuItemAuditIdentity;
 
 export type ApplicationMetadataAuditMode =
   | 'manifest'
@@ -78,6 +84,9 @@ export type ApplicationMetadataAuditMappings = {
   applicationVariables?: Record<string, { id: string } | undefined>;
   workflows?: Record<string, { id: string } | undefined>;
   views?: Record<string, { id: string } | undefined>;
+  navigationMenuItems?: Record<string, { id: string } | undefined>;
+  pageLayouts?: Record<string, { id: string } | undefined>;
+  agentChatChannels?: Record<string, { id: string } | undefined>;
 };
 
 type MigrationAction = {
@@ -110,6 +119,7 @@ export const AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES = new Set<string>([
   'fieldPermission',
   'rowLevelPermissionPredicateGroup',
   'rowLevelPermissionPredicate',
+  'navigationMenuItem',
 ]);
 
 export const AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES =
@@ -119,6 +129,9 @@ export const AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES =
     'permissionFlag',
     'agent',
     'applicationVariable',
+    'view',
+    'pageLayout',
+    'agentChatChannel',
   ]);
 
 const ROLE_BOOLEAN_FIELDS = [
@@ -196,9 +209,84 @@ const resolveCapturedOperation = (
       return { operation };
     }
 
-    const capturedIdentity = captureRoleAuditIdentity(
-      identity as RoleUpdateAuditIdentity,
-    );
+    const reqLike = identity as Partial<RoleUpdateAuditIdentity> & {
+      workspace?: { id: string };
+      apiKey?: { id: string } | null;
+      user?: { id?: string } | null;
+      workspaceMemberId?: string;
+      application?: { id: string } | null;
+      impersonationContext?: { impersonatorUserWorkspaceId?: string };
+    };
+    if (
+      reqLike &&
+      typeof reqLike === 'object' &&
+      reqLike.auth === undefined &&
+      reqLike.user?.id !== undefined &&
+      reqLike.workspaceMemberId === undefined &&
+      reqLike.apiKey === undefined &&
+      reqLike.application === undefined
+    ) {
+      const userId = uuid(reqLike.user.id);
+      const agentId =
+        reqLike.agentId !== undefined ? uuid(reqLike.agentId) : undefined;
+      const impersonatorId =
+        reqLike.impersonatorUserWorkspaceId ??
+        reqLike.impersonationContext?.impersonatorUserWorkspaceId;
+      return {
+        operation: Object.freeze<CrmAuditOperation>({
+          workspaceId: normalizedWorkspaceId,
+          operationId: randomUUID(),
+          actor: agentId
+            ? { kind: 'agent', id: agentId }
+            : { kind: 'coreUser', id: userId },
+          ...(agentId ? { initiator: { kind: 'coreUser', id: userId } } : {}),
+          correlationId: randomUUID(),
+        }),
+        ...(impersonatorId
+          ? { impersonatorUserWorkspaceId: uuid(impersonatorId) }
+          : {}),
+      };
+    }
+    const roleIdentity: RoleUpdateAuditIdentity =
+      reqLike && typeof reqLike === 'object' && reqLike.auth !== undefined
+        ? (reqLike as RoleUpdateAuditIdentity)
+        : {
+            auth: reqLike?.apiKey?.id
+              ? {
+                  workspace: {
+                    id: reqLike.workspace?.id ?? normalizedWorkspaceId,
+                  },
+                  type: 'apiKey',
+                  apiKey: { id: reqLike.apiKey.id },
+                }
+              : reqLike?.workspaceMemberId
+                ? {
+                    workspace: {
+                      id: reqLike.workspace?.id ?? normalizedWorkspaceId,
+                    },
+                    type: 'user',
+                    workspaceMemberId: reqLike.workspaceMemberId,
+                  }
+                : reqLike?.application?.id
+                  ? {
+                      workspace: {
+                        id: reqLike.workspace?.id ?? normalizedWorkspaceId,
+                      },
+                      type: 'application',
+                      application: { id: reqLike.application.id },
+                    }
+                  : {
+                      workspace: {
+                        id: reqLike?.workspace?.id ?? normalizedWorkspaceId,
+                      },
+                      type: 'pendingActivationUser',
+                    },
+            agentId: reqLike?.agentId,
+            impersonatorUserWorkspaceId:
+              reqLike?.impersonatorUserWorkspaceId ??
+              reqLike?.impersonationContext?.impersonatorUserWorkspaceId,
+          };
+    const capturedIdentity = captureRoleAuditIdentity(roleIdentity);
     const operation = captureRoleAuditOperation(
       normalizedWorkspaceId,
       capturedIdentity,
@@ -565,7 +653,10 @@ const readExistingTables = async (
       to_regclass('core."applicationVariable"') IS NOT NULL AS "applicationVariable",
       to_regclass('core."userApplicationVariableValue"') IS NOT NULL AS "userApplicationVariableValue",
       to_regclass('core.workflow') IS NOT NULL AS "workflow",
-      to_regclass('core.view') IS NOT NULL AS "view"`,
+      to_regclass('core.view') IS NOT NULL AS "view",
+      to_regclass('core."navigationMenuItem"') IS NOT NULL AS "navigationMenuItem",
+      to_regclass('core."pageLayout"') IS NOT NULL AS "pageLayout",
+      to_regclass('core."agentChatChannel"') IS NOT NULL AS "agentChatChannel"`,
   );
   const existing = new Set<string>();
   for (const [key, present] of Object.entries(reg ?? {})) {
@@ -1089,6 +1180,189 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       }
     }
 
+    const hasNavTable = existingTables.has('navigationMenuItem');
+    const hasPageLayoutTable = existingTables.has('pageLayout');
+    const beforeNavigationMenuItems = hasNavTable
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'navigationMenuItem',
+          workspaceId,
+          true,
+        )
+      : new Map<string, Record<string, unknown>>();
+    for (const navRow of beforeNavigationMenuItems.values()) {
+      assertNavigationMenuItemRowInvariants(navRow, workspaceId);
+    }
+    const beforePageLayouts = hasPageLayoutTable
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'pageLayout',
+          workspaceId,
+          true,
+        )
+      : new Map<string, Record<string, unknown>>();
+
+    const plannedViewDeletes = resolveMappedIds(
+      actions,
+      'view',
+      'delete',
+      mappings.views ?? {},
+    );
+    const plannedPageLayoutDeletes = resolveMappedIds(
+      actions,
+      'pageLayout',
+      'delete',
+      mappings.pageLayouts ?? {},
+    );
+    const plannedAgentChatChannelDeletes = resolveMappedIds(
+      actions,
+      'agentChatChannel',
+      'delete',
+      mappings.agentChatChannels ?? {},
+    );
+
+    const plannedNavCreatesByUniversalIdentifier = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    for (const action of actions) {
+      if (
+        action.metadataName === 'navigationMenuItem' &&
+        action.type === 'create'
+      ) {
+        if (!hasNavTable) {
+          throw new Error(
+            'Application metadata audit table navigationMenuItem is unavailable',
+          );
+        }
+        if (!action.flatEntity) {
+          throw new Error(
+            'Application metadata audit requires flatEntity on navigationMenuItem create action',
+          );
+        }
+        const universalId = uuid(action.flatEntity.universalIdentifier);
+        if (plannedNavCreatesByUniversalIdentifier.has(universalId)) {
+          throw new Error(
+            'Application metadata audit duplicate navigationMenuItem create universalIdentifier',
+          );
+        }
+        if (
+          action.flatEntity.applicationUniversalIdentifier !== undefined &&
+          uuid(action.flatEntity.applicationUniversalIdentifier) !==
+            applicationUniversalIdentifier
+        ) {
+          throw new Error(
+            'Application metadata audit navigationMenuItem create belongs to another application',
+          );
+        }
+        const explicitId =
+          action.id !== undefined ? uuid(action.id) : undefined;
+        if (
+          explicitId !== undefined &&
+          beforeNavigationMenuItems.has(explicitId)
+        ) {
+          throw new Error(
+            'Application metadata audit navigationMenuItem create ID already exists',
+          );
+        }
+        plannedNavCreatesByUniversalIdentifier.set(universalId, {
+          ...(explicitId !== undefined ? { id: explicitId } : {}),
+          flatEntity: action.flatEntity,
+        });
+      }
+    }
+    const plannedNavUpdatePayloads = new Map<string, Record<string, unknown>>();
+    for (const action of actions) {
+      if (
+        action.metadataName === 'navigationMenuItem' &&
+        action.type === 'update'
+      ) {
+        const universalId = uuid(action.universalIdentifier);
+        const mappedId = mappings.navigationMenuItems?.[universalId]?.id;
+        if (!mappedId || !action.update) {
+          throw new Error(
+            'Application metadata audit navigationMenuItem update missing mapping or update payload',
+          );
+        }
+        plannedNavUpdatePayloads.set(uuid(mappedId), action.update);
+      }
+    }
+    const plannedNavUpdates = resolveMappedIds(
+      actions,
+      'navigationMenuItem',
+      'update',
+      mappings.navigationMenuItems ?? {},
+    );
+    const plannedNavDeletes = resolveMappedIds(
+      actions,
+      'navigationMenuItem',
+      'delete',
+      mappings.navigationMenuItems ?? {},
+    );
+    if (
+      (plannedNavUpdates.size > 0 || plannedNavDeletes.size > 0) &&
+      !hasNavTable
+    ) {
+      throw new Error(
+        'Application metadata audit table navigationMenuItem is unavailable',
+      );
+    }
+    for (const navId of plannedNavUpdates) {
+      const beforeNav = beforeNavigationMenuItems.get(navId);
+      if (!beforeNav || uuid(beforeNav.applicationId) !== applicationId) {
+        throw new Error(
+          'Application metadata audit cannot update missing or foreign navigationMenuItem',
+        );
+      }
+    }
+    const parentCascadeDeletedNavIds =
+      computeCascadeDeletedNavigationMenuItemIds({
+        beforeNavigationMenuItems,
+        plannedNavDeletes: new Set<string>(),
+        plannedObjectDeletes,
+        plannedFieldDeletes,
+        plannedViewDeletes,
+        plannedPageLayoutDeletes,
+        plannedAgentChatChannelDeletes,
+        beforeViews,
+        beforePageLayouts,
+      });
+    const cascadeDeletedNavIds = computeCascadeDeletedNavigationMenuItemIds({
+      beforeNavigationMenuItems,
+      plannedNavDeletes,
+      plannedObjectDeletes,
+      plannedFieldDeletes,
+      plannedViewDeletes,
+      plannedPageLayoutDeletes,
+      plannedAgentChatChannelDeletes,
+      beforeViews,
+      beforePageLayouts,
+    });
+    for (const navId of plannedNavDeletes) {
+      const beforeNav = beforeNavigationMenuItems.get(navId);
+      if (!beforeNav) {
+        throw new Error(
+          'Application metadata audit cannot delete missing navigationMenuItem',
+        );
+      }
+      if (mode === 'objectDelete' || mode === 'fieldDelete') {
+        if (!parentCascadeDeletedNavIds.has(navId)) {
+          throw new Error(
+            `Application metadata ${mode} cannot delete unrelated navigationMenuItem`,
+          );
+        }
+      } else if (
+        uuid(beforeNav.applicationId) !== applicationId &&
+        !parentCascadeDeletedNavIds.has(navId)
+      ) {
+        throw new Error(
+          'Application metadata audit cannot delete foreign navigationMenuItem',
+        );
+      }
+    }
+
     if (plannedApplicationVariableDeletes.size > 0) {
       if (!existingTables.has('applicationVariable')) {
         throw new Error(
@@ -1134,7 +1408,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           action.metadataName === 'agent' ||
           action.metadataName === 'permissionFlag' ||
           action.metadataName === 'rolePermissionFlag' ||
-          action.metadataName === 'applicationVariable'
+          action.metadataName === 'applicationVariable' ||
+          action.metadataName === 'agentChatChannel'
         ) {
           throw new Error(
             'Application metadata objectDelete cannot mutate roles, targets, agents, or permission flags',
@@ -1146,11 +1421,47 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
             action.metadataName === 'objectPermission' ||
             action.metadataName === 'fieldPermission' ||
             action.metadataName === 'rowLevelPermissionPredicateGroup' ||
-            action.metadataName === 'rowLevelPermissionPredicate') &&
+            action.metadataName === 'rowLevelPermissionPredicate' ||
+            action.metadataName === 'view' ||
+            action.metadataName === 'pageLayout' ||
+            action.metadataName === 'navigationMenuItem') &&
           action.type !== 'delete'
         ) {
           throw new Error(
             'Application metadata objectDelete allows only delete actions on object, field, and permission metadata',
+          );
+        }
+      }
+      for (const viewId of plannedViewDeletes) {
+        const viewRow = beforeViews.get(viewId);
+        const objId = viewRow ? nullableUuid(viewRow.objectMetadataId) : null;
+        const calendarFieldId = viewRow
+          ? nullableUuid(viewRow.calendarFieldMetadataId)
+          : null;
+        const mainGroupByFieldId = viewRow
+          ? nullableUuid(viewRow.mainGroupByFieldMetadataId)
+          : null;
+        if (
+          !viewRow ||
+          ((objId === null || !plannedObjectDeletes.has(objId)) &&
+            (calendarFieldId === null ||
+              !plannedFieldDeletes.has(calendarFieldId)) &&
+            (mainGroupByFieldId === null ||
+              !plannedFieldDeletes.has(mainGroupByFieldId)))
+        ) {
+          throw new Error(
+            'Application metadata objectDelete cannot delete unrelated view',
+          );
+        }
+      }
+      for (const layoutId of plannedPageLayoutDeletes) {
+        const layoutRow = beforePageLayouts.get(layoutId);
+        const objId = layoutRow
+          ? nullableUuid(layoutRow.objectMetadataId)
+          : null;
+        if (!layoutRow || objId === null || !plannedObjectDeletes.has(objId)) {
+          throw new Error(
+            'Application metadata objectDelete cannot delete unrelated pageLayout',
           );
         }
       }
@@ -1257,7 +1568,9 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           action.metadataName === 'objectMetadata' ||
           action.metadataName === 'objectPermission' ||
           action.metadataName === 'rowLevelPermissionPredicateGroup' ||
-          action.metadataName === 'applicationVariable'
+          action.metadataName === 'applicationVariable' ||
+          action.metadataName === 'pageLayout' ||
+          action.metadataName === 'agentChatChannel'
         ) {
           throw new Error(
             'Application metadata fieldDelete cannot mutate roles, objects, object permissions, or predicate groups',
@@ -1266,11 +1579,33 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
         if (
           (action.metadataName === 'fieldMetadata' ||
             action.metadataName === 'fieldPermission' ||
-            action.metadataName === 'rowLevelPermissionPredicate') &&
+            action.metadataName === 'rowLevelPermissionPredicate' ||
+            action.metadataName === 'view' ||
+            action.metadataName === 'navigationMenuItem') &&
           action.type !== 'delete'
         ) {
           throw new Error(
             'Application metadata fieldDelete allows only delete actions on field and field permission metadata',
+          );
+        }
+      }
+      for (const viewId of plannedViewDeletes) {
+        const viewRow = beforeViews.get(viewId);
+        const calendarFieldId = viewRow
+          ? nullableUuid(viewRow.calendarFieldMetadataId)
+          : null;
+        const mainGroupByFieldId = viewRow
+          ? nullableUuid(viewRow.mainGroupByFieldMetadataId)
+          : null;
+        if (
+          !viewRow ||
+          ((calendarFieldId === null ||
+            !plannedFieldDeletes.has(calendarFieldId)) &&
+            (mainGroupByFieldId === null ||
+              !plannedFieldDeletes.has(mainGroupByFieldId)))
+        ) {
+          throw new Error(
+            'Application metadata fieldDelete cannot delete unrelated view',
           );
         }
       }
@@ -2484,6 +2819,272 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       });
     }
 
+    // 10. Verify and record core.navigationMenuItem lifecycle and cascade deletions
+    let expectedNavigationMenuItemsSerialized: string | undefined;
+    if (hasNavTable) {
+      const afterNavigationMenuItems = await readTableSnapshot(
+        runner,
+        existingTables,
+        'navigationMenuItem',
+        workspaceId,
+        false,
+      );
+      const createdNavByUniversalId = new Map<
+        string,
+        Record<string, unknown>
+      >();
+      for (const [id, afterNav] of afterNavigationMenuItems.entries()) {
+        assertNavigationMenuItemRowInvariants(afterNav, workspaceId);
+        if (!beforeNavigationMenuItems.has(id)) {
+          const universalId = uuid(afterNav.universalIdentifier);
+          if (createdNavByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit detected duplicate created navigationMenuItem universalIdentifier',
+            );
+          }
+          createdNavByUniversalId.set(universalId, afterNav);
+        }
+      }
+
+      if (
+        createdNavByUniversalId.size !==
+        plannedNavCreatesByUniversalIdentifier.size
+      ) {
+        throw new Error(
+          'Application metadata audit navigationMenuItem created row count mismatch',
+        );
+      }
+
+      for (const [
+        universalId,
+        planned,
+      ] of plannedNavCreatesByUniversalIdentifier.entries()) {
+        const afterNav = createdNavByUniversalId.get(universalId);
+        if (!afterNav) {
+          throw new Error(
+            'Application metadata navigationMenuItem create did not persist expected row',
+          );
+        }
+        const createdId = uuid(afterNav.id);
+        if (planned.id !== undefined && createdId !== planned.id) {
+          throw new Error(
+            'Application metadata navigationMenuItem create persisted unexpected ID',
+          );
+        }
+        if (uuid(afterNav.applicationId) !== applicationId) {
+          throw new Error(
+            'Application metadata navigationMenuItem create persisted unexpected applicationId',
+          );
+        }
+        const afterProj = projectNavigationMenuItem(afterNav);
+        if (afterProj.userWorkspaceId !== null) {
+          throw new Error(
+            'Application metadata navigationMenuItem create cannot set userWorkspaceId',
+          );
+        }
+        if (afterProj.type !== planned.flatEntity.type) {
+          throw new Error(
+            'Application metadata navigationMenuItem create persisted unexpected type',
+          );
+        }
+        if (
+          afterProj.targetRecordId !==
+          nullableUuid(planned.flatEntity.targetRecordId)
+        ) {
+          throw new Error(
+            'Application metadata navigationMenuItem create persisted unexpected targetRecordId',
+          );
+        }
+        for (const fkKey of [
+          'folderId',
+          'viewId',
+          'targetObjectMetadataId',
+          'pageLayoutId',
+          'agentChatChannelId',
+        ] as const) {
+          if (
+            planned.flatEntity[fkKey] !== undefined &&
+            afterProj[fkKey] !== nullableUuid(planned.flatEntity[fkKey])
+          ) {
+            throw new Error(
+              `Application metadata navigationMenuItem create persisted unexpected ${fkKey}`,
+            );
+          }
+        }
+        for (const textKey of ['name', 'link', 'icon', 'color'] as const) {
+          if (planned.flatEntity[textKey] !== undefined) {
+            const expectedText =
+              planned.flatEntity[textKey] === null
+                ? null
+                : String(planned.flatEntity[textKey]);
+            if (afterProj[textKey] !== expectedText) {
+              throw new Error(
+                `Application metadata navigationMenuItem create persisted unexpected ${textKey}`,
+              );
+            }
+          }
+        }
+        if (
+          planned.flatEntity.position !== undefined &&
+          afterProj.position !== Number(planned.flatEntity.position)
+        ) {
+          throw new Error(
+            'Application metadata navigationMenuItem create persisted unexpected position',
+          );
+        }
+        recordMutation(
+          'navigationMenuItem',
+          createdId,
+          'create',
+          null,
+          afterProj,
+        );
+      }
+
+      for (const navId of plannedNavUpdates) {
+        if (cascadeDeletedNavIds.has(navId)) continue;
+        const beforeNav = beforeNavigationMenuItems.get(navId);
+        const afterNav = afterNavigationMenuItems.get(navId);
+        if (
+          !beforeNav ||
+          !afterNav ||
+          uuid(afterNav.applicationId) !== applicationId ||
+          uuid(beforeNav.universalIdentifier) !==
+            uuid(afterNav.universalIdentifier)
+        ) {
+          throw new Error(
+            'Application metadata navigationMenuItem update removed or corrupted target row',
+          );
+        }
+        const beforeProj = projectNavigationMenuItem(beforeNav);
+        const afterProj = projectNavigationMenuItem(afterNav);
+        if (
+          beforeProj.userWorkspaceId !== afterProj.userWorkspaceId ||
+          afterProj.userWorkspaceId !== null ||
+          beforeProj.type !== afterProj.type ||
+          beforeProj.viewId !== afterProj.viewId ||
+          beforeProj.targetObjectMetadataId !==
+            afterProj.targetObjectMetadataId ||
+          beforeProj.targetRecordId !== afterProj.targetRecordId ||
+          beforeProj.agentChatChannelId !== afterProj.agentChatChannelId
+        ) {
+          throw new Error(
+            'Application metadata navigationMenuItem update modified immutable target or owner fields',
+          );
+        }
+        const updatePayload = plannedNavUpdatePayloads.get(navId) ?? {};
+        if (
+          afterProj.type !== 'PAGE_LAYOUT' &&
+          afterProj.pageLayoutId !== null
+        ) {
+          throw new Error(
+            'Application metadata navigationMenuItem update set pageLayoutId on non-PAGE_LAYOUT item',
+          );
+        }
+        if (
+          !('pageLayoutId' in updatePayload) &&
+          !('pageLayoutUniversalIdentifier' in updatePayload) &&
+          afterProj.pageLayoutId !== beforeProj.pageLayoutId
+        ) {
+          throw new Error(
+            'Application metadata navigationMenuItem update modified pageLayoutId unexpectedly',
+          );
+        }
+        if (
+          !('folderId' in updatePayload) &&
+          !('folderUniversalIdentifier' in updatePayload) &&
+          afterProj.folderId !== beforeProj.folderId
+        ) {
+          throw new Error(
+            'Application metadata navigationMenuItem update modified folderId unexpectedly',
+          );
+        }
+        for (const textKey of ['name', 'link', 'icon', 'color'] as const) {
+          const expectedVal =
+            textKey in updatePayload && updatePayload[textKey] !== undefined
+              ? updatePayload[textKey] === null
+                ? null
+                : String(updatePayload[textKey])
+              : beforeProj[textKey];
+          if (afterProj[textKey] !== expectedVal) {
+            throw new Error(
+              `Application metadata navigationMenuItem update did not persist expected ${textKey}`,
+            );
+          }
+        }
+        const expectedPos =
+          'position' in updatePayload && updatePayload.position !== undefined
+            ? Number(updatePayload.position)
+            : beforeProj.position;
+        if (afterProj.position !== expectedPos) {
+          throw new Error(
+            'Application metadata navigationMenuItem update did not persist expected position',
+          );
+        }
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          recordMutation(
+            'navigationMenuItem',
+            navId,
+            'update',
+            beforeProj,
+            afterProj,
+          );
+        }
+      }
+
+      for (const navId of cascadeDeletedNavIds) {
+        const beforeNav = beforeNavigationMenuItems.get(navId);
+        if (!beforeNav) {
+          throw new Error(
+            'Application metadata navigationMenuItem delete expected row missing before migration',
+          );
+        }
+        if (afterNavigationMenuItems.has(navId)) {
+          throw new Error(
+            'Application metadata navigationMenuItem delete did not remove expected row',
+          );
+        }
+        recordMutation(
+          'navigationMenuItem',
+          navId,
+          'delete',
+          projectNavigationMenuItem(beforeNav),
+          null,
+        );
+      }
+
+      for (const [navId, beforeNav] of beforeNavigationMenuItems.entries()) {
+        if (cascadeDeletedNavIds.has(navId)) continue;
+        const afterNav = afterNavigationMenuItems.get(navId);
+        if (!afterNav) {
+          throw new Error(
+            'Application metadata audit detected unplanned navigationMenuItem deletion',
+          );
+        }
+        if (!plannedNavUpdates.has(navId)) {
+          if (
+            canonicalAuditJson(
+              scalarNavigationMenuItemWithoutTimestamps(beforeNav),
+            ) !==
+            canonicalAuditJson(
+              scalarNavigationMenuItemWithoutTimestamps(afterNav),
+            )
+          ) {
+            throw new Error(
+              'Application metadata audit detected unplanned navigationMenuItem mutation',
+            );
+          }
+        }
+      }
+
+      expectedNavigationMenuItemsSerialized = canonicalAuditJson(
+        [...afterNavigationMenuItems.entries()].map(([id, row]) => [
+          id,
+          scalarNavigationMenuItemWithoutTimestamps(row),
+        ]),
+      );
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized = serializeFullSnapshot(after);
       await audit.flush();
@@ -2567,6 +3168,26 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           await verifyIntent();
         }
       }
+      if (expectedNavigationMenuItemsSerialized !== undefined) {
+        const postFlushNavItems = await readTableSnapshot(
+          runner,
+          existingTables,
+          'navigationMenuItem',
+          workspaceId,
+          false,
+        );
+        const postFlushSerialized = canonicalAuditJson(
+          [...postFlushNavItems.entries()].map(([id, row]) => [
+            id,
+            scalarNavigationMenuItemWithoutTimestamps(row),
+          ]),
+        );
+        if (postFlushSerialized !== expectedNavigationMenuItemsSerialized) {
+          throw new Error(
+            'Application metadata state changed during audit flush',
+          );
+        }
+      }
     }
 
     return result;
@@ -2601,6 +3222,7 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
     'fieldPermission',
     'rowLevelPermissionPredicateGroup',
     'rowLevelPermissionPredicate',
+    'navigationMenuItem',
   ]) {
     if (!existingTables.has(tableName)) continue;
     const [ownRow] = await runner.query(
@@ -2700,6 +3322,89 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
       );
     }
   }
+
+  if (existingTables.has('navigationMenuItem')) {
+    if (existingTables.has('objectMetadata')) {
+      const [depRow] = await runner.query(
+        `SELECT n.id FROM core."navigationMenuItem" n INNER JOIN core."objectMetadata" o ON o.id=n."targetObjectMetadataId" WHERE n."workspaceId"=$1 AND o."workspaceId"=$1 AND o."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+    }
+    if (existingTables.has('view')) {
+      const [depRow] = await runner.query(
+        `SELECT n.id FROM core."navigationMenuItem" n INNER JOIN core.view v ON v.id=n."viewId" WHERE n."workspaceId"=$1 AND v."workspaceId"=$1 AND v."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+    }
+    if (existingTables.has('pageLayout')) {
+      const [depRow] = await runner.query(
+        `SELECT n.id FROM core."navigationMenuItem" n INNER JOIN core."pageLayout" pl ON pl.id=n."pageLayoutId" WHERE n."workspaceId"=$1 AND pl."workspaceId"=$1 AND pl."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+    }
+    if (existingTables.has('agentChatChannel')) {
+      const [depRow] = await runner.query(
+        `SELECT n.id FROM core."navigationMenuItem" n INNER JOIN core."agentChatChannel" acc ON acc.id=n."agentChatChannelId" WHERE n."workspaceId"=$1 AND acc."workspaceId"=$1 AND acc."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+    }
+    if (existingTables.has('view') && existingTables.has('objectMetadata')) {
+      const [depRow] = await runner.query(
+        `SELECT n.id FROM core."navigationMenuItem" n INNER JOIN core.view v ON v.id=n."viewId" INNER JOIN core."objectMetadata" o ON o.id=v."objectMetadataId" WHERE n."workspaceId"=$1 AND v."workspaceId"=$1 AND o."workspaceId"=$1 AND o."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+    }
+    if (existingTables.has('view') && existingTables.has('fieldMetadata')) {
+      const [depRow] = await runner.query(
+        `SELECT n.id FROM core."navigationMenuItem" n INNER JOIN core.view v ON v.id=n."viewId" INNER JOIN core."fieldMetadata" f ON (f.id=v."calendarFieldMetadataId" OR f.id=v."mainGroupByFieldMetadataId") WHERE n."workspaceId"=$1 AND v."workspaceId"=$1 AND f."workspaceId"=$1 AND f."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+    }
+    if (
+      existingTables.has('pageLayout') &&
+      existingTables.has('objectMetadata')
+    ) {
+      const [depRow] = await runner.query(
+        `SELECT n.id FROM core."navigationMenuItem" n INNER JOIN core."pageLayout" pl ON pl.id=n."pageLayoutId" INNER JOIN core."objectMetadata" o ON o.id=pl."objectMetadataId" WHERE n."workspaceId"=$1 AND pl."workspaceId"=$1 AND o."workspaceId"=$1 AND o."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+    }
+  }
 };
 
 type ReconcilableEntity = {
@@ -2710,13 +3415,20 @@ type ReconcilableEntity = {
   userWorkspaceId?: string | null;
   apiKeyId?: string | null;
   permissionFlagUniversalIdentifier?: string;
-  objectMetadataUniversalIdentifier?: string;
+  objectMetadataUniversalIdentifier?: string | null;
   fieldMetadataUniversalIdentifier?: string;
   relationTargetObjectMetadataUniversalIdentifier?: string | null;
   relationTargetFieldMetadataUniversalIdentifier?: string | null;
   morphId?: string | null;
   parentRowLevelPermissionPredicateGroupUniversalIdentifier?: string | null;
   rowLevelPermissionPredicateGroupUniversalIdentifier?: string | null;
+  targetObjectMetadataUniversalIdentifier?: string | null;
+  viewUniversalIdentifier?: string | null;
+  pageLayoutUniversalIdentifier?: string | null;
+  agentChatChannelUniversalIdentifier?: string | null;
+  folderUniversalIdentifier?: string | null;
+  calendarFieldMetadataUniversalIdentifier?: string | null;
+  mainGroupByFieldMetadataUniversalIdentifier?: string | null;
   deletedAt?: string | Date | null;
 };
 
@@ -2774,6 +3486,18 @@ export const reconcileApplicationRoleAndPermissionOperations = ({
       byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
     };
     flatRowLevelPermissionPredicateMaps?: {
+      byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
+    };
+    flatViewMaps?: {
+      byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
+    };
+    flatPageLayoutMaps?: {
+      byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
+    };
+    flatAgentChatChannelMaps?: {
+      byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
+    };
+    flatNavigationMenuItemMaps?: {
       byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
     };
   };
@@ -3068,6 +3792,106 @@ export const reconcileApplicationRoleAndPermissionOperations = ({
       );
       bucket.flatEntityToDelete[existingPredicate.universalIdentifier] =
         existingPredicate;
+    }
+  }
+
+  if (existingAllFlatEntityMaps.flatNavigationMenuItemMaps) {
+    const deletedViewUniversalIdentifiers = new Set(
+      Object.keys(record.view?.flatEntityToDelete ?? {}),
+    );
+    for (const existingView of Object.values(
+      existingAllFlatEntityMaps.flatViewMaps?.byUniversalIdentifier ?? {},
+    )) {
+      if (!isPresent(existingView)) continue;
+      if (
+        (isPresent(existingView.objectMetadataUniversalIdentifier) &&
+          deletedObjectUniversalIdentifiers.has(
+            existingView.objectMetadataUniversalIdentifier,
+          )) ||
+        (isPresent(existingView.calendarFieldMetadataUniversalIdentifier) &&
+          deletedFieldUniversalIdentifiers.has(
+            existingView.calendarFieldMetadataUniversalIdentifier,
+          )) ||
+        (isPresent(existingView.mainGroupByFieldMetadataUniversalIdentifier) &&
+          deletedFieldUniversalIdentifiers.has(
+            existingView.mainGroupByFieldMetadataUniversalIdentifier,
+          ))
+      ) {
+        deletedViewUniversalIdentifiers.add(existingView.universalIdentifier);
+      }
+    }
+
+    const deletedPageLayoutUniversalIdentifiers = new Set(
+      Object.keys(record.pageLayout?.flatEntityToDelete ?? {}),
+    );
+    for (const existingLayout of Object.values(
+      existingAllFlatEntityMaps.flatPageLayoutMaps?.byUniversalIdentifier ?? {},
+    )) {
+      if (!isPresent(existingLayout)) continue;
+      if (
+        isPresent(existingLayout.objectMetadataUniversalIdentifier) &&
+        deletedObjectUniversalIdentifiers.has(
+          existingLayout.objectMetadataUniversalIdentifier,
+        )
+      ) {
+        deletedPageLayoutUniversalIdentifiers.add(
+          existingLayout.universalIdentifier,
+        );
+      }
+    }
+
+    const deletedChannelUniversalIdentifiers = new Set(
+      Object.keys(record.agentChatChannel?.flatEntityToDelete ?? {}),
+    );
+    const deletedNavUniversalIdentifiers = new Set(
+      Object.keys(record.navigationMenuItem?.flatEntityToDelete ?? {}),
+    );
+    const allNavItems = Object.values(
+      existingAllFlatEntityMaps.flatNavigationMenuItemMaps
+        .byUniversalIdentifier,
+    ).filter(isPresent);
+
+    for (const navItem of allNavItems) {
+      if (deletedNavUniversalIdentifiers.has(navItem.universalIdentifier)) {
+        continue;
+      }
+      const targetObjUid = navItem.targetObjectMetadataUniversalIdentifier;
+      const viewUid = navItem.viewUniversalIdentifier;
+      const layoutUid = navItem.pageLayoutUniversalIdentifier;
+      const channelUid = navItem.agentChatChannelUniversalIdentifier;
+      if (
+        (isPresent(targetObjUid) &&
+          deletedObjectUniversalIdentifiers.has(targetObjUid)) ||
+        (isPresent(viewUid) && deletedViewUniversalIdentifiers.has(viewUid)) ||
+        (isPresent(layoutUid) &&
+          deletedPageLayoutUniversalIdentifiers.has(layoutUid)) ||
+        (isPresent(channelUid) &&
+          deletedChannelUniversalIdentifiers.has(channelUid))
+      ) {
+        const bucket = ensureOperationBucket(record, 'navigationMenuItem');
+        bucket.flatEntityToDelete[navItem.universalIdentifier] = navItem;
+        deletedNavUniversalIdentifiers.add(navItem.universalIdentifier);
+      }
+    }
+
+    let navAdded = true;
+    while (navAdded) {
+      navAdded = false;
+      for (const navItem of allNavItems) {
+        if (deletedNavUniversalIdentifiers.has(navItem.universalIdentifier)) {
+          continue;
+        }
+        const folderUid = navItem.folderUniversalIdentifier;
+        if (
+          isPresent(folderUid) &&
+          deletedNavUniversalIdentifiers.has(folderUid)
+        ) {
+          const bucket = ensureOperationBucket(record, 'navigationMenuItem');
+          bucket.flatEntityToDelete[navItem.universalIdentifier] = navItem;
+          deletedNavUniversalIdentifiers.add(navItem.universalIdentifier);
+          navAdded = true;
+        }
+      }
     }
   }
 };

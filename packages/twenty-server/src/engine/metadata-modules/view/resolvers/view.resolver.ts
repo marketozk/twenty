@@ -225,10 +225,12 @@ export class ViewResolver {
   async deleteView(
     @Args('id', { type: () => String }) id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Context() context?: { req?: CoreWorkflowAndViewAuditIdentity },
   ): Promise<boolean> {
     const deletedView = await this.viewService.deleteOne({
       deleteViewInput: { id },
       workspaceId: workspace.id,
+      auditIdentity: context?.req,
     });
 
     return isDefined(deletedView);
@@ -239,10 +241,12 @@ export class ViewResolver {
   async destroyView(
     @Args('id', { type: () => String }) id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Context() context?: { req?: CoreWorkflowAndViewAuditIdentity },
   ): Promise<boolean> {
     const deletedView = await this.viewService.destroyOne({
       destroyViewInput: { id },
       workspaceId: workspace.id,
+      auditIdentity: context?.req,
     });
 
     return isDefined(deletedView);

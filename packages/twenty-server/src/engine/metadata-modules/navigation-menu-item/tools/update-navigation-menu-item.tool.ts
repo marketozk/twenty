@@ -58,7 +58,15 @@ export class UpdateNavigationMenuItemTool extends BaseTool<
 
   async execute({
     input,
-    context: { workspaceId, userWorkspaceId, application, agentId },
+    context: {
+      workspaceId,
+      userWorkspaceId,
+      application,
+      agentId,
+      authContext,
+      userId,
+      actorContext,
+    },
   }: ToolExecuteArgs<
     typeof updateNavigationMenuItemInputSchema
   >): Promise<ToolOutput> {
@@ -80,6 +88,18 @@ export class UpdateNavigationMenuItemTool extends BaseTool<
         authUserWorkspaceId: userWorkspaceId,
         authApplicationId: application?.id,
         authAgentId: agentId,
+        auditIdentity: authContext
+          ? { auth: authContext, agentId }
+          : {
+              ...(userId ? { user: { id: userId } } : {}),
+              ...(actorContext?.workspaceMemberId
+                ? { workspaceMemberId: actorContext.workspaceMemberId }
+                : {}),
+              ...(application?.id
+                ? { application: { id: application.id } }
+                : {}),
+              ...(agentId ? { agentId } : {}),
+            },
       });
 
       return {
