@@ -1,12 +1,12 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Injectable, Optional } from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
 import { type MessageDescriptor } from '@lingui/core';
 import { isNonEmptyString } from '@sniptt/guards';
 import { authenticator } from 'otplib';
 import { TwoFactorAuthenticationStrategy } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
-import { type EntityManager, IsNull, Repository } from 'typeorm';
+import { DataSource, type EntityManager, IsNull, Repository } from 'typeorm';
 
 import {
   AppTokenEntity,
@@ -17,6 +17,14 @@ import {
   AuthExceptionCode,
 } from 'src/engine/core-modules/auth/auth.exception';
 import { acquireUserAuthenticationLock } from 'src/engine/core-modules/auth/utils/acquire-user-authentication-lock.util';
+import { peekCurrentCrmAuditWorkspaceId } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
+import {
+  captureTwoFactorAuthenticationAudit,
+  runAuditedTwoFactorDeletion,
+  runAuditedTwoFactorProvisioning,
+  runAuditedTwoFactorValidation,
+  type TwoFactorAuthenticationAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/two-factor-authentication-audit';
 import { type EncryptedString } from 'src/engine/core-modules/secret-encryption/branded-strings/encrypted-string.type';
 import { type PlaintextString } from 'src/engine/core-modules/secret-encryption/branded-strings/plaintext-string.type';
 import { SecretEncryptionService } from 'src/engine/core-modules/secret-encryption/secret-encryption.service';
@@ -56,7 +64,17 @@ export class TwoFactorAuthenticationService {
     private readonly userWorkspaceService: UserWorkspaceService,
     private readonly secretEncryptionService: SecretEncryptionService,
     private readonly throttlerService: ThrottlerService,
+    @Optional()
+    @InjectDataSource()
+    private readonly dataSource?: DataSource,
   ) {}
+
+  private resolveDataSource(): DataSource | undefined {
+    return (
+      this.dataSource ??
+      (this.appTokenRepository?.manager?.connection as DataSource | undefined)
+    );
+  }
 
   private async decryptStoredSecret({
     storedSecret,
@@ -99,7 +117,73 @@ export class TwoFactorAuthenticationService {
     userEmail: string,
     workspaceId: string,
     workspaceDisplayName?: string,
+    options?: {
+      auditIdentity?: TwoFactorAuthenticationAuditIdentity;
+    },
   ) {
+    const resolvedDataSource = this.resolveDataSource();
+    const hasExplicitAuditIdentity =
+      options !== undefined && 'auditIdentity' in options;
+    const auditRequest =
+      resolvedDataSource || hasExplicitAuditIdentity
+        ? captureTwoFactorAuthenticationAudit(
+            workspaceId,
+            hasExplicitAuditIdentity
+              ? options.auditIdentity
+              : peekCurrentCrmAuditWorkspaceId() ===
+                  workspaceId?.toLowerCase?.()
+                ? undefined
+                : { workspaceId, actor: { kind: 'coreUser', id: userId } },
+            { expectedUserId: userId },
+          )
+        : undefined;
+
+    if (resolvedDataSource && auditRequest) {
+      const result = await runAuditedTwoFactorProvisioning({
+        dataSource: resolvedDataSource,
+        request: auditRequest,
+        userId,
+        strategy: TwoFactorAuthenticationStrategy.TOTP,
+        pendingMethodReuseWindowMs: PENDING_METHOD_REUSE_WINDOW_MS,
+        generateCandidate: () =>
+          this.generatePendingTotpSecret({
+            userEmail,
+            workspaceId,
+            workspaceDisplayName,
+          }),
+        onUserWorkspaceMissing: () => {
+          throw new AuthException(
+            'User is not a member of the workspace',
+            AuthExceptionCode.FORBIDDEN_EXCEPTION,
+          );
+        },
+        onAlreadyProvisioned: () => {
+          throw new TwoFactorAuthenticationException(
+            'A two factor authentication method has already been set. Please delete it and try again.',
+            TwoFactorAuthenticationExceptionCode.TWO_FACTOR_AUTHENTICATION_METHOD_ALREADY_PROVISIONED,
+          );
+        },
+        onRecoveryEnrollmentRestricted: () => {
+          throw new TwoFactorAuthenticationException(
+            'Enrollment after a recovery must use the authenticator issued with the recovery code',
+            TwoFactorAuthenticationExceptionCode.RECOVERY_ENROLLMENT_RESTRICTED,
+          );
+        },
+      });
+
+      if (result.reused) {
+        const existingSecret = await this.decryptStoredSecret({
+          storedSecret: result.existingSecret as EncryptedString,
+          workspaceId,
+        });
+        const issuer = `Twenty${workspaceDisplayName ? ` - ${workspaceDisplayName}` : ''}`;
+
+        return authenticator.keyuri(userEmail, issuer, existingSecret);
+      }
+
+      return result.uri;
+    }
+
     const userWorkspace =
       await this.userWorkspaceService.getUserWorkspaceForUserOrThrow({
         userId,
@@ -190,7 +274,27 @@ export class TwoFactorAuthenticationService {
     token: string,
     workspaceId: WorkspaceEntity['id'],
     twoFactorAuthenticationStrategy: TwoFactorAuthenticationStrategy,
+    options?: {
+      auditIdentity?: TwoFactorAuthenticationAuditIdentity;
+    },
   ) {
+    const resolvedDataSource = this.resolveDataSource();
+    const hasExplicitAuditIdentity =
+      options !== undefined && 'auditIdentity' in options;
+    const auditRequest =
+      resolvedDataSource || hasExplicitAuditIdentity
+        ? captureTwoFactorAuthenticationAudit(
+            workspaceId,
+            hasExplicitAuditIdentity
+              ? options.auditIdentity
+              : peekCurrentCrmAuditWorkspaceId() ===
+                  workspaceId?.toLowerCase?.()
+                ? undefined
+                : { workspaceId, actor: { kind: 'coreUser', id: userId } },
+            { expectedUserId: userId },
+          )
+        : undefined;
+
     await this.throttlerService.tokenBucketThrottleOrThrow(
       buildTwoFactorAuthenticationOtpRateLimitKey({ userId, workspaceId }),
       1,
@@ -242,6 +346,25 @@ export class TwoFactorAuthenticationService {
         'Invalid OTP',
         TwoFactorAuthenticationExceptionCode.INVALID_OTP,
       );
+    }
+
+    if (resolvedDataSource && auditRequest) {
+      await runAuditedTwoFactorValidation({
+        dataSource: resolvedDataSource,
+        request: auditRequest,
+        methodId: userTwoFactorAuthenticationMethod.id,
+        userId,
+        expectedSecret: userTwoFactorAuthenticationMethod.secret,
+        verifiedStatus: OTPStatus.VERIFIED,
+        onMethodNotFound: () => {
+          throw new TwoFactorAuthenticationException(
+            'Two Factor Authentication Method not found.',
+            TwoFactorAuthenticationExceptionCode.INVALID_CONFIGURATION,
+          );
+        },
+      });
+
+      return;
     }
 
     await this.appTokenRepository.manager.transaction(async (entityManager) => {
@@ -352,14 +475,65 @@ export class TwoFactorAuthenticationService {
     userId: UserEntity['id'],
     token: string,
     workspaceId: WorkspaceEntity['id'],
+    options?: {
+      auditIdentity?: TwoFactorAuthenticationAuditIdentity;
+    },
   ) {
     await this.validateStrategy(
       userId,
       token,
       workspaceId,
       TwoFactorAuthenticationStrategy.TOTP,
+      options,
     );
 
     return { success: true };
+  }
+
+  async deleteTwoFactorAuthenticationMethod(params: {
+    twoFactorAuthenticationMethodId: string;
+    workspaceId: WorkspaceEntity['id'];
+    userId: UserEntity['id'];
+    auditIdentity?: TwoFactorAuthenticationAuditIdentity;
+  }): Promise<void> {
+    const hasExplicitAuditIdentity = 'auditIdentity' in params;
+    const auditRequest = captureTwoFactorAuthenticationAudit(
+      params.workspaceId,
+      hasExplicitAuditIdentity
+        ? params.auditIdentity
+        : peekCurrentCrmAuditWorkspaceId() ===
+            params.workspaceId?.toLowerCase?.()
+          ? undefined
+          : {
+              workspaceId: params.workspaceId,
+              actor: { kind: 'coreUser', id: params.userId },
+            },
+      { expectedUserId: params.userId },
+    );
+    const resolvedDataSource = this.resolveDataSource();
+    if (!resolvedDataSource) {
+      throw new Error(
+        'TwoFactorAuthenticationService requires DataSource for audited method deletion',
+      );
+    }
+
+    await runAuditedTwoFactorDeletion({
+      dataSource: resolvedDataSource,
+      request: auditRequest,
+      methodId: params.twoFactorAuthenticationMethodId,
+      userId: params.userId,
+      onMethodNotFound: () => {
+        throw new AuthException(
+          'Two-factor authentication method not found',
+          AuthExceptionCode.INVALID_INPUT,
+        );
+      },
+      onForbiddenOwner: () => {
+        throw new AuthException(
+          'You can only delete your own two-factor authentication methods',
+          AuthExceptionCode.FORBIDDEN_EXCEPTION,
+        );
+      },
+    });
   }
 }

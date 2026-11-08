@@ -175,8 +175,14 @@ LOG167 закрывает атомарный аудит жизненного ц�
 `runAuditedApplicationMetadataMigration`, `ApplicationService.delete`) с редактированием
 секретных полей `scopes` и `value` и fail-closed барьером на неаудируемые удаления
 `applicationVariable` в `WorkspaceMigrationRunnerService.executeRun`.
+LOG168 закрывает атомарный аудит жизненного цикла (`create`, `update`, `delete`) методов
+двухфакторной аутентификации (`core."twoFactorAuthenticationMethod"` в
+`TwoFactorAuthenticationService`, `TwoFactorAuthenticationResolver` и
+`TwoFactorAuthenticationRecoveryService.redeemRecoveryCode`) и пакетного отзыва
+`core."appToken"` (`RefreshToken`) при погашении кода восстановления с редактированием
+секрета `secret`.
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log167/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log168/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

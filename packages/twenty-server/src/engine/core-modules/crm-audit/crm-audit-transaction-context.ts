@@ -79,7 +79,7 @@ const CATALOG: Record<
   },
   twoFactorAuthenticationMethod: {
     values: ['userWorkspaceId', 'strategy', 'status'],
-    redacted: ['deletedAt'],
+    redacted: ['secret', 'deletedAt'],
   },
   navigationMenuItem: {
     values: [
@@ -489,7 +489,7 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   userWorkspace: ['update', 'delete'],
   applicationAuthorization: ['create', 'update', 'delete'],
   userApplicationVariableValue: ['create', 'update', 'delete'],
-  twoFactorAuthenticationMethod: ['delete'],
+  twoFactorAuthenticationMethod: ['create', 'update', 'delete'],
   navigationMenuItem: ['delete'],
   coreWorkflow: ['update'],
   coreView: ['update'],

@@ -4852,7 +4852,48 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 отправлен в GitHub, ref подтверждён через API. Описание ROB765, комментарий
 31fa0399-51fe-44be-8254-262c564d767a и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log167/publication.json).
-Следующий участок - закрытие оставшихся открытых границ ROB765.
+Следующий участок - аудит жизненного цикла `twoFactorAuthenticationMethod` и
+операций восстановления `redeemRecoveryCode` по LOG168.
+
+## LOG168 - аудит жизненного цикла `twoFactorAuthenticationMethod` и операций восстановления `redeemRecoveryCode`
+
+08.11.2026 зафиксированы [дизайн](implementation/log168/design.md),
+[независимое ревью решения](implementation/log168/design-review.md) и
+[план проверок](implementation/log168/test-research.md).
+Добавлен модуль `two-factor-authentication-audit.ts`
+(`captureTwoFactorAuthenticationAudit`, `runAuditedTwoFactorProvisioning`,
+`runAuditedTwoFactorValidation`, `runAuditedTwoFactorDeletion`,
+`runAuditedTwoFactorRecoveryRedemption`, регистрация в `registerMetadataAuditScopeCheck`),
+а в `crm-audit-transaction-context.ts` расширен список разрешённых действий
+(`ADMINISTRATIVE_ACTIONS.twoFactorAuthenticationMethod = ['create', 'update', 'delete']`) и
+в `CATALOG.twoFactorAuthenticationMethod.redacted` добавлено поле `'secret'`.
+Подключены все точки записи, удаления и замены `core."twoFactorAuthenticationMethod"` и
+пакетного отзыва `core."appToken"` (`RefreshToken`) при погашении кода восстановления:
+`TwoFactorAuthenticationService` (`initiateStrategyConfiguration`, `validateStrategy`,
+`verifyTwoFactorAuthenticationMethodForAuthenticatedUser`, `deleteTwoFactorAuthenticationMethod`),
+`TwoFactorAuthenticationResolver` (`initiateOTPProvisioning`,
+`initiateOTPProvisioningForAuthenticatedUser`, `verifyTwoFactorAuthenticationMethodForAuthenticatedUser`,
+`deleteTwoFactorAuthenticationMethod`) и `TwoFactorAuthenticationRecoveryService.redeemRecoveryCode`.
+Учтены все замечания ревью дизайна и кода (M1-M5, T1-T2): редактирование секрета `secret` и
+фиксация `changedFields: ['secret']` при ротации просроченного `PENDING` метода, проверка
+резервной регистрации внутри транзакции под `acquireUserAuthenticationLock`, запись
+`refreshToken:update` с `tokenOwner` при пакетном отзыве refresh-токенов в `redeemRecoveryCode`,
+генерация нового `UUID` при создании резервного `PENDING` метода в режиме обязательной 2FA,
+подавление шумовых событий при повторных OTP-проверках `VERIFIED` метода, принудительный отзыв
+пользовательских сессий при `NativeTransactionOutcomeUnknownError` / `CoreAuditPostCommitError`
+в `redeemRecoveryCode` и сохранение совместимости с `membership-cleanup-audit.ts` и unit-тестами.
+
+08.11.2026 проверки LOG168 завершены. 3138 tests/113 suites PASS (692.416s). 257 targeted/16 PostgreSQL suites PASS (32.165s), 6 новых PostgreSQL случаев. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 469/471 roots, baseline 270 / current 270 diagnostics, 0 новых/changed-code. Совпали 6 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех входных точек `twoFactorAuthenticationMethod`
+и `redeemRecoveryCode`, устранение замечаний M1-M5 и T1-T2, корректную обработку
+`NativeTransactionOutcomeUnknownError` и `CoreAuditPostCommitError`, редактирование секретного поля
+`secret` и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log168/results.json), [ревью](implementation/log168/review.md),
+[следующий участок](implementation/log168/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
 
 
 

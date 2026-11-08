@@ -194,6 +194,22 @@ export class TwoFactorAuthenticationResolver {
     @AuthWorkspace() workspace: WorkspaceEntity,
     @AuthUser() user: AuthContextUser,
   ): Promise<DeleteTwoFactorAuthenticationMethodDTO> {
+    if (
+      typeof this.twoFactorAuthenticationService
+        .deleteTwoFactorAuthenticationMethod === 'function'
+    ) {
+      await this.twoFactorAuthenticationService.deleteTwoFactorAuthenticationMethod(
+        {
+          twoFactorAuthenticationMethodId:
+            deleteTwoFactorAuthenticationMethodInput.twoFactorAuthenticationMethodId,
+          workspaceId: workspace.id,
+          userId: user.id,
+        },
+      );
+
+      return { success: true };
+    }
+
     const twoFactorMethod =
       await this.twoFactorAuthenticationMethodRepository.findOne(workspace.id, {
         where: {

@@ -1,0 +1,12 @@
+{
+  "baseCommit": "a1e600671e22110d3416f75950591bfd45f63856",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "e09485c5088cdd529843ae14ed67d9064f04bb48f528aae5d9c0fa0f26d5f3d0",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/two-factor-authentication-audit.ts": "c5c325fe3762ec11235ea2ff45b4af55ee8c093e77685acae89f0b1315f8254d",
+    "packages/twenty-server/src/engine/core-modules/two-factor-authentication/services/two-factor-authentication-recovery.service.ts": "1718a546827be02a6e516b24b0c04513c9fc19918785dc4f5d043ed21adc9abf",
+    "packages/twenty-server/src/engine/core-modules/two-factor-authentication/two-factor-authentication.resolver.ts": "b462d5e82428bfa910369a284b9bf10f87004faa628cf3bfce0ab997a2261066",
+    "packages/twenty-server/src/engine/core-modules/two-factor-authentication/two-factor-authentication.service.ts": "407b06a764a93dd33b19a44cb5518d23aa4ac23af941ab7abf40519e8b37a59e",
+    "packages/twenty-server/test/fork-migration/crm-audit-two-factor-authentication.postgres-spec.ts": "97151ba3b9dd28dd6ba6ba1adbcef61ce48df16b0c6383d33b96e8af922a93cd"
+  },
+  "uploadedSourceHashesVerified": true
+}
