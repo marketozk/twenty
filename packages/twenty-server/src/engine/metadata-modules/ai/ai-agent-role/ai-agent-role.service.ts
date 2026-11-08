@@ -7,6 +7,7 @@ import { isDefined } from 'twenty-shared/utils';
 import { DataSource, In, IsNull, Not } from 'typeorm';
 
 import { WORKSPACE_CUSTOM_APPLICATION_ROLE_UNIVERSAL_IDENTIFIER } from 'src/engine/core-modules/application/constants/workspace-custom-application-role.constant';
+import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
 import {
   getRoleAssignmentAudit,
   withAgentRoleAssignmentAudit,
@@ -323,6 +324,7 @@ export class AiAgentRoleService {
     }
 
     let shouldInvalidateCache = false;
+    let shouldInvalidateChannelRoleCache = false;
     try {
       const deleted = await runAuditedUnusedAgentRoleDelete(
         this.coreDataSource,
@@ -332,10 +334,16 @@ export class AiAgentRoleService {
           roleTargetId: capturedRoleTargetId,
         },
         capturedIdentity,
+        () => {
+          shouldInvalidateChannelRoleCache = true;
+        },
       );
       shouldInvalidateCache = deleted;
     } catch (error) {
-      if (error instanceof NativeTransactionOutcomeUnknownError) {
+      if (
+        error instanceof NativeTransactionOutcomeUnknownError ||
+        error instanceof CoreAuditPostCommitError
+      ) {
         shouldInvalidateCache = true;
       }
       throw error;
@@ -343,7 +351,17 @@ export class AiAgentRoleService {
       if (shouldInvalidateCache) {
         await this.workspaceCacheService.invalidateAndRecompute(
           capturedWorkspaceId,
-          ['flatRoleMaps', 'flatRolePermissionFlagMaps', 'rolesPermissions'],
+          [
+            'flatRoleMaps',
+            'flatRolePermissionFlagMaps',
+            ...(shouldInvalidateChannelRoleCache
+              ? ([
+                  'flatAgentChatChannelRoleMaps',
+                  'flatAgentChatChannelMaps',
+                ] as const)
+              : []),
+            'rolesPermissions',
+          ],
         );
       }
     }

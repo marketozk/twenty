@@ -94,6 +94,14 @@ const CATALOG: Record<
     ],
     redacted: ['name', 'link', 'icon', 'color', 'position'],
   },
+  agentChatChannel: {
+    values: ['isCustom'],
+    redacted: ['name', 'icon', 'color', 'position'],
+  },
+  agentChatChannelRole: {
+    values: ['channelId', 'roleId'],
+    redacted: [],
+  },
   coreWorkflow: {
     values: ['createdByUserWorkspaceId', 'visibility'],
     redacted: [],
@@ -497,6 +505,8 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   userApplicationVariableValue: ['create', 'update', 'delete'],
   twoFactorAuthenticationMethod: ['create', 'update', 'delete'],
   navigationMenuItem: ['create', 'update', 'delete'],
+  agentChatChannel: ['create', 'update', 'delete'],
+  agentChatChannelRole: ['create', 'delete'],
   coreWorkflow: ['update'],
   coreView: ['update'],
   workspace: ['update'],

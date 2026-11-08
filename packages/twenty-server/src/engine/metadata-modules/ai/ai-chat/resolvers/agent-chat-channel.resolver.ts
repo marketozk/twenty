@@ -1,5 +1,5 @@
 import { UseFilters, UseGuards, UseInterceptors } from '@nestjs/common';
-import { Args, Int, Mutation, Query } from '@nestjs/graphql';
+import { Args, Context, Int, Mutation, Query } from '@nestjs/graphql';
 
 import { PermissionFlagType } from 'twenty-shared/constants';
 
@@ -7,6 +7,7 @@ import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorato
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
+import { type NavigationMenuItemAuditIdentity } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { type WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { AuthApplication } from 'src/engine/decorators/auth/auth-application.decorator';
 import { AuthUserWorkspaceId } from 'src/engine/decorators/auth/auth-user-workspace-id.decorator';
@@ -138,6 +139,18 @@ export class AgentChatChannelResolver {
     @Args('input', { type: () => CreateAgentChatChannelInput })
     input: CreateAgentChatChannelInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @AuthWorkspaceMemberId() workspaceMemberId: string,
+    @AuthUserWorkspaceId() userWorkspaceId: string,
+    @AuthApplication({ allowUndefined: true })
+    callingApplication: FlatApplication | undefined,
+    @Context()
+    context?: {
+      req?: {
+        workspaceMemberId?: string;
+        userWorkspaceId?: string;
+        application?: { id: string } | null;
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<AgentChatChannelDTO> {
     return this.channelService.createChannel({
       name: input.name,
@@ -145,6 +158,15 @@ export class AgentChatChannelResolver {
       color: input.color ?? null,
       roleIds: input.roleIds,
       workspaceId,
+      authUserWorkspaceId: userWorkspaceId,
+      auditIdentity: {
+        ...context?.req,
+        workspaceMemberId: context?.req?.workspaceMemberId ?? workspaceMemberId,
+        userWorkspaceId: context?.req?.userWorkspaceId ?? userWorkspaceId,
+        application:
+          context?.req?.application ??
+          (callingApplication ? { id: callingApplication.id } : undefined),
+      },
     });
   }
 
@@ -155,6 +177,18 @@ export class AgentChatChannelResolver {
     @Args('input', { type: () => UpdateAgentChatChannelInput })
     input: UpdateAgentChatChannelInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @AuthWorkspaceMemberId() workspaceMemberId: string,
+    @AuthUserWorkspaceId() userWorkspaceId: string,
+    @AuthApplication({ allowUndefined: true })
+    callingApplication: FlatApplication | undefined,
+    @Context()
+    context?: {
+      req?: {
+        workspaceMemberId?: string;
+        userWorkspaceId?: string;
+        application?: { id: string } | null;
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<AgentChatChannelDTO> {
     return this.channelService.updateChannel({
       channelId,
@@ -166,6 +200,15 @@ export class AgentChatChannelResolver {
         roleIds: input.roleIds ?? undefined,
       },
       workspaceId,
+      authUserWorkspaceId: userWorkspaceId,
+      auditIdentity: {
+        ...context?.req,
+        workspaceMemberId: context?.req?.workspaceMemberId ?? workspaceMemberId,
+        userWorkspaceId: context?.req?.userWorkspaceId ?? userWorkspaceId,
+        application:
+          context?.req?.application ??
+          (callingApplication ? { id: callingApplication.id } : undefined),
+      },
     });
   }
 
@@ -179,13 +222,33 @@ export class AgentChatChannelResolver {
     })
     destinationChannelId: string | null,
     @AuthWorkspaceMemberId() workspaceMemberId: string,
+    @AuthUserWorkspaceId() userWorkspaceId: string,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @AuthApplication({ allowUndefined: true })
+    callingApplication: FlatApplication | undefined,
+    @Context()
+    context?: {
+      req?: {
+        workspaceMemberId?: string;
+        userWorkspaceId?: string;
+        application?: { id: string } | null;
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<boolean> {
     await this.channelService.deleteChannel({
       channelId,
       destinationChannelId: destinationChannelId ?? null,
       workspaceMemberId,
       workspaceId,
+      authUserWorkspaceId: userWorkspaceId,
+      auditIdentity: {
+        ...context?.req,
+        workspaceMemberId: context?.req?.workspaceMemberId ?? workspaceMemberId,
+        userWorkspaceId: context?.req?.userWorkspaceId ?? userWorkspaceId,
+        application:
+          context?.req?.application ??
+          (callingApplication ? { id: callingApplication.id } : undefined),
+      },
     });
 
     return true;

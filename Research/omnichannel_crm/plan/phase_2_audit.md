@@ -206,8 +206,15 @@ LOG171 закрывает транзакционный аудит смены и 
 `acquireUserAuthenticationLock` (`RefreshTokenService`, `UserSessionService`,
 `ResetPasswordService`) и передачей `initiator` при отзыве сессий под имперсонацией
 (`UserSessionResolver`, `UserSessionService`).
+LOG172 закрывает транзакционный аудит полного жизненного цикла (`create`, `update`, `delete`) и
+каскадных удалений каналов чата ИИ (`core."agentChatChannel"`) и их ролевых правил доступа
+(`core."agentChatChannelRole"` в `AgentChatChannelMetadataService`, `AgentChatChannelService`,
+`AgentChatChannelResolver`, `AgentChatChannelRoleAccessListener`, `RoleService.deleteManyRoles`,
+`AiAgentRoleService.deleteAgentOnlyRoleIfUnused`, `runAuditedApplicationMetadataMigration`,
+`WorkspaceMigrationValidateBuildAndRunService` и `WorkspaceMigrationRunnerService.executeRun`) с
+редактированием отображаемых полей канала `['name', 'icon', 'color', 'position']`.
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log171/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log172/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

@@ -29,8 +29,12 @@ import {
   persistWorkflowRunShareReconciliationIntent,
 } from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
 import {
+  assertAgentChatChannelRoleRowInvariants,
+  assertAgentChatChannelRowInvariants,
   assertNavigationMenuItemRowInvariants,
   computeCascadeDeletedNavigationMenuItemIds,
+  projectAgentChatChannel,
+  projectAgentChatChannelRole,
   projectNavigationMenuItem,
   scalarNavigationMenuItemWithoutTimestamps,
   type NavigationMenuItemAuditIdentity,
@@ -87,6 +91,7 @@ export type ApplicationMetadataAuditMappings = {
   navigationMenuItems?: Record<string, { id: string } | undefined>;
   pageLayouts?: Record<string, { id: string } | undefined>;
   agentChatChannels?: Record<string, { id: string } | undefined>;
+  agentChatChannelRoles?: Record<string, { id: string } | undefined>;
 };
 
 type MigrationAction = {
@@ -120,6 +125,8 @@ export const AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES = new Set<string>([
   'rowLevelPermissionPredicateGroup',
   'rowLevelPermissionPredicate',
   'navigationMenuItem',
+  'agentChatChannel',
+  'agentChatChannelRole',
 ]);
 
 export const AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES =
@@ -656,7 +663,8 @@ const readExistingTables = async (
       to_regclass('core.view') IS NOT NULL AS "view",
       to_regclass('core."navigationMenuItem"') IS NOT NULL AS "navigationMenuItem",
       to_regclass('core."pageLayout"') IS NOT NULL AS "pageLayout",
-      to_regclass('core."agentChatChannel"') IS NOT NULL AS "agentChatChannel"`,
+      to_regclass('core."agentChatChannel"') IS NOT NULL AS "agentChatChannel",
+      to_regclass('core."agentChatChannelRole"') IS NOT NULL AS "agentChatChannelRole"`,
   );
   const existing = new Set<string>();
   for (const [key, present] of Object.entries(reg ?? {})) {
@@ -1222,6 +1230,223 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       'delete',
       mappings.agentChatChannels ?? {},
     );
+    const plannedAgentChatChannelUpdates = resolveMappedIds(
+      actions,
+      'agentChatChannel',
+      'update',
+      mappings.agentChatChannels ?? {},
+    );
+    const plannedAgentChatChannelRoleDeletes = resolveMappedIds(
+      actions,
+      'agentChatChannelRole',
+      'delete',
+      mappings.agentChatChannelRoles ?? {},
+    );
+    if (
+      actions.some(
+        (action) =>
+          action.metadataName === 'agentChatChannelRole' &&
+          action.type === 'update',
+      )
+    ) {
+      throw new Error(
+        'Application metadata agentChatChannelRole cannot be updated',
+      );
+    }
+
+    const hasChannelTable = existingTables.has('agentChatChannel');
+    const hasChannelRoleTable = existingTables.has('agentChatChannelRole');
+    const beforeAgentChatChannels = hasChannelTable
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'agentChatChannel',
+          workspaceId,
+          true,
+        )
+      : new Map<string, Record<string, unknown>>();
+    for (const channelRow of beforeAgentChatChannels.values()) {
+      assertAgentChatChannelRowInvariants(channelRow, workspaceId);
+    }
+    const beforeAgentChatChannelRoles = hasChannelRoleTable
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'agentChatChannelRole',
+          workspaceId,
+          true,
+        )
+      : new Map<string, Record<string, unknown>>();
+    for (const channelRoleRow of beforeAgentChatChannelRoles.values()) {
+      assertAgentChatChannelRoleRowInvariants(channelRoleRow, workspaceId);
+    }
+
+    const plannedAgentChatChannelCreatesByUniversalId = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedAgentChatChannelUpdatePayloads = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    const plannedAgentChatChannelRoleCreatesByUniversalId = new Map<
+      string,
+      {
+        id?: string;
+        channelUniversalIdentifier: string;
+        roleUniversalIdentifier: string;
+        flatEntity: Record<string, unknown>;
+      }
+    >();
+
+    for (const action of actions) {
+      if (action.metadataName === 'agentChatChannel') {
+        if (action.type === 'create') {
+          if (!hasChannelTable) {
+            throw new Error(
+              'Application metadata audit table agentChatChannel is unavailable',
+            );
+          }
+          if (!action.flatEntity) {
+            throw new Error(
+              'Application metadata audit requires flatEntity on agentChatChannel create action',
+            );
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (plannedAgentChatChannelCreatesByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit duplicate agentChatChannel create universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error(
+              'Application metadata audit agentChatChannel create belongs to another application',
+            );
+          }
+          const explicitId =
+            action.id !== undefined ? uuid(action.id) : undefined;
+          if (
+            explicitId !== undefined &&
+            beforeAgentChatChannels.has(explicitId)
+          ) {
+            throw new Error(
+              'Application metadata audit agentChatChannel create ID already exists',
+            );
+          }
+          plannedAgentChatChannelCreatesByUniversalId.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.agentChatChannels?.[universalId]?.id;
+          if (!mappedId || !action.update) {
+            throw new Error(
+              'Application metadata audit agentChatChannel update missing mapping or update payload',
+            );
+          }
+          plannedAgentChatChannelUpdatePayloads.set(
+            uuid(mappedId),
+            action.update,
+          );
+        }
+      } else if (
+        action.metadataName === 'agentChatChannelRole' &&
+        action.type === 'create'
+      ) {
+        if (!hasChannelRoleTable) {
+          throw new Error(
+            'Application metadata audit table agentChatChannelRole is unavailable',
+          );
+        }
+        if (!action.flatEntity) {
+          throw new Error(
+            'Application metadata audit requires flatEntity on agentChatChannelRole create action',
+          );
+        }
+        const universalId = uuid(action.flatEntity.universalIdentifier);
+        if (plannedAgentChatChannelRoleCreatesByUniversalId.has(universalId)) {
+          throw new Error(
+            'Application metadata audit duplicate agentChatChannelRole create universalIdentifier',
+          );
+        }
+        if (
+          action.flatEntity.applicationUniversalIdentifier !== undefined &&
+          uuid(action.flatEntity.applicationUniversalIdentifier) !==
+            applicationUniversalIdentifier
+        ) {
+          throw new Error(
+            'Application metadata audit agentChatChannelRole create belongs to another application',
+          );
+        }
+        const explicitId =
+          action.id !== undefined ? uuid(action.id) : undefined;
+        if (
+          explicitId !== undefined &&
+          beforeAgentChatChannelRoles.has(explicitId)
+        ) {
+          throw new Error(
+            'Application metadata audit agentChatChannelRole create ID already exists',
+          );
+        }
+        plannedAgentChatChannelRoleCreatesByUniversalId.set(universalId, {
+          ...(explicitId !== undefined ? { id: explicitId } : {}),
+          channelUniversalIdentifier: uuid(
+            action.flatEntity.channelUniversalIdentifier,
+          ),
+          roleUniversalIdentifier: uuid(
+            action.flatEntity.roleUniversalIdentifier,
+          ),
+          flatEntity: action.flatEntity,
+        });
+      }
+    }
+
+    for (const channelId of plannedAgentChatChannelUpdates) {
+      const beforeCh = beforeAgentChatChannels.get(channelId);
+      if (!beforeCh || uuid(beforeCh.applicationId) !== applicationId) {
+        throw new Error(
+          'Application metadata audit cannot update missing or foreign agentChatChannel',
+        );
+      }
+    }
+    for (const channelId of plannedAgentChatChannelDeletes) {
+      const beforeCh = beforeAgentChatChannels.get(channelId);
+      if (!beforeCh || uuid(beforeCh.applicationId) !== applicationId) {
+        throw new Error(
+          'Application metadata audit cannot delete missing or foreign agentChatChannel',
+        );
+      }
+      if (
+        beforeCh.isCustom !== true &&
+        !isStandardApplication &&
+        request.isSystemBuild !== true
+      ) {
+        throw new Error(
+          'Application metadata audit cannot delete standard agentChatChannel',
+        );
+      }
+    }
+    for (const channelRoleId of plannedAgentChatChannelRoleDeletes) {
+      const beforeCr = beforeAgentChatChannelRoles.get(channelRoleId);
+      if (!beforeCr) {
+        throw new Error(
+          'Application metadata audit cannot delete missing agentChatChannelRole',
+        );
+      }
+      const isPlannedCascade =
+        plannedRoleDeletes.has(uuid(beforeCr.roleId)) ||
+        plannedAgentChatChannelDeletes.has(uuid(beforeCr.channelId));
+      if (uuid(beforeCr.applicationId) !== applicationId && !isPlannedCascade) {
+        throw new Error(
+          'Application metadata audit cannot delete foreign agentChatChannelRole',
+        );
+      }
+    }
 
     const plannedNavCreatesByUniversalIdentifier = new Map<
       string,
@@ -1409,7 +1634,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           action.metadataName === 'permissionFlag' ||
           action.metadataName === 'rolePermissionFlag' ||
           action.metadataName === 'applicationVariable' ||
-          action.metadataName === 'agentChatChannel'
+          action.metadataName === 'agentChatChannel' ||
+          action.metadataName === 'agentChatChannelRole'
         ) {
           throw new Error(
             'Application metadata objectDelete cannot mutate roles, targets, agents, or permission flags',
@@ -1570,7 +1796,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           action.metadataName === 'rowLevelPermissionPredicateGroup' ||
           action.metadataName === 'applicationVariable' ||
           action.metadataName === 'pageLayout' ||
-          action.metadataName === 'agentChatChannel'
+          action.metadataName === 'agentChatChannel' ||
+          action.metadataName === 'agentChatChannelRole'
         ) {
           throw new Error(
             'Application metadata fieldDelete cannot mutate roles, objects, object permissions, or predicate groups',
@@ -3085,6 +3312,356 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       );
     }
 
+    // 11. Verify and record core.agentChatChannel and core.agentChatChannelRole lifecycle and cascade deletions
+    let expectedAgentChatChannelsAndRolesSerialized: string | undefined;
+    if (hasChannelTable || hasChannelRoleTable) {
+      const afterAgentChatChannels = hasChannelTable
+        ? await readTableSnapshot(
+            runner,
+            existingTables,
+            'agentChatChannel',
+            workspaceId,
+            false,
+          )
+        : new Map<string, Record<string, unknown>>();
+      const afterAgentChatChannelRoles = hasChannelRoleTable
+        ? await readTableSnapshot(
+            runner,
+            existingTables,
+            'agentChatChannelRole',
+            workspaceId,
+            false,
+          )
+        : new Map<string, Record<string, unknown>>();
+
+      if (hasChannelTable) {
+        const createdChannelByUniversalId = new Map<
+          string,
+          Record<string, unknown>
+        >();
+        for (const [id, afterCh] of afterAgentChatChannels.entries()) {
+          assertAgentChatChannelRowInvariants(afterCh, workspaceId);
+          if (!beforeAgentChatChannels.has(id)) {
+            const universalId = uuid(afterCh.universalIdentifier);
+            if (createdChannelByUniversalId.has(universalId)) {
+              throw new Error(
+                'Application metadata audit detected duplicate created agentChatChannel universalIdentifier',
+              );
+            }
+            createdChannelByUniversalId.set(universalId, afterCh);
+          }
+        }
+        if (
+          createdChannelByUniversalId.size !==
+          plannedAgentChatChannelCreatesByUniversalId.size
+        ) {
+          throw new Error(
+            'Application metadata audit agentChatChannel created row count mismatch',
+          );
+        }
+        for (const [
+          universalId,
+          planned,
+        ] of plannedAgentChatChannelCreatesByUniversalId.entries()) {
+          const afterCh = createdChannelByUniversalId.get(universalId);
+          if (!afterCh) {
+            throw new Error(
+              'Application metadata agentChatChannel create did not persist expected row',
+            );
+          }
+          const createdId = uuid(afterCh.id);
+          if (planned.id !== undefined && createdId !== planned.id) {
+            throw new Error(
+              'Application metadata agentChatChannel create persisted unexpected ID',
+            );
+          }
+          if (uuid(afterCh.applicationId) !== applicationId) {
+            throw new Error(
+              'Application metadata agentChatChannel create persisted unexpected applicationId',
+            );
+          }
+          const afterProj = projectAgentChatChannel(afterCh);
+          if (
+            afterProj.isCustom === false &&
+            !isStandardApplication &&
+            request.isSystemBuild !== true
+          ) {
+            throw new Error(
+              'Application metadata non-standard application cannot create standard agentChatChannel',
+            );
+          }
+          if (
+            planned.flatEntity.isCustom !== undefined &&
+            afterProj.isCustom !== Boolean(planned.flatEntity.isCustom)
+          ) {
+            throw new Error(
+              'Application metadata agentChatChannel create persisted unexpected isCustom',
+            );
+          }
+          for (const textKey of ['name', 'icon', 'color'] as const) {
+            if (planned.flatEntity[textKey] !== undefined) {
+              const expectedText =
+                planned.flatEntity[textKey] === null
+                  ? null
+                  : String(planned.flatEntity[textKey]);
+              if (afterProj[textKey] !== expectedText) {
+                throw new Error(
+                  `Application metadata agentChatChannel create persisted unexpected ${textKey}`,
+                );
+              }
+            }
+          }
+          if (
+            planned.flatEntity.position !== undefined &&
+            afterProj.position !== Number(planned.flatEntity.position)
+          ) {
+            throw new Error(
+              'Application metadata agentChatChannel create persisted unexpected position',
+            );
+          }
+          recordMutation(
+            'agentChatChannel',
+            createdId,
+            'create',
+            null,
+            afterProj,
+          );
+        }
+
+        for (const channelId of plannedAgentChatChannelUpdates) {
+          if (plannedAgentChatChannelDeletes.has(channelId)) continue;
+          const beforeCh = beforeAgentChatChannels.get(channelId);
+          const afterCh = afterAgentChatChannels.get(channelId);
+          if (
+            !beforeCh ||
+            !afterCh ||
+            uuid(afterCh.applicationId) !== applicationId ||
+            uuid(beforeCh.universalIdentifier) !==
+              uuid(afterCh.universalIdentifier) ||
+            Boolean(beforeCh.isCustom) !== Boolean(afterCh.isCustom)
+          ) {
+            throw new Error(
+              'Application metadata agentChatChannel update removed or corrupted target row',
+            );
+          }
+          const beforeProj = projectAgentChatChannel(beforeCh);
+          const afterProj = projectAgentChatChannel(afterCh);
+          const updatePayload =
+            plannedAgentChatChannelUpdatePayloads.get(channelId) ?? {};
+          for (const textKey of ['name', 'icon', 'color'] as const) {
+            const expectedVal =
+              textKey in updatePayload && updatePayload[textKey] !== undefined
+                ? updatePayload[textKey] === null
+                  ? null
+                  : String(updatePayload[textKey])
+                : beforeProj[textKey];
+            if (afterProj[textKey] !== expectedVal) {
+              throw new Error(
+                `Application metadata agentChatChannel update did not persist expected ${textKey}`,
+              );
+            }
+          }
+          const expectedPos =
+            'position' in updatePayload && updatePayload.position !== undefined
+              ? Number(updatePayload.position)
+              : beforeProj.position;
+          if (afterProj.position !== expectedPos) {
+            throw new Error(
+              'Application metadata agentChatChannel update did not persist expected position',
+            );
+          }
+          if (
+            canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)
+          ) {
+            recordMutation(
+              'agentChatChannel',
+              channelId,
+              'update',
+              beforeProj,
+              afterProj,
+            );
+          }
+        }
+
+        for (const channelId of plannedAgentChatChannelDeletes) {
+          const beforeCh = beforeAgentChatChannels.get(channelId);
+          if (!beforeCh) {
+            throw new Error(
+              'Application metadata agentChatChannel delete expected row missing before migration',
+            );
+          }
+          if (afterAgentChatChannels.has(channelId)) {
+            throw new Error(
+              'Application metadata agentChatChannel delete did not remove expected row',
+            );
+          }
+          recordMutation(
+            'agentChatChannel',
+            channelId,
+            'delete',
+            projectAgentChatChannel(beforeCh),
+            null,
+          );
+        }
+
+        for (const [channelId, beforeCh] of beforeAgentChatChannels.entries()) {
+          if (plannedAgentChatChannelDeletes.has(channelId)) continue;
+          const afterCh = afterAgentChatChannels.get(channelId);
+          if (!afterCh) {
+            throw new Error(
+              'Application metadata audit detected unplanned agentChatChannel deletion',
+            );
+          }
+          if (!plannedAgentChatChannelUpdates.has(channelId)) {
+            if (
+              canonicalAuditJson(scalarWithoutTimestamps(beforeCh)) !==
+              canonicalAuditJson(scalarWithoutTimestamps(afterCh))
+            ) {
+              throw new Error(
+                'Application metadata audit detected unplanned agentChatChannel mutation',
+              );
+            }
+          }
+        }
+      }
+
+      if (hasChannelRoleTable) {
+        const channelIdByUniversalIdentifier = new Map<string, string>();
+        for (const [uid, mapped] of Object.entries(
+          mappings.agentChatChannels ?? {},
+        )) {
+          if (mapped?.id) {
+            channelIdByUniversalIdentifier.set(uuid(uid), uuid(mapped.id));
+          }
+        }
+        for (const [id, afterCh] of afterAgentChatChannels.entries()) {
+          channelIdByUniversalIdentifier.set(
+            uuid(afterCh.universalIdentifier),
+            id,
+          );
+        }
+
+        const createdChannelRoleByUniversalId = new Map<
+          string,
+          Record<string, unknown>
+        >();
+        for (const [id, afterCr] of afterAgentChatChannelRoles.entries()) {
+          assertAgentChatChannelRoleRowInvariants(afterCr, workspaceId);
+          if (!beforeAgentChatChannelRoles.has(id)) {
+            const universalId = uuid(afterCr.universalIdentifier);
+            if (createdChannelRoleByUniversalId.has(universalId)) {
+              throw new Error(
+                'Application metadata audit detected duplicate created agentChatChannelRole universalIdentifier',
+              );
+            }
+            createdChannelRoleByUniversalId.set(universalId, afterCr);
+          }
+        }
+        if (
+          createdChannelRoleByUniversalId.size !==
+          plannedAgentChatChannelRoleCreatesByUniversalId.size
+        ) {
+          throw new Error(
+            'Application metadata audit agentChatChannelRole created row count mismatch',
+          );
+        }
+        for (const [
+          universalId,
+          planned,
+        ] of plannedAgentChatChannelRoleCreatesByUniversalId.entries()) {
+          const afterCr = createdChannelRoleByUniversalId.get(universalId);
+          const expectedChannelId = channelIdByUniversalIdentifier.get(
+            planned.channelUniversalIdentifier,
+          );
+          const expectedRoleId = roleIdByUniversalIdentifier.get(
+            planned.roleUniversalIdentifier,
+          );
+          if (!afterCr || !expectedChannelId || !expectedRoleId) {
+            throw new Error(
+              'Application metadata agentChatChannelRole create did not persist expected row',
+            );
+          }
+          const createdId = uuid(afterCr.id);
+          if (planned.id !== undefined && createdId !== planned.id) {
+            throw new Error(
+              'Application metadata agentChatChannelRole create persisted unexpected ID',
+            );
+          }
+          if (uuid(afterCr.applicationId) !== applicationId) {
+            throw new Error(
+              'Application metadata agentChatChannelRole create persisted unexpected applicationId',
+            );
+          }
+          const afterProj = projectAgentChatChannelRole(afterCr);
+          if (
+            afterProj.channelId !== expectedChannelId ||
+            afterProj.roleId !== expectedRoleId ||
+            !afterAgentChatChannels.has(afterProj.channelId) ||
+            !after.roles.has(afterProj.roleId)
+          ) {
+            throw new Error(
+              'Application metadata agentChatChannelRole create persisted unexpected channelId or roleId',
+            );
+          }
+          recordMutation(
+            'agentChatChannelRole',
+            createdId,
+            'create',
+            null,
+            afterProj,
+          );
+        }
+
+        for (const [crId, beforeCr] of beforeAgentChatChannelRoles.entries()) {
+          const afterCr = afterAgentChatChannelRoles.get(crId);
+          if (!afterCr) {
+            const isPlannedCascade =
+              plannedRoleDeletes.has(uuid(beforeCr.roleId)) ||
+              plannedAgentChatChannelDeletes.has(uuid(beforeCr.channelId));
+            const isPlannedDirectDelete =
+              plannedAgentChatChannelRoleDeletes.has(crId) &&
+              uuid(beforeCr.applicationId) === applicationId;
+            if (!isPlannedDirectDelete && !isPlannedCascade) {
+              throw new Error(
+                'Application metadata audit detected unexpected agentChatChannelRole deletion',
+              );
+            }
+            recordMutation(
+              'agentChatChannelRole',
+              crId,
+              'delete',
+              projectAgentChatChannelRole(beforeCr),
+              null,
+            );
+          } else {
+            if (plannedAgentChatChannelRoleDeletes.has(crId)) {
+              throw new Error(
+                'Application metadata agentChatChannelRole delete did not remove expected row',
+              );
+            }
+            if (
+              canonicalAuditJson(scalarWithoutTimestamps(beforeCr)) !==
+              canonicalAuditJson(scalarWithoutTimestamps(afterCr))
+            ) {
+              throw new Error(
+                'Application metadata audit detected unplanned agentChatChannelRole mutation',
+              );
+            }
+          }
+        }
+      }
+
+      expectedAgentChatChannelsAndRolesSerialized = canonicalAuditJson({
+        channels: [...afterAgentChatChannels.entries()].map(([id, row]) => [
+          id,
+          scalarWithoutTimestamps(row),
+        ]),
+        channelRoles: [...afterAgentChatChannelRoles.entries()].map(
+          ([id, row]) => [id, scalarWithoutTimestamps(row)],
+        ),
+      });
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized = serializeFullSnapshot(after);
       await audit.flush();
@@ -3188,6 +3765,42 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           );
         }
       }
+      if (expectedAgentChatChannelsAndRolesSerialized !== undefined) {
+        const postFlushChannels = hasChannelTable
+          ? await readTableSnapshot(
+              runner,
+              existingTables,
+              'agentChatChannel',
+              workspaceId,
+              false,
+            )
+          : new Map<string, Record<string, unknown>>();
+        const postFlushChannelRoles = hasChannelRoleTable
+          ? await readTableSnapshot(
+              runner,
+              existingTables,
+              'agentChatChannelRole',
+              workspaceId,
+              false,
+            )
+          : new Map<string, Record<string, unknown>>();
+        const postFlushSerialized = canonicalAuditJson({
+          channels: [...postFlushChannels.entries()].map(([id, row]) => [
+            id,
+            scalarWithoutTimestamps(row),
+          ]),
+          channelRoles: [...postFlushChannelRoles.entries()].map(
+            ([id, row]) => [id, scalarWithoutTimestamps(row)],
+          ),
+        });
+        if (
+          postFlushSerialized !== expectedAgentChatChannelsAndRolesSerialized
+        ) {
+          throw new Error(
+            'Application metadata state changed during audit flush',
+          );
+        }
+      }
     }
 
     return result;
@@ -3223,6 +3836,8 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
     'rowLevelPermissionPredicateGroup',
     'rowLevelPermissionPredicate',
     'navigationMenuItem',
+    'agentChatChannel',
+    'agentChatChannelRole',
   ]) {
     if (!existingTables.has(tableName)) continue;
     const [ownRow] = await runner.query(
@@ -3233,6 +3848,31 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
       throw new Error(
         'Application delete requires prior audited removal of role and permission metadata',
       );
+    }
+  }
+
+  if (existingTables.has('agentChatChannelRole')) {
+    if (existingTables.has('role')) {
+      const [depRow] = await runner.query(
+        `SELECT cr.id FROM core."agentChatChannelRole" cr INNER JOIN core.role r ON r.id=cr."roleId" WHERE cr."workspaceId"=$1 AND r."workspaceId"=$1 AND r."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+    }
+    if (existingTables.has('agentChatChannel')) {
+      const [depRow] = await runner.query(
+        `SELECT cr.id FROM core."agentChatChannelRole" cr INNER JOIN core."agentChatChannel" acc ON acc.id=cr."channelId" WHERE cr."workspaceId"=$1 AND acc."workspaceId"=$1 AND acc."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
     }
   }
 
@@ -3426,6 +4066,7 @@ type ReconcilableEntity = {
   viewUniversalIdentifier?: string | null;
   pageLayoutUniversalIdentifier?: string | null;
   agentChatChannelUniversalIdentifier?: string | null;
+  channelUniversalIdentifier?: string | null;
   folderUniversalIdentifier?: string | null;
   calendarFieldMetadataUniversalIdentifier?: string | null;
   mainGroupByFieldMetadataUniversalIdentifier?: string | null;
@@ -3495,6 +4136,9 @@ export const reconcileApplicationRoleAndPermissionOperations = ({
       byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
     };
     flatAgentChatChannelMaps?: {
+      byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
+    };
+    flatAgentChatChannelRoleMaps?: {
       byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
     };
     flatNavigationMenuItemMaps?: {
@@ -3795,6 +4439,32 @@ export const reconcileApplicationRoleAndPermissionOperations = ({
     }
   }
 
+  const deletedChannelUniversalIdentifiers = new Set(
+    Object.keys(record.agentChatChannel?.flatEntityToDelete ?? {}),
+  );
+  if (existingAllFlatEntityMaps.flatAgentChatChannelRoleMaps) {
+    for (const existingChannelRole of Object.values(
+      existingAllFlatEntityMaps.flatAgentChatChannelRoleMaps
+        .byUniversalIdentifier,
+    )) {
+      if (!isPresent(existingChannelRole)) continue;
+      if (
+        (isPresent(existingChannelRole.roleUniversalIdentifier) &&
+          deletedRoleUniversalIdentifiers.has(
+            existingChannelRole.roleUniversalIdentifier,
+          )) ||
+        (isPresent(existingChannelRole.channelUniversalIdentifier) &&
+          deletedChannelUniversalIdentifiers.has(
+            existingChannelRole.channelUniversalIdentifier,
+          ))
+      ) {
+        const bucket = ensureOperationBucket(record, 'agentChatChannelRole');
+        bucket.flatEntityToDelete[existingChannelRole.universalIdentifier] =
+          existingChannelRole;
+      }
+    }
+  }
+
   if (existingAllFlatEntityMaps.flatNavigationMenuItemMaps) {
     const deletedViewUniversalIdentifiers = new Set(
       Object.keys(record.view?.flatEntityToDelete ?? {}),
@@ -3840,9 +4510,6 @@ export const reconcileApplicationRoleAndPermissionOperations = ({
       }
     }
 
-    const deletedChannelUniversalIdentifiers = new Set(
-      Object.keys(record.agentChatChannel?.flatEntityToDelete ?? {}),
-    );
     const deletedNavUniversalIdentifiers = new Set(
       Object.keys(record.navigationMenuItem?.flatEntityToDelete ?? {}),
     );

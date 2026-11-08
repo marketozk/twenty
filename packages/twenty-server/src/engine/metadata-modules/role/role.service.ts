@@ -461,11 +461,21 @@ export class RoleService {
     const resolvedOwnerFlatApplication =
       ownerFlatApplication ?? workspaceCustomFlatApplication;
 
-    const { flatRoleMaps, flatRoleTargetMaps, flatAgentMaps } =
+    const {
+      flatRoleMaps,
+      flatRoleTargetMaps,
+      flatAgentMaps,
+      flatAgentChatChannelRoleMaps,
+    } =
       await this.flatEntityMapsCacheService.getOrRecomputeManyOrAllFlatEntityMaps(
         {
           workspaceId,
-          flatMapsKeys: ['flatRoleMaps', 'flatRoleTargetMaps', 'flatAgentMaps'],
+          flatMapsKeys: [
+            'flatRoleMaps',
+            'flatRoleTargetMaps',
+            'flatAgentMaps',
+            'flatAgentChatChannelRoleMaps',
+          ],
         },
       );
 
@@ -524,6 +534,19 @@ export class RoleService {
         flatAgentMaps,
       });
 
+    const deletedRoleUniversalIdentifierSet = new Set(
+      rolesToDelete.map((role) => role.universalIdentifier),
+    );
+    const flatAgentChatChannelRolesToDelete = Object.values(
+      flatAgentChatChannelRoleMaps?.byUniversalIdentifier ?? {},
+    ).filter(
+      (channelRole): channelRole is NonNullable<typeof channelRole> =>
+        isDefined(channelRole) &&
+        deletedRoleUniversalIdentifierSet.has(
+          channelRole.roleUniversalIdentifier,
+        ),
+    );
+
     const validateAndBuildResult =
       await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
         {
@@ -538,6 +561,15 @@ export class RoleService {
               flatEntityToDelete: flatRoleTargetsToDelete,
               flatEntityToUpdate: [],
             },
+            ...(flatAgentChatChannelRolesToDelete.length > 0
+              ? {
+                  agentChatChannelRole: {
+                    flatEntityToCreate: [],
+                    flatEntityToDelete: flatAgentChatChannelRolesToDelete,
+                    flatEntityToUpdate: [],
+                  },
+                }
+              : {}),
           },
           workspaceId,
           isSystemBuild,

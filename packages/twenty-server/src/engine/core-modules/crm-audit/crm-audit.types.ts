@@ -21,6 +21,8 @@ export type CrmAuditResourceKind =
   | 'userApplicationVariableValue'
   | 'twoFactorAuthenticationMethod'
   | 'navigationMenuItem'
+  | 'agentChatChannel'
+  | 'agentChatChannelRole'
   | 'coreWorkflow'
   | 'coreView'
   | 'workspace'

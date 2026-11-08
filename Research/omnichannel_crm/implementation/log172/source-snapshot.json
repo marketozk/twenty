@@ -1,0 +1,20 @@
+{
+  "baseCommit": "a97e501297630ec9cccd40bb75aaf25493b1ccbb",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/application-metadata-audit.ts": "143cf10858d0621298d957acb15ed790cb7b5146a3297ef5031693f43932d8df",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "3736d3fb14d51ccdc55f85709a59837c633339e17a5eeda3ab9fd9258deb8cd5",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "e374ef7420a3a6289bf68988e1fb34538249f0135727984992365b8ae82cb178",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/navigation-menu-item-audit.ts": "94422574fdb69a28a193466b29325237bf7e8dc6b2574b63827d437a04509272",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/role-update-audit.ts": "5d999f7a3f3822ac206461b305104bf8ab214da336793583dda0ec88998eb72f",
+    "packages/twenty-server/src/engine/metadata-modules/agent-chat-channel/services/agent-chat-channel-metadata.service.ts": "ec0aa4e9715472a0859a4e00dccfd48c66e17bd05f55e9ee385b86c1a51755c9",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-agent-role/ai-agent-role.service.ts": "be98c325dda0e7df5d91105c9826658eec70dca6e5b24d4b2f9012bee619cf0d",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-chat/listeners/agent-chat-channel-role-access.listener.ts": "28ccf4b9deeec236607c09bdba4f460fbeeea0e8c8bf73f86a4833046542343d",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-chat/resolvers/agent-chat-channel.resolver.ts": "ea32a624dd2a69535bb2b3edae0e77394584caae919739c3fd6b62dc6056615c",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-chat/services/agent-chat-channel.service.ts": "e9664f2b9fcf229d00e1a3b524143f2f6cb7fbd661971081dbd9d2c20da8a372",
+    "packages/twenty-server/src/engine/metadata-modules/role/role.service.ts": "96d00b6b10f27622daa0ce1998bc1f289e0c8461cb779d44b708208f900d8ced",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/services/workspace-migration-validate-build-and-run-service.ts": "08f60b3e2eb128c65df2b950e680e42804401d99b86e4df2863057d82b15d102",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts": "50e47aaa1843ed60c35b292378f77fbcc4098dad6a230842f5bf54b7bf225cff",
+    "packages/twenty-server/test/fork-migration/crm-audit-agent-chat-channel.postgres-spec.ts": "f9544f9c98c94c1e4661deca493b1fee8fbf873ceef4d41bf7cc9c106435ab26"
+  },
+  "uploadedSourceHashesVerified": true
+}

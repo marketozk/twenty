@@ -325,9 +325,15 @@ export class WorkspaceMigrationRunnerService {
           action.metadataName === 'pageLayout' ||
           action.metadataName === 'agentChatChannel'),
     );
-    const permissionCascadeMetadataNames: AllMetadataName[] =
-      hasObjectOrFieldDeleteAction
-        ? [
+    const hasChannelRoleCascadeParentDeleteAction = actions.some(
+      (action) =>
+        action.type === 'delete' &&
+        (action.metadataName === 'role' ||
+          action.metadataName === 'agentChatChannel'),
+    );
+    const permissionCascadeMetadataNames: AllMetadataName[] = [
+      ...(hasObjectOrFieldDeleteAction
+        ? ([
             'objectPermission',
             'fieldPermission',
             'rowLevelPermissionPredicateGroup',
@@ -335,10 +341,14 @@ export class WorkspaceMigrationRunnerService {
             'view',
             'pageLayout',
             'navigationMenuItem',
-          ]
+          ] as const)
         : hasNavCascadeParentDeleteAction
-          ? ['navigationMenuItem']
-          : [];
+          ? (['navigationMenuItem'] as const)
+          : []),
+      ...(hasChannelRoleCascadeParentDeleteAction
+        ? (['agentChatChannelRole'] as const)
+        : []),
+    ];
 
     const actionsMetadataAndRelatedMetadataNames: AllMetadataName[] = [
       ...new Set([
@@ -504,6 +514,9 @@ export class WorkspaceMigrationRunnerService {
           agentChatChannels:
             allFlatEntityMaps.flatAgentChatChannelMaps?.byUniversalIdentifier ??
             {},
+          agentChatChannelRoles:
+            allFlatEntityMaps.flatAgentChatChannelRoleMaps
+              ?.byUniversalIdentifier ?? {},
         };
         const searchFieldMetadatasByTsVectorFieldIdAccessor =
           createSearchFieldMetadatasByTsVectorFieldIdAccessor(
@@ -523,7 +536,9 @@ export class WorkspaceMigrationRunnerService {
                         action.universalIdentifier
                       ]?.id === roleAudit.roleId) ||
                     (action.metadataName === 'roleTarget' &&
-                      (action.type === 'delete' || action.type === 'create'))
+                      (action.type === 'delete' || action.type === 'create')) ||
+                    (action.metadataName === 'agentChatChannelRole' &&
+                      action.type === 'delete')
                   )
                 : action.metadataName !== 'role' ||
                   (action.type === 'update'
@@ -757,6 +772,9 @@ export class WorkspaceMigrationRunnerService {
         agentChatChannels:
           allFlatEntityMaps.flatAgentChatChannelMaps?.byUniversalIdentifier ??
           {},
+        agentChatChannelRoles:
+          allFlatEntityMaps.flatAgentChatChannelRoleMaps
+            ?.byUniversalIdentifier ?? {},
       };
       const allMetadataEvents: MetadataEvent[] = [];
       const allDeferredActions: DeferredWorkspaceMigrationAction[] = [];

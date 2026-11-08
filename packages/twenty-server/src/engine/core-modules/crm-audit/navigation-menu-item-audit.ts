@@ -39,7 +39,8 @@ export type NavigationMenuItemAuditMode =
   | 'create'
   | 'update'
   | 'delete'
-  | 'cascade';
+  | 'cascade'
+  | 'channel';
 
 export type NavigationMenuItemAuditRequest = Readonly<{
   workspaceId: string;
@@ -56,6 +57,10 @@ export type NavigationMenuItemAuditRequest = Readonly<{
   expectedParentPageLayoutDeleteIds?: readonly string[];
   expectedParentChannelDeleteIds?: readonly string[];
   expectedCreatedObjectId?: string;
+  expectedChannelCreateIds?: readonly string[];
+  expectedChannelUpdateIds?: readonly string[];
+  expectedChannelRoleCreateKeys?: readonly string[];
+  expectedChannelRoleDeleteIds?: readonly string[];
 }>;
 
 export type NavigationMenuItemAuditMappings = {
@@ -64,6 +69,8 @@ export type NavigationMenuItemAuditMappings = {
   views?: Record<string, { id: string } | undefined>;
   pageLayouts?: Record<string, { id: string } | undefined>;
   agentChatChannels?: Record<string, { id: string } | undefined>;
+  agentChatChannelRoles?: Record<string, { id: string } | undefined>;
+  roles?: Record<string, { id: string } | undefined>;
   objectMetadatas?: Record<string, { id: string } | undefined>;
   fieldMetadatas?: Record<string, { id: string } | undefined>;
 };
@@ -227,6 +234,72 @@ export const scalarNavigationMenuItemWithoutTimestamps = (
   }
   return copy;
 };
+
+export const assertAgentChatChannelRowInvariants = (
+  row: Record<string, unknown>,
+  workspaceId: string,
+): void => {
+  uuid(row.id);
+  if (uuid(row.workspaceId) !== workspaceId) {
+    throw new Error('Agent chat channel audit row workspace mismatch');
+  }
+  uuid(row.applicationId);
+  uuid(row.universalIdentifier);
+  if (typeof row.name !== 'string' || row.name.trim().length === 0) {
+    throw new Error('Agent chat channel audit name is invalid');
+  }
+  if (
+    row.icon !== null &&
+    row.icon !== undefined &&
+    typeof row.icon !== 'string'
+  ) {
+    throw new Error('Agent chat channel audit icon is invalid');
+  }
+  if (
+    row.color !== null &&
+    row.color !== undefined &&
+    typeof row.color !== 'string'
+  ) {
+    throw new Error('Agent chat channel audit color is invalid');
+  }
+  const position =
+    typeof row.position === 'number' ? row.position : Number(row.position);
+  if (!Number.isFinite(position)) {
+    throw new Error('Agent chat channel audit position is invalid');
+  }
+  if (typeof row.isCustom !== 'boolean') {
+    throw new Error('Agent chat channel audit isCustom is invalid');
+  }
+};
+
+export const projectAgentChatChannel = (row: Record<string, unknown>) => ({
+  isCustom: Boolean(row.isCustom),
+  name: String(row.name),
+  icon: row.icon === undefined || row.icon === null ? null : String(row.icon),
+  color:
+    row.color === undefined || row.color === null ? null : String(row.color),
+  position:
+    typeof row.position === 'number' ? row.position : Number(row.position),
+});
+
+export const assertAgentChatChannelRoleRowInvariants = (
+  row: Record<string, unknown>,
+  workspaceId: string,
+): void => {
+  uuid(row.id);
+  if (uuid(row.workspaceId) !== workspaceId) {
+    throw new Error('Agent chat channel role audit row workspace mismatch');
+  }
+  uuid(row.applicationId);
+  uuid(row.universalIdentifier);
+  uuid(row.channelId);
+  uuid(row.roleId);
+};
+
+export const projectAgentChatChannelRole = (row: Record<string, unknown>) => ({
+  channelId: uuid(row.channelId),
+  roleId: uuid(row.roleId),
+});
 
 export const getNavigationMenuItemAudit = (workspaceId: string) => {
   const request = storage.getStore();
@@ -551,6 +624,10 @@ export type NavigationMenuItemAuditExpectedScope = {
   expectedParentPageLayoutDeleteIds?: readonly string[];
   expectedParentChannelDeleteIds?: readonly string[];
   expectedCreatedObjectId?: string;
+  expectedChannelCreateIds?: readonly string[];
+  expectedChannelUpdateIds?: readonly string[];
+  expectedChannelRoleCreateKeys?: readonly string[];
+  expectedChannelRoleDeleteIds?: readonly string[];
 };
 
 export const captureNavigationMenuItemAudit = ({
@@ -569,6 +646,10 @@ export const captureNavigationMenuItemAudit = ({
   expectedParentPageLayoutDeleteIds,
   expectedParentChannelDeleteIds,
   expectedCreatedObjectId,
+  expectedChannelCreateIds,
+  expectedChannelUpdateIds,
+  expectedChannelRoleCreateKeys,
+  expectedChannelRoleDeleteIds,
 }: {
   workspaceId: string;
   mode: NavigationMenuItemAuditMode;
@@ -610,6 +691,20 @@ export const captureNavigationMenuItemAudit = ({
 
   const normalizeIds = (ids: readonly string[] | undefined) =>
     ids !== undefined ? Object.freeze(ids.map((id) => uuid(id))) : undefined;
+  const normalizeRoleKeys = (keys: readonly string[] | undefined) =>
+    keys !== undefined
+      ? Object.freeze(
+          keys.map((key) => {
+            const parts = String(key).split(':');
+            if (parts.length !== 2) {
+              throw new Error(
+                'Agent chat channel role audit key format is invalid',
+              );
+            }
+            return `${uuid(parts[0])}:${uuid(parts[1])}`;
+          }),
+        )
+      : undefined;
 
   const baseCreatedIds = normalizeIds(expectedCreatedIds);
   const baseUpdatedIds = normalizeIds(expectedUpdatedIds);
@@ -623,6 +718,12 @@ export const captureNavigationMenuItemAudit = ({
     expectedCreatedObjectId !== undefined
       ? uuid(expectedCreatedObjectId)
       : undefined;
+  const baseChannelCreateIds = normalizeIds(expectedChannelCreateIds);
+  const baseChannelUpdateIds = normalizeIds(expectedChannelUpdateIds);
+  const baseChannelRoleCreateKeys = normalizeRoleKeys(
+    expectedChannelRoleCreateKeys,
+  );
+  const baseChannelRoleDeleteIds = normalizeIds(expectedChannelRoleDeleteIds);
 
   return (overrides) => {
     const resolvedCreatedIds =
@@ -643,6 +744,16 @@ export const captureNavigationMenuItemAudit = ({
       overrides?.expectedCreatedObjectId !== undefined
         ? uuid(overrides.expectedCreatedObjectId)
         : baseCreatedObjectId;
+    const resolvedChannelCreateIds =
+      normalizeIds(overrides?.expectedChannelCreateIds) ?? baseChannelCreateIds;
+    const resolvedChannelUpdateIds =
+      normalizeIds(overrides?.expectedChannelUpdateIds) ?? baseChannelUpdateIds;
+    const resolvedChannelRoleCreateKeys =
+      normalizeRoleKeys(overrides?.expectedChannelRoleCreateKeys) ??
+      baseChannelRoleCreateKeys;
+    const resolvedChannelRoleDeleteIds =
+      normalizeIds(overrides?.expectedChannelRoleDeleteIds) ??
+      baseChannelRoleDeleteIds;
 
     return Object.freeze({
       workspaceId: normalizedWorkspaceId,
@@ -674,6 +785,18 @@ export const captureNavigationMenuItemAudit = ({
         : {}),
       ...(resolvedCreatedObjectId !== undefined
         ? { expectedCreatedObjectId: resolvedCreatedObjectId }
+        : {}),
+      ...(resolvedChannelCreateIds !== undefined
+        ? { expectedChannelCreateIds: resolvedChannelCreateIds }
+        : {}),
+      ...(resolvedChannelUpdateIds !== undefined
+        ? { expectedChannelUpdateIds: resolvedChannelUpdateIds }
+        : {}),
+      ...(resolvedChannelRoleCreateKeys !== undefined
+        ? { expectedChannelRoleCreateKeys: resolvedChannelRoleCreateKeys }
+        : {}),
+      ...(resolvedChannelRoleDeleteIds !== undefined
+        ? { expectedChannelRoleDeleteIds: resolvedChannelRoleDeleteIds }
         : {}),
     });
   };
@@ -894,6 +1017,40 @@ const readNavSnapshot = async (
   );
 };
 
+const readChannelSnapshot = async (
+  runner: QueryRunner,
+  workspaceId: string,
+  lock: boolean,
+): Promise<Map<string, Record<string, unknown>>> => {
+  const rows = await runner.query(
+    `SELECT to_jsonb(c) AS row FROM core."agentChatChannel" c WHERE c."workspaceId"=$1 ORDER BY c.id${lock ? ' FOR UPDATE' : ''}`,
+    [workspaceId],
+  );
+  return new Map(
+    rows.map((entry: { row: Record<string, unknown> }) => [
+      uuid(entry.row.id),
+      entry.row,
+    ]),
+  );
+};
+
+const readChannelRoleSnapshot = async (
+  runner: QueryRunner,
+  workspaceId: string,
+  lock: boolean,
+): Promise<Map<string, Record<string, unknown>>> => {
+  const rows = await runner.query(
+    `SELECT to_jsonb(cr) AS row FROM core."agentChatChannelRole" cr WHERE cr."workspaceId"=$1 ORDER BY cr.id${lock ? ' FOR UPDATE' : ''}`,
+    [workspaceId],
+  );
+  return new Map(
+    rows.map((entry: { row: Record<string, unknown> }) => [
+      uuid(entry.row.id),
+      entry.row,
+    ]),
+  );
+};
+
 const serializeNavSnapshot = (
   snapshot: Map<string, Record<string, unknown>>,
 ): string =>
@@ -903,6 +1060,21 @@ const serializeNavSnapshot = (
       scalarNavigationMenuItemWithoutTimestamps(row),
     ]),
   );
+
+const serializeChannelAndRoleSnapshot = (
+  channels: Map<string, Record<string, unknown>>,
+  channelRoles: Map<string, Record<string, unknown>>,
+): string =>
+  canonicalAuditJson({
+    channels: [...channels.entries()].map(([id, row]) => [
+      id,
+      scalarNavigationMenuItemWithoutTimestamps(row),
+    ]),
+    channelRoles: [...channelRoles.entries()].map(([id, row]) => [
+      id,
+      scalarNavigationMenuItemWithoutTimestamps(row),
+    ]),
+  });
 
 export const computeCascadeDeletedNavigationMenuItemIds = ({
   beforeNavigationMenuItems,
@@ -997,6 +1169,16 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
   mappings: NavigationMenuItemAuditMappings,
   execute: (runner: QueryRunner) => Promise<TResult>,
 ): Promise<TResult> => {
+  if (
+    !active.has(request) ||
+    consumed.has(request) ||
+    getNavigationMenuItemAudit(request.workspaceId) !== request
+  ) {
+    throw new Error(
+      'Navigation menu item audit context is inactive or already consumed',
+    );
+  }
+  consumed.add(request);
   return runInCoreAuditTransaction(dataSource, async (runner) => {
     await runner.query("SET LOCAL lock_timeout = '8s'");
 
@@ -1005,12 +1187,22 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         to_regclass('core."navigationMenuItem"') IS NOT NULL AS "hasNavTable",
         to_regclass('core.view') IS NOT NULL AS "hasViewTable",
         to_regclass('core."pageLayout"') IS NOT NULL AS "hasPageLayoutTable",
-        to_regclass('core."agentChatChannel"') IS NOT NULL AS "hasChannelTable"`,
+        to_regclass('core."agentChatChannel"') IS NOT NULL AS "hasChannelTable",
+        to_regclass('core."agentChatChannelRole"') IS NOT NULL AS "hasChannelRoleTable",
+        to_regclass('core.role') IS NOT NULL AS "hasRoleTable"`,
     );
     if (reg?.hasNavTable !== true) {
       throw new Error(
         'Navigation menu item audit table core.navigationMenuItem unavailable',
       );
+    }
+
+    const [workspaceRow] = await runner.query(
+      `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+      [request.workspaceId],
+    );
+    if (!workspaceRow || workspaceRow.deletedAt !== null) {
+      throw new Error('Navigation menu item audit workspace unavailable');
     }
 
     const applicationId = uuid(mappings.application.id);
@@ -1030,6 +1222,54 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       throw new Error('Navigation menu item audit application unavailable');
     }
 
+    const touchesChannelsOrRoles =
+      request.mode === 'channel' ||
+      request.expectedParentChannelDeleteIds !== undefined ||
+      request.expectedChannelCreateIds !== undefined ||
+      request.expectedChannelUpdateIds !== undefined ||
+      request.expectedChannelRoleCreateKeys !== undefined ||
+      request.expectedChannelRoleDeleteIds !== undefined ||
+      actions.some(
+        (action) =>
+          action.metadataName === 'agentChatChannel' ||
+          action.metadataName === 'agentChatChannelRole',
+      );
+
+    if (
+      actions.some((action) => action.metadataName === 'agentChatChannel') &&
+      reg?.hasChannelTable !== true
+    ) {
+      throw new Error(
+        'Agent chat channel audit table core.agentChatChannel unavailable',
+      );
+    }
+    if (
+      actions.some(
+        (action) => action.metadataName === 'agentChatChannelRole',
+      ) &&
+      reg?.hasChannelRoleTable !== true
+    ) {
+      throw new Error(
+        'Agent chat channel role audit table core.agentChatChannelRole unavailable',
+      );
+    }
+
+    const beforeChannels =
+      touchesChannelsOrRoles && reg?.hasChannelTable === true
+        ? await readChannelSnapshot(runner, request.workspaceId, true)
+        : new Map<string, Record<string, unknown>>();
+    for (const row of beforeChannels.values()) {
+      assertAgentChatChannelRowInvariants(row, request.workspaceId);
+    }
+
+    const beforeChannelRoles =
+      touchesChannelsOrRoles && reg?.hasChannelRoleTable === true
+        ? await readChannelRoleSnapshot(runner, request.workspaceId, true)
+        : new Map<string, Record<string, unknown>>();
+    for (const row of beforeChannelRoles.values()) {
+      assertAgentChatChannelRoleRowInvariants(row, request.workspaceId);
+    }
+
     const beforeNavItems = await readNavSnapshot(
       runner,
       request.workspaceId,
@@ -1047,7 +1287,22 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
     const plannedNavDeletes = new Set<string>();
     const plannedViewDeletes = new Set<string>();
     const plannedPageLayoutDeletes = new Set<string>();
+    const plannedChannelCreatesByUniversalIdentifier = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedChannelUpdates = new Map<string, Record<string, unknown>>();
     const plannedChannelDeletes = new Set<string>();
+    const plannedChannelRoleCreatesByUniversalIdentifier = new Map<
+      string,
+      {
+        id?: string;
+        channelUniversalIdentifier: string;
+        roleUniversalIdentifier: string;
+        flatEntity: Record<string, unknown>;
+      }
+    >();
+    const plannedChannelRoleDeletes = new Set<string>();
     const plannedObjectCreates = new Set<string>();
     const plannedObjectDeletes = new Set<string>();
     const plannedFieldDeletes = new Set<string>();
@@ -1078,6 +1333,24 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         ) {
           throw new Error(
             'Navigation menu item delete audit allows only delete_navigation_menu_item actions',
+          );
+        }
+      } else if (request.mode === 'channel') {
+        if (
+          action.metadataName !== 'agentChatChannel' &&
+          action.metadataName !== 'agentChatChannelRole' &&
+          action.metadataName !== 'navigationMenuItem'
+        ) {
+          throw new Error(
+            `Agent chat channel audit disallows ${action.metadataName} actions`,
+          );
+        }
+        if (
+          action.metadataName === 'navigationMenuItem' &&
+          action.type !== 'delete'
+        ) {
+          throw new Error(
+            'Agent chat channel audit allows only delete actions on navigationMenuItem',
           );
         }
       } else {
@@ -1177,18 +1450,129 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           );
         }
         plannedPageLayoutDeletes.add(uuid(mappedId));
-      } else if (
-        action.metadataName === 'agentChatChannel' &&
-        action.type === 'delete'
-      ) {
-        const universalId = uuid(action.universalIdentifier);
-        const mappedId = mappings.agentChatChannels?.[universalId]?.id;
-        if (!mappedId) {
-          throw new Error(
-            'Navigation menu item cascade audit missing agentChatChannel mapping',
-          );
+      } else if (action.metadataName === 'agentChatChannel') {
+        if (action.type === 'create') {
+          if (!action.flatEntity) {
+            throw new Error(
+              'Agent chat channel create action requires flatEntity',
+            );
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (plannedChannelCreatesByUniversalIdentifier.has(universalId)) {
+            throw new Error(
+              'Agent chat channel create audit duplicate universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error(
+              'Agent chat channel create action application mismatch',
+            );
+          }
+          const explicitId =
+            action.id !== undefined
+              ? uuid(action.id)
+              : action.flatEntity.id !== undefined
+                ? uuid(action.flatEntity.id)
+                : undefined;
+          if (explicitId !== undefined && beforeChannels.has(explicitId)) {
+            throw new Error(
+              'Agent chat channel create target ID already exists',
+            );
+          }
+          plannedChannelCreatesByUniversalIdentifier.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.agentChatChannels?.[universalId]?.id;
+          if (!mappedId || !action.update) {
+            throw new Error(
+              'Agent chat channel update audit missing mapping or update payload',
+            );
+          }
+          const targetId = uuid(mappedId);
+          if (plannedChannelUpdates.has(targetId)) {
+            throw new Error('Agent chat channel update audit duplicate ID');
+          }
+          plannedChannelUpdates.set(targetId, action.update);
+        } else if (action.type === 'delete') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.agentChatChannels?.[universalId]?.id;
+          if (!mappedId) {
+            throw new Error(
+              'Navigation menu item cascade audit missing agentChatChannel mapping',
+            );
+          }
+          const targetId = uuid(mappedId);
+          if (plannedChannelDeletes.has(targetId)) {
+            throw new Error('Agent chat channel delete audit duplicate ID');
+          }
+          plannedChannelDeletes.add(targetId);
         }
-        plannedChannelDeletes.add(uuid(mappedId));
+      } else if (action.metadataName === 'agentChatChannelRole') {
+        if (action.type === 'create') {
+          if (!action.flatEntity) {
+            throw new Error(
+              'Agent chat channel role create action requires flatEntity',
+            );
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (plannedChannelRoleCreatesByUniversalIdentifier.has(universalId)) {
+            throw new Error(
+              'Agent chat channel role create audit duplicate universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error(
+              'Agent chat channel role create action application mismatch',
+            );
+          }
+          const channelUid = uuid(action.flatEntity.channelUniversalIdentifier);
+          const roleUid = uuid(action.flatEntity.roleUniversalIdentifier);
+          const explicitId =
+            action.id !== undefined
+              ? uuid(action.id)
+              : action.flatEntity.id !== undefined
+                ? uuid(action.flatEntity.id)
+                : undefined;
+          if (explicitId !== undefined && beforeChannelRoles.has(explicitId)) {
+            throw new Error(
+              'Agent chat channel role create target ID already exists',
+            );
+          }
+          plannedChannelRoleCreatesByUniversalIdentifier.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            channelUniversalIdentifier: channelUid,
+            roleUniversalIdentifier: roleUid,
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'delete') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.agentChatChannelRoles?.[universalId]?.id;
+          if (!mappedId) {
+            throw new Error(
+              'Agent chat channel role delete audit missing mapping',
+            );
+          }
+          const targetId = uuid(mappedId);
+          if (plannedChannelRoleDeletes.has(targetId)) {
+            throw new Error(
+              'Agent chat channel role delete audit duplicate ID',
+            );
+          }
+          plannedChannelRoleDeletes.add(targetId);
+        } else {
+          throw new Error('Agent chat channel role update is unsupported');
+        }
       } else if (action.metadataName === 'objectMetadata') {
         if (action.type === 'create') {
           if (action.id !== undefined) {
@@ -1238,6 +1622,247 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         throw new Error(
           'Navigation menu item cascade audit disallows objectMetadata or fieldMetadata delete actions',
         );
+      }
+    } else if (request.mode === 'channel') {
+      const hasChannelConstraint =
+        request.expectedChannelCreateIds !== undefined ||
+        request.expectedChannelUpdateIds !== undefined ||
+        request.expectedParentChannelDeleteIds !== undefined ||
+        request.expectedChannelRoleCreateKeys !== undefined ||
+        request.expectedChannelRoleDeleteIds !== undefined;
+      if (!hasChannelConstraint) {
+        throw new Error(
+          'Agent chat channel audit requires explicit expected scope',
+        );
+      }
+    }
+
+    if (request.expectedChannelCreateIds !== undefined) {
+      const actualChannelCreateIds = [
+        ...plannedChannelCreatesByUniversalIdentifier.values(),
+      ]
+        .map((entry) => entry.id)
+        .filter((id): id is string => id !== undefined);
+      if (
+        plannedChannelCreatesByUniversalIdentifier.size !==
+          request.expectedChannelCreateIds.length ||
+        actualChannelCreateIds.length !==
+          request.expectedChannelCreateIds.length ||
+        request.expectedChannelCreateIds.some(
+          (id) => !actualChannelCreateIds.includes(id),
+        )
+      ) {
+        throw new Error(
+          'Agent chat channel create plan does not match expected IDs',
+        );
+      }
+    } else if (
+      (request.mode === 'cascade' || request.mode === 'channel') &&
+      plannedChannelCreatesByUniversalIdentifier.size > 0
+    ) {
+      throw new Error(
+        'Agent chat channel audit detected unexpected agentChatChannel create',
+      );
+    }
+
+    if (request.expectedChannelUpdateIds !== undefined) {
+      if (
+        plannedChannelUpdates.size !==
+          request.expectedChannelUpdateIds.length ||
+        request.expectedChannelUpdateIds.some(
+          (id) => !plannedChannelUpdates.has(id),
+        )
+      ) {
+        throw new Error(
+          'Agent chat channel update plan does not match expected IDs',
+        );
+      }
+    } else if (
+      (request.mode === 'cascade' || request.mode === 'channel') &&
+      plannedChannelUpdates.size > 0
+    ) {
+      throw new Error(
+        'Agent chat channel audit detected unexpected agentChatChannel update',
+      );
+    }
+
+    if (request.expectedChannelRoleCreateKeys !== undefined) {
+      const actualKeys = [
+        ...plannedChannelRoleCreatesByUniversalIdentifier.values(),
+      ].map(
+        (entry) =>
+          `${entry.channelUniversalIdentifier}:${entry.roleUniversalIdentifier}`,
+      );
+      if (
+        actualKeys.length !== request.expectedChannelRoleCreateKeys.length ||
+        new Set(actualKeys).size !==
+          new Set(request.expectedChannelRoleCreateKeys).size ||
+        request.expectedChannelRoleCreateKeys.some(
+          (key) => !actualKeys.includes(key),
+        ) ||
+        actualKeys.some(
+          (key) => !request.expectedChannelRoleCreateKeys!.includes(key),
+        )
+      ) {
+        throw new Error(
+          'Agent chat channel role create plan does not match expected keys',
+        );
+      }
+    } else if (
+      (request.mode === 'cascade' || request.mode === 'channel') &&
+      plannedChannelRoleCreatesByUniversalIdentifier.size > 0
+    ) {
+      throw new Error(
+        'Agent chat channel audit detected unexpected agentChatChannelRole create',
+      );
+    }
+
+    if (request.expectedChannelRoleDeleteIds !== undefined) {
+      if (
+        plannedChannelRoleDeletes.size !==
+          request.expectedChannelRoleDeleteIds.length ||
+        request.expectedChannelRoleDeleteIds.some(
+          (id) => !plannedChannelRoleDeletes.has(id),
+        )
+      ) {
+        throw new Error(
+          'Agent chat channel role delete plan does not match expected IDs',
+        );
+      }
+    } else if (
+      (request.mode === 'cascade' || request.mode === 'channel') &&
+      plannedChannelRoleDeletes.size > 0
+    ) {
+      throw new Error(
+        'Agent chat channel audit detected unexpected agentChatChannelRole delete',
+      );
+    }
+
+    const foreignChannelAppIds = new Set<string>();
+    for (const targetId of plannedChannelUpdates.keys()) {
+      const beforeCh = beforeChannels.get(targetId);
+      if (!beforeCh) {
+        throw new Error(
+          'Agent chat channel update target row unavailable or belongs to another application',
+        );
+      }
+      const chAppId = uuid(beforeCh.applicationId);
+      if (chAppId !== applicationId) {
+        if (request.mode !== 'channel') {
+          throw new Error(
+            'Agent chat channel update target row unavailable or belongs to another application',
+          );
+        }
+        foreignChannelAppIds.add(chAppId);
+      }
+    }
+    if (foreignChannelAppIds.size > 0) {
+      const activeApps = await runner.query(
+        `SELECT id FROM core.application a WHERE a."workspaceId"=$1 AND a.id=ANY($2::uuid[]) AND to_jsonb(a)->>'deletedAt' IS NULL ORDER BY a.id FOR NO KEY UPDATE`,
+        [request.workspaceId, [...foreignChannelAppIds]],
+      );
+      if (activeApps.length !== foreignChannelAppIds.size) {
+        throw new Error(
+          'Agent chat channel update target row unavailable or belongs to another application',
+        );
+      }
+    }
+
+    for (const targetId of plannedChannelDeletes) {
+      const beforeCh = beforeChannels.get(targetId);
+      if (!beforeCh) {
+        throw new Error('Agent chat channel delete target row unavailable');
+      }
+      if (beforeCh.isCustom !== true) {
+        throw new Error(
+          'Agent chat channel delete audit cannot delete standard channel',
+        );
+      }
+      if (reg?.hasChannelRoleTable === true) {
+        const dbChannelRoleIds = [...beforeChannelRoles.values()]
+          .filter((row) => uuid(row.channelId) === targetId)
+          .map((row) => uuid(row.id));
+        if (
+          dbChannelRoleIds.some(
+            (roleLinkId) => !plannedChannelRoleDeletes.has(roleLinkId),
+          )
+        ) {
+          throw new Error(
+            'Agent chat channel delete audit persisted agentChatChannelRole set changed',
+          );
+        }
+      }
+    }
+
+    for (const targetId of plannedChannelRoleDeletes) {
+      if (!beforeChannelRoles.has(targetId)) {
+        throw new Error(
+          'Agent chat channel role delete target row unavailable',
+        );
+      }
+    }
+
+    const expectedChannelRoleIdsByUniversalId = new Map<
+      string,
+      { channelId: string; roleId: string }
+    >();
+    if (plannedChannelRoleCreatesByUniversalIdentifier.size > 0) {
+      const referencedRoleIds = new Set<string>();
+      for (const [
+        universalId,
+        plannedRoleCreate,
+      ] of plannedChannelRoleCreatesByUniversalIdentifier.entries()) {
+        const mappedChannelId =
+          mappings.agentChatChannels?.[
+            plannedRoleCreate.channelUniversalIdentifier
+          ]?.id ??
+          plannedChannelCreatesByUniversalIdentifier.get(
+            plannedRoleCreate.channelUniversalIdentifier,
+          )?.id;
+        const mappedRoleId =
+          mappings.roles?.[plannedRoleCreate.roleUniversalIdentifier]?.id ??
+          (typeof plannedRoleCreate.flatEntity.roleId === 'string' &&
+          isUUID(plannedRoleCreate.flatEntity.roleId)
+            ? uuid(plannedRoleCreate.flatEntity.roleId)
+            : undefined);
+        if (!mappedChannelId || !mappedRoleId) {
+          throw new Error(
+            'Agent chat channel role create audit missing channel or role mapping',
+          );
+        }
+        const normalizedChannelId = uuid(mappedChannelId);
+        const normalizedRoleId = uuid(mappedRoleId);
+        if (
+          !beforeChannels.has(normalizedChannelId) &&
+          !plannedChannelCreatesByUniversalIdentifier.has(
+            plannedRoleCreate.channelUniversalIdentifier,
+          )
+        ) {
+          throw new Error(
+            'Agent chat channel role create target channel unavailable',
+          );
+        }
+        referencedRoleIds.add(normalizedRoleId);
+        expectedChannelRoleIdsByUniversalId.set(universalId, {
+          channelId: normalizedChannelId,
+          roleId: normalizedRoleId,
+        });
+      }
+      if (referencedRoleIds.size > 0) {
+        if (reg?.hasRoleTable !== true) {
+          throw new Error(
+            'Agent chat channel role audit table core.role unavailable',
+          );
+        }
+        const lockedRoles = await runner.query(
+          `SELECT id FROM core.role WHERE "workspaceId"=$1 AND id=ANY($2::uuid[]) ORDER BY id FOR SHARE`,
+          [request.workspaceId, [...referencedRoleIds]],
+        );
+        if (lockedRoles.length !== referencedRoleIds.size) {
+          throw new Error(
+            'Agent chat channel role create target role unavailable in workspace',
+          );
+        }
       }
     }
 
@@ -1307,7 +1932,10 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           'Navigation menu item cascade agentChatChannel delete plan does not match expected IDs',
         );
       }
-    } else if (request.mode === 'cascade' && plannedChannelDeletes.size > 0) {
+    } else if (
+      (request.mode === 'cascade' || request.mode === 'channel') &&
+      plannedChannelDeletes.size > 0
+    ) {
       throw new Error(
         'Navigation menu item cascade audit detected unexpected agentChatChannel delete',
       );
@@ -1320,6 +1948,8 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         .map((entry) => entry.id)
         .filter((id): id is string => id !== undefined);
       if (
+        plannedNavCreatesByUniversalIdentifier.size !==
+          request.expectedCreatedIds.length ||
         actualCreatedIds.length !== request.expectedCreatedIds.length ||
         request.expectedCreatedIds.some((id) => !actualCreatedIds.includes(id))
       ) {
@@ -1328,7 +1958,7 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         );
       }
     } else if (
-      request.mode === 'cascade' &&
+      (request.mode === 'cascade' || request.mode === 'channel') &&
       plannedNavCreatesByUniversalIdentifier.size > 0
     ) {
       throw new Error(
@@ -1356,7 +1986,10 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           'Navigation menu item delete plan does not match expected IDs',
         );
       }
-    } else if (request.mode === 'cascade' && plannedNavDeletes.size > 0) {
+    } else if (
+      (request.mode === 'cascade' || request.mode === 'channel') &&
+      plannedNavDeletes.size > 0
+    ) {
       throw new Error(
         'Navigation menu item cascade audit detected unexpected navigationMenuItem delete',
       );
@@ -1783,6 +2416,352 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       }
     }
 
+    let expectedChannelsAndRolesSerialized: string | undefined;
+    if (touchesChannelsOrRoles) {
+      const afterChannels =
+        reg?.hasChannelTable === true
+          ? await readChannelSnapshot(runner, request.workspaceId, false)
+          : new Map<string, Record<string, unknown>>();
+      const afterChannelRoles =
+        reg?.hasChannelRoleTable === true
+          ? await readChannelRoleSnapshot(runner, request.workspaceId, false)
+          : new Map<string, Record<string, unknown>>();
+
+      if (reg?.hasChannelTable === true) {
+        const createdChannelsByUniversalId = new Map<
+          string,
+          Record<string, unknown>
+        >();
+        for (const [id, afterRow] of afterChannels.entries()) {
+          assertAgentChatChannelRowInvariants(afterRow, request.workspaceId);
+          if (!beforeChannels.has(id)) {
+            const universalId = uuid(afterRow.universalIdentifier);
+            if (createdChannelsByUniversalId.has(universalId)) {
+              throw new Error(
+                'Agent chat channel audit detected duplicate created universalIdentifier',
+              );
+            }
+            createdChannelsByUniversalId.set(universalId, afterRow);
+          }
+        }
+        if (
+          createdChannelsByUniversalId.size !==
+          plannedChannelCreatesByUniversalIdentifier.size
+        ) {
+          throw new Error(
+            'Agent chat channel audit created row count mismatch',
+          );
+        }
+        for (const [
+          universalId,
+          planned,
+        ] of plannedChannelCreatesByUniversalIdentifier.entries()) {
+          const afterRow = createdChannelsByUniversalId.get(universalId);
+          if (!afterRow) {
+            throw new Error(
+              'Agent chat channel create did not persist expected row',
+            );
+          }
+          const createdId = uuid(afterRow.id);
+          if (planned.id !== undefined && createdId !== planned.id) {
+            throw new Error(
+              'Agent chat channel create persisted unexpected ID',
+            );
+          }
+          if (uuid(afterRow.applicationId) !== applicationId) {
+            throw new Error(
+              'Agent chat channel create persisted unexpected applicationId',
+            );
+          }
+          const afterProj = projectAgentChatChannel(afterRow);
+          if (
+            planned.flatEntity.isCustom !== undefined &&
+            afterProj.isCustom !== Boolean(planned.flatEntity.isCustom)
+          ) {
+            throw new Error(
+              'Agent chat channel create persisted unexpected isCustom',
+            );
+          }
+          for (const textKey of ['name', 'icon', 'color'] as const) {
+            if (planned.flatEntity[textKey] !== undefined) {
+              const expectedText =
+                planned.flatEntity[textKey] === null
+                  ? null
+                  : String(planned.flatEntity[textKey]);
+              if (afterProj[textKey] !== expectedText) {
+                throw new Error(
+                  `Agent chat channel create persisted unexpected ${textKey}`,
+                );
+              }
+            }
+          }
+          if (
+            planned.flatEntity.position !== undefined &&
+            afterProj.position !== Number(planned.flatEntity.position)
+          ) {
+            throw new Error(
+              'Agent chat channel create persisted unexpected position',
+            );
+          }
+          audit.record({
+            resourceKind: 'agentChatChannel',
+            resourceId: createdId,
+            action: 'create',
+            before: null,
+            after: afterProj,
+            securityDescriptor: {
+              resourceKind: 'agentChatChannel',
+              resourceId: createdId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedMutations += 1;
+        }
+
+        for (const [targetId, update] of plannedChannelUpdates.entries()) {
+          const beforeRow = beforeChannels.get(targetId);
+          const afterRow = afterChannels.get(targetId);
+          if (!beforeRow || !afterRow) {
+            throw new Error(
+              'Agent chat channel update removed or lost target row',
+            );
+          }
+          if (
+            uuid(beforeRow.applicationId) !== uuid(afterRow.applicationId) ||
+            uuid(beforeRow.universalIdentifier) !==
+              uuid(afterRow.universalIdentifier) ||
+            Boolean(beforeRow.isCustom) !== Boolean(afterRow.isCustom)
+          ) {
+            throw new Error(
+              'Agent chat channel update modified immutable fields',
+            );
+          }
+          const beforeProj = projectAgentChatChannel(beforeRow);
+          const afterProj = projectAgentChatChannel(afterRow);
+          for (const textKey of ['name', 'icon', 'color'] as const) {
+            const expectedVal =
+              textKey in update && update[textKey] !== undefined
+                ? update[textKey] === null
+                  ? null
+                  : String(update[textKey])
+                : beforeProj[textKey];
+            if (afterProj[textKey] !== expectedVal) {
+              throw new Error(
+                `Agent chat channel update did not persist expected ${textKey}`,
+              );
+            }
+          }
+          const expectedPos =
+            'position' in update && update.position !== undefined
+              ? Number(update.position)
+              : beforeProj.position;
+          if (afterProj.position !== expectedPos) {
+            throw new Error(
+              'Agent chat channel update did not persist expected position',
+            );
+          }
+          if (
+            canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)
+          ) {
+            audit.record({
+              resourceKind: 'agentChatChannel',
+              resourceId: targetId,
+              action: 'update',
+              before: beforeProj,
+              after: afterProj,
+              securityDescriptor: {
+                resourceKind: 'agentChatChannel',
+                resourceId: targetId,
+                metadataAccess: 'currentWorkspaceAdministration',
+              },
+            });
+            recordedMutations += 1;
+          }
+        }
+
+        for (const deletedId of plannedChannelDeletes) {
+          const beforeRow = beforeChannels.get(deletedId);
+          if (!beforeRow) {
+            throw new Error(
+              'Agent chat channel delete expected row missing before migration',
+            );
+          }
+          if (afterChannels.has(deletedId)) {
+            throw new Error(
+              'Agent chat channel delete did not remove expected row',
+            );
+          }
+          audit.record({
+            resourceKind: 'agentChatChannel',
+            resourceId: deletedId,
+            action: 'delete',
+            before: projectAgentChatChannel(beforeRow),
+            after: null,
+            securityDescriptor: {
+              resourceKind: 'agentChatChannel',
+              resourceId: deletedId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedMutations += 1;
+        }
+
+        for (const [id, beforeRow] of beforeChannels.entries()) {
+          if (plannedChannelDeletes.has(id)) continue;
+          const afterRow = afterChannels.get(id);
+          if (!afterRow) {
+            throw new Error(
+              'Agent chat channel audit detected unplanned row deletion',
+            );
+          }
+          if (!plannedChannelUpdates.has(id)) {
+            if (
+              canonicalAuditJson(
+                scalarNavigationMenuItemWithoutTimestamps(beforeRow),
+              ) !==
+              canonicalAuditJson(
+                scalarNavigationMenuItemWithoutTimestamps(afterRow),
+              )
+            ) {
+              throw new Error(
+                'Agent chat channel audit detected unplanned row mutation',
+              );
+            }
+          }
+        }
+      }
+
+      if (reg?.hasChannelRoleTable === true) {
+        const createdChannelRolesByUniversalId = new Map<
+          string,
+          Record<string, unknown>
+        >();
+        for (const [id, afterRow] of afterChannelRoles.entries()) {
+          assertAgentChatChannelRoleRowInvariants(
+            afterRow,
+            request.workspaceId,
+          );
+          if (!beforeChannelRoles.has(id)) {
+            const universalId = uuid(afterRow.universalIdentifier);
+            if (createdChannelRolesByUniversalId.has(universalId)) {
+              throw new Error(
+                'Agent chat channel role audit detected duplicate created universalIdentifier',
+              );
+            }
+            createdChannelRolesByUniversalId.set(universalId, afterRow);
+          }
+        }
+        if (
+          createdChannelRolesByUniversalId.size !==
+          plannedChannelRoleCreatesByUniversalIdentifier.size
+        ) {
+          throw new Error(
+            'Agent chat channel role audit created row count mismatch',
+          );
+        }
+        for (const [
+          universalId,
+          planned,
+        ] of plannedChannelRoleCreatesByUniversalIdentifier.entries()) {
+          const afterRow = createdChannelRolesByUniversalId.get(universalId);
+          const expectedIds =
+            expectedChannelRoleIdsByUniversalId.get(universalId);
+          if (!afterRow || !expectedIds) {
+            throw new Error(
+              'Agent chat channel role create did not persist expected row',
+            );
+          }
+          const createdId = uuid(afterRow.id);
+          if (planned.id !== undefined && createdId !== planned.id) {
+            throw new Error(
+              'Agent chat channel role create persisted unexpected ID',
+            );
+          }
+          if (uuid(afterRow.applicationId) !== applicationId) {
+            throw new Error(
+              'Agent chat channel role create persisted unexpected applicationId',
+            );
+          }
+          const afterProj = projectAgentChatChannelRole(afterRow);
+          if (
+            afterProj.channelId !== expectedIds.channelId ||
+            afterProj.roleId !== expectedIds.roleId
+          ) {
+            throw new Error(
+              'Agent chat channel role create persisted unexpected channelId or roleId',
+            );
+          }
+          audit.record({
+            resourceKind: 'agentChatChannelRole',
+            resourceId: createdId,
+            action: 'create',
+            before: null,
+            after: afterProj,
+            securityDescriptor: {
+              resourceKind: 'agentChatChannelRole',
+              resourceId: createdId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedMutations += 1;
+        }
+
+        for (const deletedId of plannedChannelRoleDeletes) {
+          const beforeRow = beforeChannelRoles.get(deletedId);
+          if (!beforeRow) {
+            throw new Error(
+              'Agent chat channel role delete expected row missing before migration',
+            );
+          }
+          if (afterChannelRoles.has(deletedId)) {
+            throw new Error(
+              'Agent chat channel role delete did not remove expected row',
+            );
+          }
+          audit.record({
+            resourceKind: 'agentChatChannelRole',
+            resourceId: deletedId,
+            action: 'delete',
+            before: projectAgentChatChannelRole(beforeRow),
+            after: null,
+            securityDescriptor: {
+              resourceKind: 'agentChatChannelRole',
+              resourceId: deletedId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedMutations += 1;
+        }
+
+        for (const [id, beforeRow] of beforeChannelRoles.entries()) {
+          if (plannedChannelRoleDeletes.has(id)) continue;
+          const afterRow = afterChannelRoles.get(id);
+          if (!afterRow) {
+            throw new Error(
+              'Agent chat channel role audit detected unplanned row deletion',
+            );
+          }
+          if (
+            canonicalAuditJson(
+              scalarNavigationMenuItemWithoutTimestamps(beforeRow),
+            ) !==
+            canonicalAuditJson(
+              scalarNavigationMenuItemWithoutTimestamps(afterRow),
+            )
+          ) {
+            throw new Error(
+              'Agent chat channel role audit detected unplanned row mutation',
+            );
+          }
+        }
+      }
+
+      expectedChannelsAndRolesSerialized = serializeChannelAndRoleSnapshot(
+        afterChannels,
+        afterChannelRoles,
+      );
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized = serializeNavSnapshot(afterNavItems);
       await audit.flush();
@@ -1795,6 +2774,26 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         throw new Error(
           'Navigation menu item state changed during audit flush',
         );
+      }
+      if (expectedChannelsAndRolesSerialized !== undefined) {
+        const postFlushChannels =
+          reg?.hasChannelTable === true
+            ? await readChannelSnapshot(runner, request.workspaceId, false)
+            : new Map<string, Record<string, unknown>>();
+        const postFlushChannelRoles =
+          reg?.hasChannelRoleTable === true
+            ? await readChannelRoleSnapshot(runner, request.workspaceId, false)
+            : new Map<string, Record<string, unknown>>();
+        if (
+          serializeChannelAndRoleSnapshot(
+            postFlushChannels,
+            postFlushChannelRoles,
+          ) !== expectedChannelsAndRolesSerialized
+        ) {
+          throw new Error(
+            'Agent chat channel state changed during audit flush',
+          );
+        }
       }
     }
 

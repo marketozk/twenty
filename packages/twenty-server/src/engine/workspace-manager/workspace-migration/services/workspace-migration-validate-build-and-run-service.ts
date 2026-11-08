@@ -7,6 +7,16 @@ import {
 } from 'twenty-shared/metadata';
 import { isDefined } from 'twenty-shared/utils';
 
+import {
+  AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES,
+  AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES,
+  bindApplicationMetadataAuditOperation,
+  captureApplicationMetadataAuditOperation,
+  getApplicationMetadataAudit,
+  isAuditedWorkflowOrViewUpdateAction,
+  withApplicationMetadataAudit,
+} from 'src/engine/core-modules/crm-audit/application-metadata-audit';
+import { hasConflictingMetadataAuditScope } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { LoggerService } from 'src/engine/core-modules/logger/logger.service';
 import { WORKSPACE_MIGRATION_ACTION_COUNT_BUCKET_BOUNDARIES } from 'src/engine/core-modules/metrics/constants/workspace-migration-action-count-bucket-boundaries.constant';
 import { WORKSPACE_MIGRATION_DURATION_MS_BUCKET_BOUNDARIES } from 'src/engine/core-modules/metrics/constants/workspace-migration-duration-ms-bucket-boundaries.constant';
@@ -92,6 +102,7 @@ export class WorkspaceMigrationValidateBuildAndRunService {
     args: WorkspaceMigrationOrchestratorBuildArgs & {
       idByUniversalIdentifierByMetadataName?: IdByUniversalIdentifierByMetadataName;
       dryRun?: boolean;
+      applicationId?: string;
     },
   ): Promise<
     | WorkspaceMigrationOrchestratorFailedResult
@@ -99,8 +110,12 @@ export class WorkspaceMigrationValidateBuildAndRunService {
         hasSchemaMetadataChanged: boolean;
       })
   > {
-    const { idByUniversalIdentifierByMetadataName, dryRun, ...buildArgs } =
-      args;
+    const {
+      idByUniversalIdentifierByMetadataName,
+      dryRun,
+      applicationId,
+      ...buildArgs
+    } = args;
 
     const buildStart = performance.now();
     const validateAndBuildResult =
@@ -186,11 +201,43 @@ export class WorkspaceMigrationValidateBuildAndRunService {
     });
 
     const runStart = performance.now();
-    const { hasSchemaMetadataChanged, metadataEvents } =
-      await this.workspaceMigrationRunnerService.run({
+    const needsSystemApplicationAudit =
+      buildArgs.buildOptions.isSystemBuild === true &&
+      isDefined(applicationId) &&
+      !getApplicationMetadataAudit(args.workspaceId) &&
+      !hasConflictingMetadataAuditScope(args.workspaceId) &&
+      workspaceMigration.actions.some(
+        (action) =>
+          AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES.has(action.metadataName) ||
+          (action.type === 'delete' &&
+            AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES.has(
+              action.metadataName,
+            )) ||
+          isAuditedWorkflowOrViewUpdateAction(action as never),
+      );
+    const runMigration = () =>
+      this.workspaceMigrationRunnerService.run({
         workspaceId: args.workspaceId,
         workspaceMigration,
       });
+    const { hasSchemaMetadataChanged, metadataEvents } =
+      needsSystemApplicationAudit
+        ? await withApplicationMetadataAudit(
+            bindApplicationMetadataAuditOperation(
+              captureApplicationMetadataAuditOperation({
+                workspaceId: args.workspaceId,
+                isSystemBuild: true,
+                defaultSystemActorId: 'workspace-migration:system-build',
+              }),
+              {
+                applicationId,
+                applicationUniversalIdentifier:
+                  buildArgs.buildOptions.applicationUniversalIdentifier,
+              },
+            ),
+            runMigration,
+          )
+        : await runMigration();
     const runMs = performance.now() - runStart;
 
     this.logger.perf(
@@ -407,6 +454,10 @@ export class WorkspaceMigrationValidateBuildAndRunService {
       idByUniversalIdentifierByMetadataName:
         mergedIdByUniversalIdentifierByMetadataName,
       dryRun,
+      applicationId:
+        flatApplicationMaps.idByUniversalIdentifier[
+          applicationUniversalIdentifier
+        ],
     });
   }
 }

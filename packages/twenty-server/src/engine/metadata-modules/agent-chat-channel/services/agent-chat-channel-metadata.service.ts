@@ -89,13 +89,29 @@ export class AgentChatChannelMetadataService {
     icon,
     color,
     roleIds,
+    auditIdentity,
+    authUserWorkspaceId,
+    capturedAudit,
   }: {
     workspaceId: string;
     name: string;
     icon: string | null;
     color: string | null;
     roleIds: string[];
+    auditIdentity?: NavigationMenuItemAuditIdentity;
+    authUserWorkspaceId?: string;
+    capturedAudit?: ReturnType<typeof captureNavigationMenuItemAudit>;
   }): Promise<FlatAgentChatChannelWithRoleIds> {
+    const getChannelAudit =
+      capturedAudit ??
+      captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'channel',
+        auditIdentity,
+        authUserWorkspaceId,
+        defaultSystemActorId: 'agent-chat-channel:create',
+      });
+
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         { workspaceId },
@@ -114,39 +130,51 @@ export class AgentChatChannelMetadataService {
         .map(({ position }) => position),
     );
 
-    await this.runMigration({
-      workspaceId,
+    const channelRolesToCreate = buildAgentChatChannelRolesToCreate({
+      channelUniversalIdentifier,
+      roleUniversalIdentifiers:
+        findAgentChatChannelRoleUniversalIdentifiersOrThrow({
+          flatRoleMaps: channelMaps.flatRoleMaps,
+          roleIds,
+        }),
       applicationUniversalIdentifier:
         workspaceCustomFlatApplication.universalIdentifier,
-      channelsToCreate: [
-        {
-          id: channelId,
-          universalIdentifier: channelUniversalIdentifier,
-          name: validateAgentChatChannelNameOrThrow(name),
-          icon,
-          color,
-          position: lastPosition + 1,
-          isCustom: true,
-          channelRoleUniversalIdentifiers: [],
-          navigationMenuItemUniversalIdentifiers: [],
+      now,
+    });
+
+    await withNavigationMenuItemAudit(
+      getChannelAudit({
+        expectedChannelCreateIds: [channelId],
+        expectedChannelRoleCreateKeys: channelRolesToCreate.map(
+          ({ roleUniversalIdentifier }) =>
+            `${channelUniversalIdentifier}:${roleUniversalIdentifier}`,
+        ),
+      }),
+      () =>
+        this.runMigration({
+          workspaceId,
           applicationUniversalIdentifier:
             workspaceCustomFlatApplication.universalIdentifier,
-          createdAt: now,
-          updatedAt: now,
-        },
-      ],
-      channelRolesToCreate: buildAgentChatChannelRolesToCreate({
-        channelUniversalIdentifier,
-        roleUniversalIdentifiers:
-          findAgentChatChannelRoleUniversalIdentifiersOrThrow({
-            flatRoleMaps: channelMaps.flatRoleMaps,
-            roleIds,
-          }),
-        applicationUniversalIdentifier:
-          workspaceCustomFlatApplication.universalIdentifier,
-        now,
-      }),
-    });
+          channelsToCreate: [
+            {
+              id: channelId,
+              universalIdentifier: channelUniversalIdentifier,
+              name: validateAgentChatChannelNameOrThrow(name),
+              icon,
+              color,
+              position: lastPosition + 1,
+              isCustom: true,
+              channelRoleUniversalIdentifiers: [],
+              navigationMenuItemUniversalIdentifiers: [],
+              applicationUniversalIdentifier:
+                workspaceCustomFlatApplication.universalIdentifier,
+              createdAt: now,
+              updatedAt: now,
+            },
+          ],
+          channelRolesToCreate,
+        }),
+    );
 
     return this.findChannelOrThrow({ workspaceId, channelId });
   }
@@ -158,12 +186,28 @@ export class AgentChatChannelMetadataService {
     channelId,
     changes,
     roleIds,
+    auditIdentity,
+    authUserWorkspaceId,
+    capturedAudit,
   }: {
     workspaceId: string;
     channelId: string;
     changes: ChannelChanges;
     roleIds?: string[];
+    auditIdentity?: NavigationMenuItemAuditIdentity;
+    authUserWorkspaceId?: string;
+    capturedAudit?: ReturnType<typeof captureNavigationMenuItemAudit>;
   }): Promise<FlatAgentChatChannelWithRoleIds> {
+    const getChannelAudit =
+      capturedAudit ??
+      captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'channel',
+        auditIdentity,
+        authUserWorkspaceId,
+        defaultSystemActorId: 'agent-chat-channel:update',
+      });
+
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         { workspaceId },
@@ -219,7 +263,11 @@ export class AgentChatChannelMetadataService {
       now,
     });
 
-    const isChannelChanged = Object.keys(definedChanges).length > 0;
+    const isChannelChanged = (
+      ['name', 'icon', 'color', 'position'] as const
+    ).some(
+      (key) => key in definedChanges && definedChanges[key] !== channel[key],
+    );
 
     if (
       !isChannelChanged &&
@@ -232,16 +280,29 @@ export class AgentChatChannelMetadataService {
       });
     }
 
-    await this.runMigration({
-      workspaceId,
-      applicationUniversalIdentifier:
-        workspaceCustomFlatApplication.universalIdentifier,
-      channelsToUpdate: isChannelChanged
-        ? [{ ...channel, ...definedChanges, updatedAt: now }]
-        : [],
-      channelRolesToCreate,
-      channelRolesToDelete,
-    });
+    await withNavigationMenuItemAudit(
+      getChannelAudit({
+        expectedChannelUpdateIds: isChannelChanged ? [channel.id] : [],
+        expectedChannelRoleCreateKeys: channelRolesToCreate.map(
+          ({ channelUniversalIdentifier, roleUniversalIdentifier }) =>
+            `${channelUniversalIdentifier}:${roleUniversalIdentifier}`,
+        ),
+        expectedChannelRoleDeleteIds: channelRolesToDelete.map(
+          (item) => item.id,
+        ),
+      }),
+      () =>
+        this.runMigration({
+          workspaceId,
+          applicationUniversalIdentifier:
+            workspaceCustomFlatApplication.universalIdentifier,
+          channelsToUpdate: isChannelChanged
+            ? [{ ...channel, ...definedChanges, updatedAt: now }]
+            : [],
+          channelRolesToCreate,
+          channelRolesToDelete,
+        }),
+    );
 
     return this.findChannelOrThrow({ workspaceId, channelId });
   }
@@ -250,17 +311,24 @@ export class AgentChatChannelMetadataService {
     workspaceId,
     channelId,
     auditIdentity,
+    authUserWorkspaceId,
+    capturedAudit,
   }: {
     workspaceId: string;
     channelId: string;
     auditIdentity?: NavigationMenuItemAuditIdentity;
+    authUserWorkspaceId?: string;
+    capturedAudit?: ReturnType<typeof captureNavigationMenuItemAudit>;
   }): Promise<FlatAgentChatChannelWithRoleIds> {
-    const getCascadeAudit = captureNavigationMenuItemAudit({
-      workspaceId,
-      mode: 'cascade',
-      auditIdentity,
-      defaultSystemActorId: 'agent-chat-channel:delete',
-    });
+    const getCascadeAudit =
+      capturedAudit ??
+      captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'channel',
+        auditIdentity,
+        authUserWorkspaceId,
+        defaultSystemActorId: 'agent-chat-channel:delete',
+      });
 
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
@@ -277,6 +345,10 @@ export class AgentChatChannelMetadataService {
       channelId,
     });
 
+    const channelRolesToDelete = findManyFlatEntityByIdInFlatEntityMaps({
+      flatEntityIds: channel.channelRoleIds,
+      flatEntityMaps: flatAgentChatChannelRoleMaps,
+    });
     const navigationMenuItemsToDelete = findManyFlatEntityByIdInFlatEntityMaps({
       flatEntityIds: channel.navigationMenuItemIds,
       flatEntityMaps: flatNavigationMenuItemMaps,
@@ -285,6 +357,9 @@ export class AgentChatChannelMetadataService {
     await withNavigationMenuItemAudit(
       getCascadeAudit({
         expectedParentChannelDeleteIds: [channel.id],
+        expectedChannelRoleDeleteIds: channelRolesToDelete.map(
+          (item) => item.id,
+        ),
         expectedDeletedIds: navigationMenuItemsToDelete.map((item) => item.id),
       }),
       () =>
@@ -293,10 +368,7 @@ export class AgentChatChannelMetadataService {
           applicationUniversalIdentifier:
             workspaceCustomFlatApplication.universalIdentifier,
           channelsToDelete: [channel],
-          channelRolesToDelete: findManyFlatEntityByIdInFlatEntityMaps({
-            flatEntityIds: channel.channelRoleIds,
-            flatEntityMaps: flatAgentChatChannelRoleMaps,
-          }),
+          channelRolesToDelete,
           navigationMenuItemsToDelete,
         }),
     );

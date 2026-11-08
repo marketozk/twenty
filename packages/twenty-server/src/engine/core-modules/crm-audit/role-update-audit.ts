@@ -25,6 +25,7 @@ export type RoleAuditMappings = {
   roles: Record<string, { id: string } | undefined>;
   targets: Record<string, { id: string } | undefined>;
   agents?: Record<string, { id: string } | undefined>;
+  agentChatChannelRoles?: Record<string, { id: string } | undefined>;
 };
 
 export const captureRoleAuditIdentity = (
@@ -404,6 +405,22 @@ const projectRole = (row: Record<string, unknown>) =>
     [...BOOLEAN_FIELDS, ...TEXT_FIELDS].map((key) => [key, row[key]]),
   );
 
+const projectAgentChatChannelRoleAuditFields = (
+  row: Record<string, unknown>,
+) => {
+  if (
+    typeof row.channelId !== 'string' ||
+    !isUUID(row.channelId) ||
+    typeof row.roleId !== 'string' ||
+    !isUUID(row.roleId)
+  )
+    throw new Error('Role delete audit invalid agentChatChannelRole row');
+  return {
+    channelId: uuid(row.channelId),
+    roleId: uuid(row.roleId),
+  };
+};
+
 const runAuditedRoleDelete = async <T>(
   dataSource: DataSource,
   request: Extract<RoleAuditRequest, { action: 'delete' }>,
@@ -430,9 +447,18 @@ const runAuditedRoleDelete = async <T>(
     (action) =>
       action.metadataName === 'roleTarget' && action.type === 'create',
   );
+  const channelRoleDeletes = actions.filter(
+    (action) =>
+      action.metadataName === 'agentChatChannelRole' &&
+      action.type === 'delete',
+  );
   if (
     roleDeletes.length !== 1 ||
-    actions.length !== 1 + targetDeletes.length + targetCreates.length
+    actions.length !==
+      1 +
+        targetDeletes.length +
+        targetCreates.length +
+        channelRoleDeletes.length
   )
     throw new Error(
       'Role delete audit requires one role delete and bounded roleTarget actions',
@@ -444,6 +470,25 @@ const runAuditedRoleDelete = async <T>(
     mappings.roles[deletedRoleUniversalIdentifier]?.id;
   if (!mappedDeletedRoleId || uuid(mappedDeletedRoleId) !== request.roleId)
     throw new Error('Role delete audit resolved a different role');
+
+  const plannedChannelRoleDeletes = channelRoleDeletes.map((action) => {
+    const universalIdentifier = uuid(action.universalIdentifier!);
+    const mappedId = mappings.agentChatChannelRoles?.[universalIdentifier]?.id;
+    if (!mappedId)
+      throw new Error(
+        'Role delete audit missing agentChatChannelRole delete mapping',
+      );
+    return { id: uuid(mappedId), universalIdentifier };
+  });
+  if (
+    new Set(plannedChannelRoleDeletes.map((item) => item.id)).size !==
+      plannedChannelRoleDeletes.length ||
+    new Set(plannedChannelRoleDeletes.map((item) => item.universalIdentifier))
+      .size !== plannedChannelRoleDeletes.length
+  )
+    throw new Error(
+      'Role delete audit duplicate agentChatChannelRole delete action',
+    );
 
   const plannedTargetDeletes = targetDeletes.map((action) => {
     const universalIdentifier = uuid(action.universalIdentifier!);
@@ -624,6 +669,48 @@ const runAuditedRoleDelete = async <T>(
         throw new Error('Role delete audit persisted roleTarget mismatch');
     }
 
+    const [channelRoleReg] = await runner.query(
+      'SELECT to_regclass(\'core."agentChatChannelRole"\') IS NOT NULL AS "hasChannelRoleTable"',
+    );
+    const hasChannelRoleTable = channelRoleReg?.hasChannelRoleTable === true;
+    if (!hasChannelRoleTable && plannedChannelRoleDeletes.length > 0)
+      throw new Error(
+        'Role delete audit table core.agentChatChannelRole unavailable',
+      );
+    const beforeChannelRoles: Record<string, unknown>[] = hasChannelRoleTable
+      ? (
+          await runner.query(
+            'SELECT to_jsonb(cr) AS row FROM core."agentChatChannelRole" cr WHERE "workspaceId"=$1 AND ("roleId"=$2 OR id=ANY($3::uuid[])) ORDER BY id FOR UPDATE',
+            [
+              request.operation.workspaceId,
+              request.roleId,
+              plannedChannelRoleDeletes.map((item) => item.id),
+            ],
+          )
+        ).map((entry: { row: Record<string, unknown> }) => entry.row)
+      : [];
+    if (beforeChannelRoles.length !== plannedChannelRoleDeletes.length)
+      throw new Error(
+        'Role delete audit persisted agentChatChannelRole set changed',
+      );
+    for (const beforeChannelRole of beforeChannelRoles) {
+      const planned = plannedChannelRoleDeletes.find(
+        (item) => item.id === uuid(String(beforeChannelRole.id)),
+      );
+      if (
+        !planned ||
+        uuid(String(beforeChannelRole.roleId)) !== request.roleId ||
+        uuid(String(beforeChannelRole.workspaceId)) !==
+          request.operation.workspaceId ||
+        uuid(String(beforeChannelRole.universalIdentifier)) !==
+          planned.universalIdentifier
+      )
+        throw new Error(
+          'Role delete audit persisted agentChatChannelRole mismatch',
+        );
+      projectAgentChatChannelRoleAuditFields(beforeChannelRole);
+    }
+
     const userWorkspaceIds = [
       ...new Set(
         beforeTargets.flatMap((row) =>
@@ -801,6 +888,18 @@ const runAuditedRoleDelete = async <T>(
       ).length > 0
     )
       throw new Error('Role delete audit old roleTarget still exists');
+    if (
+      hasChannelRoleTable &&
+      (
+        await runner.query(
+          'SELECT id FROM core."agentChatChannelRole" WHERE "roleId"=$1 OR id=ANY($2::uuid[])',
+          [request.roleId, plannedChannelRoleDeletes.map((item) => item.id)],
+        )
+      ).length > 0
+    )
+      throw new Error(
+        'Role delete audit old agentChatChannelRole still exists',
+      );
 
     const readCreatedTargets = async () =>
       plannedTargetCreates.length === 0
@@ -852,6 +951,21 @@ const runAuditedRoleDelete = async <T>(
         );
     }
 
+    for (const beforeChannelRole of beforeChannelRoles) {
+      const channelRoleId = uuid(String(beforeChannelRole.id));
+      audit.record({
+        resourceKind: 'agentChatChannelRole',
+        resourceId: channelRoleId,
+        action: 'delete',
+        before: projectAgentChatChannelRoleAuditFields(beforeChannelRole),
+        after: null,
+        securityDescriptor: {
+          resourceKind: 'agentChatChannelRole',
+          resourceId: channelRoleId,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+    }
     for (const beforeTarget of beforeTargets) {
       const targetId = uuid(String(beforeTarget.id));
       audit.record({
@@ -908,7 +1022,14 @@ const runAuditedRoleDelete = async <T>(
           'SELECT id FROM core."roleTarget" WHERE "roleId"=$1 OR id=ANY($2::uuid[])',
           [request.roleId, plannedTargetDeletes.map((item) => item.id)],
         )
-      ).length > 0
+      ).length > 0 ||
+      (hasChannelRoleTable &&
+        (
+          await runner.query(
+            'SELECT id FROM core."agentChatChannelRole" WHERE "roleId"=$1 OR id=ANY($2::uuid[])',
+            [request.roleId, plannedChannelRoleDeletes.map((item) => item.id)],
+          )
+        ).length > 0)
     )
       throw new Error('Role delete audit deleted record reappeared');
     const [currentDefaultRole] = await runner.query(
@@ -1101,6 +1222,7 @@ export const runAuditedUnusedAgentRoleDelete = async (
     roleTargetId: string;
   },
   identity: RoleUpdateAuditIdentity,
+  onChannelRolesDeleted?: () => void,
 ): Promise<boolean> => {
   const normalizedWorkspaceId = uuid(input.workspaceId);
   const normalizedRoleId = uuid(input.roleId);
@@ -1189,12 +1311,55 @@ export const runAuditedUnusedAgentRoleDelete = async (
         'Unused agent role delete target is not an agent binding',
       );
 
+    const [channelRoleReg] = await runner.query(
+      'SELECT to_regclass(\'core."agentChatChannelRole"\') IS NOT NULL AS "hasChannelRoleTable"',
+    );
+    const hasChannelRoleTable = channelRoleReg?.hasChannelRoleTable === true;
+    const beforeChannelRoles: Record<string, unknown>[] = hasChannelRoleTable
+      ? (
+          await runner.query(
+            'SELECT to_jsonb(cr) AS row FROM core."agentChatChannelRole" cr WHERE "workspaceId"=$1 AND "roleId"=$2 ORDER BY id FOR UPDATE',
+            [normalizedWorkspaceId, normalizedRoleId],
+          )
+        ).map((entry: { row: Record<string, unknown> }) => entry.row)
+      : [];
+    for (const beforeChannelRole of beforeChannelRoles) {
+      if (uuid(String(beforeChannelRole.workspaceId)) !== normalizedWorkspaceId)
+        throw new Error(
+          'Unused agent role delete agentChatChannelRole workspace mismatch',
+        );
+      projectAgentChatChannelRoleAuditFields(beforeChannelRole);
+    }
+
     const operation = await resolveRoleAuditInitiator(
       runner,
       requestOperation,
       impersonatorUserWorkspaceId,
     );
     const audit = new CrmAuditTransactionContext(runner, operation);
+
+    if (beforeChannelRoles.length > 0) {
+      onChannelRolesDeleted?.();
+      await runner.query(
+        'DELETE FROM core."agentChatChannelRole" WHERE "workspaceId"=$1 AND "roleId"=$2',
+        [normalizedWorkspaceId, normalizedRoleId],
+      );
+      for (const beforeChannelRole of beforeChannelRoles) {
+        const channelRoleId = uuid(String(beforeChannelRole.id));
+        audit.record({
+          resourceKind: 'agentChatChannelRole',
+          resourceId: channelRoleId,
+          action: 'delete',
+          before: projectAgentChatChannelRoleAuditFields(beforeChannelRole),
+          after: null,
+          securityDescriptor: {
+            resourceKind: 'agentChatChannelRole',
+            resourceId: channelRoleId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+      }
+    }
 
     if (residualTarget) {
       await runner.query(
@@ -1231,7 +1396,14 @@ export const runAuditedUnusedAgentRoleDelete = async (
           'SELECT id FROM core."roleTarget" WHERE "roleId"=$1 OR id=$2',
           [normalizedRoleId, normalizedRoleTargetId],
         )
-      ).length > 0
+      ).length > 0 ||
+      (hasChannelRoleTable &&
+        (
+          await runner.query(
+            'SELECT id FROM core."agentChatChannelRole" WHERE "roleId"=$1',
+            [normalizedRoleId],
+          )
+        ).length > 0)
     )
       throw new Error('Role delete audit role or roleTarget still exists');
 
@@ -1260,7 +1432,14 @@ export const runAuditedUnusedAgentRoleDelete = async (
           'SELECT id FROM core."roleTarget" WHERE "roleId"=$1 OR id=$2',
           [normalizedRoleId, normalizedRoleTargetId],
         )
-      ).length > 0
+      ).length > 0 ||
+      (hasChannelRoleTable &&
+        (
+          await runner.query(
+            'SELECT id FROM core."agentChatChannelRole" WHERE "roleId"=$1',
+            [normalizedRoleId],
+          )
+        ).length > 0)
     )
       throw new Error('Role delete audit deleted record reappeared');
 

@@ -44,6 +44,32 @@ export class AgentChatChannelRoleAccessListener {
     await this.rewriteGrantsIfAccessChanged(batch);
   }
 
+  @OnEvent('metadata.agentChatChannelRole.created')
+  async handleCreatedChannelRoles(
+    batch: MetadataEventBatch<'agentChatChannelRole'>,
+  ): Promise<void> {
+    if (batch.events.length === 0) {
+      return;
+    }
+
+    await this.channelGrantService.enqueueChannelGrantsRewrite({
+      workspaceId: batch.workspaceId,
+    });
+  }
+
+  @OnEvent('metadata.agentChatChannelRole.deleted')
+  async handleDeletedChannelRoles(
+    batch: MetadataEventBatch<'agentChatChannelRole'>,
+  ): Promise<void> {
+    if (batch.events.length === 0) {
+      return;
+    }
+
+    await this.channelGrantService.enqueueChannelGrantsRewrite({
+      workspaceId: batch.workspaceId,
+    });
+  }
+
   private async rewriteGrantsIfAccessChanged({
     workspaceId,
     events,

@@ -3,7 +3,13 @@ import { Injectable } from '@nestjs/common';
 import { isDefined } from 'twenty-shared/utils';
 
 import { PostgresAdvisoryLockService } from 'src/database/typeorm/postgres-advisory-lock.service';
+import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
+import {
+  captureNavigationMenuItemAudit,
+  type NavigationMenuItemAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { AgentChatChannelMetadataService } from 'src/engine/metadata-modules/agent-chat-channel/services/agent-chat-channel-metadata.service';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { type FlatAgentChatChannelWithRoleIds } from 'src/engine/metadata-modules/agent-chat-channel/types/flat-agent-chat-channel-with-role-ids.type';
 import { type AgentChatChannelRoleDTO } from 'src/engine/metadata-modules/ai/ai-chat/dtos/agent-chat-channel-role.dto';
 import { AgentChatChannelAccessService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-channel-access.service';
@@ -78,13 +84,25 @@ export class AgentChatChannelService {
     icon,
     color,
     roleIds,
+    auditIdentity,
+    authUserWorkspaceId,
   }: {
     workspaceId: string;
     name: string;
     icon: string | null;
     color: string | null;
     roleIds: string[];
+    auditIdentity?: NavigationMenuItemAuditIdentity;
+    authUserWorkspaceId?: string;
   }): Promise<FlatAgentChatChannelWithRoleIds> {
+    const capturedAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'channel',
+      auditIdentity,
+      authUserWorkspaceId,
+      defaultSystemActorId: 'agent-chat-channel:create',
+    });
+
     if (!(await this.sharingService.hasChannels(workspaceId))) {
       throwAgentChatChannelsUnavailable();
     }
@@ -95,6 +113,9 @@ export class AgentChatChannelService {
       icon,
       color,
       roleIds,
+      auditIdentity,
+      authUserWorkspaceId,
+      capturedAudit,
     });
   }
 
@@ -102,17 +123,51 @@ export class AgentChatChannelService {
     workspaceId,
     channelId,
     changes: { roleIds, ...changes },
+    auditIdentity,
+    authUserWorkspaceId,
   }: {
     workspaceId: string;
     channelId: string;
     changes: ChannelChanges;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
+    authUserWorkspaceId?: string;
   }): Promise<FlatAgentChatChannelWithRoleIds> {
-    const channel = await this.channelMetadataService.updateChannel({
+    const capturedAudit = captureNavigationMenuItemAudit({
       workspaceId,
-      channelId,
-      changes,
-      roleIds,
+      mode: 'channel',
+      auditIdentity,
+      authUserWorkspaceId,
+      defaultSystemActorId: 'agent-chat-channel:update',
     });
+
+    let channel: FlatAgentChatChannelWithRoleIds;
+
+    try {
+      channel = await this.channelMetadataService.updateChannel({
+        workspaceId,
+        channelId,
+        changes,
+        roleIds,
+        auditIdentity,
+        authUserWorkspaceId,
+        capturedAudit,
+      });
+    } catch (error: unknown) {
+      if (
+        isDefined(roleIds) &&
+        (error instanceof NativeTransactionOutcomeUnknownError ||
+          error instanceof CoreAuditPostCommitError)
+      ) {
+        await this.channelGrantService
+          .enqueueChannelGrantsRewrite({
+            workspaceId,
+            channelId,
+          })
+          .catch(() => {});
+      }
+
+      throw error;
+    }
 
     if (isDefined(roleIds)) {
       await this.channelGrantService
@@ -137,12 +192,33 @@ export class AgentChatChannelService {
     workspaceMemberId,
     channelId,
     destinationChannelId,
+    auditIdentity,
+    authUserWorkspaceId,
   }: {
     workspaceId: string;
     workspaceMemberId: string;
     channelId: string;
     destinationChannelId: string | null;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
+    authUserWorkspaceId?: string;
   }): Promise<void> {
+    const resolvedIdentity: NavigationMenuItemAuditIdentity =
+      auditIdentity && 'actor' in auditIdentity
+        ? auditIdentity
+        : {
+            ...auditIdentity,
+            workspaceMemberId:
+              (auditIdentity as { workspaceMemberId?: string } | undefined)
+                ?.workspaceMemberId ?? workspaceMemberId,
+          };
+    const capturedAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'channel',
+      auditIdentity: resolvedIdentity,
+      authUserWorkspaceId,
+      defaultSystemActorId: 'agent-chat-channel:delete',
+    });
+
     const channel = await this.channelMetadataService.findChannelOrThrow({
       workspaceId,
       channelId,
@@ -188,9 +264,9 @@ export class AgentChatChannelService {
         await this.channelMetadataService.deleteChannel({
           workspaceId,
           channelId,
-          auditIdentity: {
-            workspaceMemberId,
-          },
+          auditIdentity: resolvedIdentity,
+          authUserWorkspaceId,
+          capturedAudit,
         });
       },
     );

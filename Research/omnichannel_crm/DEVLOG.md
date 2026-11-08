@@ -5063,5 +5063,21 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 и совпали. [Публикация](implementation/log171/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765.
 
+## LOG-172 - транзакционный аудит жизненного цикла и каскадных удалений `agentChatChannel` и `agentChatChannelRole`
+
+08.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log172/design.md), [design-review.md](implementation/log172/design-review.md)) и реализован участок `LOG-172` (Linear `ROB-765`): транзакционный аудит полного жизненного цикла (`create`, `update`, `delete`) и каскадных удалений каналов чата ИИ (`core."agentChatChannel"`) и их ролевых правил доступа (`core."agentChatChannelRole"`).
+
+В `crm-audit.types.ts` и `crm-audit-transaction-context.ts` добавлены виды ресурсов `agentChatChannel` (`values: ['isCustom']`, `redacted: ['name', 'icon', 'color', 'position']`, действия `['create', 'update', 'delete']`) и `agentChatChannelRole` (`values: ['channelId', 'roleId']`, `redacted: []`, действия `['create', 'delete']`). В `navigation-menu-item-audit.ts` добавлен режим `mode: 'channel'` с поддержкой `expectedChannelCreateIds`, `expectedChannelUpdateIds`, `expectedChannelRoleCreateKeys` и `expectedChannelRoleDeleteIds`, блокировками `core.workspace` (`FOR NO KEY UPDATE`), `core.application` (`FOR NO KEY UPDATE`), `core."agentChatChannel"` (`FOR UPDATE`), `core."agentChatChannelRole"` (`FOR UPDATE`) и `core.role` (`FOR SHARE`), поддержкой переименования и настройки ролей стандартного канала (`General`) и проверкой неизменности снимка после `audit.flush()`. Подключены `AgentChatChannelResolver`, `AgentChatChannelService`, `AgentChatChannelMetadataService` и `AgentChatChannelRoleAccessListener` (с синхронным захватом `auditIdentity` до первого `await`, передачей `initiator` при имперсонации и постановкой в очередь `enqueueChannelGrantsRewrite` при `NativeTransactionOutcomeUnknownError` / `CoreAuditPostCommitError`), каскадное удаление `agentChatChannelRole` при удалении роли в `RoleService.deleteManyRoles`, `runAuditedRoleDelete` и `runAuditedUnusedAgentRoleDelete` (`AiAgentRoleService.deleteAgentOnlyRoleIfUnused`), а также пакетные и системные миграции в `application-metadata-audit.ts`, `WorkspaceMigrationValidateBuildAndRunService` и `WorkspaceMigrationRunnerService.executeRun`.
+
+08.11.2026 проверки LOG172 завершены. 3160 tests/117 suites PASS (696.175s). 295 targeted/17 PostgreSQL suites PASS (35.453s), 4 новых PostgreSQL случая. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 482/483 roots, baseline 277 / current 277 diagnostics, 0 новых/changed-code. Совпали 14 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех входных точек `agentChatChannel` и `agentChatChannelRole`, устранение замечаний DR1-DR12, B1-B2, M3, m4 и R1-R3, корректную обработку `NativeTransactionOutcomeUnknownError` и `CoreAuditPostCommitError` и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log172/results.json), [ревью](implementation/log172/review.md),
+[следующий участок](implementation/log172/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
+
+
 
 
