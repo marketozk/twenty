@@ -18,6 +18,8 @@ export type RoleUpdateAuditIdentity = {
   agentId?: string;
   impersonatorUserWorkspaceId?: string;
   systemActorId?: string;
+  correlationId?: string;
+  causationId?: string;
 };
 
 export type RoleAuditMappings = {
@@ -64,6 +66,12 @@ export const captureRoleAuditIdentity = (
     impersonatorUserWorkspaceId: identity.impersonatorUserWorkspaceId,
     ...(identity.systemActorId !== undefined
       ? { systemActorId: identity.systemActorId }
+      : {}),
+    ...(identity.correlationId !== undefined
+      ? { correlationId: identity.correlationId }
+      : {}),
+    ...(identity.causationId !== undefined
+      ? { causationId: identity.causationId }
       : {}),
   };
 };
@@ -270,6 +278,12 @@ export const captureRoleAuditOperation = (
     operationId: randomUUID(),
     ...(identity.systemActorId !== undefined
       ? { systemActorId: identity.systemActorId }
+      : {}),
+    ...(identity.correlationId !== undefined
+      ? { correlationId: identity.correlationId }
+      : {}),
+    ...(identity.causationId !== undefined
+      ? { causationId: identity.causationId }
       : {}),
   });
   return identity.agentId

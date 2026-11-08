@@ -52,28 +52,44 @@ export class GlobalWorkspaceMemberListener {
       ObjectRecordUpdateEvent<WorkspaceMemberWorkspaceEntity>
     >,
   ) {
-    for (const event of payload.events) {
-      const { after } = event.properties;
+    const capturedWorkspaceId = payload.workspaceId;
+    const capturedEvents = payload.events
+      .filter(
+        (event) =>
+          isDefined(event.properties.diff?.locale) &&
+          isDefined(event.properties.after),
+      )
+      .map((event) => ({
+        userId: event.properties.after.userId,
+        locale: event.properties.after.locale,
+        actingUserId: event.userId,
+      }));
 
-      if (!isDefined(event.properties.diff?.locale) || !isDefined(after)) {
-        continue;
-      }
-
+    for (const item of capturedEvents) {
       const userWorkspace =
         await this.userWorkspaceService.getUserWorkspaceForUser({
-          userId: after.userId,
-          workspaceId: payload.workspaceId,
+          userId: item.userId,
+          workspaceId: capturedWorkspaceId,
           relations: [],
         });
 
-      if (!isDefined(userWorkspace) || userWorkspace.locale === after.locale) {
+      if (!isDefined(userWorkspace) || userWorkspace.locale === item.locale) {
         continue;
       }
 
       await this.userWorkspaceService.updateUserWorkspaceLocaleForUserWorkspace(
         {
-          locale: after.locale,
+          locale: item.locale,
           userWorkspaceId: userWorkspace.id,
+          auditIdentity: {
+            workspaceId: capturedWorkspaceId,
+            actor: isDefined(item.actingUserId)
+              ? { kind: 'coreUser', id: item.actingUserId }
+              : {
+                  kind: 'system',
+                  id: 'workspace-member:sync-user-workspace-locale',
+                },
+          },
         },
       );
     }

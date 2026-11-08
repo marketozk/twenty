@@ -232,13 +232,21 @@ export class AdminPanelResolver {
     @AuthUser() actor: AuthContextUser,
     @AuthWorkspace() workspace: WorkspaceEntity,
   ): Promise<ServerAdminDTO> {
+    const capturedActor = { ...actor };
+    const capturedWorkspaceId = workspace.id;
+    const capturedInput = { ...input };
+
     return this.adminServerAdminService.updateServerAdminAccess({
-      actor,
-      actorWorkspaceId: workspace.id,
-      targetUserId: input.userId,
-      canAccessFullAdminPanel: input.canAccessFullAdminPanel,
-      canImpersonate: input.canImpersonate,
-      otp: input.otp,
+      actor: capturedActor,
+      actorWorkspaceId: capturedWorkspaceId,
+      targetUserId: capturedInput.userId,
+      canAccessFullAdminPanel: capturedInput.canAccessFullAdminPanel,
+      canImpersonate: capturedInput.canImpersonate,
+      otp: capturedInput.otp,
+      auditIdentity: {
+        workspaceId: capturedWorkspaceId,
+        actor: { kind: 'coreUser', id: capturedActor.id },
+      },
     });
   }
 

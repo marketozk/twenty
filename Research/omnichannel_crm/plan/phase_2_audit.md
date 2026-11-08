@@ -213,8 +213,21 @@ LOG172 закрывает транзакционный аудит полного
 `AiAgentRoleService.deleteAgentOnlyRoleIfUnused`, `runAuditedApplicationMetadataMigration`,
 `WorkspaceMigrationValidateBuildAndRunService` и `WorkspaceMigrationRunnerService.executeRun`) с
 редактированием отображаемых полей канала `['name', 'icon', 'color', 'position']`.
+LOG173 закрывает транзакционный аудит полного жизненного цикла членства в рабочем пространстве
+(`core."userWorkspace"` `create` и `update` локали в `UserWorkspaceService.create`,
+`UserWorkspaceService.updateUserWorkspaceLocaleForUserWorkspace`,
+`UserWorkspaceService.addUserToWorkspaceIfUserNotInWorkspace`,
+`UserResolver.updateWorkspaceMemberSettings`, `GlobalWorkspaceMemberListener.syncUserWorkspaceLocale`
+и `SignInUpService.signUpOnNewWorkspace`) и всех активных обновлений учётной записи (`core."user"`
+`update` для `canAccessFullAdminPanel`, `canImpersonate`, `isEmailVerified`, `email`, `passwordHash`
+в `AdminPanelServerAdminService.updateServerAdminAccess`,
+`AdminPanelResolver.updateServerAdminAccess`, `UserService.markEmailAsVerified`,
+`UserService.updateEmailFromVerificationToken`, `UserService.updateUserEmail`,
+`UserResolver.updateUserEmail`, `SignInUpService.signInUpWithPersonalInvitation`,
+`SSOAuthController` и `runAuditedPasswordUpdate`) с редактированием `email`, `passwordHash` и
+`defaultAvatarUrl`.
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log172/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log173/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

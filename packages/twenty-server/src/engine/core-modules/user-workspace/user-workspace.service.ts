@@ -43,6 +43,12 @@ import {
   captureMembershipCleanupIdentity,
   type MembershipCleanupAuthentication,
 } from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
+import {
+  captureCoreUserAndWorkspaceAudit,
+  recordAuditedUserWorkspaceCreate,
+  runAuditedUserWorkspaceLocaleUpdate,
+  type CoreUserAndWorkspaceAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/core-user-and-workspace-audit';
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
 import { RoleTargetEntity } from 'src/engine/metadata-modules/role-target/role-target.entity';
@@ -108,23 +114,39 @@ export class UserWorkspaceService {
   async updateUserWorkspaceLocaleForUserWorkspace({
     locale,
     userWorkspaceId,
+    auditIdentity,
   }: {
     locale: UserWorkspaceEntity['locale'];
     userWorkspaceId: string;
+    auditIdentity?: CoreUserAndWorkspaceAuditIdentity;
   }): Promise<void> {
-    const result = await this.userWorkspaceRepository.update(
-      { id: userWorkspaceId, deletedAt: IsNull() },
-      { locale },
-    );
+    const capturedLocale = locale;
+    const capturedUserWorkspaceId = userWorkspaceId;
+    const auditRequest = captureCoreUserAndWorkspaceAudit({
+      fallbackUserId: capturedUserWorkspaceId,
+      identity: auditIdentity,
+    });
+    const dataSource = this.userWorkspaceRepository.manager.connection;
 
-    if (!result.affected) {
-      return;
-    }
-
-    await this.coreEntityCacheService.invalidate(
-      'userWorkspaceEntity',
-      userWorkspaceId,
-    );
+    await runAuditedUserWorkspaceLocaleUpdate({
+      dataSource,
+      request: auditRequest,
+      userWorkspaceId: capturedUserWorkspaceId,
+      locale: capturedLocale,
+      updateEntity: (runner) =>
+        runner.manager.update(
+          UserWorkspaceEntity,
+          { id: capturedUserWorkspaceId, deletedAt: IsNull() },
+          { locale: capturedLocale },
+        ),
+      invalidateCache: () =>
+        this.coreEntityCacheService.invalidate(
+          'userWorkspaceEntity',
+          capturedUserWorkspaceId,
+        ),
+      onCacheInvalidateError: (error) =>
+        this.logger.error('Membership locale cache invalidation failed', error),
+    });
   }
 
   async create(
@@ -135,6 +157,7 @@ export class UserWorkspaceService {
       pictureUrl,
       applicationUniversalIdentifier,
       locale,
+      auditIdentity,
     }: {
       userId: string;
       workspaceId: string;
@@ -142,9 +165,22 @@ export class UserWorkspaceService {
       pictureUrl?: string;
       applicationUniversalIdentifier?: string;
       locale?: UserWorkspaceEntity['locale'];
+      auditIdentity?: CoreUserAndWorkspaceAuditIdentity;
     },
     queryRunner?: QueryRunner,
   ): Promise<UserWorkspaceEntity> {
+    const capturedUserId = userId;
+    const capturedWorkspaceId = workspaceId;
+    const capturedIsExistingUser = isExistingUser;
+    const capturedPictureUrl = pictureUrl;
+    const capturedApplicationUniversalIdentifier =
+      applicationUniversalIdentifier;
+    const capturedLocale = locale;
+    const auditRequest = captureCoreUserAndWorkspaceAudit({
+      fallbackUserId: capturedUserId,
+      fallbackWorkspaceId: capturedWorkspaceId,
+      identity: auditIdentity,
+    });
     const dataSource = this.userWorkspaceRepository.manager.connection;
     const assertRunner = (runner: QueryRunner) => {
       if (
@@ -160,11 +196,11 @@ export class UserWorkspaceService {
     if (queryRunner) assertRunner(queryRunner);
 
     const defaultAvatarUrl = await this.computeDefaultAvatarUrl(
-      userId,
-      workspaceId,
-      isExistingUser,
-      pictureUrl,
-      applicationUniversalIdentifier,
+      capturedUserId,
+      capturedWorkspaceId,
+      capturedIsExistingUser,
+      capturedPictureUrl,
+      capturedApplicationUniversalIdentifier,
       queryRunner,
     );
 
@@ -173,7 +209,7 @@ export class UserWorkspaceService {
       const users: { id: string; deletedAt: string | null }[] =
         await runner.query(
           'SELECT id, "deletedAt" FROM core."user" WHERE id=$1 FOR SHARE',
-          [userId],
+          [capturedUserId],
         );
       if (users.length !== 1 || users[0].deletedAt !== null) {
         throw new AuthException(
@@ -182,24 +218,30 @@ export class UserWorkspaceService {
         );
       }
       const id = randomUUID();
+      const effectiveLocale = capturedLocale ?? SOURCE_LOCALE;
       const userWorkspace = this.userWorkspaceRepository.create({
         id,
-        userId,
-        workspaceId,
+        userId: capturedUserId,
+        workspaceId: capturedWorkspaceId,
         defaultAvatarUrl,
-        locale: locale ?? SOURCE_LOCALE,
+        locale: effectiveLocale,
       });
       const saved = await runner.manager.save(
         UserWorkspaceEntity,
         userWorkspace,
       );
-      const inserted: { id: string }[] = await runner.query(
-        'SELECT membership.id FROM core."userWorkspace" membership JOIN core."user" account ON account.id=membership."userId" WHERE membership.id=$1 AND membership."userId"=$2 AND membership."workspaceId"=$3 AND membership."deletedAt" IS NULL AND account."deletedAt" IS NULL',
-        [id, userId, workspaceId],
-      );
-      if (saved.id !== id || inserted.length !== 1) {
+      if (saved.id !== id) {
         throw new Error('Membership creation effects mismatch');
       }
+      await recordAuditedUserWorkspaceCreate({
+        runner,
+        request: auditRequest,
+        id,
+        userId: capturedUserId,
+        workspaceId: capturedWorkspaceId,
+        expectedLocale: effectiveLocale,
+        expectedDefaultAvatarUrl: defaultAvatarUrl,
+      });
       return saved;
     };
 
@@ -270,10 +312,22 @@ export class UserWorkspaceService {
     user: UserEntity,
     workspace: WorkspaceEntity,
     roleId?: string | null,
+    auditIdentity?: CoreUserAndWorkspaceAuditIdentity,
   ) {
+    const capturedUserId = user.id;
+    const capturedWorkspaceId = workspace.id;
+    const capturedLocale = user.locale;
+    const capturedEmail = user.email;
+    const capturedAudit = captureCoreUserAndWorkspaceAudit({
+      fallbackUserId: capturedUserId,
+      fallbackWorkspaceId: capturedWorkspaceId,
+      identity: auditIdentity,
+    });
+    const sharedCorrelationId = capturedAudit.correlationId ?? randomUUID();
+
     const existingUserWorkspace = await this.checkUserWorkspaceExists(
-      user.id,
-      workspace.id,
+      capturedUserId,
+      capturedWorkspaceId,
     );
 
     if (existingUserWorkspace) {
@@ -286,39 +340,52 @@ export class UserWorkspaceService {
     );
 
     const userWorkspace = await this.create({
-      userId: user.id,
-      workspaceId: workspace.id,
+      userId: capturedUserId,
+      workspaceId: capturedWorkspaceId,
       isExistingUser: true,
-      locale: user.locale,
+      locale: capturedLocale,
+      auditIdentity: {
+        ...capturedAudit,
+        workspaceId: capturedWorkspaceId,
+        correlationId: sharedCorrelationId,
+      },
     });
 
-    await this.createWorkspaceMember(workspace.id, user);
+    await this.createWorkspaceMember(capturedWorkspaceId, user);
 
-    await this.workspaceCacheService.invalidateAndRecompute(workspace.id, [
-      'flatWorkspaceMemberMaps',
-    ]);
+    await this.workspaceCacheService.invalidateAndRecompute(
+      capturedWorkspaceId,
+      ['flatWorkspaceMemberMaps'],
+    );
 
     await this.userRoleService.assignRoleToManyUserWorkspace({
-      workspaceId: workspace.id,
+      workspaceId: capturedWorkspaceId,
       userWorkspaceIds: [userWorkspace.id],
       roleId: resolvedRoleId,
       auditIdentity: {
         auth: {
-          workspace: { id: workspace.id },
+          workspace: { id: capturedWorkspaceId },
           type: 'system',
         },
         systemActorId: 'user-workspace:add-user-to-workspace',
+        correlationId: sharedCorrelationId,
+        ...(capturedAudit.impersonatorUserWorkspaceId
+          ? {
+              impersonatorUserWorkspaceId:
+                capturedAudit.impersonatorUserWorkspaceId,
+            }
+          : {}),
       },
     });
 
     await this.workspaceInvitationService.invalidateWorkspaceInvitation(
-      workspace.id,
-      user.email,
+      capturedWorkspaceId,
+      capturedEmail,
     );
 
     await this.onboardingService.setOnboardingCreateProfilePending({
-      userId: user.id,
-      workspaceId: workspace.id,
+      userId: capturedUserId,
+      workspaceId: capturedWorkspaceId,
       value: true,
     });
   }

@@ -519,6 +519,24 @@ export const runAuditedPasswordUpdate = async ({
         return context;
       };
 
+      for (const wsId of new Set(
+        activeMemberships.map((m) => uuid(m.workspaceId)),
+      )) {
+        const audit = await getWorkspaceAuditContext(wsId);
+        audit?.record({
+          resourceKind: 'coreUser',
+          resourceId: normalizedUserId,
+          action: 'update',
+          before: beforeUser,
+          after: afterUser,
+          securityDescriptor: {
+            resourceKind: 'coreUser',
+            resourceId: normalizedUserId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+      }
+
       const expectedRefreshById = new Map<string, Record<string, unknown>>();
       for (const tokenRow of refreshRows) {
         if (

@@ -58,7 +58,10 @@ const CATALOG: Record<
     ],
     redacted: ['syncCursor', 'syncStageStartedAt'],
   },
-  coreUser: { values: [], redacted: ['deletedAt'] },
+  coreUser: {
+    values: ['isEmailVerified', 'canAccessFullAdminPanel', 'canImpersonate'],
+    redacted: ['email', 'passwordHash', 'deletedAt'],
+  },
   messageFolder: {
     values: [
       'messageChannelId',
@@ -68,7 +71,10 @@ const CATALOG: Record<
     ],
     redacted: [],
   },
-  userWorkspace: { values: ['userId'], redacted: ['deletedAt'] },
+  userWorkspace: {
+    values: ['userId', 'locale'],
+    redacted: ['defaultAvatarUrl', 'deletedAt'],
+  },
   applicationAuthorization: {
     values: ['userId', 'userWorkspaceId', 'applicationId'],
     redacted: ['scopes', 'revokedAt', 'lastAuthorizedAt', 'lastUsedAt'],
@@ -500,7 +506,7 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   fieldPermission: ['create', 'update', 'delete'],
   rowLevelPermissionPredicateGroup: ['create', 'update', 'delete'],
   rowLevelPermissionPredicate: ['create', 'update', 'delete'],
-  userWorkspace: ['update', 'delete'],
+  userWorkspace: ['create', 'update', 'delete'],
   applicationAuthorization: ['create', 'update', 'delete'],
   userApplicationVariableValue: ['create', 'update', 'delete'],
   twoFactorAuthenticationMethod: ['create', 'update', 'delete'],

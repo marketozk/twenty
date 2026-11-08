@@ -6,6 +6,12 @@ import { ServerAdminAccessChangedEmail, renderEmail } from 'twenty-emails';
 import { SOURCE_LOCALE } from 'twenty-shared/translations';
 import { isDefined } from 'twenty-shared/utils';
 import { IsNull, Repository } from 'typeorm';
+import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
+import {
+  captureCoreUserAndWorkspaceAudit,
+  recordAuditedCoreUserUpdate,
+  type CoreUserAndWorkspaceAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/core-user-and-workspace-audit';
 import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
 
 import { CoreEntityCacheService } from 'src/engine/core-entity-cache/services/core-entity-cache.service';
@@ -52,6 +58,7 @@ export class AdminPanelServerAdminService {
     canAccessFullAdminPanel,
     canImpersonate,
     otp,
+    auditIdentity,
   }: {
     actor: AuthContextUser;
     actorWorkspaceId: string;
@@ -59,14 +66,28 @@ export class AdminPanelServerAdminService {
     canAccessFullAdminPanel?: boolean;
     canImpersonate?: boolean;
     otp?: string;
+    auditIdentity?: CoreUserAndWorkspaceAuditIdentity;
   }): Promise<ServerAdminDTO> {
     if (!isDefined(canAccessFullAdminPanel) && !isDefined(canImpersonate)) {
       throw new UserInputError('No administrator access change was provided.');
     }
 
     actor = { ...actor };
+    const capturedActorWorkspaceId = actorWorkspaceId;
+    const capturedTargetUserId = targetUserId;
+    const capturedCanAccessFullAdminPanel = canAccessFullAdminPanel;
+    const capturedCanImpersonate = canImpersonate;
+    const capturedOtp = otp;
+    const auditRequest = captureCoreUserAndWorkspaceAudit({
+      fallbackUserId: actor.id,
+      fallbackWorkspaceId: capturedActorWorkspaceId,
+      identity: auditIdentity ?? {
+        workspaceId: capturedActorWorkspaceId,
+        actor: { kind: 'coreUser', id: actor.id },
+      },
+    });
     const existingTarget = await this.userRepository.findOne({
-      where: { id: targetUserId },
+      where: { id: capturedTargetUserId },
     });
 
     if (!isDefined(existingTarget)) {
@@ -79,8 +100,8 @@ export class AdminPanelServerAdminService {
       await this.twoFactorAuthenticationService.assertFreshStepUpAuthenticationOrThrow(
         {
           userId: actor.id,
-          workspaceId: actorWorkspaceId,
-          otp,
+          workspaceId: capturedActorWorkspaceId,
+          otp: capturedOtp,
           otpRequiredMessage: msg`Enter your two-factor authentication code to manage server administrators.`,
           twoFactorAuthenticationRequiredMessage: msg`Enable two-factor authentication in your current workspace to manage server administrators.`,
         },
@@ -92,26 +113,42 @@ export class AdminPanelServerAdminService {
       result = await runInCoreAuditTransaction(
         this.userRepository.manager.connection,
         async (runner) => {
+          await runner.query("SET LOCAL lock_timeout = '8s'");
+          const readUserSnapshot = async (): Promise<
+            Record<string, unknown> | undefined
+          > => {
+            const rows: { snapshot?: Record<string, unknown> }[] =
+              await runner.query(
+                'SELECT to_jsonb(account) AS snapshot FROM core."user" AS account WHERE id = $1',
+                [capturedTargetUserId],
+              );
+
+            return rows[0]?.snapshot;
+          };
           const lockedAdmins: {
             id: string;
             canAccessFullAdminPanel: boolean;
           }[] = await runner.query(
             'SELECT id, "canAccessFullAdminPanel" FROM core."user" WHERE "deletedAt" IS NULL AND ("canAccessFullAdminPanel"=true OR id=$1) ORDER BY id FOR UPDATE',
-            [targetUserId],
+            [capturedTargetUserId],
           );
+          const beforeSnapshot = await readUserSnapshot();
           const targetUser = await runner.manager.findOne(UserEntity, {
-            where: { id: targetUserId },
+            where: { id: capturedTargetUserId },
           });
           if (
             !targetUser ||
+            !beforeSnapshot ||
+            beforeSnapshot.deletedAt !== null ||
             !lockedAdmins.some((admin) => admin.id === targetUser.id)
           ) {
             throw new UserInputError('User not found.');
           }
           const nextCanAccessFullAdminPanel =
-            canAccessFullAdminPanel ?? targetUser.canAccessFullAdminPanel;
+            capturedCanAccessFullAdminPanel ??
+            targetUser.canAccessFullAdminPanel;
           const nextCanImpersonate =
-            canImpersonate ?? targetUser.canImpersonate;
+            capturedCanImpersonate ?? targetUser.canImpersonate;
           if (
             nextCanAccessFullAdminPanel ===
               targetUser.canAccessFullAdminPanel &&
@@ -136,29 +173,68 @@ export class AdminPanelServerAdminService {
           }
           const update = await runner.manager.update(
             UserEntity,
-            { id: targetUserId, deletedAt: IsNull() },
+            { id: capturedTargetUserId, deletedAt: IsNull() },
             {
               canAccessFullAdminPanel: nextCanAccessFullAdminPanel,
               canImpersonate: nextCanImpersonate,
             },
           );
           const updated = await runner.manager.findOne(UserEntity, {
-            where: { id: targetUserId },
+            where: { id: capturedTargetUserId },
           });
+          const afterSnapshot = await readUserSnapshot();
+          const stripAdminFlagsAndUpdated = (
+            value: Record<string, unknown>,
+          ) => {
+            const {
+              canAccessFullAdminPanel: _canAccessFullAdminPanel,
+              canImpersonate: _canImpersonate,
+              updatedAt: _updatedAt,
+              ...rest
+            } = value;
+
+            return canonicalAuditJson(rest);
+          };
           if (
             update.affected !== 1 ||
             !updated ||
+            !afterSnapshot ||
+            afterSnapshot.deletedAt !== null ||
             updated.canAccessFullAdminPanel !== nextCanAccessFullAdminPanel ||
-            updated.canImpersonate !== nextCanImpersonate
+            updated.canImpersonate !== nextCanImpersonate ||
+            afterSnapshot.canAccessFullAdminPanel !==
+              nextCanAccessFullAdminPanel ||
+            afterSnapshot.canImpersonate !== nextCanImpersonate ||
+            stripAdminFlagsAndUpdated(beforeSnapshot) !==
+              stripAdminFlagsAndUpdated(afterSnapshot)
           ) {
             throw new Error('Server admin update effects mismatch');
+          }
+          const pinnedAfterSnapshot = canonicalAuditJson(afterSnapshot);
+          await recordAuditedCoreUserUpdate({
+            runner,
+            request: auditRequest,
+            userId: capturedTargetUserId,
+            beforeSnapshot,
+            afterSnapshot,
+            explicitWorkspaceIds: [capturedActorWorkspaceId],
+          });
+          const finalSnapshot = await readUserSnapshot();
+          if (
+            !finalSnapshot ||
+            canonicalAuditJson(finalSnapshot) !== pinnedAfterSnapshot
+          ) {
+            throw new Error('Server admin update changed before commit');
           }
           return { targetUser: updated, changed: true };
         },
       );
     } finally {
       try {
-        await this.coreEntityCacheService.invalidate('user', targetUserId);
+        await this.coreEntityCacheService.invalidate(
+          'user',
+          capturedTargetUserId,
+        );
       } catch {
         this.logger.error('Server admin update cache invalidation failed');
       }
@@ -167,13 +243,13 @@ export class AdminPanelServerAdminService {
     if (!changed) return this.toServerAdminDTO(targetUser);
 
     this.logger.log(
-      `Server admin access for user ${targetUserId} updated by ${actor.id}: ` +
+      `Server admin access for user ${capturedTargetUserId} updated by ${actor.id}: ` +
         `canAccessFullAdminPanel=${targetUser.canAccessFullAdminPanel}, canImpersonate=${targetUser.canImpersonate}`,
     );
 
     this.emitServerAdminAccessChangedEvent({
       actor,
-      actorWorkspaceId,
+      actorWorkspaceId: capturedActorWorkspaceId,
       targetUser,
     });
 

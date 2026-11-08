@@ -43,6 +43,7 @@ import {
   WorkspaceSsoIdentityProviderEntity,
 } from 'src/engine/core-modules/sso/workspace-sso-identity-provider.entity';
 import { UserService } from 'src/engine/core-modules/user/services/user.service';
+import { withCoreUserAndWorkspaceAudit } from 'src/engine/core-modules/crm-audit/core-user-and-workspace-audit';
 import { AuthProviderEnum } from 'src/engine/core-modules/workspace/types/workspace.type';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { NoPermissionGuard } from 'src/engine/guards/no-permission.guard';
@@ -254,7 +255,13 @@ export class SsoAuthController {
     });
 
     if (!user.isEmailVerified && !isNonEmptyString(user.passwordHash)) {
-      await this.userService.markEmailAsVerified(user.id);
+      await withCoreUserAndWorkspaceAudit(
+        {
+          workspaceId: workspace.id,
+          actor: { kind: 'coreUser', id: user.id },
+        },
+        () => this.userService.markEmailAsVerified(user.id),
+      );
     }
 
     if (ssoContext) {

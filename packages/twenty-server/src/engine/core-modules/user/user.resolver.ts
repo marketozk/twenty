@@ -78,6 +78,10 @@ import { fromUserWorkspacePermissionsToUserWorkspacePermissionsDto } from 'src/e
 import { UserRoleService } from 'src/engine/metadata-modules/user-role/user-role.service';
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
+import {
+  captureCoreUserAndWorkspaceAudit,
+  type CoreUserAndWorkspaceAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/core-user-and-workspace-audit';
 import { AccountsToReconnectKeys } from 'src/modules/connected-account/types/accounts-to-reconnect-key-value.type';
 import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
 
@@ -550,7 +554,48 @@ export class UserResolver {
     @AuthUser({ allowUndefined: true }) user?: AuthContextUser | null,
     @AuthApplication({ allowUndefined: true })
     application?: FlatApplication,
+    @AuthImpersonationContext()
+    impersonationContext?: RawAuthContext['impersonationContext'],
   ): Promise<boolean> {
+    const capturedWorkspaceId = workspace.id;
+    const capturedUserId = user?.id;
+    const capturedApiKeyId = apiKey?.id;
+    const capturedApplicationId = application?.id;
+    const capturedImpersonatorUserWorkspaceId =
+      impersonationContext?.impersonatorUserWorkspaceId;
+    const capturedAuditIdentity: CoreUserAndWorkspaceAuditIdentity | undefined =
+      isDefined(capturedApiKeyId)
+        ? {
+            workspaceId: capturedWorkspaceId,
+            actor: { kind: 'apiKey', id: capturedApiKeyId },
+          }
+        : isDefined(capturedApplicationId)
+          ? {
+              workspaceId: capturedWorkspaceId,
+              actor: { kind: 'application', id: capturedApplicationId },
+              ...(isDefined(capturedUserId)
+                ? { initiator: { kind: 'coreUser', id: capturedUserId } }
+                : {}),
+              ...(isDefined(capturedImpersonatorUserWorkspaceId)
+                ? {
+                    impersonatorUserWorkspaceId:
+                      capturedImpersonatorUserWorkspaceId,
+                  }
+                : {}),
+            }
+          : isDefined(capturedUserId)
+            ? {
+                workspaceId: capturedWorkspaceId,
+                actor: { kind: 'coreUser', id: capturedUserId },
+                ...(isDefined(capturedImpersonatorUserWorkspaceId)
+                  ? {
+                      impersonatorUserWorkspaceId:
+                        capturedImpersonatorUserWorkspaceId,
+                    }
+                  : {}),
+              }
+            : undefined;
+
     let isUpdatingSelf =
       isDefined(authenticatedWorkspaceMemberId) &&
       authenticatedWorkspaceMemberId === input.workspaceMemberId;
@@ -646,6 +691,7 @@ export class UserResolver {
         {
           locale: input.update.locale as UserWorkspaceEntity['locale'],
           userWorkspaceId: targetUserWorkspace.id,
+          auditIdentity: capturedAuditIdentity,
         },
       );
     }
@@ -796,7 +842,23 @@ export class UserResolver {
     @Args() { newEmail, verifyEmailRedirectPath }: UpdateUserEmailInput,
     @AuthUser() user: AuthContextUser,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthImpersonationContext()
+    impersonationContext?: RawAuthContext['impersonationContext'],
   ) {
+    const capturedAudit = captureCoreUserAndWorkspaceAudit({
+      fallbackUserId: user.id,
+      fallbackWorkspaceId: workspace.id,
+      identity: {
+        workspaceId: workspace.id,
+        actor: { kind: 'coreUser', id: user.id },
+        ...(isDefined(impersonationContext?.impersonatorUserWorkspaceId)
+          ? {
+              impersonatorUserWorkspaceId:
+                impersonationContext.impersonatorUserWorkspaceId,
+            }
+          : {}),
+      },
+    });
     const editableFields = workspace.editableProfileFields || [];
 
     if (!editableFields.includes('email')) {
@@ -811,6 +873,7 @@ export class UserResolver {
       workspace,
       newEmail,
       verifyEmailRedirectPath,
+      auditIdentity: capturedAudit,
     });
 
     return true;

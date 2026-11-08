@@ -1,6 +1,12 @@
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
+import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
+import {
+  captureCoreUserAndWorkspaceAudit,
+  recordAuditedCoreUserUpdate,
+  type CoreUserAndWorkspaceAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/core-user-and-workspace-audit';
 import { deactivateCoreUserWithAudit } from 'src/engine/core-modules/crm-audit/deactivate-core-user-with-audit';
 import { deleteNativeWorkspaceMemberWithAudit } from 'src/engine/core-modules/crm-audit/delete-native-workspace-member-with-audit';
 import {
@@ -567,9 +573,15 @@ export class UserService {
     userId: string,
     changes: Partial<Pick<UserEntity, 'email' | 'isEmailVerified'>>,
     queryRunner?: QueryRunner,
+    auditIdentity?: CoreUserAndWorkspaceAuditIdentity,
   ): Promise<UserEntity> {
+    const capturedUserId = userId;
     const dataSource = this.userRepository.manager.connection;
     const capturedChanges = { ...changes };
+    const auditRequest = captureCoreUserAndWorkspaceAudit({
+      fallbackUserId: capturedUserId,
+      identity: auditIdentity,
+    });
     const update = async (runner: QueryRunner) => {
       if (
         runner.connection !== dataSource ||
@@ -580,9 +592,34 @@ export class UserService {
           'User update requires an active transaction on its data source',
         );
       }
+      if (!queryRunner) {
+        await runner.query("SET LOCAL lock_timeout = '8s'");
+      }
+      const readUserSnapshot = async (): Promise<
+        Record<string, unknown> | undefined
+      > => {
+        const rows: { snapshot?: Record<string, unknown> }[] =
+          await runner.query(
+            'SELECT to_jsonb(account) AS snapshot FROM core."user" AS account WHERE id = $1',
+            [capturedUserId],
+          );
+
+        return rows[0]?.snapshot;
+      };
+      await runner.query(
+        'SELECT id FROM core."user" WHERE id = $1 FOR UPDATE',
+        [capturedUserId],
+      );
+      const beforeSnapshot = await readUserSnapshot();
+      if (!beforeSnapshot || beforeSnapshot.deletedAt !== null) {
+        throw new AuthException(
+          'Active user not found',
+          AuthExceptionCode.USER_NOT_FOUND,
+        );
+      }
       const result = await runner.manager.update(
         UserEntity,
-        { id: userId, deletedAt: IsNull() },
+        { id: capturedUserId, deletedAt: IsNull() },
         capturedChanges,
       );
       if (result.affected !== 1) {
@@ -592,16 +629,46 @@ export class UserService {
         );
       }
       const updated = await runner.manager.findOne(UserEntity, {
-        where: { id: userId },
+        where: { id: capturedUserId },
       });
+      const afterSnapshot = await readUserSnapshot();
+      const stripChangedAndUpdated = (value: Record<string, unknown>) => {
+        const copy = { ...value };
+        delete copy.updatedAt;
+        for (const key of Object.keys(capturedChanges)) {
+          delete copy[key];
+        }
+
+        return canonicalAuditJson(copy);
+      };
       if (
         !updated ||
+        !afterSnapshot ||
+        afterSnapshot.deletedAt !== null ||
         Object.entries(capturedChanges).some(
           ([key, value]) =>
-            updated[key as keyof typeof capturedChanges] !== value,
-        )
+            updated[key as keyof typeof capturedChanges] !== value ||
+            afterSnapshot[key] !== value,
+        ) ||
+        stripChangedAndUpdated(beforeSnapshot) !==
+          stripChangedAndUpdated(afterSnapshot)
       ) {
         throw new Error('Active user update effects mismatch');
+      }
+      const pinnedAfterSnapshot = canonicalAuditJson(afterSnapshot);
+      await recordAuditedCoreUserUpdate({
+        runner,
+        request: auditRequest,
+        userId: capturedUserId,
+        beforeSnapshot,
+        afterSnapshot,
+      });
+      const finalSnapshot = await readUserSnapshot();
+      if (
+        !finalSnapshot ||
+        canonicalAuditJson(finalSnapshot) !== pinnedAfterSnapshot
+      ) {
+        throw new Error('Active user update changed before commit');
       }
       return updated;
     };
@@ -612,7 +679,7 @@ export class UserService {
     } finally {
       if (!queryRunner) {
         try {
-          await this.coreEntityCacheService.invalidate('user', userId);
+          await this.coreEntityCacheService.invalidate('user', capturedUserId);
         } catch {
           this.logger.error('Core user update cache invalidation failed');
         }
@@ -620,20 +687,40 @@ export class UserService {
     }
   }
 
-  async markEmailAsVerified(userId: string, queryRunner?: QueryRunner) {
+  async markEmailAsVerified(
+    userId: string,
+    queryRunner?: QueryRunner,
+    auditIdentity?: CoreUserAndWorkspaceAuditIdentity,
+  ) {
     return this.updateActiveUser(
       userId,
       { isEmailVerified: true },
       queryRunner,
+      auditIdentity,
     );
   }
 
-  async updateEmailFromVerificationToken(userId: string, email: string) {
-    const updatedUser = await this.updateActiveUser(userId, {
-      email: email.toLowerCase(),
+  async updateEmailFromVerificationToken(
+    userId: string,
+    email: string,
+    auditIdentity?: CoreUserAndWorkspaceAuditIdentity,
+  ) {
+    const capturedUserId = userId;
+    const normalizedEmail = email.toLowerCase();
+    const auditRequest = captureCoreUserAndWorkspaceAudit({
+      fallbackUserId: capturedUserId,
+      identity: auditIdentity,
     });
+    const updatedUser = await this.updateActiveUser(
+      capturedUserId,
+      {
+        email: normalizedEmail,
+      },
+      undefined,
+      auditRequest,
+    );
     await this.enqueueWorkspaceMemberEmailUpdate({
-      userId,
+      userId: capturedUserId,
       email: updatedUser.email,
     });
     return updatedUser;
@@ -644,15 +731,24 @@ export class UserService {
     workspace,
     newEmail,
     verifyEmailRedirectPath,
+    auditIdentity,
   }: {
     user: AuthContextUser;
     workspace: WorkspaceEntity;
     newEmail: string;
     verifyEmailRedirectPath?: string;
+    auditIdentity?: CoreUserAndWorkspaceAuditIdentity;
   }): Promise<void> {
+    const capturedUser = { ...user };
+    const capturedWorkspaceId = workspace.id;
+    const capturedAudit = captureCoreUserAndWorkspaceAudit({
+      fallbackUserId: capturedUser.id,
+      fallbackWorkspaceId: capturedWorkspaceId,
+      identity: auditIdentity,
+    });
     const normalizedEmail = newEmail.trim().toLowerCase();
 
-    if (normalizedEmail === user.email) {
+    if (normalizedEmail === capturedUser.email) {
       throw new UserInputError(
         'New email must be different from current email',
         {
@@ -663,7 +759,7 @@ export class UserService {
     }
 
     const userWorkspaceCount =
-      await this.userWorkspaceService.countUserWorkspaces(user.id);
+      await this.userWorkspaceService.countUserWorkspaces(capturedUser.id);
 
     if (userWorkspaceCount > 1) {
       throw new UserInputError(
@@ -680,7 +776,7 @@ export class UserService {
       where: { email: normalizedEmail },
     });
 
-    if (existingUser && existingUser.id !== user.id) {
+    if (existingUser && existingUser.id !== capturedUser.id) {
       throw new UserInputError('Email already in use', {
         subCode: UserExceptionCode.EMAIL_ALREADY_IN_USE,
         userFriendlyMessage: msg`Email already in use`,
@@ -688,7 +784,11 @@ export class UserService {
     }
 
     if (!this.twentyConfigService.get('IS_EMAIL_VERIFICATION_REQUIRED')) {
-      await this.updateEmailFromVerificationToken(user.id, normalizedEmail);
+      await this.updateEmailFromVerificationToken(
+        capturedUser.id,
+        normalizedEmail,
+        capturedAudit,
+      );
 
       return;
     }
@@ -699,10 +799,10 @@ export class UserService {
       );
 
     await this.emailVerificationService.sendVerificationEmail({
-      userId: user.id,
+      userId: capturedUser.id,
       email: normalizedEmail,
       workspace: workspaceDomainConfig,
-      locale: user.locale || SOURCE_LOCALE,
+      locale: capturedUser.locale || SOURCE_LOCALE,
       verifyEmailRedirectPath,
       verificationTrigger: EmailVerificationTrigger.EMAIL_UPDATE,
     });

@@ -5084,6 +5084,22 @@ c704ded6-35e7-4622-b994-190f888b5499 и все 11 состояний задач 
 и совпали. [Публикация](implementation/log172/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765.
 
+## LOG-173 - транзакционный аудит полного жизненного цикла `userWorkspace` и всех активных обновлений `coreUser`
+
+08.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log173/design.md), [design-review.md](implementation/log173/design-review.md)) и реализован участок `LOG-173` (Linear `ROB-765`): транзакционный аудит полного жизненного цикла членства в рабочем пространстве (`core."userWorkspace"` `create` и `update` локали) и всех активных обновлений учётной записи (`core."user"` `update`).
+
+В `crm-audit-transaction-context.ts` расширены `CATALOG.coreUser` (`values: ['isEmailVerified', 'canAccessFullAdminPanel', 'canImpersonate']`, `redacted: ['email', 'passwordHash', 'deletedAt']`), `CATALOG.userWorkspace` (`values: ['userId', 'locale']`, `redacted: ['defaultAvatarUrl', 'deletedAt']`) и `ADMINISTRATIVE_ACTIONS.userWorkspace` (`['create', 'update', 'delete']`). В `core-user-and-workspace-audit.ts` реализованы `captureCoreUserAndWorkspaceAudit`, `withCoreUserAndWorkspaceAudit`, `recordAuditedUserWorkspaceCreate`, `runAuditedUserWorkspaceLocaleUpdate` и `recordAuditedCoreUserUpdate`. Подключены `UserWorkspaceService.create`, `UserWorkspaceService.updateUserWorkspaceLocaleForUserWorkspace`, `UserWorkspaceService.addUserToWorkspaceIfUserNotInWorkspace` (с общим `correlationId` между `userWorkspace` `create` и `roleTarget` `create`), `UserResolver.updateWorkspaceMemberSettings`, `GlobalWorkspaceMemberListener.syncUserWorkspaceLocale`, `AdminPanelServerAdminService.updateServerAdminAccess`, `AdminPanelResolver.updateServerAdminAccess`, `UserService.markEmailAsVerified`, `UserService.updateEmailFromVerificationToken`, `UserService.updateUserEmail`, `UserResolver.updateUserEmail`, `SignInUpService.signInUpWithPersonalInvitation`, `SignInUpService.signUpOnNewWorkspace`, `SSOAuthController` и `runAuditedPasswordUpdate` (`password-update-audit.ts`).
+
+08.11.2026 проверки LOG173 завершены. 3163 tests/118 suites PASS (698.449s). 396 targeted/17 PostgreSQL suites PASS (36.618s), 3 новых PostgreSQL случая. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 483/485 roots, baseline 303 / current 303 diagnostics, 0 новых/changed-code. Совпали 13 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех входных точек `userWorkspace` и `coreUser`, устранение замечаний D1-D6 и m1-m3, отсутствие утечек секретов/PII (`email`, `passwordHash`, `defaultAvatarUrl`), корректную обработку `NativeTransactionOutcomeUnknownError` и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log173/results.json), [ревью](implementation/log173/review.md),
+[следующий участок](implementation/log173/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
+
+
 
 
 

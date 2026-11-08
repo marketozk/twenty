@@ -1,0 +1,19 @@
+{
+  "baseCommit": "bbcc521d373d84a1f32a21c5c72dc30122e81d07",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/admin-panel/admin-panel.resolver.ts": "2f3c0187deebfb071c4958210e7aa30c35b48b02ff71130b0096f684aecd1c31",
+    "packages/twenty-server/src/engine/core-modules/admin-panel/services/admin-panel-server-admin.service.ts": "073601f0cdfe2a411adc21eccc209cf56e8724ca6d6857df1ff0a643fbd5be36",
+    "packages/twenty-server/src/engine/core-modules/auth/controllers/sso-auth.controller.ts": "dbfd37234b5c82d1a662d3cedd5fd22eadee57e373616c814840225d9251caf0",
+    "packages/twenty-server/src/engine/core-modules/auth/services/sign-in-up.service.ts": "0c724080f0f601b6507567a0b2993d78b68b8185c6e111a753817771fda6c802",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/core-user-and-workspace-audit.ts": "efc75b06780a35a2091e88077516a0d98e3036c8f57bad885a4cfd9900f19168",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "a7946924fd76025d6b66139f9925dcb64b392ddb49014a843609992a7dbdf34b",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/password-update-audit.ts": "0850c90f649cb9dc8cf0acf0a2c9a9d384e145aa22743358ff8a8e93778266a2",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/role-update-audit.ts": "37baf167ca25b96ba7b3ff0170a8b6c18370cf214a98aded1f3b5b79a2ed0811",
+    "packages/twenty-server/src/engine/core-modules/user-workspace/user-workspace.service.ts": "b3458db428d7157ad4130452ed7d3f8c9c9dec9ea1d5c83cd14ee184d0087600",
+    "packages/twenty-server/src/engine/core-modules/user/services/global-workspace-member.listener.ts": "6eb7f0f59223ff1adc9db31444dbbb44863546d498cfdedfff47f341f3f19443",
+    "packages/twenty-server/src/engine/core-modules/user/services/user.service.ts": "20b7a8d0a5ad3b08197e5d9ebd69564edcabbc6ecae4e931f47ebdf282cf48a0",
+    "packages/twenty-server/src/engine/core-modules/user/user.resolver.ts": "6b7805ca52c9a47adc8fd9ad1ea8d0875c14c3a9d0ca9a5d673e621faeaa4ee8",
+    "packages/twenty-server/test/fork-migration/crm-audit-core-user-and-workspace.postgres-spec.ts": "42fd2bd12301eb7c7d81f393255e58073ce8b284dbbd6df637406ea8cb4a46ea"
+  },
+  "uploadedSourceHashesVerified": true
+}

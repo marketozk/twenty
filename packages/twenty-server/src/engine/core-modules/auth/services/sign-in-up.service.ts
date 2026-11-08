@@ -66,6 +66,8 @@ import {
 } from 'src/engine/core-modules/workspace/workspace.exception';
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
 import { WorkspaceEventEmitter } from 'src/engine/workspace-event-emitter/workspace-event-emitter';
+import { withCoreUserAndWorkspaceAudit } from 'src/engine/core-modules/crm-audit/core-user-and-workspace-audit';
+import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
 import { getDomainFromEmailOrThrow } from 'src/utils/get-domain-from-email-or-throw';
 import { isWorkEmail } from 'src/utils/is-work-email';
 
@@ -216,30 +218,37 @@ export class SignInUpService {
       );
     }
 
-    const updatedUser = await this.signInUpOnExistingWorkspace({
-      workspace: invitationValidation.workspace,
-      userData: params.userData,
-      roleId: params.invitation.context?.roleId,
-    });
-
-    if (
-      params.invitation.type === AppTokenType.OnboardingInvitationToken &&
-      params.userData.type === 'newUserWithPicture'
-    ) {
-      await this.onboardingService.creditInviteTeamReward({
+    return await withCoreUserAndWorkspaceAudit(
+      {
         workspaceId: invitationValidation.workspace.id,
-        userId: updatedUser.id,
-      });
-    }
+      },
+      async () => {
+        const updatedUser = await this.signInUpOnExistingWorkspace({
+          workspace: invitationValidation.workspace,
+          userData: params.userData,
+          roleId: params.invitation.context?.roleId,
+        });
 
-    await this.workspaceInvitationService.invalidateWorkspaceInvitation(
-      invitationValidation.workspace.id,
-      email,
+        if (
+          params.invitation.type === AppTokenType.OnboardingInvitationToken &&
+          params.userData.type === 'newUserWithPicture'
+        ) {
+          await this.onboardingService.creditInviteTeamReward({
+            workspaceId: invitationValidation.workspace.id,
+            userId: updatedUser.id,
+          });
+        }
+
+        await this.workspaceInvitationService.invalidateWorkspaceInvitation(
+          invitationValidation.workspace.id,
+          email,
+        );
+
+        await this.userService.markEmailAsVerified(updatedUser.id);
+
+        return updatedUser;
+      },
     );
-
-    await this.userService.markEmailAsVerified(updatedUser.id);
-
-    return updatedUser;
   }
 
   private async throwIfWorkspaceIsNotReadyForSignInUp(
@@ -365,27 +374,10 @@ export class SignInUpService {
     );
   }
 
-  private async saveNewUser(
+  private emitNewUserSignupTelemetry(
+    savedUser: UserEntity,
     newUserWithPicture: PartialUserWithPicture,
-    {
-      canImpersonate,
-      canAccessFullAdminPanel,
-    }: {
-      canImpersonate: boolean;
-      canAccessFullAdminPanel: boolean;
-    },
-    queryRunner?: QueryRunner,
   ) {
-    const userCreated = this.userRepository.create({
-      ...newUserWithPicture,
-      canImpersonate,
-      canAccessFullAdminPanel,
-    });
-
-    const savedUser = queryRunner
-      ? await queryRunner.manager.save(UserEntity, userCreated)
-      : await this.userRepository.save(userCreated);
-
     this.workspaceEventEmitter.emitCustomBatchEvent<TelemetryEventType>(
       USER_SIGNUP_EVENT_NAME,
       [
@@ -415,6 +407,32 @@ export class SignInUpService {
       key: MetricsKeys.SignUpSuccess,
       shouldStoreInCache: false,
     });
+  }
+
+  private async saveNewUser(
+    newUserWithPicture: PartialUserWithPicture,
+    {
+      canImpersonate,
+      canAccessFullAdminPanel,
+    }: {
+      canImpersonate: boolean;
+      canAccessFullAdminPanel: boolean;
+    },
+    queryRunner?: QueryRunner,
+  ) {
+    const userCreated = this.userRepository.create({
+      ...newUserWithPicture,
+      canImpersonate,
+      canAccessFullAdminPanel,
+    });
+
+    const savedUser = queryRunner
+      ? await queryRunner.manager.save(UserEntity, userCreated)
+      : await this.userRepository.save(userCreated);
+
+    if (!queryRunner) {
+      this.emitNewUserSignupTelemetry(savedUser, newUserWithPicture);
+    }
 
     return savedUser;
   }
@@ -641,10 +659,22 @@ export class SignInUpService {
     userData: ExistingUserOrPartialUserWithPicture['userData'],
     options?: { displayName?: string; subdomain?: string; partner?: string },
   ) {
-    const email =
+    const capturedUserData: ExistingUserOrPartialUserWithPicture['userData'] =
       userData.type === 'newUserWithPicture'
-        ? userData.newUserWithPicture.email
-        : userData.existingUser.email;
+        ? {
+            type: 'newUserWithPicture',
+            newUserWithPicture: { ...userData.newUserWithPicture },
+          }
+        : {
+            type: 'existingUser',
+            existingUser: {
+              ...userData.existingUser,
+            } as UserEntity,
+          };
+    const email =
+      capturedUserData.type === 'newUserWithPicture'
+        ? capturedUserData.newUserWithPicture.email
+        : capturedUserData.existingUser.email;
 
     if (!email) {
       throw new AuthException(
@@ -656,7 +686,7 @@ export class SignInUpService {
       );
     }
 
-    await this.assertWorkspaceCreationAllowed(userData);
+    await this.assertWorkspaceCreationAllowed(capturedUserData);
 
     const displayName = options?.displayName?.trim();
 
@@ -687,87 +717,99 @@ export class SignInUpService {
 
     try {
       const { user, workspace, customApplicationUniversalIdentifier } =
-        await this.dataSource.transaction(async (entityManager) => {
-          const queryRunner = entityManager.queryRunner as QueryRunner;
+        await runInCoreAuditTransaction(
+          this.dataSource,
+          async (queryRunner) => {
+            const workspaceToCreate = this.workspaceRepository.create({
+              id: workspaceId,
+              subdomain: isDefined(requestedSubdomain)
+                ? requestedSubdomain
+                : await this.subdomainManagerService.generateSubdomain(
+                    isWorkEmailFound ? { userEmail: email } : {},
+                  ),
+              workspaceCustomApplicationId,
+              displayName,
+              inviteHash: v4(),
+              activationStatus: WorkspaceActivationStatus.PENDING_CREATION,
+            });
 
-          const workspaceToCreate = this.workspaceRepository.create({
-            id: workspaceId,
-            subdomain: isDefined(requestedSubdomain)
-              ? requestedSubdomain
-              : await this.subdomainManagerService.generateSubdomain(
-                  isWorkEmailFound ? { userEmail: email } : {},
-                ),
-            workspaceCustomApplicationId,
-            displayName,
-            inviteHash: v4(),
-            activationStatus: WorkspaceActivationStatus.PENDING_CREATION,
-          });
-
-          const workspace = await queryRunner.manager.save(
-            WorkspaceEntity,
-            workspaceToCreate,
-          );
-
-          const customApplication =
-            await this.applicationService.createWorkspaceCustomApplication(
-              {
-                workspaceId,
-                applicationId: workspaceCustomApplicationId,
-              },
-              queryRunner,
+            const workspace = await queryRunner.manager.save(
+              WorkspaceEntity,
+              workspaceToCreate,
             );
 
-          const isExistingUser = userData.type === 'existingUser';
-          const user = isExistingUser
-            ? userData.existingUser
-            : await this.saveNewUser(
-                userData.newUserWithPicture,
+            const customApplication =
+              await this.applicationService.createWorkspaceCustomApplication(
                 {
-                  canImpersonate: shouldGrantServerAdmin,
-                  canAccessFullAdminPanel: shouldGrantServerAdmin,
+                  workspaceId,
+                  applicationId: workspaceCustomApplicationId,
                 },
                 queryRunner,
               );
 
-          await this.userWorkspaceService.create(
-            {
-              userId: user.id,
-              workspaceId: workspace.id,
-              isExistingUser,
-              pictureUrl: isExistingUser
-                ? undefined
-                : userData.newUserWithPicture.picture,
-              applicationUniversalIdentifier:
-                customApplication.universalIdentifier,
-              locale: user.locale,
-            },
-            queryRunner,
-          );
+            const isExistingUser = capturedUserData.type === 'existingUser';
+            const user = isExistingUser
+              ? capturedUserData.existingUser
+              : await this.saveNewUser(
+                  capturedUserData.newUserWithPicture,
+                  {
+                    canImpersonate: shouldGrantServerAdmin,
+                    canAccessFullAdminPanel: shouldGrantServerAdmin,
+                  },
+                  queryRunner,
+                );
 
-          await this.activateOnboardingForUser(
-            {
+            await this.userWorkspaceService.create(
+              {
+                userId: user.id,
+                workspaceId: workspace.id,
+                isExistingUser,
+                pictureUrl: isExistingUser
+                  ? undefined
+                  : capturedUserData.newUserWithPicture.picture,
+                applicationUniversalIdentifier:
+                  customApplication.universalIdentifier,
+                locale: user.locale,
+                auditIdentity: {
+                  workspaceId: workspace.id,
+                  actor: { kind: 'coreUser', id: user.id },
+                },
+              },
+              queryRunner,
+            );
+
+            await this.activateOnboardingForUser(
+              {
+                user,
+                workspace,
+                shouldShowConnectAccountStep: true,
+              },
+              queryRunner,
+            );
+
+            await this.onboardingService.setOnboardingInviteTeamPending(
+              {
+                workspaceId: workspace.id,
+                value: true,
+              },
+              queryRunner,
+            );
+
+            return {
               user,
               workspace,
-              shouldShowConnectAccountStep: true,
-            },
-            queryRunner,
-          );
+              customApplicationUniversalIdentifier:
+                customApplication.universalIdentifier,
+            };
+          },
+        );
 
-          await this.onboardingService.setOnboardingInviteTeamPending(
-            {
-              workspaceId: workspace.id,
-              value: true,
-            },
-            queryRunner,
-          );
-
-          return {
-            user,
-            workspace,
-            customApplicationUniversalIdentifier:
-              customApplication.universalIdentifier,
-          };
-        });
+      if (capturedUserData.type === 'newUserWithPicture') {
+        this.emitNewUserSignupTelemetry(
+          user,
+          capturedUserData.newUserWithPicture,
+        );
+      }
 
       if (isWorkEmailFound) {
         const inferredLogoFileId = await this.uploadInferredWorkspaceLogo({
