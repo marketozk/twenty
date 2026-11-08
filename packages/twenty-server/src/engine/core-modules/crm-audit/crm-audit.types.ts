@@ -21,6 +21,7 @@ export type CrmAuditResourceKind =
   | 'userApplicationVariableValue'
   | 'approvedAccessDomain'
   | 'publicDomain'
+  | 'webhook'
   | 'twoFactorAuthenticationMethod'
   | 'navigationMenuItem'
   | 'agentChatChannel'

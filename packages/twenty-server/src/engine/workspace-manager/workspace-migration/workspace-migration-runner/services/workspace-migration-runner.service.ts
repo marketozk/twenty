@@ -517,6 +517,8 @@ export class WorkspaceMigrationRunnerService {
           agentChatChannelRoles:
             allFlatEntityMaps.flatAgentChatChannelRoleMaps
               ?.byUniversalIdentifier ?? {},
+          webhooks:
+            allFlatEntityMaps.flatWebhookMaps?.byUniversalIdentifier ?? {},
         };
         const searchFieldMetadatasByTsVectorFieldIdAccessor =
           createSearchFieldMetadatasByTsVectorFieldIdAccessor(
@@ -775,6 +777,8 @@ export class WorkspaceMigrationRunnerService {
         agentChatChannelRoles:
           allFlatEntityMaps.flatAgentChatChannelRoleMaps
             ?.byUniversalIdentifier ?? {},
+        webhooks:
+          allFlatEntityMaps.flatWebhookMaps?.byUniversalIdentifier ?? {},
       };
       const allMetadataEvents: MetadataEvent[] = [];
       const allDeferredActions: DeferredWorkspaceMigrationAction[] = [];

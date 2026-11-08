@@ -5126,6 +5126,22 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 и совпали. [Публикация](implementation/log174/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765.
 
+## LOG-175 - транзакционный аудит полного жизненного цикла `webhook` (`core.webhook`) и блокировка неаудируемого каскадного удаления при удалении `core.application`
+
+09.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log175/design.md), [design-review.md](implementation/log175/design-review.md)) и реализован участок `LOG-175` (Linear `ROB-765`): транзакционный аудит полного жизненного цикла исходящих вебхуков (`core.webhook`) и блокировка неаудируемого каскадного удаления при удалении `core.application`.
+
+В `crm-audit.types.ts` и `crm-audit-transaction-context.ts` добавлен вид ресурса `webhook` (`values: ['applicationId']`, `redacted: ['targetUrl', 'operations', 'description', 'secret']`, действия `['create', 'update', 'delete']`). В `navigation-menu-item-audit.ts` добавлен режим `mode: 'webhook'` (`assertWebhookRowInvariants`, `projectWebhook`, `expectedWebhookCreateIds`, `expectedWebhookUpdateIds`, `expectedWebhookDeleteIds`) с блокировкой `core.webhook` (`ORDER BY id FOR UPDATE`) и повторной сверкой снимка после `audit.flush()`. В `application-metadata-audit.ts` и `workspace-migration-runner.service.ts` добавлены `'webhook'` в `AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES` (fail-closed барьер на неаудируемые миграции `webhook`), аудит `webhook` в `runAuditedApplicationMetadataMigration` и проверка `core.webhook` в `assertNoRemainingApplicationRoleOrPermissionMetadata` перед удалением `core.application`. Подключены `WebhookService` (`create`, `update`, `delete`), `WebhookResolver` (`createWebhook`, `updateWebhook`, `deleteWebhook`), `WebhookController` (`create`, `update`, `remove`) и AI-инструменты (`CreateWebhookTool`, `UpdateWebhookTool`, `DeleteWebhookTool`).
+
+09.11.2026 проверки LOG175 завершены. 3169 tests/120 suites PASS (703.795s). 224 targeted/19 PostgreSQL suites PASS (35.044s), 3 новых PostgreSQL случая. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 486/487 roots, baseline 277 / current 277 diagnostics, 0 новых/changed-code. Совпали 12 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех входных точек `webhook`, редактирование `targetUrl`, `operations`, `description` и `secret`, корректную обработку `NativeTransactionOutcomeUnknownError` и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log175/results.json), [ревью](implementation/log175/review.md),
+[следующий участок](implementation/log175/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
+
+
 
 
 

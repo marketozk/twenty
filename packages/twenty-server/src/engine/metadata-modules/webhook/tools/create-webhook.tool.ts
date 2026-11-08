@@ -53,7 +53,15 @@ export class CreateWebhookTool extends BaseTool<
 
   async execute({
     input: { targetUrl, operations, description, secret },
-    context: { workspaceId },
+    context: {
+      workspaceId,
+      userWorkspaceId,
+      application,
+      agentId,
+      authContext,
+      userId,
+      actorContext,
+    },
   }: ToolExecuteArgs<typeof createWebhookInputSchema>): Promise<ToolOutput> {
     const webhook = await this.webhookService.create(
       {
@@ -63,6 +71,23 @@ export class CreateWebhookTool extends BaseTool<
         secret,
       },
       workspaceId,
+      {
+        authUserWorkspaceId: userWorkspaceId,
+        authApplicationId: application?.id,
+        authAgentId: agentId,
+        auditIdentity: authContext
+          ? { auth: authContext, agentId }
+          : {
+              ...(userId ? { user: { id: userId } } : {}),
+              ...(actorContext?.workspaceMemberId
+                ? { workspaceMemberId: actorContext.workspaceMemberId }
+                : {}),
+              ...(application?.id
+                ? { application: { id: application.id } }
+                : {}),
+              ...(agentId ? { agentId } : {}),
+            },
+      },
     );
 
     return {

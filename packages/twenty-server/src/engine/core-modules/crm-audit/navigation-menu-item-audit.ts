@@ -40,7 +40,8 @@ export type NavigationMenuItemAuditMode =
   | 'update'
   | 'delete'
   | 'cascade'
-  | 'channel';
+  | 'channel'
+  | 'webhook';
 
 export type NavigationMenuItemAuditRequest = Readonly<{
   workspaceId: string;
@@ -61,6 +62,9 @@ export type NavigationMenuItemAuditRequest = Readonly<{
   expectedChannelUpdateIds?: readonly string[];
   expectedChannelRoleCreateKeys?: readonly string[];
   expectedChannelRoleDeleteIds?: readonly string[];
+  expectedWebhookCreateIds?: readonly string[];
+  expectedWebhookUpdateIds?: readonly string[];
+  expectedWebhookDeleteIds?: readonly string[];
 }>;
 
 export type NavigationMenuItemAuditMappings = {
@@ -70,6 +74,7 @@ export type NavigationMenuItemAuditMappings = {
   pageLayouts?: Record<string, { id: string } | undefined>;
   agentChatChannels?: Record<string, { id: string } | undefined>;
   agentChatChannelRoles?: Record<string, { id: string } | undefined>;
+  webhooks?: Record<string, { id: string } | undefined>;
   roles?: Record<string, { id: string } | undefined>;
   objectMetadatas?: Record<string, { id: string } | undefined>;
   fieldMetadatas?: Record<string, { id: string } | undefined>;
@@ -299,6 +304,60 @@ export const assertAgentChatChannelRoleRowInvariants = (
 export const projectAgentChatChannelRole = (row: Record<string, unknown>) => ({
   channelId: uuid(row.channelId),
   roleId: uuid(row.roleId),
+});
+
+export const assertWebhookRowInvariants = (
+  row: Record<string, unknown>,
+  workspaceId: string,
+): void => {
+  uuid(row.id);
+  if (uuid(row.workspaceId) !== workspaceId) {
+    throw new Error('Webhook audit row workspace mismatch');
+  }
+  uuid(row.applicationId);
+  uuid(row.universalIdentifier);
+  if (row.deletedAt !== null && row.deletedAt !== undefined) {
+    throw new Error('Webhook audit soft-deleted row is unsupported');
+  }
+  if (typeof row.targetUrl !== 'string' || row.targetUrl.trim().length === 0) {
+    throw new Error('Webhook audit targetUrl is invalid');
+  }
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(row.targetUrl);
+  } catch {
+    throw new Error('Webhook audit targetUrl is invalid');
+  }
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    throw new Error('Webhook audit targetUrl protocol is invalid');
+  }
+  if (
+    !Array.isArray(row.operations) ||
+    row.operations.some((item) => typeof item !== 'string')
+  ) {
+    throw new Error('Webhook audit operations is invalid');
+  }
+  if (
+    row.description !== null &&
+    row.description !== undefined &&
+    typeof row.description !== 'string'
+  ) {
+    throw new Error('Webhook audit description is invalid');
+  }
+  if (typeof row.secret !== 'string') {
+    throw new Error('Webhook audit secret is invalid');
+  }
+};
+
+export const projectWebhook = (row: Record<string, unknown>) => ({
+  applicationId: uuid(row.applicationId),
+  targetUrl: String(row.targetUrl),
+  operations: (row.operations as unknown[]).map((item) => String(item)),
+  description:
+    row.description === undefined || row.description === null
+      ? null
+      : String(row.description),
+  secret: String(row.secret),
 });
 
 export const getNavigationMenuItemAudit = (workspaceId: string) => {
@@ -628,6 +687,9 @@ export type NavigationMenuItemAuditExpectedScope = {
   expectedChannelUpdateIds?: readonly string[];
   expectedChannelRoleCreateKeys?: readonly string[];
   expectedChannelRoleDeleteIds?: readonly string[];
+  expectedWebhookCreateIds?: readonly string[];
+  expectedWebhookUpdateIds?: readonly string[];
+  expectedWebhookDeleteIds?: readonly string[];
 };
 
 export const captureNavigationMenuItemAudit = ({
@@ -650,6 +712,9 @@ export const captureNavigationMenuItemAudit = ({
   expectedChannelUpdateIds,
   expectedChannelRoleCreateKeys,
   expectedChannelRoleDeleteIds,
+  expectedWebhookCreateIds,
+  expectedWebhookUpdateIds,
+  expectedWebhookDeleteIds,
 }: {
   workspaceId: string;
   mode: NavigationMenuItemAuditMode;
@@ -724,6 +789,9 @@ export const captureNavigationMenuItemAudit = ({
     expectedChannelRoleCreateKeys,
   );
   const baseChannelRoleDeleteIds = normalizeIds(expectedChannelRoleDeleteIds);
+  const baseWebhookCreateIds = normalizeIds(expectedWebhookCreateIds);
+  const baseWebhookUpdateIds = normalizeIds(expectedWebhookUpdateIds);
+  const baseWebhookDeleteIds = normalizeIds(expectedWebhookDeleteIds);
 
   return (overrides) => {
     const resolvedCreatedIds =
@@ -754,6 +822,12 @@ export const captureNavigationMenuItemAudit = ({
     const resolvedChannelRoleDeleteIds =
       normalizeIds(overrides?.expectedChannelRoleDeleteIds) ??
       baseChannelRoleDeleteIds;
+    const resolvedWebhookCreateIds =
+      normalizeIds(overrides?.expectedWebhookCreateIds) ?? baseWebhookCreateIds;
+    const resolvedWebhookUpdateIds =
+      normalizeIds(overrides?.expectedWebhookUpdateIds) ?? baseWebhookUpdateIds;
+    const resolvedWebhookDeleteIds =
+      normalizeIds(overrides?.expectedWebhookDeleteIds) ?? baseWebhookDeleteIds;
 
     return Object.freeze({
       workspaceId: normalizedWorkspaceId,
@@ -797,6 +871,15 @@ export const captureNavigationMenuItemAudit = ({
         : {}),
       ...(resolvedChannelRoleDeleteIds !== undefined
         ? { expectedChannelRoleDeleteIds: resolvedChannelRoleDeleteIds }
+        : {}),
+      ...(resolvedWebhookCreateIds !== undefined
+        ? { expectedWebhookCreateIds: resolvedWebhookCreateIds }
+        : {}),
+      ...(resolvedWebhookUpdateIds !== undefined
+        ? { expectedWebhookUpdateIds: resolvedWebhookUpdateIds }
+        : {}),
+      ...(resolvedWebhookDeleteIds !== undefined
+        ? { expectedWebhookDeleteIds: resolvedWebhookDeleteIds }
         : {}),
     });
   };
@@ -1051,7 +1134,34 @@ const readChannelRoleSnapshot = async (
   );
 };
 
+const readWebhookSnapshot = async (
+  runner: QueryRunner,
+  workspaceId: string,
+  lock: boolean,
+): Promise<Map<string, Record<string, unknown>>> => {
+  const rows = await runner.query(
+    `SELECT to_jsonb(w) AS row FROM core.webhook w WHERE w."workspaceId"=$1 ORDER BY w.id${lock ? ' FOR UPDATE' : ''}`,
+    [workspaceId],
+  );
+  return new Map(
+    rows.map((entry: { row: Record<string, unknown> }) => [
+      uuid(entry.row.id),
+      entry.row,
+    ]),
+  );
+};
+
 const serializeNavSnapshot = (
+  snapshot: Map<string, Record<string, unknown>>,
+): string =>
+  canonicalAuditJson(
+    [...snapshot.entries()].map(([id, row]) => [
+      id,
+      scalarNavigationMenuItemWithoutTimestamps(row),
+    ]),
+  );
+
+const serializeWebhookSnapshot = (
   snapshot: Map<string, Record<string, unknown>>,
 ): string =>
   canonicalAuditJson(
@@ -1189,9 +1299,10 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         to_regclass('core."pageLayout"') IS NOT NULL AS "hasPageLayoutTable",
         to_regclass('core."agentChatChannel"') IS NOT NULL AS "hasChannelTable",
         to_regclass('core."agentChatChannelRole"') IS NOT NULL AS "hasChannelRoleTable",
-        to_regclass('core.role') IS NOT NULL AS "hasRoleTable"`,
+        to_regclass('core.role') IS NOT NULL AS "hasRoleTable",
+        to_regclass('core.webhook') IS NOT NULL AS "hasWebhookTable"`,
     );
-    if (reg?.hasNavTable !== true) {
+    if (request.mode !== 'webhook' && reg?.hasNavTable !== true) {
       throw new Error(
         'Navigation menu item audit table core.navigationMenuItem unavailable',
       );
@@ -1220,6 +1331,24 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       uuid(appRow.universalIdentifier) !== applicationUniversalIdentifier
     ) {
       throw new Error('Navigation menu item audit application unavailable');
+    }
+
+    const touchesWebhooks =
+      request.mode === 'webhook' ||
+      request.expectedWebhookCreateIds !== undefined ||
+      request.expectedWebhookUpdateIds !== undefined ||
+      request.expectedWebhookDeleteIds !== undefined ||
+      actions.some((action) => action.metadataName === 'webhook');
+    if (touchesWebhooks && reg?.hasWebhookTable !== true) {
+      throw new Error('Webhook audit table core.webhook unavailable');
+    }
+
+    const beforeWebhooks =
+      touchesWebhooks && reg?.hasWebhookTable === true
+        ? await readWebhookSnapshot(runner, request.workspaceId, true)
+        : new Map<string, Record<string, unknown>>();
+    for (const row of beforeWebhooks.values()) {
+      assertWebhookRowInvariants(row, request.workspaceId);
     }
 
     const touchesChannelsOrRoles =
@@ -1270,11 +1399,10 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       assertAgentChatChannelRoleRowInvariants(row, request.workspaceId);
     }
 
-    const beforeNavItems = await readNavSnapshot(
-      runner,
-      request.workspaceId,
-      true,
-    );
+    const beforeNavItems =
+      request.mode !== 'webhook' && reg?.hasNavTable === true
+        ? await readNavSnapshot(runner, request.workspaceId, true)
+        : new Map<string, Record<string, unknown>>();
     for (const row of beforeNavItems.values()) {
       assertNavigationMenuItemRowInvariants(row, request.workspaceId);
     }
@@ -1303,6 +1431,12 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       }
     >();
     const plannedChannelRoleDeletes = new Set<string>();
+    const plannedWebhookCreatesByUniversalIdentifier = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedWebhookUpdates = new Map<string, Record<string, unknown>>();
+    const plannedWebhookDeletes = new Set<string>();
     const plannedObjectCreates = new Set<string>();
     const plannedObjectDeletes = new Set<string>();
     const plannedFieldDeletes = new Set<string>();
@@ -1351,6 +1485,12 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         ) {
           throw new Error(
             'Agent chat channel audit allows only delete actions on navigationMenuItem',
+          );
+        }
+      } else if (request.mode === 'webhook') {
+        if (action.metadataName !== 'webhook') {
+          throw new Error(
+            `Webhook audit disallows ${action.metadataName} actions`,
           );
         }
       } else {
@@ -1602,6 +1742,64 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           );
         }
         plannedFieldDeletes.add(uuid(mappedId));
+      } else if (action.metadataName === 'webhook') {
+        if (action.type === 'create') {
+          if (!action.flatEntity) {
+            throw new Error('Webhook create action requires flatEntity');
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (plannedWebhookCreatesByUniversalIdentifier.has(universalId)) {
+            throw new Error(
+              'Webhook create audit duplicate universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error('Webhook create action application mismatch');
+          }
+          const explicitId =
+            action.id !== undefined
+              ? uuid(action.id)
+              : action.flatEntity.id !== undefined
+                ? uuid(action.flatEntity.id)
+                : undefined;
+          if (explicitId !== undefined && beforeWebhooks.has(explicitId)) {
+            throw new Error('Webhook create target ID already exists');
+          }
+          plannedWebhookCreatesByUniversalIdentifier.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.webhooks?.[universalId]?.id;
+          if (!mappedId || !action.update) {
+            throw new Error(
+              'Webhook update audit missing mapping or update payload',
+            );
+          }
+          const targetId = uuid(mappedId);
+          if (plannedWebhookUpdates.has(targetId)) {
+            throw new Error('Webhook update audit duplicate ID');
+          }
+          plannedWebhookUpdates.set(targetId, action.update);
+        } else if (action.type === 'delete') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.webhooks?.[universalId]?.id;
+          if (!mappedId) {
+            throw new Error('Webhook delete audit missing mapping');
+          }
+          const targetId = uuid(mappedId);
+          if (plannedWebhookDeletes.has(targetId)) {
+            throw new Error('Webhook delete audit duplicate ID');
+          }
+          plannedWebhookDeletes.add(targetId);
+        } else {
+          throw new Error(`Unsupported webhook action type ${action.type}`);
+        }
       }
     }
 
@@ -1633,6 +1831,109 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       if (!hasChannelConstraint) {
         throw new Error(
           'Agent chat channel audit requires explicit expected scope',
+        );
+      }
+    } else if (request.mode === 'webhook') {
+      const hasWebhookConstraint =
+        request.expectedWebhookCreateIds !== undefined ||
+        request.expectedWebhookUpdateIds !== undefined ||
+        request.expectedWebhookDeleteIds !== undefined;
+      if (!hasWebhookConstraint) {
+        throw new Error('Webhook audit requires explicit expected scope');
+      }
+    }
+
+    if (request.expectedWebhookCreateIds !== undefined) {
+      const actualWebhookCreateIds = [
+        ...plannedWebhookCreatesByUniversalIdentifier.values(),
+      ]
+        .map((entry) => entry.id)
+        .filter((id): id is string => id !== undefined);
+      if (
+        plannedWebhookCreatesByUniversalIdentifier.size !==
+          request.expectedWebhookCreateIds.length ||
+        actualWebhookCreateIds.length !==
+          request.expectedWebhookCreateIds.length ||
+        request.expectedWebhookCreateIds.some(
+          (id) => !actualWebhookCreateIds.includes(id),
+        )
+      ) {
+        throw new Error('Webhook create plan does not match expected IDs');
+      }
+    } else if (
+      request.mode === 'webhook' &&
+      plannedWebhookCreatesByUniversalIdentifier.size > 0
+    ) {
+      throw new Error('Webhook audit detected unexpected webhook create');
+    }
+
+    if (request.expectedWebhookUpdateIds !== undefined) {
+      if (
+        plannedWebhookUpdates.size !==
+          request.expectedWebhookUpdateIds.length ||
+        request.expectedWebhookUpdateIds.some(
+          (id) => !plannedWebhookUpdates.has(id),
+        )
+      ) {
+        throw new Error('Webhook update plan does not match expected IDs');
+      }
+    } else if (request.mode === 'webhook' && plannedWebhookUpdates.size > 0) {
+      throw new Error('Webhook audit detected unexpected webhook update');
+    }
+
+    if (request.expectedWebhookDeleteIds !== undefined) {
+      if (
+        plannedWebhookDeletes.size !==
+          request.expectedWebhookDeleteIds.length ||
+        request.expectedWebhookDeleteIds.some(
+          (id) => !plannedWebhookDeletes.has(id),
+        )
+      ) {
+        throw new Error('Webhook delete plan does not match expected IDs');
+      }
+    } else if (request.mode === 'webhook' && plannedWebhookDeletes.size > 0) {
+      throw new Error('Webhook audit detected unexpected webhook delete');
+    }
+
+    const foreignWebhookAppIds = new Set<string>();
+    for (const targetId of plannedWebhookUpdates.keys()) {
+      const beforeWh = beforeWebhooks.get(targetId);
+      if (!beforeWh) {
+        throw new Error('Webhook update target row unavailable');
+      }
+      const whAppId = uuid(beforeWh.applicationId);
+      if (whAppId !== applicationId) {
+        if (request.mode !== 'webhook') {
+          throw new Error(
+            'Webhook update target row belongs to another application',
+          );
+        }
+        foreignWebhookAppIds.add(whAppId);
+      }
+    }
+    for (const targetId of plannedWebhookDeletes) {
+      const beforeWh = beforeWebhooks.get(targetId);
+      if (!beforeWh) {
+        throw new Error('Webhook delete target row unavailable');
+      }
+      const whAppId = uuid(beforeWh.applicationId);
+      if (whAppId !== applicationId) {
+        if (request.mode !== 'webhook') {
+          throw new Error(
+            'Webhook delete target row belongs to another application',
+          );
+        }
+        foreignWebhookAppIds.add(whAppId);
+      }
+    }
+    if (foreignWebhookAppIds.size > 0) {
+      const activeApps = await runner.query(
+        `SELECT id FROM core.application a WHERE a."workspaceId"=$1 AND a.id=ANY($2::uuid[]) AND to_jsonb(a)->>'deletedAt' IS NULL ORDER BY a.id FOR NO KEY UPDATE`,
+        [request.workspaceId, [...foreignWebhookAppIds]],
+      );
+      if (activeApps.length !== foreignWebhookAppIds.size) {
+        throw new Error(
+          'Webhook target row belongs to an unavailable application',
         );
       }
     }
@@ -2125,11 +2426,10 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
 
     const result = await execute(runner);
 
-    const afterNavItems = await readNavSnapshot(
-      runner,
-      request.workspaceId,
-      false,
-    );
+    const afterNavItems =
+      request.mode !== 'webhook' && reg?.hasNavTable === true
+        ? await readNavSnapshot(runner, request.workspaceId, false)
+        : new Map<string, Record<string, unknown>>();
 
     const createdByUniversalId = new Map<string, Record<string, unknown>>();
     for (const [id, afterRow] of afterNavItems.entries()) {
@@ -2762,18 +3062,235 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       );
     }
 
-    if (recordedMutations > 0) {
-      const expectedSerialized = serializeNavSnapshot(afterNavItems);
-      await audit.flush();
-      const postFlushNavItems = await readNavSnapshot(
+    let expectedWebhooksSerialized: string | undefined;
+    if (touchesWebhooks && reg?.hasWebhookTable === true) {
+      const afterWebhooks = await readWebhookSnapshot(
         runner,
         request.workspaceId,
         false,
       );
-      if (serializeNavSnapshot(postFlushNavItems) !== expectedSerialized) {
-        throw new Error(
-          'Navigation menu item state changed during audit flush',
+      const createdWebhooksByUniversalId = new Map<
+        string,
+        Record<string, unknown>
+      >();
+      for (const [id, afterRow] of afterWebhooks.entries()) {
+        assertWebhookRowInvariants(afterRow, request.workspaceId);
+        if (!beforeWebhooks.has(id)) {
+          const universalId = uuid(afterRow.universalIdentifier);
+          if (createdWebhooksByUniversalId.has(universalId)) {
+            throw new Error(
+              'Webhook audit detected duplicate created universalIdentifier',
+            );
+          }
+          createdWebhooksByUniversalId.set(universalId, afterRow);
+        }
+      }
+      if (
+        createdWebhooksByUniversalId.size !==
+        plannedWebhookCreatesByUniversalIdentifier.size
+      ) {
+        throw new Error('Webhook audit created row count mismatch');
+      }
+      for (const [
+        universalId,
+        planned,
+      ] of plannedWebhookCreatesByUniversalIdentifier.entries()) {
+        const afterRow = createdWebhooksByUniversalId.get(universalId);
+        if (!afterRow) {
+          throw new Error('Webhook create did not persist expected row');
+        }
+        const createdId = uuid(afterRow.id);
+        if (planned.id !== undefined && createdId !== planned.id) {
+          throw new Error('Webhook create persisted unexpected ID');
+        }
+        if (uuid(afterRow.applicationId) !== applicationId) {
+          throw new Error('Webhook create persisted unexpected applicationId');
+        }
+        const afterProj = projectWebhook(afterRow);
+        if (
+          planned.flatEntity.targetUrl !== undefined &&
+          afterProj.targetUrl !== String(planned.flatEntity.targetUrl)
+        ) {
+          throw new Error('Webhook create persisted unexpected targetUrl');
+        }
+        if (planned.flatEntity.operations !== undefined) {
+          if (
+            !Array.isArray(planned.flatEntity.operations) ||
+            canonicalAuditJson(afterProj.operations) !==
+              canonicalAuditJson(
+                planned.flatEntity.operations.map((item: unknown) =>
+                  String(item),
+                ),
+              )
+          ) {
+            throw new Error('Webhook create persisted unexpected operations');
+          }
+        }
+        if (planned.flatEntity.description !== undefined) {
+          const expectedDesc =
+            planned.flatEntity.description === null
+              ? null
+              : String(planned.flatEntity.description);
+          if (afterProj.description !== expectedDesc) {
+            throw new Error('Webhook create persisted unexpected description');
+          }
+        }
+        if (
+          planned.flatEntity.secret !== undefined &&
+          afterProj.secret !== String(planned.flatEntity.secret)
+        ) {
+          throw new Error('Webhook create persisted unexpected secret');
+        }
+        audit.record({
+          resourceKind: 'webhook',
+          resourceId: createdId,
+          action: 'create',
+          before: null,
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'webhook',
+            resourceId: createdId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        recordedMutations += 1;
+      }
+
+      for (const [targetId, update] of plannedWebhookUpdates.entries()) {
+        const beforeRow = beforeWebhooks.get(targetId);
+        const afterRow = afterWebhooks.get(targetId);
+        if (!beforeRow || !afterRow) {
+          throw new Error('Webhook update removed or lost target row');
+        }
+        if (
+          uuid(beforeRow.applicationId) !== uuid(afterRow.applicationId) ||
+          uuid(beforeRow.universalIdentifier) !==
+            uuid(afterRow.universalIdentifier)
+        ) {
+          throw new Error('Webhook update modified immutable fields');
+        }
+        const beforeProj = projectWebhook(beforeRow);
+        const afterProj = projectWebhook(afterRow);
+        const expectedTargetUrl =
+          'targetUrl' in update && update.targetUrl !== undefined
+            ? String(update.targetUrl)
+            : beforeProj.targetUrl;
+        if (afterProj.targetUrl !== expectedTargetUrl) {
+          throw new Error('Webhook update did not persist expected targetUrl');
+        }
+        const expectedOperations =
+          'operations' in update && update.operations !== undefined
+            ? Array.isArray(update.operations)
+              ? update.operations.map((item: unknown) => String(item))
+              : null
+            : beforeProj.operations;
+        if (
+          expectedOperations === null ||
+          canonicalAuditJson(afterProj.operations) !==
+            canonicalAuditJson(expectedOperations)
+        ) {
+          throw new Error('Webhook update did not persist expected operations');
+        }
+        const expectedDesc =
+          'description' in update && update.description !== undefined
+            ? update.description === null
+              ? null
+              : String(update.description)
+            : beforeProj.description;
+        if (afterProj.description !== expectedDesc) {
+          throw new Error(
+            'Webhook update did not persist expected description',
+          );
+        }
+        const expectedSecret =
+          'secret' in update && update.secret !== undefined
+            ? String(update.secret)
+            : beforeProj.secret;
+        if (afterProj.secret !== expectedSecret) {
+          throw new Error('Webhook update did not persist expected secret');
+        }
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          audit.record({
+            resourceKind: 'webhook',
+            resourceId: targetId,
+            action: 'update',
+            before: beforeProj,
+            after: afterProj,
+            securityDescriptor: {
+              resourceKind: 'webhook',
+              resourceId: targetId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedMutations += 1;
+        }
+      }
+
+      for (const deletedId of plannedWebhookDeletes) {
+        const beforeRow = beforeWebhooks.get(deletedId);
+        if (!beforeRow) {
+          throw new Error(
+            'Webhook delete expected row missing before migration',
+          );
+        }
+        if (afterWebhooks.has(deletedId)) {
+          throw new Error('Webhook delete did not remove expected row');
+        }
+        audit.record({
+          resourceKind: 'webhook',
+          resourceId: deletedId,
+          action: 'delete',
+          before: projectWebhook(beforeRow),
+          after: null,
+          securityDescriptor: {
+            resourceKind: 'webhook',
+            resourceId: deletedId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        recordedMutations += 1;
+      }
+
+      for (const [id, beforeRow] of beforeWebhooks.entries()) {
+        if (plannedWebhookDeletes.has(id)) continue;
+        const afterRow = afterWebhooks.get(id);
+        if (!afterRow) {
+          throw new Error('Webhook audit detected unplanned row deletion');
+        }
+        if (!plannedWebhookUpdates.has(id)) {
+          if (
+            canonicalAuditJson(
+              scalarNavigationMenuItemWithoutTimestamps(beforeRow),
+            ) !==
+            canonicalAuditJson(
+              scalarNavigationMenuItemWithoutTimestamps(afterRow),
+            )
+          ) {
+            throw new Error('Webhook audit detected unplanned row mutation');
+          }
+        }
+      }
+
+      expectedWebhooksSerialized = serializeWebhookSnapshot(afterWebhooks);
+    }
+
+    if (recordedMutations > 0) {
+      const expectedSerialized =
+        request.mode !== 'webhook' && reg?.hasNavTable === true
+          ? serializeNavSnapshot(afterNavItems)
+          : undefined;
+      await audit.flush();
+      if (expectedSerialized !== undefined) {
+        const postFlushNavItems = await readNavSnapshot(
+          runner,
+          request.workspaceId,
+          false,
         );
+        if (serializeNavSnapshot(postFlushNavItems) !== expectedSerialized) {
+          throw new Error(
+            'Navigation menu item state changed during audit flush',
+          );
+        }
       }
       if (expectedChannelsAndRolesSerialized !== undefined) {
         const postFlushChannels =
@@ -2793,6 +3310,19 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           throw new Error(
             'Agent chat channel state changed during audit flush',
           );
+        }
+      }
+      if (expectedWebhooksSerialized !== undefined) {
+        const postFlushWebhooks = await readWebhookSnapshot(
+          runner,
+          request.workspaceId,
+          false,
+        );
+        if (
+          serializeWebhookSnapshot(postFlushWebhooks) !==
+          expectedWebhooksSerialized
+        ) {
+          throw new Error('Webhook state changed during audit flush');
         }
       }
     }

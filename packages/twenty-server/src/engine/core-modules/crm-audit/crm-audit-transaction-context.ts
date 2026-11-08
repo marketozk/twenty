@@ -91,6 +91,10 @@ const CATALOG: Record<
     values: ['applicationId', 'isValidated'],
     redacted: ['domain'],
   },
+  webhook: {
+    values: ['applicationId'],
+    redacted: ['targetUrl', 'operations', 'description', 'secret'],
+  },
   twoFactorAuthenticationMethod: {
     values: ['userWorkspaceId', 'strategy', 'status'],
     redacted: ['secret', 'deletedAt'],
@@ -519,6 +523,7 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   userApplicationVariableValue: ['create', 'update', 'delete'],
   approvedAccessDomain: ['create', 'update', 'delete'],
   publicDomain: ['create', 'update', 'delete'],
+  webhook: ['create', 'update', 'delete'],
   twoFactorAuthenticationMethod: ['create', 'update', 'delete'],
   navigationMenuItem: ['create', 'update', 'delete'],
   agentChatChannel: ['create', 'update', 'delete'],

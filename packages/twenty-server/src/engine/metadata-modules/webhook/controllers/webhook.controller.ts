@@ -18,6 +18,7 @@ import { RestApiExceptionFilter } from 'src/engine/api/rest/rest-api-exception.f
 import { isMetadataRestRequest } from 'src/engine/api/rest/metadata/utils/is-metadata-rest-request.util';
 import { paginateMetadataRestItems } from 'src/engine/api/rest/metadata/utils/paginate-metadata-rest-items.util';
 import { type AuthenticatedRequest } from 'src/engine/api/rest/types/authenticated-request.type';
+import { type NavigationMenuItemAuditIdentity } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
 import { JwtAuthGuard } from 'src/engine/guards/jwt-auth.guard';
@@ -31,6 +32,12 @@ import { type WebhookDTO } from 'src/engine/metadata-modules/webhook/dtos/webhoo
 import { WebhookService } from 'src/engine/metadata-modules/webhook/webhook.service';
 import { WorkspaceMigrationRunnerRestApiExceptionFilter } from 'src/engine/workspace-manager/workspace-migration/filters/workspace-migration-runner-rest-api-exception.filter';
 import { AuthRestApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-rest-api-exception.filter';
+
+type WebhookRequestAuditContext = {
+  userWorkspaceId?: string;
+  apiKey?: { id: string } | null;
+  application?: { id: string } | null;
+} & NavigationMenuItemAuditIdentity;
 
 @Controller([`${ApiPath.Rest}/webhooks`, `${ApiPath.Rest}/metadata/webhooks`])
 @UseGuards(
@@ -82,8 +89,14 @@ export class WebhookController {
   async create(
     @Body() createWebhookDto: CreateWebhookInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Req() request?: WebhookRequestAuditContext,
   ): Promise<WebhookDTO> {
-    return this.webhookService.create(createWebhookDto, workspace.id);
+    return this.webhookService.create(createWebhookDto, workspace.id, {
+      authUserWorkspaceId: request?.userWorkspaceId,
+      authApiKeyId: request?.apiKey?.id,
+      authApplicationId: request?.application?.id,
+      auditIdentity: request,
+    });
   }
 
   @Patch(':id')
@@ -97,21 +110,33 @@ export class WebhookController {
       secret?: string;
     },
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Req() request?: WebhookRequestAuditContext,
   ): Promise<WebhookDTO> {
     const input: UpdateWebhookInput = {
       id,
       update: updateWebhookDto,
     };
 
-    return this.webhookService.update(input, workspace.id);
+    return this.webhookService.update(input, workspace.id, {
+      authUserWorkspaceId: request?.userWorkspaceId,
+      authApiKeyId: request?.apiKey?.id,
+      authApplicationId: request?.application?.id,
+      auditIdentity: request,
+    });
   }
 
   @Delete(':id')
   async remove(
     @Param('id') id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Req() request?: WebhookRequestAuditContext,
   ): Promise<boolean> {
-    await this.webhookService.delete(id, workspace.id);
+    await this.webhookService.delete(id, workspace.id, {
+      authUserWorkspaceId: request?.userWorkspaceId,
+      authApiKeyId: request?.apiKey?.id,
+      authApplicationId: request?.application?.id,
+      auditIdentity: request,
+    });
 
     return true;
   }

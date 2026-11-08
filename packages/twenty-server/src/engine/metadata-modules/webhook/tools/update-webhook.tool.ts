@@ -42,7 +42,15 @@ export class UpdateWebhookTool extends BaseTool<
 
   async execute({
     input,
-    context: { workspaceId },
+    context: {
+      workspaceId,
+      userWorkspaceId,
+      application,
+      agentId,
+      authContext,
+      userId,
+      actorContext,
+    },
   }: ToolExecuteArgs<typeof updateWebhookInputSchema>): Promise<ToolOutput> {
     const update: {
       targetUrl?: string;
@@ -67,6 +75,23 @@ export class UpdateWebhookTool extends BaseTool<
     const webhook = await this.webhookService.update(
       { id: input.id, update },
       workspaceId,
+      {
+        authUserWorkspaceId: userWorkspaceId,
+        authApplicationId: application?.id,
+        authAgentId: agentId,
+        auditIdentity: authContext
+          ? { auth: authContext, agentId }
+          : {
+              ...(userId ? { user: { id: userId } } : {}),
+              ...(actorContext?.workspaceMemberId
+                ? { workspaceMemberId: actorContext.workspaceMemberId }
+                : {}),
+              ...(application?.id
+                ? { application: { id: application.id } }
+                : {}),
+              ...(agentId ? { agentId } : {}),
+            },
+      },
     );
 
     return {

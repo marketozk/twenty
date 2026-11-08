@@ -232,8 +232,13 @@ LOG174 закрывает транзакционный аудит полного
 `CheckPublicDomainsValidRecordsCronJob`, `DnsCloudflareService` и каскадного удаления при удалении
 `core.application` в `ApplicationService.delete` / `runAuditedApplicationDelete`) с редактированием
 `domain`.
+LOG175 закрывает транзакционный аудит полного жизненного цикла исходящих вебхуков
+(`core.webhook` в `WebhookService`, `WebhookResolver`, `WebhookController`, `CreateWebhookTool`,
+`UpdateWebhookTool`, `DeleteWebhookTool`, `runAuditedApplicationMetadataMigration`,
+`assertNoRemainingApplicationRoleOrPermissionMetadata` и `WorkspaceMigrationRunnerService.executeRun`)
+с редактированием `targetUrl`, `operations`, `description` и `secret`.
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log174/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log175/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

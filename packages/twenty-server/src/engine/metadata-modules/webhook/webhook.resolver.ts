@@ -1,10 +1,13 @@
 import { UseGuards, UseInterceptors, UseFilters } from '@nestjs/common';
-import { Args, Mutation, Query } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query } from '@nestjs/graphql';
 
 import { PermissionFlagType } from 'twenty-shared/constants';
 
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
+import { type NavigationMenuItemAuditIdentity } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
+import { AuthApiKey } from 'src/engine/decorators/auth/auth-api-key.decorator';
+import { AuthUserWorkspaceId } from 'src/engine/decorators/auth/auth-user-workspace-id.decorator';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
 import { SettingsPermissionGuard } from 'src/engine/guards/settings-permission.guard';
@@ -61,8 +64,22 @@ export class WebhookResolver {
   async createWebhook(
     @Args('input') input: CreateWebhookInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
+    @AuthApiKey() apiKey?: { id: string },
+    @Context()
+    context?: {
+      req?: {
+        application?: { id: string };
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<WebhookDTO> {
-    return await this.webhookService.create(input, workspace.id);
+    return await this.webhookService.create(input, workspace.id, {
+      authUserWorkspaceId: userWorkspaceId,
+      authApiKeyId: apiKey?.id,
+      authApplicationId: context?.req?.application?.id,
+      auditIdentity: context?.req,
+    });
   }
 
   @Mutation(() => WebhookDTO)
@@ -70,8 +87,22 @@ export class WebhookResolver {
   async updateWebhook(
     @Args('input') input: UpdateWebhookInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
+    @AuthApiKey() apiKey?: { id: string },
+    @Context()
+    context?: {
+      req?: {
+        application?: { id: string };
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<WebhookDTO> {
-    return await this.webhookService.update(input, workspace.id);
+    return await this.webhookService.update(input, workspace.id, {
+      authUserWorkspaceId: userWorkspaceId,
+      authApiKeyId: apiKey?.id,
+      authApplicationId: context?.req?.application?.id,
+      auditIdentity: context?.req,
+    });
   }
 
   @Mutation(() => WebhookDTO)
@@ -79,7 +110,21 @@ export class WebhookResolver {
   async deleteWebhook(
     @Args('id', { type: () => UUIDScalarType }) id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
+    @AuthApiKey() apiKey?: { id: string },
+    @Context()
+    context?: {
+      req?: {
+        application?: { id: string };
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<WebhookDTO> {
-    return await this.webhookService.delete(id, workspace.id);
+    return await this.webhookService.delete(id, workspace.id, {
+      authUserWorkspaceId: userWorkspaceId,
+      authApiKeyId: apiKey?.id,
+      authApplicationId: context?.req?.application?.id,
+      auditIdentity: context?.req,
+    });
   }
 }

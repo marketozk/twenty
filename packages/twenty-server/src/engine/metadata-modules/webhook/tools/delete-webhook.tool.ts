@@ -29,9 +29,31 @@ export class DeleteWebhookTool extends BaseTool<
 
   async execute({
     input: { id },
-    context: { workspaceId },
+    context: {
+      workspaceId,
+      userWorkspaceId,
+      application,
+      agentId,
+      authContext,
+      userId,
+      actorContext,
+    },
   }: ToolExecuteArgs<typeof deleteWebhookInputSchema>): Promise<ToolOutput> {
-    const webhook = await this.webhookService.delete(id, workspaceId);
+    const webhook = await this.webhookService.delete(id, workspaceId, {
+      authUserWorkspaceId: userWorkspaceId,
+      authApplicationId: application?.id,
+      authAgentId: agentId,
+      auditIdentity: authContext
+        ? { auth: authContext, agentId }
+        : {
+            ...(userId ? { user: { id: userId } } : {}),
+            ...(actorContext?.workspaceMemberId
+              ? { workspaceMemberId: actorContext.workspaceMemberId }
+              : {}),
+            ...(application?.id ? { application: { id: application.id } } : {}),
+            ...(agentId ? { agentId } : {}),
+          },
+    });
 
     return {
       success: true,

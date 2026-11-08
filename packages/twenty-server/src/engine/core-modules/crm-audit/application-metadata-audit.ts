@@ -32,10 +32,12 @@ import {
   assertAgentChatChannelRoleRowInvariants,
   assertAgentChatChannelRowInvariants,
   assertNavigationMenuItemRowInvariants,
+  assertWebhookRowInvariants,
   computeCascadeDeletedNavigationMenuItemIds,
   projectAgentChatChannel,
   projectAgentChatChannelRole,
   projectNavigationMenuItem,
+  projectWebhook,
   scalarNavigationMenuItemWithoutTimestamps,
   type NavigationMenuItemAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
@@ -92,6 +94,7 @@ export type ApplicationMetadataAuditMappings = {
   pageLayouts?: Record<string, { id: string } | undefined>;
   agentChatChannels?: Record<string, { id: string } | undefined>;
   agentChatChannelRoles?: Record<string, { id: string } | undefined>;
+  webhooks?: Record<string, { id: string } | undefined>;
 };
 
 type MigrationAction = {
@@ -127,6 +130,7 @@ export const AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES = new Set<string>([
   'navigationMenuItem',
   'agentChatChannel',
   'agentChatChannelRole',
+  'webhook',
 ]);
 
 export const AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES =
@@ -664,7 +668,8 @@ const readExistingTables = async (
       to_regclass('core."navigationMenuItem"') IS NOT NULL AS "navigationMenuItem",
       to_regclass('core."pageLayout"') IS NOT NULL AS "pageLayout",
       to_regclass('core."agentChatChannel"') IS NOT NULL AS "agentChatChannel",
-      to_regclass('core."agentChatChannelRole"') IS NOT NULL AS "agentChatChannelRole"`,
+      to_regclass('core."agentChatChannelRole"') IS NOT NULL AS "agentChatChannelRole",
+      to_regclass('core.webhook') IS NOT NULL AS "webhook"`,
   );
   const existing = new Set<string>();
   for (const [key, present] of Object.entries(reg ?? {})) {
@@ -1448,6 +1453,108 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       }
     }
 
+    const hasWebhookTable = existingTables.has('webhook');
+    const beforeWebhooks = hasWebhookTable
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'webhook',
+          workspaceId,
+          true,
+        )
+      : new Map<string, Record<string, unknown>>();
+    for (const webhookRow of beforeWebhooks.values()) {
+      assertWebhookRowInvariants(webhookRow, workspaceId);
+    }
+
+    const plannedWebhookCreatesByUniversalId = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedWebhookUpdatePayloads = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    for (const action of actions) {
+      if (action.metadataName === 'webhook') {
+        if (action.type === 'create') {
+          if (!hasWebhookTable) {
+            throw new Error(
+              'Application metadata audit table webhook is unavailable',
+            );
+          }
+          if (!action.flatEntity) {
+            throw new Error(
+              'Application metadata audit requires flatEntity on webhook create action',
+            );
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (plannedWebhookCreatesByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit duplicate webhook create universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error(
+              'Application metadata audit webhook create belongs to another application',
+            );
+          }
+          const explicitId =
+            action.id !== undefined ? uuid(action.id) : undefined;
+          if (explicitId !== undefined && beforeWebhooks.has(explicitId)) {
+            throw new Error(
+              'Application metadata audit webhook create ID already exists',
+            );
+          }
+          plannedWebhookCreatesByUniversalId.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.webhooks?.[universalId]?.id;
+          if (!mappedId || !action.update) {
+            throw new Error(
+              'Application metadata audit webhook update missing mapping or update payload',
+            );
+          }
+          plannedWebhookUpdatePayloads.set(uuid(mappedId), action.update);
+        }
+      }
+    }
+    const plannedWebhookUpdates = resolveMappedIds(
+      actions,
+      'webhook',
+      'update',
+      mappings.webhooks ?? {},
+    );
+    const plannedWebhookDeletes = resolveMappedIds(
+      actions,
+      'webhook',
+      'delete',
+      mappings.webhooks ?? {},
+    );
+    for (const webhookId of plannedWebhookUpdates) {
+      const beforeWh = beforeWebhooks.get(webhookId);
+      if (!beforeWh || uuid(beforeWh.applicationId) !== applicationId) {
+        throw new Error(
+          'Application metadata audit cannot update missing or foreign webhook',
+        );
+      }
+    }
+    for (const webhookId of plannedWebhookDeletes) {
+      const beforeWh = beforeWebhooks.get(webhookId);
+      if (!beforeWh || uuid(beforeWh.applicationId) !== applicationId) {
+        throw new Error(
+          'Application metadata audit cannot delete missing or foreign webhook',
+        );
+      }
+    }
+
     const plannedNavCreatesByUniversalIdentifier = new Map<
       string,
       { id?: string; flatEntity: Record<string, unknown> }
@@ -1635,7 +1742,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           action.metadataName === 'rolePermissionFlag' ||
           action.metadataName === 'applicationVariable' ||
           action.metadataName === 'agentChatChannel' ||
-          action.metadataName === 'agentChatChannelRole'
+          action.metadataName === 'agentChatChannelRole' ||
+          action.metadataName === 'webhook'
         ) {
           throw new Error(
             'Application metadata objectDelete cannot mutate roles, targets, agents, or permission flags',
@@ -1797,7 +1905,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           action.metadataName === 'applicationVariable' ||
           action.metadataName === 'pageLayout' ||
           action.metadataName === 'agentChatChannel' ||
-          action.metadataName === 'agentChatChannelRole'
+          action.metadataName === 'agentChatChannelRole' ||
+          action.metadataName === 'webhook'
         ) {
           throw new Error(
             'Application metadata fieldDelete cannot mutate roles, objects, object permissions, or predicate groups',
@@ -3662,6 +3771,225 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       });
     }
 
+    // 12. Verify and record core.webhook lifecycle and deletions
+    let expectedWebhooksSerialized: string | undefined;
+    if (hasWebhookTable) {
+      const afterWebhooks = await readTableSnapshot(
+        runner,
+        existingTables,
+        'webhook',
+        workspaceId,
+        false,
+      );
+      const createdWebhookByUniversalId = new Map<
+        string,
+        Record<string, unknown>
+      >();
+      for (const [id, afterWh] of afterWebhooks.entries()) {
+        assertWebhookRowInvariants(afterWh, workspaceId);
+        if (!beforeWebhooks.has(id)) {
+          const universalId = uuid(afterWh.universalIdentifier);
+          if (createdWebhookByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit detected duplicate created webhook universalIdentifier',
+            );
+          }
+          createdWebhookByUniversalId.set(universalId, afterWh);
+        }
+      }
+      if (
+        createdWebhookByUniversalId.size !==
+        plannedWebhookCreatesByUniversalId.size
+      ) {
+        throw new Error(
+          'Application metadata audit webhook created row count mismatch',
+        );
+      }
+      for (const [
+        universalId,
+        planned,
+      ] of plannedWebhookCreatesByUniversalId.entries()) {
+        const afterWh = createdWebhookByUniversalId.get(universalId);
+        if (!afterWh) {
+          throw new Error(
+            'Application metadata webhook create did not persist expected row',
+          );
+        }
+        const createdId = uuid(afterWh.id);
+        if (planned.id !== undefined && createdId !== planned.id) {
+          throw new Error(
+            'Application metadata webhook create persisted unexpected ID',
+          );
+        }
+        if (uuid(afterWh.applicationId) !== applicationId) {
+          throw new Error(
+            'Application metadata webhook create persisted unexpected applicationId',
+          );
+        }
+        const afterProj = projectWebhook(afterWh);
+        if (
+          planned.flatEntity.targetUrl !== undefined &&
+          afterProj.targetUrl !== String(planned.flatEntity.targetUrl)
+        ) {
+          throw new Error(
+            'Application metadata webhook create persisted unexpected targetUrl',
+          );
+        }
+        if (planned.flatEntity.operations !== undefined) {
+          if (
+            !Array.isArray(planned.flatEntity.operations) ||
+            canonicalAuditJson(afterProj.operations) !==
+              canonicalAuditJson(
+                planned.flatEntity.operations.map((item: unknown) =>
+                  String(item),
+                ),
+              )
+          ) {
+            throw new Error(
+              'Application metadata webhook create persisted unexpected operations',
+            );
+          }
+        }
+        if (planned.flatEntity.description !== undefined) {
+          const expectedDesc =
+            planned.flatEntity.description === null
+              ? null
+              : String(planned.flatEntity.description);
+          if (afterProj.description !== expectedDesc) {
+            throw new Error(
+              'Application metadata webhook create persisted unexpected description',
+            );
+          }
+        }
+        if (
+          planned.flatEntity.secret !== undefined &&
+          afterProj.secret !== String(planned.flatEntity.secret)
+        ) {
+          throw new Error(
+            'Application metadata webhook create persisted unexpected secret',
+          );
+        }
+        recordMutation('webhook', createdId, 'create', null, afterProj);
+      }
+
+      for (const webhookId of plannedWebhookUpdates) {
+        if (plannedWebhookDeletes.has(webhookId)) continue;
+        const beforeWh = beforeWebhooks.get(webhookId);
+        const afterWh = afterWebhooks.get(webhookId);
+        if (
+          !beforeWh ||
+          !afterWh ||
+          uuid(afterWh.applicationId) !== applicationId ||
+          uuid(beforeWh.universalIdentifier) !==
+            uuid(afterWh.universalIdentifier)
+        ) {
+          throw new Error(
+            'Application metadata webhook update removed or corrupted target row',
+          );
+        }
+        const beforeProj = projectWebhook(beforeWh);
+        const afterProj = projectWebhook(afterWh);
+        const updatePayload = plannedWebhookUpdatePayloads.get(webhookId) ?? {};
+        const expectedTargetUrl =
+          'targetUrl' in updatePayload && updatePayload.targetUrl !== undefined
+            ? String(updatePayload.targetUrl)
+            : beforeProj.targetUrl;
+        if (afterProj.targetUrl !== expectedTargetUrl) {
+          throw new Error(
+            'Application metadata webhook update did not persist expected targetUrl',
+          );
+        }
+        const expectedOperations =
+          'operations' in updatePayload &&
+          updatePayload.operations !== undefined
+            ? Array.isArray(updatePayload.operations)
+              ? updatePayload.operations.map((item: unknown) => String(item))
+              : null
+            : beforeProj.operations;
+        if (
+          expectedOperations === null ||
+          canonicalAuditJson(afterProj.operations) !==
+            canonicalAuditJson(expectedOperations)
+        ) {
+          throw new Error(
+            'Application metadata webhook update did not persist expected operations',
+          );
+        }
+        const expectedDesc =
+          'description' in updatePayload &&
+          updatePayload.description !== undefined
+            ? updatePayload.description === null
+              ? null
+              : String(updatePayload.description)
+            : beforeProj.description;
+        if (afterProj.description !== expectedDesc) {
+          throw new Error(
+            'Application metadata webhook update did not persist expected description',
+          );
+        }
+        const expectedSecret =
+          'secret' in updatePayload && updatePayload.secret !== undefined
+            ? String(updatePayload.secret)
+            : beforeProj.secret;
+        if (afterProj.secret !== expectedSecret) {
+          throw new Error(
+            'Application metadata webhook update did not persist expected secret',
+          );
+        }
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          recordMutation('webhook', webhookId, 'update', beforeProj, afterProj);
+        }
+      }
+
+      for (const webhookId of plannedWebhookDeletes) {
+        const beforeWh = beforeWebhooks.get(webhookId);
+        if (!beforeWh) {
+          throw new Error(
+            'Application metadata webhook delete expected row missing before migration',
+          );
+        }
+        if (afterWebhooks.has(webhookId)) {
+          throw new Error(
+            'Application metadata webhook delete did not remove expected row',
+          );
+        }
+        recordMutation(
+          'webhook',
+          webhookId,
+          'delete',
+          projectWebhook(beforeWh),
+          null,
+        );
+      }
+
+      for (const [webhookId, beforeWh] of beforeWebhooks.entries()) {
+        if (plannedWebhookDeletes.has(webhookId)) continue;
+        const afterWh = afterWebhooks.get(webhookId);
+        if (!afterWh) {
+          throw new Error(
+            'Application metadata audit detected unplanned webhook deletion',
+          );
+        }
+        if (!plannedWebhookUpdates.has(webhookId)) {
+          if (
+            canonicalAuditJson(scalarWithoutTimestamps(beforeWh)) !==
+            canonicalAuditJson(scalarWithoutTimestamps(afterWh))
+          ) {
+            throw new Error(
+              'Application metadata audit detected unplanned webhook mutation',
+            );
+          }
+        }
+      }
+
+      expectedWebhooksSerialized = canonicalAuditJson(
+        [...afterWebhooks.entries()].map(([id, row]) => [
+          id,
+          scalarWithoutTimestamps(row),
+        ]),
+      );
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized = serializeFullSnapshot(after);
       await audit.flush();
@@ -3801,6 +4129,26 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           );
         }
       }
+      if (expectedWebhooksSerialized !== undefined) {
+        const postFlushWebhooks = await readTableSnapshot(
+          runner,
+          existingTables,
+          'webhook',
+          workspaceId,
+          false,
+        );
+        const postFlushSerialized = canonicalAuditJson(
+          [...postFlushWebhooks.entries()].map(([id, row]) => [
+            id,
+            scalarWithoutTimestamps(row),
+          ]),
+        );
+        if (postFlushSerialized !== expectedWebhooksSerialized) {
+          throw new Error(
+            'Application metadata state changed during audit flush',
+          );
+        }
+      }
     }
 
     return result;
@@ -3838,6 +4186,7 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
     'navigationMenuItem',
     'agentChatChannel',
     'agentChatChannelRole',
+    'webhook',
   ]) {
     if (!existingTables.has(tableName)) continue;
     const [ownRow] = await runner.query(

@@ -1,0 +1,18 @@
+{
+  "baseCommit": "c5bad889fbe7da104cda6451c83e093acb133ff8",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/application-metadata-audit.ts": "6fa3acb8802bb979b610421fce48ae7043486728a014c20df40d128be56d3e27",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "9ad7d606dc9b0278fbe6fb20e714366816864c1c5c7afbe096e6b10a88ffa2bb",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "f94ba0f6ad53e90c0dbbf605286bad18d5c703491a0c34dbbf2e5ab45b92fddd",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/navigation-menu-item-audit.ts": "918ca45dc54dea4566568cf7ce1064fa3c6bd2619b266298f65e107dfd64dbb9",
+    "packages/twenty-server/src/engine/metadata-modules/webhook/controllers/webhook.controller.ts": "46631a73e0f286eccf5af95c0e6dc37cb7a7bb38fcd82304f6963345aa74422b",
+    "packages/twenty-server/src/engine/metadata-modules/webhook/tools/create-webhook.tool.ts": "1a04c34a9b3d7730ee34c985c89b54a2520378f8c4c047c658fcff91051454de",
+    "packages/twenty-server/src/engine/metadata-modules/webhook/tools/delete-webhook.tool.ts": "6d686a07493f84d3e050b714bae88a798550ada54a6ac63366e31c0c4c4054ae",
+    "packages/twenty-server/src/engine/metadata-modules/webhook/tools/update-webhook.tool.ts": "56a4c935c5f69c5320536a80d0a94f4c236023813bb411a026c7af9b6e18ebf3",
+    "packages/twenty-server/src/engine/metadata-modules/webhook/webhook.resolver.ts": "6051e91746e332b2a6a786c3674ce058cf51ffbcbbf6a497295c6fd170296303",
+    "packages/twenty-server/src/engine/metadata-modules/webhook/webhook.service.ts": "7eaf08e0fe3e4ec899be7afc5e87430ecb945099b5d701543b90f00995d767e7",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts": "9aa88e964c8babd93494b28b5aff011af2377607044ab4441abdbacc1131c53f",
+    "packages/twenty-server/test/fork-migration/crm-audit-webhook.postgres-spec.ts": "331635d85a8b5ef0afb442acd5ccb47b4492bdb7ecc26a0a61cb8825090e3fe5"
+  },
+  "uploadedSourceHashesVerified": true
+}
