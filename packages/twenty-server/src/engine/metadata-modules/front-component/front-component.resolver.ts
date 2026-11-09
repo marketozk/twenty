@@ -1,6 +1,7 @@
 import { Inject, UseGuards, UseInterceptors, UseFilters } from '@nestjs/common';
 import {
   Args,
+  Context,
   Info,
   Mutation,
   Parent,
@@ -25,7 +26,9 @@ import { canCallerReachApplication } from 'src/engine/core-modules/application/u
 import { ApplicationTokenService } from 'src/engine/core-modules/auth/token/services/application-token.service';
 import { type AuthContextUser } from 'src/engine/core-modules/auth/types/auth-context.type';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
+import { type NavigationMenuItemAuditIdentity } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { type WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
+import { AuthApiKey } from 'src/engine/decorators/auth/auth-api-key.decorator';
 import { AuthApplication } from 'src/engine/decorators/auth/auth-application.decorator';
 import { AuthUserWorkspaceId } from 'src/engine/decorators/auth/auth-user-workspace-id.decorator';
 import { AuthUser } from 'src/engine/decorators/auth/auth-user.decorator';
@@ -242,10 +245,23 @@ export class FrontComponentResolver {
   async createFrontComponent(
     @Args('input') input: CreateFrontComponentInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
+    @AuthApiKey() apiKey?: { id: string },
+    @Context()
+    context?: {
+      req?: {
+        application?: { id: string };
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<FrontComponentDTO> {
     const flatFrontComponent = await this.frontComponentService.createOne({
       input,
       workspaceId: workspace.id,
+      authUserWorkspaceId: userWorkspaceId,
+      authApiKeyId: apiKey?.id,
+      authApplicationId: context?.req?.application?.id,
+      auditIdentity: context?.req,
     });
 
     return fromFlatFrontComponentToFrontComponentDto(flatFrontComponent);
@@ -269,11 +285,24 @@ export class FrontComponentResolver {
   async updateFrontComponent(
     @Args('input') input: UpdateFrontComponentInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
+    @AuthApiKey() apiKey?: { id: string },
+    @Context()
+    context?: {
+      req?: {
+        application?: { id: string };
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<FrontComponentDTO> {
     const flatFrontComponent = await this.frontComponentService.updateOne({
       id: input.id,
       update: input.update,
       workspaceId: workspace.id,
+      authUserWorkspaceId: userWorkspaceId,
+      authApiKeyId: apiKey?.id,
+      authApplicationId: context?.req?.application?.id,
+      auditIdentity: context?.req,
     });
 
     return fromFlatFrontComponentToFrontComponentDto(flatFrontComponent);
@@ -297,10 +326,23 @@ export class FrontComponentResolver {
   async deleteFrontComponent(
     @Args('id', { type: () => UUIDScalarType }) id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
+    @AuthApiKey() apiKey?: { id: string },
+    @Context()
+    context?: {
+      req?: {
+        application?: { id: string };
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<FrontComponentDTO> {
     const flatFrontComponent = await this.frontComponentService.destroyOne({
       id,
       workspaceId: workspace.id,
+      authUserWorkspaceId: userWorkspaceId,
+      authApiKeyId: apiKey?.id,
+      authApplicationId: context?.req?.application?.id,
+      auditIdentity: context?.req,
     });
 
     return fromFlatFrontComponentToFrontComponentDto(flatFrontComponent);

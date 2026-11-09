@@ -331,6 +331,10 @@ export class WorkspaceMigrationRunnerService {
         (action.metadataName === 'role' ||
           action.metadataName === 'agentChatChannel'),
     );
+    const hasFrontComponentDeleteAction = actions.some(
+      (action) =>
+        action.type === 'delete' && action.metadataName === 'frontComponent',
+    );
     const permissionCascadeMetadataNames: AllMetadataName[] = [
       ...(hasObjectOrFieldDeleteAction
         ? ([
@@ -348,6 +352,7 @@ export class WorkspaceMigrationRunnerService {
       ...(hasChannelRoleCascadeParentDeleteAction
         ? (['agentChatChannelRole'] as const)
         : []),
+      ...(hasFrontComponentDeleteAction ? (['settingsMenuItem'] as const) : []),
     ];
 
     const actionsMetadataAndRelatedMetadataNames: AllMetadataName[] = [
@@ -520,6 +525,12 @@ export class WorkspaceMigrationRunnerService {
           webhooks:
             allFlatEntityMaps.flatWebhookMaps?.byUniversalIdentifier ?? {},
           skills: allFlatEntityMaps.flatSkillMaps?.byUniversalIdentifier ?? {},
+          frontComponents:
+            allFlatEntityMaps.flatFrontComponentMaps?.byUniversalIdentifier ??
+            {},
+          settingsMenuItems:
+            allFlatEntityMaps.flatSettingsMenuItemMaps?.byUniversalIdentifier ??
+            {},
         };
         const searchFieldMetadatasByTsVectorFieldIdAccessor =
           createSearchFieldMetadatasByTsVectorFieldIdAccessor(
@@ -784,6 +795,11 @@ export class WorkspaceMigrationRunnerService {
           allFlatEntityMaps.flatConnectionProviderMaps?.byUniversalIdentifier ??
           {},
         skills: allFlatEntityMaps.flatSkillMaps?.byUniversalIdentifier ?? {},
+        frontComponents:
+          allFlatEntityMaps.flatFrontComponentMaps?.byUniversalIdentifier ?? {},
+        settingsMenuItems:
+          allFlatEntityMaps.flatSettingsMenuItemMaps?.byUniversalIdentifier ??
+          {},
       };
       const allMetadataEvents: MetadataEvent[] = [];
       const allDeferredActions: DeferredWorkspaceMigrationAction[] = [];

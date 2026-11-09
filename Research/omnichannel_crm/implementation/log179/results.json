@@ -1,0 +1,37 @@
+{
+  "log": "LOG-179",
+  "issue": "ROB-765",
+  "date": "2026-11-10",
+  "title": "Transactional audit of frontComponent (core.frontComponent) and settingsMenuItem (core.settingsMenuItem) lifecycle and cascade deletion",
+  "targetedPostgres": {
+    "suitesPassed": 5,
+    "suitesTotal": 5,
+    "testsPassed": 18,
+    "testsTotal": 18,
+    "newPostgresTests": 3,
+    "durationSeconds": 11.197
+  },
+  "fullRegression": {
+    "suitesPassed": 124,
+    "suitesTotal": 124,
+    "testsPassed": 3181,
+    "testsTotal": 3181,
+    "durationSeconds": 697.296
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.186
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 487,
+    "currentRootFiles": 488,
+    "baselineDiagnostics": 262,
+    "currentDiagnostics": 262,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 9
+}

@@ -5,6 +5,11 @@ import { isDefined } from 'twenty-shared/utils';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
+import {
+  captureNavigationMenuItemAudit,
+  withNavigationMenuItemAudit,
+  type NavigationMenuItemAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { FileStorageService } from 'src/engine/core-modules/file-storage/services/file-storage.service';
 import { type FileResponse } from 'src/engine/core-modules/file/types/file-response.type';
 import { getContentDisposition } from 'src/engine/core-modules/file/utils/get-content-disposition.util';
@@ -25,6 +30,16 @@ import {
 } from 'src/engine/metadata-modules/front-component/front-component.exception';
 import { WorkspaceMigrationBuilderException } from 'src/engine/workspace-manager/workspace-migration/exceptions/workspace-migration-builder-exception';
 import { WorkspaceMigrationValidateBuildAndRunService } from 'src/engine/workspace-manager/workspace-migration/services/workspace-migration-validate-build-and-run-service';
+
+export type FrontComponentAuditOptions = {
+  auditIdentity?: NavigationMenuItemAuditIdentity;
+  authUserWorkspaceId?: string;
+  authApiKeyId?: string;
+  authApplicationId?: string;
+  authAgentId?: string;
+  defaultSystemActorId?: string;
+  capturedAudit?: ReturnType<typeof captureNavigationMenuItemAudit>;
+};
 
 @Injectable()
 export class FrontComponentService {
@@ -79,11 +94,34 @@ export class FrontComponentService {
     input,
     workspaceId,
     ownerFlatApplication,
+    auditIdentity,
+    authUserWorkspaceId,
+    authApiKeyId,
+    authApplicationId,
+    authAgentId,
+    defaultSystemActorId,
+    capturedAudit,
   }: {
     input: Omit<CreateFrontComponentInput, 'applicationId'>;
     workspaceId: string;
     ownerFlatApplication?: FlatApplication;
-  }): Promise<FlatFrontComponent> {
+  } & FrontComponentAuditOptions): Promise<FlatFrontComponent> {
+    const capturedInput: Omit<CreateFrontComponentInput, 'applicationId'> = {
+      ...input,
+    };
+    const getFrontComponentAudit =
+      capturedAudit ??
+      captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'frontComponent',
+        auditIdentity,
+        authUserWorkspaceId,
+        authApiKeyId,
+        authApplicationId,
+        authAgentId,
+        defaultSystemActorId,
+      });
+
     const resolvedOwnerFlatApplication =
       ownerFlatApplication ??
       (
@@ -94,27 +132,32 @@ export class FrontComponentService {
 
     const flatFrontComponentToCreate =
       fromCreateFrontComponentInputToFlatFrontComponentToCreate({
-        createFrontComponentInput: input,
+        createFrontComponentInput: capturedInput,
         workspaceId,
         flatApplication: resolvedOwnerFlatApplication,
       });
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            frontComponent: {
-              flatEntityToCreate: [flatFrontComponentToCreate],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getFrontComponentAudit({
+        expectedFrontComponentCreateIds: [flatFrontComponentToCreate.id],
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              frontComponent: {
+                flatEntityToCreate: [flatFrontComponentToCreate],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [],
+              },
             },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              resolvedOwnerFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            resolvedOwnerFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -146,12 +189,37 @@ export class FrontComponentService {
     update,
     workspaceId,
     ownerFlatApplication,
+    auditIdentity,
+    authUserWorkspaceId,
+    authApiKeyId,
+    authApplicationId,
+    authAgentId,
+    defaultSystemActorId,
+    capturedAudit,
   }: {
     id: string;
     update: UpdateFrontComponentInput['update'];
     workspaceId: string;
     ownerFlatApplication?: FlatApplication;
-  }): Promise<FlatFrontComponent> {
+  } & FrontComponentAuditOptions): Promise<FlatFrontComponent> {
+    const capturedId = id;
+    const capturedUpdate: UpdateFrontComponentInput['update'] = {
+      ...update,
+    };
+    const getFrontComponentAudit =
+      capturedAudit ??
+      captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'frontComponent',
+        auditIdentity,
+        authUserWorkspaceId,
+        authApiKeyId,
+        authApplicationId,
+        authAgentId,
+        defaultSystemActorId,
+        expectedFrontComponentUpdateIds: [capturedId],
+      });
+
     const resolvedOwnerFlatApplication =
       ownerFlatApplication ??
       (
@@ -171,25 +239,30 @@ export class FrontComponentService {
     const flatFrontComponentToUpdate =
       fromUpdateFrontComponentInputToFlatFrontComponentToUpdateOrThrow({
         flatFrontComponentMaps: existingFlatFrontComponentMaps,
-        updateFrontComponentInput: { id, update },
+        updateFrontComponentInput: { id: capturedId, update: capturedUpdate },
       });
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            frontComponent: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [flatFrontComponentToUpdate],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getFrontComponentAudit({
+        expectedFrontComponentUpdateIds: [flatFrontComponentToUpdate.id],
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              frontComponent: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [flatFrontComponentToUpdate],
+              },
             },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              resolvedOwnerFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            resolvedOwnerFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -208,7 +281,7 @@ export class FrontComponentService {
 
     const updatedFlatFrontComponent = findFlatEntityByIdInFlatEntityMapsOrThrow(
       {
-        flatEntityId: id,
+        flatEntityId: capturedId,
         flatEntityMaps: recomputedFlatFrontComponentMaps,
       },
     );
@@ -221,12 +294,36 @@ export class FrontComponentService {
     workspaceId,
     isSystemBuild = false,
     ownerFlatApplication,
+    auditIdentity,
+    authUserWorkspaceId,
+    authApiKeyId,
+    authApplicationId,
+    authAgentId,
+    defaultSystemActorId,
+    capturedAudit,
   }: {
     id: string;
     workspaceId: string;
     isSystemBuild?: boolean;
     ownerFlatApplication?: FlatApplication;
-  }): Promise<FlatFrontComponent> {
+  } & FrontComponentAuditOptions): Promise<FlatFrontComponent> {
+    const capturedId = id;
+    const getFrontComponentAudit =
+      capturedAudit ??
+      captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'frontComponent',
+        auditIdentity,
+        authUserWorkspaceId,
+        authApiKeyId,
+        authApplicationId,
+        authAgentId,
+        defaultSystemActorId:
+          defaultSystemActorId ??
+          (isSystemBuild ? 'front-component:destroy-system' : undefined),
+        expectedFrontComponentDeleteIds: [capturedId],
+      });
+
     const resolvedOwnerFlatApplication =
       ownerFlatApplication ??
       (
@@ -244,7 +341,7 @@ export class FrontComponentService {
       );
 
     const existingFlatFrontComponent = findFlatEntityByIdInFlatEntityMaps({
-      flatEntityId: id,
+      flatEntityId: capturedId,
       flatEntityMaps: existingFlatFrontComponentMaps,
     });
 
@@ -255,22 +352,27 @@ export class FrontComponentService {
       );
     }
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            frontComponent: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: [existingFlatFrontComponent],
-              flatEntityToUpdate: [],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getFrontComponentAudit({
+        expectedFrontComponentDeleteIds: [existingFlatFrontComponent.id],
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              frontComponent: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: [existingFlatFrontComponent],
+                flatEntityToUpdate: [],
+              },
             },
+            workspaceId,
+            isSystemBuild,
+            applicationUniversalIdentifier:
+              resolvedOwnerFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild,
-          applicationUniversalIdentifier:
-            resolvedOwnerFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

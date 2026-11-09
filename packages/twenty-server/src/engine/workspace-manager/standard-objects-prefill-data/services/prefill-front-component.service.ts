@@ -112,6 +112,7 @@ export class PrefillFrontComponentService {
       await this.frontComponentService.createOne({
         workspaceId,
         ownerFlatApplication,
+        defaultSystemActorId: 'dev-seeder:prefill-front-component',
         input: {
           id: definition.id,
           universalIdentifier: definition.universalIdentifier,

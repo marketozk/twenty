@@ -119,6 +119,22 @@ const CATALOG: Record<
     values: ['applicationId', 'isCustom', 'isSystem', 'isActive'],
     redacted: ['name', 'label', 'icon', 'description', 'content'],
   },
+  frontComponent: {
+    values: ['applicationId', 'isHeadless', 'usesSdkClient'],
+    redacted: [
+      'name',
+      'description',
+      'sourceComponentPath',
+      'builtComponentPath',
+      'componentName',
+      'builtComponentChecksum',
+      'widgetAvailability',
+    ],
+  },
+  settingsMenuItem: {
+    values: ['applicationId', 'frontComponentId', 'scope'],
+    redacted: ['title', 'icon', 'position'],
+  },
   twoFactorAuthenticationMethod: {
     values: ['userWorkspaceId', 'strategy', 'status'],
     redacted: ['secret', 'deletedAt'],
@@ -552,6 +568,8 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   webhook: ['create', 'update', 'delete'],
   connectionProvider: ['create', 'update', 'delete'],
   skill: ['create', 'update', 'delete'],
+  frontComponent: ['create', 'update', 'delete'],
+  settingsMenuItem: ['create', 'update', 'delete'],
   twoFactorAuthenticationMethod: ['create', 'update', 'delete'],
   navigationMenuItem: ['create', 'update', 'delete'],
   agentChatChannel: ['create', 'update', 'delete'],

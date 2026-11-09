@@ -26,6 +26,8 @@ export type CrmAuditResourceKind =
   | 'webhook'
   | 'connectionProvider'
   | 'skill'
+  | 'frontComponent'
+  | 'settingsMenuItem'
   | 'twoFactorAuthenticationMethod'
   | 'navigationMenuItem'
   | 'agentChatChannel'

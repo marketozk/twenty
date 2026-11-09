@@ -5210,6 +5210,21 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 и совпали. [Публикация](implementation/log178/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765.
 
+## LOG-179 - транзакционный аудит полного жизненного цикла фронтенд-компонентов приложений (`frontComponent`, `core."frontComponent"`) и пунктов меню настроек (`settingsMenuItem`, `core."settingsMenuItem"`) с каскадным удалением
+
+10.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log179/design.md), [design-review.md](implementation/log179/design-review.md)) и реализован участок `LOG-179` (Linear `ROB-765`): транзакционный аудит полного жизненного цикла фронтенд-компонентов приложений (`core."frontComponent"`) и пунктов меню настроек (`core."settingsMenuItem"`), включая каскадное удаление `settingsMenuItem` при удалении `frontComponent` и барьер на удаление `core.application`.
+
+В `crm-audit.types.ts` и `crm-audit-transaction-context.ts` добавлены виды ресурсов `frontComponent` (`values: ['applicationId', 'isHeadless', 'usesSdkClient']`, `redacted: ['name', 'description', 'sourceComponentPath', 'builtComponentPath', 'componentName', 'builtComponentChecksum', 'widgetAvailability']`, действия `['create', 'update', 'delete']`) и `settingsMenuItem` (`values: ['applicationId', 'frontComponentId', 'scope']`, `redacted: ['title', 'icon', 'position']`, действия `['create', 'update', 'delete']`). В `navigation-menu-item-audit.ts` добавлен режим `mode: 'frontComponent'` (`assertFrontComponentRowInvariants`, `projectFrontComponent`, `resolveExpectedFrontComponentWidgetAvailability`, `assertSettingsMenuItemRowInvariants`, `projectSettingsMenuItem`, `readFrontComponentSnapshot`, `readSettingsMenuItemSnapshot`, `serializeFrontComponentSnapshot`, `serializeSettingsMenuItemSnapshot`, `expectedFrontComponentCreateIds`, `expectedFrontComponentUpdateIds`, `expectedFrontComponentDeleteIds`) с блокировкой `core."frontComponent"` и `core."settingsMenuItem"` (`ORDER BY id FOR UPDATE`), сверкой созданных/обновлённых/удалённых компонентов и каскадно удалённых пунктов меню настроек, записью `frontComponent:create`, `frontComponent:update`, `frontComponent:delete` и `settingsMenuItem:delete`, а также повторной сверкой снимков после `audit.flush()`. В `application-metadata-audit.ts` и `workspace-migration-runner.service.ts` добавлены `'frontComponent'` и `'settingsMenuItem'` в `AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES` (fail-closed барьер на неаудируемые миграции), аудит обеих таблиц в `runAuditedApplicationMetadataMigration` (включая разрешение `universalWidgetAvailability` и `frontComponentUniversalIdentifier`), согласование каскадного удаления `settingsMenuItem` в `reconcileApplicationRoleAndPermissionOperations` и проверка обеих таблиц (включая межприложенческие ссылки `settingsMenuItem -> frontComponent`) в `assertNoRemainingApplicationRoleOrPermissionMetadata` перед удалением `core.application`. Подключены `FrontComponentService` (`createOne`, `updateOne`, `destroyOne`), `FrontComponentResolver` (`createFrontComponent`, `updateFrontComponent`, `deleteFrontComponent`) и `PrefillFrontComponentService.ensureSeeded` (`defaultSystemActorId: 'dev-seeder:prefill-front-component'`).
+
+10.11.2026 проверки LOG179 завершены. 3181 tests/124 suites PASS (697.296s). 18 targeted/5 PostgreSQL suites PASS (11.197s), 3 новых PostgreSQL случая. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 487/488 roots, baseline 262 / current 262 diagnostics, 0 новых/changed-code. Совпали 9 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех входных точек `frontComponent` и `settingsMenuItem`, редактирование чувствительных метаданных (`name`, `description`, `sourceComponentPath`, `builtComponentPath`, `componentName`, `builtComponentChecksum`, `widgetAvailability`, `title`, `icon`, `position`), корректную обработку `NativeTransactionOutcomeUnknownError` и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log179/results.json), [ревью](implementation/log179/review.md),
+[следующий участок](implementation/log179/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
+
 
 
 

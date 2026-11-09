@@ -1,0 +1,13 @@
+# LOG179 - Независимое ревью дизайна (`frontComponent` и `settingsMenuItem`)
+
+## Вердикт
+`pass` (блокеров не выявлено)
+
+## Проверенные аспекты
+
+| Линза | Результат | Детали |
+|---|---|---|
+| Полнота схемы и проекции `frontComponent` и `settingsMenuItem` | `pass` | Все сравниваемые свойства `FrontComponentEntity` (`all-entity-properties-configuration-by-metadata-name.constant.ts:1759-1810`: `name`, `description`, `builtComponentChecksum`, `sourceComponentPath`, `builtComponentPath`, `componentName`, `isHeadless`, `widgetAvailability`, `usesSdkClient`) и `applicationId` включены в `projectFrontComponent` (`values: ['applicationId', 'isHeadless', 'usesSdkClient']`, `redacted: ['name', 'description', 'sourceComponentPath', 'builtComponentPath', 'componentName', 'builtComponentChecksum', 'widgetAvailability']`). Все сравниваемые свойства `SettingsMenuItemEntity` (`lines 2069-2105`: `frontComponentId`, `title`, `icon`, `position`, `scope`) и `applicationId` включены в `projectSettingsMenuItem` (`values: ['applicationId', 'frontComponentId', 'scope']`, `redacted: ['title', 'icon', 'position']`). |
+| Разрешение универсальных идентификаторов в `action.flatEntity` и `action.update` | `pass` | В `CreateFrontComponentActionHandlerService` / `UpdateFrontComponentActionHandlerService` свойство `universalWidgetAvailability` преобразуется в `widgetAvailability` через `flatObjectMetadataMaps`. В `CreateSettingsMenuItemActionHandlerService` / `UpdateSettingsMenuItemActionHandlerService` свойство `frontComponentUniversalIdentifier` преобразуется в `frontComponentId` через `flatFrontComponentMaps` (или только что созданный `frontComponent` в той же миграции). Оба преобразования учитываются при сверке в `navigation-menu-item-audit.ts` и `application-metadata-audit.ts`. |
+| Каскадное удаление `settingsMenuItem` при удалении `frontComponent` и `application` | `pass` | При удалении `frontComponent` (как через `FrontComponentService.destroyOne`, так и через `runAuditedApplicationMetadataMigration`) строки `core."settingsMenuItem"`, ссылающиеся на удаляемый `frontComponentId` (`ON DELETE CASCADE`), захватываются под `FOR UPDATE` до выполнения миграции и фиксируются как `settingsMenuItem:delete` в той же транзакции аудита. В `assertNoRemainingApplicationRoleOrPermissionMetadata` проверяются как собственные строки `frontComponent` и `settingsMenuItem`, так и межприложенческие ссылки `settingsMenuItem -> frontComponent`. |
+| Изоляция от `@license Enterprise` | `pass` | Затронутые файлы не импортируют модули `@license Enterprise` и не добавляют новых зависимостей от `twenty-shared/utils`. |

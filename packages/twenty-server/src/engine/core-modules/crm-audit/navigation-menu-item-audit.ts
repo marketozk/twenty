@@ -42,7 +42,8 @@ export type NavigationMenuItemAuditMode =
   | 'cascade'
   | 'channel'
   | 'webhook'
-  | 'skill';
+  | 'skill'
+  | 'frontComponent';
 
 export type NavigationMenuItemAuditRequest = Readonly<{
   workspaceId: string;
@@ -69,6 +70,9 @@ export type NavigationMenuItemAuditRequest = Readonly<{
   expectedSkillCreateIds?: readonly string[];
   expectedSkillUpdateIds?: readonly string[];
   expectedSkillDeleteIds?: readonly string[];
+  expectedFrontComponentCreateIds?: readonly string[];
+  expectedFrontComponentUpdateIds?: readonly string[];
+  expectedFrontComponentDeleteIds?: readonly string[];
 }>;
 
 export type NavigationMenuItemAuditMappings = {
@@ -80,6 +84,8 @@ export type NavigationMenuItemAuditMappings = {
   agentChatChannelRoles?: Record<string, { id: string } | undefined>;
   webhooks?: Record<string, { id: string } | undefined>;
   skills?: Record<string, { id: string } | undefined>;
+  frontComponents?: Record<string, { id: string } | undefined>;
+  settingsMenuItems?: Record<string, { id: string } | undefined>;
   roles?: Record<string, { id: string } | undefined>;
   objectMetadatas?: Record<string, { id: string } | undefined>;
   fieldMetadatas?: Record<string, { id: string } | undefined>;
@@ -427,6 +433,167 @@ export const projectSkill = (row: Record<string, unknown>) => ({
   content: String(row.content),
 });
 
+export const assertFrontComponentRowInvariants = (
+  row: Record<string, unknown>,
+  workspaceId: string,
+): void => {
+  uuid(row.id);
+  if (uuid(row.workspaceId) !== workspaceId) {
+    throw new Error('Front component audit row workspace mismatch');
+  }
+  uuid(row.applicationId);
+  uuid(row.universalIdentifier);
+  if (row.deletedAt !== null && row.deletedAt !== undefined) {
+    throw new Error('Front component audit soft-deleted row is unsupported');
+  }
+  if (typeof row.name !== 'string' || row.name.trim().length === 0) {
+    throw new Error('Front component audit name is invalid');
+  }
+  if (
+    row.description !== null &&
+    row.description !== undefined &&
+    typeof row.description !== 'string'
+  ) {
+    throw new Error('Front component audit description is invalid');
+  }
+  if (
+    typeof row.sourceComponentPath !== 'string' ||
+    row.sourceComponentPath.trim().length === 0
+  ) {
+    throw new Error('Front component audit sourceComponentPath is invalid');
+  }
+  if (
+    typeof row.builtComponentPath !== 'string' ||
+    row.builtComponentPath.trim().length === 0
+  ) {
+    throw new Error('Front component audit builtComponentPath is invalid');
+  }
+  if (
+    typeof row.componentName !== 'string' ||
+    row.componentName.trim().length === 0
+  ) {
+    throw new Error('Front component audit componentName is invalid');
+  }
+  if (
+    typeof row.builtComponentChecksum !== 'string' ||
+    row.builtComponentChecksum.trim().length === 0
+  ) {
+    throw new Error('Front component audit builtComponentChecksum is invalid');
+  }
+  if (typeof row.isHeadless !== 'boolean') {
+    throw new Error('Front component audit isHeadless is invalid');
+  }
+  if (!Array.isArray(row.widgetAvailability)) {
+    throw new Error('Front component audit widgetAvailability is invalid');
+  }
+  if (typeof row.usesSdkClient !== 'boolean') {
+    throw new Error('Front component audit usesSdkClient is invalid');
+  }
+};
+
+export const projectFrontComponent = (row: Record<string, unknown>) => ({
+  applicationId: uuid(row.applicationId),
+  isHeadless: Boolean(row.isHeadless),
+  usesSdkClient: Boolean(row.usesSdkClient),
+  name: String(row.name),
+  description:
+    row.description === undefined || row.description === null
+      ? null
+      : String(row.description),
+  sourceComponentPath: String(row.sourceComponentPath),
+  builtComponentPath: String(row.builtComponentPath),
+  componentName: String(row.componentName),
+  builtComponentChecksum: String(row.builtComponentChecksum),
+  widgetAvailability: Array.isArray(row.widgetAvailability)
+    ? row.widgetAvailability
+    : [],
+});
+
+export const resolveExpectedFrontComponentWidgetAvailability = (
+  flatOrUpdate: Record<string, unknown>,
+  objectMetadatas?: Record<string, { id: string } | undefined>,
+): unknown[] | undefined => {
+  if (Array.isArray(flatOrUpdate.universalWidgetAvailability)) {
+    return flatOrUpdate.universalWidgetAvailability.flatMap(
+      (rawEntry: unknown) => {
+        if (
+          !rawEntry ||
+          typeof rawEntry !== 'object' ||
+          Array.isArray(rawEntry)
+        ) {
+          throw new Error(
+            'Front component widgetAvailability entry is invalid',
+          );
+        }
+        const { objectMetadataUniversalIdentifier, ...rest } =
+          rawEntry as Record<string, unknown>;
+        if (objectMetadataUniversalIdentifier === undefined) {
+          return [rest];
+        }
+        if (objectMetadataUniversalIdentifier === null) {
+          return [];
+        }
+        const mappedObjectId =
+          objectMetadatas?.[uuid(objectMetadataUniversalIdentifier)]?.id;
+        if (!mappedObjectId) {
+          throw new Error(
+            'Front component widgetAvailability references unknown objectMetadataUniversalIdentifier',
+          );
+        }
+        return [{ ...rest, objectMetadataId: uuid(mappedObjectId) }];
+      },
+    );
+  }
+  if (Array.isArray(flatOrUpdate.widgetAvailability)) {
+    return flatOrUpdate.widgetAvailability;
+  }
+  return undefined;
+};
+
+export const assertSettingsMenuItemRowInvariants = (
+  row: Record<string, unknown>,
+  workspaceId: string,
+): void => {
+  uuid(row.id);
+  if (uuid(row.workspaceId) !== workspaceId) {
+    throw new Error('Settings menu item audit row workspace mismatch');
+  }
+  uuid(row.applicationId);
+  uuid(row.universalIdentifier);
+  if (row.deletedAt !== null && row.deletedAt !== undefined) {
+    throw new Error('Settings menu item audit soft-deleted row is unsupported');
+  }
+  uuid(row.frontComponentId);
+  if (typeof row.title !== 'string' || row.title.trim().length === 0) {
+    throw new Error('Settings menu item audit title is invalid');
+  }
+  if (
+    row.icon !== null &&
+    row.icon !== undefined &&
+    typeof row.icon !== 'string'
+  ) {
+    throw new Error('Settings menu item audit icon is invalid');
+  }
+  const position =
+    typeof row.position === 'number' ? row.position : Number(row.position);
+  if (!Number.isFinite(position)) {
+    throw new Error('Settings menu item audit position is invalid');
+  }
+  if (row.scope !== 'WORKSPACE' && row.scope !== 'USER') {
+    throw new Error('Settings menu item audit scope is invalid');
+  }
+};
+
+export const projectSettingsMenuItem = (row: Record<string, unknown>) => ({
+  applicationId: uuid(row.applicationId),
+  frontComponentId: uuid(row.frontComponentId),
+  scope: String(row.scope),
+  title: String(row.title),
+  icon: row.icon === undefined || row.icon === null ? null : String(row.icon),
+  position:
+    typeof row.position === 'number' ? row.position : Number(row.position),
+});
+
 export const getNavigationMenuItemAudit = (workspaceId: string) => {
   const request = storage.getStore();
   if (!request) return undefined;
@@ -760,6 +927,9 @@ export type NavigationMenuItemAuditExpectedScope = {
   expectedSkillCreateIds?: readonly string[];
   expectedSkillUpdateIds?: readonly string[];
   expectedSkillDeleteIds?: readonly string[];
+  expectedFrontComponentCreateIds?: readonly string[];
+  expectedFrontComponentUpdateIds?: readonly string[];
+  expectedFrontComponentDeleteIds?: readonly string[];
 };
 
 export const captureNavigationMenuItemAudit = ({
@@ -788,6 +958,9 @@ export const captureNavigationMenuItemAudit = ({
   expectedSkillCreateIds,
   expectedSkillUpdateIds,
   expectedSkillDeleteIds,
+  expectedFrontComponentCreateIds,
+  expectedFrontComponentUpdateIds,
+  expectedFrontComponentDeleteIds,
 }: {
   workspaceId: string;
   mode: NavigationMenuItemAuditMode;
@@ -868,6 +1041,15 @@ export const captureNavigationMenuItemAudit = ({
   const baseSkillCreateIds = normalizeIds(expectedSkillCreateIds);
   const baseSkillUpdateIds = normalizeIds(expectedSkillUpdateIds);
   const baseSkillDeleteIds = normalizeIds(expectedSkillDeleteIds);
+  const baseFrontComponentCreateIds = normalizeIds(
+    expectedFrontComponentCreateIds,
+  );
+  const baseFrontComponentUpdateIds = normalizeIds(
+    expectedFrontComponentUpdateIds,
+  );
+  const baseFrontComponentDeleteIds = normalizeIds(
+    expectedFrontComponentDeleteIds,
+  );
 
   return (overrides) => {
     const resolvedCreatedIds =
@@ -910,6 +1092,15 @@ export const captureNavigationMenuItemAudit = ({
       normalizeIds(overrides?.expectedSkillUpdateIds) ?? baseSkillUpdateIds;
     const resolvedSkillDeleteIds =
       normalizeIds(overrides?.expectedSkillDeleteIds) ?? baseSkillDeleteIds;
+    const resolvedFrontComponentCreateIds =
+      normalizeIds(overrides?.expectedFrontComponentCreateIds) ??
+      baseFrontComponentCreateIds;
+    const resolvedFrontComponentUpdateIds =
+      normalizeIds(overrides?.expectedFrontComponentUpdateIds) ??
+      baseFrontComponentUpdateIds;
+    const resolvedFrontComponentDeleteIds =
+      normalizeIds(overrides?.expectedFrontComponentDeleteIds) ??
+      baseFrontComponentDeleteIds;
 
     return Object.freeze({
       workspaceId: normalizedWorkspaceId,
@@ -971,6 +1162,15 @@ export const captureNavigationMenuItemAudit = ({
         : {}),
       ...(resolvedSkillDeleteIds !== undefined
         ? { expectedSkillDeleteIds: resolvedSkillDeleteIds }
+        : {}),
+      ...(resolvedFrontComponentCreateIds !== undefined
+        ? { expectedFrontComponentCreateIds: resolvedFrontComponentCreateIds }
+        : {}),
+      ...(resolvedFrontComponentUpdateIds !== undefined
+        ? { expectedFrontComponentUpdateIds: resolvedFrontComponentUpdateIds }
+        : {}),
+      ...(resolvedFrontComponentDeleteIds !== undefined
+        ? { expectedFrontComponentDeleteIds: resolvedFrontComponentDeleteIds }
         : {}),
     });
   };
@@ -1259,6 +1459,40 @@ const readSkillSnapshot = async (
   );
 };
 
+const readFrontComponentSnapshot = async (
+  runner: QueryRunner,
+  workspaceId: string,
+  lock: boolean,
+): Promise<Map<string, Record<string, unknown>>> => {
+  const rows = await runner.query(
+    `SELECT to_jsonb(fc) AS row FROM core."frontComponent" fc WHERE fc."workspaceId"=$1 ORDER BY fc.id${lock ? ' FOR UPDATE' : ''}`,
+    [workspaceId],
+  );
+  return new Map(
+    rows.map((entry: { row: Record<string, unknown> }) => [
+      uuid(entry.row.id),
+      entry.row,
+    ]),
+  );
+};
+
+const readSettingsMenuItemSnapshot = async (
+  runner: QueryRunner,
+  workspaceId: string,
+  lock: boolean,
+): Promise<Map<string, Record<string, unknown>>> => {
+  const rows = await runner.query(
+    `SELECT to_jsonb(smi) AS row FROM core."settingsMenuItem" smi WHERE smi."workspaceId"=$1 ORDER BY smi.id${lock ? ' FOR UPDATE' : ''}`,
+    [workspaceId],
+  );
+  return new Map(
+    rows.map((entry: { row: Record<string, unknown> }) => [
+      uuid(entry.row.id),
+      entry.row,
+    ]),
+  );
+};
+
 const serializeNavSnapshot = (
   snapshot: Map<string, Record<string, unknown>>,
 ): string =>
@@ -1280,6 +1514,26 @@ const serializeWebhookSnapshot = (
   );
 
 const serializeSkillSnapshot = (
+  snapshot: Map<string, Record<string, unknown>>,
+): string =>
+  canonicalAuditJson(
+    [...snapshot.entries()].map(([id, row]) => [
+      id,
+      scalarNavigationMenuItemWithoutTimestamps(row),
+    ]),
+  );
+
+const serializeFrontComponentSnapshot = (
+  snapshot: Map<string, Record<string, unknown>>,
+): string =>
+  canonicalAuditJson(
+    [...snapshot.entries()].map(([id, row]) => [
+      id,
+      scalarNavigationMenuItemWithoutTimestamps(row),
+    ]),
+  );
+
+const serializeSettingsMenuItemSnapshot = (
   snapshot: Map<string, Record<string, unknown>>,
 ): string =>
   canonicalAuditJson(
@@ -1419,11 +1673,14 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         to_regclass('core."agentChatChannelRole"') IS NOT NULL AS "hasChannelRoleTable",
         to_regclass('core.role') IS NOT NULL AS "hasRoleTable",
         to_regclass('core.webhook') IS NOT NULL AS "hasWebhookTable",
-        to_regclass('core.skill') IS NOT NULL AS "hasSkillTable"`,
+        to_regclass('core.skill') IS NOT NULL AS "hasSkillTable",
+        to_regclass('core."frontComponent"') IS NOT NULL AS "hasFrontComponentTable",
+        to_regclass('core."settingsMenuItem"') IS NOT NULL AS "hasSettingsMenuItemTable"`,
     );
     if (
       request.mode !== 'webhook' &&
       request.mode !== 'skill' &&
+      request.mode !== 'frontComponent' &&
       reg?.hasNavTable !== true
     ) {
       throw new Error(
@@ -1492,6 +1749,56 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       assertSkillRowInvariants(row, request.workspaceId);
     }
 
+    const touchesFrontComponents =
+      request.mode === 'frontComponent' ||
+      request.expectedFrontComponentCreateIds !== undefined ||
+      request.expectedFrontComponentUpdateIds !== undefined ||
+      request.expectedFrontComponentDeleteIds !== undefined ||
+      actions.some(
+        (action) =>
+          action.metadataName === 'frontComponent' ||
+          action.metadataName === 'settingsMenuItem',
+      );
+    if (touchesFrontComponents && reg?.hasFrontComponentTable !== true) {
+      throw new Error(
+        'Front component audit table core.frontComponent unavailable',
+      );
+    }
+
+    const beforeFrontComponents =
+      touchesFrontComponents && reg?.hasFrontComponentTable === true
+        ? await readFrontComponentSnapshot(runner, request.workspaceId, true)
+        : new Map<string, Record<string, unknown>>();
+    for (const row of beforeFrontComponents.values()) {
+      assertFrontComponentRowInvariants(row, request.workspaceId);
+    }
+
+    const touchesSettingsMenuItems =
+      touchesFrontComponents &&
+      (request.expectedFrontComponentDeleteIds !== undefined ||
+        actions.some(
+          (action) =>
+            (action.metadataName === 'frontComponent' &&
+              action.type === 'delete') ||
+            action.metadataName === 'settingsMenuItem',
+        ));
+    if (
+      actions.some((action) => action.metadataName === 'settingsMenuItem') &&
+      reg?.hasSettingsMenuItemTable !== true
+    ) {
+      throw new Error(
+        'Settings menu item audit table core.settingsMenuItem unavailable',
+      );
+    }
+
+    const beforeSettingsMenuItems =
+      touchesSettingsMenuItems && reg?.hasSettingsMenuItemTable === true
+        ? await readSettingsMenuItemSnapshot(runner, request.workspaceId, true)
+        : new Map<string, Record<string, unknown>>();
+    for (const row of beforeSettingsMenuItems.values()) {
+      assertSettingsMenuItemRowInvariants(row, request.workspaceId);
+    }
+
     const touchesChannelsOrRoles =
       request.mode === 'channel' ||
       request.expectedParentChannelDeleteIds !== undefined ||
@@ -1543,6 +1850,7 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
     const beforeNavItems =
       request.mode !== 'webhook' &&
       request.mode !== 'skill' &&
+      request.mode !== 'frontComponent' &&
       reg?.hasNavTable === true
         ? await readNavSnapshot(runner, request.workspaceId, true)
         : new Map<string, Record<string, unknown>>();
@@ -1586,6 +1894,16 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
     >();
     const plannedSkillUpdates = new Map<string, Record<string, unknown>>();
     const plannedSkillDeletes = new Set<string>();
+    const plannedFrontComponentCreatesByUniversalIdentifier = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedFrontComponentUpdates = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    const plannedFrontComponentDeletes = new Set<string>();
+    const plannedSettingsMenuItemDeletes = new Set<string>();
     const plannedObjectCreates = new Set<string>();
     const plannedObjectDeletes = new Set<string>();
     const plannedFieldDeletes = new Set<string>();
@@ -1646,6 +1964,18 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         if (action.metadataName !== 'skill') {
           throw new Error(
             `Skill audit disallows ${action.metadataName} actions`,
+          );
+        }
+      } else if (request.mode === 'frontComponent') {
+        if (
+          action.metadataName !== 'frontComponent' &&
+          !(
+            action.metadataName === 'settingsMenuItem' &&
+            action.type === 'delete'
+          )
+        ) {
+          throw new Error(
+            `Front component audit disallows ${action.metadataName} actions`,
           );
         }
       } else {
@@ -2011,6 +2341,89 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         } else {
           throw new Error(`Unsupported skill action type ${action.type}`);
         }
+      } else if (action.metadataName === 'frontComponent') {
+        if (action.type === 'create') {
+          if (!action.flatEntity) {
+            throw new Error(
+              'Front component create action requires flatEntity',
+            );
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (
+            plannedFrontComponentCreatesByUniversalIdentifier.has(universalId)
+          ) {
+            throw new Error(
+              'Front component create audit duplicate universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error(
+              'Front component create action application mismatch',
+            );
+          }
+          const explicitId =
+            action.id !== undefined
+              ? uuid(action.id)
+              : action.flatEntity.id !== undefined
+                ? uuid(action.flatEntity.id)
+                : undefined;
+          if (
+            explicitId !== undefined &&
+            beforeFrontComponents.has(explicitId)
+          ) {
+            throw new Error('Front component create target ID already exists');
+          }
+          plannedFrontComponentCreatesByUniversalIdentifier.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.frontComponents?.[universalId]?.id;
+          if (!mappedId || !action.update) {
+            throw new Error(
+              'Front component update audit missing mapping or update payload',
+            );
+          }
+          const targetId = uuid(mappedId);
+          if (plannedFrontComponentUpdates.has(targetId)) {
+            throw new Error('Front component update audit duplicate ID');
+          }
+          plannedFrontComponentUpdates.set(targetId, action.update);
+        } else if (action.type === 'delete') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.frontComponents?.[universalId]?.id;
+          if (!mappedId) {
+            throw new Error('Front component delete audit missing mapping');
+          }
+          const targetId = uuid(mappedId);
+          if (plannedFrontComponentDeletes.has(targetId)) {
+            throw new Error('Front component delete audit duplicate ID');
+          }
+          plannedFrontComponentDeletes.add(targetId);
+        } else {
+          throw new Error(
+            `Unsupported frontComponent action type ${action.type}`,
+          );
+        }
+      } else if (
+        action.metadataName === 'settingsMenuItem' &&
+        action.type === 'delete'
+      ) {
+        const universalId = uuid(action.universalIdentifier);
+        const mappedId = mappings.settingsMenuItems?.[universalId]?.id;
+        if (!mappedId) {
+          throw new Error('Settings menu item delete audit missing mapping');
+        }
+        const targetId = uuid(mappedId);
+        if (plannedSettingsMenuItemDeletes.has(targetId)) {
+          throw new Error('Settings menu item delete audit duplicate ID');
+        }
+        plannedSettingsMenuItemDeletes.add(targetId);
       }
     }
 
@@ -2059,6 +2472,16 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         request.expectedSkillDeleteIds !== undefined;
       if (!hasSkillConstraint) {
         throw new Error('Skill audit requires explicit expected scope');
+      }
+    } else if (request.mode === 'frontComponent') {
+      const hasFrontComponentConstraint =
+        request.expectedFrontComponentCreateIds !== undefined ||
+        request.expectedFrontComponentUpdateIds !== undefined ||
+        request.expectedFrontComponentDeleteIds !== undefined;
+      if (!hasFrontComponentConstraint) {
+        throw new Error(
+          'Front component audit requires explicit expected scope',
+        );
       }
     }
 
@@ -2261,6 +2684,130 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       if (activeApps.length !== foreignSkillAppIds.size) {
         throw new Error(
           'Skill target row belongs to an unavailable application',
+        );
+      }
+    }
+
+    if (request.expectedFrontComponentCreateIds !== undefined) {
+      const actualFrontComponentCreateIds = [
+        ...plannedFrontComponentCreatesByUniversalIdentifier.values(),
+      ]
+        .map((entry) => entry.id)
+        .filter((id): id is string => id !== undefined);
+      if (
+        plannedFrontComponentCreatesByUniversalIdentifier.size !==
+          request.expectedFrontComponentCreateIds.length ||
+        actualFrontComponentCreateIds.length !==
+          request.expectedFrontComponentCreateIds.length ||
+        request.expectedFrontComponentCreateIds.some(
+          (id) => !actualFrontComponentCreateIds.includes(id),
+        )
+      ) {
+        throw new Error(
+          'Front component create plan does not match expected IDs',
+        );
+      }
+    } else if (
+      request.mode === 'frontComponent' &&
+      plannedFrontComponentCreatesByUniversalIdentifier.size > 0
+    ) {
+      throw new Error(
+        'Front component audit detected unexpected frontComponent create',
+      );
+    }
+
+    if (request.expectedFrontComponentUpdateIds !== undefined) {
+      if (
+        plannedFrontComponentUpdates.size !==
+          request.expectedFrontComponentUpdateIds.length ||
+        request.expectedFrontComponentUpdateIds.some(
+          (id) => !plannedFrontComponentUpdates.has(id),
+        )
+      ) {
+        throw new Error(
+          'Front component update plan does not match expected IDs',
+        );
+      }
+    } else if (
+      request.mode === 'frontComponent' &&
+      plannedFrontComponentUpdates.size > 0
+    ) {
+      throw new Error(
+        'Front component audit detected unexpected frontComponent update',
+      );
+    }
+
+    if (request.expectedFrontComponentDeleteIds !== undefined) {
+      if (
+        plannedFrontComponentDeletes.size !==
+          request.expectedFrontComponentDeleteIds.length ||
+        request.expectedFrontComponentDeleteIds.some(
+          (id) => !plannedFrontComponentDeletes.has(id),
+        )
+      ) {
+        throw new Error(
+          'Front component delete plan does not match expected IDs',
+        );
+      }
+    } else if (
+      request.mode === 'frontComponent' &&
+      plannedFrontComponentDeletes.size > 0
+    ) {
+      throw new Error(
+        'Front component audit detected unexpected frontComponent delete',
+      );
+    }
+
+    const foreignFrontComponentAppIds = new Set<string>();
+    for (const targetId of plannedFrontComponentUpdates.keys()) {
+      const beforeFc = beforeFrontComponents.get(targetId);
+      if (!beforeFc) {
+        throw new Error('Front component update target row unavailable');
+      }
+      const fcAppId = uuid(beforeFc.applicationId);
+      if (fcAppId !== applicationId) {
+        if (request.mode !== 'frontComponent') {
+          throw new Error(
+            'Front component update target row belongs to another application',
+          );
+        }
+        foreignFrontComponentAppIds.add(fcAppId);
+      }
+    }
+    for (const targetId of plannedFrontComponentDeletes) {
+      const beforeFc = beforeFrontComponents.get(targetId);
+      if (!beforeFc) {
+        throw new Error('Front component delete target row unavailable');
+      }
+      const fcAppId = uuid(beforeFc.applicationId);
+      if (fcAppId !== applicationId) {
+        if (request.mode !== 'frontComponent') {
+          throw new Error(
+            'Front component delete target row belongs to another application',
+          );
+        }
+        foreignFrontComponentAppIds.add(fcAppId);
+      }
+    }
+    for (const smiId of plannedSettingsMenuItemDeletes) {
+      const beforeSmi = beforeSettingsMenuItems.get(smiId);
+      if (
+        !beforeSmi ||
+        !plannedFrontComponentDeletes.has(uuid(beforeSmi.frontComponentId))
+      ) {
+        throw new Error(
+          'Front component audit cannot delete unrelated settingsMenuItem',
+        );
+      }
+    }
+    if (foreignFrontComponentAppIds.size > 0) {
+      const activeApps = await runner.query(
+        `SELECT id FROM core.application a WHERE a."workspaceId"=$1 AND a.id=ANY($2::uuid[]) AND to_jsonb(a)->>'deletedAt' IS NULL ORDER BY a.id FOR NO KEY UPDATE`,
+        [request.workspaceId, [...foreignFrontComponentAppIds]],
+      );
+      if (activeApps.length !== foreignFrontComponentAppIds.size) {
+        throw new Error(
+          'Front component target row belongs to an unavailable application',
         );
       }
     }
@@ -2756,6 +3303,7 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
     const afterNavItems =
       request.mode !== 'webhook' &&
       request.mode !== 'skill' &&
+      request.mode !== 'frontComponent' &&
       reg?.hasNavTable === true
         ? await readNavSnapshot(runner, request.workspaceId, false)
         : new Map<string, Record<string, unknown>>();
@@ -3797,10 +4345,330 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       expectedSkillsSerialized = serializeSkillSnapshot(afterSkills);
     }
 
+    let expectedFrontComponentsSerialized: string | undefined;
+    let expectedSettingsMenuItemsSerialized: string | undefined;
+    if (touchesFrontComponents && reg?.hasFrontComponentTable === true) {
+      const afterFrontComponents = await readFrontComponentSnapshot(
+        runner,
+        request.workspaceId,
+        false,
+      );
+      const createdFrontComponentsByUniversalId = new Map<
+        string,
+        Record<string, unknown>
+      >();
+      for (const [id, afterRow] of afterFrontComponents.entries()) {
+        assertFrontComponentRowInvariants(afterRow, request.workspaceId);
+        if (!beforeFrontComponents.has(id)) {
+          const universalId = uuid(afterRow.universalIdentifier);
+          if (createdFrontComponentsByUniversalId.has(universalId)) {
+            throw new Error(
+              'Front component audit detected duplicate created universalIdentifier',
+            );
+          }
+          createdFrontComponentsByUniversalId.set(universalId, afterRow);
+        }
+      }
+      if (
+        createdFrontComponentsByUniversalId.size !==
+        plannedFrontComponentCreatesByUniversalIdentifier.size
+      ) {
+        throw new Error('Front component audit created row count mismatch');
+      }
+      for (const [
+        universalId,
+        planned,
+      ] of plannedFrontComponentCreatesByUniversalIdentifier.entries()) {
+        const afterRow = createdFrontComponentsByUniversalId.get(universalId);
+        if (!afterRow) {
+          throw new Error(
+            'Front component create did not persist expected row',
+          );
+        }
+        const createdId = uuid(afterRow.id);
+        if (planned.id !== undefined && createdId !== planned.id) {
+          throw new Error('Front component create persisted unexpected ID');
+        }
+        if (uuid(afterRow.applicationId) !== applicationId) {
+          throw new Error(
+            'Front component create persisted unexpected applicationId',
+          );
+        }
+        const afterProj = projectFrontComponent(afterRow);
+        for (const textKey of [
+          'name',
+          'sourceComponentPath',
+          'builtComponentPath',
+          'componentName',
+          'builtComponentChecksum',
+        ] as const) {
+          if (
+            planned.flatEntity[textKey] !== undefined &&
+            afterProj[textKey] !== String(planned.flatEntity[textKey])
+          ) {
+            throw new Error(
+              `Front component create persisted unexpected ${textKey}`,
+            );
+          }
+        }
+        if (planned.flatEntity.description !== undefined) {
+          const expectedDesc =
+            planned.flatEntity.description === null
+              ? null
+              : String(planned.flatEntity.description);
+          if (afterProj.description !== expectedDesc) {
+            throw new Error(
+              'Front component create persisted unexpected description',
+            );
+          }
+        }
+        for (const boolKey of ['isHeadless', 'usesSdkClient'] as const) {
+          if (
+            planned.flatEntity[boolKey] !== undefined &&
+            afterProj[boolKey] !== Boolean(planned.flatEntity[boolKey])
+          ) {
+            throw new Error(
+              `Front component create persisted unexpected ${boolKey}`,
+            );
+          }
+        }
+        const expectedWidgets = resolveExpectedFrontComponentWidgetAvailability(
+          planned.flatEntity,
+          mappings.objectMetadatas,
+        );
+        if (
+          expectedWidgets !== undefined &&
+          canonicalAuditJson(afterProj.widgetAvailability) !==
+            canonicalAuditJson(expectedWidgets)
+        ) {
+          throw new Error(
+            'Front component create persisted unexpected widgetAvailability',
+          );
+        }
+        audit.record({
+          resourceKind: 'frontComponent',
+          resourceId: createdId,
+          action: 'create',
+          before: null,
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'frontComponent',
+            resourceId: createdId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        recordedMutations += 1;
+      }
+
+      for (const [targetId, update] of plannedFrontComponentUpdates.entries()) {
+        const beforeRow = beforeFrontComponents.get(targetId);
+        const afterRow = afterFrontComponents.get(targetId);
+        if (!beforeRow || !afterRow) {
+          throw new Error('Front component update removed or lost target row');
+        }
+        if (
+          uuid(beforeRow.applicationId) !== uuid(afterRow.applicationId) ||
+          uuid(beforeRow.universalIdentifier) !==
+            uuid(afterRow.universalIdentifier)
+        ) {
+          throw new Error('Front component update modified immutable fields');
+        }
+        const beforeProj = projectFrontComponent(beforeRow);
+        const afterProj = projectFrontComponent(afterRow);
+        for (const textKey of [
+          'name',
+          'sourceComponentPath',
+          'builtComponentPath',
+          'componentName',
+          'builtComponentChecksum',
+        ] as const) {
+          const expectedVal =
+            textKey in update && update[textKey] !== undefined
+              ? String(update[textKey])
+              : beforeProj[textKey];
+          if (afterProj[textKey] !== expectedVal) {
+            throw new Error(
+              `Front component update did not persist expected ${textKey}`,
+            );
+          }
+        }
+        const expectedDesc =
+          'description' in update && update.description !== undefined
+            ? update.description === null
+              ? null
+              : String(update.description)
+            : beforeProj.description;
+        if (afterProj.description !== expectedDesc) {
+          throw new Error(
+            'Front component update did not persist expected description',
+          );
+        }
+        for (const boolKey of ['isHeadless', 'usesSdkClient'] as const) {
+          const expectedVal =
+            boolKey in update && update[boolKey] !== undefined
+              ? Boolean(update[boolKey])
+              : beforeProj[boolKey];
+          if (afterProj[boolKey] !== expectedVal) {
+            throw new Error(
+              `Front component update did not persist expected ${boolKey}`,
+            );
+          }
+        }
+        const resolvedUpdateWidgets =
+          resolveExpectedFrontComponentWidgetAvailability(
+            update,
+            mappings.objectMetadatas,
+          );
+        const expectedWidgets =
+          resolvedUpdateWidgets !== undefined
+            ? resolvedUpdateWidgets
+            : beforeProj.widgetAvailability;
+        if (
+          canonicalAuditJson(afterProj.widgetAvailability) !==
+          canonicalAuditJson(expectedWidgets)
+        ) {
+          throw new Error(
+            'Front component update did not persist expected widgetAvailability',
+          );
+        }
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          audit.record({
+            resourceKind: 'frontComponent',
+            resourceId: targetId,
+            action: 'update',
+            before: beforeProj,
+            after: afterProj,
+            securityDescriptor: {
+              resourceKind: 'frontComponent',
+              resourceId: targetId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedMutations += 1;
+        }
+      }
+
+      for (const deletedId of plannedFrontComponentDeletes) {
+        const beforeRow = beforeFrontComponents.get(deletedId);
+        if (!beforeRow) {
+          throw new Error(
+            'Front component delete expected row missing before migration',
+          );
+        }
+        if (afterFrontComponents.has(deletedId)) {
+          throw new Error('Front component delete did not remove expected row');
+        }
+        audit.record({
+          resourceKind: 'frontComponent',
+          resourceId: deletedId,
+          action: 'delete',
+          before: projectFrontComponent(beforeRow),
+          after: null,
+          securityDescriptor: {
+            resourceKind: 'frontComponent',
+            resourceId: deletedId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        recordedMutations += 1;
+      }
+
+      for (const [id, beforeRow] of beforeFrontComponents.entries()) {
+        if (plannedFrontComponentDeletes.has(id)) continue;
+        const afterRow = afterFrontComponents.get(id);
+        if (!afterRow) {
+          throw new Error(
+            'Front component audit detected unplanned row deletion',
+          );
+        }
+        if (!plannedFrontComponentUpdates.has(id)) {
+          if (
+            canonicalAuditJson(
+              scalarNavigationMenuItemWithoutTimestamps(beforeRow),
+            ) !==
+            canonicalAuditJson(
+              scalarNavigationMenuItemWithoutTimestamps(afterRow),
+            )
+          ) {
+            throw new Error(
+              'Front component audit detected unplanned row mutation',
+            );
+          }
+        }
+      }
+
+      expectedFrontComponentsSerialized =
+        serializeFrontComponentSnapshot(afterFrontComponents);
+
+      if (touchesSettingsMenuItems && reg?.hasSettingsMenuItemTable === true) {
+        const afterSettingsMenuItems = await readSettingsMenuItemSnapshot(
+          runner,
+          request.workspaceId,
+          false,
+        );
+        for (const [id, afterRow] of afterSettingsMenuItems.entries()) {
+          assertSettingsMenuItemRowInvariants(afterRow, request.workspaceId);
+          if (!beforeSettingsMenuItems.has(id)) {
+            throw new Error(
+              'Settings menu item audit detected unplanned row creation',
+            );
+          }
+        }
+        for (const [smiId, beforeSmi] of beforeSettingsMenuItems.entries()) {
+          const isExpectedDelete =
+            plannedSettingsMenuItemDeletes.has(smiId) ||
+            plannedFrontComponentDeletes.has(uuid(beforeSmi.frontComponentId));
+          const afterSmi = afterSettingsMenuItems.get(smiId);
+          if (isExpectedDelete) {
+            if (afterSmi) {
+              throw new Error(
+                'Settings menu item delete did not remove expected row',
+              );
+            }
+            audit.record({
+              resourceKind: 'settingsMenuItem',
+              resourceId: smiId,
+              action: 'delete',
+              before: projectSettingsMenuItem(beforeSmi),
+              after: null,
+              securityDescriptor: {
+                resourceKind: 'settingsMenuItem',
+                resourceId: smiId,
+                metadataAccess: 'currentWorkspaceAdministration',
+              },
+            });
+            recordedMutations += 1;
+          } else {
+            if (!afterSmi) {
+              throw new Error(
+                'Settings menu item audit detected unplanned row deletion',
+              );
+            }
+            if (
+              canonicalAuditJson(
+                scalarNavigationMenuItemWithoutTimestamps(beforeSmi),
+              ) !==
+              canonicalAuditJson(
+                scalarNavigationMenuItemWithoutTimestamps(afterSmi),
+              )
+            ) {
+              throw new Error(
+                'Settings menu item audit detected unplanned row mutation',
+              );
+            }
+          }
+        }
+        expectedSettingsMenuItemsSerialized = serializeSettingsMenuItemSnapshot(
+          afterSettingsMenuItems,
+        );
+      }
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized =
         request.mode !== 'webhook' &&
         request.mode !== 'skill' &&
+        request.mode !== 'frontComponent' &&
         reg?.hasNavTable === true
           ? serializeNavSnapshot(afterNavItems)
           : undefined;
@@ -3860,6 +4728,34 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           serializeSkillSnapshot(postFlushSkills) !== expectedSkillsSerialized
         ) {
           throw new Error('Skill state changed during audit flush');
+        }
+      }
+      if (expectedFrontComponentsSerialized !== undefined) {
+        const postFlushFrontComponents = await readFrontComponentSnapshot(
+          runner,
+          request.workspaceId,
+          false,
+        );
+        if (
+          serializeFrontComponentSnapshot(postFlushFrontComponents) !==
+          expectedFrontComponentsSerialized
+        ) {
+          throw new Error('Front component state changed during audit flush');
+        }
+      }
+      if (expectedSettingsMenuItemsSerialized !== undefined) {
+        const postFlushSettingsMenuItems = await readSettingsMenuItemSnapshot(
+          runner,
+          request.workspaceId,
+          false,
+        );
+        if (
+          serializeSettingsMenuItemSnapshot(postFlushSettingsMenuItems) !==
+          expectedSettingsMenuItemsSerialized
+        ) {
+          throw new Error(
+            'Settings menu item state changed during audit flush',
+          );
         }
       }
     }
