@@ -237,8 +237,15 @@ LOG175 закрывает транзакционный аудит полного
 `UpdateWebhookTool`, `DeleteWebhookTool`, `runAuditedApplicationMetadataMigration`,
 `assertNoRemainingApplicationRoleOrPermissionMetadata` и `WorkspaceMigrationRunnerService.executeRun`)
 с редактированием `targetUrl`, `operations`, `description` и `secret`.
+LOG176 закрывает транзакционный аудит обновления секретных и конфигурационных переменных приложений
+уровня рабочего пространства (`core."applicationVariable"` `update` в
+`ApplicationVariableEntityService.update`, `ApplicationVariableEntityResolver.updateOneApplicationVariable`
+с редактированием `key` и `value`) и полного жизненного цикла флагов функциональности
+(`core."featureFlag"` `create`, `update` в `FeatureFlagService.upsertWorkspaceFeatureFlag`,
+`FeatureFlagService.enableFeatureFlags`, `LabResolver.updateLabPublicFeatureFlag`,
+`AdminPanelResolver.updateWorkspaceFeatureFlag` и `WorkspaceService.activateWorkspace`).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log175/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log176/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

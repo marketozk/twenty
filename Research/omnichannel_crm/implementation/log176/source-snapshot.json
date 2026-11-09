@@ -1,0 +1,16 @@
+{
+  "baseCommit": "0c55f8a047fe4bcf270b142c4d69b0d34092ac8e",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/admin-panel/admin-panel.resolver.ts": "2746c00b495419deb7cb5e219f24b092bbeb2a68fc98758cae397cfe772e9026",
+    "packages/twenty-server/src/engine/core-modules/application/application-variable/application-variable.resolver.ts": "992aaecf330ce416f9ed2934b2f9715af225d65ac72601d5ab1eb9df2f2dcf0f",
+    "packages/twenty-server/src/engine/core-modules/application/application-variable/application-variable.service.ts": "cfa61a6df5f8c0198532259f91440fc2c8f44e6ad412f10f7584c083e787b595",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/application-authorization-and-variable-audit.ts": "727a531f151bdf9b4376364368b18f1c379e01c3b3b97f57d86ceda27c8dcd3c",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "49d2183fe32a5e45a378c915794dfadc8b388403ebd560f65bd4db9116b072df",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "07a49ba188eb9d465c2f5e9d77cfa47b7e7a15ce8d6e2d7d86b30e769bd02673",
+    "packages/twenty-server/src/engine/core-modules/feature-flag/services/feature-flag.service.ts": "ac2abe84d09fd10944b714013135c74cc0fd7c8a1e383c0fbdc449ebd3fd8371",
+    "packages/twenty-server/src/engine/core-modules/lab/lab.resolver.ts": "a452d58de554ce123ed437db75af1af1fa92fc6abd4b72a2706a95fb7514009d",
+    "packages/twenty-server/src/engine/core-modules/workspace/services/workspace.service.ts": "17a29417d44952ca36e69ea19ac17ebc398ff82a2780d42424c195e71178ac4b",
+    "packages/twenty-server/test/fork-migration/crm-audit-application-variable-and-feature-flag.postgres-spec.ts": "a95318fb9a5504c5db0dcbbf61a2ee054c9b021c5a4ecce0d91415b7786bc16b"
+  },
+  "uploadedSourceHashesVerified": true
+}

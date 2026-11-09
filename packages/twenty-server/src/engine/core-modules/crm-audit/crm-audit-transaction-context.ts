@@ -79,9 +79,17 @@ const CATALOG: Record<
     values: ['userId', 'userWorkspaceId', 'applicationId'],
     redacted: ['scopes', 'revokedAt', 'lastAuthorizedAt', 'lastUsedAt'],
   },
+  applicationVariable: {
+    values: ['applicationId', 'scope', 'isSecret'],
+    redacted: ['key', 'value'],
+  },
   userApplicationVariableValue: {
     values: ['userWorkspaceId', 'applicationVariableId', 'scope'],
     redacted: ['value'],
+  },
+  featureFlag: {
+    values: ['key', 'value'],
+    redacted: [],
   },
   approvedAccessDomain: {
     values: ['isValidated'],
@@ -520,7 +528,9 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   rowLevelPermissionPredicate: ['create', 'update', 'delete'],
   userWorkspace: ['create', 'update', 'delete'],
   applicationAuthorization: ['create', 'update', 'delete'],
+  applicationVariable: ['update'],
   userApplicationVariableValue: ['create', 'update', 'delete'],
+  featureFlag: ['create', 'update'],
   approvedAccessDomain: ['create', 'update', 'delete'],
   publicDomain: ['create', 'update', 'delete'],
   webhook: ['create', 'update', 'delete'],

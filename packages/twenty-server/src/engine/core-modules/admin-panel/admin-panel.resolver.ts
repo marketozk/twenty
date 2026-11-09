@@ -1,5 +1,5 @@
 import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
-import { Args, Info, Int, Mutation, Query } from '@nestjs/graphql';
+import { Args, Context, Info, Int, Mutation, Query } from '@nestjs/graphql';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { type GraphQLResolveInfo } from 'graphql';
@@ -9,6 +9,7 @@ import { isDefined } from 'twenty-shared/utils';
 import { In, type Repository } from 'typeorm';
 
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
+import { roleAuditIdentityFromRequest } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { InstanceAndAllWorkspacesUpgradeStatusDTO } from 'src/engine/core-modules/upgrade/dtos/instance-and-all-workspaces-upgrade-status.dto';
 import { WorkspaceUpgradeStatusDTO } from 'src/engine/core-modules/upgrade/dtos/workspace-upgrade-status.dto';
 import { UpgradeStatusService } from 'src/engine/core-modules/upgrade/services/upgrade-status.service';
@@ -284,12 +285,38 @@ export class AdminPanelResolver {
   @Mutation(() => Boolean)
   async updateWorkspaceFeatureFlag(
     @Args() updateFlagInput: UpdateWorkspaceFeatureFlagInput,
+    @AuthUser({ allowUndefined: true }) actor?: AuthContextUser,
+    @Context()
+    context?: {
+      req?: Parameters<typeof roleAuditIdentityFromRequest>[0] & {
+        user?: { id?: string } | null;
+      };
+    },
   ): Promise<boolean> {
+    const capturedInput = { ...updateFlagInput };
+    const actorUserId = actor?.id ?? context?.req?.user?.id;
+    const impersonatorUserWorkspaceId =
+      context?.req?.impersonationContext?.impersonatorUserWorkspaceId;
+    const auditIdentity =
+      isDefined(context?.req) &&
+      context.req.workspace?.id === capturedInput.workspaceId
+        ? roleAuditIdentityFromRequest(context.req)
+        : isDefined(actorUserId)
+          ? {
+              workspaceId: capturedInput.workspaceId,
+              actor: { kind: 'coreUser' as const, id: actorUserId },
+              ...(isDefined(impersonatorUserWorkspaceId)
+                ? { impersonatorUserWorkspaceId }
+                : {}),
+            }
+          : undefined;
+
     try {
       await this.featureFlagService.upsertWorkspaceFeatureFlag({
-        workspaceId: updateFlagInput.workspaceId,
-        featureFlag: updateFlagInput.featureFlag,
-        value: updateFlagInput.value,
+        workspaceId: capturedInput.workspaceId,
+        featureFlag: capturedInput.featureFlag,
+        value: capturedInput.value,
+        auditIdentity,
       });
 
       return true;

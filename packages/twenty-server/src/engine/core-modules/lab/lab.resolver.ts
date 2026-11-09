@@ -1,9 +1,10 @@
 import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
-import { Args, Mutation } from '@nestjs/graphql';
+import { Args, Context, Mutation } from '@nestjs/graphql';
 
 import { PermissionFlagType } from 'twenty-shared/constants';
 
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
+import { roleAuditIdentityFromRequest } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { FeatureFlagDTO } from 'src/engine/core-modules/feature-flag/dtos/feature-flag.dto';
 import { FeatureFlagException } from 'src/engine/core-modules/feature-flag/feature-flag.exception';
 import { FeatureFlagService } from 'src/engine/core-modules/feature-flag/services/feature-flag.service';
@@ -46,13 +47,25 @@ export class LabResolver {
   async updateLabPublicFeatureFlag(
     @Args('input') input: UpdateLabPublicFeatureFlagInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Context()
+    context?: {
+      req?: Parameters<typeof roleAuditIdentityFromRequest>[0];
+    },
   ): Promise<FeatureFlagDTO> {
+    const capturedInput = { ...input };
+    const capturedWorkspaceId = workspace.id;
+    const auditIdentity =
+      context?.req !== undefined
+        ? roleAuditIdentityFromRequest(context.req)
+        : undefined;
+
     try {
       const result = await this.featureFlagService.upsertWorkspaceFeatureFlag({
-        workspaceId: workspace.id,
-        featureFlag: input.publicFeatureFlag,
-        value: input.value,
+        workspaceId: capturedWorkspaceId,
+        featureFlag: capturedInput.publicFeatureFlag,
+        value: capturedInput.value,
         shouldBePublic: true,
+        auditIdentity,
       });
 
       return result;

@@ -630,6 +630,15 @@ export class WorkspaceService {
       await this.featureFlagService.enableFeatureFlags(
         DEFAULT_FEATURE_FLAGS,
         workspace.id,
+        {
+          auditIdentity: {
+            workspaceId: workspace.id,
+            actor: {
+              kind: 'system',
+              id: 'workspace-service:activate-workspace',
+            },
+          },
+        },
       );
 
       await this.userWorkspaceService.createWorkspaceMember(workspace.id, user);

@@ -5147,6 +5147,22 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 и совпали. [Публикация](implementation/log175/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765.
 
+## LOG-176 - транзакционный аудит обновления секретных и конфигурационных переменных приложений уровня рабочего пространства (`applicationVariable`) и полного жизненного цикла флагов функциональности (`featureFlag`)
+
+09.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log176/design.md), [design-review.md](implementation/log176/design-review.md)) и реализован участок `LOG-176` (Linear `ROB-765`): транзакционный аудит обновления секретных и конфигурационных переменных приложений уровня рабочего пространства (`core."applicationVariable"`) и полного жизненного цикла флагов функциональности (`core."featureFlag"`).
+
+В `crm-audit.types.ts` и `crm-audit-transaction-context.ts` добавлены виды ресурсов `applicationVariable` (`values: ['applicationId', 'scope', 'isSecret']`, `redacted: ['key', 'value']`, действия `['update']`) и `featureFlag` (`values: ['key', 'value']`, `redacted: []`, действия `['create', 'update']`). В `application-authorization-and-variable-audit.ts` реализованы `projectApplicationVariable`, `projectFeatureFlag`, `captureApplicationVariableUpdateAudit`, `captureFeatureFlagAudit`, `runAuditedApplicationVariableUpdate`, `runAuditedFeatureFlagUpsert` и `runAuditedFeatureFlagsEnable`, а также расширен `resolveOperationFromIdentity` для поддержки request-контекстов и субъекта `coreUser` (для межворкспейсных операций серверного администратора) с сохранением `impersonatorUserWorkspaceId`. Подключены `ApplicationVariableEntityService.update`, `ApplicationVariableEntityResolver.updateOneApplicationVariable`, `FeatureFlagService.upsertWorkspaceFeatureFlag`, `FeatureFlagService.enableFeatureFlags`, `LabResolver.updateLabPublicFeatureFlag`, `AdminPanelResolver.updateWorkspaceFeatureFlag` и `WorkspaceService.activateWorkspace`.
+
+09.11.2026 проверки LOG176 завершены. 3172 tests/121 suites PASS (702.355s). 24 targeted/4 PostgreSQL suites PASS (8.961s), 3 новых PostgreSQL случая. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 485/486 roots, baseline 297 / current 297 diagnostics, 0 новых/changed-code. Совпали 10 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех входных точек `applicationVariable` и `featureFlag`, редактирование `key` и `value`, сохранение канонических кодов исключений (`APPLICATION_VARIABLE_NOT_FOUND`, `INVALID_APPLICATION_VARIABLE_INPUT`), поддержку межворкспейсного `coreUser` и `initiator`, корректную обработку `NativeTransactionOutcomeUnknownError` и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log176/results.json), [ревью](implementation/log176/review.md),
+[следующий участок](implementation/log176/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
+
+
 
 
 

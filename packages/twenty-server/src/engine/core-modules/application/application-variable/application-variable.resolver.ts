@@ -1,8 +1,8 @@
 import { UseFilters, UseGuards } from '@nestjs/common';
-import { Args, Mutation, Parent, ResolveField } from '@nestjs/graphql';
+import { Args, Context, Mutation, Parent, ResolveField } from '@nestjs/graphql';
 
 import { PermissionFlagType } from 'twenty-shared/constants';
-import { assertIsDefinedOrThrow } from 'twenty-shared/utils';
+import { assertIsDefinedOrThrow, isDefined } from 'twenty-shared/utils';
 
 import { ApplicationExceptionFilter } from 'src/engine/core-modules/application/application-exception-filter';
 import { ApplicationVariableEntityExceptionFilter } from 'src/engine/core-modules/application/application-variable/application-variable-exception-filter';
@@ -12,6 +12,7 @@ import { ApplicationVariableEntityDTO } from 'src/engine/core-modules/applicatio
 import { UpdateApplicationVariableEntityInput } from 'src/engine/core-modules/application/application-variable/dtos/update-application-variable.input';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
 import { resolveTargetApplicationOrThrow } from 'src/engine/core-modules/application/utils/resolve-target-application-or-throw.util';
+import { roleAuditIdentityFromRequest } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { AuthApplication } from 'src/engine/decorators/auth/auth-application.decorator';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
@@ -56,20 +57,45 @@ export class ApplicationVariableEntityResolver {
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
     @AuthApplication({ allowUndefined: true })
     callingApplication: FlatApplication | undefined,
+    @Context()
+    context?: {
+      req?: Parameters<typeof roleAuditIdentityFromRequest>[0];
+    },
   ) {
+    const capturedKey = key;
+    const capturedValue = value;
+    const capturedApplicationId = applicationId;
+    const capturedWorkspaceId = workspaceId;
+    const capturedCallingApplication = callingApplication
+      ? { ...callingApplication }
+      : undefined;
+    const auditIdentity = isDefined(context?.req)
+      ? roleAuditIdentityFromRequest(context.req)
+      : isDefined(capturedCallingApplication)
+        ? {
+            auth: {
+              type: 'application' as const,
+              workspace: { id: capturedWorkspaceId },
+              application: { id: capturedCallingApplication.id },
+            },
+          }
+        : undefined;
+
     const { targetApplicationId } = resolveTargetApplicationOrThrow({
-      callingApplication,
-      applicationId,
+      callingApplication: capturedCallingApplication,
+      applicationId: capturedApplicationId,
     });
 
     // Without a universal identifier the lookup always carries an id
     assertIsDefinedOrThrow(targetApplicationId);
 
     await this.applicationVariableService.update({
-      key,
-      plainTextValue: value,
+      key: capturedKey,
+      plainTextValue: capturedValue,
       applicationId: targetApplicationId,
-      workspaceId,
+      workspaceId: capturedWorkspaceId,
+      callingApplicationId: capturedCallingApplication?.id,
+      auditIdentity,
     });
 
     return true;

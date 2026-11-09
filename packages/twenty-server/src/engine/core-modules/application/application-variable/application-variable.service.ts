@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
 
 import { isDefined } from 'twenty-shared/utils';
+import { DataSource } from 'typeorm';
 
 import { ApplicationVariableEntity } from 'src/engine/core-modules/application/application-variable/application-variable.entity';
 import {
@@ -8,10 +10,17 @@ import {
   ApplicationVariableEntityExceptionCode,
 } from 'src/engine/core-modules/application/application-variable/application-variable.exception';
 import { SECRET_APPLICATION_VARIABLE_MASK } from 'src/engine/core-modules/application/application-variable/constants/secret-application-variable-mask.constant';
+import {
+  captureApplicationVariableUpdateAudit,
+  runAuditedApplicationVariableUpdate,
+  type ApplicationAuthorizationAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/application-authorization-and-variable-audit';
+import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
 import { type FlatApplicationVariableMaps } from 'src/engine/metadata-modules/flat-application-variable/types/flat-application-variable-maps.type';
 import { type PlaintextString } from 'src/engine/core-modules/secret-encryption/branded-strings/plaintext-string.type';
 import { SecretEncryptionService } from 'src/engine/core-modules/secret-encryption/secret-encryption.service';
 import { type FlatApplicationVariable } from 'src/engine/metadata-modules/flat-application-variable/types/flat-application-variable.type';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
 import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
@@ -29,7 +38,21 @@ export class ApplicationVariableEntityService {
     private readonly applicationVariableRepository: WorkspaceScopedRepository<ApplicationVariableEntity>,
     private readonly workspaceCacheService: WorkspaceCacheService,
     private readonly secretEncryptionService: SecretEncryptionService,
+    @Optional()
+    @InjectDataSource()
+    private readonly coreDataSource?: DataSource,
   ) {}
+
+  private getDataSource(): DataSource | undefined {
+    return (
+      this.coreDataSource ??
+      (
+        this.applicationVariableRepository as unknown as {
+          manager?: { connection?: DataSource };
+        }
+      )?.manager?.connection
+    );
+  }
 
   getDisplayValue(
     applicationVariable: Pick<
@@ -133,42 +156,80 @@ export class ApplicationVariableEntityService {
     plainTextValue,
     applicationId,
     workspaceId,
+    callingApplicationId,
+    auditIdentity,
   }: Pick<ApplicationVariableEntity, 'key'> & {
     applicationId: string;
     workspaceId: string;
     plainTextValue: PlaintextString;
+    callingApplicationId?: string;
+    auditIdentity?: ApplicationAuthorizationAuditIdentity;
   }) {
-    const existingVariable = await this.applicationVariableRepository.findOne(
-      workspaceId,
-      { where: { key, applicationId } },
+    const capturedKey = String(key);
+    const capturedPlainTextValue = plainTextValue;
+    const capturedApplicationId = applicationId;
+    const capturedWorkspaceId = workspaceId;
+    const capturedCallingApplicationId = callingApplicationId;
+    const auditRequest = captureApplicationVariableUpdateAudit({
+      workspaceId: capturedWorkspaceId,
+      auditIdentity,
+    });
+
+    const encryptedValue = this.secretEncryptionService.encryptVersioned(
+      capturedPlainTextValue,
+      {
+        workspaceId: capturedWorkspaceId,
+      },
     );
 
-    if (!isDefined(existingVariable)) {
+    let outcome: Awaited<
+      ReturnType<typeof runAuditedApplicationVariableUpdate>
+    >;
+    try {
+      outcome = await runAuditedApplicationVariableUpdate(
+        this.getDataSource(),
+        auditRequest,
+        {
+          applicationId: capturedApplicationId,
+          callingApplicationId: capturedCallingApplicationId,
+          key: capturedKey,
+          encryptedValue,
+        },
+      );
+    } catch (error) {
+      if (
+        error instanceof NativeTransactionOutcomeUnknownError ||
+        error instanceof CoreAuditPostCommitError
+      ) {
+        try {
+          await this.workspaceCacheService.invalidateAndRecompute(
+            capturedWorkspaceId,
+            ['flatApplicationVariableMaps'],
+          );
+        } catch {
+          // Preserve the commit uncertainty error over cache refresh failures.
+        }
+      }
+      throw error;
+    }
+
+    if (outcome.status === 'not_found') {
       throw new ApplicationVariableEntityException(
-        `Application variable with key ${key} not found`,
+        `Application variable with key ${capturedKey} not found`,
         ApplicationVariableEntityExceptionCode.APPLICATION_VARIABLE_NOT_FOUND,
       );
     }
 
-    if (existingVariable.scope === 'USER') {
+    if (outcome.status === 'user_variable') {
       throw new ApplicationVariableEntityException(
-        `Application variable with key ${key} is a user variable`,
+        `Application variable with key ${capturedKey} is a user variable`,
         ApplicationVariableEntityExceptionCode.INVALID_APPLICATION_VARIABLE_INPUT,
       );
     }
 
-    await this.applicationVariableRepository.update(
-      workspaceId,
-      { key, applicationId },
-      {
-        value: this.secretEncryptionService.encryptVersioned(plainTextValue, {
-          workspaceId,
-        }),
-      },
+    await this.workspaceCacheService.invalidateAndRecompute(
+      capturedWorkspaceId,
+      ['flatApplicationVariableMaps'],
     );
-
-    await this.workspaceCacheService.invalidateAndRecompute(workspaceId, [
-      'flatApplicationVariableMaps',
-    ]);
   }
 }

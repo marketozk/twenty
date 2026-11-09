@@ -1,7 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
 
 import { FeatureFlagKey } from 'twenty-shared/types';
+import { DataSource } from 'typeorm';
 
+import {
+  captureFeatureFlagAudit,
+  runAuditedFeatureFlagsEnable,
+  runAuditedFeatureFlagUpsert,
+  type ApplicationAuthorizationAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/application-authorization-and-variable-audit';
+import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
 import { type FeatureFlagMap } from 'src/engine/core-modules/feature-flag/interfaces/feature-flag-map.interface';
 
 import { type FeatureFlagDTO } from 'src/engine/core-modules/feature-flag/dtos/feature-flag.dto';
@@ -12,6 +21,7 @@ import {
 } from 'src/engine/core-modules/feature-flag/feature-flag.exception';
 import { featureFlagValidator } from 'src/engine/core-modules/feature-flag/validates/feature-flag.validate';
 import { publicFeatureFlagValidator } from 'src/engine/core-modules/feature-flag/validates/is-public-feature-flag.validate';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
 import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
@@ -22,7 +32,21 @@ export class FeatureFlagService {
     @InjectWorkspaceScopedRepository(FeatureFlagEntity)
     private readonly featureFlagRepository: WorkspaceScopedRepository<FeatureFlagEntity>,
     private readonly workspaceCacheService: WorkspaceCacheService,
+    @Optional()
+    @InjectDataSource()
+    private readonly coreDataSource?: DataSource,
   ) {}
+
+  private getDataSource(): DataSource | undefined {
+    return (
+      this.coreDataSource ??
+      (
+        this.featureFlagRepository as unknown as {
+          manager?: { connection?: DataSource };
+        }
+      )?.manager?.connection
+    );
+  }
 
   public async isFeatureEnabled(
     key: FeatureFlagKey,
@@ -59,22 +83,65 @@ export class FeatureFlagService {
   }
 
   public async enableFeatureFlags(
-    keys: FeatureFlagKey[],
+    keys: readonly FeatureFlagKey[],
     workspaceId: string,
+    options?: {
+      auditIdentity?: ApplicationAuthorizationAuditIdentity;
+    },
   ): Promise<void> {
-    if (keys.length > 0) {
-      await this.featureFlagRepository.upsert(
-        workspaceId,
-        keys.map((key) => ({ key, value: true })),
+    const capturedKeys = [...keys];
+    const capturedWorkspaceId = workspaceId;
+    if (capturedKeys.length === 0) {
+      return;
+    }
+
+    const auditRequest = captureFeatureFlagAudit({
+      workspaceId: capturedWorkspaceId,
+      auditIdentity: options?.auditIdentity,
+      fallbackSystemActorId: 'feature-flag-service:enable-feature-flags',
+    });
+
+    for (const key of capturedKeys) {
+      featureFlagValidator.assertIsFeatureFlagKey(
+        key,
+        new FeatureFlagException(
+          'Invalid feature flag key',
+          FeatureFlagExceptionCode.INVALID_FEATURE_FLAG_KEY,
+        ),
+      );
+    }
+
+    let mutated: boolean;
+    try {
+      mutated = await runAuditedFeatureFlagsEnable(
+        this.getDataSource(),
+        auditRequest,
         {
-          conflictPaths: ['workspaceId', 'key'],
-          skipUpdateIfNoValuesChanged: true,
+          keys: capturedKeys,
         },
       );
+    } catch (error) {
+      if (
+        error instanceof NativeTransactionOutcomeUnknownError ||
+        error instanceof CoreAuditPostCommitError
+      ) {
+        try {
+          await this.workspaceCacheService.invalidateAndRecompute(
+            capturedWorkspaceId,
+            ['featureFlagsMap'],
+          );
+        } catch {
+          // Preserve the commit uncertainty error over cache refresh failures.
+        }
+      }
+      throw error;
+    }
 
-      await this.workspaceCacheService.invalidateAndRecompute(workspaceId, [
-        'featureFlagsMap',
-      ]);
+    if (mutated) {
+      await this.workspaceCacheService.invalidateAndRecompute(
+        capturedWorkspaceId,
+        ['featureFlagsMap'],
+      );
     }
   }
 
@@ -83,23 +150,34 @@ export class FeatureFlagService {
     featureFlag,
     value,
     shouldBePublic = false,
+    auditIdentity,
   }: {
     workspaceId: string;
     featureFlag: FeatureFlagKey;
     value: boolean;
     shouldBePublic?: boolean;
+    auditIdentity?: ApplicationAuthorizationAuditIdentity;
   }): Promise<FeatureFlagEntity> {
+    const capturedWorkspaceId = workspaceId;
+    const capturedFeatureFlag = featureFlag;
+    const capturedValue = value;
+    const capturedShouldBePublic = shouldBePublic;
+    const auditRequest = captureFeatureFlagAudit({
+      workspaceId: capturedWorkspaceId,
+      auditIdentity,
+    });
+
     featureFlagValidator.assertIsFeatureFlagKey(
-      featureFlag,
+      capturedFeatureFlag,
       new FeatureFlagException(
         'Invalid feature flag key',
         FeatureFlagExceptionCode.INVALID_FEATURE_FLAG_KEY,
       ),
     );
 
-    if (shouldBePublic) {
+    if (capturedShouldBePublic) {
       publicFeatureFlagValidator.assertIsPublicFeatureFlag(
-        featureFlag,
+        capturedFeatureFlag,
         new FeatureFlagException(
           'Invalid feature flag key, flag is not public',
           FeatureFlagExceptionCode.INVALID_FEATURE_FLAG_KEY,
@@ -107,25 +185,48 @@ export class FeatureFlagService {
       );
     }
 
-    const existingFeatureFlag = await this.featureFlagRepository.findOne(
-      workspaceId,
-      { where: { key: featureFlag } },
-    );
-
-    if (existingFeatureFlag?.value === value) {
-      return existingFeatureFlag;
+    let outcome: Awaited<ReturnType<typeof runAuditedFeatureFlagUpsert>>;
+    try {
+      outcome = await runAuditedFeatureFlagUpsert(
+        this.getDataSource(),
+        auditRequest,
+        {
+          key: capturedFeatureFlag,
+          value: capturedValue,
+        },
+      );
+    } catch (error) {
+      if (
+        error instanceof NativeTransactionOutcomeUnknownError ||
+        error instanceof CoreAuditPostCommitError
+      ) {
+        try {
+          await this.workspaceCacheService.invalidateAndRecompute(
+            capturedWorkspaceId,
+            ['featureFlagsMap'],
+          );
+        } catch {
+          // Preserve the commit uncertainty error over cache refresh failures.
+        }
+      }
+      throw error;
     }
 
-    const result = await this.featureFlagRepository.upsertAndReturnOne(
-      workspaceId,
-      { key: featureFlag, value },
-      ['workspaceId', 'key'],
-    );
+    if (outcome.mutated) {
+      await this.workspaceCacheService.invalidateAndRecompute(
+        capturedWorkspaceId,
+        ['featureFlagsMap'],
+      );
+    }
 
-    await this.workspaceCacheService.invalidateAndRecompute(workspaceId, [
-      'featureFlagsMap',
-    ]);
-
-    return result;
+    return {
+      ...(outcome.row as unknown as FeatureFlagEntity),
+      id: String(outcome.row.id),
+      workspaceId: String(outcome.row.workspaceId),
+      key: outcome.row.key as FeatureFlagKey,
+      value: Boolean(outcome.row.value),
+      createdAt: new Date(String(outcome.row.createdAt)),
+      updatedAt: new Date(String(outcome.row.updatedAt)),
+    };
   }
 }

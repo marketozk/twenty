@@ -181,9 +181,113 @@ const resolveOperationFromIdentity = (
       };
     }
 
-    const capturedIdentity = captureRoleAuditIdentity(
-      identity as RoleUpdateAuditIdentity,
-    );
+    const reqLike = identity as Partial<RoleUpdateAuditIdentity> & {
+      workspace?: { id: string };
+      apiKey?: { id: string } | null;
+      user?: { id?: string } | null;
+      workspaceMemberId?: string;
+      application?: { id: string } | null;
+      impersonationContext?: { impersonatorUserWorkspaceId?: string };
+      auth?: {
+        type?: string;
+        workspace?: { id: string };
+        workspaceMemberId?: string;
+        user?: { id?: string } | null;
+      };
+    };
+
+    const directCoreUserId =
+      reqLike?.auth === undefined &&
+      reqLike?.user?.id !== undefined &&
+      reqLike?.workspaceMemberId === undefined &&
+      reqLike?.apiKey === undefined &&
+      reqLike?.application === undefined
+        ? reqLike.user.id
+        : reqLike?.auth?.type === 'user' &&
+            reqLike.auth.workspaceMemberId === undefined &&
+            reqLike.auth.user?.id !== undefined
+          ? reqLike.auth.user.id
+          : undefined;
+
+    if (typeof directCoreUserId === 'string') {
+      const authWorkspaceId =
+        reqLike?.auth?.workspace?.id ??
+        reqLike?.workspace?.id ??
+        normalizedWorkspaceId;
+      if (uuid(authWorkspaceId) !== normalizedWorkspaceId) {
+        throw new Error('CRM audit context workspace mismatch');
+      }
+      const userId = uuid(directCoreUserId);
+      const agentId =
+        reqLike.agentId !== undefined ? uuid(reqLike.agentId) : undefined;
+      const impersonatorId =
+        reqLike.impersonatorUserWorkspaceId ??
+        reqLike.impersonationContext?.impersonatorUserWorkspaceId;
+      return {
+        operation: Object.freeze(
+          captureCrmAuditOperation({
+            workspaceId: normalizedWorkspaceId,
+            operationId: randomUUID(),
+            actor: agentId
+              ? { kind: 'agent', id: agentId }
+              : { kind: 'coreUser', id: userId },
+            ...(agentId ? { initiator: { kind: 'coreUser', id: userId } } : {}),
+            correlationId:
+              typeof reqLike.correlationId === 'string'
+                ? reqLike.correlationId
+                : randomUUID(),
+            ...(typeof reqLike.causationId === 'string'
+              ? { causationId: reqLike.causationId }
+              : {}),
+          }),
+        ),
+        ...(impersonatorId
+          ? { impersonatorUserWorkspaceId: uuid(impersonatorId) }
+          : {}),
+      };
+    }
+
+    const roleIdentity: RoleUpdateAuditIdentity =
+      reqLike && typeof reqLike === 'object' && reqLike.auth !== undefined
+        ? (reqLike as RoleUpdateAuditIdentity)
+        : {
+            auth: reqLike?.apiKey?.id
+              ? {
+                  workspace: {
+                    id: reqLike.workspace?.id ?? normalizedWorkspaceId,
+                  },
+                  type: 'apiKey',
+                  apiKey: { id: reqLike.apiKey.id },
+                }
+              : reqLike?.workspaceMemberId
+                ? {
+                    workspace: {
+                      id: reqLike.workspace?.id ?? normalizedWorkspaceId,
+                    },
+                    type: 'user',
+                    workspaceMemberId: reqLike.workspaceMemberId,
+                  }
+                : reqLike?.application?.id
+                  ? {
+                      workspace: {
+                        id: reqLike.workspace?.id ?? normalizedWorkspaceId,
+                      },
+                      type: 'application',
+                      application: { id: reqLike.application.id },
+                    }
+                  : {
+                      workspace: {
+                        id: reqLike?.workspace?.id ?? normalizedWorkspaceId,
+                      },
+                      type: 'pendingActivationUser',
+                    },
+            agentId: reqLike?.agentId,
+            impersonatorUserWorkspaceId:
+              reqLike?.impersonatorUserWorkspaceId ??
+              reqLike?.impersonationContext?.impersonatorUserWorkspaceId,
+          };
+
+    const capturedIdentity = captureRoleAuditIdentity(roleIdentity);
     const operation = captureRoleAuditOperation(
       normalizedWorkspaceId,
       capturedIdentity,
@@ -431,6 +535,130 @@ export const projectUserApplicationVariableValue = (
   scope: String(row.scope),
   value: String(row.value),
 });
+
+export const projectApplicationVariable = (row: Record<string, unknown>) => ({
+  applicationId: uuid(row.applicationId),
+  scope: String(row.scope),
+  isSecret: Boolean(row.isSecret),
+  key: String(row.key),
+  value:
+    row.value === null || row.value === undefined ? null : String(row.value),
+});
+
+export const projectFeatureFlag = (row: Record<string, unknown>) => ({
+  key: String(row.key),
+  value: Boolean(row.value),
+});
+
+export const captureApplicationVariableUpdateAudit = ({
+  workspaceId,
+  auditIdentity,
+}: {
+  workspaceId: string;
+  auditIdentity?: ApplicationAuthorizationAuditIdentity;
+}): ApplicationAuthorizationAuditRequest => {
+  const normalizedWorkspaceId = uuid(workspaceId);
+  if (
+    getApplicationAuthorizationOrVariableAudit(normalizedWorkspaceId) ||
+    hasConflictingMetadataAuditScope(
+      normalizedWorkspaceId,
+      getApplicationAuthorizationOrVariableAudit,
+    )
+  ) {
+    throw new Error(
+      'Nested application authorization or variable audit is unsupported',
+    );
+  }
+
+  const { operation, impersonatorUserWorkspaceId } =
+    resolveOperationFromIdentity(
+      normalizedWorkspaceId,
+      auditIdentity,
+      'Application variable mutation requires authenticated audit identity',
+    );
+  const { expectedUserId, expectedUserWorkspaceId } =
+    extractExpectedUserBinding(auditIdentity);
+
+  return Object.freeze({
+    workspaceId: normalizedWorkspaceId,
+    operation,
+    ...(impersonatorUserWorkspaceId ? { impersonatorUserWorkspaceId } : {}),
+    ...(expectedUserId ? { expectedUserId } : {}),
+    ...(expectedUserWorkspaceId ? { expectedUserWorkspaceId } : {}),
+  });
+};
+
+export const captureFeatureFlagAudit = ({
+  workspaceId,
+  auditIdentity,
+  fallbackSystemActorId,
+}: {
+  workspaceId: string;
+  auditIdentity?: ApplicationAuthorizationAuditIdentity;
+  fallbackSystemActorId?: string;
+}): ApplicationAuthorizationAuditRequest => {
+  const normalizedWorkspaceId = uuid(workspaceId);
+  if (
+    getApplicationAuthorizationOrVariableAudit(normalizedWorkspaceId) ||
+    hasConflictingMetadataAuditScope(
+      normalizedWorkspaceId,
+      getApplicationAuthorizationOrVariableAudit,
+    )
+  ) {
+    throw new Error('Nested feature flag audit is unsupported');
+  }
+
+  if (auditIdentity !== undefined) {
+    const { operation, impersonatorUserWorkspaceId } =
+      resolveOperationFromIdentity(
+        normalizedWorkspaceId,
+        auditIdentity,
+        'Feature flag mutation requires authenticated audit identity',
+      );
+    return Object.freeze({
+      workspaceId: normalizedWorkspaceId,
+      operation,
+      ...(impersonatorUserWorkspaceId ? { impersonatorUserWorkspaceId } : {}),
+    });
+  }
+
+  const ambient = captureCurrentCrmAuditOperation(normalizedWorkspaceId);
+  if (ambient) {
+    return Object.freeze({
+      workspaceId: normalizedWorkspaceId,
+      operation: ambient.operation,
+      ...(ambient.impersonatorUserWorkspaceId
+        ? {
+            impersonatorUserWorkspaceId: uuid(
+              ambient.impersonatorUserWorkspaceId,
+            ),
+          }
+        : {}),
+    });
+  }
+
+  if (
+    typeof fallbackSystemActorId === 'string' &&
+    fallbackSystemActorId.length > 0 &&
+    fallbackSystemActorId.length <= 256
+  ) {
+    return Object.freeze({
+      workspaceId: normalizedWorkspaceId,
+      operation: Object.freeze(
+        captureCrmAuditOperation({
+          workspaceId: normalizedWorkspaceId,
+          operationId: randomUUID(),
+          actor: { kind: 'system', id: fallbackSystemActorId },
+          correlationId: randomUUID(),
+        }),
+      ),
+    });
+  }
+
+  throw new Error(
+    'Feature flag mutation requires authenticated audit identity',
+  );
+};
 
 const withExclusiveAuditScope = async <TResult>(
   request: { workspaceId: string },
@@ -1236,6 +1464,446 @@ export const runAuditedApplicationDelete = async <TResult>(
       }
 
       return result;
+    }),
+  );
+};
+
+export const runAuditedApplicationVariableUpdate = async (
+  dataSource: DataSource | undefined,
+  request: ApplicationAuthorizationAuditRequest,
+  {
+    applicationId,
+    callingApplicationId,
+    key,
+    encryptedValue,
+  }: {
+    applicationId: string;
+    callingApplicationId?: string;
+    key: string;
+    encryptedValue: string;
+  },
+): Promise<{ status: 'updated' | 'not_found' | 'user_variable' }> => {
+  if (!dataSource) {
+    throw new Error('Application variable audit requires core DataSource');
+  }
+  const normalizedApplicationId = uuid(applicationId);
+  const normalizedCallingApplicationId =
+    callingApplicationId !== undefined ? uuid(callingApplicationId) : undefined;
+  if (typeof key !== 'string' || key.length === 0) {
+    throw new Error('Application variable key is invalid');
+  }
+  if (
+    typeof encryptedValue !== 'string' ||
+    !encryptedValue.startsWith('enc:v2:')
+  ) {
+    throw new Error(
+      'Application variable encryptedValue must use enc:v2 envelope',
+    );
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('Application variable audit workspace unavailable');
+      }
+
+      if (
+        (normalizedCallingApplicationId !== undefined &&
+          normalizedCallingApplicationId !== normalizedApplicationId) ||
+        (request.operation.actor.kind === 'application' &&
+          uuid(request.operation.actor.id) !== normalizedApplicationId)
+      ) {
+        throw new Error(
+          'Application variable audit cannot target another application',
+        );
+      }
+
+      const [application] = await runner.query(
+        `SELECT id,to_jsonb(a)->>'deletedAt' AS "deletedAt" FROM core.application a WHERE a.id=$1 AND a."workspaceId"=$2 FOR NO KEY UPDATE`,
+        [normalizedApplicationId, request.workspaceId],
+      );
+      if (!application || application.deletedAt !== null) {
+        return { status: 'not_found' as const };
+      }
+
+      const [beforeEntry] = await runner.query(
+        `SELECT to_jsonb(av) AS row FROM core."applicationVariable" av WHERE av."applicationId"=$1 AND av.key=$2 FOR UPDATE`,
+        [normalizedApplicationId, key],
+      );
+      const beforeRow = beforeEntry?.row as Record<string, unknown> | undefined;
+      if (!beforeRow) {
+        return { status: 'not_found' as const };
+      }
+      if (uuid(beforeRow.workspaceId) !== request.workspaceId) {
+        throw new Error(
+          'Application variable workspace mismatch on existing row',
+        );
+      }
+      if (beforeRow.scope === 'USER') {
+        return { status: 'user_variable' as const };
+      }
+
+      const operation = await resolveRoleAuditInitiator(
+        runner,
+        request.operation,
+        request.impersonatorUserWorkspaceId,
+      );
+      const audit = new CrmAuditTransactionContext(runner, operation);
+
+      const resourceId = uuid(beforeRow.id);
+      const rawUpdated = await runner.query(
+        `UPDATE core."applicationVariable"
+         SET "value"=$1, "updatedAt"=now()
+         WHERE id=$2 AND "workspaceId"=$3 AND "applicationId"=$4 AND scope <> 'USER'
+         RETURNING to_jsonb("applicationVariable") AS row`,
+        [
+          encryptedValue,
+          resourceId,
+          request.workspaceId,
+          normalizedApplicationId,
+        ],
+      );
+      const updatedRows = Array.isArray(rawUpdated?.[0])
+        ? rawUpdated[0]
+        : rawUpdated;
+      const updated = updatedRows?.[0];
+      if (!updated?.row) {
+        throw new Error('Application variable update did not return row');
+      }
+      const afterRow = updated.row as Record<string, unknown>;
+      if (
+        uuid(afterRow.id) !== resourceId ||
+        uuid(afterRow.workspaceId) !== request.workspaceId ||
+        uuid(afterRow.applicationId) !== normalizedApplicationId ||
+        afterRow.key !== key ||
+        afterRow.scope !== beforeRow.scope ||
+        afterRow.scope === 'USER' ||
+        afterRow.value !== encryptedValue ||
+        canonicalAuditJson({
+          ...scalarWithoutTimestamps(beforeRow),
+          value: encryptedValue,
+        }) !== canonicalAuditJson(scalarWithoutTimestamps(afterRow))
+      ) {
+        throw new Error('Application variable persisted row failed validation');
+      }
+
+      const beforeProj = projectApplicationVariable(beforeRow);
+      const afterProj = projectApplicationVariable(afterRow);
+      if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+        audit.record({
+          resourceKind: 'applicationVariable',
+          resourceId,
+          action: 'update',
+          before: beforeProj,
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'applicationVariable',
+            resourceId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+      }
+
+      const expectedSerialized = canonicalAuditJson(
+        scalarWithoutTimestamps(afterRow),
+      );
+      await audit.flush();
+      const [postFlush] = await runner.query(
+        `SELECT to_jsonb(av) AS row FROM core."applicationVariable" av WHERE av.id=$1`,
+        [resourceId],
+      );
+      if (
+        !postFlush?.row ||
+        canonicalAuditJson(
+          scalarWithoutTimestamps(postFlush.row as Record<string, unknown>),
+        ) !== expectedSerialized
+      ) {
+        throw new Error(
+          'Application variable state changed during audit flush',
+        );
+      }
+
+      return { status: 'updated' as const };
+    }),
+  );
+};
+
+export const runAuditedFeatureFlagUpsert = async (
+  dataSource: DataSource | undefined,
+  request: ApplicationAuthorizationAuditRequest,
+  {
+    key,
+    value,
+  }: {
+    key: string;
+    value: boolean;
+  },
+): Promise<{ row: Record<string, unknown>; mutated: boolean }> => {
+  if (!dataSource) {
+    throw new Error('Feature flag audit requires core DataSource');
+  }
+  if (typeof key !== 'string' || key.length === 0 || key.length > 256) {
+    throw new Error('Feature flag key is invalid');
+  }
+  if (typeof value !== 'boolean') {
+    throw new Error('Feature flag value must be boolean');
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('Feature flag audit workspace unavailable');
+      }
+
+      const [beforeEntry] = await runner.query(
+        `SELECT to_jsonb(ff) AS row FROM core."featureFlag" ff WHERE ff."workspaceId"=$1 AND ff.key=$2 FOR UPDATE`,
+        [request.workspaceId, key],
+      );
+      const beforeRow = beforeEntry?.row as Record<string, unknown> | undefined;
+      if (beforeRow && uuid(beforeRow.workspaceId) !== request.workspaceId) {
+        throw new Error('Feature flag workspace mismatch on existing row');
+      }
+
+      if (beforeRow && Boolean(beforeRow.value) === value) {
+        return { row: beforeRow, mutated: false };
+      }
+
+      const operation = await resolveRoleAuditInitiator(
+        runner,
+        request.operation,
+        request.impersonatorUserWorkspaceId,
+      );
+      const audit = new CrmAuditTransactionContext(runner, operation);
+
+      const [upserted] = await runner.query(
+        `INSERT INTO core."featureFlag" ("id","workspaceId","key","value","createdAt","updatedAt")
+         VALUES (gen_random_uuid(),$1,$2,$3,now(),now())
+         ON CONFLICT ("key","workspaceId") DO UPDATE SET
+           "value"=EXCLUDED."value",
+           "updatedAt"=now()
+         RETURNING to_jsonb("featureFlag") AS row`,
+        [request.workspaceId, key, value],
+      );
+      if (!upserted?.row) {
+        throw new Error('Feature flag upsert did not return row');
+      }
+      const afterRow = upserted.row as Record<string, unknown>;
+      const resourceId = uuid(afterRow.id);
+      if (
+        uuid(afterRow.workspaceId) !== request.workspaceId ||
+        afterRow.key !== key ||
+        afterRow.value !== value ||
+        (beforeRow && uuid(beforeRow.id) !== resourceId)
+      ) {
+        throw new Error('Feature flag persisted row failed validation');
+      }
+
+      const afterProj = projectFeatureFlag(afterRow);
+      if (!beforeRow) {
+        audit.record({
+          resourceKind: 'featureFlag',
+          resourceId,
+          action: 'create',
+          before: null,
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'featureFlag',
+            resourceId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+      } else {
+        audit.record({
+          resourceKind: 'featureFlag',
+          resourceId,
+          action: 'update',
+          before: projectFeatureFlag(beforeRow),
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'featureFlag',
+            resourceId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+      }
+
+      const expectedSerialized = canonicalAuditJson(
+        scalarWithoutTimestamps(afterRow),
+      );
+      await audit.flush();
+      const [postFlush] = await runner.query(
+        `SELECT to_jsonb(ff) AS row FROM core."featureFlag" ff WHERE ff.id=$1`,
+        [resourceId],
+      );
+      if (
+        !postFlush?.row ||
+        canonicalAuditJson(
+          scalarWithoutTimestamps(postFlush.row as Record<string, unknown>),
+        ) !== expectedSerialized
+      ) {
+        throw new Error('Feature flag state changed during audit flush');
+      }
+
+      return { row: afterRow, mutated: true };
+    }),
+  );
+};
+
+export const runAuditedFeatureFlagsEnable = async (
+  dataSource: DataSource | undefined,
+  request: ApplicationAuthorizationAuditRequest,
+  {
+    keys,
+  }: {
+    keys: readonly string[];
+  },
+): Promise<boolean> => {
+  if (!dataSource) {
+    throw new Error('Feature flag audit requires core DataSource');
+  }
+  const uniqueKeys = [...new Set(keys.map(String))].sort();
+  if (uniqueKeys.length === 0) {
+    return false;
+  }
+  for (const key of uniqueKeys) {
+    if (key.length === 0 || key.length > 256) {
+      throw new Error('Feature flag key is invalid');
+    }
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('Feature flag audit workspace unavailable');
+      }
+
+      const existingRows = await runner.query(
+        `SELECT to_jsonb(ff) AS row FROM core."featureFlag" ff WHERE ff."workspaceId"=$1 AND ff.key=ANY($2::text[]) ORDER BY ff.id FOR UPDATE`,
+        [request.workspaceId, uniqueKeys],
+      );
+      const beforeByKey = new Map<string, Record<string, unknown>>();
+      for (const entry of existingRows) {
+        const row = entry.row as Record<string, unknown>;
+        if (uuid(row.workspaceId) !== request.workspaceId) {
+          throw new Error('Feature flag workspace mismatch on existing row');
+        }
+        beforeByKey.set(String(row.key), row);
+      }
+
+      const keysToEnable = uniqueKeys.filter((key) => {
+        const beforeRow = beforeByKey.get(key);
+        return !beforeRow || Boolean(beforeRow.value) !== true;
+      });
+      if (keysToEnable.length === 0) {
+        return false;
+      }
+
+      const operation = await resolveRoleAuditInitiator(
+        runner,
+        request.operation,
+        request.impersonatorUserWorkspaceId,
+      );
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      const expectedAfterById = new Map<string, string>();
+
+      for (const key of keysToEnable) {
+        const beforeRow = beforeByKey.get(key);
+        const [upserted] = await runner.query(
+          `INSERT INTO core."featureFlag" ("id","workspaceId","key","value","createdAt","updatedAt")
+           VALUES (gen_random_uuid(),$1,$2,true,now(),now())
+           ON CONFLICT ("key","workspaceId") DO UPDATE SET
+             "value"=true,
+             "updatedAt"=now()
+           RETURNING to_jsonb("featureFlag") AS row`,
+          [request.workspaceId, key],
+        );
+        if (!upserted?.row) {
+          throw new Error('Feature flag enable upsert did not return row');
+        }
+        const afterRow = upserted.row as Record<string, unknown>;
+        const resourceId = uuid(afterRow.id);
+        if (
+          uuid(afterRow.workspaceId) !== request.workspaceId ||
+          afterRow.key !== key ||
+          afterRow.value !== true ||
+          (beforeRow && uuid(beforeRow.id) !== resourceId)
+        ) {
+          throw new Error('Feature flag persisted row failed validation');
+        }
+
+        expectedAfterById.set(
+          resourceId,
+          canonicalAuditJson(scalarWithoutTimestamps(afterRow)),
+        );
+
+        const afterProj = projectFeatureFlag(afterRow);
+        if (!beforeRow) {
+          audit.record({
+            resourceKind: 'featureFlag',
+            resourceId,
+            action: 'create',
+            before: null,
+            after: afterProj,
+            securityDescriptor: {
+              resourceKind: 'featureFlag',
+              resourceId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+        } else {
+          audit.record({
+            resourceKind: 'featureFlag',
+            resourceId,
+            action: 'update',
+            before: projectFeatureFlag(beforeRow),
+            after: afterProj,
+            securityDescriptor: {
+              resourceKind: 'featureFlag',
+              resourceId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+        }
+      }
+
+      await audit.flush();
+      const postFlushRows = await runner.query(
+        `SELECT to_jsonb(ff) AS row FROM core."featureFlag" ff WHERE ff.id=ANY($1::uuid[]) ORDER BY ff.id`,
+        [[...expectedAfterById.keys()]],
+      );
+      if (postFlushRows.length !== expectedAfterById.size) {
+        throw new Error('Feature flag state changed during audit flush');
+      }
+      for (const entry of postFlushRows) {
+        const row = entry.row as Record<string, unknown>;
+        const id = uuid(row.id);
+        if (
+          canonicalAuditJson(scalarWithoutTimestamps(row)) !==
+          expectedAfterById.get(id)
+        ) {
+          throw new Error('Feature flag state changed during audit flush');
+        }
+      }
+
+      return true;
     }),
   );
 };
