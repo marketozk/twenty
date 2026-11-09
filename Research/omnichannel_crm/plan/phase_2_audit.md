@@ -256,8 +256,16 @@ LOG178 закрывает транзакционный аудит полного
 `navigation-menu-item-audit.ts`, `runAuditedApplicationMetadataMigration`,
 `assertNoRemainingApplicationRoleOrPermissionMetadata` и `WorkspaceMigrationRunnerService.executeRun`)
 с редактированием текста промпта `content`, а также `name`, `label`, `icon` и `description`.
+LOG179 закрывает транзакционный аудит полного жизненного цикла фронтенд-компонентов приложений
+(`core."frontComponent"` `create`, `update`, `delete` в `FrontComponentService`,
+`FrontComponentResolver`, `PrefillFrontComponentService.ensureSeeded`, `navigation-menu-item-audit.ts`,
+`runAuditedApplicationMetadataMigration`, `assertNoRemainingApplicationRoleOrPermissionMetadata` и
+`WorkspaceMigrationRunnerService.executeRun` с редактированием `name`, `description`,
+`sourceComponentPath`, `builtComponentPath`, `componentName`, `builtComponentChecksum` и
+`widgetAvailability`) и пунктов меню настроек (`core."settingsMenuItem"` `create`, `update`, `delete`
+и каскадное удаление при удалении `frontComponent` с редактированием `title`, `icon` и `position`).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log178/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log179/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.
