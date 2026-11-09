@@ -95,6 +95,7 @@ export type ApplicationMetadataAuditMappings = {
   agentChatChannels?: Record<string, { id: string } | undefined>;
   agentChatChannelRoles?: Record<string, { id: string } | undefined>;
   webhooks?: Record<string, { id: string } | undefined>;
+  connectionProviders?: Record<string, { id: string } | undefined>;
 };
 
 type MigrationAction = {
@@ -131,6 +132,7 @@ export const AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES = new Set<string>([
   'agentChatChannel',
   'agentChatChannelRole',
   'webhook',
+  'connectionProvider',
 ]);
 
 export const AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES =
@@ -631,6 +633,85 @@ const projectCoreWorkflowOrView = (row: Record<string, unknown>) => ({
   visibility: assertWorkflowOrViewVisibility(row.visibility),
 });
 
+export const assertConnectionProviderRowInvariants = (
+  row: Record<string, unknown>,
+  expectedWorkspaceId: string,
+): void => {
+  uuid(row.id);
+  if (uuid(row.workspaceId) !== uuid(expectedWorkspaceId)) {
+    throw new Error(
+      'Application metadata connectionProvider workspaceId mismatch',
+    );
+  }
+  uuid(row.applicationId);
+  uuid(row.universalIdentifier);
+  if (row.deletedAt !== undefined && row.deletedAt !== null) {
+    throw new Error(
+      'Application metadata connectionProvider cannot be soft-deleted',
+    );
+  }
+  if (typeof row.name !== 'string' || row.name.trim().length === 0) {
+    throw new Error('Application metadata connectionProvider name is invalid');
+  }
+  if (
+    typeof row.displayName !== 'string' ||
+    row.displayName.trim().length === 0
+  ) {
+    throw new Error(
+      'Application metadata connectionProvider displayName is invalid',
+    );
+  }
+  if (
+    row.logo !== null &&
+    row.logo !== undefined &&
+    typeof row.logo !== 'string'
+  ) {
+    throw new Error('Application metadata connectionProvider logo is invalid');
+  }
+  if (typeof row.type !== 'string' || row.type !== 'oauth') {
+    throw new Error('Application metadata connectionProvider type is invalid');
+  }
+  if (row.scope !== 'USER' && row.scope !== 'WORKSPACE') {
+    throw new Error('Application metadata connectionProvider scope is invalid');
+  }
+  if (
+    row.oauthConfig !== null &&
+    row.oauthConfig !== undefined &&
+    (typeof row.oauthConfig !== 'object' || Array.isArray(row.oauthConfig))
+  ) {
+    throw new Error(
+      'Application metadata connectionProvider oauthConfig is invalid',
+    );
+  }
+  nullableUuid(row.identifyAccountLogicFunctionUniversalIdentifier);
+  nullableUuid(row.onConnectLogicFunctionUniversalIdentifier);
+  nullableUuid(row.onDisconnectLogicFunctionUniversalIdentifier);
+};
+
+export const projectConnectionProvider = (
+  row: Record<string, unknown>,
+): Record<string, unknown> => ({
+  applicationId: uuid(row.applicationId),
+  type: String(row.type),
+  scope: String(row.scope),
+  name: String(row.name),
+  displayName: String(row.displayName),
+  logo: row.logo === null || row.logo === undefined ? null : String(row.logo),
+  oauthConfig:
+    row.oauthConfig === null || row.oauthConfig === undefined
+      ? null
+      : row.oauthConfig,
+  identifyAccountLogicFunctionUniversalIdentifier: nullableUuid(
+    row.identifyAccountLogicFunctionUniversalIdentifier,
+  ),
+  onConnectLogicFunctionUniversalIdentifier: nullableUuid(
+    row.onConnectLogicFunctionUniversalIdentifier,
+  ),
+  onDisconnectLogicFunctionUniversalIdentifier: nullableUuid(
+    row.onDisconnectLogicFunctionUniversalIdentifier,
+  ),
+});
+
 type TableSnapshot = Map<string, Record<string, unknown>>;
 
 type FullMetadataSnapshot = {
@@ -669,7 +750,9 @@ const readExistingTables = async (
       to_regclass('core."pageLayout"') IS NOT NULL AS "pageLayout",
       to_regclass('core."agentChatChannel"') IS NOT NULL AS "agentChatChannel",
       to_regclass('core."agentChatChannelRole"') IS NOT NULL AS "agentChatChannelRole",
-      to_regclass('core.webhook') IS NOT NULL AS "webhook"`,
+      to_regclass('core.webhook') IS NOT NULL AS "webhook",
+      to_regclass('core."connectionProvider"') IS NOT NULL AS "connectionProvider",
+      to_regclass('core."connectedAccount"') IS NOT NULL AS "connectedAccount"`,
   );
   const existing = new Set<string>();
   for (const [key, present] of Object.entries(reg ?? {})) {
@@ -1555,6 +1638,128 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       }
     }
 
+    const hasConnectionProviderTable = existingTables.has('connectionProvider');
+    const beforeConnectionProviders = hasConnectionProviderTable
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'connectionProvider',
+          workspaceId,
+          true,
+        )
+      : new Map<string, Record<string, unknown>>();
+    for (const cpRow of beforeConnectionProviders.values()) {
+      assertConnectionProviderRowInvariants(cpRow, workspaceId);
+    }
+
+    const plannedConnectionProviderCreatesByUniversalId = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedConnectionProviderUpdatePayloads = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    for (const action of actions) {
+      if (action.metadataName === 'connectionProvider') {
+        if (action.type === 'create') {
+          if (!hasConnectionProviderTable) {
+            throw new Error(
+              'Application metadata audit table connectionProvider is unavailable',
+            );
+          }
+          if (!action.flatEntity) {
+            throw new Error(
+              'Application metadata audit requires flatEntity on connectionProvider create action',
+            );
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (plannedConnectionProviderCreatesByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit duplicate connectionProvider create universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error(
+              'Application metadata audit connectionProvider create belongs to another application',
+            );
+          }
+          const explicitId =
+            action.id !== undefined ? uuid(action.id) : undefined;
+          if (
+            explicitId !== undefined &&
+            beforeConnectionProviders.has(explicitId)
+          ) {
+            throw new Error(
+              'Application metadata audit connectionProvider create ID already exists',
+            );
+          }
+          plannedConnectionProviderCreatesByUniversalId.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.connectionProviders?.[universalId]?.id;
+          if (!mappedId || !action.update) {
+            throw new Error(
+              'Application metadata audit connectionProvider update missing mapping or update payload',
+            );
+          }
+          plannedConnectionProviderUpdatePayloads.set(
+            uuid(mappedId),
+            action.update,
+          );
+        }
+      }
+    }
+    const plannedConnectionProviderUpdates = resolveMappedIds(
+      actions,
+      'connectionProvider',
+      'update',
+      mappings.connectionProviders ?? {},
+    );
+    const plannedConnectionProviderDeletes = resolveMappedIds(
+      actions,
+      'connectionProvider',
+      'delete',
+      mappings.connectionProviders ?? {},
+    );
+    for (const cpId of plannedConnectionProviderUpdates) {
+      const beforeCp = beforeConnectionProviders.get(cpId);
+      if (!beforeCp || uuid(beforeCp.applicationId) !== applicationId) {
+        throw new Error(
+          'Application metadata audit cannot update missing or foreign connectionProvider',
+        );
+      }
+    }
+    for (const cpId of plannedConnectionProviderDeletes) {
+      const beforeCp = beforeConnectionProviders.get(cpId);
+      if (!beforeCp || uuid(beforeCp.applicationId) !== applicationId) {
+        throw new Error(
+          'Application metadata audit cannot delete missing or foreign connectionProvider',
+        );
+      }
+    }
+    if (
+      plannedConnectionProviderDeletes.size > 0 &&
+      existingTables.has('connectedAccount')
+    ) {
+      const [refAccount] = await runner.query(
+        `SELECT id FROM core."connectedAccount" WHERE "connectionProviderId"=ANY($1::uuid[]) LIMIT 1`,
+        [[...plannedConnectionProviderDeletes]],
+      );
+      if (refAccount) {
+        throw new Error(
+          'Connection provider still has connected accounts; audited cleanup must run first',
+        );
+      }
+    }
+
     const plannedNavCreatesByUniversalIdentifier = new Map<
       string,
       { id?: string; flatEntity: Record<string, unknown> }
@@ -1743,7 +1948,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           action.metadataName === 'applicationVariable' ||
           action.metadataName === 'agentChatChannel' ||
           action.metadataName === 'agentChatChannelRole' ||
-          action.metadataName === 'webhook'
+          action.metadataName === 'webhook' ||
+          action.metadataName === 'connectionProvider'
         ) {
           throw new Error(
             'Application metadata objectDelete cannot mutate roles, targets, agents, or permission flags',
@@ -1906,7 +2112,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           action.metadataName === 'pageLayout' ||
           action.metadataName === 'agentChatChannel' ||
           action.metadataName === 'agentChatChannelRole' ||
-          action.metadataName === 'webhook'
+          action.metadataName === 'webhook' ||
+          action.metadataName === 'connectionProvider'
         ) {
           throw new Error(
             'Application metadata fieldDelete cannot mutate roles, objects, object permissions, or predicate groups',
@@ -3990,6 +4197,257 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       );
     }
 
+    // 13. Verify and record core.connectionProvider lifecycle and deletions
+    let expectedConnectionProvidersSerialized: string | undefined;
+    if (hasConnectionProviderTable) {
+      const afterConnectionProviders = await readTableSnapshot(
+        runner,
+        existingTables,
+        'connectionProvider',
+        workspaceId,
+        false,
+      );
+      const createdCpByUniversalId = new Map<string, Record<string, unknown>>();
+      for (const [id, afterCp] of afterConnectionProviders.entries()) {
+        assertConnectionProviderRowInvariants(afterCp, workspaceId);
+        if (!beforeConnectionProviders.has(id)) {
+          const universalId = uuid(afterCp.universalIdentifier);
+          if (createdCpByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit detected duplicate created connectionProvider universalIdentifier',
+            );
+          }
+          createdCpByUniversalId.set(universalId, afterCp);
+        }
+      }
+      if (
+        createdCpByUniversalId.size !==
+        plannedConnectionProviderCreatesByUniversalId.size
+      ) {
+        throw new Error(
+          'Application metadata audit connectionProvider created row count mismatch',
+        );
+      }
+      for (const [
+        universalId,
+        planned,
+      ] of plannedConnectionProviderCreatesByUniversalId.entries()) {
+        const afterCp = createdCpByUniversalId.get(universalId);
+        if (!afterCp) {
+          throw new Error(
+            'Application metadata connectionProvider create did not persist expected row',
+          );
+        }
+        const createdId = uuid(afterCp.id);
+        if (planned.id !== undefined && createdId !== planned.id) {
+          throw new Error(
+            'Application metadata connectionProvider create persisted unexpected ID',
+          );
+        }
+        if (uuid(afterCp.applicationId) !== applicationId) {
+          throw new Error(
+            'Application metadata connectionProvider create persisted unexpected applicationId',
+          );
+        }
+        const afterProj = projectConnectionProvider(afterCp);
+        for (const textKey of ['name', 'displayName', 'type'] as const) {
+          if (
+            planned.flatEntity[textKey] !== undefined &&
+            afterProj[textKey] !== String(planned.flatEntity[textKey])
+          ) {
+            throw new Error(
+              `Application metadata connectionProvider create persisted unexpected ${textKey}`,
+            );
+          }
+        }
+        if (
+          planned.flatEntity.scope !== undefined &&
+          afterProj.scope !== String(planned.flatEntity.scope)
+        ) {
+          throw new Error(
+            'Application metadata connectionProvider create persisted unexpected scope',
+          );
+        }
+        if (planned.flatEntity.logo !== undefined) {
+          const expectedLogo =
+            planned.flatEntity.logo === null
+              ? null
+              : String(planned.flatEntity.logo);
+          if (afterProj.logo !== expectedLogo) {
+            throw new Error(
+              'Application metadata connectionProvider create persisted unexpected logo',
+            );
+          }
+        }
+        if (planned.flatEntity.oauthConfig !== undefined) {
+          if (
+            canonicalAuditJson(afterProj.oauthConfig) !==
+            canonicalAuditJson(planned.flatEntity.oauthConfig ?? null)
+          ) {
+            throw new Error(
+              'Application metadata connectionProvider create persisted unexpected oauthConfig',
+            );
+          }
+        }
+        for (const hookKey of [
+          'identifyAccountLogicFunctionUniversalIdentifier',
+          'onConnectLogicFunctionUniversalIdentifier',
+          'onDisconnectLogicFunctionUniversalIdentifier',
+        ] as const) {
+          if (
+            planned.flatEntity[hookKey] !== undefined &&
+            afterProj[hookKey] !== nullableUuid(planned.flatEntity[hookKey])
+          ) {
+            throw new Error(
+              `Application metadata connectionProvider create persisted unexpected ${hookKey}`,
+            );
+          }
+        }
+        recordMutation(
+          'connectionProvider',
+          createdId,
+          'create',
+          null,
+          afterProj,
+        );
+      }
+
+      for (const cpId of plannedConnectionProviderUpdates) {
+        if (plannedConnectionProviderDeletes.has(cpId)) continue;
+        const beforeCp = beforeConnectionProviders.get(cpId);
+        const afterCp = afterConnectionProviders.get(cpId);
+        if (
+          !beforeCp ||
+          !afterCp ||
+          uuid(afterCp.applicationId) !== applicationId ||
+          uuid(beforeCp.universalIdentifier) !==
+            uuid(afterCp.universalIdentifier)
+        ) {
+          throw new Error(
+            'Application metadata connectionProvider update removed or corrupted target row',
+          );
+        }
+        const beforeProj = projectConnectionProvider(beforeCp);
+        const afterProj = projectConnectionProvider(afterCp);
+        const updatePayload =
+          plannedConnectionProviderUpdatePayloads.get(cpId) ?? {};
+        for (const textKey of [
+          'name',
+          'displayName',
+          'type',
+          'scope',
+        ] as const) {
+          const expectedVal =
+            textKey in updatePayload && updatePayload[textKey] !== undefined
+              ? String(updatePayload[textKey])
+              : beforeProj[textKey];
+          if (afterProj[textKey] !== expectedVal) {
+            throw new Error(
+              `Application metadata connectionProvider update did not persist expected ${textKey}`,
+            );
+          }
+        }
+        const expectedLogo =
+          'logo' in updatePayload && updatePayload.logo !== undefined
+            ? updatePayload.logo === null
+              ? null
+              : String(updatePayload.logo)
+            : beforeProj.logo;
+        if (afterProj.logo !== expectedLogo) {
+          throw new Error(
+            'Application metadata connectionProvider update did not persist expected logo',
+          );
+        }
+        const expectedOauthConfig =
+          'oauthConfig' in updatePayload &&
+          updatePayload.oauthConfig !== undefined
+            ? updatePayload.oauthConfig === null
+              ? null
+              : updatePayload.oauthConfig
+            : beforeProj.oauthConfig;
+        if (
+          canonicalAuditJson(afterProj.oauthConfig) !==
+          canonicalAuditJson(expectedOauthConfig)
+        ) {
+          throw new Error(
+            'Application metadata connectionProvider update did not persist expected oauthConfig',
+          );
+        }
+        for (const hookKey of [
+          'identifyAccountLogicFunctionUniversalIdentifier',
+          'onConnectLogicFunctionUniversalIdentifier',
+          'onDisconnectLogicFunctionUniversalIdentifier',
+        ] as const) {
+          const expectedHook =
+            hookKey in updatePayload && updatePayload[hookKey] !== undefined
+              ? nullableUuid(updatePayload[hookKey])
+              : beforeProj[hookKey];
+          if (afterProj[hookKey] !== expectedHook) {
+            throw new Error(
+              `Application metadata connectionProvider update did not persist expected ${hookKey}`,
+            );
+          }
+        }
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          recordMutation(
+            'connectionProvider',
+            cpId,
+            'update',
+            beforeProj,
+            afterProj,
+          );
+        }
+      }
+
+      for (const cpId of plannedConnectionProviderDeletes) {
+        const beforeCp = beforeConnectionProviders.get(cpId);
+        if (!beforeCp) {
+          throw new Error(
+            'Application metadata connectionProvider delete expected row missing before migration',
+          );
+        }
+        if (afterConnectionProviders.has(cpId)) {
+          throw new Error(
+            'Application metadata connectionProvider delete did not remove expected row',
+          );
+        }
+        recordMutation(
+          'connectionProvider',
+          cpId,
+          'delete',
+          projectConnectionProvider(beforeCp),
+          null,
+        );
+      }
+
+      for (const [cpId, beforeCp] of beforeConnectionProviders.entries()) {
+        if (plannedConnectionProviderDeletes.has(cpId)) continue;
+        const afterCp = afterConnectionProviders.get(cpId);
+        if (!afterCp) {
+          throw new Error(
+            'Application metadata audit detected unplanned connectionProvider deletion',
+          );
+        }
+        if (!plannedConnectionProviderUpdates.has(cpId)) {
+          if (
+            canonicalAuditJson(scalarWithoutTimestamps(beforeCp)) !==
+            canonicalAuditJson(scalarWithoutTimestamps(afterCp))
+          ) {
+            throw new Error(
+              'Application metadata audit detected unplanned connectionProvider mutation',
+            );
+          }
+        }
+      }
+
+      expectedConnectionProvidersSerialized = canonicalAuditJson(
+        [...afterConnectionProviders.entries()].map(([id, row]) => [
+          id,
+          scalarWithoutTimestamps(row),
+        ]),
+      );
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized = serializeFullSnapshot(after);
       await audit.flush();
@@ -4149,6 +4607,26 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           );
         }
       }
+      if (expectedConnectionProvidersSerialized !== undefined) {
+        const postFlushConnectionProviders = await readTableSnapshot(
+          runner,
+          existingTables,
+          'connectionProvider',
+          workspaceId,
+          false,
+        );
+        const postFlushSerialized = canonicalAuditJson(
+          [...postFlushConnectionProviders.entries()].map(([id, row]) => [
+            id,
+            scalarWithoutTimestamps(row),
+          ]),
+        );
+        if (postFlushSerialized !== expectedConnectionProvidersSerialized) {
+          throw new Error(
+            'Application metadata state changed during audit flush',
+          );
+        }
+      }
     }
 
     return result;
@@ -4187,6 +4665,7 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
     'agentChatChannel',
     'agentChatChannelRole',
     'webhook',
+    'connectionProvider',
   ]) {
     if (!existingTables.has(tableName)) continue;
     const [ownRow] = await runner.query(

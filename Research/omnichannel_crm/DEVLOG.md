@@ -5168,6 +5168,22 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 и совпали. [Публикация](implementation/log176/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765.
 
+## LOG-177 - транзакционный аудит полного жизненного цикла `connectionProvider` (`core."connectionProvider"`) и отчётов об отказе авторизации подключений приложений (`ApplicationConnectionAuthFailureService.reportAuthFailureOrThrow`)
+
+09.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log177/design.md), [design-review.md](implementation/log177/design-review.md)) и реализован участок `LOG-177` (Linear `ROB-765`): транзакционный аудит полного жизненного цикла провайдеров подключений приложений (`core."connectionProvider"`) и отчётов об отказе авторизации подключений приложений (`ApplicationConnectionAuthFailureService.reportAuthFailureOrThrow` -> `core."connectedAccount"`).
+
+В `crm-audit.types.ts` и `crm-audit-transaction-context.ts` добавлен вид ресурса `connectionProvider` (`values: ['applicationId', 'type', 'scope']`, `redacted: ['name', 'displayName', 'logo', 'oauthConfig', 'identifyAccountLogicFunctionUniversalIdentifier', 'onConnectLogicFunctionUniversalIdentifier', 'onDisconnectLogicFunctionUniversalIdentifier']`, действия `['create', 'update', 'delete']`). В `application-metadata-audit.ts` и `workspace-migration-runner.service.ts` добавлены `'connectionProvider'` в `AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES` (fail-closed барьер на неаудируемые миграции `connectionProvider`), аудит `connectionProvider` (`create`, `update`, `delete`) в `runAuditedApplicationMetadataMigration` с проверкой отсутствия привязанных `core."connectedAccount"` перед удалением и проверка `core."connectionProvider"` в `assertNoRemainingApplicationRoleOrPermissionMetadata` перед удалением `core.application`. В `application-authorization-and-variable-audit.ts`, `application-connection-auth-failure.service.ts` и `application-connections.resolver.ts` подключены `captureAppConnectionAuthFailureAudit` и `runAuditedAppConnectionAuthFailureReport` с записью `connectedAccount:update` (редактирование `authFailedAt` и `authFailedReason`), сохранением compare-and-swap защиты по `lastCredentialsRefreshedAt` (`status: 'superseded'`) и канонического кода `ConnectionProviderExceptionCode.CONNECTION_NOT_FOUND`.
+
+09.11.2026 проверки LOG177 завершены. 3175 tests/122 suites PASS (700.702s). 21 targeted/5 PostgreSQL suites PASS (10.826s), 3 новых PostgreSQL случая. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 484/485 roots, baseline 277 / current 277 diagnostics, 0 новых/changed-code. Совпали 8 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех входных точек `connectionProvider` и `reportAppConnectionAuthFailure`, редактирование `oauthConfig`, `name`, `displayName`, `logo`, UUID хуков, `authFailedAt` и `authFailedReason`, корректную обработку `NativeTransactionOutcomeUnknownError` и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log177/results.json), [ревью](implementation/log177/review.md),
+[следующий участок](implementation/log177/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
+
+
 
 
 

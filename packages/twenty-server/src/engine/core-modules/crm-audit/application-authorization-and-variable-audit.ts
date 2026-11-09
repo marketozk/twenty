@@ -73,6 +73,14 @@ const uuid = (value: unknown): string => {
   return value.toLowerCase();
 };
 
+const nullableUuid = (value: unknown): string | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  return uuid(value);
+};
+
 export const getApplicationAuthorizationOrVariableAudit = (
   workspaceId: string,
 ) => {
@@ -1904,6 +1912,294 @@ export const runAuditedFeatureFlagsEnable = async (
       }
 
       return true;
+    }),
+  );
+};
+
+export const projectConnectedAccountAuthFailure = (
+  row: Record<string, unknown>,
+): Record<string, unknown> => ({
+  userWorkspaceId: nullableUuid(row.userWorkspaceId),
+  archivedAt: row.archivedAt ?? null,
+  hasAccessToken: row.accessToken !== null && row.accessToken !== undefined,
+  hasRefreshToken: row.refreshToken !== null && row.refreshToken !== undefined,
+  hasConnectionParameters:
+    row.connectionParameters !== null && row.connectionParameters !== undefined,
+  authFailedAt: row.authFailedAt ?? null,
+  authFailedReason:
+    row.authFailedReason === null || row.authFailedReason === undefined
+      ? null
+      : String(row.authFailedReason),
+});
+
+export const captureAppConnectionAuthFailureAudit = ({
+  workspaceId,
+  applicationId,
+  auditIdentity,
+}: {
+  workspaceId: string;
+  applicationId: string;
+  auditIdentity?: ApplicationAuthorizationAuditIdentity;
+}): ApplicationAuthorizationAuditRequest => {
+  const normalizedWorkspaceId = uuid(workspaceId);
+  const normalizedApplicationId = uuid(applicationId);
+  if (
+    getApplicationAuthorizationOrVariableAudit(normalizedWorkspaceId) ||
+    hasConflictingMetadataAuditScope(
+      normalizedWorkspaceId,
+      getApplicationAuthorizationOrVariableAudit,
+    )
+  ) {
+    throw new Error(
+      'Nested application connection auth failure audit is unsupported',
+    );
+  }
+
+  if (auditIdentity !== undefined) {
+    const { operation, impersonatorUserWorkspaceId } =
+      resolveOperationFromIdentity(
+        normalizedWorkspaceId,
+        auditIdentity,
+        'Application connection auth failure mutation requires authenticated audit identity',
+      );
+    return Object.freeze({
+      workspaceId: normalizedWorkspaceId,
+      operation,
+      ...(impersonatorUserWorkspaceId ? { impersonatorUserWorkspaceId } : {}),
+    });
+  }
+
+  const ambient = captureCurrentCrmAuditOperation(normalizedWorkspaceId);
+  if (ambient) {
+    return Object.freeze({
+      workspaceId: normalizedWorkspaceId,
+      operation: ambient.operation,
+      ...(ambient.impersonatorUserWorkspaceId
+        ? {
+            impersonatorUserWorkspaceId: uuid(
+              ambient.impersonatorUserWorkspaceId,
+            ),
+          }
+        : {}),
+    });
+  }
+
+  return Object.freeze({
+    workspaceId: normalizedWorkspaceId,
+    operation: Object.freeze(
+      captureCrmAuditOperation({
+        workspaceId: normalizedWorkspaceId,
+        operationId: randomUUID(),
+        actor: {
+          kind: 'application',
+          id: normalizedApplicationId,
+        },
+        correlationId: randomUUID(),
+      }),
+    ),
+  });
+};
+
+const toIsoTimestampOrNull = (value: unknown): string | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const date = value instanceof Date ? value : new Date(String(value));
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('Application connection timestamp is invalid');
+  }
+  return date.toISOString();
+};
+
+export const runAuditedAppConnectionAuthFailureReport = async (
+  dataSource: DataSource | undefined,
+  request: ApplicationAuthorizationAuditRequest,
+  {
+    id,
+    applicationId,
+    requestUserWorkspaceId,
+    reason,
+    expectedLastCredentialsRefreshedAt,
+  }: {
+    id: string;
+    applicationId: string;
+    requestUserWorkspaceId: string | null;
+    reason: string | null;
+    expectedLastCredentialsRefreshedAt?: string | Date | null;
+  },
+): Promise<{ status: 'updated' | 'not_found' | 'superseded' }> => {
+  if (!dataSource) {
+    throw new Error(
+      'Application connection auth failure audit requires core DataSource',
+    );
+  }
+  const normalizedId = uuid(id);
+  const normalizedApplicationId = uuid(applicationId);
+  const normalizedRequestUserWorkspaceId =
+    requestUserWorkspaceId !== null && requestUserWorkspaceId !== undefined
+      ? uuid(requestUserWorkspaceId)
+      : null;
+  if (reason !== null && (typeof reason !== 'string' || reason.length > 1000)) {
+    throw new Error('Application connection auth failure reason is invalid');
+  }
+  if (
+    request.operation.actor.kind === 'application' &&
+    uuid(request.operation.actor.id) !== normalizedApplicationId
+  ) {
+    throw new Error(
+      'Application connection auth failure audit cannot target another application',
+    );
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error(
+          'Application connection auth failure audit workspace unavailable',
+        );
+      }
+
+      const [application] = await runner.query(
+        `SELECT id,to_jsonb(a)->>'deletedAt' AS "deletedAt" FROM core.application a WHERE a.id=$1 AND a."workspaceId"=$2 FOR NO KEY UPDATE`,
+        [normalizedApplicationId, request.workspaceId],
+      );
+      if (!application || application.deletedAt !== null) {
+        return { status: 'not_found' as const };
+      }
+
+      if (normalizedRequestUserWorkspaceId !== null) {
+        const [uw] = await runner.query(
+          `SELECT id,to_jsonb(u)->>'deletedAt' AS "deletedAt" FROM core."userWorkspace" u WHERE u.id=$1 AND u."workspaceId"=$2 FOR SHARE`,
+          [normalizedRequestUserWorkspaceId, request.workspaceId],
+        );
+        if (!uw || uw.deletedAt !== null) {
+          return { status: 'not_found' as const };
+        }
+      }
+
+      const [beforeEntry] = await runner.query(
+        `SELECT to_jsonb(ca) AS row
+         FROM core."connectedAccount" ca
+         WHERE ca.id=$1 AND ca."workspaceId"=$2 AND ca."applicationId"=$3 AND LOWER(ca.provider)='app' AND ca."archivedAt" IS NULL
+         FOR UPDATE`,
+        [normalizedId, request.workspaceId, normalizedApplicationId],
+      );
+      const beforeRow = beforeEntry?.row as Record<string, unknown> | undefined;
+      if (!beforeRow) {
+        return { status: 'not_found' as const };
+      }
+      if (uuid(beforeRow.workspaceId) !== request.workspaceId) {
+        throw new Error(
+          'Application connection auth failure workspace mismatch on existing row',
+        );
+      }
+      if (beforeRow.scope !== 'WORKSPACE' && beforeRow.scope !== 'USER') {
+        throw new Error('Application connection has invalid scope');
+      }
+      if (
+        beforeRow.scope === 'USER' &&
+        (normalizedRequestUserWorkspaceId === null ||
+          nullableUuid(beforeRow.userWorkspaceId) !==
+            normalizedRequestUserWorkspaceId)
+      ) {
+        return { status: 'not_found' as const };
+      }
+
+      if (
+        expectedLastCredentialsRefreshedAt !== undefined &&
+        toIsoTimestampOrNull(beforeRow.lastCredentialsRefreshedAt) !==
+          toIsoTimestampOrNull(expectedLastCredentialsRefreshedAt)
+      ) {
+        return { status: 'superseded' as const };
+      }
+
+      const operation = await resolveRoleAuditInitiator(
+        runner,
+        request.operation,
+        request.impersonatorUserWorkspaceId,
+      );
+      const audit = new CrmAuditTransactionContext(runner, operation);
+
+      const rawUpdated = await runner.query(
+        `UPDATE core."connectedAccount"
+         SET "authFailedAt"=now(), "authFailedReason"=$1, "updatedAt"=now()
+         WHERE id=$2 AND "workspaceId"=$3 AND "applicationId"=$4 AND LOWER(provider)='app' AND "archivedAt" IS NULL
+         RETURNING to_jsonb("connectedAccount") AS row`,
+        [reason, normalizedId, request.workspaceId, normalizedApplicationId],
+      );
+      const updatedRows = Array.isArray(rawUpdated?.[0])
+        ? rawUpdated[0]
+        : rawUpdated;
+      const updated = updatedRows?.[0];
+      if (!updated?.row) {
+        throw new Error(
+          'Application connection auth failure update did not return row',
+        );
+      }
+      const afterRow = updated.row as Record<string, unknown>;
+      if (
+        uuid(afterRow.id) !== normalizedId ||
+        uuid(afterRow.workspaceId) !== request.workspaceId ||
+        uuid(afterRow.applicationId) !== normalizedApplicationId ||
+        String(afterRow.provider).toLowerCase() !== 'app' ||
+        afterRow.archivedAt !== null ||
+        afterRow.authFailedAt === null ||
+        afterRow.authFailedAt === undefined ||
+        (afterRow.authFailedReason ?? null) !== reason ||
+        canonicalAuditJson({
+          ...scalarWithoutTimestamps(beforeRow),
+          authFailedAt: afterRow.authFailedAt,
+          authFailedReason: afterRow.authFailedReason,
+        }) !== canonicalAuditJson(scalarWithoutTimestamps(afterRow))
+      ) {
+        throw new Error(
+          'Application connection auth failure persisted row failed validation',
+        );
+      }
+
+      const beforeProj = projectConnectedAccountAuthFailure(beforeRow);
+      const afterProj = projectConnectedAccountAuthFailure(afterRow);
+      if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+        audit.record({
+          resourceKind: 'connectedAccount',
+          resourceId: normalizedId,
+          action: 'update',
+          before: beforeProj,
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'connectedAccount',
+            resourceId: normalizedId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+      }
+
+      const expectedSerialized = canonicalAuditJson(
+        scalarWithoutTimestamps(afterRow),
+      );
+      await audit.flush();
+      const [postFlush] = await runner.query(
+        `SELECT to_jsonb(ca) AS row FROM core."connectedAccount" ca WHERE ca.id=$1`,
+        [normalizedId],
+      );
+      if (
+        !postFlush?.row ||
+        canonicalAuditJson(
+          scalarWithoutTimestamps(postFlush.row as Record<string, unknown>),
+        ) !== expectedSerialized
+      ) {
+        throw new Error(
+          'Application connection state changed during audit flush',
+        );
+      }
+
+      return { status: 'updated' as const };
     }),
   );
 };

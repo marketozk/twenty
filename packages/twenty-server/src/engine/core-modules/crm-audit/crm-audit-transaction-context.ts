@@ -103,6 +103,18 @@ const CATALOG: Record<
     values: ['applicationId'],
     redacted: ['targetUrl', 'operations', 'description', 'secret'],
   },
+  connectionProvider: {
+    values: ['applicationId', 'type', 'scope'],
+    redacted: [
+      'name',
+      'displayName',
+      'logo',
+      'oauthConfig',
+      'identifyAccountLogicFunctionUniversalIdentifier',
+      'onConnectLogicFunctionUniversalIdentifier',
+      'onDisconnectLogicFunctionUniversalIdentifier',
+    ],
+  },
   twoFactorAuthenticationMethod: {
     values: ['userWorkspaceId', 'strategy', 'status'],
     redacted: ['secret', 'deletedAt'],
@@ -534,6 +546,7 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   approvedAccessDomain: ['create', 'update', 'delete'],
   publicDomain: ['create', 'update', 'delete'],
   webhook: ['create', 'update', 'delete'],
+  connectionProvider: ['create', 'update', 'delete'],
   twoFactorAuthenticationMethod: ['create', 'update', 'delete'],
   navigationMenuItem: ['create', 'update', 'delete'],
   agentChatChannel: ['create', 'update', 'delete'],

@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Injectable, Optional } from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
-import { IsNull, Repository } from 'typeorm';
+import { DataSource, IsNull, Repository } from 'typeorm';
 
 import { ConnectedAccountProvider } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
@@ -9,6 +9,11 @@ import { isDefined } from 'twenty-shared/utils';
 import { ConnectionProviderExceptionCode } from 'src/engine/core-modules/application/connection-provider/connection-provider-exception-code.enum';
 import { ConnectionProviderException } from 'src/engine/core-modules/application/connection-provider/connection-provider.exception';
 import { isConnectionHiddenFromRequestUser } from 'src/engine/core-modules/application/connection-provider/connections/utils/is-connection-hidden-from-request-user.util';
+import {
+  captureAppConnectionAuthFailureAudit,
+  runAuditedAppConnectionAuthFailureReport,
+  type ApplicationAuthorizationAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/application-authorization-and-variable-audit';
 import { ConnectedAccountEntity } from 'src/engine/metadata-modules/connected-account/entities/connected-account.entity';
 
 type ReportAuthFailureArgs = {
@@ -17,6 +22,7 @@ type ReportAuthFailureArgs = {
   requestUserWorkspaceId: string | null;
   id: string;
   reason: string | null;
+  auditIdentity?: ApplicationAuthorizationAuditIdentity;
 };
 
 @Injectable()
@@ -24,7 +30,17 @@ export class ApplicationConnectionAuthFailureService {
   constructor(
     @InjectRepository(ConnectedAccountEntity)
     private readonly connectedAccountRepository: Repository<ConnectedAccountEntity>,
+    @Optional()
+    @InjectDataSource()
+    private readonly coreDataSource?: DataSource,
   ) {}
+
+  private getDataSource(): DataSource | undefined {
+    return (
+      this.coreDataSource ??
+      this.connectedAccountRepository?.manager?.connection
+    );
+  }
 
   async reportAuthFailureOrThrow({
     applicationId,
@@ -32,12 +48,25 @@ export class ApplicationConnectionAuthFailureService {
     requestUserWorkspaceId,
     id,
     reason,
+    auditIdentity,
   }: ReportAuthFailureArgs): Promise<void> {
+    const capturedApplicationId = applicationId;
+    const capturedWorkspaceId = workspaceId;
+    const capturedRequestUserWorkspaceId = requestUserWorkspaceId;
+    const capturedId = id;
+    const capturedReason = reason;
+    const auditRequest = captureAppConnectionAuthFailureAudit({
+      workspaceId: capturedWorkspaceId,
+      applicationId: capturedApplicationId,
+      auditIdentity,
+    });
+
     const scopedWhere = {
-      id,
-      applicationId,
-      workspaceId,
-      provider: ConnectedAccountProvider.APP,
+      id: capturedId,
+      applicationId: capturedApplicationId,
+      workspaceId: capturedWorkspaceId,
+      provider: (ConnectedAccountProvider.APP ??
+        'app') as ConnectedAccountProvider,
       archivedAt: IsNull(),
     };
 
@@ -47,42 +76,35 @@ export class ApplicationConnectionAuthFailureService {
 
     if (
       !isDefined(account) ||
-      isConnectionHiddenFromRequestUser({ account, requestUserWorkspaceId })
+      isConnectionHiddenFromRequestUser({
+        account,
+        requestUserWorkspaceId: capturedRequestUserWorkspaceId,
+      })
     ) {
       throw new ConnectionProviderException(
-        `Connection ${id} not found`,
+        `Connection ${capturedId} not found`,
         ConnectionProviderExceptionCode.CONNECTION_NOT_FOUND,
       );
     }
 
-    // Every reconnect rewrites lastCredentialsRefreshedAt, so matching on the
-    // value we read drops a report that describes an already-replaced token
-    // instead of resurrecting a failure the reconnect just cleared.
-    const updateResult = await this.connectedAccountRepository.update(
+    const outcome = await runAuditedAppConnectionAuthFailureReport(
+      this.getDataSource(),
+      auditRequest,
       {
-        ...scopedWhere,
-        lastCredentialsRefreshedAt: isDefined(
-          account.lastCredentialsRefreshedAt,
-        )
-          ? account.lastCredentialsRefreshedAt
-          : IsNull(),
+        id: capturedId,
+        applicationId: capturedApplicationId,
+        requestUserWorkspaceId: capturedRequestUserWorkspaceId,
+        reason: capturedReason,
+        expectedLastCredentialsRefreshedAt:
+          account.lastCredentialsRefreshedAt ?? null,
       },
-      { authFailedAt: new Date(), authFailedReason: reason },
     );
 
-    if (updateResult.affected === 0) {
-      const currentAccount = await this.connectedAccountRepository.findOne({
-        where: scopedWhere,
-      });
-
-      if (!isDefined(currentAccount)) {
-        throw new ConnectionProviderException(
-          `Connection ${id} not found`,
-          ConnectionProviderExceptionCode.CONNECTION_NOT_FOUND,
-        );
-      }
-      // A reconnect superseded the report while it was in flight; the failure
-      // described the old credential, so dropping it is correct.
+    if (outcome.status === 'not_found') {
+      throw new ConnectionProviderException(
+        `Connection ${capturedId} not found`,
+        ConnectionProviderExceptionCode.CONNECTION_NOT_FOUND,
+      );
     }
   }
 }

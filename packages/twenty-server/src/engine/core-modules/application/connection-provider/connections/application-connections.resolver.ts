@@ -82,12 +82,25 @@ export class ApplicationConnectionsResolver {
     userWorkspaceId: string | undefined,
     @Args('input') input: ReportAppConnectionAuthFailureInput,
   ): Promise<boolean> {
+    const capturedApplicationId = application.id;
+    const capturedWorkspaceId = workspace.id;
+    const capturedUserWorkspaceId = userWorkspaceId ?? null;
+    const capturedId = input.id;
+    const capturedReason = input.reason ?? null;
+
     await this.authFailureService.reportAuthFailureOrThrow({
-      applicationId: application.id,
-      workspaceId: workspace.id,
-      requestUserWorkspaceId: userWorkspaceId ?? null,
-      id: input.id,
-      reason: input.reason ?? null,
+      applicationId: capturedApplicationId,
+      workspaceId: capturedWorkspaceId,
+      requestUserWorkspaceId: capturedUserWorkspaceId,
+      id: capturedId,
+      reason: capturedReason,
+      auditIdentity: {
+        workspaceId: capturedWorkspaceId,
+        actor: {
+          kind: 'application',
+          id: capturedApplicationId,
+        },
+      },
     });
 
     return true;

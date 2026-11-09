@@ -779,6 +779,9 @@ export class WorkspaceMigrationRunnerService {
             ?.byUniversalIdentifier ?? {},
         webhooks:
           allFlatEntityMaps.flatWebhookMaps?.byUniversalIdentifier ?? {},
+        connectionProviders:
+          allFlatEntityMaps.flatConnectionProviderMaps?.byUniversalIdentifier ??
+          {},
       };
       const allMetadataEvents: MetadataEvent[] = [];
       const allDeferredActions: DeferredWorkspaceMigrationAction[] = [];

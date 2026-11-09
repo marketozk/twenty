@@ -24,6 +24,7 @@ export type CrmAuditResourceKind =
   | 'approvedAccessDomain'
   | 'publicDomain'
   | 'webhook'
+  | 'connectionProvider'
   | 'twoFactorAuthenticationMethod'
   | 'navigationMenuItem'
   | 'agentChatChannel'

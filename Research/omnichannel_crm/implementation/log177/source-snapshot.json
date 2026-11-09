@@ -1,0 +1,14 @@
+{
+  "baseCommit": "a2d3ceebc5173258bfeb263afc87657e270873ce",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/application/connection-provider/connections/application-connections.resolver.ts": "057b809187e47414e1c815e1479e6617435bd94e8b50eac3dd7be40c04e9d4cd",
+    "packages/twenty-server/src/engine/core-modules/application/connection-provider/connections/services/application-connection-auth-failure.service.ts": "63d3d52706034f7bcf465633deb01649e4608414629904cebc6e2fa6bd36a647",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/application-authorization-and-variable-audit.ts": "dc9849454d3b3adb2442f47c54fac7dc7aa1c6bdd7f1971b896cae4fea407b4c",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/application-metadata-audit.ts": "21d2428585c3533d71a8e020674baeea6babf7affa0b5d3b9ed20a11159ea66c",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "18bbf566828ee7f503c33c3fdadcb0617538afcbf8c8257e5639cd3953eca835",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "cdcfba93a6a99059535a92ee28e822a2cd7f846eb8fdbac71d265854391fa865",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts": "0c1eabef6b5db4bf140d126fc40517639cf90db54695d6bc6b4cb83c875eabd6",
+    "packages/twenty-server/test/fork-migration/crm-audit-connection-provider-and-auth-failure.postgres-spec.ts": "09b3a4c42911512e83d559d91ae5959be12dc82308277f7afcb03a7796503e42"
+  },
+  "uploadedSourceHashesVerified": true
+}
