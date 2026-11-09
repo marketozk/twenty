@@ -41,7 +41,8 @@ export type NavigationMenuItemAuditMode =
   | 'delete'
   | 'cascade'
   | 'channel'
-  | 'webhook';
+  | 'webhook'
+  | 'skill';
 
 export type NavigationMenuItemAuditRequest = Readonly<{
   workspaceId: string;
@@ -65,6 +66,9 @@ export type NavigationMenuItemAuditRequest = Readonly<{
   expectedWebhookCreateIds?: readonly string[];
   expectedWebhookUpdateIds?: readonly string[];
   expectedWebhookDeleteIds?: readonly string[];
+  expectedSkillCreateIds?: readonly string[];
+  expectedSkillUpdateIds?: readonly string[];
+  expectedSkillDeleteIds?: readonly string[];
 }>;
 
 export type NavigationMenuItemAuditMappings = {
@@ -75,6 +79,7 @@ export type NavigationMenuItemAuditMappings = {
   agentChatChannels?: Record<string, { id: string } | undefined>;
   agentChatChannelRoles?: Record<string, { id: string } | undefined>;
   webhooks?: Record<string, { id: string } | undefined>;
+  skills?: Record<string, { id: string } | undefined>;
   roles?: Record<string, { id: string } | undefined>;
   objectMetadatas?: Record<string, { id: string } | undefined>;
   fieldMetadatas?: Record<string, { id: string } | undefined>;
@@ -358,6 +363,68 @@ export const projectWebhook = (row: Record<string, unknown>) => ({
       ? null
       : String(row.description),
   secret: String(row.secret),
+});
+
+export const assertSkillRowInvariants = (
+  row: Record<string, unknown>,
+  workspaceId: string,
+): void => {
+  uuid(row.id);
+  if (uuid(row.workspaceId) !== workspaceId) {
+    throw new Error('Skill audit row workspace mismatch');
+  }
+  uuid(row.applicationId);
+  uuid(row.universalIdentifier);
+  if (row.deletedAt !== null && row.deletedAt !== undefined) {
+    throw new Error('Skill audit soft-deleted row is unsupported');
+  }
+  if (typeof row.name !== 'string' || row.name.trim().length === 0) {
+    throw new Error('Skill audit name is invalid');
+  }
+  if (typeof row.label !== 'string' || row.label.trim().length === 0) {
+    throw new Error('Skill audit label is invalid');
+  }
+  if (
+    row.icon !== null &&
+    row.icon !== undefined &&
+    typeof row.icon !== 'string'
+  ) {
+    throw new Error('Skill audit icon is invalid');
+  }
+  if (
+    row.description !== null &&
+    row.description !== undefined &&
+    typeof row.description !== 'string'
+  ) {
+    throw new Error('Skill audit description is invalid');
+  }
+  if (typeof row.content !== 'string' || row.content.trim().length === 0) {
+    throw new Error('Skill audit content is invalid');
+  }
+  if (typeof row.isCustom !== 'boolean') {
+    throw new Error('Skill audit isCustom is invalid');
+  }
+  if (typeof row.isSystem !== 'boolean') {
+    throw new Error('Skill audit isSystem is invalid');
+  }
+  if (typeof row.isActive !== 'boolean') {
+    throw new Error('Skill audit isActive is invalid');
+  }
+};
+
+export const projectSkill = (row: Record<string, unknown>) => ({
+  applicationId: uuid(row.applicationId),
+  isCustom: Boolean(row.isCustom),
+  isSystem: Boolean(row.isSystem),
+  isActive: Boolean(row.isActive),
+  name: String(row.name),
+  label: String(row.label),
+  icon: row.icon === undefined || row.icon === null ? null : String(row.icon),
+  description:
+    row.description === undefined || row.description === null
+      ? null
+      : String(row.description),
+  content: String(row.content),
 });
 
 export const getNavigationMenuItemAudit = (workspaceId: string) => {
@@ -690,6 +757,9 @@ export type NavigationMenuItemAuditExpectedScope = {
   expectedWebhookCreateIds?: readonly string[];
   expectedWebhookUpdateIds?: readonly string[];
   expectedWebhookDeleteIds?: readonly string[];
+  expectedSkillCreateIds?: readonly string[];
+  expectedSkillUpdateIds?: readonly string[];
+  expectedSkillDeleteIds?: readonly string[];
 };
 
 export const captureNavigationMenuItemAudit = ({
@@ -715,6 +785,9 @@ export const captureNavigationMenuItemAudit = ({
   expectedWebhookCreateIds,
   expectedWebhookUpdateIds,
   expectedWebhookDeleteIds,
+  expectedSkillCreateIds,
+  expectedSkillUpdateIds,
+  expectedSkillDeleteIds,
 }: {
   workspaceId: string;
   mode: NavigationMenuItemAuditMode;
@@ -792,6 +865,9 @@ export const captureNavigationMenuItemAudit = ({
   const baseWebhookCreateIds = normalizeIds(expectedWebhookCreateIds);
   const baseWebhookUpdateIds = normalizeIds(expectedWebhookUpdateIds);
   const baseWebhookDeleteIds = normalizeIds(expectedWebhookDeleteIds);
+  const baseSkillCreateIds = normalizeIds(expectedSkillCreateIds);
+  const baseSkillUpdateIds = normalizeIds(expectedSkillUpdateIds);
+  const baseSkillDeleteIds = normalizeIds(expectedSkillDeleteIds);
 
   return (overrides) => {
     const resolvedCreatedIds =
@@ -828,6 +904,12 @@ export const captureNavigationMenuItemAudit = ({
       normalizeIds(overrides?.expectedWebhookUpdateIds) ?? baseWebhookUpdateIds;
     const resolvedWebhookDeleteIds =
       normalizeIds(overrides?.expectedWebhookDeleteIds) ?? baseWebhookDeleteIds;
+    const resolvedSkillCreateIds =
+      normalizeIds(overrides?.expectedSkillCreateIds) ?? baseSkillCreateIds;
+    const resolvedSkillUpdateIds =
+      normalizeIds(overrides?.expectedSkillUpdateIds) ?? baseSkillUpdateIds;
+    const resolvedSkillDeleteIds =
+      normalizeIds(overrides?.expectedSkillDeleteIds) ?? baseSkillDeleteIds;
 
     return Object.freeze({
       workspaceId: normalizedWorkspaceId,
@@ -880,6 +962,15 @@ export const captureNavigationMenuItemAudit = ({
         : {}),
       ...(resolvedWebhookDeleteIds !== undefined
         ? { expectedWebhookDeleteIds: resolvedWebhookDeleteIds }
+        : {}),
+      ...(resolvedSkillCreateIds !== undefined
+        ? { expectedSkillCreateIds: resolvedSkillCreateIds }
+        : {}),
+      ...(resolvedSkillUpdateIds !== undefined
+        ? { expectedSkillUpdateIds: resolvedSkillUpdateIds }
+        : {}),
+      ...(resolvedSkillDeleteIds !== undefined
+        ? { expectedSkillDeleteIds: resolvedSkillDeleteIds }
         : {}),
     });
   };
@@ -1151,6 +1242,23 @@ const readWebhookSnapshot = async (
   );
 };
 
+const readSkillSnapshot = async (
+  runner: QueryRunner,
+  workspaceId: string,
+  lock: boolean,
+): Promise<Map<string, Record<string, unknown>>> => {
+  const rows = await runner.query(
+    `SELECT to_jsonb(s) AS row FROM core.skill s WHERE s."workspaceId"=$1 ORDER BY s.id${lock ? ' FOR UPDATE' : ''}`,
+    [workspaceId],
+  );
+  return new Map(
+    rows.map((entry: { row: Record<string, unknown> }) => [
+      uuid(entry.row.id),
+      entry.row,
+    ]),
+  );
+};
+
 const serializeNavSnapshot = (
   snapshot: Map<string, Record<string, unknown>>,
 ): string =>
@@ -1162,6 +1270,16 @@ const serializeNavSnapshot = (
   );
 
 const serializeWebhookSnapshot = (
+  snapshot: Map<string, Record<string, unknown>>,
+): string =>
+  canonicalAuditJson(
+    [...snapshot.entries()].map(([id, row]) => [
+      id,
+      scalarNavigationMenuItemWithoutTimestamps(row),
+    ]),
+  );
+
+const serializeSkillSnapshot = (
   snapshot: Map<string, Record<string, unknown>>,
 ): string =>
   canonicalAuditJson(
@@ -1300,9 +1418,14 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         to_regclass('core."agentChatChannel"') IS NOT NULL AS "hasChannelTable",
         to_regclass('core."agentChatChannelRole"') IS NOT NULL AS "hasChannelRoleTable",
         to_regclass('core.role') IS NOT NULL AS "hasRoleTable",
-        to_regclass('core.webhook') IS NOT NULL AS "hasWebhookTable"`,
+        to_regclass('core.webhook') IS NOT NULL AS "hasWebhookTable",
+        to_regclass('core.skill') IS NOT NULL AS "hasSkillTable"`,
     );
-    if (request.mode !== 'webhook' && reg?.hasNavTable !== true) {
+    if (
+      request.mode !== 'webhook' &&
+      request.mode !== 'skill' &&
+      reg?.hasNavTable !== true
+    ) {
       throw new Error(
         'Navigation menu item audit table core.navigationMenuItem unavailable',
       );
@@ -1349,6 +1472,24 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         : new Map<string, Record<string, unknown>>();
     for (const row of beforeWebhooks.values()) {
       assertWebhookRowInvariants(row, request.workspaceId);
+    }
+
+    const touchesSkills =
+      request.mode === 'skill' ||
+      request.expectedSkillCreateIds !== undefined ||
+      request.expectedSkillUpdateIds !== undefined ||
+      request.expectedSkillDeleteIds !== undefined ||
+      actions.some((action) => action.metadataName === 'skill');
+    if (touchesSkills && reg?.hasSkillTable !== true) {
+      throw new Error('Skill audit table core.skill unavailable');
+    }
+
+    const beforeSkills =
+      touchesSkills && reg?.hasSkillTable === true
+        ? await readSkillSnapshot(runner, request.workspaceId, true)
+        : new Map<string, Record<string, unknown>>();
+    for (const row of beforeSkills.values()) {
+      assertSkillRowInvariants(row, request.workspaceId);
     }
 
     const touchesChannelsOrRoles =
@@ -1400,7 +1541,9 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
     }
 
     const beforeNavItems =
-      request.mode !== 'webhook' && reg?.hasNavTable === true
+      request.mode !== 'webhook' &&
+      request.mode !== 'skill' &&
+      reg?.hasNavTable === true
         ? await readNavSnapshot(runner, request.workspaceId, true)
         : new Map<string, Record<string, unknown>>();
     for (const row of beforeNavItems.values()) {
@@ -1437,6 +1580,12 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
     >();
     const plannedWebhookUpdates = new Map<string, Record<string, unknown>>();
     const plannedWebhookDeletes = new Set<string>();
+    const plannedSkillCreatesByUniversalIdentifier = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedSkillUpdates = new Map<string, Record<string, unknown>>();
+    const plannedSkillDeletes = new Set<string>();
     const plannedObjectCreates = new Set<string>();
     const plannedObjectDeletes = new Set<string>();
     const plannedFieldDeletes = new Set<string>();
@@ -1491,6 +1640,12 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         if (action.metadataName !== 'webhook') {
           throw new Error(
             `Webhook audit disallows ${action.metadataName} actions`,
+          );
+        }
+      } else if (request.mode === 'skill') {
+        if (action.metadataName !== 'skill') {
+          throw new Error(
+            `Skill audit disallows ${action.metadataName} actions`,
           );
         }
       } else {
@@ -1800,6 +1955,62 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         } else {
           throw new Error(`Unsupported webhook action type ${action.type}`);
         }
+      } else if (action.metadataName === 'skill') {
+        if (action.type === 'create') {
+          if (!action.flatEntity) {
+            throw new Error('Skill create action requires flatEntity');
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (plannedSkillCreatesByUniversalIdentifier.has(universalId)) {
+            throw new Error('Skill create audit duplicate universalIdentifier');
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error('Skill create action application mismatch');
+          }
+          const explicitId =
+            action.id !== undefined
+              ? uuid(action.id)
+              : action.flatEntity.id !== undefined
+                ? uuid(action.flatEntity.id)
+                : undefined;
+          if (explicitId !== undefined && beforeSkills.has(explicitId)) {
+            throw new Error('Skill create target ID already exists');
+          }
+          plannedSkillCreatesByUniversalIdentifier.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.skills?.[universalId]?.id;
+          if (!mappedId || !action.update) {
+            throw new Error(
+              'Skill update audit missing mapping or update payload',
+            );
+          }
+          const targetId = uuid(mappedId);
+          if (plannedSkillUpdates.has(targetId)) {
+            throw new Error('Skill update audit duplicate ID');
+          }
+          plannedSkillUpdates.set(targetId, action.update);
+        } else if (action.type === 'delete') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.skills?.[universalId]?.id;
+          if (!mappedId) {
+            throw new Error('Skill delete audit missing mapping');
+          }
+          const targetId = uuid(mappedId);
+          if (plannedSkillDeletes.has(targetId)) {
+            throw new Error('Skill delete audit duplicate ID');
+          }
+          plannedSkillDeletes.add(targetId);
+        } else {
+          throw new Error(`Unsupported skill action type ${action.type}`);
+        }
       }
     }
 
@@ -1840,6 +2051,14 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         request.expectedWebhookDeleteIds !== undefined;
       if (!hasWebhookConstraint) {
         throw new Error('Webhook audit requires explicit expected scope');
+      }
+    } else if (request.mode === 'skill') {
+      const hasSkillConstraint =
+        request.expectedSkillCreateIds !== undefined ||
+        request.expectedSkillUpdateIds !== undefined ||
+        request.expectedSkillDeleteIds !== undefined;
+      if (!hasSkillConstraint) {
+        throw new Error('Skill audit requires explicit expected scope');
       }
     }
 
@@ -1934,6 +2153,114 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       if (activeApps.length !== foreignWebhookAppIds.size) {
         throw new Error(
           'Webhook target row belongs to an unavailable application',
+        );
+      }
+    }
+
+    if (request.expectedSkillCreateIds !== undefined) {
+      const actualSkillCreateIds = [
+        ...plannedSkillCreatesByUniversalIdentifier.values(),
+      ]
+        .map((entry) => entry.id)
+        .filter((id): id is string => id !== undefined);
+      if (
+        plannedSkillCreatesByUniversalIdentifier.size !==
+          request.expectedSkillCreateIds.length ||
+        actualSkillCreateIds.length !== request.expectedSkillCreateIds.length ||
+        request.expectedSkillCreateIds.some(
+          (id) => !actualSkillCreateIds.includes(id),
+        )
+      ) {
+        throw new Error('Skill create plan does not match expected IDs');
+      }
+    } else if (
+      request.mode === 'skill' &&
+      plannedSkillCreatesByUniversalIdentifier.size > 0
+    ) {
+      throw new Error('Skill audit detected unexpected skill create');
+    }
+
+    if (request.expectedSkillUpdateIds !== undefined) {
+      if (
+        plannedSkillUpdates.size !== request.expectedSkillUpdateIds.length ||
+        request.expectedSkillUpdateIds.some(
+          (id) => !plannedSkillUpdates.has(id),
+        )
+      ) {
+        throw new Error('Skill update plan does not match expected IDs');
+      }
+    } else if (request.mode === 'skill' && plannedSkillUpdates.size > 0) {
+      throw new Error('Skill audit detected unexpected skill update');
+    }
+
+    if (request.expectedSkillDeleteIds !== undefined) {
+      if (
+        plannedSkillDeletes.size !== request.expectedSkillDeleteIds.length ||
+        request.expectedSkillDeleteIds.some(
+          (id) => !plannedSkillDeletes.has(id),
+        )
+      ) {
+        throw new Error('Skill delete plan does not match expected IDs');
+      }
+    } else if (request.mode === 'skill' && plannedSkillDeletes.size > 0) {
+      throw new Error('Skill audit detected unexpected skill delete');
+    }
+
+    const foreignSkillAppIds = new Set<string>();
+    for (const [targetId, updatePayload] of plannedSkillUpdates.entries()) {
+      const beforeSk = beforeSkills.get(targetId);
+      if (!beforeSk) {
+        throw new Error('Skill update target row unavailable');
+      }
+      if ('isCustom' in updatePayload || 'isSystem' in updatePayload) {
+        throw new Error(
+          'Skill audit disallows mutating isCustom or isSystem flags',
+        );
+      }
+      const skAppId = uuid(beforeSk.applicationId);
+      const isOnlyIsActiveUpdate = Object.keys(updatePayload).every(
+        (key) => key === 'isActive',
+      );
+      if (beforeSk.isCustom !== true && !isOnlyIsActiveUpdate) {
+        throw new Error(
+          'Skill audit allows only isActive updates on non-custom skills',
+        );
+      }
+      if (skAppId !== applicationId) {
+        if (request.mode !== 'skill') {
+          throw new Error(
+            'Skill update target row belongs to another application',
+          );
+        }
+        foreignSkillAppIds.add(skAppId);
+      }
+    }
+    for (const targetId of plannedSkillDeletes) {
+      const beforeSk = beforeSkills.get(targetId);
+      if (!beforeSk) {
+        throw new Error('Skill delete target row unavailable');
+      }
+      if (beforeSk.isCustom !== true) {
+        throw new Error('Skill audit disallows deleting non-custom skills');
+      }
+      const skAppId = uuid(beforeSk.applicationId);
+      if (skAppId !== applicationId) {
+        if (request.mode !== 'skill') {
+          throw new Error(
+            'Skill delete target row belongs to another application',
+          );
+        }
+        foreignSkillAppIds.add(skAppId);
+      }
+    }
+    if (foreignSkillAppIds.size > 0) {
+      const activeApps = await runner.query(
+        `SELECT id FROM core.application a WHERE a."workspaceId"=$1 AND a.id=ANY($2::uuid[]) AND to_jsonb(a)->>'deletedAt' IS NULL ORDER BY a.id FOR NO KEY UPDATE`,
+        [request.workspaceId, [...foreignSkillAppIds]],
+      );
+      if (activeApps.length !== foreignSkillAppIds.size) {
+        throw new Error(
+          'Skill target row belongs to an unavailable application',
         );
       }
     }
@@ -2427,7 +2754,9 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
     const result = await execute(runner);
 
     const afterNavItems =
-      request.mode !== 'webhook' && reg?.hasNavTable === true
+      request.mode !== 'webhook' &&
+      request.mode !== 'skill' &&
+      reg?.hasNavTable === true
         ? await readNavSnapshot(runner, request.workspaceId, false)
         : new Map<string, Record<string, unknown>>();
 
@@ -3274,9 +3603,205 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       expectedWebhooksSerialized = serializeWebhookSnapshot(afterWebhooks);
     }
 
+    let expectedSkillsSerialized: string | undefined;
+    if (touchesSkills && reg?.hasSkillTable === true) {
+      const afterSkills = await readSkillSnapshot(
+        runner,
+        request.workspaceId,
+        false,
+      );
+      const createdSkillsByUniversalId = new Map<
+        string,
+        Record<string, unknown>
+      >();
+      for (const [id, afterRow] of afterSkills.entries()) {
+        assertSkillRowInvariants(afterRow, request.workspaceId);
+        if (!beforeSkills.has(id)) {
+          const universalId = uuid(afterRow.universalIdentifier);
+          if (createdSkillsByUniversalId.has(universalId)) {
+            throw new Error(
+              'Skill audit detected duplicate created universalIdentifier',
+            );
+          }
+          createdSkillsByUniversalId.set(universalId, afterRow);
+        }
+      }
+      if (
+        createdSkillsByUniversalId.size !==
+        plannedSkillCreatesByUniversalIdentifier.size
+      ) {
+        throw new Error('Skill audit created row count mismatch');
+      }
+      for (const [
+        universalId,
+        planned,
+      ] of plannedSkillCreatesByUniversalIdentifier.entries()) {
+        const afterRow = createdSkillsByUniversalId.get(universalId);
+        if (!afterRow) {
+          throw new Error('Skill create did not persist expected row');
+        }
+        const createdId = uuid(afterRow.id);
+        if (planned.id !== undefined && createdId !== planned.id) {
+          throw new Error('Skill create persisted unexpected ID');
+        }
+        if (uuid(afterRow.applicationId) !== applicationId) {
+          throw new Error('Skill create persisted unexpected applicationId');
+        }
+        const afterProj = projectSkill(afterRow);
+        for (const textKey of ['name', 'label', 'content'] as const) {
+          if (
+            planned.flatEntity[textKey] !== undefined &&
+            afterProj[textKey] !== String(planned.flatEntity[textKey])
+          ) {
+            throw new Error(`Skill create persisted unexpected ${textKey}`);
+          }
+        }
+        for (const optKey of ['icon', 'description'] as const) {
+          if (planned.flatEntity[optKey] !== undefined) {
+            const expectedVal =
+              planned.flatEntity[optKey] === null
+                ? null
+                : String(planned.flatEntity[optKey]);
+            if (afterProj[optKey] !== expectedVal) {
+              throw new Error(`Skill create persisted unexpected ${optKey}`);
+            }
+          }
+        }
+        for (const boolKey of ['isCustom', 'isSystem', 'isActive'] as const) {
+          if (
+            planned.flatEntity[boolKey] !== undefined &&
+            afterProj[boolKey] !== Boolean(planned.flatEntity[boolKey])
+          ) {
+            throw new Error(`Skill create persisted unexpected ${boolKey}`);
+          }
+        }
+        audit.record({
+          resourceKind: 'skill',
+          resourceId: createdId,
+          action: 'create',
+          before: null,
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'skill',
+            resourceId: createdId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        recordedMutations += 1;
+      }
+
+      for (const [targetId, update] of plannedSkillUpdates.entries()) {
+        const beforeRow = beforeSkills.get(targetId);
+        const afterRow = afterSkills.get(targetId);
+        if (!beforeRow || !afterRow) {
+          throw new Error('Skill update removed or lost target row');
+        }
+        if (
+          uuid(beforeRow.applicationId) !== uuid(afterRow.applicationId) ||
+          uuid(beforeRow.universalIdentifier) !==
+            uuid(afterRow.universalIdentifier) ||
+          Boolean(beforeRow.isCustom) !== Boolean(afterRow.isCustom) ||
+          Boolean(beforeRow.isSystem) !== Boolean(afterRow.isSystem)
+        ) {
+          throw new Error('Skill update modified immutable fields');
+        }
+        const beforeProj = projectSkill(beforeRow);
+        const afterProj = projectSkill(afterRow);
+        for (const textKey of ['name', 'label', 'content'] as const) {
+          const expectedVal =
+            textKey in update && update[textKey] !== undefined
+              ? String(update[textKey])
+              : beforeProj[textKey];
+          if (afterProj[textKey] !== expectedVal) {
+            throw new Error(`Skill update did not persist expected ${textKey}`);
+          }
+        }
+        for (const optKey of ['icon', 'description'] as const) {
+          const expectedVal =
+            optKey in update && update[optKey] !== undefined
+              ? update[optKey] === null
+                ? null
+                : String(update[optKey])
+              : beforeProj[optKey];
+          if (afterProj[optKey] !== expectedVal) {
+            throw new Error(`Skill update did not persist expected ${optKey}`);
+          }
+        }
+        const expectedIsActive =
+          'isActive' in update && update.isActive !== undefined
+            ? Boolean(update.isActive)
+            : beforeProj.isActive;
+        if (afterProj.isActive !== expectedIsActive) {
+          throw new Error('Skill update did not persist expected isActive');
+        }
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          audit.record({
+            resourceKind: 'skill',
+            resourceId: targetId,
+            action: 'update',
+            before: beforeProj,
+            after: afterProj,
+            securityDescriptor: {
+              resourceKind: 'skill',
+              resourceId: targetId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedMutations += 1;
+        }
+      }
+
+      for (const deletedId of plannedSkillDeletes) {
+        const beforeRow = beforeSkills.get(deletedId);
+        if (!beforeRow) {
+          throw new Error('Skill delete expected row missing before migration');
+        }
+        if (afterSkills.has(deletedId)) {
+          throw new Error('Skill delete did not remove expected row');
+        }
+        audit.record({
+          resourceKind: 'skill',
+          resourceId: deletedId,
+          action: 'delete',
+          before: projectSkill(beforeRow),
+          after: null,
+          securityDescriptor: {
+            resourceKind: 'skill',
+            resourceId: deletedId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        recordedMutations += 1;
+      }
+
+      for (const [id, beforeRow] of beforeSkills.entries()) {
+        if (plannedSkillDeletes.has(id)) continue;
+        const afterRow = afterSkills.get(id);
+        if (!afterRow) {
+          throw new Error('Skill audit detected unplanned row deletion');
+        }
+        if (!plannedSkillUpdates.has(id)) {
+          if (
+            canonicalAuditJson(
+              scalarNavigationMenuItemWithoutTimestamps(beforeRow),
+            ) !==
+            canonicalAuditJson(
+              scalarNavigationMenuItemWithoutTimestamps(afterRow),
+            )
+          ) {
+            throw new Error('Skill audit detected unplanned row mutation');
+          }
+        }
+      }
+
+      expectedSkillsSerialized = serializeSkillSnapshot(afterSkills);
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized =
-        request.mode !== 'webhook' && reg?.hasNavTable === true
+        request.mode !== 'webhook' &&
+        request.mode !== 'skill' &&
+        reg?.hasNavTable === true
           ? serializeNavSnapshot(afterNavItems)
           : undefined;
       await audit.flush();
@@ -3323,6 +3848,18 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           expectedWebhooksSerialized
         ) {
           throw new Error('Webhook state changed during audit flush');
+        }
+      }
+      if (expectedSkillsSerialized !== undefined) {
+        const postFlushSkills = await readSkillSnapshot(
+          runner,
+          request.workspaceId,
+          false,
+        );
+        if (
+          serializeSkillSnapshot(postFlushSkills) !== expectedSkillsSerialized
+        ) {
+          throw new Error('Skill state changed during audit flush');
         }
       }
     }

@@ -3,6 +3,11 @@ import { Injectable } from '@nestjs/common';
 import { isDefined } from 'twenty-shared/utils';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
+import {
+  captureNavigationMenuItemAudit,
+  withNavigationMenuItemAudit,
+  type NavigationMenuItemAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { findFlatEntityByIdInFlatEntityMapsOrThrow } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps-or-throw.util';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
@@ -20,6 +25,15 @@ import {
 } from 'src/engine/metadata-modules/skill/skill.exception';
 import { WorkspaceMigrationBuilderException } from 'src/engine/workspace-manager/workspace-migration/exceptions/workspace-migration-builder-exception';
 import { WorkspaceMigrationValidateBuildAndRunService } from 'src/engine/workspace-manager/workspace-migration/services/workspace-migration-validate-build-and-run-service';
+
+export type SkillAuditOptions = {
+  auditIdentity?: NavigationMenuItemAuditIdentity;
+  authUserWorkspaceId?: string;
+  authApiKeyId?: string;
+  authApplicationId?: string;
+  authAgentId?: string;
+  capturedAudit?: ReturnType<typeof captureNavigationMenuItemAudit>;
+};
 
 @Injectable()
 export class SkillService {
@@ -68,7 +82,30 @@ export class SkillService {
   async create(
     input: CreateSkillInput,
     workspaceId: string,
+    options?: SkillAuditOptions,
   ): Promise<SkillDTO> {
+    const capturedInput: CreateSkillInput = {
+      ...(input.id !== undefined ? { id: input.id } : {}),
+      name: input.name,
+      label: input.label,
+      ...(input.icon !== undefined ? { icon: input.icon } : {}),
+      ...(input.description !== undefined
+        ? { description: input.description }
+        : {}),
+      content: input.content,
+    };
+    const getSkillAudit =
+      options?.capturedAudit ??
+      captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'skill',
+        auditIdentity: options?.auditIdentity,
+        authUserWorkspaceId: options?.authUserWorkspaceId,
+        authApiKeyId: options?.authApiKeyId,
+        authApplicationId: options?.authApplicationId,
+        authAgentId: options?.authAgentId,
+      });
+
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         { workspaceId },
@@ -76,26 +113,31 @@ export class SkillService {
 
     const universalFlatSkillToCreate =
       fromCreateSkillInputToUniversalFlatSkillToCreate({
-        createSkillInput: input,
+        createSkillInput: capturedInput,
         flatApplication: workspaceCustomFlatApplication,
       });
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            skill: {
-              flatEntityToCreate: [universalFlatSkillToCreate],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getSkillAudit({
+        expectedSkillCreateIds: [universalFlatSkillToCreate.id],
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              skill: {
+                flatEntityToCreate: [universalFlatSkillToCreate],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [],
+              },
             },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -123,7 +165,32 @@ export class SkillService {
   async update(
     input: UpdateSkillInput,
     workspaceId: string,
+    options?: SkillAuditOptions,
   ): Promise<SkillDTO> {
+    const capturedInput: UpdateSkillInput = {
+      id: input.id,
+      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.label !== undefined ? { label: input.label } : {}),
+      ...(input.icon !== undefined ? { icon: input.icon } : {}),
+      ...(input.description !== undefined
+        ? { description: input.description }
+        : {}),
+      ...(input.content !== undefined ? { content: input.content } : {}),
+      ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+    };
+    const getSkillAudit =
+      options?.capturedAudit ??
+      captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'skill',
+        expectedSkillUpdateIds: [capturedInput.id],
+        auditIdentity: options?.auditIdentity,
+        authUserWorkspaceId: options?.authUserWorkspaceId,
+        authApiKeyId: options?.authApiKeyId,
+        authApplicationId: options?.authApplicationId,
+        authAgentId: options?.authAgentId,
+      });
+
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         { workspaceId },
@@ -139,25 +206,30 @@ export class SkillService {
 
     const flatSkillToUpdate = fromUpdateSkillInputToFlatSkillToUpdateOrThrow({
       flatSkillMaps: existingFlatSkillMaps,
-      updateSkillInput: input,
+      updateSkillInput: capturedInput,
     });
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            skill: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [flatSkillToUpdate],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getSkillAudit({
+        expectedSkillUpdateIds: [flatSkillToUpdate.id],
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              skill: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [flatSkillToUpdate],
+              },
             },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -176,13 +248,31 @@ export class SkillService {
 
     return fromFlatSkillToSkillDto(
       findFlatEntityByIdInFlatEntityMapsOrThrow({
-        flatEntityId: input.id,
+        flatEntityId: capturedInput.id,
         flatEntityMaps: recomputedFlatSkillMaps,
       }),
     );
   }
 
-  async delete(id: string, workspaceId: string): Promise<SkillDTO> {
+  async delete(
+    id: string,
+    workspaceId: string,
+    options?: SkillAuditOptions,
+  ): Promise<SkillDTO> {
+    const capturedId = id;
+    const getSkillAudit =
+      options?.capturedAudit ??
+      captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'skill',
+        expectedSkillDeleteIds: [capturedId],
+        auditIdentity: options?.auditIdentity,
+        authUserWorkspaceId: options?.authUserWorkspaceId,
+        authApiKeyId: options?.authApiKeyId,
+        authApplicationId: options?.authApplicationId,
+        authAgentId: options?.authAgentId,
+      });
+
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         { workspaceId },
@@ -198,25 +288,30 @@ export class SkillService {
 
     const flatSkillToDelete = fromDeleteSkillInputToFlatSkillOrThrow({
       flatSkillMaps: existingFlatSkillMaps,
-      skillId: id,
+      skillId: capturedId,
     });
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            skill: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: [flatSkillToDelete],
-              flatEntityToUpdate: [],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getSkillAudit({
+        expectedSkillDeleteIds: [flatSkillToDelete.id],
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              skill: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: [flatSkillToDelete],
+                flatEntityToUpdate: [],
+              },
             },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -287,7 +382,25 @@ export class SkillService {
       .filter((flatSkill) => ids.includes(flatSkill.id) && flatSkill.isActive);
   }
 
-  async activate(id: string, workspaceId: string): Promise<SkillDTO> {
+  async activate(
+    id: string,
+    workspaceId: string,
+    options?: SkillAuditOptions,
+  ): Promise<SkillDTO> {
+    const capturedId = id;
+    const getSkillAudit =
+      options?.capturedAudit ??
+      captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'skill',
+        expectedSkillUpdateIds: [capturedId],
+        auditIdentity: options?.auditIdentity,
+        authUserWorkspaceId: options?.authUserWorkspaceId,
+        authApiKeyId: options?.authApiKeyId,
+        authApplicationId: options?.authApplicationId,
+        authAgentId: options?.authAgentId,
+      });
+
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         { workspaceId },
@@ -302,7 +415,7 @@ export class SkillService {
       );
 
     const existingFlatSkill = findFlatEntityByIdInFlatEntityMapsOrThrow({
-      flatEntityId: id,
+      flatEntityId: capturedId,
       flatEntityMaps: flatSkillMaps,
     });
 
@@ -312,22 +425,27 @@ export class SkillService {
       updatedAt: new Date().toISOString(),
     };
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            skill: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [flatSkillToUpdate],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getSkillAudit({
+        expectedSkillUpdateIds: [flatSkillToUpdate.id],
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              skill: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [flatSkillToUpdate],
+              },
             },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -346,13 +464,31 @@ export class SkillService {
 
     return fromFlatSkillToSkillDto(
       findFlatEntityByIdInFlatEntityMapsOrThrow({
-        flatEntityId: id,
+        flatEntityId: capturedId,
         flatEntityMaps: recomputedFlatSkillMaps,
       }),
     );
   }
 
-  async deactivate(id: string, workspaceId: string): Promise<SkillDTO> {
+  async deactivate(
+    id: string,
+    workspaceId: string,
+    options?: SkillAuditOptions,
+  ): Promise<SkillDTO> {
+    const capturedId = id;
+    const getSkillAudit =
+      options?.capturedAudit ??
+      captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'skill',
+        expectedSkillUpdateIds: [capturedId],
+        auditIdentity: options?.auditIdentity,
+        authUserWorkspaceId: options?.authUserWorkspaceId,
+        authApiKeyId: options?.authApiKeyId,
+        authApplicationId: options?.authApplicationId,
+        authAgentId: options?.authAgentId,
+      });
+
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         { workspaceId },
@@ -367,7 +503,7 @@ export class SkillService {
       );
 
     const existingFlatSkill = findFlatEntityByIdInFlatEntityMapsOrThrow({
-      flatEntityId: id,
+      flatEntityId: capturedId,
       flatEntityMaps: flatSkillMaps,
     });
 
@@ -377,22 +513,27 @@ export class SkillService {
       updatedAt: new Date().toISOString(),
     };
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            skill: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [flatSkillToUpdate],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getSkillAudit({
+        expectedSkillUpdateIds: [flatSkillToUpdate.id],
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              skill: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [flatSkillToUpdate],
+              },
             },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -411,7 +552,7 @@ export class SkillService {
 
     return fromFlatSkillToSkillDto(
       findFlatEntityByIdInFlatEntityMapsOrThrow({
-        flatEntityId: id,
+        flatEntityId: capturedId,
         flatEntityMaps: recomputedFlatSkillMaps,
       }),
     );

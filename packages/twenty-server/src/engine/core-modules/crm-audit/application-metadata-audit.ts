@@ -96,6 +96,7 @@ export type ApplicationMetadataAuditMappings = {
   agentChatChannelRoles?: Record<string, { id: string } | undefined>;
   webhooks?: Record<string, { id: string } | undefined>;
   connectionProviders?: Record<string, { id: string } | undefined>;
+  skills?: Record<string, { id: string } | undefined>;
 };
 
 type MigrationAction = {
@@ -133,6 +134,7 @@ export const AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES = new Set<string>([
   'agentChatChannelRole',
   'webhook',
   'connectionProvider',
+  'skill',
 ]);
 
 export const AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES =
@@ -712,6 +714,70 @@ export const projectConnectionProvider = (
   ),
 });
 
+export const assertSkillRowInvariants = (
+  row: Record<string, unknown>,
+  expectedWorkspaceId: string,
+): void => {
+  uuid(row.id);
+  if (uuid(row.workspaceId) !== uuid(expectedWorkspaceId)) {
+    throw new Error('Application metadata skill workspaceId mismatch');
+  }
+  uuid(row.applicationId);
+  uuid(row.universalIdentifier);
+  if (row.deletedAt !== undefined && row.deletedAt !== null) {
+    throw new Error('Application metadata skill cannot be soft-deleted');
+  }
+  if (typeof row.name !== 'string' || row.name.trim().length === 0) {
+    throw new Error('Application metadata skill name is invalid');
+  }
+  if (typeof row.label !== 'string' || row.label.trim().length === 0) {
+    throw new Error('Application metadata skill label is invalid');
+  }
+  if (
+    row.icon !== null &&
+    row.icon !== undefined &&
+    typeof row.icon !== 'string'
+  ) {
+    throw new Error('Application metadata skill icon is invalid');
+  }
+  if (
+    row.description !== null &&
+    row.description !== undefined &&
+    typeof row.description !== 'string'
+  ) {
+    throw new Error('Application metadata skill description is invalid');
+  }
+  if (typeof row.content !== 'string' || row.content.trim().length === 0) {
+    throw new Error('Application metadata skill content is invalid');
+  }
+  if (typeof row.isCustom !== 'boolean') {
+    throw new Error('Application metadata skill isCustom is invalid');
+  }
+  if (typeof row.isSystem !== 'boolean') {
+    throw new Error('Application metadata skill isSystem is invalid');
+  }
+  if (typeof row.isActive !== 'boolean') {
+    throw new Error('Application metadata skill isActive is invalid');
+  }
+};
+
+export const projectSkill = (
+  row: Record<string, unknown>,
+): Record<string, unknown> => ({
+  applicationId: uuid(row.applicationId),
+  isCustom: Boolean(row.isCustom),
+  isSystem: Boolean(row.isSystem),
+  isActive: Boolean(row.isActive),
+  name: String(row.name),
+  label: String(row.label),
+  icon: row.icon === null || row.icon === undefined ? null : String(row.icon),
+  description:
+    row.description === null || row.description === undefined
+      ? null
+      : String(row.description),
+  content: String(row.content),
+});
+
 type TableSnapshot = Map<string, Record<string, unknown>>;
 
 type FullMetadataSnapshot = {
@@ -752,7 +818,8 @@ const readExistingTables = async (
       to_regclass('core."agentChatChannelRole"') IS NOT NULL AS "agentChatChannelRole",
       to_regclass('core.webhook') IS NOT NULL AS "webhook",
       to_regclass('core."connectionProvider"') IS NOT NULL AS "connectionProvider",
-      to_regclass('core."connectedAccount"') IS NOT NULL AS "connectedAccount"`,
+      to_regclass('core."connectedAccount"') IS NOT NULL AS "connectedAccount",
+      to_regclass('core.skill') IS NOT NULL AS "skill"`,
   );
   const existing = new Set<string>();
   for (const [key, present] of Object.entries(reg ?? {})) {
@@ -1760,6 +1827,108 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       }
     }
 
+    const hasSkillTable = existingTables.has('skill');
+    const beforeSkills = hasSkillTable
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'skill',
+          workspaceId,
+          true,
+        )
+      : new Map<string, Record<string, unknown>>();
+    for (const skillRow of beforeSkills.values()) {
+      assertSkillRowInvariants(skillRow, workspaceId);
+    }
+
+    const plannedSkillCreatesByUniversalId = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedSkillUpdatePayloads = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    for (const action of actions) {
+      if (action.metadataName === 'skill') {
+        if (action.type === 'create') {
+          if (!hasSkillTable) {
+            throw new Error(
+              'Application metadata audit table skill is unavailable',
+            );
+          }
+          if (!action.flatEntity) {
+            throw new Error(
+              'Application metadata audit requires flatEntity on skill create action',
+            );
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (plannedSkillCreatesByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit duplicate skill create universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error(
+              'Application metadata audit skill create belongs to another application',
+            );
+          }
+          const explicitId =
+            action.id !== undefined ? uuid(action.id) : undefined;
+          if (explicitId !== undefined && beforeSkills.has(explicitId)) {
+            throw new Error(
+              'Application metadata audit skill create ID already exists',
+            );
+          }
+          plannedSkillCreatesByUniversalId.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.skills?.[universalId]?.id;
+          if (!mappedId || !action.update) {
+            throw new Error(
+              'Application metadata audit skill update missing mapping or update payload',
+            );
+          }
+          plannedSkillUpdatePayloads.set(uuid(mappedId), action.update);
+        }
+      }
+    }
+    const plannedSkillUpdates = resolveMappedIds(
+      actions,
+      'skill',
+      'update',
+      mappings.skills ?? {},
+    );
+    const plannedSkillDeletes = resolveMappedIds(
+      actions,
+      'skill',
+      'delete',
+      mappings.skills ?? {},
+    );
+    for (const skillId of plannedSkillUpdates) {
+      const beforeSk = beforeSkills.get(skillId);
+      if (!beforeSk || uuid(beforeSk.applicationId) !== applicationId) {
+        throw new Error(
+          'Application metadata audit cannot update missing or foreign skill',
+        );
+      }
+    }
+    for (const skillId of plannedSkillDeletes) {
+      const beforeSk = beforeSkills.get(skillId);
+      if (!beforeSk || uuid(beforeSk.applicationId) !== applicationId) {
+        throw new Error(
+          'Application metadata audit cannot delete missing or foreign skill',
+        );
+      }
+    }
+
     const plannedNavCreatesByUniversalIdentifier = new Map<
       string,
       { id?: string; flatEntity: Record<string, unknown> }
@@ -1949,7 +2118,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           action.metadataName === 'agentChatChannel' ||
           action.metadataName === 'agentChatChannelRole' ||
           action.metadataName === 'webhook' ||
-          action.metadataName === 'connectionProvider'
+          action.metadataName === 'connectionProvider' ||
+          action.metadataName === 'skill'
         ) {
           throw new Error(
             'Application metadata objectDelete cannot mutate roles, targets, agents, or permission flags',
@@ -2113,7 +2283,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           action.metadataName === 'agentChatChannel' ||
           action.metadataName === 'agentChatChannelRole' ||
           action.metadataName === 'webhook' ||
-          action.metadataName === 'connectionProvider'
+          action.metadataName === 'connectionProvider' ||
+          action.metadataName === 'skill'
         ) {
           throw new Error(
             'Application metadata fieldDelete cannot mutate roles, objects, object permissions, or predicate groups',
@@ -4448,6 +4619,208 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       );
     }
 
+    // 14. Verify and record core.skill lifecycle and deletions
+    let expectedSkillsSerialized: string | undefined;
+    if (hasSkillTable) {
+      const afterSkills = await readTableSnapshot(
+        runner,
+        existingTables,
+        'skill',
+        workspaceId,
+        false,
+      );
+      const createdSkillsByUniversalId = new Map<
+        string,
+        Record<string, unknown>
+      >();
+      for (const [id, afterRow] of afterSkills.entries()) {
+        assertSkillRowInvariants(afterRow, workspaceId);
+        if (!beforeSkills.has(id)) {
+          const universalId = uuid(afterRow.universalIdentifier);
+          if (createdSkillsByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit detected duplicate created skill universalIdentifier',
+            );
+          }
+          createdSkillsByUniversalId.set(universalId, afterRow);
+        }
+      }
+      if (
+        createdSkillsByUniversalId.size !==
+        plannedSkillCreatesByUniversalId.size
+      ) {
+        throw new Error(
+          'Application metadata audit skill created row count mismatch',
+        );
+      }
+      for (const [
+        universalId,
+        planned,
+      ] of plannedSkillCreatesByUniversalId.entries()) {
+        const afterRow = createdSkillsByUniversalId.get(universalId);
+        if (!afterRow) {
+          throw new Error(
+            'Application metadata skill create did not persist expected row',
+          );
+        }
+        const createdId = uuid(afterRow.id);
+        if (planned.id !== undefined && createdId !== planned.id) {
+          throw new Error(
+            'Application metadata skill create persisted unexpected ID',
+          );
+        }
+        if (uuid(afterRow.applicationId) !== applicationId) {
+          throw new Error(
+            'Application metadata skill create persisted unexpected applicationId',
+          );
+        }
+        const afterProj = projectSkill(afterRow);
+        for (const textKey of ['name', 'label', 'content'] as const) {
+          if (
+            planned.flatEntity[textKey] !== undefined &&
+            afterProj[textKey] !== String(planned.flatEntity[textKey])
+          ) {
+            throw new Error(
+              `Application metadata skill create persisted unexpected ${textKey}`,
+            );
+          }
+        }
+        for (const optKey of ['icon', 'description'] as const) {
+          if (planned.flatEntity[optKey] !== undefined) {
+            const expectedVal =
+              planned.flatEntity[optKey] === null
+                ? null
+                : String(planned.flatEntity[optKey]);
+            if (afterProj[optKey] !== expectedVal) {
+              throw new Error(
+                `Application metadata skill create persisted unexpected ${optKey}`,
+              );
+            }
+          }
+        }
+        for (const boolKey of ['isCustom', 'isSystem', 'isActive'] as const) {
+          if (
+            planned.flatEntity[boolKey] !== undefined &&
+            afterProj[boolKey] !== Boolean(planned.flatEntity[boolKey])
+          ) {
+            throw new Error(
+              `Application metadata skill create persisted unexpected ${boolKey}`,
+            );
+          }
+        }
+        recordMutation('skill', createdId, 'create', null, afterProj);
+      }
+
+      for (const skillId of plannedSkillUpdates) {
+        if (plannedSkillDeletes.has(skillId)) continue;
+        const beforeSk = beforeSkills.get(skillId);
+        const afterSk = afterSkills.get(skillId);
+        if (
+          !beforeSk ||
+          !afterSk ||
+          uuid(beforeSk.workspaceId) !== uuid(afterSk.workspaceId) ||
+          uuid(beforeSk.applicationId) !== uuid(afterSk.applicationId) ||
+          uuid(beforeSk.universalIdentifier) !==
+            uuid(afterSk.universalIdentifier) ||
+          canonicalAuditJson(beforeSk.createdAt) !==
+            canonicalAuditJson(afterSk.createdAt)
+        ) {
+          throw new Error(
+            'Application metadata skill update removed or corrupted target row',
+          );
+        }
+        const beforeProj = projectSkill(beforeSk);
+        const afterProj = projectSkill(afterSk);
+        const updatePayload = plannedSkillUpdatePayloads.get(skillId) ?? {};
+        for (const textKey of ['name', 'label', 'content'] as const) {
+          const expectedVal =
+            textKey in updatePayload && updatePayload[textKey] !== undefined
+              ? String(updatePayload[textKey])
+              : beforeProj[textKey];
+          if (afterProj[textKey] !== expectedVal) {
+            throw new Error(
+              `Application metadata skill update did not persist expected ${textKey}`,
+            );
+          }
+        }
+        for (const optKey of ['icon', 'description'] as const) {
+          const expectedVal =
+            optKey in updatePayload && updatePayload[optKey] !== undefined
+              ? updatePayload[optKey] === null
+                ? null
+                : String(updatePayload[optKey])
+              : beforeProj[optKey];
+          if (afterProj[optKey] !== expectedVal) {
+            throw new Error(
+              `Application metadata skill update did not persist expected ${optKey}`,
+            );
+          }
+        }
+        for (const boolKey of ['isCustom', 'isSystem', 'isActive'] as const) {
+          const expectedVal =
+            boolKey in updatePayload && updatePayload[boolKey] !== undefined
+              ? Boolean(updatePayload[boolKey])
+              : beforeProj[boolKey];
+          if (afterProj[boolKey] !== expectedVal) {
+            throw new Error(
+              `Application metadata skill update did not persist expected ${boolKey}`,
+            );
+          }
+        }
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          recordMutation('skill', skillId, 'update', beforeProj, afterProj);
+        }
+      }
+
+      for (const skillId of plannedSkillDeletes) {
+        const beforeSk = beforeSkills.get(skillId);
+        if (!beforeSk) {
+          throw new Error(
+            'Application metadata skill delete expected row missing before migration',
+          );
+        }
+        if (afterSkills.has(skillId)) {
+          throw new Error(
+            'Application metadata skill delete did not remove expected row',
+          );
+        }
+        recordMutation(
+          'skill',
+          skillId,
+          'delete',
+          projectSkill(beforeSk),
+          null,
+        );
+      }
+
+      for (const [skillId, beforeSk] of beforeSkills.entries()) {
+        if (plannedSkillDeletes.has(skillId)) continue;
+        const afterSk = afterSkills.get(skillId);
+        if (!afterSk) {
+          throw new Error(
+            'Application metadata audit detected unplanned skill deletion',
+          );
+        }
+        if (!plannedSkillUpdates.has(skillId)) {
+          if (
+            canonicalAuditJson(scalarWithoutTimestamps(beforeSk)) !==
+            canonicalAuditJson(scalarWithoutTimestamps(afterSk))
+          ) {
+            throw new Error(
+              'Application metadata audit detected unplanned skill mutation',
+            );
+          }
+        }
+      }
+
+      expectedSkillsSerialized = canonicalAuditJson(
+        [...afterSkills.entries()].map(([id, row]) => [
+          id,
+          scalarWithoutTimestamps(row),
+        ]),
+      );
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized = serializeFullSnapshot(after);
       await audit.flush();
@@ -4627,6 +5000,26 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           );
         }
       }
+      if (expectedSkillsSerialized !== undefined) {
+        const postFlushSkills = await readTableSnapshot(
+          runner,
+          existingTables,
+          'skill',
+          workspaceId,
+          false,
+        );
+        const postFlushSerialized = canonicalAuditJson(
+          [...postFlushSkills.entries()].map(([id, row]) => [
+            id,
+            scalarWithoutTimestamps(row),
+          ]),
+        );
+        if (postFlushSerialized !== expectedSkillsSerialized) {
+          throw new Error(
+            'Application metadata state changed during audit flush',
+          );
+        }
+      }
     }
 
     return result;
@@ -4666,6 +5059,7 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
     'agentChatChannelRole',
     'webhook',
     'connectionProvider',
+    'skill',
   ]) {
     if (!existingTables.has(tableName)) continue;
     const [ownRow] = await runner.query(

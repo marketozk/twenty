@@ -519,6 +519,7 @@ export class WorkspaceMigrationRunnerService {
               ?.byUniversalIdentifier ?? {},
           webhooks:
             allFlatEntityMaps.flatWebhookMaps?.byUniversalIdentifier ?? {},
+          skills: allFlatEntityMaps.flatSkillMaps?.byUniversalIdentifier ?? {},
         };
         const searchFieldMetadatasByTsVectorFieldIdAccessor =
           createSearchFieldMetadatasByTsVectorFieldIdAccessor(
@@ -782,6 +783,7 @@ export class WorkspaceMigrationRunnerService {
         connectionProviders:
           allFlatEntityMaps.flatConnectionProviderMaps?.byUniversalIdentifier ??
           {},
+        skills: allFlatEntityMaps.flatSkillMaps?.byUniversalIdentifier ?? {},
       };
       const allMetadataEvents: MetadataEvent[] = [];
       const allDeferredActions: DeferredWorkspaceMigrationAction[] = [];

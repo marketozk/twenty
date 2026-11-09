@@ -5189,6 +5189,22 @@ ee65dced-f36a-4f4a-9bb0-a0db8de61bef и все 11 состояний задач 
 и совпали. [Публикация](implementation/log177/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765.
 
+## LOG-178 - транзакционный аудит полного жизненного цикла ИИ-навыков (`skill`, `core.skill`) и блокировка неаудируемого каскадного удаления при удалении `core.application`
+
+09.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log178/design.md), [design-review.md](implementation/log178/design-review.md)) и реализован участок `LOG-178` (Linear `ROB-765`): транзакционный аудит полного жизненного цикла ИИ-навыков (`core.skill`) и блокировка неаудируемого каскадного удаления при удалении `core.application`.
+
+В `crm-audit.types.ts` и `crm-audit-transaction-context.ts` добавлен вид ресурса `skill` (`values: ['applicationId', 'isCustom', 'isSystem', 'isActive']`, `redacted: ['name', 'label', 'icon', 'description', 'content']`, действия `['create', 'update', 'delete']`). В `navigation-menu-item-audit.ts` добавлен режим `mode: 'skill'` (`assertSkillRowInvariants`, `projectSkill`, `readSkillSnapshot`, `serializeSkillSnapshot`, `expectedSkillCreateIds`, `expectedSkillUpdateIds`, `expectedSkillDeleteIds`) с блокировкой `core.skill` (`ORDER BY id FOR UPDATE`), проверкой активности приложения-владельца при активации/деактивации стандартных и сторонних навыков (`FOR NO KEY UPDATE`), запретом изменения `isCustom`/`isSystem` и удаления некастомных навыков, записью `skill:create`, `skill:update`, `skill:delete` и повторной сверкой снимка после `audit.flush()`. В `application-metadata-audit.ts` и `workspace-migration-runner.service.ts` добавлены `'skill'` в `AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES` (fail-closed барьер на неаудируемые миграции `skill`), аудит `skill` (`create`, `update`, `delete`) в `runAuditedApplicationMetadataMigration` и проверка `core.skill` в `assertNoRemainingApplicationRoleOrPermissionMetadata` перед удалением `core.application`. Подключены `SkillService` (`create`, `update`, `delete`, `activate`, `deactivate`) и `SkillResolver` (`createSkill`, `updateSkill`, `deleteSkill`, `activateSkill`, `deactivateSkill`).
+
+09.11.2026 проверки LOG178 завершены. 3178 tests/123 suites PASS (697.768s). 15 targeted/4 PostgreSQL suites PASS (9.782s), 3 новых PostgreSQL случая. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 485/486 roots, baseline 277 / current 277 diagnostics, 0 новых/changed-code. Совпали 8 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех входных точек `skill`, редактирование текста промпта `content`, а также `name`, `label`, `icon` и `description`, корректную обработку `NativeTransactionOutcomeUnknownError` и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log178/results.json), [ревью](implementation/log178/review.md),
+[следующий участок](implementation/log178/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
+
+
 
 
 

@@ -15,11 +15,14 @@ import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/
 import { ApplicationExceptionFilter } from 'src/engine/core-modules/application/application-exception-filter';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
 import { canCallerReachApplication } from 'src/engine/core-modules/application/utils/can-caller-reach-application.util';
+import { type NavigationMenuItemAuditIdentity } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { type I18nContext } from 'src/engine/core-modules/i18n/types/i18n-context.type';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { type IDataloaders } from 'src/engine/dataloaders/dataloader.interface';
 import { ApplicationTargetArg } from 'src/engine/decorators/auth/application-target-arg.decorator';
+import { AuthApiKey } from 'src/engine/decorators/auth/auth-api-key.decorator';
 import { AuthApplication } from 'src/engine/decorators/auth/auth-application.decorator';
+import { AuthUserWorkspaceId } from 'src/engine/decorators/auth/auth-user-workspace-id.decorator';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
 import { SettingsPermissionGuard } from 'src/engine/guards/settings-permission.guard';
@@ -133,8 +136,22 @@ export class SkillResolver {
   async createSkill(
     @Args('input') input: CreateSkillInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
+    @AuthApiKey() apiKey?: { id: string },
+    @Context()
+    context?: {
+      req?: {
+        application?: { id: string };
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<SkillDTO> {
-    return this.skillService.create(input, workspace.id);
+    return this.skillService.create(input, workspace.id, {
+      authUserWorkspaceId: userWorkspaceId,
+      authApiKeyId: apiKey?.id,
+      authApplicationId: context?.req?.application?.id,
+      auditIdentity: context?.req,
+    });
   }
 
   @Mutation(() => SkillDTO)
@@ -151,8 +168,22 @@ export class SkillResolver {
     })
     input: UpdateSkillInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
+    @AuthApiKey() apiKey?: { id: string },
+    @Context()
+    context?: {
+      req?: {
+        application?: { id: string };
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<SkillDTO> {
-    return this.skillService.update(input, workspace.id);
+    return this.skillService.update(input, workspace.id, {
+      authUserWorkspaceId: userWorkspaceId,
+      authApiKeyId: apiKey?.id,
+      authApplicationId: context?.req?.application?.id,
+      auditIdentity: context?.req,
+    });
   }
 
   @Mutation(() => SkillDTO)
@@ -172,8 +203,22 @@ export class SkillResolver {
     )
     id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
+    @AuthApiKey() apiKey?: { id: string },
+    @Context()
+    context?: {
+      req?: {
+        application?: { id: string };
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<SkillDTO> {
-    return this.skillService.delete(id, workspace.id);
+    return this.skillService.delete(id, workspace.id, {
+      authUserWorkspaceId: userWorkspaceId,
+      authApiKeyId: apiKey?.id,
+      authApplicationId: context?.req?.application?.id,
+      auditIdentity: context?.req,
+    });
   }
 
   @Mutation(() => SkillDTO)
@@ -193,8 +238,22 @@ export class SkillResolver {
     )
     id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
+    @AuthApiKey() apiKey?: { id: string },
+    @Context()
+    context?: {
+      req?: {
+        application?: { id: string };
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<SkillDTO> {
-    return this.skillService.activate(id, workspace.id);
+    return this.skillService.activate(id, workspace.id, {
+      authUserWorkspaceId: userWorkspaceId,
+      authApiKeyId: apiKey?.id,
+      authApplicationId: context?.req?.application?.id,
+      auditIdentity: context?.req,
+    });
   }
 
   @Mutation(() => SkillDTO)
@@ -214,8 +273,22 @@ export class SkillResolver {
     )
     id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
+    @AuthApiKey() apiKey?: { id: string },
+    @Context()
+    context?: {
+      req?: {
+        application?: { id: string };
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<SkillDTO> {
-    return this.skillService.deactivate(id, workspace.id);
+    return this.skillService.deactivate(id, workspace.id, {
+      authUserWorkspaceId: userWorkspaceId,
+      authApiKeyId: apiKey?.id,
+      authApplicationId: context?.req?.application?.id,
+      auditIdentity: context?.req,
+    });
   }
 
   private async resolveTranslatableProperty({

@@ -115,6 +115,10 @@ const CATALOG: Record<
       'onDisconnectLogicFunctionUniversalIdentifier',
     ],
   },
+  skill: {
+    values: ['applicationId', 'isCustom', 'isSystem', 'isActive'],
+    redacted: ['name', 'label', 'icon', 'description', 'content'],
+  },
   twoFactorAuthenticationMethod: {
     values: ['userWorkspaceId', 'strategy', 'status'],
     redacted: ['secret', 'deletedAt'],
@@ -547,6 +551,7 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   publicDomain: ['create', 'update', 'delete'],
   webhook: ['create', 'update', 'delete'],
   connectionProvider: ['create', 'update', 'delete'],
+  skill: ['create', 'update', 'delete'],
   twoFactorAuthenticationMethod: ['create', 'update', 'delete'],
   navigationMenuItem: ['create', 'update', 'delete'],
   agentChatChannel: ['create', 'update', 'delete'],
