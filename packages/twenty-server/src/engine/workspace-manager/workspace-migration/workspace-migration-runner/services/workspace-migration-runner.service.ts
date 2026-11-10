@@ -539,6 +539,9 @@ export class WorkspaceMigrationRunnerService {
           workflowVersions:
             allFlatEntityMaps.flatWorkflowVersionMaps?.byUniversalIdentifier ??
             {},
+          timelineActivityTypes:
+            allFlatEntityMaps.flatTimelineActivityTypeMaps
+              ?.byUniversalIdentifier ?? {},
         };
         const searchFieldMetadatasByTsVectorFieldIdAccessor =
           createSearchFieldMetadatasByTsVectorFieldIdAccessor(
@@ -813,6 +816,9 @@ export class WorkspaceMigrationRunnerService {
         workflowVersions:
           allFlatEntityMaps.flatWorkflowVersionMaps?.byUniversalIdentifier ??
           {},
+        timelineActivityTypes:
+          allFlatEntityMaps.flatTimelineActivityTypeMaps
+            ?.byUniversalIdentifier ?? {},
       };
       const allMetadataEvents: MetadataEvent[] = [];
       const allDeferredActions: DeferredWorkspaceMigrationAction[] = [];

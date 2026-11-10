@@ -3,6 +3,11 @@ import { Injectable } from '@nestjs/common';
 import { isDefined } from 'twenty-shared/utils';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
+import {
+  captureNavigationMenuItemAudit,
+  type NavigationMenuItemAuditIdentity,
+  withNavigationMenuItemAudit,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { type FlatTimelineActivityType } from 'src/engine/metadata-modules/flat-timeline-activity-type/types/flat-timeline-activity-type.type';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
@@ -44,10 +49,18 @@ export class TimelineActivityTypeService {
   async update({
     input,
     workspaceId,
+    auditIdentity,
   }: {
     input: UpdateTimelineActivityTypeInput;
     workspaceId: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<TimelineActivityTypeDTO> {
+    const capturedAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'timelineActivityType',
+      auditIdentity,
+      expectedTimelineActivityTypeUpdateIds: [input.id],
+    });
     const { workspaceCustomFlatApplication, flatTimelineActivityTypeMaps } =
       await this.getWorkspaceUpdateContext(workspaceId);
     const flatTimelineActivityTypeToUpdate =
@@ -67,16 +80,25 @@ export class TimelineActivityTypeService {
       workspaceId,
       applicationUniversalIdentifier:
         workspaceCustomFlatApplication.universalIdentifier,
+      capturedAudit,
     });
   }
 
   async reset({
     id,
     workspaceId,
+    auditIdentity,
   }: {
     id: string;
     workspaceId: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<TimelineActivityTypeDTO> {
+    const capturedAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'timelineActivityType',
+      auditIdentity,
+      expectedTimelineActivityTypeUpdateIds: [id],
+    });
     const { workspaceCustomFlatApplication, flatTimelineActivityTypeMaps } =
       await this.getWorkspaceUpdateContext(workspaceId);
     const existingFlatTimelineActivityType = findFlatEntityByIdInFlatEntityMaps(
@@ -116,6 +138,7 @@ export class TimelineActivityTypeService {
       workspaceId,
       applicationUniversalIdentifier:
         workspaceCustomFlatApplication.universalIdentifier,
+      capturedAudit,
     });
   }
 
@@ -140,26 +163,35 @@ export class TimelineActivityTypeService {
     flatTimelineActivityTypeToUpdate,
     workspaceId,
     applicationUniversalIdentifier,
+    capturedAudit,
   }: {
     flatTimelineActivityTypeToUpdate: FlatTimelineActivityType;
     workspaceId: string;
     applicationUniversalIdentifier: string;
+    capturedAudit: ReturnType<typeof captureNavigationMenuItemAudit>;
   }): Promise<TimelineActivityTypeDTO> {
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            timelineActivityType: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [flatTimelineActivityTypeToUpdate],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      capturedAudit({
+        expectedTimelineActivityTypeUpdateIds: [
+          flatTimelineActivityTypeToUpdate.id,
+        ],
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              timelineActivityType: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [flatTimelineActivityTypeToUpdate],
+              },
             },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

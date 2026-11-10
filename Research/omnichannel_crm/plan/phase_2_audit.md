@@ -276,8 +276,14 @@ LOG180 закрывает транзакционный аудит полного
 `assertNoRemainingApplicationRoleOrPermissionMetadata` и `WorkspaceMigrationRunnerService.executeRun`
 с редактированием `name`, `description`, `sourceHandlerPath`, `builtHandlerPath`, `handlerName`,
 `checksum` и всех 6 JSONB-конфигураций триггеров).
+LOG181 закрывает транзакционный аудит полного жизненного цикла типов событий таймлайна
+(`core."timelineActivityType"` `create`, `update`, `delete` в `TimelineActivityTypeResolver`,
+`TimelineActivityTypeService`, `navigation-menu-item-audit.ts`,
+`runAuditedApplicationMetadataMigration`, `assertNoRemainingApplicationRoleOrPermissionMetadata` и
+`WorkspaceMigrationRunnerService.executeRun` с редактированием `name`, `label`, `icon`,
+`triggerFieldUniversalIdentifiers` и `overrides`).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log180/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log181/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

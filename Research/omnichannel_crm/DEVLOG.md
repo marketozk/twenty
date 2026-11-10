@@ -5252,6 +5252,21 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 и совпали. [Публикация](implementation/log180/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765.
 
+## LOG-181 - транзакционный аудит полного жизненного цикла типов событий таймлайна (`timelineActivityType`, `core."timelineActivityType"`) и каскадов удаления приложений
+
+10.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log181/design.md), [design-review.md](implementation/log181/design-review.md)) и реализован участок `LOG-181` (Linear `ROB-765`): транзакционный аудит полного жизненного цикла типов событий таймлайна (`core."timelineActivityType"`), включая переопределение и сброс (`overrides` / `reset`) стандартных и сторонних типов событий в рабочем пространстве и барьер на удаление `core.application`.
+
+В `crm-audit.types.ts` и `crm-audit-transaction-context.ts` добавлен вид ресурса `timelineActivityType` (`values: ['applicationId', 'action', 'frontComponentUniversalIdentifier', 'objectUniversalIdentifier', 'targetRelationFieldUniversalIdentifier', 'happensAtFieldUniversalIdentifier', 'replacesTimelineActivityTypeUniversalIdentifier', 'isActive']`, `redacted: ['name', 'label', 'icon', 'triggerFieldUniversalIdentifiers', 'overrides']`, действия `['create', 'update', 'delete']`). В `navigation-menu-item-audit.ts` добавлен режим `mode: 'timelineActivityType'` (`assertTimelineActivityTypeRowInvariants`, `projectTimelineActivityType`, `readTimelineActivityTypeSnapshot`, `serializeTimelineActivityTypeSnapshot`, `expectedTimelineActivityTypeCreateIds`, `expectedTimelineActivityTypeUpdateIds`, `expectedTimelineActivityTypeDeleteIds`) с блокировкой `core."timelineActivityType"` (`ORDER BY id FOR UPDATE`), проверкой активности приложения-владельца при переопределении/сбросе (`overrides` / `reset`) стандартных или сторонних типов событий, сверкой созданных/обновлённых/удалённых строк, записью `timelineActivityType:create`, `timelineActivityType:update`, `timelineActivityType:delete` и повторной сверкой снимка после `audit.flush()`. В `application-metadata-audit.ts` и `workspace-migration-runner.service.ts` добавлены `'timelineActivityType'` в `AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES` (fail-closed барьер на неаудируемые миграции), аудит `timelineActivityType` в `runAuditedApplicationMetadataMigration` и проверка `core."timelineActivityType"` в `assertNoRemainingApplicationRoleOrPermissionMetadata` перед удалением `core.application`. Подключены `TimelineActivityTypeResolver` (`updateTimelineActivityType`, `resetTimelineActivityType`) и `TimelineActivityTypeService` (`update`, `reset` -> `persistUpdate`).
+
+10.11.2026 проверки LOG181 завершены. 3187 tests/126 suites PASS (711.226s). 15 targeted/4 PostgreSQL suites PASS (10.516s), 3 новых PostgreSQL случая. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 488/489 roots, baseline 262 / current 262 diagnostics, 0 новых/changed-code. Совпали 8 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех входных точек `timelineActivityType`, редактирование чувствительных метаданных (`name`, `label`, `icon`, `triggerFieldUniversalIdentifiers`, `overrides`), корректную обработку `NativeTransactionOutcomeUnknownError` и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log181/results.json), [ревью](implementation/log181/review.md),
+[следующий участок](implementation/log181/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
+
 
 
 

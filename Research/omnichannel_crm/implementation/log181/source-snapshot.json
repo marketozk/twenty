@@ -1,0 +1,10 @@
+{
+  "packages/twenty-server/src/engine/core-modules/crm-audit/application-metadata-audit.ts": "ea0b1e3d0201c62eb101a2b98c2043a68d4738c0f02c34e510ace5ec2ef0cc30",
+  "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "512a5fb643d54121c35e09680109be1978aaa9da26f672b8023d185aef499690",
+  "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "77546729ff1d844a8a2cc6ac860dda590153aa2e25a9ff587856e3bab4613dc9",
+  "packages/twenty-server/src/engine/core-modules/crm-audit/navigation-menu-item-audit.ts": "e19b86653d1e7f5b0bac9ceb2e4fbf9a5d910b01ee0f2b2de6c15bd575ec0e28",
+  "packages/twenty-server/src/engine/metadata-modules/timeline-activity-type/timeline-activity-type.resolver.ts": "5779743b73bab4d878cc826d854124777cdb0aefbba43a37488ceb18df10c3bb",
+  "packages/twenty-server/src/engine/metadata-modules/timeline-activity-type/timeline-activity-type.service.ts": "37bc7e12a2bb3ddfa669544bb763d6376c883c44fab698be2c9097dba0114c99",
+  "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts": "55e78058f774e746e9e4994b9df4acca1d6f9abc24e9e5b788021af144b719aa",
+  "packages/twenty-server/test/fork-migration/crm-audit-timeline-activity-type.postgres-spec.ts": "8d86f006e6cd2b5aab4494ccbeb2b645da1d7f62c029307f9c166f92389b7e0e"
+}

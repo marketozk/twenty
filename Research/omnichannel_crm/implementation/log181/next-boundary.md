@@ -1,0 +1,6 @@
+# Следующий участок после LOG181
+
+После закрытия `LOG181` (`timelineActivityType` в `TimelineActivityTypeService`, `TimelineActivityTypeResolver`, `navigation-menu-item-audit.ts` и `application-metadata-audit.ts`) следующий шаг в рамках `ROB-765`:
+- **`LOG182` - Транзакционный аудит полного жизненного цикла элементов командного меню (`commandMenuItem`, `core."commandMenuItem"`) и каскадов удаления связанных метаданных и `core.application`**:
+  - `CommandMenuItemResolver` (`createCommandMenuItem`, `updateCommandMenuItem`, `deleteCommandMenuItem`, `resetCommandMenuItem`), `CommandMenuItemService` (`create`, `update`, `delete`, `reset`), `ApplicationManifestMigrationService.syncMetadataFromManifest`, `TwentyStandardApplicationService.synchronizeTwentyStandardApplicationOrThrow`, `ApplicationSyncService.uninstallApplication` и `WorkspaceMigrationRunnerService.executeRun` (`CreateCommandMenuItemActionHandlerService`, `UpdateCommandMenuItemActionHandlerService`, `DeleteCommandMenuItemActionHandlerService`) создают, обновляют, переопределяют и удаляют строки `core."commandMenuItem"`.
+  - Включение `commandMenuItem` в `CrmAuditResourceKind`, `CATALOG`, `ADMINISTRATIVE_ACTIONS`, `AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES`, `navigation-menu-item-audit.ts`, `application-metadata-audit.ts` и `assertNoRemainingApplicationRoleOrPermissionMetadata`.

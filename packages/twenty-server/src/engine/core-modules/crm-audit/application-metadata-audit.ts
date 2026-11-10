@@ -35,6 +35,7 @@ import {
   assertLogicFunctionRowInvariants,
   assertNavigationMenuItemRowInvariants,
   assertSettingsMenuItemRowInvariants,
+  assertTimelineActivityTypeRowInvariants,
   assertWebhookRowInvariants,
   computeCascadeDeletedCodeStepLogicFunctionIds,
   computeCascadeDeletedNavigationMenuItemIds,
@@ -45,9 +46,11 @@ import {
   projectLogicFunction,
   projectNavigationMenuItem,
   projectSettingsMenuItem,
+  projectTimelineActivityType,
   projectWebhook,
   resolveExpectedFrontComponentWidgetAvailability,
   scalarNavigationMenuItemWithoutTimestamps,
+  TIMELINE_ACTIVITY_TYPE_NULLABLE_UUID_KEYS,
   type NavigationMenuItemAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 
@@ -110,6 +113,7 @@ export type ApplicationMetadataAuditMappings = {
   settingsMenuItems?: Record<string, { id: string } | undefined>;
   logicFunctions?: Record<string, { id: string } | undefined>;
   workflowVersions?: Record<string, { id: string } | undefined>;
+  timelineActivityTypes?: Record<string, { id: string } | undefined>;
 };
 
 type MigrationAction = {
@@ -151,6 +155,7 @@ export const AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES = new Set<string>([
   'frontComponent',
   'settingsMenuItem',
   'logicFunction',
+  'timelineActivityType',
 ]);
 
 export const AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES =
@@ -839,7 +844,8 @@ const readExistingTables = async (
       to_regclass('core."frontComponent"') IS NOT NULL AS "frontComponent",
       to_regclass('core."settingsMenuItem"') IS NOT NULL AS "settingsMenuItem",
       to_regclass('core."logicFunction"') IS NOT NULL AS "logicFunction",
-      to_regclass('core."workflowVersion"') IS NOT NULL AS "workflowVersion"`,
+      to_regclass('core."workflowVersion"') IS NOT NULL AS "workflowVersion",
+      to_regclass('core."timelineActivityType"') IS NOT NULL AS "timelineActivityType"`,
   );
   const existing = new Set<string>();
   for (const [key, present] of Object.entries(reg ?? {})) {
@@ -2324,6 +2330,121 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       }
     }
 
+    const hasTimelineActivityTypeTable = existingTables.has(
+      'timelineActivityType',
+    );
+    const beforeTimelineActivityTypes = hasTimelineActivityTypeTable
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'timelineActivityType',
+          workspaceId,
+          true,
+        )
+      : new Map<string, Record<string, unknown>>();
+    for (const tatRow of beforeTimelineActivityTypes.values()) {
+      assertTimelineActivityTypeRowInvariants(tatRow, workspaceId);
+    }
+    const plannedTimelineActivityTypeCreatesByUniversalId = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedTimelineActivityTypeUpdatePayloads = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    for (const action of actions) {
+      if (action.metadataName === 'timelineActivityType') {
+        if (action.type === 'create') {
+          if (!hasTimelineActivityTypeTable) {
+            throw new Error(
+              'Application metadata audit table timelineActivityType is unavailable',
+            );
+          }
+          if (!action.flatEntity) {
+            throw new Error(
+              'Application metadata audit requires flatEntity on timelineActivityType create action',
+            );
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (
+            plannedTimelineActivityTypeCreatesByUniversalId.has(universalId)
+          ) {
+            throw new Error(
+              'Application metadata audit duplicate timelineActivityType create universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error(
+              'Application metadata audit timelineActivityType create belongs to another application',
+            );
+          }
+          const explicitId =
+            action.id !== undefined
+              ? uuid(action.id)
+              : action.flatEntity.id !== undefined
+                ? uuid(action.flatEntity.id)
+                : undefined;
+          if (
+            explicitId !== undefined &&
+            beforeTimelineActivityTypes.has(explicitId)
+          ) {
+            throw new Error(
+              'Application metadata audit timelineActivityType create ID already exists',
+            );
+          }
+          plannedTimelineActivityTypeCreatesByUniversalId.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.timelineActivityTypes?.[universalId]?.id;
+          if (!mappedId || !action.update) {
+            throw new Error(
+              'Application metadata audit timelineActivityType update missing mapping or update payload',
+            );
+          }
+          plannedTimelineActivityTypeUpdatePayloads.set(
+            uuid(mappedId),
+            action.update,
+          );
+        }
+      }
+    }
+    const plannedTimelineActivityTypeUpdates = resolveMappedIds(
+      actions,
+      'timelineActivityType',
+      'update',
+      mappings.timelineActivityTypes ?? {},
+    );
+    const plannedTimelineActivityTypeDeletes = resolveMappedIds(
+      actions,
+      'timelineActivityType',
+      'delete',
+      mappings.timelineActivityTypes ?? {},
+    );
+    for (const tatId of plannedTimelineActivityTypeUpdates) {
+      const beforeTat = beforeTimelineActivityTypes.get(tatId);
+      if (!beforeTat || uuid(beforeTat.applicationId) !== applicationId) {
+        throw new Error(
+          'Application metadata audit cannot update missing or foreign timelineActivityType',
+        );
+      }
+    }
+    for (const tatId of plannedTimelineActivityTypeDeletes) {
+      const beforeTat = beforeTimelineActivityTypes.get(tatId);
+      if (!beforeTat || uuid(beforeTat.applicationId) !== applicationId) {
+        throw new Error(
+          'Application metadata audit cannot delete missing or foreign timelineActivityType',
+        );
+      }
+    }
+
     const plannedNavCreatesByUniversalIdentifier = new Map<
       string,
       { id?: string; flatEntity: Record<string, unknown> }
@@ -2517,7 +2638,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           action.metadataName === 'skill' ||
           action.metadataName === 'frontComponent' ||
           action.metadataName === 'settingsMenuItem' ||
-          action.metadataName === 'logicFunction'
+          action.metadataName === 'logicFunction' ||
+          action.metadataName === 'timelineActivityType'
         ) {
           throw new Error(
             'Application metadata objectDelete cannot mutate roles, targets, agents, or permission flags',
@@ -2685,7 +2807,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           action.metadataName === 'skill' ||
           action.metadataName === 'frontComponent' ||
           action.metadataName === 'settingsMenuItem' ||
-          action.metadataName === 'logicFunction'
+          action.metadataName === 'logicFunction' ||
+          action.metadataName === 'timelineActivityType'
         ) {
           throw new Error(
             'Application metadata fieldDelete cannot mutate roles, objects, object permissions, or predicate groups',
@@ -6023,6 +6146,299 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       );
     }
 
+    // 18. Verify and record core.timelineActivityType lifecycle and deletions
+    let expectedTimelineActivityTypesSerialized: string | undefined;
+    if (hasTimelineActivityTypeTable) {
+      const afterTimelineActivityTypes = await readTableSnapshot(
+        runner,
+        existingTables,
+        'timelineActivityType',
+        workspaceId,
+        false,
+      );
+      const createdTimelineActivityTypesByUniversalId = new Map<
+        string,
+        Record<string, unknown>
+      >();
+      for (const [id, afterTat] of afterTimelineActivityTypes.entries()) {
+        assertTimelineActivityTypeRowInvariants(afterTat, workspaceId);
+        if (!beforeTimelineActivityTypes.has(id)) {
+          const universalId = uuid(afterTat.universalIdentifier);
+          if (createdTimelineActivityTypesByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit detected duplicate created timelineActivityType universalIdentifier',
+            );
+          }
+          createdTimelineActivityTypesByUniversalId.set(universalId, afterTat);
+        }
+      }
+      if (
+        createdTimelineActivityTypesByUniversalId.size !==
+        plannedTimelineActivityTypeCreatesByUniversalId.size
+      ) {
+        throw new Error(
+          'Application metadata audit timelineActivityType created row count mismatch',
+        );
+      }
+      for (const [
+        universalId,
+        planned,
+      ] of plannedTimelineActivityTypeCreatesByUniversalId.entries()) {
+        const afterTat =
+          createdTimelineActivityTypesByUniversalId.get(universalId);
+        if (!afterTat) {
+          throw new Error(
+            'Application metadata timelineActivityType create did not persist expected row',
+          );
+        }
+        const createdId = uuid(afterTat.id);
+        if (planned.id !== undefined && createdId !== planned.id) {
+          throw new Error(
+            'Application metadata timelineActivityType create persisted unexpected ID',
+          );
+        }
+        if (uuid(afterTat.applicationId) !== applicationId) {
+          throw new Error(
+            'Application metadata timelineActivityType create persisted unexpected applicationId',
+          );
+        }
+        const afterProj = projectTimelineActivityType(afterTat);
+        for (const textKey of ['name', 'label'] as const) {
+          if (
+            planned.flatEntity[textKey] !== undefined &&
+            afterProj[textKey] !== String(planned.flatEntity[textKey])
+          ) {
+            throw new Error(
+              `Application metadata timelineActivityType create persisted unexpected ${textKey}`,
+            );
+          }
+        }
+        for (const nullableTextKey of ['action', 'icon'] as const) {
+          if (planned.flatEntity[nullableTextKey] !== undefined) {
+            const expectedVal =
+              planned.flatEntity[nullableTextKey] === null
+                ? null
+                : String(planned.flatEntity[nullableTextKey]);
+            if (afterProj[nullableTextKey] !== expectedVal) {
+              throw new Error(
+                `Application metadata timelineActivityType create persisted unexpected ${nullableTextKey}`,
+              );
+            }
+          }
+        }
+        for (const uuidKey of TIMELINE_ACTIVITY_TYPE_NULLABLE_UUID_KEYS) {
+          if (
+            planned.flatEntity[uuidKey] !== undefined &&
+            afterProj[uuidKey] !== nullableUuid(planned.flatEntity[uuidKey])
+          ) {
+            throw new Error(
+              `Application metadata timelineActivityType create persisted unexpected ${uuidKey}`,
+            );
+          }
+        }
+        if (planned.flatEntity.triggerFieldUniversalIdentifiers !== undefined) {
+          const expectedTriggerFields = Array.isArray(
+            planned.flatEntity.triggerFieldUniversalIdentifiers,
+          )
+            ? planned.flatEntity.triggerFieldUniversalIdentifiers.map(
+                (item: unknown) => uuid(item),
+              )
+            : null;
+          if (
+            canonicalAuditJson(afterProj.triggerFieldUniversalIdentifiers) !==
+            canonicalAuditJson(expectedTriggerFields)
+          ) {
+            throw new Error(
+              'Application metadata timelineActivityType create persisted unexpected triggerFieldUniversalIdentifiers',
+            );
+          }
+        }
+        if (
+          planned.flatEntity.isActive !== undefined &&
+          afterProj.isActive !== Boolean(planned.flatEntity.isActive)
+        ) {
+          throw new Error(
+            'Application metadata timelineActivityType create persisted unexpected isActive',
+          );
+        }
+        if (planned.flatEntity.overrides !== undefined) {
+          const expectedOverrides =
+            planned.flatEntity.overrides === null
+              ? null
+              : planned.flatEntity.overrides;
+          if (
+            canonicalAuditJson(afterProj.overrides) !==
+            canonicalAuditJson(expectedOverrides)
+          ) {
+            throw new Error(
+              'Application metadata timelineActivityType create persisted unexpected overrides',
+            );
+          }
+        }
+        recordMutation(
+          'timelineActivityType',
+          createdId,
+          'create',
+          null,
+          afterProj,
+        );
+      }
+
+      for (const tatId of plannedTimelineActivityTypeUpdates) {
+        if (plannedTimelineActivityTypeDeletes.has(tatId)) continue;
+        const beforeTat = beforeTimelineActivityTypes.get(tatId);
+        const afterTat = afterTimelineActivityTypes.get(tatId);
+        if (
+          !beforeTat ||
+          !afterTat ||
+          uuid(beforeTat.applicationId) !== uuid(afterTat.applicationId) ||
+          uuid(beforeTat.universalIdentifier) !==
+            uuid(afterTat.universalIdentifier)
+        ) {
+          throw new Error(
+            'Application metadata timelineActivityType update removed or corrupted target row',
+          );
+        }
+        const beforeProj = projectTimelineActivityType(beforeTat);
+        const afterProj = projectTimelineActivityType(afterTat);
+        const updatePayload =
+          plannedTimelineActivityTypeUpdatePayloads.get(tatId) ?? {};
+        for (const textKey of ['name', 'label'] as const) {
+          const expectedVal =
+            textKey in updatePayload && updatePayload[textKey] !== undefined
+              ? String(updatePayload[textKey])
+              : beforeProj[textKey];
+          if (afterProj[textKey] !== expectedVal) {
+            throw new Error(
+              `Application metadata timelineActivityType update did not persist expected ${textKey}`,
+            );
+          }
+        }
+        for (const nullableTextKey of ['action', 'icon'] as const) {
+          const expectedVal =
+            nullableTextKey in updatePayload &&
+            updatePayload[nullableTextKey] !== undefined
+              ? updatePayload[nullableTextKey] === null
+                ? null
+                : String(updatePayload[nullableTextKey])
+              : beforeProj[nullableTextKey];
+          if (afterProj[nullableTextKey] !== expectedVal) {
+            throw new Error(
+              `Application metadata timelineActivityType update did not persist expected ${nullableTextKey}`,
+            );
+          }
+        }
+        for (const uuidKey of TIMELINE_ACTIVITY_TYPE_NULLABLE_UUID_KEYS) {
+          const expectedVal =
+            uuidKey in updatePayload && updatePayload[uuidKey] !== undefined
+              ? nullableUuid(updatePayload[uuidKey])
+              : beforeProj[uuidKey];
+          if (afterProj[uuidKey] !== expectedVal) {
+            throw new Error(
+              `Application metadata timelineActivityType update did not persist expected ${uuidKey}`,
+            );
+          }
+        }
+        const expectedTriggerFields =
+          'triggerFieldUniversalIdentifiers' in updatePayload &&
+          updatePayload.triggerFieldUniversalIdentifiers !== undefined
+            ? Array.isArray(updatePayload.triggerFieldUniversalIdentifiers)
+              ? updatePayload.triggerFieldUniversalIdentifiers.map(
+                  (item: unknown) => uuid(item),
+                )
+              : null
+            : beforeProj.triggerFieldUniversalIdentifiers;
+        if (
+          canonicalAuditJson(afterProj.triggerFieldUniversalIdentifiers) !==
+          canonicalAuditJson(expectedTriggerFields)
+        ) {
+          throw new Error(
+            'Application metadata timelineActivityType update did not persist expected triggerFieldUniversalIdentifiers',
+          );
+        }
+        const expectedIsActive =
+          'isActive' in updatePayload && updatePayload.isActive !== undefined
+            ? Boolean(updatePayload.isActive)
+            : beforeProj.isActive;
+        if (afterProj.isActive !== expectedIsActive) {
+          throw new Error(
+            'Application metadata timelineActivityType update did not persist expected isActive',
+          );
+        }
+        const expectedOverrides =
+          'overrides' in updatePayload && updatePayload.overrides !== undefined
+            ? updatePayload.overrides === null
+              ? null
+              : updatePayload.overrides
+            : beforeProj.overrides;
+        if (
+          canonicalAuditJson(afterProj.overrides) !==
+          canonicalAuditJson(expectedOverrides)
+        ) {
+          throw new Error(
+            'Application metadata timelineActivityType update did not persist expected overrides',
+          );
+        }
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          recordMutation(
+            'timelineActivityType',
+            tatId,
+            'update',
+            beforeProj,
+            afterProj,
+          );
+        }
+      }
+
+      for (const tatId of plannedTimelineActivityTypeDeletes) {
+        const beforeTat = beforeTimelineActivityTypes.get(tatId);
+        if (!beforeTat) {
+          throw new Error(
+            'Application metadata timelineActivityType delete expected row missing before migration',
+          );
+        }
+        if (afterTimelineActivityTypes.has(tatId)) {
+          throw new Error(
+            'Application metadata timelineActivityType delete did not remove expected row',
+          );
+        }
+        recordMutation(
+          'timelineActivityType',
+          tatId,
+          'delete',
+          projectTimelineActivityType(beforeTat),
+          null,
+        );
+      }
+
+      for (const [tatId, beforeTat] of beforeTimelineActivityTypes.entries()) {
+        if (plannedTimelineActivityTypeDeletes.has(tatId)) continue;
+        const afterTat = afterTimelineActivityTypes.get(tatId);
+        if (!afterTat) {
+          throw new Error(
+            'Application metadata audit detected unplanned timelineActivityType deletion',
+          );
+        }
+        if (!plannedTimelineActivityTypeUpdates.has(tatId)) {
+          if (
+            canonicalAuditJson(scalarWithoutTimestamps(beforeTat)) !==
+            canonicalAuditJson(scalarWithoutTimestamps(afterTat))
+          ) {
+            throw new Error(
+              'Application metadata audit detected unplanned timelineActivityType mutation',
+            );
+          }
+        }
+      }
+
+      expectedTimelineActivityTypesSerialized = canonicalAuditJson(
+        [...afterTimelineActivityTypes.entries()].map(([id, row]) => [
+          id,
+          scalarWithoutTimestamps(row),
+        ]),
+      );
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized = serializeFullSnapshot(after);
       await audit.flush();
@@ -6282,6 +6698,26 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           );
         }
       }
+      if (expectedTimelineActivityTypesSerialized !== undefined) {
+        const postFlushTimelineActivityTypes = await readTableSnapshot(
+          runner,
+          existingTables,
+          'timelineActivityType',
+          workspaceId,
+          false,
+        );
+        const postFlushSerialized = canonicalAuditJson(
+          [...postFlushTimelineActivityTypes.entries()].map(([id, row]) => [
+            id,
+            scalarWithoutTimestamps(row),
+          ]),
+        );
+        if (postFlushSerialized !== expectedTimelineActivityTypesSerialized) {
+          throw new Error(
+            'Application metadata state changed during audit flush',
+          );
+        }
+      }
     }
 
     return result;
@@ -6325,6 +6761,7 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
     'frontComponent',
     'settingsMenuItem',
     'logicFunction',
+    'timelineActivityType',
   ]) {
     if (!existingTables.has(tableName)) continue;
     const [ownRow] = await runner.query(

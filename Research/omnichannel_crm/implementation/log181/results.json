@@ -1,0 +1,37 @@
+{
+  "log": "LOG-181",
+  "issue": "ROB-765",
+  "date": "2026-11-10",
+  "title": "Transactional audit of timelineActivityType (core.timelineActivityType) lifecycle and application cascade deletion",
+  "targetedPostgres": {
+    "suitesPassed": 4,
+    "suitesTotal": 4,
+    "testsPassed": 15,
+    "testsTotal": 15,
+    "newPostgresTests": 3,
+    "durationSeconds": 10.516
+  },
+  "fullRegression": {
+    "suitesPassed": 126,
+    "suitesTotal": 126,
+    "testsPassed": 3187,
+    "testsTotal": 3187,
+    "durationSeconds": 711.226
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.184
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 488,
+    "currentRootFiles": 489,
+    "baselineDiagnostics": 262,
+    "currentDiagnostics": 262,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 8
+}

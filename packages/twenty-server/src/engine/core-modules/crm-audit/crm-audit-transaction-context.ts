@@ -158,6 +158,25 @@ const CATALOG: Record<
       'workflowActionTriggerSettings',
     ],
   },
+  timelineActivityType: {
+    values: [
+      'applicationId',
+      'action',
+      'frontComponentUniversalIdentifier',
+      'objectUniversalIdentifier',
+      'targetRelationFieldUniversalIdentifier',
+      'happensAtFieldUniversalIdentifier',
+      'replacesTimelineActivityTypeUniversalIdentifier',
+      'isActive',
+    ],
+    redacted: [
+      'name',
+      'label',
+      'icon',
+      'triggerFieldUniversalIdentifiers',
+      'overrides',
+    ],
+  },
   twoFactorAuthenticationMethod: {
     values: ['userWorkspaceId', 'strategy', 'status'],
     redacted: ['secret', 'deletedAt'],
@@ -594,6 +613,7 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   frontComponent: ['create', 'update', 'delete'],
   settingsMenuItem: ['create', 'update', 'delete'],
   logicFunction: ['create', 'update', 'delete'],
+  timelineActivityType: ['create', 'update', 'delete'],
   twoFactorAuthenticationMethod: ['create', 'update', 'delete'],
   navigationMenuItem: ['create', 'update', 'delete'],
   agentChatChannel: ['create', 'update', 'delete'],

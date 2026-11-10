@@ -26,6 +26,7 @@ import { TimelineActivityTypeDTO } from 'src/engine/metadata-modules/timeline-ac
 import { UpdateTimelineActivityTypeInput } from 'src/engine/metadata-modules/timeline-activity-type/dtos/update-timeline-activity-type.input';
 import { TimelineActivityTypeGraphqlApiExceptionInterceptor } from 'src/engine/metadata-modules/timeline-activity-type/interceptors/timeline-activity-type-graphql-api-exception.interceptor';
 import { TimelineActivityTypeService } from 'src/engine/metadata-modules/timeline-activity-type/timeline-activity-type.service';
+import { type NavigationMenuItemAuditIdentity } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { resolveEffectiveEntityProperty } from 'src/engine/metadata-modules/overrides/utils/resolve-effective-entity-property.util';
 import { WorkspaceMigrationGraphqlApiExceptionInterceptor } from 'src/engine/workspace-manager/workspace-migration/interceptors/workspace-migration-graphql-api-exception.interceptor';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
@@ -97,10 +98,12 @@ export class TimelineActivityTypeResolver {
   async updateTimelineActivityType(
     @Args('input') input: UpdateTimelineActivityTypeInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<TimelineActivityTypeDTO> {
     return this.timelineActivityTypeService.update({
       input,
       workspaceId: workspace.id,
+      auditIdentity: context?.req,
     });
   }
 
@@ -109,10 +112,12 @@ export class TimelineActivityTypeResolver {
   async resetTimelineActivityType(
     @Args('id', { type: () => UUIDScalarType }) id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<TimelineActivityTypeDTO> {
     return this.timelineActivityTypeService.reset({
       id,
       workspaceId: workspace.id,
+      auditIdentity: context?.req,
     });
   }
 }

@@ -29,6 +29,7 @@ export type CrmAuditResourceKind =
   | 'frontComponent'
   | 'settingsMenuItem'
   | 'logicFunction'
+  | 'timelineActivityType'
   | 'twoFactorAuthenticationMethod'
   | 'navigationMenuItem'
   | 'agentChatChannel'
