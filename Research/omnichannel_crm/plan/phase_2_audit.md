@@ -282,8 +282,21 @@ LOG181 закрывает транзакционный аудит полного
 `runAuditedApplicationMetadataMigration`, `assertNoRemainingApplicationRoleOrPermissionMetadata` и
 `WorkspaceMigrationRunnerService.executeRun` с редактированием `name`, `label`, `icon`,
 `triggerFieldUniversalIdentifiers` и `overrides`).
+LOG182 закрывает транзакционный аудит полного жизненного цикла пунктов командного меню
+(`core."commandMenuItem"` `create`, `update`, `delete` в `CommandMenuItemResolver`,
+`CommandMenuItemService`, `CoreWorkflowMutationWorkspaceService.updateWorkflow`,
+`CoreWorkflowResolver.updateCoreWorkflow`, `CoreWorkflowLifecycleWorkspaceService`,
+`CoreWorkflowVersionMutationResolver`, `ObjectMetadataService`, `ObjectMetadataResolver`,
+`ObjectMetadataController`, `UpdateObjectMetadataTool`, `UpdateManyObjectMetadataTool`,
+`prefillWorkflowCommandMenuItems`, `prefillFrontComponentCommandMenuItems`,
+`navigation-menu-item-audit.ts`, `runAuditedApplicationMetadataMigration`,
+`reconcileApplicationRoleAndPermissionOperations`,
+`assertNoRemainingApplicationRoleOrPermissionMetadata` и
+`WorkspaceMigrationRunnerService.executeRun` с редактированием `label`, `icon`, `shortLabel`,
+`position`, `payload`, `hotKeys`, `conditionalAvailabilityExpression`,
+`conditionalPinnedExpression` и `overrides`).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log181/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log182/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.
