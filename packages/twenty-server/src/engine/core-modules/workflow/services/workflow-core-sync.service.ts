@@ -8,6 +8,11 @@ import { WorkflowEntity } from 'src/engine/core-modules/workflow/entities/workfl
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
 import { CacheLockService } from 'src/engine/core-modules/cache-lock/cache-lock.service';
 import {
+  captureNavigationMenuItemAudit,
+  withNavigationMenuItemAudit,
+  type NavigationMenuItemAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
+import {
   CoreWorkflowMetadataException,
   CoreWorkflowMetadataExceptionCode,
 } from 'src/engine/core-modules/workflow/exceptions/core-workflow-metadata.exception';
@@ -76,13 +81,36 @@ export class WorkflowCoreSyncService {
   async deleteFromCore(
     workspaceId: string,
     coreWorkflowIds: string[],
+    auditOptions?: {
+      auditIdentity?: NavigationMenuItemAuditIdentity;
+      authUserWorkspaceId?: string;
+      authApiKeyId?: string;
+      authApplicationId?: string;
+      defaultSystemActorId?: string;
+    },
   ): Promise<void> {
     if (coreWorkflowIds.length === 0) {
       return;
     }
 
+    const capturedAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'logicFunction',
+      auditIdentity: auditOptions?.auditIdentity,
+      authUserWorkspaceId: auditOptions?.authUserWorkspaceId,
+      authApiKeyId: auditOptions?.authApiKeyId,
+      authApplicationId: auditOptions?.authApplicationId,
+      defaultSystemActorId:
+        auditOptions?.defaultSystemActorId ?? 'workflow-core-sync:delete',
+    });
+
     await this.cacheLockService.withLock(
-      () => this.deleteFromCoreUnderLock(workspaceId, coreWorkflowIds),
+      () =>
+        this.deleteFromCoreUnderLock(
+          workspaceId,
+          coreWorkflowIds,
+          capturedAudit,
+        ),
       `core-workflow-deletion:${workspaceId}`,
       {
         ttl: CORE_WORKFLOW_DELETION_LOCK_TTL_MS,
@@ -97,6 +125,7 @@ export class WorkflowCoreSyncService {
   private async deleteFromCoreUnderLock(
     workspaceId: string,
     coreWorkflowIds: string[],
+    capturedAudit: ReturnType<typeof captureNavigationMenuItemAudit>,
   ): Promise<void> {
     const persistedCoreWorkflowIds = (
       await this.coreWorkflowRepository.find(workspaceId, {
@@ -136,18 +165,26 @@ export class WorkflowCoreSyncService {
 
     const flatWorkflowsToDelete = resolvedFlatWorkflows.filter(isDefined);
 
-    await this.runCoreWorkflowMigration({
-      workspaceId,
-      failureMessage:
-        'Multiple validation errors occurred while deleting workflows',
-      operations: {
-        workflow: {
-          flatEntityToCreate: [],
-          flatEntityToDelete: flatWorkflowsToDelete,
-          flatEntityToUpdate: [],
-        },
-      },
-    });
+    await withNavigationMenuItemAudit(
+      capturedAudit({
+        expectedParentWorkflowDeleteIds: flatWorkflowsToDelete.map(
+          ({ id }) => id,
+        ),
+      }),
+      () =>
+        this.runCoreWorkflowMigration({
+          workspaceId,
+          failureMessage:
+            'Multiple validation errors occurred while deleting workflows',
+          operations: {
+            workflow: {
+              flatEntityToCreate: [],
+              flatEntityToDelete: flatWorkflowsToDelete,
+              flatEntityToUpdate: [],
+            },
+          },
+        }),
+    );
   }
 
   async findCoreWorkflowById(

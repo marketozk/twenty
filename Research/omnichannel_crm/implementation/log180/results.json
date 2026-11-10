@@ -1,0 +1,37 @@
+{
+  "log": "LOG-180",
+  "issue": "ROB-765",
+  "date": "2026-11-10",
+  "title": "Transactional audit of logicFunction (core.logicFunction) lifecycle and workflow/application cascade deletion",
+  "targetedPostgres": {
+    "suitesPassed": 5,
+    "suitesTotal": 5,
+    "testsPassed": 60,
+    "testsTotal": 60,
+    "newPostgresTests": 3,
+    "durationSeconds": 13.518
+  },
+  "fullRegression": {
+    "suitesPassed": 125,
+    "suitesTotal": 125,
+    "testsPassed": 3184,
+    "testsTotal": 3184,
+    "durationSeconds": 705.803
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.163
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 496,
+    "currentRootFiles": 497,
+    "baselineDiagnostics": 264,
+    "currentDiagnostics": 262,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 17
+}

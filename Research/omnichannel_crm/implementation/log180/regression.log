@@ -1,0 +1,405 @@
+[32m[Nest] 1  - [39m11/09/2026, 11:48:29 PM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggering message list fetch for workspace d471b4a7-7b27-4f9a-9054-bcf4b80d301c (all pending channels)[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:48:29 PM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mFound 2 message channel(s) to process[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:48:29 PM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggered fetch for message channel c4f37bab-023d-47e1-a4f7-cc5f55cf7732[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:48:29 PM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mSuccessfully triggered 1 message list fetch job(s)[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:48:29 PM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mTriggering message list fetch for workspace d471b4a7-7b27-4f9a-9054-bcf4b80d301c (all pending channels)[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:48:29 PM [32m    LOG[39m [38;5;3m[MessagingTriggerMessageListFetchCommand] [39m[32mFound 2 message channel(s) to process[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:48:46 PM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel 1a7a3845-94cc-46d6-97fd-443b7f205df3, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:48:46 PM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel 02731d85-b776-4d55-9d4f-1fc7d70df16d, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:48:46 PM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel 17cf8d74-b902-46fa-86d7-86cee1cb75f9, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:48:46 PM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mSkipping webhook sync for calendar channel 1f66c4a6-1646-499c-ac15-2e3e560453d0, a sync is already in progress[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:48:47 PM [32m    LOG[39m [38;5;3m[CalendarEventWebhookSyncService] [39m[32mDeferring 100000 calendar events to the import cron for calendar channel 119f78f7-6fa0-43d7-90b6-edb124dd9cd5[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:48:48 PM [32m    LOG[39m [38;5;3m[MessagingMessageWebhookSyncService] [39m[32mSkipping webhook sync for message channel 541a9330-cd5a-453d-acd3-2d729fdc171b, a sync is already in progress[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-sync-status.postgres-spec.ts (59.028 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-application-metadata.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-role-permissions.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-public-update.postgres-spec.ts (8.729 s)
+[32m[Nest] 1  - [39m11/09/2026, 11:49:23 PM [32m    LOG[39m [38;5;3m[DeleteConnectedAccountsOutsideProviderScopeCommand] [39m[32m[DRY RUN] Workspace 77d257d1-1fa1-4f04-963f-d35558265566: 1 connected account(s) outside their provider scope would be deleted[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:23 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 77d257d1-1fa1-4f04-963f-d35558265566 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:23 PM [32m    LOG[39m [38;5;3m[DeleteConnectedAccountsOutsideProviderScopeCommand] [39m[32mWorkspace 77d257d1-1fa1-4f04-963f-d35558265566: 1 connected account(s) outside their provider scope deleted[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:23 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 77d257d1-1fa1-4f04-963f-d35558265566 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:23 PM [32m    LOG[39m [38;5;3m[DeleteConnectedAccountsOutsideProviderScopeCommand] [39m[32mWorkspace 77d257d1-1fa1-4f04-963f-d35558265566: 1 connected account(s) outside their provider scope deleted[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:23 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 77d257d1-1fa1-4f04-963f-d35558265566 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:29 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 77d257d1-1fa1-4f04-963f-d35558265566 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:29 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 77d257d1-1fa1-4f04-963f-d35558265566 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:29 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 77d257d1-1fa1-4f04-963f-d35558265566 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:29 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 77d257d1-1fa1-4f04-963f-d35558265566 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:29 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 77d257d1-1fa1-4f04-963f-d35558265566 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:49:32 PM [31m  ERROR[39m [38;5;3m[ConnectedAccountTransfer] [39m[31mCONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:49:33 PM [31m  ERROR[39m [38;5;3m[ConnectedAccountTransfer] [39m[31mCONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:49:34 PM [31m  ERROR[39m [38;5;3m[ConnectedAccountTransfer] [39m[31mCONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:49:34 PM [31m  ERROR[39m [38;5;3m[ConnectedAccountTransfer] [39m[31mCONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:49:35 PM [31m  ERROR[39m [38;5;3m[ConnectedAccountTransfer] [39m[31mCONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:49:35 PM [31m  ERROR[39m [38;5;3m[ConnectedAccountTransfer] [39m[31mCONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:35 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 77d257d1-1fa1-4f04-963f-d35558265566 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:36 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 77d257d1-1fa1-4f04-963f-d35558265566 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:49:36 PM [31m  ERROR[39m [38;5;3m[ConnectedAccountTransfer] [39m[31mCONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:49:36 PM [31m  ERROR[39m [38;5;3m[ConnectedAccountTransfer] [39m[31mCONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:36 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 77d257d1-1fa1-4f04-963f-d35558265566 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:49:36 PM [31m  ERROR[39m [38;5;3m[ConnectedAccountTransfer] [39m[31mCONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:49:36 PM [31m  ERROR[39m [38;5;3m[ConnectedAccountTransfer] [39m[31mCONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:37 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 77d257d1-1fa1-4f04-963f-d35558265566 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:49:38 PM [31m  ERROR[39m [38;5;3m[ConnectedAccountTransfer] [39m[31mCONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:38 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 77d257d1-1fa1-4f04-963f-d35558265566 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:38 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 77d257d1-1fa1-4f04-963f-d35558265566 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:38 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 77d257d1-1fa1-4f04-963f-d35558265566 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:38 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 77d257d1-1fa1-4f04-963f-d35558265566 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:39 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 77d257d1-1fa1-4f04-963f-d35558265566 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:49:39 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 77d257d1-1fa1-4f04-963f-d35558265566 Deleting 1 connected account(s) with 1 message channel(s) and 0 calendar channel(s)[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-metadata-transaction.postgres-spec.ts (19.907 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-object-and-field-delete-permissions.postgres-spec.ts (5.616 s)
+  ● Console
+
+    console.warn
+      Uncompiled message detected! Message:
+      
+      > Role is not editable
+      
+      That means you use raw catalog or your catalog doesn't have a translation for the message and fallback was used.
+      ICU features such as interpolation and plurals will not work properly for that message. 
+      
+      Please compile your catalog first.
+
+      273 |         validationResult.errors.push({
+      274 |           code: PermissionsExceptionCode.ROLE_NOT_EDITABLE,
+    > 275 |           message: t`Role is not editable`,
+          |                    ^
+      276 |           userFriendlyMessage: msg`This role cannot be modified because it is a system role. Only custom roles can be edited.`,
+      277 |         });
+      278 |       }
+
+      at I18n._ (../../../out/tools/node_modules/@lingui/core/dist/index.cjs:402:17)
+      at FlatObjectPermissionValidatorService.t [as validateFlatObjectPermissionDeletion] (src/engine/workspace-manager/workspace-migration/workspace-migration-builder/validators/services/flat-object-permission-validator.service.ts:275:20)
+      at Object.validateFlatObjectPermissionDeletion (test/fork-migration/crm-audit-object-and-field-delete-permissions.postgres-spec.ts:2120:37)
+
+    console.warn
+      Uncompiled message detected! Message:
+      
+      > Role is not editable
+      
+      That means you use raw catalog or your catalog doesn't have a translation for the message and fallback was used.
+      ICU features such as interpolation and plurals will not work properly for that message. 
+      
+      Please compile your catalog first.
+
+      318 |         validationResult.errors.push({
+      319 |           code: PermissionsExceptionCode.ROLE_NOT_EDITABLE,
+    > 320 |           message: t`Role is not editable`,
+          |                    ^
+      321 |           userFriendlyMessage: msg`This role cannot be modified because it is a system role. Only custom roles can be edited.`,
+      322 |         });
+      323 |       }
+
+      at I18n._ (../../../out/tools/node_modules/@lingui/core/dist/index.cjs:402:17)
+      at FlatFieldPermissionValidatorService.t [as validateFlatFieldPermissionDeletion] (src/engine/workspace-manager/workspace-migration/workspace-migration-builder/validators/services/flat-field-permission-validator.service.ts:320:20)
+      at Object.validateFlatFieldPermissionDeletion (test/fork-migration/crm-audit-object-and-field-delete-permissions.postgres-spec.ts:2145:36)
+
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-agent-chat-channel.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-navigation-menu-item.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/calendar-import-matching-audit.postgres-spec.ts (28.02 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-logic-function.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-front-component-and-settings-menu-item.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-application-authorization-and-variable.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/ordinary-native-sync-run.postgres-spec.ts (27.462 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-skill.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-agent-service-role-targets.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-webhook.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-core-workflow-and-view.postgres-spec.ts
+[32m[Nest] 1  - [39m11/09/2026, 11:50:54 PM [32m    LOG[39m [38;5;3m[GenerateApiKeyCommand] [39m[32mTOKEN:signed-jwt-token
+[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-api-key-lifecycle.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-workspace-domain.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-connection-provider-and-auth-failure.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-two-factor-authentication.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-application-default-role.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-bulk-role-assignment.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-role-delete-and-targets.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-core-user-and-workspace.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-system-role-and-seeder.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-role-update.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-application-sources.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-connected-account-delete.postgres-spec.ts (13.545 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-targeted-cleanup.postgres-spec.ts (14.627 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-role-assignment.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-password-update.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-workspace-default-role.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-refresh-logout.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/calendar-save-audit.postgres-spec.ts (13.528 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-agent-role-lifecycle.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-files.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-matching.postgres-spec.ts (17.565 s)
+[31m[Nest] 1  - [39m11/09/2026, 11:52:23 PM [31m  ERROR[39m [38;5;3m[UserSessionService] [39m[31mFailed to issue a required session: SESSION_AUDIT_FAILURE[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:52:23 PM [31m  ERROR[39m [38;5;3m[UserSessionService] [39m[31mFailed to issue a required session: Session persisted credential or scope does not match[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:52:24 PM [31m  ERROR[39m [38;5;3m[UserSessionService] [39m[31mFailed to issue a required session: Session persisted lifecycle does not match[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:52:24 PM [31m  ERROR[39m [38;5;3m[UserSessionService] [39m[31mFailed to issue a required session: Session persisted lifecycle does not match[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:52:24 PM [31m  ERROR[39m [38;5;3m[UserSessionService] [39m[31mFailed to issue a required session: Session audit snapshot changed during flush[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:52:24 PM [31m  ERROR[39m [38;5;3m[UserSessionService] [39m[31mFailed to issue a required session: Native transaction outcome is unknown after commit[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-user-session.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-association-cleanup.postgres-spec.ts (11.893 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-cleanup-boundaries.postgres-spec.ts (16.88 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-import-matching-deferred-runner.postgres-spec.ts (10.792 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-ordinary-message-save.postgres-spec.ts (16.616 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-whole-sweep.postgres-spec.ts (15.342 s)
+[31m[Nest] 1  - [39m11/09/2026, 11:53:37 PM [31m  ERROR[39m [38;5;3m[DeferredWorkspaceMigrationActionRunnerService] [39m[31mFailed to enqueue deferred workspace migration actions for workspace cc09da30-37fa-4557-bd8e-90734979499c: redis unavailable[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:53:37 PM [32m    LOG[39m [38;5;3m[DeferredWorkspaceMigrationActionRunnerService] [39m[32mDeferred action sync_workflowRunShares e3206e8a-ed60-4800-b5e3-4d0bd0fd81c0 completed for workspace cc09da30-37fa-4557-bd8e-90734979499c in 4ms[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-cleanup.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-active-core-user.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-orphan-cleanup.postgres-spec.ts (10.02 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-message-rematch.postgres-spec.ts (15.34 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-target-reconciliation.postgres-spec.ts (9.899 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-application-variable-and-feature-flag.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-delete-set-null.postgres-spec.ts (8.119 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-owner.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-metadata-mutation-guard.spec.ts
+[32m[Nest] 1  - [39m11/09/2026, 11:54:27 PM [32m    LOG[39m [38;5;3m[ConnectedAccountMetadataService] [39m[32mWorkspaceId: 9c11dbcb-18e6-4330-ace0-70b1ff257ab5 Deleting 1 connected account(s) with 1 message channel(s) and 1 calendar channel(s)[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-empty-thread-cleanup.postgres-spec.ts (10.751 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-orphan-message.postgres-spec.ts (9.496 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-mutation-guard.postgres-spec.ts (14.814 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-import-policy-freshness.postgres-spec.ts (6.368 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-sync-cleanup.postgres-spec.ts (14.678 s)
+[31m[Nest] 1  - [39m11/09/2026, 11:55:31 PM [31m  ERROR[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[31mWorkspaceId: dd544ab9-9256-4e98-adb1-3cf00ddb7491, MessageChannelId: 04d7ce20-e235-453e-8a79-0f41af5f2c2d, FolderId: 6019717c-8740-49c9-b54c-36922d66499f - Error processing folder action: ordinary provider failure[39m
+Error: ordinary provider failure
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:318:10)
+    at Runtime._execModule (/tools/node_modules/jest-runtime/build/index.js:1439:24)
+    at Runtime._loadModule (/tools/node_modules/jest-runtime/build/index.js:1022:12)
+    at Runtime.requireModule (/tools/node_modules/jest-runtime/build/index.js:882:12)
+    at jestAdapter (/tools/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:77:13)
+    at runTestInternal (/tools/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/tools/node_modules/jest-runner/build/runTest.js:444:34)
+[31m[Nest] 1  - [39m11/09/2026, 11:55:32 PM [31m  ERROR[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[31mWorkspaceId: dd544ab9-9256-4e98-adb1-3cf00ddb7491, MessageChannelId: 6d0e4f53-369f-49b5-98e5-cfb337639f93, FolderId: cdb98352-3c53-467b-88b0-260a4a290751 - Error processing folder action: Unexpected folder processing failure[39m
+Error: Unexpected folder processing failure
+    at /source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:128:19
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:323:12
+[31m[Nest] 1  - [39m11/09/2026, 11:55:32 PM [31m  ERROR[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[31mWorkspaceId: dd544ab9-9256-4e98-adb1-3cf00ddb7491, MessageChannelId: 65032258-673c-4e7f-bc89-0889e3e0fe45, FolderId: 98e7fdf8-1427-4a54-9a64-37b488b80aae - Error processing folder action: permission denied for table omniAccountBinding[39m
+QueryFailedError: permission denied for table omniAccountBinding
+    at PostgresQueryRunner.query (/app/src/driver/postgres/PostgresQueryRunner.ts:325:19)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at DataSource.query (/app/src/data-source/DataSource.ts:541:20)
+    at findOwnedMetadataIds (/source/packages/twenty-server/src/modules/omnichannel/services/find-omni-owned-metadata-ids.ts:78:18)
+    at /source/packages/twenty-server/src/modules/omnichannel/services/with-ordinary-metadata-channels.ts:62:19
+    at withOmniNativeOwnershipTransaction (/source/packages/twenty-server/src/modules/omnichannel/services/omni-core-transaction.ts:41:14)
+    at /source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:68:30
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:332:12)
+[31m[Nest] 1  - [39m11/09/2026, 11:55:36 PM [31m  ERROR[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[31mWorkspaceId: dd544ab9-9256-4e98-adb1-3cf00ddb7491, MessageChannelId: 3bc4d789-6f9f-4a92-8952-3431dbcf25c8, FolderId: 300f95a5-fe8b-415e-bd24-fec280ef2c82 - Error processing folder action: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL[39m
+Error: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL
+    at computeGmailExcludeSearchFilter (/source/packages/twenty-server/src/modules/messaging/message-import-manager/drivers/gmail/utils/compute-gmail-exclude-search-filter.util.ts:52:13)
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:624:40)
+    at /tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:397:39
+    at Object.<anonymous> (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:404:13)
+    at Object.mockConstructor [as getMessageListWithoutCursor] (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:148:19)
+    at MessagingImportFolderMessagesService.getMessageListWithoutCursor (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-import-folder-messages.service.ts:34:49)
+    at getFolderMessageIdsToImport (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:98:65)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:632:12
+[31m[Nest] 1  - [39m11/09/2026, 11:55:36 PM [31m  ERROR[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[31mWorkspaceId: dd544ab9-9256-4e98-adb1-3cf00ddb7491, MessageChannelId: 6ac0484a-6161-4a49-b1c5-af7c463b92c5, FolderId: 80631f06-8689-4ca8-9b65-fc5c7d2befa7 - Error processing folder action: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL[39m
+Error: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL
+    at computeGmailExcludeSearchFilter (/source/packages/twenty-server/src/modules/messaging/message-import-manager/drivers/gmail/utils/compute-gmail-exclude-search-filter.util.ts:52:13)
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:624:40)
+    at /tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:397:39
+    at Object.<anonymous> (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:404:13)
+    at Object.mockConstructor [as getMessageListWithoutCursor] (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:148:19)
+    at MessagingImportFolderMessagesService.getMessageListWithoutCursor (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-import-folder-messages.service.ts:34:49)
+    at getFolderMessageIdsToImport (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:98:65)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:632:12
+[31m[Nest] 1  - [39m11/09/2026, 11:55:36 PM [31m  ERROR[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[31mWorkspaceId: dd544ab9-9256-4e98-adb1-3cf00ddb7491, MessageChannelId: 1ebbdece-9180-484f-9e56-63b640e9aec4, FolderId: 46e9370f-b895-419e-bf9a-fad476c35c07 - Error processing folder action: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL[39m
+Error: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL
+    at computeGmailExcludeSearchFilter (/source/packages/twenty-server/src/modules/messaging/message-import-manager/drivers/gmail/utils/compute-gmail-exclude-search-filter.util.ts:52:13)
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:655:40)
+    at /tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:397:39
+    at Object.<anonymous> (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:404:13)
+    at Object.mockConstructor [as getMessageListWithoutCursor] (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:148:19)
+    at MessagingImportFolderMessagesService.getMessageListWithoutCursor (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-import-folder-messages.service.ts:34:49)
+    at getFolderMessageIdsToImport (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:98:65)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:663:12
+[31m[Nest] 1  - [39m11/09/2026, 11:55:37 PM [31m  ERROR[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[31mWorkspaceId: dd544ab9-9256-4e98-adb1-3cf00ddb7491, MessageChannelId: 9817b602-b444-45cc-9b39-a9b69a405d1c, FolderId: c5e8d719-65c8-40c7-a5c7-ff884239dff9 - Error processing folder action: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL[39m
+Error: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL
+    at computeGmailExcludeSearchFilter (/source/packages/twenty-server/src/modules/messaging/message-import-manager/drivers/gmail/utils/compute-gmail-exclude-search-filter.util.ts:52:13)
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:655:40)
+    at /tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:397:39
+    at Object.<anonymous> (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:404:13)
+    at Object.mockConstructor [as getMessageListWithoutCursor] (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:148:19)
+    at MessagingImportFolderMessagesService.getMessageListWithoutCursor (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-import-folder-messages.service.ts:34:49)
+    at getFolderMessageIdsToImport (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:98:65)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:663:12
+[31m[Nest] 1  - [39m11/09/2026, 11:55:37 PM [31m  ERROR[39m [38;5;3m[MessagingProcessFolderActionsService] [39m[31mWorkspaceId: dd544ab9-9256-4e98-adb1-3cf00ddb7491, MessageChannelId: dd821e37-3c41-413b-9d52-2b03c270ffb9, FolderId: 4ac89383-e429-4df5-90bd-0e7ee78e4d1e - Error processing folder action: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL[39m
+Error: GMAIL_FOLDER_IMPORT_REQUIRES_VALID_LABEL
+    at computeGmailExcludeSearchFilter (/source/packages/twenty-server/src/modules/messaging/message-import-manager/drivers/gmail/utils/compute-gmail-exclude-search-filter.util.ts:52:13)
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:655:40)
+    at /tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:397:39
+    at Object.<anonymous> (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:404:13)
+    at Object.mockConstructor [as getMessageListWithoutCursor] (/tools/node_modules/jest-environment-node/node_modules/jest-mock/build/index.js:148:19)
+    at MessagingImportFolderMessagesService.getMessageListWithoutCursor (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-import-folder-messages.service.ts:34:49)
+    at getFolderMessageIdsToImport (/source/packages/twenty-server/src/modules/messaging/message-import-manager/services/messaging-process-folder-actions.service.ts:98:65)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts:663:12
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-folder-actions.postgres-spec.ts (12.989 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-settings.postgres-spec.ts (8.378 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-company.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-import-recovery.postgres-spec.ts (8.063 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-parent-destroy.postgres-spec.ts (14.65 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-workspace-lifecycle-owners.spec.ts
+[32m[Nest] 1  - [39m11/09/2026, 11:56:12 PM [32m    LOG[39m [38;5;3m[DestroySoftDeletedWorkspaceJob] [39m[32mDestroying workspace 61142e3c-2e12-40df-94f9-38fe656684a8[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-recovery.postgres-spec.ts (15.409 s)
+[33m[Nest] 1  - [39m11/09/2026, 11:56:32 PM [33m   WARN[39m [38;5;3m[CreateCompanyAndPersonService] [39m[33mSkipping contact creation for connected account 552b287e-2ddb-422d-b365-cd2d85e63ca2 in workspace 79246cbe-c717-4786-9bb3-b2a653bc0d27: userWorkspace fe08610e-2c96-4d75-a17d-af2842bacbab not found[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-contact-creation.postgres-spec.ts (8.744 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-blocklist-cleanup.postgres-spec.ts (13.477 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-reconciliation.postgres-spec.ts (7.381 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-association-cleanup.postgres-spec.ts (7.837 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-conversation-target.postgres-spec.ts (12.449 s)
+[31m[Nest] 1  - [39m11/09/2026, 11:57:18 PM [31m  ERROR[39m [38;5;3m[CreateCalendarEventResolver] [39m[31mFailed to create calendar event: Error: identity unavailable[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:57:18 PM [31m  ERROR[39m [38;5;3m[CreateCalendarEventResolver] [39m[31mFailed to create calendar event: Error: provider rejected[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:57:18 PM [31m  ERROR[39m [38;5;3m[CreateCalendarEventTool] [39m[31mFailed to create calendar event: Error: Calendar creation requires authenticated tool audit identity[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:57:18 PM [31m  ERROR[39m [38;5;3m[CreateCalendarEventTool] [39m[31mFailed to create calendar event: Error: Calendar creation requires authenticated tool audit identity[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:57:18 PM [31m  ERROR[39m [38;5;3m[CreateCalendarEventTool] [39m[31mFailed to create calendar event: Error: Calendar creation requires authenticated tool audit identity[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:57:18 PM [31m  ERROR[39m [38;5;3m[CreateCalendarEventTool] [39m[31mFailed to create calendar event: Error: Calendar creation requires authenticated tool audit identity[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-save-entrypoints.spec.ts
+[32m[Nest] 1  - [39m11/09/2026, 11:57:18 PM [32m    LOG[39m [38;5;3m[CreateCalendarEventTool] [39m[32mCalendar event created.[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:57:18 PM [32m    LOG[39m [38;5;3m[CreateCalendarEventTool] [39m[32mCalendar event created.[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:57:18 PM [32m    LOG[39m [38;5;3m[CreateCalendarEventTool] [39m[32mCalendar event created.[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-cleanup.postgres-spec.ts (11.577 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-workspace-cleanup.postgres-spec.ts (11.567 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-auto-create-person.postgres-spec.ts (14.201 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-person-target-reconciliation.postgres-spec.ts (9.072 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-detached-parent-delete.postgres-spec.ts (11.664 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-delete.postgres-spec.ts (5.794 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-create.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-member.postgres-spec.ts (6.89 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-create.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-settings-entrypoints.spec.ts
+[31m[Nest] 1  - [39m11/09/2026, 11:58:34 PM [31m  ERROR[39m [38;5;3m[WorkspaceIteratorService] [39m[31mError in workspace f7a253dc-7140-4da6-9ed3-7eacf7a55723: ordinary failure[39m
+Error: ordinary failure
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/crm-audit-orphan-sweep-entrypoints.spec.ts:316:13)
+    at Promise.then.completed (/tools/node_modules/jest-circus/build/utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (/tools/node_modules/jest-circus/build/utils.js:231:10)
+    at _callCircusTest (/tools/node_modules/jest-circus/build/run.js:316:40)
+    at _runTest (/tools/node_modules/jest-circus/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/tools/node_modules/jest-circus/build/run.js:126:9)
+    at run (/tools/node_modules/jest-circus/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/tools/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/tools/node_modules/jest-circus/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/tools/node_modules/jest-runner/build/runTest.js:367:16)
+    at runTest (/tools/node_modules/jest-runner/build/runTest.js:444:34)
+[31m[Nest] 1  - [39m11/09/2026, 11:58:34 PM [31m  ERROR[39m [38;5;3m[MessagingMessageCleanerRemoveOrphansCommand] [39m[31mCommand failed[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:58:34 PM [31m  ERROR[39m [38;5;3m[MessagingMessageCleanerRemoveOrphansCommand] [39m[90mundefined[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-orphan-sweep-entrypoints.spec.ts
+[95m[Nest] 1  - [39m11/09/2026, 11:58:34 PM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: da9f5a29-a7da-4339-ad1c-c192b3033687 Cleaning up message channel message associations for channel 8b947dc7-b840-44a0-b40c-e04d79518ba1[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:58:34 PM [32m    LOG[39m [38;5;3m[MessagingResetChannelCommand] [39m[32mNo message channel ID provided, resetting all message channels in workspace e0b17ad3-7ad0-43cb-bc1a-c1a37d9b8505[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:58:34 PM [32m    LOG[39m [38;5;3m[MessagingResetChannelCommand] [39m[32mFound 2 message channels to reset[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:58:34 PM [32m    LOG[39m [38;5;3m[MessagingResetChannelCommand] [39m[32mSuccessfully reset all 2 message channels in workspace e0b17ad3-7ad0-43cb-bc1a-c1a37d9b8505[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:58:34 PM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mDry run mode: No changes will be applied[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:58:34 PM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mRunning on workspace b4cb7278-1efd-4143-a9d5-eea0019f04e3 1/2[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:58:34 PM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mRunning on workspace c356a217-f03e-42bb-bfe4-34e987a484c9 2/2[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:58:34 PM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerRemoveOrphansCommand] [39m[32mCommand completed![39m
+[32m[Nest] 1  - [39m11/09/2026, 11:58:34 PM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mRunning on workspace 0c1ad92b-24c5-4c5e-b89c-914ac8271bf6 1/2[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:58:34 PM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mRunning on workspace 08accb81-e466-468f-96e8-f1609db02a5e 2/2[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:58:34 PM [32m    LOG[39m [38;5;3m[MessagingMessageCleanerRemoveOrphansCommand] [39m[32mCommand completed![39m
+[32m[Nest] 1  - [39m11/09/2026, 11:58:34 PM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mRunning on workspace 84c6a35e-f8cb-4823-885f-d20ab40e7a77 1/2[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:58:34 PM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mRunning on workspace 7632c135-6a01-4891-864b-53b6a00a9bc0 1/2[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:58:34 PM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mRunning on workspace bd631470-35fc-40cf-8131-382f39920094 1/2[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:58:34 PM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mRunning on workspace f7a253dc-7140-4da6-9ed3-7eacf7a55723 1/2[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:58:34 PM [32m    LOG[39m [38;5;3m[WorkspaceIteratorService] [39m[32mRunning on workspace e22e5696-42ee-42bc-b750-96d54d168205 2/2[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-group-email-actions.postgres-spec.ts (10.054 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-message.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-sync-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-attribution-context.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-sent-draft-entrypoints.spec.ts
+[31m[Nest] 1  - [39m11/09/2026, 11:58:55 PM [31m  ERROR[39m [38;5;3m[WorkspaceDataSource] [39m[31mAfter-commit callback failed for workspace d7a66c2b-dea0-4f87-b3f4-37895e45225a[39m
+[31m[Nest] 1  - [39m11/09/2026, 11:58:55 PM [31m  ERROR[39m [38;5;3m[WorkspaceDataSource] [39mError: STOCK_CALLBACK_FAILURE
+    at Object.<anonymous> (/source/packages/twenty-server/test/fork-migration/omni-identity-create-person.postgres-spec.ts:176:7)
+    at Promise.then.completed (/tools/node_modules/[4mjest-circus[24m/build/utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (/tools/node_modules/[4mjest-circus[24m/build/utils.js:231:10)
+    at _callCircusTest (/tools/node_modules/[4mjest-circus[24m/build/run.js:316:40)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at _runTest (/tools/node_modules/[4mjest-circus[24m/build/run.js:252:3)
+    at _runTestsForDescribeBlock (/tools/node_modules/[4mjest-circus[24m/build/run.js:126:9)
+    at _runTestsForDescribeBlock (/tools/node_modules/[4mjest-circus[24m/build/run.js:121:9)
+    at run (/tools/node_modules/[4mjest-circus[24m/build/run.js:71:3)
+    at runAndTransformResultsToJestFormat (/tools/node_modules/[4mjest-circus[24m/build/legacy-code-todo-rewrite/jestAdapterInit.js:122:21)
+    at jestAdapter (/tools/node_modules/[4mjest-circus[24m/build/legacy-code-todo-rewrite/jestAdapter.js:79:19)
+    at runTestInternal (/tools/node_modules/[4mjest-runner[24m/build/runTest.js:367:16)
+    at runTest (/tools/node_modules/[4mjest-runner[24m/build/runTest.js:444:34)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-identity-create-person.postgres-spec.ts (9.726 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-update-fk.postgres-spec.ts (6.034 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-provider-deletion.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-core-user-deactivation.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-records.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-import-orchestration.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-binding-config-event.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-transaction.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-auth.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-queue-outcome.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-sweep-entrypoints.spec.ts
+[95m[Nest] 1  - [39m11/09/2026, 11:59:14 PM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 6f1dccd2-318f-45eb-aa8d-327d96bf6bb1 Cleaning up calendar channel event associations for channel 66b016ef-1d43-48c4-bc11-e746dee16820[39m
+[95m[Nest] 1  - [39m11/09/2026, 11:59:14 PM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: d5bfc834-c8e4-4c1a-ac11-f90ef82aacb4 Cleaning up calendar channel event associations for channel 971f68fb-1025-4e48-b80e-c179dbfd2c37[39m
+[95m[Nest] 1  - [39m11/09/2026, 11:59:14 PM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 84bab052-5108-4afc-b135-f5f567101c03 Cleaning up calendar channel event associations for channel fa2981de-aaad-43b0-8672-175fb74bfa85[39m
+[95m[Nest] 1  - [39m11/09/2026, 11:59:14 PM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 15915f81-5871-4085-8470-f66c46dba42d Cleaning up calendar channel event associations for channel e57095d9-0502-4d4e-bc7d-f5f87362657b[39m
+[95m[Nest] 1  - [39m11/09/2026, 11:59:14 PM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 409b0574-7e90-436c-90b8-c2a736d424de Cleaning up calendar channel event associations for channel 814613d1-d110-4839-bf81-5f197c78322a[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-app-ingestion-guard.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-account-scope-execution.spec.ts
+[32m[Nest] 1  - [39m11/09/2026, 11:59:14 PM [32m    LOG[39m [38;5;3m[WorkspaceCommandRunnerService] [39m[32mUpgrading workspace 3caea739-018c-4e64-a10d-39a297858e91 1/1
+[upgrade] event=workspace.start workspaceId=3caea739-018c-4e64-a10d-39a297858e91 index=1 total=1 dryRun=false[39m
+[33m[Nest] 1  - [39m11/09/2026, 11:59:14 PM [33m   WARN[39m [38;5;3m[WorkspaceCommandRunnerService] [39m[33mFailed to record upgrade failure after an unsafe transaction outcome[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:59:14 PM [32m    LOG[39m [38;5;3m[WorkspaceCommandRunnerService] [39m[32mUpgrading workspace 3caea739-018c-4e64-a10d-39a297858e91 1/1
+[upgrade] event=workspace.start workspaceId=3caea739-018c-4e64-a10d-39a297858e91 index=1 total=1 dryRun=false[39m
+[33m[Nest] 1  - [39m11/09/2026, 11:59:14 PM [33m   WARN[39m [38;5;3m[WorkspaceCommandRunnerService] [39m[33mFailed to record upgrade failure after an unsafe transaction outcome[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:59:14 PM [32m    LOG[39m [38;5;3m[WorkspaceCommandRunnerService] [39m[32mUpgrading workspace 3caea739-018c-4e64-a10d-39a297858e91 1/1
+[upgrade] event=workspace.start workspaceId=3caea739-018c-4e64-a10d-39a297858e91 index=1 total=1 dryRun=false[39m
+[33m[Nest] 1  - [39m11/09/2026, 11:59:14 PM [33m   WARN[39m [38;5;3m[WorkspaceCommandRunnerService] [39m[33mFailed to record upgrade failure after an unsafe transaction outcome[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:59:14 PM [32m    LOG[39m [38;5;3m[ActualCommand] [39m[32mCommand completed![39m
+[32m[Nest] 1  - [39m11/09/2026, 11:59:14 PM [32m    LOG[39m [38;5;3m[WorkspaceCommandRunnerService] [39m[32mUpgrading workspace 3caea739-018c-4e64-a10d-39a297858e91 1/1
+[upgrade] event=workspace.start workspaceId=3caea739-018c-4e64-a10d-39a297858e91 index=1 total=1 dryRun=false[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:59:14 PM [32m    LOG[39m [38;5;3m[WorkspaceCommandRunnerService] [39m[32mUpgrade for workspace 3caea739-018c-4e64-a10d-39a297858e91 completed.
+[upgrade] event=workspace.success workspaceId=3caea739-018c-4e64-a10d-39a297858e91 executedByVersion=2.52.0 dryRun=false[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:59:15 PM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:59:15 PM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:59:15 PM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:59:15 PM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m
+[32m[Nest] 1  - [39m11/09/2026, 11:59:15 PM [32m    LOG[39m [38;5;3m[SendEmailTool] [39m[32mEmail sent successfully to recipient@example.test[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-sent-tool-entrypoint.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-scope.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-native-lifecycle.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-matching-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-cleanup-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-membership-identity.spec.ts
+[95m[Nest] 1  - [39m11/09/2026, 11:59:18 PM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 493c2624-d596-4f67-8909-16e58a86fcb1 Cleaning up calendar channel event associations for channel a67e0bb2-30df-484d-9190-eb52194f6432[39m
+[95m[Nest] 1  - [39m11/09/2026, 11:59:18 PM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: b6bd5306-dabe-4dd0-9e6a-f25e72f5794f Cleaning up calendar channel event associations for channel 9e51258d-bbf1-4efc-83c1-1cf6b4a07205[39m
+[95m[Nest] 1  - [39m11/09/2026, 11:59:18 PM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 6294bbc2-2f55-4781-a025-2a834518c8ea Cleaning up calendar channel event associations for channel 4a74b9b1-6d50-4979-9270-881ca549fcb8[39m
+[95m[Nest] 1  - [39m11/09/2026, 11:59:18 PM [95m  DEBUG[39m [38;5;3m[CalendarChannelDeletionCleanupJob] [39m[95mWorkspaceId: 75b32df1-19db-4051-9514-8bd39a507286 Cleaning up calendar channel event associations for channel d84bb4da-d588-461d-9bce-67df539a4f75[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-operation-index.postgres-spec.ts (28.883 s)
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-custom-record.postgres-spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-rematch-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-contact-creation-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-human-text-command.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-sent-receipt.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-email-group-deletion.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-rematch-entrypoints.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/calendar-save-proof.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-ownership-log032.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-message-channel-cleanup-job.spec.ts
+[95m[Nest] 1  - [39m11/09/2026, 11:59:52 PM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: a3923a0e-d6fd-413c-898a-1343a4df8c72 Cleaning up message channel message associations for channel bc7ab432-acc2-4af9-923d-eadd44df9bf4[39m
+[95m[Nest] 1  - [39m11/09/2026, 11:59:52 PM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: b4199dd7-73f5-4e4a-bd49-1451d51c50af Cleaning up message channel message associations for channel ad1da1cd-6260-49f0-869f-8afc93887b9b[39m
+[95m[Nest] 1  - [39m11/09/2026, 11:59:52 PM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: 67a32072-db00-4636-97b8-a33390010343 Cleaning up message channel message associations for channel 457269ad-8c7e-4d4a-8ce3-1f939746aab1[39m
+[95m[Nest] 1  - [39m11/09/2026, 11:59:52 PM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: 3ca54ce9-b972-4efd-9cc1-8853362e252c Cleaning up message channel message associations for channel f531344d-8766-4a1d-8312-bb69590cfa3c[39m
+[95m[Nest] 1  - [39m11/09/2026, 11:59:52 PM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: e68d4352-155b-4cc6-9540-08adb2146b8a Cleaning up message channel message associations for channel aa836feb-374d-4190-9afb-0811ae0a46fb[39m
+[95m[Nest] 1  - [39m11/09/2026, 11:59:52 PM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: e68d4352-155b-4cc6-9540-08adb2146b8a Cleaning up message channel message associations for channel aa836feb-374d-4190-9afb-0811ae0a46fb[39m
+[95m[Nest] 1  - [39m11/09/2026, 11:59:52 PM [95m  DEBUG[39m [38;5;3m[MessagingMessageChannelDeletionCleanupJob] [39m[95mWorkspaceId: d3c322b6-8daa-4488-9d27-ac1e1d8e27d7 Cleaning up message channel message associations for channel 641327dd-ba1d-4eed-ab91-c61d21208a9c[39m
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/omni-native-nullable-participant.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-human-command-lease.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-connector-acceptance.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-sent-apply-failure.spec.ts
+PASS fork-migration-postgres ../../../source/packages/twenty-server/test/fork-migration/crm-audit-calendar-target-enrichment-entrypoints.spec.ts
+
+Test Suites: 125 passed, 125 total
+Tests:       3184 passed, 3184 total
+Snapshots:   0 total
+Time:        705.803 s
+Ran all test suites matching /calendar-save|calendar-import-matching-audit|crm-audit|omni-native-|omni-sync-status|omni-metadata-transaction|omni-metadata-mutation-guard|omni-detached-parent-delete|omni-parent-destroy|ordinary-native|omni-conversation-target|omni-identity-create-person|omni-auto-create-person|omni-workspace-lifecycle-owners|omni-folder-actions|omni-group-email-actions|omni-app-ingestion/i.

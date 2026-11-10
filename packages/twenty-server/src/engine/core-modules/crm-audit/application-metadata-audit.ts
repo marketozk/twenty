@@ -32,13 +32,17 @@ import {
   assertAgentChatChannelRoleRowInvariants,
   assertAgentChatChannelRowInvariants,
   assertFrontComponentRowInvariants,
+  assertLogicFunctionRowInvariants,
   assertNavigationMenuItemRowInvariants,
   assertSettingsMenuItemRowInvariants,
   assertWebhookRowInvariants,
+  computeCascadeDeletedCodeStepLogicFunctionIds,
   computeCascadeDeletedNavigationMenuItemIds,
+  LOGIC_FUNCTION_TRIGGER_SETTINGS_KEYS,
   projectAgentChatChannel,
   projectAgentChatChannelRole,
   projectFrontComponent,
+  projectLogicFunction,
   projectNavigationMenuItem,
   projectSettingsMenuItem,
   projectWebhook,
@@ -104,6 +108,8 @@ export type ApplicationMetadataAuditMappings = {
   skills?: Record<string, { id: string } | undefined>;
   frontComponents?: Record<string, { id: string } | undefined>;
   settingsMenuItems?: Record<string, { id: string } | undefined>;
+  logicFunctions?: Record<string, { id: string } | undefined>;
+  workflowVersions?: Record<string, { id: string } | undefined>;
 };
 
 type MigrationAction = {
@@ -144,6 +150,7 @@ export const AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES = new Set<string>([
   'skill',
   'frontComponent',
   'settingsMenuItem',
+  'logicFunction',
 ]);
 
 export const AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES =
@@ -830,7 +837,9 @@ const readExistingTables = async (
       to_regclass('core."connectedAccount"') IS NOT NULL AS "connectedAccount",
       to_regclass('core.skill') IS NOT NULL AS "skill",
       to_regclass('core."frontComponent"') IS NOT NULL AS "frontComponent",
-      to_regclass('core."settingsMenuItem"') IS NOT NULL AS "settingsMenuItem"`,
+      to_regclass('core."settingsMenuItem"') IS NOT NULL AS "settingsMenuItem",
+      to_regclass('core."logicFunction"') IS NOT NULL AS "logicFunction",
+      to_regclass('core."workflowVersion"') IS NOT NULL AS "workflowVersion"`,
   );
   const existing = new Set<string>();
   for (const [key, present] of Object.entries(reg ?? {})) {
@@ -2167,6 +2176,154 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       }
     }
 
+    const hasLogicFunctionTable = existingTables.has('logicFunction');
+    const beforeLogicFunctions = hasLogicFunctionTable
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'logicFunction',
+          workspaceId,
+          true,
+        )
+      : new Map<string, Record<string, unknown>>();
+    for (const lfRow of beforeLogicFunctions.values()) {
+      assertLogicFunctionRowInvariants(lfRow, workspaceId);
+    }
+
+    const plannedWorkflowDeletesForCascade = resolveMappedIds(
+      actions,
+      'workflow',
+      'delete',
+      mappings.workflows ?? {},
+    );
+    const plannedWorkflowVersionDeletesForCascade = resolveMappedIds(
+      actions,
+      'workflowVersion',
+      'delete',
+      mappings.workflowVersions ?? {},
+    );
+    const beforeWorkflowVersionsForCascade =
+      (plannedWorkflowDeletesForCascade.size > 0 ||
+        plannedWorkflowVersionDeletesForCascade.size > 0) &&
+      existingTables.has('workflowVersion')
+        ? await readTableSnapshot(
+            runner,
+            existingTables,
+            'workflowVersion',
+            workspaceId,
+            true,
+          )
+        : new Map<string, Record<string, unknown>>();
+    const cascadeDeletedLogicFunctionIds =
+      plannedWorkflowDeletesForCascade.size > 0 ||
+      plannedWorkflowVersionDeletesForCascade.size > 0
+        ? computeCascadeDeletedCodeStepLogicFunctionIds({
+            beforeWorkflowVersions: beforeWorkflowVersionsForCascade,
+            deletedWorkflowIds: plannedWorkflowDeletesForCascade,
+            deletedWorkflowVersionIds: plannedWorkflowVersionDeletesForCascade,
+            beforeLogicFunctions,
+          })
+        : new Set<string>();
+
+    const plannedLogicFunctionCreatesByUniversalId = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedLogicFunctionUpdatePayloads = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    for (const action of actions) {
+      if (action.metadataName === 'logicFunction') {
+        if (action.type === 'create') {
+          if (!hasLogicFunctionTable) {
+            throw new Error(
+              'Application metadata audit table logicFunction is unavailable',
+            );
+          }
+          if (!action.flatEntity) {
+            throw new Error(
+              'Application metadata audit requires flatEntity on logicFunction create action',
+            );
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (plannedLogicFunctionCreatesByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit duplicate logicFunction create universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error(
+              'Application metadata audit logicFunction create belongs to another application',
+            );
+          }
+          const explicitId =
+            action.id !== undefined ? uuid(action.id) : undefined;
+          if (
+            explicitId !== undefined &&
+            beforeLogicFunctions.has(explicitId)
+          ) {
+            throw new Error(
+              'Application metadata audit logicFunction create ID already exists',
+            );
+          }
+          plannedLogicFunctionCreatesByUniversalId.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.logicFunctions?.[universalId]?.id;
+          if (!mappedId || !action.update) {
+            throw new Error(
+              'Application metadata audit logicFunction update missing mapping or update payload',
+            );
+          }
+          plannedLogicFunctionUpdatePayloads.set(uuid(mappedId), action.update);
+        }
+      }
+    }
+    const plannedLogicFunctionUpdates = resolveMappedIds(
+      actions,
+      'logicFunction',
+      'update',
+      mappings.logicFunctions ?? {},
+    );
+    const plannedLogicFunctionDeletes = resolveMappedIds(
+      actions,
+      'logicFunction',
+      'delete',
+      mappings.logicFunctions ?? {},
+    );
+    for (const lfId of plannedLogicFunctionUpdates) {
+      const beforeLf = beforeLogicFunctions.get(lfId);
+      if (!beforeLf || uuid(beforeLf.applicationId) !== applicationId) {
+        throw new Error(
+          'Application metadata audit cannot update missing or foreign logicFunction',
+        );
+      }
+    }
+    for (const lfId of plannedLogicFunctionDeletes) {
+      const beforeLf = beforeLogicFunctions.get(lfId);
+      if (!beforeLf) {
+        throw new Error(
+          'Application metadata audit cannot delete missing logicFunction',
+        );
+      }
+      if (
+        uuid(beforeLf.applicationId) !== applicationId &&
+        !cascadeDeletedLogicFunctionIds.has(lfId)
+      ) {
+        throw new Error(
+          'Application metadata audit cannot delete foreign logicFunction',
+        );
+      }
+    }
+
     const plannedNavCreatesByUniversalIdentifier = new Map<
       string,
       { id?: string; flatEntity: Record<string, unknown> }
@@ -2359,7 +2516,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           action.metadataName === 'connectionProvider' ||
           action.metadataName === 'skill' ||
           action.metadataName === 'frontComponent' ||
-          action.metadataName === 'settingsMenuItem'
+          action.metadataName === 'settingsMenuItem' ||
+          action.metadataName === 'logicFunction'
         ) {
           throw new Error(
             'Application metadata objectDelete cannot mutate roles, targets, agents, or permission flags',
@@ -2526,7 +2684,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           action.metadataName === 'connectionProvider' ||
           action.metadataName === 'skill' ||
           action.metadataName === 'frontComponent' ||
-          action.metadataName === 'settingsMenuItem'
+          action.metadataName === 'settingsMenuItem' ||
+          action.metadataName === 'logicFunction'
         ) {
           throw new Error(
             'Application metadata fieldDelete cannot mutate roles, objects, object permissions, or predicate groups',
@@ -5591,6 +5750,279 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       );
     }
 
+    // 17. Verify and record core.logicFunction lifecycle and deletions
+    let expectedLogicFunctionsSerialized: string | undefined;
+    if (hasLogicFunctionTable) {
+      const afterLogicFunctions = await readTableSnapshot(
+        runner,
+        existingTables,
+        'logicFunction',
+        workspaceId,
+        false,
+      );
+      const createdLogicFunctionsByUniversalId = new Map<
+        string,
+        Record<string, unknown>
+      >();
+      for (const [id, afterLf] of afterLogicFunctions.entries()) {
+        assertLogicFunctionRowInvariants(afterLf, workspaceId);
+        if (!beforeLogicFunctions.has(id)) {
+          const universalId = uuid(afterLf.universalIdentifier);
+          if (createdLogicFunctionsByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit detected duplicate created logicFunction universalIdentifier',
+            );
+          }
+          createdLogicFunctionsByUniversalId.set(universalId, afterLf);
+        }
+      }
+      if (
+        createdLogicFunctionsByUniversalId.size !==
+        plannedLogicFunctionCreatesByUniversalId.size
+      ) {
+        throw new Error(
+          'Application metadata audit logicFunction created row count mismatch',
+        );
+      }
+      for (const [
+        universalId,
+        planned,
+      ] of plannedLogicFunctionCreatesByUniversalId.entries()) {
+        const afterLf = createdLogicFunctionsByUniversalId.get(universalId);
+        if (!afterLf) {
+          throw new Error(
+            'Application metadata logicFunction create did not persist expected row',
+          );
+        }
+        const createdId = uuid(afterLf.id);
+        if (planned.id !== undefined && createdId !== planned.id) {
+          throw new Error(
+            'Application metadata logicFunction create persisted unexpected ID',
+          );
+        }
+        if (uuid(afterLf.applicationId) !== applicationId) {
+          throw new Error(
+            'Application metadata logicFunction create persisted unexpected applicationId',
+          );
+        }
+        const afterProj = projectLogicFunction(afterLf);
+        for (const textKey of [
+          'name',
+          'sourceHandlerPath',
+          'builtHandlerPath',
+          'handlerName',
+          'executionMode',
+          'runtime',
+        ] as const) {
+          if (
+            planned.flatEntity[textKey] !== undefined &&
+            afterProj[textKey] !== String(planned.flatEntity[textKey])
+          ) {
+            throw new Error(
+              `Application metadata logicFunction create persisted unexpected ${textKey}`,
+            );
+          }
+        }
+        for (const nullableTextKey of ['description', 'checksum'] as const) {
+          if (planned.flatEntity[nullableTextKey] !== undefined) {
+            const expectedVal =
+              planned.flatEntity[nullableTextKey] === null
+                ? null
+                : String(planned.flatEntity[nullableTextKey]);
+            if (afterProj[nullableTextKey] !== expectedVal) {
+              throw new Error(
+                `Application metadata logicFunction create persisted unexpected ${nullableTextKey}`,
+              );
+            }
+          }
+        }
+        if (
+          planned.flatEntity.timeoutSeconds !== undefined &&
+          afterProj.timeoutSeconds !== Number(planned.flatEntity.timeoutSeconds)
+        ) {
+          throw new Error(
+            'Application metadata logicFunction create persisted unexpected timeoutSeconds',
+          );
+        }
+        if (
+          planned.flatEntity.isBuildUpToDate !== undefined &&
+          afterProj.isBuildUpToDate !==
+            Boolean(planned.flatEntity.isBuildUpToDate)
+        ) {
+          throw new Error(
+            'Application metadata logicFunction create persisted unexpected isBuildUpToDate',
+          );
+        }
+        for (const triggerKey of LOGIC_FUNCTION_TRIGGER_SETTINGS_KEYS) {
+          if (planned.flatEntity[triggerKey] !== undefined) {
+            const expectedTrigger =
+              planned.flatEntity[triggerKey] === null
+                ? null
+                : planned.flatEntity[triggerKey];
+            if (
+              canonicalAuditJson(afterProj[triggerKey]) !==
+              canonicalAuditJson(expectedTrigger)
+            ) {
+              throw new Error(
+                `Application metadata logicFunction create persisted unexpected ${triggerKey}`,
+              );
+            }
+          }
+        }
+        recordMutation('logicFunction', createdId, 'create', null, afterProj);
+      }
+
+      for (const lfId of plannedLogicFunctionUpdates) {
+        if (plannedLogicFunctionDeletes.has(lfId)) continue;
+        const beforeLf = beforeLogicFunctions.get(lfId);
+        const afterLf = afterLogicFunctions.get(lfId);
+        if (
+          !beforeLf ||
+          !afterLf ||
+          uuid(beforeLf.workspaceId) !== uuid(afterLf.workspaceId) ||
+          uuid(beforeLf.applicationId) !== uuid(afterLf.applicationId) ||
+          uuid(beforeLf.universalIdentifier) !==
+            uuid(afterLf.universalIdentifier) ||
+          String(beforeLf.runtime) !== String(afterLf.runtime) ||
+          canonicalAuditJson(beforeLf.createdAt) !==
+            canonicalAuditJson(afterLf.createdAt)
+        ) {
+          throw new Error(
+            'Application metadata logicFunction update removed or corrupted target row',
+          );
+        }
+        const beforeProj = projectLogicFunction(beforeLf);
+        const afterProj = projectLogicFunction(afterLf);
+        const updatePayload =
+          plannedLogicFunctionUpdatePayloads.get(lfId) ?? {};
+        for (const textKey of [
+          'name',
+          'sourceHandlerPath',
+          'builtHandlerPath',
+          'handlerName',
+          'executionMode',
+        ] as const) {
+          const expectedVal =
+            textKey in updatePayload && updatePayload[textKey] !== undefined
+              ? String(updatePayload[textKey])
+              : beforeProj[textKey];
+          if (afterProj[textKey] !== expectedVal) {
+            throw new Error(
+              `Application metadata logicFunction update did not persist expected ${textKey}`,
+            );
+          }
+        }
+        for (const nullableTextKey of ['description', 'checksum'] as const) {
+          const expectedVal =
+            nullableTextKey in updatePayload &&
+            updatePayload[nullableTextKey] !== undefined
+              ? updatePayload[nullableTextKey] === null
+                ? null
+                : String(updatePayload[nullableTextKey])
+              : beforeProj[nullableTextKey];
+          if (afterProj[nullableTextKey] !== expectedVal) {
+            throw new Error(
+              `Application metadata logicFunction update did not persist expected ${nullableTextKey}`,
+            );
+          }
+        }
+        const expectedTimeoutSeconds =
+          'timeoutSeconds' in updatePayload &&
+          updatePayload.timeoutSeconds !== undefined
+            ? Number(updatePayload.timeoutSeconds)
+            : beforeProj.timeoutSeconds;
+        if (afterProj.timeoutSeconds !== expectedTimeoutSeconds) {
+          throw new Error(
+            'Application metadata logicFunction update did not persist expected timeoutSeconds',
+          );
+        }
+        const expectedIsBuildUpToDate =
+          'isBuildUpToDate' in updatePayload &&
+          updatePayload.isBuildUpToDate !== undefined
+            ? Boolean(updatePayload.isBuildUpToDate)
+            : beforeProj.isBuildUpToDate;
+        if (afterProj.isBuildUpToDate !== expectedIsBuildUpToDate) {
+          throw new Error(
+            'Application metadata logicFunction update did not persist expected isBuildUpToDate',
+          );
+        }
+        for (const triggerKey of LOGIC_FUNCTION_TRIGGER_SETTINGS_KEYS) {
+          const expectedTrigger =
+            triggerKey in updatePayload &&
+            updatePayload[triggerKey] !== undefined
+              ? updatePayload[triggerKey] === null
+                ? null
+                : updatePayload[triggerKey]
+              : beforeProj[triggerKey];
+          if (
+            canonicalAuditJson(afterProj[triggerKey]) !==
+            canonicalAuditJson(expectedTrigger)
+          ) {
+            throw new Error(
+              `Application metadata logicFunction update did not persist expected ${triggerKey}`,
+            );
+          }
+        }
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          recordMutation(
+            'logicFunction',
+            lfId,
+            'update',
+            beforeProj,
+            afterProj,
+          );
+        }
+      }
+
+      for (const lfId of plannedLogicFunctionDeletes) {
+        const beforeLf = beforeLogicFunctions.get(lfId);
+        if (!beforeLf) {
+          throw new Error(
+            'Application metadata logicFunction delete expected row missing before migration',
+          );
+        }
+        if (afterLogicFunctions.has(lfId)) {
+          throw new Error(
+            'Application metadata logicFunction delete did not remove expected row',
+          );
+        }
+        recordMutation(
+          'logicFunction',
+          lfId,
+          'delete',
+          projectLogicFunction(beforeLf),
+          null,
+        );
+      }
+
+      for (const [lfId, beforeLf] of beforeLogicFunctions.entries()) {
+        if (plannedLogicFunctionDeletes.has(lfId)) continue;
+        const afterLf = afterLogicFunctions.get(lfId);
+        if (!afterLf) {
+          throw new Error(
+            'Application metadata audit detected unplanned logicFunction deletion',
+          );
+        }
+        if (!plannedLogicFunctionUpdates.has(lfId)) {
+          if (
+            canonicalAuditJson(scalarWithoutTimestamps(beforeLf)) !==
+            canonicalAuditJson(scalarWithoutTimestamps(afterLf))
+          ) {
+            throw new Error(
+              'Application metadata audit detected unplanned logicFunction mutation',
+            );
+          }
+        }
+      }
+
+      expectedLogicFunctionsSerialized = canonicalAuditJson(
+        [...afterLogicFunctions.entries()].map(([id, row]) => [
+          id,
+          scalarWithoutTimestamps(row),
+        ]),
+      );
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized = serializeFullSnapshot(after);
       await audit.flush();
@@ -5830,6 +6262,26 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           );
         }
       }
+      if (expectedLogicFunctionsSerialized !== undefined) {
+        const postFlushLogicFunctions = await readTableSnapshot(
+          runner,
+          existingTables,
+          'logicFunction',
+          workspaceId,
+          false,
+        );
+        const postFlushSerialized = canonicalAuditJson(
+          [...postFlushLogicFunctions.entries()].map(([id, row]) => [
+            id,
+            scalarWithoutTimestamps(row),
+          ]),
+        );
+        if (postFlushSerialized !== expectedLogicFunctionsSerialized) {
+          throw new Error(
+            'Application metadata state changed during audit flush',
+          );
+        }
+      }
     }
 
     return result;
@@ -5872,6 +6324,7 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
     'skill',
     'frontComponent',
     'settingsMenuItem',
+    'logicFunction',
   ]) {
     if (!existingTables.has(tableName)) continue;
     const [ownRow] = await runner.query(

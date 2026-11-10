@@ -5231,6 +5231,21 @@ e5c6fa33-5fcc-44eb-89ae-b4eabbddf190 и все 11 состояний задач 
 и совпали. [Публикация](implementation/log179/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765.
 
+## LOG-180 - транзакционный аудит полного жизненного цикла серверных функций (`logicFunction`, `core."logicFunction"`) с каскадным удалением в workflow и приложениях
+
+10.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log180/design.md), [design-review.md](implementation/log180/design-review.md)) и реализован участок `LOG-180` (Linear `ROB-765`): транзакционный аудит полного жизненного цикла серверных функций (`core."logicFunction"`), включая каскадное удаление эксклюзивно принадлежащих шагам `CODE` функций при удалении `workflow` / `workflowVersion` и барьер на удаление `core.application`.
+
+В `crm-audit.types.ts` и `crm-audit-transaction-context.ts` добавлен вид ресурса `logicFunction` (`values: ['applicationId', 'runtime', 'timeoutSeconds', 'isBuildUpToDate', 'executionMode']`, `redacted: ['name', 'description', 'sourceHandlerPath', 'builtHandlerPath', 'handlerName', 'checksum', 'cronTriggerSettings', 'databaseEventTriggerSettings', 'httpRouteTriggerSettings', 'serverRouteTriggerSettings', 'toolTriggerSettings', 'workflowActionTriggerSettings']`, действия `['create', 'update', 'delete']`). В `navigation-menu-item-audit.ts` добавлен режим `mode: 'logicFunction'` (`assertLogicFunctionRowInvariants`, `projectLogicFunction`, `computeCascadeDeletedCodeStepLogicFunctionIds`, `readLogicFunctionSnapshot`, `readWorkflowVersionSnapshot`, `serializeLogicFunctionSnapshot`, `expectedLogicFunctionCreateIds`, `expectedLogicFunctionUpdateIds`, `expectedLogicFunctionDeleteIds`, `expectedParentWorkflowDeleteIds`, `expectedParentWorkflowVersionDeleteIds`) с блокировкой `core."logicFunction"` (`ORDER BY id FOR UPDATE`), сверкой созданных/обновлённых/удалённых серверных функций (включая каскадное удаление эксклюзивно принадлежащих удаляемым `workflow`/`workflowVersion` функций шагов `CODE`), записью `logicFunction:create`, `logicFunction:update`, `logicFunction:delete` и повторной сверкой снимка после `audit.flush()`. В `application-metadata-audit.ts`, `application-manifest-migration.service.ts` и `workspace-migration-runner.service.ts` добавлены `'logicFunction'` в `AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES` (fail-closed барьер на неаудируемые миграции), обёртка `withApplicationMetadataAudit` в `syncPreInstallLogicFunctionFromManifest`, аудит `logicFunction` в `runAuditedApplicationMetadataMigration` и проверка `core."logicFunction"` в `assertNoRemainingApplicationRoleOrPermissionMetadata` перед удалением `core.application`. Подключены `LogicFunctionFromSourceHelperService`, `LogicFunctionFromSourceService`, `LogicFunctionResolver`, `PrefillLogicFunctionService.ensureSeeded`, `createUpdateLogicFunctionSourceTool`, `CodeStepBuildService`, `WorkflowVersionStepOperationsWorkspaceService`, `WorkflowCoreSyncService.deleteFromCore`, `CoreWorkflowMutationWorkspaceService` (`deleteWorkflows`, `discardDraftVersion`) и `CoreWorkflowResolver` (`deleteCoreWorkflows`, `discardCoreWorkflowDraft`).
+
+10.11.2026 проверки LOG180 завершены. 3184 tests/125 suites PASS (705.803s). 60 targeted/5 PostgreSQL suites PASS (13.518s), 3 новых PostgreSQL случая. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 496/497 roots, baseline 264 / current 262 diagnostics, 0 новых/changed-code. Совпали 17 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех входных точек `logicFunction`, редактирование чувствительных метаданных (`name`, `description`, `sourceHandlerPath`, `builtHandlerPath`, `handlerName`, `checksum` и всех 6 конфигураций триггеров), корректную обработку `NativeTransactionOutcomeUnknownError` и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log180/results.json), [ревью](implementation/log180/review.md),
+[следующий участок](implementation/log180/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
+
 
 
 

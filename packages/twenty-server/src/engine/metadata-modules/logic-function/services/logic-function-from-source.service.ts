@@ -8,6 +8,10 @@ import { isDefined } from 'twenty-shared/utils';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
+import {
+  captureNavigationMenuItemAudit,
+  withNavigationMenuItemAudit,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { LogicFunctionExecutorService } from 'src/engine/core-modules/logic-function/logic-function-executor/logic-function-executor.service';
 import { LogicFunctionResourceService } from 'src/engine/core-modules/logic-function/logic-function-resource/logic-function-resource.service';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
@@ -20,7 +24,10 @@ import {
   LogicFunctionException,
   LogicFunctionExceptionCode,
 } from 'src/engine/metadata-modules/logic-function/logic-function.exception';
-import { LogicFunctionFromSourceHelperService } from 'src/engine/metadata-modules/logic-function/services/logic-function-from-source-helper.service';
+import {
+  LogicFunctionFromSourceHelperService,
+  type LogicFunctionAuditOptions,
+} from 'src/engine/metadata-modules/logic-function/services/logic-function-from-source-helper.service';
 import { type UpdateLogicFunctionFromSourceInput } from 'src/engine/metadata-modules/logic-function/dtos/update-logic-function-from-source.input';
 import { buildUniversalFlatLogicFunctionToCreate } from 'src/engine/metadata-modules/logic-function/utils/build-universal-flat-logic-function-to-create.util';
 import { fromCreateLogicFunctionFromSourceInputToUniversalFlatLogicFunctionToCreate } from 'src/engine/metadata-modules/logic-function/utils/from-create-logic-function-from-source-input-to-universal-flat-logic-function-to-create.util';
@@ -43,24 +50,48 @@ export class LogicFunctionFromSourceService {
   async createOneFromSource({
     input,
     workspaceId,
+    auditIdentity,
+    authUserWorkspaceId,
+    authApiKeyId,
+    authApplicationId,
+    authAgentId,
+    defaultSystemActorId,
+    capturedAudit,
   }: {
     input: CreateLogicFunctionFromSourceInput;
     workspaceId: string;
-  }): Promise<LogicFunctionDTO> {
+  } & LogicFunctionAuditOptions): Promise<LogicFunctionDTO> {
+    const capturedInput: CreateLogicFunctionFromSourceInput = {
+      ...input,
+      ...(input.source ? { source: { ...input.source } } : {}),
+    };
+    const getLogicFunctionAudit =
+      capturedAudit ??
+      captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'logicFunction',
+        auditIdentity,
+        authUserWorkspaceId,
+        authApiKeyId,
+        authApplicationId,
+        authAgentId,
+        defaultSystemActorId,
+      });
+
     const { workspaceCustomFlatApplication: ownerFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         { workspaceId },
       );
 
-    const logicFunctionId = input.id ?? v4();
+    const logicFunctionId = capturedInput.id ?? v4();
 
     const { sourceHandlerPath, builtHandlerPath } =
       this.helperService.buildHandlerPaths(logicFunctionId);
 
-    if (input.source) {
+    if (capturedInput.source) {
       await this.logicFunctionResourceService.uploadSourceFile({
         sourceHandlerPath,
-        sourceHandlerCode: input.source.sourceHandlerCode,
+        sourceHandlerCode: capturedInput.source.sourceHandlerCode,
         applicationUniversalIdentifier:
           ownerFlatApplication.universalIdentifier,
         workspaceId,
@@ -70,12 +101,12 @@ export class LogicFunctionFromSourceService {
         fromCreateLogicFunctionFromSourceInputToUniversalFlatLogicFunctionToCreate(
           {
             createLogicFunctionFromSourceInput: {
-              ...input,
+              ...capturedInput,
               id: logicFunctionId,
             },
             sourceHandlerPath,
             builtHandlerPath,
-            handlerName: input.source.handlerName,
+            handlerName: capturedInput.source.handlerName,
             checksum: null,
             isBuildUpToDate: false,
             applicationUniversalIdentifier:
@@ -86,6 +117,7 @@ export class LogicFunctionFromSourceService {
       await this.helperService.createOneFromMetadata({
         universalFlatLogicFunctionToCreate,
         workspaceId,
+        capturedAudit: getLogicFunctionAudit,
       });
 
       return this.findFlatLogicFunctionByIdAndConvertToDto({
@@ -106,7 +138,10 @@ export class LogicFunctionFromSourceService {
     const universalFlatLogicFunctionToCreate =
       fromCreateLogicFunctionFromSourceInputToUniversalFlatLogicFunctionToCreate(
         {
-          createLogicFunctionFromSourceInput: { ...input, id: logicFunctionId },
+          createLogicFunctionFromSourceInput: {
+            ...capturedInput,
+            id: logicFunctionId,
+          },
           sourceHandlerPath,
           builtHandlerPath,
           handlerName,
@@ -120,6 +155,7 @@ export class LogicFunctionFromSourceService {
     await this.helperService.createOneFromMetadata({
       universalFlatLogicFunctionToCreate,
       workspaceId,
+      capturedAudit: getLogicFunctionAudit,
     });
 
     return this.findFlatLogicFunctionByIdAndConvertToDto({
@@ -131,13 +167,34 @@ export class LogicFunctionFromSourceService {
   async duplicateOneWithSource({
     existingLogicFunctionId,
     workspaceId,
+    auditIdentity,
+    authUserWorkspaceId,
+    authApiKeyId,
+    authApplicationId,
+    authAgentId,
+    defaultSystemActorId,
+    capturedAudit,
   }: {
     existingLogicFunctionId: string;
     workspaceId: string;
-  }): Promise<{ id: string }> {
+  } & LogicFunctionAuditOptions): Promise<{ id: string }> {
+    const capturedExistingId = existingLogicFunctionId;
+    const getLogicFunctionAudit =
+      capturedAudit ??
+      captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'logicFunction',
+        auditIdentity,
+        authUserWorkspaceId,
+        authApiKeyId,
+        authApplicationId,
+        authAgentId,
+        defaultSystemActorId,
+      });
+
     const { flatLogicFunction: existingLogicFunction, ownerFlatApplication } =
       await this.helperService.findWorkspaceCustomLogicFunctionOrThrow({
-        id: existingLogicFunctionId,
+        id: capturedExistingId,
         workspaceId,
       });
 
@@ -190,6 +247,7 @@ export class LogicFunctionFromSourceService {
     const created = await this.helperService.createOneFromMetadata({
       universalFlatLogicFunctionToCreate,
       workspaceId,
+      capturedAudit: getLogicFunctionAudit,
     });
 
     if (!isDefined(created)) {
@@ -205,18 +263,42 @@ export class LogicFunctionFromSourceService {
   async updateOneFromSource({
     updateLogicFunctionFromSourceInput,
     workspaceId,
+    auditIdentity,
+    authUserWorkspaceId,
+    authApiKeyId,
+    authApplicationId,
+    authAgentId,
+    defaultSystemActorId,
+    capturedAudit,
   }: {
     updateLogicFunctionFromSourceInput: UpdateLogicFunctionFromSourceInput;
     workspaceId: string;
-  }): Promise<void> {
+  } & LogicFunctionAuditOptions): Promise<void> {
+    const capturedInput: UpdateLogicFunctionFromSourceInput = {
+      id: updateLogicFunctionFromSourceInput.id,
+      update: { ...updateLogicFunctionFromSourceInput.update },
+    };
+    const getLogicFunctionAudit =
+      capturedAudit ??
+      captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'logicFunction',
+        auditIdentity,
+        authUserWorkspaceId,
+        authApiKeyId,
+        authApplicationId,
+        authAgentId,
+        defaultSystemActorId,
+        expectedLogicFunctionUpdateIds: [capturedInput.id],
+      });
+
     const { flatLogicFunction, ownerFlatApplication } =
       await this.helperService.findWorkspaceCustomLogicFunctionOrThrow({
-        id: updateLogicFunctionFromSourceInput.id,
+        id: capturedInput.id,
         workspaceId,
       });
 
-    const sourceHandlerCode =
-      updateLogicFunctionFromSourceInput.update.sourceHandlerCode;
+    const sourceHandlerCode = capturedInput.update.sourceHandlerCode;
 
     if (
       isDefined(sourceHandlerCode) &&
@@ -243,7 +325,7 @@ export class LogicFunctionFromSourceService {
 
     const flatLogicFunctionToUpdate =
       fromUpdateLogicFunctionFromSourceInputToFlatLogicFunctionToUpdate({
-        updateLogicFunctionFromSourceInput,
+        updateLogicFunctionFromSourceInput: capturedInput,
         existingFlatLogicFunction: flatLogicFunction,
       });
 
@@ -251,6 +333,7 @@ export class LogicFunctionFromSourceService {
       flatLogicFunctionToUpdate,
       workspaceId,
       applicationUniversalIdentifier: ownerFlatApplication.universalIdentifier,
+      capturedAudit: getLogicFunctionAudit,
     });
   }
 
@@ -259,39 +342,66 @@ export class LogicFunctionFromSourceService {
     workspaceId,
     isSystemBuild = false,
     ownerFlatApplication,
+    auditIdentity,
+    authUserWorkspaceId,
+    authApiKeyId,
+    authApplicationId,
+    authAgentId,
+    defaultSystemActorId,
+    capturedAudit,
   }: {
     id: string;
     workspaceId: string;
     isSystemBuild?: boolean;
     ownerFlatApplication?: FlatApplication;
-  }): Promise<LogicFunctionDTO> {
+  } & LogicFunctionAuditOptions): Promise<LogicFunctionDTO> {
+    const capturedId = id;
+    const getLogicFunctionAudit =
+      capturedAudit ??
+      captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'logicFunction',
+        auditIdentity,
+        authUserWorkspaceId,
+        authApiKeyId,
+        authApplicationId,
+        authAgentId,
+        defaultSystemActorId,
+        expectedLogicFunctionDeleteIds: [capturedId],
+      });
+
     const {
       flatLogicFunction: existingFlatLogicFunction,
       workspaceCustomFlatApplication,
     } = await this.helperService.findLogicFunctionAndApplicationOrThrow({
-      id,
+      id: capturedId,
       workspaceId,
     });
 
     const effectiveOwnerFlatApplication =
       ownerFlatApplication ?? workspaceCustomFlatApplication;
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            logicFunction: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: [existingFlatLogicFunction],
-              flatEntityToUpdate: [],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getLogicFunctionAudit({
+        expectedLogicFunctionDeleteIds: [existingFlatLogicFunction.id],
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              logicFunction: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: [existingFlatLogicFunction],
+                flatEntityToUpdate: [],
+              },
             },
+            workspaceId,
+            isSystemBuild,
+            applicationUniversalIdentifier:
+              effectiveOwnerFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild,
-          applicationUniversalIdentifier:
-            effectiveOwnerFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -308,13 +418,35 @@ export class LogicFunctionFromSourceService {
   async buildOneFromSource({
     id,
     workspaceId,
+    auditIdentity,
+    authUserWorkspaceId,
+    authApiKeyId,
+    authApplicationId,
+    authAgentId,
+    defaultSystemActorId,
+    capturedAudit,
   }: {
     id: string;
     workspaceId: string;
-  }): Promise<void> {
+  } & LogicFunctionAuditOptions): Promise<void> {
+    const capturedId = id;
+    const getLogicFunctionAudit =
+      capturedAudit ??
+      captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'logicFunction',
+        auditIdentity,
+        authUserWorkspaceId,
+        authApiKeyId,
+        authApplicationId,
+        authAgentId,
+        defaultSystemActorId,
+        expectedLogicFunctionUpdateIds: [capturedId],
+      });
+
     const { flatLogicFunction, ownerFlatApplication } =
       await this.helperService.findWorkspaceCustomLogicFunctionOrThrow({
-        id,
+        id: capturedId,
         workspaceId,
       });
 
@@ -355,6 +487,7 @@ export class LogicFunctionFromSourceService {
       },
       workspaceId,
       applicationUniversalIdentifier: ownerFlatApplication.universalIdentifier,
+      capturedAudit: getLogicFunctionAudit,
     });
   }
 
@@ -364,21 +497,48 @@ export class LogicFunctionFromSourceService {
     workspaceId,
     userId,
     userWorkspaceId,
+    auditIdentity,
+    authUserWorkspaceId,
+    authApiKeyId,
+    authApplicationId,
+    authAgentId,
+    defaultSystemActorId,
+    capturedAudit,
   }: {
     id: string;
     payload: object;
     workspaceId: string;
     userId?: string;
     userWorkspaceId?: string;
-  }): Promise<LogicFunctionExecutionResultDTO> {
+  } & LogicFunctionAuditOptions): Promise<LogicFunctionExecutionResultDTO> {
+    const capturedId = id;
+    const getLogicFunctionAudit =
+      capturedAudit ??
+      captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'logicFunction',
+        auditIdentity,
+        authUserWorkspaceId: authUserWorkspaceId ?? userWorkspaceId,
+        authApiKeyId,
+        authApplicationId,
+        authAgentId,
+        defaultSystemActorId:
+          defaultSystemActorId ?? 'logic-function-from-source:execute-build',
+        expectedLogicFunctionUpdateIds: [capturedId],
+      });
+
     const { flatLogicFunction } =
       await this.helperService.findLogicFunctionRunnableOnDemandOrThrow({
-        id,
+        id: capturedId,
         workspaceId,
       });
 
     if (!flatLogicFunction.isBuildUpToDate) {
-      await this.buildOneFromSource({ workspaceId, id });
+      await this.buildOneFromSource({
+        workspaceId,
+        id: capturedId,
+        capturedAudit: getLogicFunctionAudit,
+      });
     }
 
     const result = await this.logicFunctionExecutorService.execute({

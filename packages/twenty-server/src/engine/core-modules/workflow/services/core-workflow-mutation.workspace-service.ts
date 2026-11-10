@@ -21,6 +21,11 @@ import {
   runAuditedCoreWorkflowVisibilityUpdate,
   type CoreWorkflowAndViewAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
+import {
+  captureNavigationMenuItemAudit,
+  withNavigationMenuItemAudit,
+  type NavigationMenuItemAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 
 import { type CoreWorkflowDTO } from 'src/engine/core-modules/workflow/dtos/core-workflow.dto';
@@ -599,10 +604,12 @@ export class CoreWorkflowMutationWorkspaceService {
     workspaceId,
     userWorkspaceId,
     coreWorkflowIds,
+    auditIdentity,
   }: {
     workspaceId: string;
     userWorkspaceId: string | undefined;
     coreWorkflowIds: string[];
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<DeletedCoreWorkflowDTO[]> {
     await this.coreWorkflowAccessService.assertCoreWorkflowsAreEditableOrThrow({
       workspaceId,
@@ -625,6 +632,11 @@ export class CoreWorkflowMutationWorkspaceService {
     await this.workflowCoreSyncService.deleteFromCore(
       workspaceId,
       coreWorkflowIds,
+      {
+        auditIdentity,
+        authUserWorkspaceId: userWorkspaceId,
+        defaultSystemActorId: 'core-workflow-mutation:delete-workflows',
+      },
     );
 
     return deletedCoreWorkflows;
@@ -634,10 +646,20 @@ export class CoreWorkflowMutationWorkspaceService {
     workspaceId,
     userWorkspaceId,
     coreWorkflowVersionId,
+    auditIdentity,
   }: DiscardCoreWorkflowDraftInput & {
     workspaceId: string;
     userWorkspaceId: string | undefined;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<string | null> {
+    const capturedAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'logicFunction',
+      auditIdentity,
+      authUserWorkspaceId: userWorkspaceId,
+      defaultSystemActorId: 'core-workflow-mutation:discard-draft',
+    });
+
     const coreVersion = await this.coreWorkflowVersionRepository.findOne(
       workspaceId,
       { where: { id: coreWorkflowVersionId } },
@@ -698,18 +720,24 @@ export class CoreWorkflowMutationWorkspaceService {
       flatEntityMaps: flatWorkflowVersionMaps,
     });
 
-    await this.runCoreWorkflowMigration({
-      workspaceId,
-      failureMessage:
-        'Multiple validation errors occurred while discarding workflow draft',
-      operations: {
-        workflowVersion: {
-          flatEntityToCreate: [],
-          flatEntityToDelete: [flatCoreVersionToDelete],
-          flatEntityToUpdate: [],
-        },
-      },
-    });
+    await withNavigationMenuItemAudit(
+      capturedAudit({
+        expectedParentWorkflowVersionDeleteIds: [flatCoreVersionToDelete.id],
+      }),
+      () =>
+        this.runCoreWorkflowMigration({
+          workspaceId,
+          failureMessage:
+            'Multiple validation errors occurred while discarding workflow draft',
+          operations: {
+            workflowVersion: {
+              flatEntityToCreate: [],
+              flatEntityToDelete: [flatCoreVersionToDelete],
+              flatEntityToUpdate: [],
+            },
+          },
+        }),
+    );
 
     await this.workflowVersionCoreSyncService.invalidateAutomatedTriggerMaps(
       workspaceId,

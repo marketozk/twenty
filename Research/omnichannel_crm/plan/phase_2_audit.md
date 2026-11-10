@@ -264,8 +264,20 @@ LOG179 закрывает транзакционный аудит полного
 `sourceComponentPath`, `builtComponentPath`, `componentName`, `builtComponentChecksum` и
 `widgetAvailability`) и пунктов меню настроек (`core."settingsMenuItem"` `create`, `update`, `delete`
 и каскадное удаление при удалении `frontComponent` с редактированием `title`, `icon` и `position`).
+LOG180 закрывает транзакционный аудит полного жизненного цикла серверных функций
+(`core."logicFunction"` `create`, `update`, `delete` в `LogicFunctionFromSourceHelperService`,
+`LogicFunctionFromSourceService`, `LogicFunctionResolver`, `PrefillLogicFunctionService.ensureSeeded`,
+`createUpdateLogicFunctionSourceTool`, `CodeStepBuildService`,
+`WorkflowVersionStepOperationsWorkspaceService`, каскадном удалении при удалении `workflow` /
+`workflowVersion` в `WorkflowCoreSyncService.deleteFromCore` и
+`CoreWorkflowMutationWorkspaceService.discardDraftVersion`,
+`ApplicationManifestMigrationService.syncPreInstallLogicFunctionFromManifest`,
+`navigation-menu-item-audit.ts`, `runAuditedApplicationMetadataMigration`,
+`assertNoRemainingApplicationRoleOrPermissionMetadata` и `WorkspaceMigrationRunnerService.executeRun`
+с редактированием `name`, `description`, `sourceHandlerPath`, `builtHandlerPath`, `handlerName`,
+`checksum` и всех 6 JSONB-конфигураций триггеров).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log179/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log180/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

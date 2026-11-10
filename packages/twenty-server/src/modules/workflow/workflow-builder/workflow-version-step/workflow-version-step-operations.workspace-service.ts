@@ -109,6 +109,7 @@ export class WorkflowVersionStepOperationsWorkspaceService {
           .deleteOneWithSource({
             id: step.settings.input.logicFunctionId,
             workspaceId,
+            defaultSystemActorId: 'workflow-version-step:delete-code-step',
           })
           .catch((error) => {
             if (
@@ -208,6 +209,7 @@ export class WorkflowVersionStepOperationsWorkspaceService {
           await this.codeStepBuildService.createCodeStepLogicFunction({
             logicFunctionId,
             workspaceId,
+            defaultSystemActorId: 'workflow-version-step:create-code-step',
           });
 
         if (!isDefined(newLogicFunction)) {
@@ -931,6 +933,7 @@ export class WorkflowVersionStepOperationsWorkspaceService {
           await this.codeStepBuildService.duplicateCodeStepLogicFunction({
             existingLogicFunctionId: step.settings.input.logicFunctionId,
             workspaceId,
+            defaultSystemActorId: 'workflow-version-step:clone-code-step',
           });
 
         return {
@@ -1117,6 +1120,8 @@ export class WorkflowVersionStepOperationsWorkspaceService {
           await this.codeStepBuildService.duplicateCodeStepLogicFunction({
             existingLogicFunctionId: step.settings.input.logicFunctionId,
             workspaceId,
+            defaultSystemActorId:
+              'workflow-version-step:create-draft-code-step',
           });
 
         return {

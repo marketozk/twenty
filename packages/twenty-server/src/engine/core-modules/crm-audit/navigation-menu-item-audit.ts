@@ -43,7 +43,8 @@ export type NavigationMenuItemAuditMode =
   | 'channel'
   | 'webhook'
   | 'skill'
-  | 'frontComponent';
+  | 'frontComponent'
+  | 'logicFunction';
 
 export type NavigationMenuItemAuditRequest = Readonly<{
   workspaceId: string;
@@ -73,6 +74,11 @@ export type NavigationMenuItemAuditRequest = Readonly<{
   expectedFrontComponentCreateIds?: readonly string[];
   expectedFrontComponentUpdateIds?: readonly string[];
   expectedFrontComponentDeleteIds?: readonly string[];
+  expectedLogicFunctionCreateIds?: readonly string[];
+  expectedLogicFunctionUpdateIds?: readonly string[];
+  expectedLogicFunctionDeleteIds?: readonly string[];
+  expectedParentWorkflowDeleteIds?: readonly string[];
+  expectedParentWorkflowVersionDeleteIds?: readonly string[];
 }>;
 
 export type NavigationMenuItemAuditMappings = {
@@ -86,6 +92,9 @@ export type NavigationMenuItemAuditMappings = {
   skills?: Record<string, { id: string } | undefined>;
   frontComponents?: Record<string, { id: string } | undefined>;
   settingsMenuItems?: Record<string, { id: string } | undefined>;
+  logicFunctions?: Record<string, { id: string } | undefined>;
+  workflows?: Record<string, { id: string } | undefined>;
+  workflowVersions?: Record<string, { id: string } | undefined>;
   roles?: Record<string, { id: string } | undefined>;
   objectMetadatas?: Record<string, { id: string } | undefined>;
   fieldMetadatas?: Record<string, { id: string } | undefined>;
@@ -594,6 +603,213 @@ export const projectSettingsMenuItem = (row: Record<string, unknown>) => ({
     typeof row.position === 'number' ? row.position : Number(row.position),
 });
 
+export const LOGIC_FUNCTION_TRIGGER_SETTINGS_KEYS = [
+  'cronTriggerSettings',
+  'databaseEventTriggerSettings',
+  'httpRouteTriggerSettings',
+  'serverRouteTriggerSettings',
+  'toolTriggerSettings',
+  'workflowActionTriggerSettings',
+] as const;
+
+export const assertLogicFunctionRowInvariants = (
+  row: Record<string, unknown>,
+  workspaceId: string,
+): void => {
+  uuid(row.id);
+  if (uuid(row.workspaceId) !== workspaceId) {
+    throw new Error('Logic function audit row workspace mismatch');
+  }
+  uuid(row.applicationId);
+  uuid(row.universalIdentifier);
+  if (row.deletedAt !== null && row.deletedAt !== undefined) {
+    throw new Error('Logic function audit soft-deleted row is unsupported');
+  }
+  if (typeof row.name !== 'string' || row.name.trim().length === 0) {
+    throw new Error('Logic function audit name is invalid');
+  }
+  if (
+    row.description !== null &&
+    row.description !== undefined &&
+    typeof row.description !== 'string'
+  ) {
+    throw new Error('Logic function audit description is invalid');
+  }
+  if (row.runtime !== 'nodejs18.x' && row.runtime !== 'nodejs22.x') {
+    throw new Error('Logic function audit runtime is invalid');
+  }
+  const timeoutSeconds =
+    typeof row.timeoutSeconds === 'number'
+      ? row.timeoutSeconds
+      : Number(row.timeoutSeconds);
+  if (
+    !Number.isInteger(timeoutSeconds) ||
+    timeoutSeconds < 1 ||
+    timeoutSeconds > 900
+  ) {
+    throw new Error('Logic function audit timeoutSeconds is invalid');
+  }
+  if (
+    typeof row.sourceHandlerPath !== 'string' ||
+    row.sourceHandlerPath.trim().length === 0
+  ) {
+    throw new Error('Logic function audit sourceHandlerPath is invalid');
+  }
+  if (
+    typeof row.builtHandlerPath !== 'string' ||
+    row.builtHandlerPath.trim().length === 0
+  ) {
+    throw new Error('Logic function audit builtHandlerPath is invalid');
+  }
+  if (
+    typeof row.handlerName !== 'string' ||
+    row.handlerName.trim().length === 0
+  ) {
+    throw new Error('Logic function audit handlerName is invalid');
+  }
+  if (
+    row.checksum !== null &&
+    row.checksum !== undefined &&
+    (typeof row.checksum !== 'string' || row.checksum.trim().length === 0)
+  ) {
+    throw new Error('Logic function audit checksum is invalid');
+  }
+  if (typeof row.isBuildUpToDate !== 'boolean') {
+    throw new Error('Logic function audit isBuildUpToDate is invalid');
+  }
+  if (row.executionMode !== 'LIVE' && row.executionMode !== 'PREBUILT') {
+    throw new Error('Logic function audit executionMode is invalid');
+  }
+  for (const triggerKey of LOGIC_FUNCTION_TRIGGER_SETTINGS_KEYS) {
+    const val = row[triggerKey];
+    if (
+      val !== null &&
+      val !== undefined &&
+      (typeof val !== 'object' || Array.isArray(val))
+    ) {
+      throw new Error(`Logic function audit ${triggerKey} is invalid`);
+    }
+  }
+};
+
+export const projectLogicFunction = (row: Record<string, unknown>) => ({
+  applicationId: uuid(row.applicationId),
+  runtime: String(row.runtime),
+  timeoutSeconds:
+    typeof row.timeoutSeconds === 'number'
+      ? row.timeoutSeconds
+      : Number(row.timeoutSeconds),
+  isBuildUpToDate: Boolean(row.isBuildUpToDate),
+  executionMode: String(row.executionMode),
+  name: String(row.name),
+  description:
+    row.description === undefined || row.description === null
+      ? null
+      : String(row.description),
+  sourceHandlerPath: String(row.sourceHandlerPath),
+  builtHandlerPath: String(row.builtHandlerPath),
+  handlerName: String(row.handlerName),
+  checksum:
+    row.checksum === undefined || row.checksum === null
+      ? null
+      : String(row.checksum),
+  cronTriggerSettings:
+    row.cronTriggerSettings === undefined || row.cronTriggerSettings === null
+      ? null
+      : row.cronTriggerSettings,
+  databaseEventTriggerSettings:
+    row.databaseEventTriggerSettings === undefined ||
+    row.databaseEventTriggerSettings === null
+      ? null
+      : row.databaseEventTriggerSettings,
+  httpRouteTriggerSettings:
+    row.httpRouteTriggerSettings === undefined ||
+    row.httpRouteTriggerSettings === null
+      ? null
+      : row.httpRouteTriggerSettings,
+  serverRouteTriggerSettings:
+    row.serverRouteTriggerSettings === undefined ||
+    row.serverRouteTriggerSettings === null
+      ? null
+      : row.serverRouteTriggerSettings,
+  toolTriggerSettings:
+    row.toolTriggerSettings === undefined || row.toolTriggerSettings === null
+      ? null
+      : row.toolTriggerSettings,
+  workflowActionTriggerSettings:
+    row.workflowActionTriggerSettings === undefined ||
+    row.workflowActionTriggerSettings === null
+      ? null
+      : row.workflowActionTriggerSettings,
+});
+
+export const computeCascadeDeletedCodeStepLogicFunctionIds = ({
+  beforeWorkflowVersions,
+  deletedWorkflowIds,
+  deletedWorkflowVersionIds,
+  beforeLogicFunctions,
+}: {
+  beforeWorkflowVersions: Map<string, Record<string, unknown>>;
+  deletedWorkflowIds: ReadonlySet<string>;
+  deletedWorkflowVersionIds: ReadonlySet<string>;
+  beforeLogicFunctions: Map<string, Record<string, unknown>>;
+}): Set<string> => {
+  const deletedSteps: Array<Record<string, unknown>> = [];
+  const remainingSteps: Array<Record<string, unknown>> = [];
+  for (const [versionId, versionRow] of beforeWorkflowVersions.entries()) {
+    const coreWfId = nullableUuid(versionRow.coreWorkflowId);
+    const isDeleted =
+      deletedWorkflowVersionIds.has(versionId) ||
+      (coreWfId !== null && deletedWorkflowIds.has(coreWfId));
+    const steps = Array.isArray(versionRow.steps) ? versionRow.steps : [];
+    for (const step of steps) {
+      if (step && typeof step === 'object' && !Array.isArray(step)) {
+        if (isDeleted) {
+          deletedSteps.push(step as Record<string, unknown>);
+        } else {
+          remainingSteps.push(step as Record<string, unknown>);
+        }
+      }
+    }
+  }
+  const extractStepLogicFunctionId = (
+    step: Record<string, unknown>,
+    allowedTypes: ReadonlySet<string>,
+  ): string | undefined => {
+    if (typeof step.type !== 'string' || !allowedTypes.has(step.type)) {
+      return undefined;
+    }
+    const settings = step.settings as Record<string, unknown> | undefined;
+    const input = settings?.input as Record<string, unknown> | undefined;
+    const rawId = input?.logicFunctionId;
+    if (typeof rawId === 'string' && isUUID(rawId)) {
+      return rawId.toLowerCase();
+    }
+    return undefined;
+  };
+  const codeAndLogicTypes = new Set<string>(['CODE', 'LOGIC_FUNCTION']);
+  const codeOnlyTypes = new Set<string>(['CODE']);
+  const stillReferencedIds = new Set<string>();
+  for (const step of remainingSteps) {
+    const id = extractStepLogicFunctionId(step, codeAndLogicTypes);
+    if (id !== undefined) {
+      stillReferencedIds.add(id);
+    }
+  }
+  const cascadeDeleted = new Set<string>();
+  for (const step of deletedSteps) {
+    const id = extractStepLogicFunctionId(step, codeOnlyTypes);
+    if (
+      id !== undefined &&
+      !stillReferencedIds.has(id) &&
+      beforeLogicFunctions.has(id)
+    ) {
+      cascadeDeleted.add(id);
+    }
+  }
+  return cascadeDeleted;
+};
+
 export const getNavigationMenuItemAudit = (workspaceId: string) => {
   const request = storage.getStore();
   if (!request) return undefined;
@@ -930,6 +1146,11 @@ export type NavigationMenuItemAuditExpectedScope = {
   expectedFrontComponentCreateIds?: readonly string[];
   expectedFrontComponentUpdateIds?: readonly string[];
   expectedFrontComponentDeleteIds?: readonly string[];
+  expectedLogicFunctionCreateIds?: readonly string[];
+  expectedLogicFunctionUpdateIds?: readonly string[];
+  expectedLogicFunctionDeleteIds?: readonly string[];
+  expectedParentWorkflowDeleteIds?: readonly string[];
+  expectedParentWorkflowVersionDeleteIds?: readonly string[];
 };
 
 export const captureNavigationMenuItemAudit = ({
@@ -961,6 +1182,11 @@ export const captureNavigationMenuItemAudit = ({
   expectedFrontComponentCreateIds,
   expectedFrontComponentUpdateIds,
   expectedFrontComponentDeleteIds,
+  expectedLogicFunctionCreateIds,
+  expectedLogicFunctionUpdateIds,
+  expectedLogicFunctionDeleteIds,
+  expectedParentWorkflowDeleteIds,
+  expectedParentWorkflowVersionDeleteIds,
 }: {
   workspaceId: string;
   mode: NavigationMenuItemAuditMode;
@@ -1050,6 +1276,21 @@ export const captureNavigationMenuItemAudit = ({
   const baseFrontComponentDeleteIds = normalizeIds(
     expectedFrontComponentDeleteIds,
   );
+  const baseLogicFunctionCreateIds = normalizeIds(
+    expectedLogicFunctionCreateIds,
+  );
+  const baseLogicFunctionUpdateIds = normalizeIds(
+    expectedLogicFunctionUpdateIds,
+  );
+  const baseLogicFunctionDeleteIds = normalizeIds(
+    expectedLogicFunctionDeleteIds,
+  );
+  const baseParentWorkflowDeleteIds = normalizeIds(
+    expectedParentWorkflowDeleteIds,
+  );
+  const baseParentWorkflowVersionDeleteIds = normalizeIds(
+    expectedParentWorkflowVersionDeleteIds,
+  );
 
   return (overrides) => {
     const resolvedCreatedIds =
@@ -1101,6 +1342,21 @@ export const captureNavigationMenuItemAudit = ({
     const resolvedFrontComponentDeleteIds =
       normalizeIds(overrides?.expectedFrontComponentDeleteIds) ??
       baseFrontComponentDeleteIds;
+    const resolvedLogicFunctionCreateIds =
+      normalizeIds(overrides?.expectedLogicFunctionCreateIds) ??
+      baseLogicFunctionCreateIds;
+    const resolvedLogicFunctionUpdateIds =
+      normalizeIds(overrides?.expectedLogicFunctionUpdateIds) ??
+      baseLogicFunctionUpdateIds;
+    const resolvedLogicFunctionDeleteIds =
+      normalizeIds(overrides?.expectedLogicFunctionDeleteIds) ??
+      baseLogicFunctionDeleteIds;
+    const resolvedParentWorkflowDeleteIds =
+      normalizeIds(overrides?.expectedParentWorkflowDeleteIds) ??
+      baseParentWorkflowDeleteIds;
+    const resolvedParentWorkflowVersionDeleteIds =
+      normalizeIds(overrides?.expectedParentWorkflowVersionDeleteIds) ??
+      baseParentWorkflowVersionDeleteIds;
 
     return Object.freeze({
       workspaceId: normalizedWorkspaceId,
@@ -1171,6 +1427,24 @@ export const captureNavigationMenuItemAudit = ({
         : {}),
       ...(resolvedFrontComponentDeleteIds !== undefined
         ? { expectedFrontComponentDeleteIds: resolvedFrontComponentDeleteIds }
+        : {}),
+      ...(resolvedLogicFunctionCreateIds !== undefined
+        ? { expectedLogicFunctionCreateIds: resolvedLogicFunctionCreateIds }
+        : {}),
+      ...(resolvedLogicFunctionUpdateIds !== undefined
+        ? { expectedLogicFunctionUpdateIds: resolvedLogicFunctionUpdateIds }
+        : {}),
+      ...(resolvedLogicFunctionDeleteIds !== undefined
+        ? { expectedLogicFunctionDeleteIds: resolvedLogicFunctionDeleteIds }
+        : {}),
+      ...(resolvedParentWorkflowDeleteIds !== undefined
+        ? { expectedParentWorkflowDeleteIds: resolvedParentWorkflowDeleteIds }
+        : {}),
+      ...(resolvedParentWorkflowVersionDeleteIds !== undefined
+        ? {
+            expectedParentWorkflowVersionDeleteIds:
+              resolvedParentWorkflowVersionDeleteIds,
+          }
         : {}),
     });
   };
@@ -1493,6 +1767,40 @@ const readSettingsMenuItemSnapshot = async (
   );
 };
 
+const readLogicFunctionSnapshot = async (
+  runner: QueryRunner,
+  workspaceId: string,
+  lock: boolean,
+): Promise<Map<string, Record<string, unknown>>> => {
+  const rows = await runner.query(
+    `SELECT to_jsonb(lf) AS row FROM core."logicFunction" lf WHERE lf."workspaceId"=$1 ORDER BY lf.id${lock ? ' FOR UPDATE' : ''}`,
+    [workspaceId],
+  );
+  return new Map(
+    rows.map((entry: { row: Record<string, unknown> }) => [
+      uuid(entry.row.id),
+      entry.row,
+    ]),
+  );
+};
+
+const readWorkflowVersionSnapshot = async (
+  runner: QueryRunner,
+  workspaceId: string,
+  lock: boolean,
+): Promise<Map<string, Record<string, unknown>>> => {
+  const rows = await runner.query(
+    `SELECT to_jsonb(wv) AS row FROM core."workflowVersion" wv WHERE wv."workspaceId"=$1 ORDER BY wv.id${lock ? ' FOR UPDATE' : ''}`,
+    [workspaceId],
+  );
+  return new Map(
+    rows.map((entry: { row: Record<string, unknown> }) => [
+      uuid(entry.row.id),
+      entry.row,
+    ]),
+  );
+};
+
 const serializeNavSnapshot = (
   snapshot: Map<string, Record<string, unknown>>,
 ): string =>
@@ -1534,6 +1842,16 @@ const serializeFrontComponentSnapshot = (
   );
 
 const serializeSettingsMenuItemSnapshot = (
+  snapshot: Map<string, Record<string, unknown>>,
+): string =>
+  canonicalAuditJson(
+    [...snapshot.entries()].map(([id, row]) => [
+      id,
+      scalarNavigationMenuItemWithoutTimestamps(row),
+    ]),
+  );
+
+const serializeLogicFunctionSnapshot = (
   snapshot: Map<string, Record<string, unknown>>,
 ): string =>
   canonicalAuditJson(
@@ -1675,12 +1993,15 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         to_regclass('core.webhook') IS NOT NULL AS "hasWebhookTable",
         to_regclass('core.skill') IS NOT NULL AS "hasSkillTable",
         to_regclass('core."frontComponent"') IS NOT NULL AS "hasFrontComponentTable",
-        to_regclass('core."settingsMenuItem"') IS NOT NULL AS "hasSettingsMenuItemTable"`,
+        to_regclass('core."settingsMenuItem"') IS NOT NULL AS "hasSettingsMenuItemTable",
+        to_regclass('core."logicFunction"') IS NOT NULL AS "hasLogicFunctionTable",
+        to_regclass('core."workflowVersion"') IS NOT NULL AS "hasWorkflowVersionTable"`,
     );
     if (
       request.mode !== 'webhook' &&
       request.mode !== 'skill' &&
       request.mode !== 'frontComponent' &&
+      request.mode !== 'logicFunction' &&
       reg?.hasNavTable !== true
     ) {
       throw new Error(
@@ -1799,6 +2120,37 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       assertSettingsMenuItemRowInvariants(row, request.workspaceId);
     }
 
+    const requiresLogicFunctionTable =
+      request.expectedLogicFunctionCreateIds !== undefined ||
+      request.expectedLogicFunctionUpdateIds !== undefined ||
+      request.expectedLogicFunctionDeleteIds !== undefined ||
+      actions.some((action) => action.metadataName === 'logicFunction');
+    if (requiresLogicFunctionTable && reg?.hasLogicFunctionTable !== true) {
+      throw new Error(
+        'Logic function audit table core.logicFunction unavailable',
+      );
+    }
+    const touchesLogicFunctions =
+      requiresLogicFunctionTable ||
+      (request.mode === 'logicFunction' && reg?.hasLogicFunctionTable === true);
+
+    const beforeLogicFunctions =
+      touchesLogicFunctions && reg?.hasLogicFunctionTable === true
+        ? await readLogicFunctionSnapshot(runner, request.workspaceId, true)
+        : new Map<string, Record<string, unknown>>();
+    for (const row of beforeLogicFunctions.values()) {
+      assertLogicFunctionRowInvariants(row, request.workspaceId);
+    }
+
+    const isWorkflowCascadeMode =
+      request.mode === 'logicFunction' &&
+      (request.expectedParentWorkflowDeleteIds !== undefined ||
+        request.expectedParentWorkflowVersionDeleteIds !== undefined);
+    const beforeWorkflowVersionsForLogicFunctionCascade =
+      isWorkflowCascadeMode && reg?.hasWorkflowVersionTable === true
+        ? await readWorkflowVersionSnapshot(runner, request.workspaceId, true)
+        : new Map<string, Record<string, unknown>>();
+
     const touchesChannelsOrRoles =
       request.mode === 'channel' ||
       request.expectedParentChannelDeleteIds !== undefined ||
@@ -1851,6 +2203,7 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       request.mode !== 'webhook' &&
       request.mode !== 'skill' &&
       request.mode !== 'frontComponent' &&
+      request.mode !== 'logicFunction' &&
       reg?.hasNavTable === true
         ? await readNavSnapshot(runner, request.workspaceId, true)
         : new Map<string, Record<string, unknown>>();
@@ -1904,6 +2257,17 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
     >();
     const plannedFrontComponentDeletes = new Set<string>();
     const plannedSettingsMenuItemDeletes = new Set<string>();
+    const plannedLogicFunctionCreatesByUniversalIdentifier = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedLogicFunctionUpdates = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    const plannedLogicFunctionDeletes = new Set<string>();
+    const plannedWorkflowDeletes = new Set<string>();
+    const plannedWorkflowVersionDeletes = new Set<string>();
     const plannedObjectCreates = new Set<string>();
     const plannedObjectDeletes = new Set<string>();
     const plannedFieldDeletes = new Set<string>();
@@ -1977,6 +2341,20 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           throw new Error(
             `Front component audit disallows ${action.metadataName} actions`,
           );
+        }
+      } else if (request.mode === 'logicFunction') {
+        if (action.metadataName !== 'logicFunction') {
+          const isAllowedWorkflowCascadeAction =
+            isWorkflowCascadeMode &&
+            action.type === 'delete' &&
+            (action.metadataName === 'workflow' ||
+              action.metadataName === 'workflowVersion' ||
+              action.metadataName === 'commandMenuItem');
+          if (!isAllowedWorkflowCascadeAction) {
+            throw new Error(
+              `Logic function audit disallows ${action.metadataName} actions`,
+            );
+          }
         }
       } else {
         if (!CASCADE_ALLOWED_METADATA_NAMES.has(action.metadataName)) {
@@ -2424,6 +2802,97 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           throw new Error('Settings menu item delete audit duplicate ID');
         }
         plannedSettingsMenuItemDeletes.add(targetId);
+      } else if (action.metadataName === 'logicFunction') {
+        if (action.type === 'create') {
+          if (!action.flatEntity) {
+            throw new Error('Logic function create action requires flatEntity');
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (
+            plannedLogicFunctionCreatesByUniversalIdentifier.has(universalId)
+          ) {
+            throw new Error(
+              'Logic function create audit duplicate universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error(
+              'Logic function create action application mismatch',
+            );
+          }
+          const explicitId =
+            action.id !== undefined
+              ? uuid(action.id)
+              : action.flatEntity.id !== undefined
+                ? uuid(action.flatEntity.id)
+                : undefined;
+          if (
+            explicitId !== undefined &&
+            beforeLogicFunctions.has(explicitId)
+          ) {
+            throw new Error('Logic function create target ID already exists');
+          }
+          plannedLogicFunctionCreatesByUniversalIdentifier.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.logicFunctions?.[universalId]?.id;
+          if (!mappedId || !action.update) {
+            throw new Error(
+              'Logic function update audit missing mapping or update payload',
+            );
+          }
+          const targetId = uuid(mappedId);
+          if (plannedLogicFunctionUpdates.has(targetId)) {
+            throw new Error('Logic function update audit duplicate ID');
+          }
+          plannedLogicFunctionUpdates.set(targetId, action.update);
+        } else if (action.type === 'delete') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.logicFunctions?.[universalId]?.id;
+          if (!mappedId) {
+            throw new Error('Logic function delete audit missing mapping');
+          }
+          const targetId = uuid(mappedId);
+          if (plannedLogicFunctionDeletes.has(targetId)) {
+            throw new Error('Logic function delete audit duplicate ID');
+          }
+          plannedLogicFunctionDeletes.add(targetId);
+        } else {
+          throw new Error(
+            `Unsupported logicFunction action type ${action.type}`,
+          );
+        }
+      } else if (
+        action.metadataName === 'workflow' &&
+        action.type === 'delete'
+      ) {
+        const universalId = uuid(action.universalIdentifier);
+        const mappedId = mappings.workflows?.[universalId]?.id;
+        if (!mappedId) {
+          throw new Error(
+            'Logic function workflow cascade audit missing workflow mapping',
+          );
+        }
+        plannedWorkflowDeletes.add(uuid(mappedId));
+      } else if (
+        action.metadataName === 'workflowVersion' &&
+        action.type === 'delete'
+      ) {
+        const universalId = uuid(action.universalIdentifier);
+        const mappedId = mappings.workflowVersions?.[universalId]?.id;
+        if (!mappedId) {
+          throw new Error(
+            'Logic function workflowVersion cascade audit missing workflowVersion mapping',
+          );
+        }
+        plannedWorkflowVersionDeletes.add(uuid(mappedId));
       }
     }
 
@@ -2481,6 +2950,18 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       if (!hasFrontComponentConstraint) {
         throw new Error(
           'Front component audit requires explicit expected scope',
+        );
+      }
+    } else if (request.mode === 'logicFunction') {
+      const hasLogicFunctionConstraint =
+        request.expectedLogicFunctionCreateIds !== undefined ||
+        request.expectedLogicFunctionUpdateIds !== undefined ||
+        request.expectedLogicFunctionDeleteIds !== undefined ||
+        request.expectedParentWorkflowDeleteIds !== undefined ||
+        request.expectedParentWorkflowVersionDeleteIds !== undefined;
+      if (!hasLogicFunctionConstraint) {
+        throw new Error(
+          'Logic function audit requires explicit expected scope',
         );
       }
     }
@@ -2808,6 +3289,181 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       if (activeApps.length !== foreignFrontComponentAppIds.size) {
         throw new Error(
           'Front component target row belongs to an unavailable application',
+        );
+      }
+    }
+
+    if (request.expectedLogicFunctionCreateIds !== undefined) {
+      const actualLogicFunctionCreateIds = [
+        ...plannedLogicFunctionCreatesByUniversalIdentifier.values(),
+      ]
+        .map((entry) => entry.id)
+        .filter((id): id is string => id !== undefined);
+      if (
+        plannedLogicFunctionCreatesByUniversalIdentifier.size !==
+          request.expectedLogicFunctionCreateIds.length ||
+        actualLogicFunctionCreateIds.length !==
+          request.expectedLogicFunctionCreateIds.length ||
+        request.expectedLogicFunctionCreateIds.some(
+          (id) => !actualLogicFunctionCreateIds.includes(id),
+        )
+      ) {
+        throw new Error(
+          'Logic function create plan does not match expected IDs',
+        );
+      }
+    } else if (
+      request.mode === 'logicFunction' &&
+      plannedLogicFunctionCreatesByUniversalIdentifier.size > 0
+    ) {
+      throw new Error(
+        'Logic function audit detected unexpected logicFunction create',
+      );
+    }
+
+    if (request.expectedLogicFunctionUpdateIds !== undefined) {
+      if (
+        plannedLogicFunctionUpdates.size !==
+          request.expectedLogicFunctionUpdateIds.length ||
+        request.expectedLogicFunctionUpdateIds.some(
+          (id) => !plannedLogicFunctionUpdates.has(id),
+        )
+      ) {
+        throw new Error(
+          'Logic function update plan does not match expected IDs',
+        );
+      }
+    } else if (
+      request.mode === 'logicFunction' &&
+      plannedLogicFunctionUpdates.size > 0
+    ) {
+      throw new Error(
+        'Logic function audit detected unexpected logicFunction update',
+      );
+    }
+
+    if (request.expectedParentWorkflowDeleteIds !== undefined) {
+      if (
+        plannedWorkflowDeletes.size !==
+          request.expectedParentWorkflowDeleteIds.length ||
+        request.expectedParentWorkflowDeleteIds.some(
+          (id) => !plannedWorkflowDeletes.has(id),
+        )
+      ) {
+        throw new Error(
+          'Logic function cascade workflow delete plan does not match expected IDs',
+        );
+      }
+    } else if (
+      request.mode === 'logicFunction' &&
+      plannedWorkflowDeletes.size > 0
+    ) {
+      throw new Error(
+        'Logic function audit detected unexpected workflow delete',
+      );
+    }
+
+    if (request.expectedParentWorkflowVersionDeleteIds !== undefined) {
+      if (
+        plannedWorkflowVersionDeletes.size !==
+          request.expectedParentWorkflowVersionDeleteIds.length ||
+        request.expectedParentWorkflowVersionDeleteIds.some(
+          (id) => !plannedWorkflowVersionDeletes.has(id),
+        )
+      ) {
+        throw new Error(
+          'Logic function cascade workflowVersion delete plan does not match expected IDs',
+        );
+      }
+    } else if (
+      request.mode === 'logicFunction' &&
+      request.expectedParentWorkflowDeleteIds === undefined &&
+      plannedWorkflowVersionDeletes.size > 0
+    ) {
+      throw new Error(
+        'Logic function audit detected unexpected workflowVersion delete',
+      );
+    }
+
+    if (request.expectedLogicFunctionDeleteIds !== undefined) {
+      if (
+        plannedLogicFunctionDeletes.size !==
+          request.expectedLogicFunctionDeleteIds.length ||
+        request.expectedLogicFunctionDeleteIds.some(
+          (id) => !plannedLogicFunctionDeletes.has(id),
+        )
+      ) {
+        throw new Error(
+          'Logic function delete plan does not match expected IDs',
+        );
+      }
+    } else if (isWorkflowCascadeMode) {
+      const expectedCascadeLogicFunctionIds =
+        computeCascadeDeletedCodeStepLogicFunctionIds({
+          beforeWorkflowVersions: beforeWorkflowVersionsForLogicFunctionCascade,
+          deletedWorkflowIds: plannedWorkflowDeletes,
+          deletedWorkflowVersionIds: plannedWorkflowVersionDeletes,
+          beforeLogicFunctions,
+        });
+      if (
+        plannedLogicFunctionDeletes.size !==
+          expectedCascadeLogicFunctionIds.size ||
+        [...plannedLogicFunctionDeletes].some(
+          (id) => !expectedCascadeLogicFunctionIds.has(id),
+        )
+      ) {
+        throw new Error(
+          'Logic function cascade delete plan does not match exclusively owned CODE step functions',
+        );
+      }
+    } else if (
+      request.mode === 'logicFunction' &&
+      plannedLogicFunctionDeletes.size > 0
+    ) {
+      throw new Error(
+        'Logic function audit detected unexpected logicFunction delete',
+      );
+    }
+
+    const foreignLogicFunctionAppIds = new Set<string>();
+    for (const targetId of plannedLogicFunctionUpdates.keys()) {
+      const beforeLf = beforeLogicFunctions.get(targetId);
+      if (!beforeLf) {
+        throw new Error('Logic function update target row unavailable');
+      }
+      const lfAppId = uuid(beforeLf.applicationId);
+      if (lfAppId !== applicationId) {
+        if (request.mode !== 'logicFunction') {
+          throw new Error(
+            'Logic function update target row belongs to another application',
+          );
+        }
+        foreignLogicFunctionAppIds.add(lfAppId);
+      }
+    }
+    for (const targetId of plannedLogicFunctionDeletes) {
+      const beforeLf = beforeLogicFunctions.get(targetId);
+      if (!beforeLf) {
+        throw new Error('Logic function delete target row unavailable');
+      }
+      const lfAppId = uuid(beforeLf.applicationId);
+      if (lfAppId !== applicationId) {
+        if (request.mode !== 'logicFunction') {
+          throw new Error(
+            'Logic function delete target row belongs to another application',
+          );
+        }
+        foreignLogicFunctionAppIds.add(lfAppId);
+      }
+    }
+    if (foreignLogicFunctionAppIds.size > 0) {
+      const activeApps = await runner.query(
+        `SELECT id FROM core.application a WHERE a."workspaceId"=$1 AND a.id=ANY($2::uuid[]) AND to_jsonb(a)->>'deletedAt' IS NULL ORDER BY a.id FOR NO KEY UPDATE`,
+        [request.workspaceId, [...foreignLogicFunctionAppIds]],
+      );
+      if (activeApps.length !== foreignLogicFunctionAppIds.size) {
+        throw new Error(
+          'Logic function target row belongs to an unavailable application',
         );
       }
     }
@@ -3304,6 +3960,7 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       request.mode !== 'webhook' &&
       request.mode !== 'skill' &&
       request.mode !== 'frontComponent' &&
+      request.mode !== 'logicFunction' &&
       reg?.hasNavTable === true
         ? await readNavSnapshot(runner, request.workspaceId, false)
         : new Map<string, Record<string, unknown>>();
@@ -4664,11 +5321,287 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       }
     }
 
+    let expectedLogicFunctionsSerialized: string | undefined;
+    if (touchesLogicFunctions && reg?.hasLogicFunctionTable === true) {
+      const afterLogicFunctions = await readLogicFunctionSnapshot(
+        runner,
+        request.workspaceId,
+        false,
+      );
+      const createdLogicFunctionsByUniversalId = new Map<
+        string,
+        Record<string, unknown>
+      >();
+      for (const [id, afterRow] of afterLogicFunctions.entries()) {
+        assertLogicFunctionRowInvariants(afterRow, request.workspaceId);
+        if (!beforeLogicFunctions.has(id)) {
+          const universalId = uuid(afterRow.universalIdentifier);
+          if (createdLogicFunctionsByUniversalId.has(universalId)) {
+            throw new Error(
+              'Logic function audit detected duplicate created universalIdentifier',
+            );
+          }
+          createdLogicFunctionsByUniversalId.set(universalId, afterRow);
+        }
+      }
+      if (
+        createdLogicFunctionsByUniversalId.size !==
+        plannedLogicFunctionCreatesByUniversalIdentifier.size
+      ) {
+        throw new Error('Logic function audit created row count mismatch');
+      }
+      for (const [
+        universalId,
+        planned,
+      ] of plannedLogicFunctionCreatesByUniversalIdentifier.entries()) {
+        const afterRow = createdLogicFunctionsByUniversalId.get(universalId);
+        if (!afterRow) {
+          throw new Error('Logic function create did not persist expected row');
+        }
+        const createdId = uuid(afterRow.id);
+        if (planned.id !== undefined && createdId !== planned.id) {
+          throw new Error('Logic function create persisted unexpected ID');
+        }
+        if (uuid(afterRow.applicationId) !== applicationId) {
+          throw new Error(
+            'Logic function create persisted unexpected applicationId',
+          );
+        }
+        const afterProj = projectLogicFunction(afterRow);
+        for (const textKey of [
+          'name',
+          'sourceHandlerPath',
+          'builtHandlerPath',
+          'handlerName',
+          'executionMode',
+          'runtime',
+        ] as const) {
+          if (
+            planned.flatEntity[textKey] !== undefined &&
+            afterProj[textKey] !== String(planned.flatEntity[textKey])
+          ) {
+            throw new Error(
+              `Logic function create persisted unexpected ${textKey}`,
+            );
+          }
+        }
+        for (const nullableTextKey of ['description', 'checksum'] as const) {
+          if (planned.flatEntity[nullableTextKey] !== undefined) {
+            const expectedVal =
+              planned.flatEntity[nullableTextKey] === null
+                ? null
+                : String(planned.flatEntity[nullableTextKey]);
+            if (afterProj[nullableTextKey] !== expectedVal) {
+              throw new Error(
+                `Logic function create persisted unexpected ${nullableTextKey}`,
+              );
+            }
+          }
+        }
+        if (
+          planned.flatEntity.timeoutSeconds !== undefined &&
+          afterProj.timeoutSeconds !== Number(planned.flatEntity.timeoutSeconds)
+        ) {
+          throw new Error(
+            'Logic function create persisted unexpected timeoutSeconds',
+          );
+        }
+        if (
+          planned.flatEntity.isBuildUpToDate !== undefined &&
+          afterProj.isBuildUpToDate !==
+            Boolean(planned.flatEntity.isBuildUpToDate)
+        ) {
+          throw new Error(
+            'Logic function create persisted unexpected isBuildUpToDate',
+          );
+        }
+        for (const triggerKey of LOGIC_FUNCTION_TRIGGER_SETTINGS_KEYS) {
+          if (planned.flatEntity[triggerKey] !== undefined) {
+            const expectedTrigger =
+              planned.flatEntity[triggerKey] === null
+                ? null
+                : planned.flatEntity[triggerKey];
+            if (
+              canonicalAuditJson(afterProj[triggerKey]) !==
+              canonicalAuditJson(expectedTrigger)
+            ) {
+              throw new Error(
+                `Logic function create persisted unexpected ${triggerKey}`,
+              );
+            }
+          }
+        }
+        audit.record({
+          resourceKind: 'logicFunction',
+          resourceId: createdId,
+          action: 'create',
+          before: null,
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'logicFunction',
+            resourceId: createdId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        recordedMutations += 1;
+      }
+
+      for (const [targetId, update] of plannedLogicFunctionUpdates.entries()) {
+        const beforeRow = beforeLogicFunctions.get(targetId);
+        const afterRow = afterLogicFunctions.get(targetId);
+        if (!beforeRow || !afterRow) {
+          throw new Error('Logic function update removed or lost target row');
+        }
+        if (
+          uuid(beforeRow.applicationId) !== uuid(afterRow.applicationId) ||
+          uuid(beforeRow.universalIdentifier) !==
+            uuid(afterRow.universalIdentifier) ||
+          String(beforeRow.runtime) !== String(afterRow.runtime)
+        ) {
+          throw new Error('Logic function update modified immutable fields');
+        }
+        const beforeProj = projectLogicFunction(beforeRow);
+        const afterProj = projectLogicFunction(afterRow);
+        for (const textKey of [
+          'name',
+          'sourceHandlerPath',
+          'builtHandlerPath',
+          'handlerName',
+          'executionMode',
+        ] as const) {
+          const expectedVal =
+            textKey in update && update[textKey] !== undefined
+              ? String(update[textKey])
+              : beforeProj[textKey];
+          if (afterProj[textKey] !== expectedVal) {
+            throw new Error(
+              `Logic function update did not persist expected ${textKey}`,
+            );
+          }
+        }
+        for (const nullableTextKey of ['description', 'checksum'] as const) {
+          const expectedVal =
+            nullableTextKey in update && update[nullableTextKey] !== undefined
+              ? update[nullableTextKey] === null
+                ? null
+                : String(update[nullableTextKey])
+              : beforeProj[nullableTextKey];
+          if (afterProj[nullableTextKey] !== expectedVal) {
+            throw new Error(
+              `Logic function update did not persist expected ${nullableTextKey}`,
+            );
+          }
+        }
+        const expectedTimeoutSeconds =
+          'timeoutSeconds' in update && update.timeoutSeconds !== undefined
+            ? Number(update.timeoutSeconds)
+            : beforeProj.timeoutSeconds;
+        if (afterProj.timeoutSeconds !== expectedTimeoutSeconds) {
+          throw new Error(
+            'Logic function update did not persist expected timeoutSeconds',
+          );
+        }
+        const expectedIsBuildUpToDate =
+          'isBuildUpToDate' in update && update.isBuildUpToDate !== undefined
+            ? Boolean(update.isBuildUpToDate)
+            : beforeProj.isBuildUpToDate;
+        if (afterProj.isBuildUpToDate !== expectedIsBuildUpToDate) {
+          throw new Error(
+            'Logic function update did not persist expected isBuildUpToDate',
+          );
+        }
+        for (const triggerKey of LOGIC_FUNCTION_TRIGGER_SETTINGS_KEYS) {
+          const expectedTrigger =
+            triggerKey in update && update[triggerKey] !== undefined
+              ? update[triggerKey] === null
+                ? null
+                : update[triggerKey]
+              : beforeProj[triggerKey];
+          if (
+            canonicalAuditJson(afterProj[triggerKey]) !==
+            canonicalAuditJson(expectedTrigger)
+          ) {
+            throw new Error(
+              `Logic function update did not persist expected ${triggerKey}`,
+            );
+          }
+        }
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          audit.record({
+            resourceKind: 'logicFunction',
+            resourceId: targetId,
+            action: 'update',
+            before: beforeProj,
+            after: afterProj,
+            securityDescriptor: {
+              resourceKind: 'logicFunction',
+              resourceId: targetId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedMutations += 1;
+        }
+      }
+
+      for (const deletedId of plannedLogicFunctionDeletes) {
+        const beforeRow = beforeLogicFunctions.get(deletedId);
+        if (!beforeRow) {
+          throw new Error(
+            'Logic function delete expected row missing before migration',
+          );
+        }
+        if (afterLogicFunctions.has(deletedId)) {
+          throw new Error('Logic function delete did not remove expected row');
+        }
+        audit.record({
+          resourceKind: 'logicFunction',
+          resourceId: deletedId,
+          action: 'delete',
+          before: projectLogicFunction(beforeRow),
+          after: null,
+          securityDescriptor: {
+            resourceKind: 'logicFunction',
+            resourceId: deletedId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        recordedMutations += 1;
+      }
+
+      for (const [id, beforeRow] of beforeLogicFunctions.entries()) {
+        if (plannedLogicFunctionDeletes.has(id)) continue;
+        const afterRow = afterLogicFunctions.get(id);
+        if (!afterRow) {
+          throw new Error(
+            'Logic function audit detected unplanned row deletion',
+          );
+        }
+        if (!plannedLogicFunctionUpdates.has(id)) {
+          if (
+            canonicalAuditJson(
+              scalarNavigationMenuItemWithoutTimestamps(beforeRow),
+            ) !==
+            canonicalAuditJson(
+              scalarNavigationMenuItemWithoutTimestamps(afterRow),
+            )
+          ) {
+            throw new Error(
+              'Logic function audit detected unplanned row mutation',
+            );
+          }
+        }
+      }
+
+      expectedLogicFunctionsSerialized =
+        serializeLogicFunctionSnapshot(afterLogicFunctions);
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized =
         request.mode !== 'webhook' &&
         request.mode !== 'skill' &&
         request.mode !== 'frontComponent' &&
+        request.mode !== 'logicFunction' &&
         reg?.hasNavTable === true
           ? serializeNavSnapshot(afterNavItems)
           : undefined;
@@ -4756,6 +5689,19 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           throw new Error(
             'Settings menu item state changed during audit flush',
           );
+        }
+      }
+      if (expectedLogicFunctionsSerialized !== undefined) {
+        const postFlushLogicFunctions = await readLogicFunctionSnapshot(
+          runner,
+          request.workspaceId,
+          false,
+        );
+        if (
+          serializeLogicFunctionSnapshot(postFlushLogicFunctions) !==
+          expectedLogicFunctionsSerialized
+        ) {
+          throw new Error('Logic function state changed during audit flush');
         }
       }
     }

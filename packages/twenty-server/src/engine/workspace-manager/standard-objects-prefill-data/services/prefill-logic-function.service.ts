@@ -41,6 +41,7 @@ export class PrefillLogicFunctionService {
 
       await this.logicFunctionFromSourceService.createOneFromSource({
         workspaceId,
+        defaultSystemActorId: 'dev-seeder:prefill-logic-function',
         input: {
           id: definition.id,
           name: definition.name,

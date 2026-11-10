@@ -52,10 +52,12 @@ export class ApplicationManifestMigrationService {
     manifest,
     workspaceId,
     ownerFlatApplication,
+    auditIdentity,
   }: {
     manifest: Manifest;
     workspaceId: string;
     ownerFlatApplication: FlatApplication;
+    auditIdentity?: ApplicationDefaultRoleAuditIdentity;
   }): Promise<void> {
     const preInstallLogicFunction =
       manifest.application.preInstallLogicFunction;
@@ -63,6 +65,13 @@ export class ApplicationManifestMigrationService {
     if (!isDefined(preInstallLogicFunction)) {
       return;
     }
+
+    const capturedMetadataAudit = captureApplicationMetadataAudit({
+      workspaceId,
+      applicationId: ownerFlatApplication.id,
+      applicationUniversalIdentifier: ownerFlatApplication.universalIdentifier,
+      auditIdentity,
+    });
 
     const preInstallLogicFunctionManifest = manifest.logicFunctions.find(
       (logicFunction) =>
@@ -143,24 +152,27 @@ export class ApplicationManifestMigrationService {
       fromAllFlatEntityMaps: existingAllFlatEntityMaps,
     });
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigrationFromTo(
-        {
-          // inferDeletionFromMissingEntities omitted so this pre-install sync is purely additive
-          buildOptions: {
-            isSystemBuild: false,
-            applicationUniversalIdentifier:
-              ownerFlatApplication.universalIdentifier,
+    const validateAndBuildResult = await withApplicationMetadataAudit(
+      capturedMetadataAudit(),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigrationFromTo(
+          {
+            // inferDeletionFromMissingEntities omitted so this pre-install sync is purely additive
+            buildOptions: {
+              isSystemBuild: false,
+              applicationUniversalIdentifier:
+                ownerFlatApplication.universalIdentifier,
+            },
+            fromToAllFlatEntityMaps: buildFromToAllUniversalFlatEntityMaps({
+              fromAllFlatEntityMaps,
+              toAllUniversalFlatEntityMaps,
+            }),
+            workspaceId,
+            dependencyAllFlatEntityMaps,
+            additionalCacheDataMaps: { featureFlagsMap, billingEntitlements },
           },
-          fromToAllFlatEntityMaps: buildFromToAllUniversalFlatEntityMaps({
-            fromAllFlatEntityMaps,
-            toAllUniversalFlatEntityMaps,
-          }),
-          workspaceId,
-          dependencyAllFlatEntityMaps,
-          additionalCacheDataMaps: { featureFlagsMap, billingEntitlements },
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

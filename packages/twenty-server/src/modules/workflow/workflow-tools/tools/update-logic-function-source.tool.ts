@@ -60,6 +60,8 @@ Only code steps of a DRAFT workflow version can be edited. For an active or past
           },
         },
         workspaceId,
+        authUserWorkspaceId: context.userWorkspaceId,
+        defaultSystemActorId: 'workflow-tool:update-logic-function-source',
       });
 
       return {
@@ -68,10 +70,13 @@ Only code steps of a DRAFT workflow version can be edited. For an active or past
         logicFunctionId,
       };
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
       return {
         success: false,
-        error: error.message,
-        message: `Failed to update logic function source: ${error.message}`,
+        error: errorMessage,
+        message: `Failed to update logic function source: ${errorMessage}`,
       };
     }
   },

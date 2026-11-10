@@ -6,7 +6,10 @@ import { isDefined } from 'twenty-shared/utils';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
 import { LogicFunctionExecutionMode } from 'src/engine/metadata-modules/logic-function/logic-function.entity';
-import { LogicFunctionFromSourceHelperService } from 'src/engine/metadata-modules/logic-function/services/logic-function-from-source-helper.service';
+import {
+  LogicFunctionFromSourceHelperService,
+  type LogicFunctionAuditOptions,
+} from 'src/engine/metadata-modules/logic-function/services/logic-function-from-source-helper.service';
 import { LogicFunctionFromSourceService } from 'src/engine/metadata-modules/logic-function/services/logic-function-from-source.service';
 import { extractCodeStepLogicFunctionIdsFromWorkflowSteps } from 'src/modules/workflow/workflow-builder/workflow-version-step/code-step/utils/extract-code-step-logic-function-ids-from-workflow-steps.util';
 import { type WorkflowAction } from 'src/modules/workflow/workflow-executor/workflow-actions/types/workflow-action.type';
@@ -28,10 +31,17 @@ export class CodeStepBuildService {
   async createCodeStepLogicFunction({
     logicFunctionId,
     workspaceId,
+    auditIdentity,
+    authUserWorkspaceId,
+    authApiKeyId,
+    authApplicationId,
+    authAgentId,
+    defaultSystemActorId = 'code-step-build:create',
+    capturedAudit,
   }: {
     logicFunctionId: string;
     workspaceId: string;
-  }) {
+  } & LogicFunctionAuditOptions) {
     return await this.logicFunctionFromSourceService.createOneFromSource({
       input: {
         id: logicFunctionId,
@@ -40,29 +50,56 @@ export class CodeStepBuildService {
         workflowActionTriggerSettings: SEED_WORKFLOW_ACTION_TRIGGER_SETTINGS,
       },
       workspaceId,
+      auditIdentity,
+      authUserWorkspaceId,
+      authApiKeyId,
+      authApplicationId,
+      authAgentId,
+      defaultSystemActorId,
+      capturedAudit,
     });
   }
 
   async duplicateCodeStepLogicFunction({
     existingLogicFunctionId,
     workspaceId,
+    auditIdentity,
+    authUserWorkspaceId,
+    authApiKeyId,
+    authApplicationId,
+    authAgentId,
+    defaultSystemActorId = 'code-step-build:duplicate',
+    capturedAudit,
   }: {
     existingLogicFunctionId: string;
     workspaceId: string;
-  }): Promise<{ id: string }> {
+  } & LogicFunctionAuditOptions): Promise<{ id: string }> {
     return this.logicFunctionFromSourceService.duplicateOneWithSource({
       existingLogicFunctionId,
       workspaceId,
+      auditIdentity,
+      authUserWorkspaceId,
+      authApiKeyId,
+      authApplicationId,
+      authAgentId,
+      defaultSystemActorId,
+      capturedAudit,
     });
   }
 
   async buildCodeStepsFromSourceForSteps({
     workspaceId,
     steps,
+    auditIdentity,
+    authUserWorkspaceId,
+    authApiKeyId,
+    authApplicationId,
+    authAgentId,
+    defaultSystemActorId = 'code-step-build:build',
   }: {
     workspaceId: string;
     steps: WorkflowAction[];
-  }): Promise<void> {
+  } & Omit<LogicFunctionAuditOptions, 'capturedAudit'>): Promise<void> {
     const logicFunctionIds =
       extractCodeStepLogicFunctionIdsFromWorkflowSteps(steps);
 
@@ -111,6 +148,12 @@ export class CodeStepBuildService {
       await this.logicFunctionFromSourceService.buildOneFromSource({
         workspaceId,
         id: logicFunctionId,
+        auditIdentity,
+        authUserWorkspaceId,
+        authApiKeyId,
+        authApplicationId,
+        authAgentId,
+        defaultSystemActorId,
       });
     }
   }
@@ -118,10 +161,16 @@ export class CodeStepBuildService {
   async switchCodeStepLogicFunctionsToPrebuilt({
     workspaceId,
     steps,
+    auditIdentity,
+    authUserWorkspaceId,
+    authApiKeyId,
+    authApplicationId,
+    authAgentId,
+    defaultSystemActorId = 'code-step-build:switch-to-prebuilt',
   }: {
     workspaceId: string;
     steps: WorkflowAction[];
-  }): Promise<void> {
+  } & Omit<LogicFunctionAuditOptions, 'capturedAudit'>): Promise<void> {
     const logicFunctionIds =
       extractCodeStepLogicFunctionIdsFromWorkflowSteps(steps);
 
@@ -191,6 +240,12 @@ export class CodeStepBuildService {
         },
         workspaceId,
         applicationUniversalIdentifier,
+        auditIdentity,
+        authUserWorkspaceId,
+        authApiKeyId,
+        authApplicationId,
+        authAgentId,
+        defaultSystemActorId,
       });
     }
   }

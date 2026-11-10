@@ -9,6 +9,11 @@ import { Repository } from 'typeorm';
 import { ApplicationRegistrationEntity } from 'src/engine/core-modules/application/application-registration/application-registration.entity';
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
+import {
+  captureNavigationMenuItemAudit,
+  withNavigationMenuItemAudit,
+  type NavigationMenuItemAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { findFlatEntityByIdInFlatEntityMapsOrThrow } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps-or-throw.util';
 import {
@@ -25,6 +30,16 @@ import { getLogicFunctionSubfolderForFromSource } from 'src/engine/metadata-modu
 import { type UniversalFlatLogicFunction } from 'src/engine/workspace-manager/workspace-migration/universal-flat-entity/types/universal-flat-logic-function.type';
 import { WorkspaceMigrationBuilderException } from 'src/engine/workspace-manager/workspace-migration/exceptions/workspace-migration-builder-exception';
 import { WorkspaceMigrationValidateBuildAndRunService } from 'src/engine/workspace-manager/workspace-migration/services/workspace-migration-validate-build-and-run-service';
+
+export type LogicFunctionAuditOptions = {
+  auditIdentity?: NavigationMenuItemAuditIdentity;
+  authUserWorkspaceId?: string;
+  authApiKeyId?: string;
+  authApplicationId?: string;
+  authAgentId?: string;
+  defaultSystemActorId?: string;
+  capturedAudit?: ReturnType<typeof captureNavigationMenuItemAudit>;
+};
 
 @Injectable()
 export class LogicFunctionFromSourceHelperService {
@@ -201,28 +216,56 @@ export class LogicFunctionFromSourceHelperService {
   async createOneFromMetadata({
     universalFlatLogicFunctionToCreate,
     workspaceId,
+    auditIdentity,
+    authUserWorkspaceId,
+    authApiKeyId,
+    authApplicationId,
+    authAgentId,
+    defaultSystemActorId,
+    capturedAudit,
   }: {
     universalFlatLogicFunctionToCreate: UniversalFlatLogicFunction & {
       id: string;
     };
     workspaceId: string;
-  }): Promise<UniversalFlatLogicFunction & { id: string }> {
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            logicFunction: {
-              flatEntityToCreate: [universalFlatLogicFunctionToCreate],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [],
+  } & LogicFunctionAuditOptions): Promise<
+    UniversalFlatLogicFunction & { id: string }
+  > {
+    const getLogicFunctionAudit =
+      capturedAudit ??
+      captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'logicFunction',
+        auditIdentity,
+        authUserWorkspaceId,
+        authApiKeyId,
+        authApplicationId,
+        authAgentId,
+        defaultSystemActorId,
+        expectedLogicFunctionCreateIds: [universalFlatLogicFunctionToCreate.id],
+      });
+
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getLogicFunctionAudit({
+        expectedLogicFunctionCreateIds: [universalFlatLogicFunctionToCreate.id],
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              logicFunction: {
+                flatEntityToCreate: [universalFlatLogicFunctionToCreate],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [],
+              },
             },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              universalFlatLogicFunctionToCreate.applicationUniversalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            universalFlatLogicFunctionToCreate.applicationUniversalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -238,26 +281,52 @@ export class LogicFunctionFromSourceHelperService {
     flatLogicFunctionToUpdate,
     workspaceId,
     applicationUniversalIdentifier,
+    auditIdentity,
+    authUserWorkspaceId,
+    authApiKeyId,
+    authApplicationId,
+    authAgentId,
+    defaultSystemActorId,
+    capturedAudit,
   }: {
     flatLogicFunctionToUpdate: FlatLogicFunction;
     workspaceId: string;
     applicationUniversalIdentifier: string;
-  }): Promise<FlatLogicFunction> {
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            logicFunction: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [flatLogicFunctionToUpdate],
+  } & LogicFunctionAuditOptions): Promise<FlatLogicFunction> {
+    const getLogicFunctionAudit =
+      capturedAudit ??
+      captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'logicFunction',
+        auditIdentity,
+        authUserWorkspaceId,
+        authApiKeyId,
+        authApplicationId,
+        authAgentId,
+        defaultSystemActorId,
+        expectedLogicFunctionUpdateIds: [flatLogicFunctionToUpdate.id],
+      });
+
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getLogicFunctionAudit({
+        expectedLogicFunctionUpdateIds: [flatLogicFunctionToUpdate.id],
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              logicFunction: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [flatLogicFunctionToUpdate],
+              },
             },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

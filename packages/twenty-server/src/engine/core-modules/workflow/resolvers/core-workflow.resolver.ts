@@ -245,11 +245,13 @@ export class CoreWorkflowResolver {
     @AuthUserWorkspaceId({ allowUndefined: true })
     userWorkspaceId: string | undefined,
     @Args('input') input: DeleteCoreWorkflowsInput,
+    @Context() context?: { req?: CoreWorkflowAndViewAuditIdentity },
   ): Promise<DeletedCoreWorkflowDTO[]> {
     return this.coreWorkflowMutationWorkspaceService.deleteWorkflows({
       workspaceId,
       userWorkspaceId,
       ...input,
+      auditIdentity: context?.req,
     });
   }
 
@@ -272,12 +274,14 @@ export class CoreWorkflowResolver {
     @AuthUserWorkspaceId({ allowUndefined: true })
     userWorkspaceId: string | undefined,
     @Args('input') input: DiscardCoreWorkflowDraftInput,
+    @Context() context?: { req?: CoreWorkflowAndViewAuditIdentity },
   ): Promise<CoreWorkflowDTO | null> {
     const coreWorkflowId =
       await this.coreWorkflowMutationWorkspaceService.discardDraftVersion({
         workspaceId,
         userWorkspaceId,
         ...input,
+        auditIdentity: context?.req,
       });
 
     if (!isDefined(coreWorkflowId)) {

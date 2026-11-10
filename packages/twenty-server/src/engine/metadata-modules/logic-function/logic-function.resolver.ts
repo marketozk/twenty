@@ -1,6 +1,7 @@
 import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
 import {
   Args,
+  Context,
   Mutation,
   Parent,
   Query,
@@ -16,6 +17,10 @@ import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorato
 import { ApplicationExceptionFilter } from 'src/engine/core-modules/application/application-exception-filter';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
 import { canCallerReachApplication } from 'src/engine/core-modules/application/utils/can-caller-reach-application.util';
+import {
+  captureNavigationMenuItemAudit,
+  type NavigationMenuItemAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { PreventNestToAutoLogGraphqlErrorsFilter } from 'src/engine/core-modules/graphql/filters/prevent-nest-to-auto-log-graphql-errors.filter';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
 import { UsageLimitGraphqlApiExceptionFilter } from 'src/engine/core-modules/usage-limit/filters/usage-limit-graphql-api-exception.filter';
@@ -23,6 +28,7 @@ import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.ent
 import { type AuthContextUser } from 'src/engine/core-modules/auth/types/auth-context.type';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
 import { ApplicationTargetArg } from 'src/engine/decorators/auth/application-target-arg.decorator';
+import { AuthApiKey } from 'src/engine/decorators/auth/auth-api-key.decorator';
 import { AuthApplication } from 'src/engine/decorators/auth/auth-application.decorator';
 import { AuthUser } from 'src/engine/decorators/auth/auth-user.decorator';
 import { AuthUserWorkspaceId } from 'src/engine/decorators/auth/auth-user-workspace-id.decorator';
@@ -221,8 +227,27 @@ export class LogicFunctionResolver {
   async deleteOneLogicFunction(
     @Args('input') { id }: LogicFunctionIdInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
+    @AuthApiKey() apiKey?: { id: string },
+    @Context()
+    context?: {
+      req?: {
+        application?: { id: string };
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<LogicFunctionDTO> {
     try {
+      const capturedAudit = captureNavigationMenuItemAudit({
+        workspaceId,
+        mode: 'logicFunction',
+        auditIdentity: context?.req,
+        authUserWorkspaceId: userWorkspaceId,
+        authApiKeyId: apiKey?.id,
+        authApplicationId: context?.req?.application?.id,
+        expectedLogicFunctionDeleteIds: [id],
+      });
+
       await this.logicFunctionFromSourceHelperService.findWorkspaceCustomLogicFunctionOrThrow(
         { id, workspaceId },
       );
@@ -230,6 +255,7 @@ export class LogicFunctionResolver {
       return await this.logicFunctionFromSourceService.deleteOneWithSource({
         id,
         workspaceId,
+        capturedAudit,
       });
     } catch (error) {
       return logicFunctionGraphQLApiExceptionHandler(error);
@@ -254,11 +280,24 @@ export class LogicFunctionResolver {
   async createOneLogicFunction(
     @Args('input') input: CreateLogicFunctionFromSourceInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
+    @AuthApiKey() apiKey?: { id: string },
+    @Context()
+    context?: {
+      req?: {
+        application?: { id: string };
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<LogicFunctionDTO> {
     try {
       return await this.logicFunctionFromSourceService.createOneFromSource({
         input,
         workspaceId,
+        auditIdentity: context?.req,
+        authUserWorkspaceId: userWorkspaceId,
+        authApiKeyId: apiKey?.id,
+        authApplicationId: context?.req?.application?.id,
       });
     } catch (error) {
       return logicFunctionGraphQLApiExceptionHandler(error);
@@ -281,6 +320,13 @@ export class LogicFunctionResolver {
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
     @AuthUser() { id: userId }: AuthContextUser,
     @AuthUserWorkspaceId() userWorkspaceId: string,
+    @AuthApiKey() apiKey?: { id: string },
+    @Context()
+    context?: {
+      req?: {
+        application?: { id: string };
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<LogicFunctionExecutionResultDTO> {
     try {
       return await this.logicFunctionFromSourceService.executeOneFromSource({
@@ -289,6 +335,10 @@ export class LogicFunctionResolver {
         workspaceId,
         userId,
         userWorkspaceId,
+        auditIdentity: context?.req,
+        authUserWorkspaceId: userWorkspaceId,
+        authApiKeyId: apiKey?.id,
+        authApplicationId: context?.req?.application?.id,
       });
     } catch (error) {
       return logicFunctionGraphQLApiExceptionHandler(error);
@@ -334,11 +384,24 @@ export class LogicFunctionResolver {
     })
     updateLogicFunctionFromSourceInput: UpdateLogicFunctionFromSourceInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
+    @AuthApiKey() apiKey?: { id: string },
+    @Context()
+    context?: {
+      req?: {
+        application?: { id: string };
+      } & NavigationMenuItemAuditIdentity;
+    },
   ): Promise<boolean> {
     try {
       await this.logicFunctionFromSourceService.updateOneFromSource({
         updateLogicFunctionFromSourceInput,
         workspaceId,
+        auditIdentity: context?.req,
+        authUserWorkspaceId: userWorkspaceId,
+        authApiKeyId: apiKey?.id,
+        authApplicationId: context?.req?.application?.id,
       });
 
       return true;
