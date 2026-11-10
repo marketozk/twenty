@@ -2,6 +2,10 @@ import { v4 } from 'uuid';
 import { isDefined } from 'twenty-shared/utils';
 
 import { type ApplicationService } from 'src/engine/core-modules/application/application.service';
+import {
+  captureNavigationMenuItemAudit,
+  withNavigationMenuItemAudit,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { CommandMenuItemAvailabilityType } from 'twenty-shared/types';
 import { EngineComponentKey } from 'src/engine/metadata-modules/command-menu-item/enums/engine-component-key.enum';
 import { type FlatCommandMenuItem } from 'src/engine/metadata-modules/flat-command-menu-item/types/flat-command-menu-item.type';
@@ -108,8 +112,18 @@ export const prefillFrontComponentCommandMenuItems = async ({
     return;
   }
 
-  const result =
-    await workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+  const getAudit = captureNavigationMenuItemAudit({
+    workspaceId,
+    mode: 'commandMenuItem',
+    defaultSystemActorId:
+      'dev-seeder:prefill-front-component-command-menu-items',
+    expectedCommandMenuItemCreateIds: flatCommandMenuItemsToCreate.map(
+      ({ id }) => id,
+    ),
+  });
+
+  const result = await withNavigationMenuItemAudit(getAudit(), () =>
+    workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
       {
         allFlatEntityOperationByMetadataName: {
           commandMenuItem: {
@@ -122,7 +136,8 @@ export const prefillFrontComponentCommandMenuItems = async ({
         applicationUniversalIdentifier:
           workspaceCustomFlatApplication.universalIdentifier,
       },
-    );
+    ),
+  );
 
   if (result.status === 'fail') {
     throw new Error(

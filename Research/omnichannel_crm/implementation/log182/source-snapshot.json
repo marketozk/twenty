@@ -1,0 +1,21 @@
+{
+  "packages/twenty-server/src/engine/core-modules/crm-audit/application-metadata-audit.ts": "19260e836a7b39282324d2bc63ad2685eb51dc8d5b474b5865e7f0b1ed43cfed",
+  "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "5bb248c9b273f56018893431da0ec06ae20629741e1f5ce89218f107cc6fe122",
+  "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "aaec6cfe6d07108d689d2367348ceba5d58cd31ee258cedde9912b4a7bff3a66",
+  "packages/twenty-server/src/engine/core-modules/crm-audit/navigation-menu-item-audit.ts": "662e423e4a6cd20b19a70677d154ca7b4fc6a888228d0f3048091af71218a06b",
+  "packages/twenty-server/src/engine/core-modules/workflow/resolvers/core-workflow-version-mutation.resolver.ts": "a415b4bcd428830810cd576cbb84a5faf33634be566f2b00820e9f49237c78ae",
+  "packages/twenty-server/src/engine/core-modules/workflow/resolvers/core-workflow.resolver.ts": "d33d3cdebfe147ebc91faba83574d77371c0418a7512fa898468995739643f09",
+  "packages/twenty-server/src/engine/core-modules/workflow/services/core-workflow-lifecycle.workspace-service.ts": "1fe939737a8d7922a45b847b32c11fd488ea052c1cb72d7e80c475ae287c95e7",
+  "packages/twenty-server/src/engine/core-modules/workflow/services/core-workflow-mutation.workspace-service.ts": "956fc7eb8955ca7c095280d4e85ad2fa1a8904063d9a31c9561158d16fee0103",
+  "packages/twenty-server/src/engine/metadata-modules/command-menu-item/command-menu-item.resolver.ts": "c496697f8b115b0710604d5c6f728181d8218abf80066bdb28047f957d02e324",
+  "packages/twenty-server/src/engine/metadata-modules/command-menu-item/command-menu-item.service.ts": "9bb7cfd308eb8eba518d5333b95d7a932022db72cfa92be4959d34aaa54a4318",
+  "packages/twenty-server/src/engine/metadata-modules/object-metadata/controllers/object-metadata.controller.ts": "a943f10e2864710e3903dc9b90eab0569b57df06a27a866697325d8297cad0ad",
+  "packages/twenty-server/src/engine/metadata-modules/object-metadata/object-metadata.resolver.ts": "2ba94cf8f9f01953e6b06a2c77d1d51ef2ea91ae13b13606d81f87b881cbeb09",
+  "packages/twenty-server/src/engine/metadata-modules/object-metadata/object-metadata.service.ts": "79b1acf73555cd4a67f0e2ff77126cc833215b0b15a0d7a36fa36f894d6b1ee3",
+  "packages/twenty-server/src/engine/metadata-modules/object-metadata/tools/update-many-object-metadata.tool.ts": "9693cac12e9fa7cb66ea61907041437f6d8d59f7a3e262cf5425baec8ccf0fce",
+  "packages/twenty-server/src/engine/metadata-modules/object-metadata/tools/update-object-metadata.tool.ts": "db58352d664fba4bb11728d85942df33c4dbc8daa14e8f3a80517c7a35027802",
+  "packages/twenty-server/src/engine/workspace-manager/standard-objects-prefill-data/utils/prefill-front-component-command-menu-items.util.ts": "0190bd263b8a00ae2fb57a8b12e97153f8deb1ac62ebcf2d78a928d06d446717",
+  "packages/twenty-server/src/engine/workspace-manager/standard-objects-prefill-data/utils/prefill-workflow-command-menu-items.util.ts": "32670cee7c9eb33004433835165971cc3265342345c243453f875e963bae9d4a",
+  "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts": "6d14d138592569df3ec1c890e188f479e8128dea267ba26ab455a7d38186bedc",
+  "packages/twenty-server/test/fork-migration/crm-audit-command-menu-item.postgres-spec.ts": "6f6bb7201ca4b4feefddb6b1641e1b1cdd8a5143bda4100ef82b83d066fcad98"
+}

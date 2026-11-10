@@ -1,0 +1,37 @@
+{
+  "log": "LOG-182",
+  "issue": "ROB-765",
+  "date": "2026-11-10",
+  "title": "Transactional audit of commandMenuItem (core.commandMenuItem) lifecycle and metadata/application cascades",
+  "targetedPostgres": {
+    "suitesPassed": 9,
+    "suitesTotal": 9,
+    "testsPassed": 86,
+    "testsTotal": 86,
+    "newPostgresTests": 4,
+    "durationSeconds": 21.461
+  },
+  "fullRegression": {
+    "suitesPassed": 127,
+    "suitesTotal": 127,
+    "testsPassed": 3191,
+    "testsTotal": 3191,
+    "durationSeconds": 712.472
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.191
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 500,
+    "currentRootFiles": 501,
+    "baselineDiagnostics": 262,
+    "currentDiagnostics": 262,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 19
+}

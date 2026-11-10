@@ -77,11 +77,20 @@ export class ObjectMetadataService {
     updateObjectInputs,
     workspaceId,
     ownerFlatApplication,
+    auditIdentity,
   }: {
     workspaceId: string;
     updateObjectInputs: UpdateOneObjectInput[];
     ownerFlatApplication?: FlatApplication;
+    auditIdentity?: ApplicationMetadataAuditIdentity;
   }): Promise<FlatObjectMetadata[]> {
+    const getCascadeAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'cascade',
+      auditIdentity,
+      defaultSystemActorId: 'object-metadata:update',
+    });
+
     if (updateObjectInputs.length === 0) {
       return [];
     }
@@ -132,6 +141,7 @@ export class ObjectMetadataService {
       updateObjectInputs,
       workspaceId,
       ownerFlatApplication,
+      getCascadeAudit,
     });
   }
 
@@ -139,10 +149,12 @@ export class ObjectMetadataService {
     updateObjectInputs,
     workspaceId,
     ownerFlatApplication,
+    getCascadeAudit,
   }: {
     workspaceId: string;
     updateObjectInputs: UpdateOneObjectInput[];
     ownerFlatApplication?: FlatApplication;
+    getCascadeAudit: ReturnType<typeof captureNavigationMenuItemAudit>;
   }): Promise<FlatObjectMetadata[]> {
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
@@ -187,56 +199,70 @@ export class ObjectMetadataService {
       }),
     );
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            objectMetadata: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: conversions.map(
-                ({ flatObjectMetadataToUpdate }) => flatObjectMetadataToUpdate,
-              ),
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getCascadeAudit({
+        expectedUpdatedObjectIds: conversions.map(
+          ({ flatObjectMetadataToUpdate }) =>
+            findFlatEntityByUniversalIdentifierOrThrow({
+              universalIdentifier:
+                flatObjectMetadataToUpdate.universalIdentifier,
+              flatEntityMaps: existingFlatObjectMetadataMaps,
+            }).id,
+        ),
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              objectMetadata: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: conversions.map(
+                  ({ flatObjectMetadataToUpdate }) =>
+                    flatObjectMetadataToUpdate,
+                ),
+              },
+              index: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: conversions.flatMap(
+                  ({ flatIndexMetadatasToUpdate }) =>
+                    flatIndexMetadatasToUpdate,
+                ),
+              },
+              fieldMetadata: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: conversions.flatMap(
+                  ({ otherObjectFlatFieldMetadatasToUpdate }) =>
+                    otherObjectFlatFieldMetadatasToUpdate,
+                ),
+              },
+              viewField: {
+                flatEntityToCreate: conversions.flatMap(
+                  ({ flatViewFieldsToCreate }) => flatViewFieldsToCreate,
+                ),
+                flatEntityToDelete: [],
+                flatEntityToUpdate: conversions.flatMap(
+                  ({ flatViewFieldsToUpdate }) => flatViewFieldsToUpdate,
+                ),
+              },
+              searchFieldMetadata: {
+                flatEntityToCreate: conversions.flatMap(
+                  ({ searchFieldMetadatasToCreate }) =>
+                    searchFieldMetadatasToCreate,
+                ),
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [],
+              },
             },
-            index: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: conversions.flatMap(
-                ({ flatIndexMetadatasToUpdate }) => flatIndexMetadatasToUpdate,
-              ),
-            },
-            fieldMetadata: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: conversions.flatMap(
-                ({ otherObjectFlatFieldMetadatasToUpdate }) =>
-                  otherObjectFlatFieldMetadatasToUpdate,
-              ),
-            },
-            viewField: {
-              flatEntityToCreate: conversions.flatMap(
-                ({ flatViewFieldsToCreate }) => flatViewFieldsToCreate,
-              ),
-              flatEntityToDelete: [],
-              flatEntityToUpdate: conversions.flatMap(
-                ({ flatViewFieldsToUpdate }) => flatViewFieldsToUpdate,
-              ),
-            },
-            searchFieldMetadata: {
-              flatEntityToCreate: conversions.flatMap(
-                ({ searchFieldMetadatasToCreate }) =>
-                  searchFieldMetadatasToCreate,
-              ),
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [],
-            },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              resolvedOwnerFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            resolvedOwnerFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -295,15 +321,18 @@ export class ObjectMetadataService {
     updateObjectInput,
     workspaceId,
     ownerFlatApplication,
+    auditIdentity,
   }: {
     workspaceId: string;
     updateObjectInput: UpdateOneObjectInput;
     ownerFlatApplication?: FlatApplication;
+    auditIdentity?: ApplicationMetadataAuditIdentity;
   }): Promise<FlatObjectMetadata> {
     const [updatedFlatObjectMetadata] = await this.updateManyObjects({
       updateObjectInputs: [updateObjectInput],
       workspaceId,
       ownerFlatApplication,
+      auditIdentity,
     });
 
     return updatedFlatObjectMetadata;

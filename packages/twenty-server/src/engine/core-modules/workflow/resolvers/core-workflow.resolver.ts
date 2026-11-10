@@ -5,6 +5,7 @@ import { msg } from '@lingui/core/macro';
 import { PermissionFlagType } from 'twenty-shared/constants';
 
 import { type CoreWorkflowAndViewAuditIdentity } from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
+import { type NavigationMenuItemAuditIdentity } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { CoreResolver } from 'src/engine/api/graphql/graphql-config/decorators/core-resolver.decorator';
 import { PreventNestToAutoLogGraphqlErrorsFilter } from 'src/engine/core-modules/graphql/filters/prevent-nest-to-auto-log-graphql-errors.filter';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
@@ -113,10 +114,12 @@ export class CoreWorkflowResolver {
     @AuthUserWorkspaceId({ allowUndefined: true })
     userWorkspaceId: string | undefined,
     @Args('input') input: UpdateCoreWorkflowInput,
+    @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<CoreWorkflowDTO | null> {
     await this.coreWorkflowMutationWorkspaceService.updateWorkflow({
       workspaceId,
       userWorkspaceId,
+      auditIdentity: context?.req,
       ...input,
     });
 

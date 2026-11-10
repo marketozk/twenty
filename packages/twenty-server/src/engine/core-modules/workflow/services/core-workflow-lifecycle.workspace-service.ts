@@ -28,6 +28,7 @@ import { WorkflowVersionCoreSyncService } from 'src/engine/core-modules/workflow
 import { buildCoreDispatchIds } from 'src/engine/core-modules/workflow/utils/build-core-dispatch-ids.util';
 import { getCoreWorkflowVersionEditLockKey } from 'src/engine/core-modules/workflow/utils/get-core-workflow-version-edit-lock-key.util';
 import { CommandMenuItemService } from 'src/engine/metadata-modules/command-menu-item/command-menu-item.service';
+import { type NavigationMenuItemAuditIdentity } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { EngineComponentKey } from 'src/engine/metadata-modules/command-menu-item/enums/engine-component-key.enum';
 import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
 import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
@@ -134,10 +135,12 @@ export class CoreWorkflowLifecycleWorkspaceService {
     workspaceId,
     userWorkspaceId,
     coreWorkflowVersionId,
+    auditIdentity,
   }: {
     workspaceId: string;
     userWorkspaceId: string | undefined;
     coreWorkflowVersionId: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<boolean> {
     const resolved = await this.resolveCoreVersionWithWorkflowOrThrow({
       workspaceId,
@@ -302,6 +305,8 @@ export class CoreWorkflowLifecycleWorkspaceService {
           await this.deleteCommandMenuItem({
             workspaceId,
             resolved: previous,
+            userWorkspaceId,
+            auditIdentity,
           });
         }
 
@@ -310,6 +315,8 @@ export class CoreWorkflowLifecycleWorkspaceService {
         await this.createOrUpdateCommandMenuItem({
           workspaceId,
           resolved,
+          userWorkspaceId,
+          auditIdentity,
         });
 
         await this.workflowVersionCoreSyncService.invalidateAutomatedTriggerMaps(
@@ -325,10 +332,12 @@ export class CoreWorkflowLifecycleWorkspaceService {
     workspaceId,
     userWorkspaceId,
     coreWorkflowVersionId,
+    auditIdentity,
   }: {
     workspaceId: string;
     userWorkspaceId: string | undefined;
     coreWorkflowVersionId: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<boolean> {
     const resolved = await this.resolveCoreVersionWithWorkflowOrThrow({
       workspaceId,
@@ -367,7 +376,12 @@ export class CoreWorkflowLifecycleWorkspaceService {
 
         await this.deleteCronTriggerCacheEntry(resolved);
 
-        await this.deleteCommandMenuItem({ workspaceId, resolved });
+        await this.deleteCommandMenuItem({
+          workspaceId,
+          resolved,
+          userWorkspaceId,
+          auditIdentity,
+        });
 
         await this.workflowVersionCoreSyncService.invalidateAutomatedTriggerMaps(
           workspaceId,
@@ -635,9 +649,13 @@ export class CoreWorkflowLifecycleWorkspaceService {
   private async createOrUpdateCommandMenuItem({
     workspaceId,
     resolved,
+    userWorkspaceId,
+    auditIdentity,
   }: {
     workspaceId: string;
     resolved: ResolvedCoreVersion;
+    userWorkspaceId?: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<void> {
     const { trigger } = resolved;
 
@@ -669,6 +687,11 @@ export class CoreWorkflowLifecycleWorkspaceService {
           availabilityObjectMetadataId,
         },
         workspaceId,
+        {
+          auditIdentity,
+          authUserWorkspaceId: userWorkspaceId,
+          defaultSystemActorId: 'workflow-lifecycle:command-menu-item',
+        },
       );
     } else {
       await this.commandMenuItemService.create(
@@ -689,6 +712,11 @@ export class CoreWorkflowLifecycleWorkspaceService {
           availabilityObjectMetadataId,
         },
         workspaceId,
+        {
+          auditIdentity,
+          authUserWorkspaceId: userWorkspaceId,
+          defaultSystemActorId: 'workflow-lifecycle:command-menu-item',
+        },
       );
     }
   }
@@ -696,9 +724,13 @@ export class CoreWorkflowLifecycleWorkspaceService {
   private async deleteCommandMenuItem({
     workspaceId,
     resolved,
+    userWorkspaceId,
+    auditIdentity,
   }: {
     workspaceId: string;
     resolved: ResolvedCoreVersion;
+    userWorkspaceId?: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<void> {
     const { trigger } = resolved;
 
@@ -715,6 +747,11 @@ export class CoreWorkflowLifecycleWorkspaceService {
       await this.commandMenuItemService.delete(
         existingCommandMenuItem.id,
         workspaceId,
+        {
+          auditIdentity,
+          authUserWorkspaceId: userWorkspaceId,
+          defaultSystemActorId: 'workflow-lifecycle:command-menu-item',
+        },
       );
     }
   }

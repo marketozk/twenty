@@ -215,8 +215,9 @@ export class ObjectMetadataController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() update: UpdateObjectPayload,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Req() request?: AuthenticatedRequest,
   ) {
-    return this.handleUpdate({ id, update, workspaceId });
+    return this.handleUpdate({ id, update, workspaceId, request });
   }
 
   @Put(':id')
@@ -224,8 +225,9 @@ export class ObjectMetadataController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() update: UpdateObjectPayload,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Req() request?: AuthenticatedRequest,
   ) {
-    return this.handleUpdate({ id, update, workspaceId });
+    return this.handleUpdate({ id, update, workspaceId, request });
   }
 
   @Delete(':id')
@@ -253,14 +255,19 @@ export class ObjectMetadataController {
     id,
     update,
     workspaceId,
+    request,
   }: {
     id: string;
     update: UpdateObjectPayload;
     workspaceId: string;
+    request?: AuthenticatedRequest;
   }) {
     const flatObject = await this.objectMetadataService.updateOneObject({
       updateObjectInput: { id, update },
       workspaceId,
+      auditIdentity: request
+        ? roleAuditIdentityFromRequest(request)
+        : undefined,
     });
 
     const [fields, derivedFieldMetadataIds] = await Promise.all([

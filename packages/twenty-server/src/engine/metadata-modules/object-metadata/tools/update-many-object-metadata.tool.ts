@@ -38,10 +38,11 @@ export class UpdateManyObjectMetadataTool extends BaseTool<
 
   async execute({
     input,
-    context: { workspaceId },
+    context,
   }: ToolExecuteArgs<
     typeof updateManyObjectMetadataInputSchema
   >): Promise<ToolOutput> {
+    const { workspaceId } = context;
     await this.objectMetadataService.updateManyObjects({
       updateObjectInputs: input.objects.map(({ id, icon, ...update }) => {
         const normalizedIcon = normalizeIconName(icon);
@@ -55,6 +56,25 @@ export class UpdateManyObjectMetadataTool extends BaseTool<
         };
       }),
       workspaceId,
+      auditIdentity: context.authContext
+        ? {
+            auth: context.authContext,
+            agentId: context.agentId,
+          }
+        : context.userId ||
+            context.actorContext?.workspaceMemberId ||
+            context.application ||
+            context.agentId
+          ? {
+              user: context.userId ? { id: context.userId } : undefined,
+              workspaceMemberId:
+                context.actorContext?.workspaceMemberId ?? undefined,
+              application: context.application
+                ? { id: context.application.id }
+                : undefined,
+              agentId: context.agentId,
+            }
+          : undefined,
     });
 
     return {

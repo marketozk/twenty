@@ -31,6 +31,7 @@ import {
 import {
   assertAgentChatChannelRoleRowInvariants,
   assertAgentChatChannelRowInvariants,
+  assertCommandMenuItemRowInvariants,
   assertFrontComponentRowInvariants,
   assertLogicFunctionRowInvariants,
   assertNavigationMenuItemRowInvariants,
@@ -42,12 +43,14 @@ import {
   LOGIC_FUNCTION_TRIGGER_SETTINGS_KEYS,
   projectAgentChatChannel,
   projectAgentChatChannelRole,
+  projectCommandMenuItem,
   projectFrontComponent,
   projectLogicFunction,
   projectNavigationMenuItem,
   projectSettingsMenuItem,
   projectTimelineActivityType,
   projectWebhook,
+  resolveExpectedCommandMenuItemOverrides,
   resolveExpectedFrontComponentWidgetAvailability,
   scalarNavigationMenuItemWithoutTimestamps,
   TIMELINE_ACTIVITY_TYPE_NULLABLE_UUID_KEYS,
@@ -114,6 +117,7 @@ export type ApplicationMetadataAuditMappings = {
   logicFunctions?: Record<string, { id: string } | undefined>;
   workflowVersions?: Record<string, { id: string } | undefined>;
   timelineActivityTypes?: Record<string, { id: string } | undefined>;
+  commandMenuItems?: Record<string, { id: string } | undefined>;
 };
 
 type MigrationAction = {
@@ -156,6 +160,7 @@ export const AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES = new Set<string>([
   'settingsMenuItem',
   'logicFunction',
   'timelineActivityType',
+  'commandMenuItem',
 ]);
 
 export const AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES =
@@ -845,7 +850,8 @@ const readExistingTables = async (
       to_regclass('core."settingsMenuItem"') IS NOT NULL AS "settingsMenuItem",
       to_regclass('core."logicFunction"') IS NOT NULL AS "logicFunction",
       to_regclass('core."workflowVersion"') IS NOT NULL AS "workflowVersion",
-      to_regclass('core."timelineActivityType"') IS NOT NULL AS "timelineActivityType"`,
+      to_regclass('core."timelineActivityType"') IS NOT NULL AS "timelineActivityType",
+      to_regclass('core."commandMenuItem"') IS NOT NULL AS "commandMenuItem"`,
   );
   const existing = new Set<string>();
   for (const [key, present] of Object.entries(reg ?? {})) {
@@ -2445,6 +2451,180 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       }
     }
 
+    const hasCommandMenuItemTable = existingTables.has('commandMenuItem');
+    const beforeCommandMenuItems = hasCommandMenuItemTable
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'commandMenuItem',
+          workspaceId,
+          true,
+        )
+      : new Map<string, Record<string, unknown>>();
+    for (const cmiRow of beforeCommandMenuItems.values()) {
+      assertCommandMenuItemRowInvariants(cmiRow, workspaceId);
+    }
+    const plannedCommandMenuItemCreatesByUniversalId = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedCommandMenuItemUpdatePayloads = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    for (const action of actions) {
+      if (action.metadataName === 'commandMenuItem') {
+        if (action.type === 'create') {
+          if (!hasCommandMenuItemTable) {
+            throw new Error(
+              'Application metadata audit table commandMenuItem is unavailable',
+            );
+          }
+          if (!action.flatEntity) {
+            throw new Error(
+              'Application metadata audit requires flatEntity on commandMenuItem create action',
+            );
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (plannedCommandMenuItemCreatesByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit duplicate commandMenuItem create universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error(
+              'Application metadata audit commandMenuItem create belongs to another application',
+            );
+          }
+          const explicitId =
+            action.id !== undefined
+              ? uuid(action.id)
+              : action.flatEntity.id !== undefined
+                ? uuid(action.flatEntity.id)
+                : undefined;
+          if (
+            explicitId !== undefined &&
+            beforeCommandMenuItems.has(explicitId)
+          ) {
+            throw new Error(
+              'Application metadata audit commandMenuItem create ID already exists',
+            );
+          }
+          plannedCommandMenuItemCreatesByUniversalId.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.commandMenuItems?.[universalId]?.id;
+          if (!mappedId || !action.update) {
+            throw new Error(
+              'Application metadata audit commandMenuItem update missing mapping or update payload',
+            );
+          }
+          plannedCommandMenuItemUpdatePayloads.set(
+            uuid(mappedId),
+            action.update,
+          );
+        }
+      }
+    }
+    const plannedCommandMenuItemUpdates = resolveMappedIds(
+      actions,
+      'commandMenuItem',
+      'update',
+      mappings.commandMenuItems ?? {},
+    );
+    const plannedCommandMenuItemDeletes = resolveMappedIds(
+      actions,
+      'commandMenuItem',
+      'delete',
+      mappings.commandMenuItems ?? {},
+    );
+    for (const cmiId of plannedCommandMenuItemUpdates) {
+      const beforeCmi = beforeCommandMenuItems.get(cmiId);
+      if (!beforeCmi || uuid(beforeCmi.applicationId) !== applicationId) {
+        throw new Error(
+          'Application metadata audit cannot update missing or foreign commandMenuItem',
+        );
+      }
+    }
+    const effectiveCascadePageLayoutIds = new Set<string>(
+      plannedPageLayoutDeletes,
+    );
+    for (const [layoutId, layoutRow] of beforePageLayouts.entries()) {
+      const objId = nullableUuid(layoutRow.objectMetadataId);
+      if (objId !== null && plannedObjectDeletes.has(objId)) {
+        effectiveCascadePageLayoutIds.add(layoutId);
+      }
+    }
+    const deletedCoreWorkflowVersionIdsForCmi = new Set<string>(
+      plannedWorkflowVersionDeletesForCascade,
+    );
+    const deletedWorkspaceWorkflowVersionIdsForCmi = new Set<string>();
+    for (const [
+      versionId,
+      versionRow,
+    ] of beforeWorkflowVersionsForCascade.entries()) {
+      const coreWfId = nullableUuid(versionRow.coreWorkflowId);
+      if (
+        deletedCoreWorkflowVersionIdsForCmi.has(versionId) ||
+        (coreWfId !== null && plannedWorkflowDeletesForCascade.has(coreWfId))
+      ) {
+        deletedCoreWorkflowVersionIdsForCmi.add(versionId);
+        const wsVerId = nullableUuid(versionRow.workspaceWorkflowVersionId);
+        if (wsVerId !== null) {
+          deletedWorkspaceWorkflowVersionIdsForCmi.add(wsVerId);
+        }
+      }
+    }
+    const isParentCascadeDeletedCommandMenuItem = (
+      beforeCmi: Record<string, unknown>,
+    ): boolean => {
+      const fcId = nullableUuid(beforeCmi.frontComponentId);
+      const availObjId = nullableUuid(beforeCmi.availabilityObjectMetadataId);
+      const navObjId = nullableUuid(beforeCmi.navigationTargetObjectMetadataId);
+      const plId = nullableUuid(beforeCmi.pageLayoutId);
+      const coreVerId = nullableUuid(beforeCmi.coreWorkflowVersionId);
+      const wsVerId = nullableUuid(beforeCmi.workflowVersionId);
+      return (
+        (fcId !== null && plannedFrontComponentDeletes.has(fcId)) ||
+        (availObjId !== null && plannedObjectDeletes.has(availObjId)) ||
+        (navObjId !== null && plannedObjectDeletes.has(navObjId)) ||
+        (plId !== null && effectiveCascadePageLayoutIds.has(plId)) ||
+        (coreVerId !== null &&
+          deletedCoreWorkflowVersionIdsForCmi.has(coreVerId)) ||
+        (wsVerId !== null &&
+          deletedWorkspaceWorkflowVersionIdsForCmi.has(wsVerId))
+      );
+    };
+    for (const cmiId of plannedCommandMenuItemDeletes) {
+      const beforeCmi = beforeCommandMenuItems.get(cmiId);
+      if (!beforeCmi) {
+        throw new Error(
+          'Application metadata audit cannot delete missing commandMenuItem',
+        );
+      }
+      if (mode === 'objectDelete' || mode === 'fieldDelete') {
+        if (!isParentCascadeDeletedCommandMenuItem(beforeCmi)) {
+          throw new Error(
+            `Application metadata ${mode} cannot delete unrelated commandMenuItem`,
+          );
+        }
+      } else if (
+        uuid(beforeCmi.applicationId) !== applicationId &&
+        !isParentCascadeDeletedCommandMenuItem(beforeCmi)
+      ) {
+        throw new Error(
+          'Application metadata audit cannot delete foreign commandMenuItem',
+        );
+      }
+    }
+
     const plannedNavCreatesByUniversalIdentifier = new Map<
       string,
       { id?: string; flatEntity: Record<string, unknown> }
@@ -2654,7 +2834,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
             action.metadataName === 'rowLevelPermissionPredicate' ||
             action.metadataName === 'view' ||
             action.metadataName === 'pageLayout' ||
-            action.metadataName === 'navigationMenuItem') &&
+            action.metadataName === 'navigationMenuItem' ||
+            action.metadataName === 'commandMenuItem') &&
           action.type !== 'delete'
         ) {
           throw new Error(
@@ -2808,7 +2989,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           action.metadataName === 'frontComponent' ||
           action.metadataName === 'settingsMenuItem' ||
           action.metadataName === 'logicFunction' ||
-          action.metadataName === 'timelineActivityType'
+          action.metadataName === 'timelineActivityType' ||
+          action.metadataName === 'commandMenuItem'
         ) {
           throw new Error(
             'Application metadata fieldDelete cannot mutate roles, objects, object permissions, or predicate groups',
@@ -6439,6 +6621,557 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       );
     }
 
+    // 19. Verify and record core.commandMenuItem lifecycle and cascade deletions
+    let expectedCommandMenuItemsSerialized: string | undefined;
+    if (hasCommandMenuItemTable) {
+      const afterCommandMenuItems = await readTableSnapshot(
+        runner,
+        existingTables,
+        'commandMenuItem',
+        workspaceId,
+        false,
+      );
+      const createdCommandMenuItemsByUniversalId = new Map<
+        string,
+        Record<string, unknown>
+      >();
+      for (const [id, afterCmi] of afterCommandMenuItems.entries()) {
+        assertCommandMenuItemRowInvariants(afterCmi, workspaceId);
+        if (!beforeCommandMenuItems.has(id)) {
+          const universalId = uuid(afterCmi.universalIdentifier);
+          if (createdCommandMenuItemsByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit detected duplicate created commandMenuItem universalIdentifier',
+            );
+          }
+          createdCommandMenuItemsByUniversalId.set(universalId, afterCmi);
+        }
+      }
+      if (
+        createdCommandMenuItemsByUniversalId.size !==
+        plannedCommandMenuItemCreatesByUniversalId.size
+      ) {
+        throw new Error(
+          'Application metadata audit commandMenuItem created row count mismatch',
+        );
+      }
+
+      const cmiFrontComponentMap: Record<string, { id: string } | undefined> = {
+        ...(mappings.frontComponents ?? {}),
+      };
+      for (const [id, afterFc] of afterFrontComponents.entries()) {
+        cmiFrontComponentMap[uuid(afterFc.universalIdentifier)] = { id };
+      }
+      const cmiObjectMap: Record<string, { id: string } | undefined> = {
+        ...(mappings.objectMetadatas ?? {}),
+      };
+      for (const action of actions) {
+        if (
+          action.metadataName === 'objectMetadata' &&
+          action.type === 'create' &&
+          action.flatEntity?.universalIdentifier
+        ) {
+          const createdObjId = action.id ?? action.flatEntity.id;
+          if (typeof createdObjId === 'string' && isUUID(createdObjId)) {
+            cmiObjectMap[uuid(action.flatEntity.universalIdentifier)] = {
+              id: uuid(createdObjId),
+            };
+          }
+        }
+      }
+      const cmiPageLayoutMap: Record<string, { id: string } | undefined> = {
+        ...(mappings.pageLayouts ?? {}),
+      };
+      for (const action of actions) {
+        if (
+          action.metadataName === 'pageLayout' &&
+          action.type === 'create' &&
+          action.flatEntity?.universalIdentifier
+        ) {
+          const createdPlId = action.id ?? action.flatEntity.id;
+          if (typeof createdPlId === 'string' && isUUID(createdPlId)) {
+            cmiPageLayoutMap[uuid(action.flatEntity.universalIdentifier)] = {
+              id: uuid(createdPlId),
+            };
+          }
+        }
+      }
+      const resolveAppCmiRelationId = (
+        source: Record<string, unknown>,
+        directKey: string,
+        universalKey: string,
+        map: Record<string, { id: string } | undefined>,
+      ): string | null | undefined => {
+        if (universalKey in source && source[universalKey] !== undefined) {
+          if (source[universalKey] === null) return null;
+          const mappedId = map[uuid(source[universalKey])]?.id;
+          return mappedId ? uuid(mappedId) : null;
+        }
+        if (directKey in source && source[directKey] !== undefined) {
+          return nullableUuid(source[directKey]);
+        }
+        return undefined;
+      };
+
+      for (const [
+        universalId,
+        planned,
+      ] of plannedCommandMenuItemCreatesByUniversalId.entries()) {
+        const afterCmi = createdCommandMenuItemsByUniversalId.get(universalId);
+        if (!afterCmi) {
+          throw new Error(
+            'Application metadata commandMenuItem create did not persist expected row',
+          );
+        }
+        const createdId = uuid(afterCmi.id);
+        if (planned.id !== undefined && createdId !== planned.id) {
+          throw new Error(
+            'Application metadata commandMenuItem create persisted unexpected ID',
+          );
+        }
+        if (uuid(afterCmi.applicationId) !== applicationId) {
+          throw new Error(
+            'Application metadata commandMenuItem create persisted unexpected applicationId',
+          );
+        }
+        const afterProj = projectCommandMenuItem(afterCmi);
+        for (const textKey of [
+          'engineComponentKey',
+          'label',
+          'availabilityType',
+        ] as const) {
+          if (
+            planned.flatEntity[textKey] !== undefined &&
+            afterProj[textKey] !== String(planned.flatEntity[textKey])
+          ) {
+            throw new Error(
+              `Application metadata commandMenuItem create persisted unexpected ${textKey}`,
+            );
+          }
+        }
+        for (const nullableTextKey of [
+          'icon',
+          'shortLabel',
+          'conditionalAvailabilityExpression',
+          'conditionalPinnedExpression',
+        ] as const) {
+          if (planned.flatEntity[nullableTextKey] !== undefined) {
+            const expectedVal =
+              planned.flatEntity[nullableTextKey] === null
+                ? null
+                : String(planned.flatEntity[nullableTextKey]);
+            if (afterProj[nullableTextKey] !== expectedVal) {
+              throw new Error(
+                `Application metadata commandMenuItem create persisted unexpected ${nullableTextKey}`,
+              );
+            }
+          }
+        }
+        if (
+          planned.flatEntity.position !== undefined &&
+          afterProj.position !== Number(planned.flatEntity.position)
+        ) {
+          throw new Error(
+            'Application metadata commandMenuItem create persisted unexpected position',
+          );
+        }
+        for (const boolKey of [
+          'isPinned',
+          'isActive',
+          'isSystemSideEffect',
+        ] as const) {
+          if (
+            planned.flatEntity[boolKey] !== undefined &&
+            afterProj[boolKey] !== Boolean(planned.flatEntity[boolKey])
+          ) {
+            throw new Error(
+              `Application metadata commandMenuItem create persisted unexpected ${boolKey}`,
+            );
+          }
+        }
+        for (const directUuidKey of [
+          'workflowVersionId',
+          'coreWorkflowVersionId',
+        ] as const) {
+          if (
+            planned.flatEntity[directUuidKey] !== undefined &&
+            afterProj[directUuidKey] !==
+              nullableUuid(planned.flatEntity[directUuidKey])
+          ) {
+            throw new Error(
+              `Application metadata commandMenuItem create persisted unexpected ${directUuidKey}`,
+            );
+          }
+        }
+        const expectedFcId = resolveAppCmiRelationId(
+          planned.flatEntity,
+          'frontComponentId',
+          'frontComponentUniversalIdentifier',
+          cmiFrontComponentMap,
+        );
+        if (
+          expectedFcId !== undefined &&
+          afterProj.frontComponentId !== expectedFcId
+        ) {
+          throw new Error(
+            'Application metadata commandMenuItem create persisted unexpected frontComponentId',
+          );
+        }
+        const expectedAvailObjId = resolveAppCmiRelationId(
+          planned.flatEntity,
+          'availabilityObjectMetadataId',
+          'availabilityObjectMetadataUniversalIdentifier',
+          cmiObjectMap,
+        );
+        if (
+          expectedAvailObjId !== undefined &&
+          afterProj.availabilityObjectMetadataId !== expectedAvailObjId
+        ) {
+          throw new Error(
+            'Application metadata commandMenuItem create persisted unexpected availabilityObjectMetadataId',
+          );
+        }
+        const expectedNavObjId = resolveAppCmiRelationId(
+          planned.flatEntity,
+          'navigationTargetObjectMetadataId',
+          'navigationTargetObjectMetadataUniversalIdentifier',
+          cmiObjectMap,
+        );
+        if (
+          expectedNavObjId !== undefined &&
+          afterProj.navigationTargetObjectMetadataId !== expectedNavObjId
+        ) {
+          throw new Error(
+            'Application metadata commandMenuItem create persisted unexpected navigationTargetObjectMetadataId',
+          );
+        }
+        const expectedPlId = resolveAppCmiRelationId(
+          planned.flatEntity,
+          'pageLayoutId',
+          'pageLayoutUniversalIdentifier',
+          cmiPageLayoutMap,
+        );
+        if (
+          expectedPlId !== undefined &&
+          afterProj.pageLayoutId !== expectedPlId
+        ) {
+          throw new Error(
+            'Application metadata commandMenuItem create persisted unexpected pageLayoutId',
+          );
+        }
+        if (planned.flatEntity.payload !== undefined) {
+          const expectedPayload =
+            planned.flatEntity.payload === null
+              ? null
+              : planned.flatEntity.payload;
+          if (
+            canonicalAuditJson(afterProj.payload) !==
+            canonicalAuditJson(expectedPayload)
+          ) {
+            throw new Error(
+              'Application metadata commandMenuItem create persisted unexpected payload',
+            );
+          }
+        }
+        if (planned.flatEntity.hotKeys !== undefined) {
+          const expectedHotKeys = Array.isArray(planned.flatEntity.hotKeys)
+            ? planned.flatEntity.hotKeys.map((item: unknown) => String(item))
+            : null;
+          if (
+            canonicalAuditJson(afterProj.hotKeys) !==
+            canonicalAuditJson(expectedHotKeys)
+          ) {
+            throw new Error(
+              'Application metadata commandMenuItem create persisted unexpected hotKeys',
+            );
+          }
+        }
+        const expectedOverrides = resolveExpectedCommandMenuItemOverrides(
+          planned.flatEntity,
+          cmiObjectMap,
+          cmiPageLayoutMap,
+        );
+        if (
+          expectedOverrides !== undefined &&
+          canonicalAuditJson(afterProj.overrides) !==
+            canonicalAuditJson(expectedOverrides)
+        ) {
+          throw new Error(
+            'Application metadata commandMenuItem create persisted unexpected overrides',
+          );
+        }
+        recordMutation('commandMenuItem', createdId, 'create', null, afterProj);
+      }
+
+      for (const cmiId of plannedCommandMenuItemUpdates) {
+        if (plannedCommandMenuItemDeletes.has(cmiId)) continue;
+        const beforeCmi = beforeCommandMenuItems.get(cmiId);
+        if (beforeCmi && isParentCascadeDeletedCommandMenuItem(beforeCmi)) {
+          continue;
+        }
+        const afterCmi = afterCommandMenuItems.get(cmiId);
+        if (
+          !beforeCmi ||
+          !afterCmi ||
+          uuid(beforeCmi.applicationId) !== uuid(afterCmi.applicationId) ||
+          uuid(beforeCmi.universalIdentifier) !==
+            uuid(afterCmi.universalIdentifier) ||
+          Boolean(beforeCmi.isSystemSideEffect) !==
+            Boolean(afterCmi.isSystemSideEffect)
+        ) {
+          throw new Error(
+            'Application metadata commandMenuItem update removed or corrupted target row',
+          );
+        }
+        const beforeProj = projectCommandMenuItem(beforeCmi);
+        const afterProj = projectCommandMenuItem(afterCmi);
+        const updatePayload =
+          plannedCommandMenuItemUpdatePayloads.get(cmiId) ?? {};
+        for (const textKey of [
+          'engineComponentKey',
+          'label',
+          'availabilityType',
+        ] as const) {
+          const expectedVal =
+            textKey in updatePayload && updatePayload[textKey] !== undefined
+              ? String(updatePayload[textKey])
+              : beforeProj[textKey];
+          if (afterProj[textKey] !== expectedVal) {
+            throw new Error(
+              `Application metadata commandMenuItem update did not persist expected ${textKey}`,
+            );
+          }
+        }
+        for (const nullableTextKey of [
+          'icon',
+          'shortLabel',
+          'conditionalAvailabilityExpression',
+          'conditionalPinnedExpression',
+        ] as const) {
+          const expectedVal =
+            nullableTextKey in updatePayload &&
+            updatePayload[nullableTextKey] !== undefined
+              ? updatePayload[nullableTextKey] === null
+                ? null
+                : String(updatePayload[nullableTextKey])
+              : beforeProj[nullableTextKey];
+          if (afterProj[nullableTextKey] !== expectedVal) {
+            throw new Error(
+              `Application metadata commandMenuItem update did not persist expected ${nullableTextKey}`,
+            );
+          }
+        }
+        const expectedPosition =
+          'position' in updatePayload && updatePayload.position !== undefined
+            ? Number(updatePayload.position)
+            : beforeProj.position;
+        if (afterProj.position !== expectedPosition) {
+          throw new Error(
+            'Application metadata commandMenuItem update did not persist expected position',
+          );
+        }
+        for (const boolKey of ['isPinned', 'isActive'] as const) {
+          const expectedVal =
+            boolKey in updatePayload && updatePayload[boolKey] !== undefined
+              ? Boolean(updatePayload[boolKey])
+              : beforeProj[boolKey];
+          if (afterProj[boolKey] !== expectedVal) {
+            throw new Error(
+              `Application metadata commandMenuItem update did not persist expected ${boolKey}`,
+            );
+          }
+        }
+        for (const directUuidKey of [
+          'workflowVersionId',
+          'coreWorkflowVersionId',
+        ] as const) {
+          const expectedVal =
+            directUuidKey in updatePayload &&
+            updatePayload[directUuidKey] !== undefined
+              ? nullableUuid(updatePayload[directUuidKey])
+              : beforeProj[directUuidKey];
+          if (afterProj[directUuidKey] !== expectedVal) {
+            throw new Error(
+              `Application metadata commandMenuItem update did not persist expected ${directUuidKey}`,
+            );
+          }
+        }
+        const resolvedFcId = resolveAppCmiRelationId(
+          updatePayload,
+          'frontComponentId',
+          'frontComponentUniversalIdentifier',
+          cmiFrontComponentMap,
+        );
+        const expectedFcId =
+          resolvedFcId !== undefined
+            ? resolvedFcId
+            : beforeProj.frontComponentId;
+        if (afterProj.frontComponentId !== expectedFcId) {
+          throw new Error(
+            'Application metadata commandMenuItem update did not persist expected frontComponentId',
+          );
+        }
+        const resolvedAvailObjId = resolveAppCmiRelationId(
+          updatePayload,
+          'availabilityObjectMetadataId',
+          'availabilityObjectMetadataUniversalIdentifier',
+          cmiObjectMap,
+        );
+        const expectedAvailObjId =
+          resolvedAvailObjId !== undefined
+            ? resolvedAvailObjId
+            : beforeProj.availabilityObjectMetadataId;
+        if (afterProj.availabilityObjectMetadataId !== expectedAvailObjId) {
+          throw new Error(
+            'Application metadata commandMenuItem update did not persist expected availabilityObjectMetadataId',
+          );
+        }
+        const resolvedNavObjId = resolveAppCmiRelationId(
+          updatePayload,
+          'navigationTargetObjectMetadataId',
+          'navigationTargetObjectMetadataUniversalIdentifier',
+          cmiObjectMap,
+        );
+        const expectedNavObjId =
+          resolvedNavObjId !== undefined
+            ? resolvedNavObjId
+            : beforeProj.navigationTargetObjectMetadataId;
+        if (afterProj.navigationTargetObjectMetadataId !== expectedNavObjId) {
+          throw new Error(
+            'Application metadata commandMenuItem update did not persist expected navigationTargetObjectMetadataId',
+          );
+        }
+        const resolvedPlId = resolveAppCmiRelationId(
+          updatePayload,
+          'pageLayoutId',
+          'pageLayoutUniversalIdentifier',
+          cmiPageLayoutMap,
+        );
+        const expectedPlId =
+          resolvedPlId !== undefined ? resolvedPlId : beforeProj.pageLayoutId;
+        if (afterProj.pageLayoutId !== expectedPlId) {
+          throw new Error(
+            'Application metadata commandMenuItem update did not persist expected pageLayoutId',
+          );
+        }
+        const expectedPayload =
+          'payload' in updatePayload && updatePayload.payload !== undefined
+            ? updatePayload.payload === null
+              ? null
+              : updatePayload.payload
+            : beforeProj.payload;
+        if (
+          canonicalAuditJson(afterProj.payload) !==
+          canonicalAuditJson(expectedPayload)
+        ) {
+          throw new Error(
+            'Application metadata commandMenuItem update did not persist expected payload',
+          );
+        }
+        const expectedHotKeys =
+          'hotKeys' in updatePayload && updatePayload.hotKeys !== undefined
+            ? Array.isArray(updatePayload.hotKeys)
+              ? updatePayload.hotKeys.map((item: unknown) => String(item))
+              : null
+            : beforeProj.hotKeys;
+        if (
+          canonicalAuditJson(afterProj.hotKeys) !==
+          canonicalAuditJson(expectedHotKeys)
+        ) {
+          throw new Error(
+            'Application metadata commandMenuItem update did not persist expected hotKeys',
+          );
+        }
+        const resolvedOverrides = resolveExpectedCommandMenuItemOverrides(
+          updatePayload,
+          cmiObjectMap,
+          cmiPageLayoutMap,
+        );
+        const expectedOverrides =
+          resolvedOverrides !== undefined
+            ? resolvedOverrides
+            : beforeProj.overrides;
+        if (
+          canonicalAuditJson(afterProj.overrides) !==
+          canonicalAuditJson(expectedOverrides)
+        ) {
+          throw new Error(
+            'Application metadata commandMenuItem update did not persist expected overrides',
+          );
+        }
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          recordMutation(
+            'commandMenuItem',
+            cmiId,
+            'update',
+            beforeProj,
+            afterProj,
+          );
+        }
+      }
+
+      for (const cmiId of plannedCommandMenuItemDeletes) {
+        if (!beforeCommandMenuItems.has(cmiId)) {
+          throw new Error(
+            'Application metadata commandMenuItem delete expected row missing before migration',
+          );
+        }
+      }
+
+      for (const [cmiId, beforeCmi] of beforeCommandMenuItems.entries()) {
+        const fcId = nullableUuid(beforeCmi.frontComponentId);
+        const availObjId = nullableUuid(beforeCmi.availabilityObjectMetadataId);
+        const navObjId = nullableUuid(
+          beforeCmi.navigationTargetObjectMetadataId,
+        );
+        const plId = nullableUuid(beforeCmi.pageLayoutId);
+        const isExpectedDelete =
+          plannedCommandMenuItemDeletes.has(cmiId) ||
+          (fcId !== null && plannedFrontComponentDeletes.has(fcId)) ||
+          (availObjId !== null && plannedObjectDeletes.has(availObjId)) ||
+          (navObjId !== null && plannedObjectDeletes.has(navObjId)) ||
+          (plId !== null && effectiveCascadePageLayoutIds.has(plId));
+        const afterCmi = afterCommandMenuItems.get(cmiId);
+        if (isExpectedDelete) {
+          if (afterCmi) {
+            throw new Error(
+              'Application metadata commandMenuItem delete did not remove expected row',
+            );
+          }
+          recordMutation(
+            'commandMenuItem',
+            cmiId,
+            'delete',
+            projectCommandMenuItem(beforeCmi),
+            null,
+          );
+        } else {
+          if (!afterCmi) {
+            throw new Error(
+              'Application metadata audit detected unplanned commandMenuItem deletion',
+            );
+          }
+          if (!plannedCommandMenuItemUpdates.has(cmiId)) {
+            if (
+              canonicalAuditJson(scalarWithoutTimestamps(beforeCmi)) !==
+              canonicalAuditJson(scalarWithoutTimestamps(afterCmi))
+            ) {
+              throw new Error(
+                'Application metadata audit detected unplanned commandMenuItem mutation',
+              );
+            }
+          }
+        }
+      }
+
+      expectedCommandMenuItemsSerialized = canonicalAuditJson(
+        [...afterCommandMenuItems.entries()].map(([id, row]) => [
+          id,
+          scalarWithoutTimestamps(row),
+        ]),
+      );
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized = serializeFullSnapshot(after);
       await audit.flush();
@@ -6718,6 +7451,26 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           );
         }
       }
+      if (expectedCommandMenuItemsSerialized !== undefined) {
+        const postFlushCommandMenuItems = await readTableSnapshot(
+          runner,
+          existingTables,
+          'commandMenuItem',
+          workspaceId,
+          false,
+        );
+        const postFlushSerialized = canonicalAuditJson(
+          [...postFlushCommandMenuItems.entries()].map(([id, row]) => [
+            id,
+            scalarWithoutTimestamps(row),
+          ]),
+        );
+        if (postFlushSerialized !== expectedCommandMenuItemsSerialized) {
+          throw new Error(
+            'Application metadata state changed during audit flush',
+          );
+        }
+      }
     }
 
     return result;
@@ -6762,6 +7515,7 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
     'settingsMenuItem',
     'logicFunction',
     'timelineActivityType',
+    'commandMenuItem',
   ]) {
     if (!existingTables.has(tableName)) continue;
     const [ownRow] = await runner.query(
@@ -6772,6 +7526,56 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
       throw new Error(
         'Application delete requires prior audited removal of role and permission metadata',
       );
+    }
+  }
+
+  if (existingTables.has('commandMenuItem')) {
+    if (existingTables.has('frontComponent')) {
+      const [depRow] = await runner.query(
+        `SELECT cmi.id FROM core."commandMenuItem" cmi INNER JOIN core."frontComponent" fc ON fc.id=cmi."frontComponentId" WHERE cmi."workspaceId"=$1 AND fc."workspaceId"=$1 AND fc."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+    }
+    if (existingTables.has('objectMetadata')) {
+      const [depRow] = await runner.query(
+        `SELECT cmi.id FROM core."commandMenuItem" cmi INNER JOIN core."objectMetadata" o ON (o.id=cmi."availabilityObjectMetadataId" OR o.id=cmi."navigationTargetObjectMetadataId") WHERE cmi."workspaceId"=$1 AND o."workspaceId"=$1 AND o."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+    }
+    if (existingTables.has('pageLayout')) {
+      const [depRow] = await runner.query(
+        `SELECT cmi.id FROM core."commandMenuItem" cmi INNER JOIN core."pageLayout" pl ON pl.id=cmi."pageLayoutId" WHERE cmi."workspaceId"=$1 AND pl."workspaceId"=$1 AND pl."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+    }
+    if (
+      existingTables.has('pageLayout') &&
+      existingTables.has('objectMetadata')
+    ) {
+      const [depRow] = await runner.query(
+        `SELECT cmi.id FROM core."commandMenuItem" cmi INNER JOIN core."pageLayout" pl ON pl.id=cmi."pageLayoutId" INNER JOIN core."objectMetadata" o ON o.id=pl."objectMetadataId" WHERE cmi."workspaceId"=$1 AND pl."workspaceId"=$1 AND o."workspaceId"=$1 AND o."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
     }
   }
 
@@ -7002,6 +7806,8 @@ type ReconcilableEntity = {
   parentRowLevelPermissionPredicateGroupUniversalIdentifier?: string | null;
   rowLevelPermissionPredicateGroupUniversalIdentifier?: string | null;
   targetObjectMetadataUniversalIdentifier?: string | null;
+  availabilityObjectMetadataUniversalIdentifier?: string | null;
+  navigationTargetObjectMetadataUniversalIdentifier?: string | null;
   viewUniversalIdentifier?: string | null;
   pageLayoutUniversalIdentifier?: string | null;
   agentChatChannelUniversalIdentifier?: string | null;
@@ -7085,6 +7891,9 @@ export const reconcileApplicationRoleAndPermissionOperations = ({
       byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
     };
     flatSettingsMenuItemMaps?: {
+      byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
+    };
+    flatCommandMenuItemMaps?: {
       byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
     };
   };
@@ -7526,6 +8335,53 @@ export const reconcileApplicationRoleAndPermissionOperations = ({
         bucket.flatEntityToDelete[
           existingSettingsMenuItem.universalIdentifier
         ] = existingSettingsMenuItem;
+      }
+    }
+  }
+
+  if (existingAllFlatEntityMaps.flatCommandMenuItemMaps) {
+    const deletedPageLayoutUniversalIdentifiers = new Set(
+      Object.keys(record.pageLayout?.flatEntityToDelete ?? {}),
+    );
+    for (const existingLayout of Object.values(
+      existingAllFlatEntityMaps.flatPageLayoutMaps?.byUniversalIdentifier ?? {},
+    )) {
+      if (!isPresent(existingLayout)) continue;
+      if (
+        isPresent(existingLayout.objectMetadataUniversalIdentifier) &&
+        deletedObjectUniversalIdentifiers.has(
+          existingLayout.objectMetadataUniversalIdentifier,
+        )
+      ) {
+        deletedPageLayoutUniversalIdentifiers.add(
+          existingLayout.universalIdentifier,
+        );
+      }
+    }
+
+    for (const existingCommandMenuItem of Object.values(
+      existingAllFlatEntityMaps.flatCommandMenuItemMaps.byUniversalIdentifier,
+    )) {
+      if (!isPresent(existingCommandMenuItem)) continue;
+      const fcUid = existingCommandMenuItem.frontComponentUniversalIdentifier;
+      const availObjUid =
+        existingCommandMenuItem.availabilityObjectMetadataUniversalIdentifier;
+      const navObjUid =
+        existingCommandMenuItem.navigationTargetObjectMetadataUniversalIdentifier;
+      const layoutUid = existingCommandMenuItem.pageLayoutUniversalIdentifier;
+      if (
+        (isPresent(fcUid) &&
+          deletedFrontComponentUniversalIdentifiers.has(fcUid)) ||
+        (isPresent(availObjUid) &&
+          deletedObjectUniversalIdentifiers.has(availObjUid)) ||
+        (isPresent(navObjUid) &&
+          deletedObjectUniversalIdentifiers.has(navObjUid)) ||
+        (isPresent(layoutUid) &&
+          deletedPageLayoutUniversalIdentifiers.has(layoutUid))
+      ) {
+        const bucket = ensureOperationBucket(record, 'commandMenuItem');
+        bucket.flatEntityToDelete[existingCommandMenuItem.universalIdentifier] =
+          existingCommandMenuItem;
       }
     }
   }

@@ -415,12 +415,19 @@ export class ObjectMetadataResolver {
   async updateOneObject(
     @Args('input') updateObjectInput: UpdateOneObjectInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context()
+    context?: {
+      req?: Parameters<typeof roleAuditIdentityFromRequest>[0];
+    },
   ) {
     try {
       const flatobjectMetadata =
         await this.objectMetadataService.updateOneObject({
           updateObjectInput,
           workspaceId,
+          auditIdentity: context?.req
+            ? roleAuditIdentityFromRequest(context.req)
+            : undefined,
         });
 
       return fromFlatObjectMetadataToObjectMetadataDto(flatobjectMetadata);
@@ -435,12 +442,19 @@ export class ObjectMetadataResolver {
     @Args('inputs', { type: () => [UpdateOneObjectInput] })
     updateObjectInputs: UpdateOneObjectInput[],
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context()
+    context?: {
+      req?: Parameters<typeof roleAuditIdentityFromRequest>[0];
+    },
   ) {
     try {
       const flatObjectMetadatas =
         await this.objectMetadataService.updateManyObjects({
           updateObjectInputs,
           workspaceId,
+          auditIdentity: context?.req
+            ? roleAuditIdentityFromRequest(context.req)
+            : undefined,
         });
 
       return flatObjectMetadatas.map(fromFlatObjectMetadataToObjectMetadataDto);

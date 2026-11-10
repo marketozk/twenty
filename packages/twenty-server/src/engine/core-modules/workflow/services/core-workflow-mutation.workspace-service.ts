@@ -413,11 +413,13 @@ export class CoreWorkflowMutationWorkspaceService {
     userWorkspaceId,
     coreWorkflowId,
     name,
+    auditIdentity,
   }: {
     workspaceId: string;
     userWorkspaceId: string | undefined;
     coreWorkflowId: string;
     name: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<void> {
     await this.coreWorkflowAccessService.assertCoreWorkflowsAreEditableOrThrow({
       workspaceId,
@@ -452,6 +454,8 @@ export class CoreWorkflowMutationWorkspaceService {
       workspaceId,
       coreWorkflowId,
       name,
+      userWorkspaceId,
+      auditIdentity,
     });
   }
 
@@ -459,10 +463,14 @@ export class CoreWorkflowMutationWorkspaceService {
     workspaceId,
     coreWorkflowId,
     name,
+    userWorkspaceId,
+    auditIdentity,
   }: {
     workspaceId: string;
     coreWorkflowId: string;
     name: string;
+    userWorkspaceId?: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<void> {
     const coreWorkflow = await this.coreWorkflowRepository.findOne(
       workspaceId,
@@ -501,6 +509,11 @@ export class CoreWorkflowMutationWorkspaceService {
     await this.commandMenuItemService.update(
       { id: existingCommandMenuItem.id, label, shortLabel: label },
       workspaceId,
+      {
+        auditIdentity,
+        authUserWorkspaceId: userWorkspaceId,
+        defaultSystemActorId: 'workflow-mutation:sync-command-menu-item',
+      },
     );
   }
 

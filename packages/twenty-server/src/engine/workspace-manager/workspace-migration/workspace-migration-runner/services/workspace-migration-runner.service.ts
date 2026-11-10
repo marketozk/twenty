@@ -345,14 +345,17 @@ export class WorkspaceMigrationRunnerService {
             'view',
             'pageLayout',
             'navigationMenuItem',
+            'commandMenuItem',
           ] as const)
         : hasNavCascadeParentDeleteAction
-          ? (['navigationMenuItem'] as const)
+          ? (['navigationMenuItem', 'commandMenuItem'] as const)
           : []),
       ...(hasChannelRoleCascadeParentDeleteAction
         ? (['agentChatChannelRole'] as const)
         : []),
-      ...(hasFrontComponentDeleteAction ? (['settingsMenuItem'] as const) : []),
+      ...(hasFrontComponentDeleteAction
+        ? (['settingsMenuItem', 'commandMenuItem'] as const)
+        : []),
     ];
 
     const actionsMetadataAndRelatedMetadataNames: AllMetadataName[] = [
@@ -542,6 +545,9 @@ export class WorkspaceMigrationRunnerService {
           timelineActivityTypes:
             allFlatEntityMaps.flatTimelineActivityTypeMaps
               ?.byUniversalIdentifier ?? {},
+          commandMenuItems:
+            allFlatEntityMaps.flatCommandMenuItemMaps?.byUniversalIdentifier ??
+            {},
         };
         const searchFieldMetadatasByTsVectorFieldIdAccessor =
           createSearchFieldMetadatasByTsVectorFieldIdAccessor(
@@ -819,6 +825,9 @@ export class WorkspaceMigrationRunnerService {
         timelineActivityTypes:
           allFlatEntityMaps.flatTimelineActivityTypeMaps
             ?.byUniversalIdentifier ?? {},
+        commandMenuItems:
+          allFlatEntityMaps.flatCommandMenuItemMaps?.byUniversalIdentifier ??
+          {},
       };
       const allMetadataEvents: MetadataEvent[] = [];
       const allDeferredActions: DeferredWorkspaceMigrationAction[] = [];

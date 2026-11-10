@@ -28,6 +28,7 @@ import { CommandMenuItemDTO } from 'src/engine/metadata-modules/command-menu-ite
 import { CreateCommandMenuItemInput } from 'src/engine/metadata-modules/command-menu-item/dtos/create-command-menu-item.input';
 import { UpdateCommandMenuItemInput } from 'src/engine/metadata-modules/command-menu-item/dtos/update-command-menu-item.input';
 import { CommandMenuItemGraphqlApiExceptionInterceptor } from 'src/engine/metadata-modules/command-menu-item/interceptors/command-menu-item-graphql-api-exception.interceptor';
+import { type NavigationMenuItemAuditIdentity } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { FrontComponentDTO } from 'src/engine/metadata-modules/front-component/dtos/front-component.dto';
 import { FrontComponentService } from 'src/engine/metadata-modules/front-component/front-component.service';
 import { WorkspaceMigrationGraphqlApiExceptionInterceptor } from 'src/engine/workspace-manager/workspace-migration/interceptors/workspace-migration-graphql-api-exception.interceptor';
@@ -171,8 +172,11 @@ export class CommandMenuItemResolver {
   async createCommandMenuItem(
     @Args('input') input: CreateCommandMenuItemInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<CommandMenuItemDTO> {
-    return await this.commandMenuItemService.create(input, workspace.id);
+    return await this.commandMenuItemService.create(input, workspace.id, {
+      auditIdentity: context?.req,
+    });
   }
 
   @Mutation(() => CommandMenuItemDTO)
@@ -180,8 +184,11 @@ export class CommandMenuItemResolver {
   async updateCommandMenuItem(
     @Args('input') input: UpdateCommandMenuItemInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<CommandMenuItemDTO> {
-    return await this.commandMenuItemService.update(input, workspace.id);
+    return await this.commandMenuItemService.update(input, workspace.id, {
+      auditIdentity: context?.req,
+    });
   }
 
   @Mutation(() => CommandMenuItemDTO)
@@ -189,8 +196,11 @@ export class CommandMenuItemResolver {
   async resetCommandMenuItem(
     @Args('id', { type: () => UUIDScalarType }) id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<CommandMenuItemDTO> {
-    return await this.commandMenuItemService.reset(id, workspace.id);
+    return await this.commandMenuItemService.reset(id, workspace.id, {
+      auditIdentity: context?.req,
+    });
   }
 
   @Mutation(() => CommandMenuItemDTO)
@@ -198,8 +208,11 @@ export class CommandMenuItemResolver {
   async deleteCommandMenuItem(
     @Args('id', { type: () => UUIDScalarType }) id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<CommandMenuItemDTO> {
-    return await this.commandMenuItemService.delete(id, workspace.id);
+    return await this.commandMenuItemService.delete(id, workspace.id, {
+      auditIdentity: context?.req,
+    });
   }
 
   // manual trigger items are workspace-wide and would otherwise leak private workflow names

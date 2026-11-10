@@ -45,7 +45,8 @@ export type NavigationMenuItemAuditMode =
   | 'skill'
   | 'frontComponent'
   | 'logicFunction'
-  | 'timelineActivityType';
+  | 'timelineActivityType'
+  | 'commandMenuItem';
 
 export type NavigationMenuItemAuditRequest = Readonly<{
   workspaceId: string;
@@ -62,6 +63,7 @@ export type NavigationMenuItemAuditRequest = Readonly<{
   expectedParentPageLayoutDeleteIds?: readonly string[];
   expectedParentChannelDeleteIds?: readonly string[];
   expectedCreatedObjectId?: string;
+  expectedUpdatedObjectIds?: readonly string[];
   expectedChannelCreateIds?: readonly string[];
   expectedChannelUpdateIds?: readonly string[];
   expectedChannelRoleCreateKeys?: readonly string[];
@@ -83,6 +85,9 @@ export type NavigationMenuItemAuditRequest = Readonly<{
   expectedTimelineActivityTypeCreateIds?: readonly string[];
   expectedTimelineActivityTypeUpdateIds?: readonly string[];
   expectedTimelineActivityTypeDeleteIds?: readonly string[];
+  expectedCommandMenuItemCreateIds?: readonly string[];
+  expectedCommandMenuItemUpdateIds?: readonly string[];
+  expectedCommandMenuItemDeleteIds?: readonly string[];
 }>;
 
 export type NavigationMenuItemAuditMappings = {
@@ -98,6 +103,7 @@ export type NavigationMenuItemAuditMappings = {
   settingsMenuItems?: Record<string, { id: string } | undefined>;
   logicFunctions?: Record<string, { id: string } | undefined>;
   timelineActivityTypes?: Record<string, { id: string } | undefined>;
+  commandMenuItems?: Record<string, { id: string } | undefined>;
   workflows?: Record<string, { id: string } | undefined>;
   workflowVersions?: Record<string, { id: string } | undefined>;
   roles?: Record<string, { id: string } | undefined>;
@@ -142,6 +148,7 @@ const CASCADE_ALLOWED_METADATA_NAMES = new Set<string>([
   'agentChatChannel',
   'agentChatChannelRole',
   'searchFieldMetadata',
+  'commandMenuItem',
 ]);
 
 const storage = new AsyncLocalStorage<NavigationMenuItemAuditRequest>();
@@ -920,6 +927,248 @@ export const projectTimelineActivityType = (row: Record<string, unknown>) => ({
       : row.overrides,
 });
 
+const VALID_COMMAND_MENU_ITEM_AVAILABILITY_TYPES = new Set<string>([
+  'GLOBAL',
+  'RECORD_SELECTION',
+  'FALLBACK',
+]);
+
+export const COMMAND_MENU_ITEM_NULLABLE_UUID_KEYS = [
+  'workflowVersionId',
+  'coreWorkflowVersionId',
+  'frontComponentId',
+  'availabilityObjectMetadataId',
+  'navigationTargetObjectMetadataId',
+  'pageLayoutId',
+] as const;
+
+export const assertCommandMenuItemRowInvariants = (
+  row: Record<string, unknown>,
+  workspaceId: string,
+): void => {
+  uuid(row.id);
+  if (uuid(row.workspaceId) !== workspaceId) {
+    throw new Error('Command menu item audit row workspace mismatch');
+  }
+  uuid(row.applicationId);
+  uuid(row.universalIdentifier);
+  if (row.deletedAt !== null && row.deletedAt !== undefined) {
+    throw new Error('Command menu item audit soft-deleted row is unsupported');
+  }
+  for (const uuidKey of COMMAND_MENU_ITEM_NULLABLE_UUID_KEYS) {
+    nullableUuid(row[uuidKey]);
+  }
+  if (
+    typeof row.engineComponentKey !== 'string' ||
+    row.engineComponentKey.trim().length === 0
+  ) {
+    throw new Error('Command menu item audit engineComponentKey is invalid');
+  }
+  if (typeof row.label !== 'string' || row.label.trim().length === 0) {
+    throw new Error('Command menu item audit label is invalid');
+  }
+  for (const nullableTextKey of [
+    'icon',
+    'shortLabel',
+    'conditionalAvailabilityExpression',
+    'conditionalPinnedExpression',
+  ] as const) {
+    if (
+      row[nullableTextKey] !== null &&
+      row[nullableTextKey] !== undefined &&
+      typeof row[nullableTextKey] !== 'string'
+    ) {
+      throw new Error(`Command menu item audit ${nullableTextKey} is invalid`);
+    }
+  }
+  if (typeof row.position !== 'number' || !Number.isFinite(row.position)) {
+    throw new Error('Command menu item audit position is invalid');
+  }
+  if (typeof row.isPinned !== 'boolean') {
+    throw new Error('Command menu item audit isPinned is invalid');
+  }
+  if (
+    typeof row.availabilityType !== 'string' ||
+    !VALID_COMMAND_MENU_ITEM_AVAILABILITY_TYPES.has(row.availabilityType)
+  ) {
+    throw new Error('Command menu item audit availabilityType is invalid');
+  }
+  if (
+    row.payload !== null &&
+    row.payload !== undefined &&
+    (typeof row.payload !== 'object' || Array.isArray(row.payload))
+  ) {
+    throw new Error('Command menu item audit payload is invalid');
+  }
+  if (row.hotKeys !== null && row.hotKeys !== undefined) {
+    if (
+      !Array.isArray(row.hotKeys) ||
+      row.hotKeys.some((item: unknown) => typeof item !== 'string')
+    ) {
+      throw new Error('Command menu item audit hotKeys is invalid');
+    }
+  }
+  if (typeof row.isActive !== 'boolean') {
+    throw new Error('Command menu item audit isActive is invalid');
+  }
+  if (typeof row.isSystemSideEffect !== 'boolean') {
+    throw new Error('Command menu item audit isSystemSideEffect is invalid');
+  }
+  if (
+    row.overrides !== null &&
+    row.overrides !== undefined &&
+    (typeof row.overrides !== 'object' || Array.isArray(row.overrides))
+  ) {
+    throw new Error('Command menu item audit overrides is invalid');
+  }
+};
+
+export const projectCommandMenuItem = (row: Record<string, unknown>) => ({
+  applicationId: uuid(row.applicationId),
+  workflowVersionId: nullableUuid(row.workflowVersionId),
+  coreWorkflowVersionId: nullableUuid(row.coreWorkflowVersionId),
+  frontComponentId: nullableUuid(row.frontComponentId),
+  engineComponentKey: String(row.engineComponentKey),
+  isPinned: Boolean(row.isPinned),
+  availabilityType: String(row.availabilityType),
+  availabilityObjectMetadataId: nullableUuid(row.availabilityObjectMetadataId),
+  navigationTargetObjectMetadataId: nullableUuid(
+    row.navigationTargetObjectMetadataId,
+  ),
+  pageLayoutId: nullableUuid(row.pageLayoutId),
+  isActive: Boolean(row.isActive),
+  isSystemSideEffect: Boolean(row.isSystemSideEffect),
+  label: String(row.label),
+  icon: row.icon === undefined || row.icon === null ? null : String(row.icon),
+  shortLabel:
+    row.shortLabel === undefined || row.shortLabel === null
+      ? null
+      : String(row.shortLabel),
+  position: Number(row.position),
+  payload:
+    row.payload === undefined || row.payload === null ? null : row.payload,
+  hotKeys: Array.isArray(row.hotKeys)
+    ? row.hotKeys.map((item: unknown) => String(item))
+    : null,
+  conditionalAvailabilityExpression:
+    row.conditionalAvailabilityExpression === undefined ||
+    row.conditionalAvailabilityExpression === null
+      ? null
+      : String(row.conditionalAvailabilityExpression),
+  conditionalPinnedExpression:
+    row.conditionalPinnedExpression === undefined ||
+    row.conditionalPinnedExpression === null
+      ? null
+      : String(row.conditionalPinnedExpression),
+  overrides:
+    row.overrides === undefined || row.overrides === null
+      ? null
+      : row.overrides,
+});
+
+const mapUniversalCommandMenuItemOverridesEntry = (
+  entry: Record<string, unknown>,
+  objectMetadatas?: Record<string, { id: string } | undefined>,
+  pageLayouts?: Record<string, { id: string } | undefined>,
+): Record<string, unknown> => {
+  const {
+    availabilityObjectMetadataUniversalIdentifier,
+    pageLayoutUniversalIdentifier,
+    ...rest
+  } = entry;
+  const mapped: Record<string, unknown> = { ...rest };
+  if (availabilityObjectMetadataUniversalIdentifier !== undefined) {
+    if (availabilityObjectMetadataUniversalIdentifier === null) {
+      mapped.availabilityObjectMetadataId = null;
+    } else {
+      const resolvedId =
+        objectMetadatas?.[uuid(availabilityObjectMetadataUniversalIdentifier)]
+          ?.id;
+      mapped.availabilityObjectMetadataId = resolvedId
+        ? uuid(resolvedId)
+        : null;
+    }
+  }
+  if (pageLayoutUniversalIdentifier !== undefined) {
+    if (pageLayoutUniversalIdentifier === null) {
+      mapped.pageLayoutId = null;
+    } else {
+      const resolvedId = pageLayouts?.[uuid(pageLayoutUniversalIdentifier)]?.id;
+      mapped.pageLayoutId = resolvedId ? uuid(resolvedId) : null;
+    }
+  }
+  return mapped;
+};
+
+export const resolveExpectedCommandMenuItemOverrides = (
+  source: Record<string, unknown>,
+  objectMetadatas?: Record<string, { id: string } | undefined>,
+  pageLayouts?: Record<string, { id: string } | undefined>,
+): unknown => {
+  if ('overrides' in source && source.overrides !== undefined) {
+    return source.overrides === null ? null : source.overrides;
+  }
+  if (
+    'universalOverrides' in source &&
+    source.universalOverrides !== undefined
+  ) {
+    if (source.universalOverrides === null) {
+      return null;
+    }
+    if (
+      typeof source.universalOverrides !== 'object' ||
+      Array.isArray(source.universalOverrides)
+    ) {
+      throw new Error(
+        'Command menu item audit universalOverrides must be an object or null',
+      );
+    }
+    const raw = source.universalOverrides as Record<string, unknown>;
+    const mapped: Record<string, unknown> = {};
+    if (
+      raw.workspaceCustom &&
+      typeof raw.workspaceCustom === 'object' &&
+      !Array.isArray(raw.workspaceCustom)
+    ) {
+      mapped.workspaceCustom = mapUniversalCommandMenuItemOverridesEntry(
+        raw.workspaceCustom as Record<string, unknown>,
+        objectMetadatas,
+        pageLayouts,
+      );
+    }
+    if (
+      raw.application &&
+      typeof raw.application === 'object' &&
+      !Array.isArray(raw.application)
+    ) {
+      const appEntries: Record<string, unknown> = {};
+      for (const [authorKey, authorEntry] of Object.entries(
+        raw.application as Record<string, unknown>,
+      )) {
+        if (
+          authorEntry &&
+          typeof authorEntry === 'object' &&
+          !Array.isArray(authorEntry)
+        ) {
+          appEntries[authorKey] = mapUniversalCommandMenuItemOverridesEntry(
+            authorEntry as Record<string, unknown>,
+            objectMetadatas,
+            pageLayouts,
+          );
+        }
+      }
+      if (Object.keys(appEntries).length > 0) {
+        mapped.application = appEntries;
+      }
+    }
+    if (raw.translations !== undefined) {
+      mapped.translations = raw.translations;
+    }
+    return Object.keys(mapped).length > 0 ? mapped : null;
+  }
+  return undefined;
+};
+
 export const getNavigationMenuItemAudit = (workspaceId: string) => {
   const request = storage.getStore();
   if (!request) return undefined;
@@ -1243,6 +1492,7 @@ export type NavigationMenuItemAuditExpectedScope = {
   expectedParentPageLayoutDeleteIds?: readonly string[];
   expectedParentChannelDeleteIds?: readonly string[];
   expectedCreatedObjectId?: string;
+  expectedUpdatedObjectIds?: readonly string[];
   expectedChannelCreateIds?: readonly string[];
   expectedChannelUpdateIds?: readonly string[];
   expectedChannelRoleCreateKeys?: readonly string[];
@@ -1264,6 +1514,9 @@ export type NavigationMenuItemAuditExpectedScope = {
   expectedTimelineActivityTypeCreateIds?: readonly string[];
   expectedTimelineActivityTypeUpdateIds?: readonly string[];
   expectedTimelineActivityTypeDeleteIds?: readonly string[];
+  expectedCommandMenuItemCreateIds?: readonly string[];
+  expectedCommandMenuItemUpdateIds?: readonly string[];
+  expectedCommandMenuItemDeleteIds?: readonly string[];
 };
 
 export const captureNavigationMenuItemAudit = ({
@@ -1282,6 +1535,7 @@ export const captureNavigationMenuItemAudit = ({
   expectedParentPageLayoutDeleteIds,
   expectedParentChannelDeleteIds,
   expectedCreatedObjectId,
+  expectedUpdatedObjectIds,
   expectedChannelCreateIds,
   expectedChannelUpdateIds,
   expectedChannelRoleCreateKeys,
@@ -1303,6 +1557,9 @@ export const captureNavigationMenuItemAudit = ({
   expectedTimelineActivityTypeCreateIds,
   expectedTimelineActivityTypeUpdateIds,
   expectedTimelineActivityTypeDeleteIds,
+  expectedCommandMenuItemCreateIds,
+  expectedCommandMenuItemUpdateIds,
+  expectedCommandMenuItemDeleteIds,
 }: {
   workspaceId: string;
   mode: NavigationMenuItemAuditMode;
@@ -1371,6 +1628,7 @@ export const captureNavigationMenuItemAudit = ({
     expectedCreatedObjectId !== undefined
       ? uuid(expectedCreatedObjectId)
       : undefined;
+  const baseUpdatedObjectIds = normalizeIds(expectedUpdatedObjectIds);
   const baseChannelCreateIds = normalizeIds(expectedChannelCreateIds);
   const baseChannelUpdateIds = normalizeIds(expectedChannelUpdateIds);
   const baseChannelRoleCreateKeys = normalizeRoleKeys(
@@ -1416,6 +1674,15 @@ export const captureNavigationMenuItemAudit = ({
   const baseTimelineActivityTypeDeleteIds = normalizeIds(
     expectedTimelineActivityTypeDeleteIds,
   );
+  const baseCommandMenuItemCreateIds = normalizeIds(
+    expectedCommandMenuItemCreateIds,
+  );
+  const baseCommandMenuItemUpdateIds = normalizeIds(
+    expectedCommandMenuItemUpdateIds,
+  );
+  const baseCommandMenuItemDeleteIds = normalizeIds(
+    expectedCommandMenuItemDeleteIds,
+  );
 
   return (overrides) => {
     const resolvedCreatedIds =
@@ -1436,6 +1703,8 @@ export const captureNavigationMenuItemAudit = ({
       overrides?.expectedCreatedObjectId !== undefined
         ? uuid(overrides.expectedCreatedObjectId)
         : baseCreatedObjectId;
+    const resolvedUpdatedObjectIds =
+      normalizeIds(overrides?.expectedUpdatedObjectIds) ?? baseUpdatedObjectIds;
     const resolvedChannelCreateIds =
       normalizeIds(overrides?.expectedChannelCreateIds) ?? baseChannelCreateIds;
     const resolvedChannelUpdateIds =
@@ -1491,6 +1760,15 @@ export const captureNavigationMenuItemAudit = ({
     const resolvedTimelineActivityTypeDeleteIds =
       normalizeIds(overrides?.expectedTimelineActivityTypeDeleteIds) ??
       baseTimelineActivityTypeDeleteIds;
+    const resolvedCommandMenuItemCreateIds =
+      normalizeIds(overrides?.expectedCommandMenuItemCreateIds) ??
+      baseCommandMenuItemCreateIds;
+    const resolvedCommandMenuItemUpdateIds =
+      normalizeIds(overrides?.expectedCommandMenuItemUpdateIds) ??
+      baseCommandMenuItemUpdateIds;
+    const resolvedCommandMenuItemDeleteIds =
+      normalizeIds(overrides?.expectedCommandMenuItemDeleteIds) ??
+      baseCommandMenuItemDeleteIds;
 
     return Object.freeze({
       workspaceId: normalizedWorkspaceId,
@@ -1522,6 +1800,9 @@ export const captureNavigationMenuItemAudit = ({
         : {}),
       ...(resolvedCreatedObjectId !== undefined
         ? { expectedCreatedObjectId: resolvedCreatedObjectId }
+        : {}),
+      ...(resolvedUpdatedObjectIds !== undefined
+        ? { expectedUpdatedObjectIds: resolvedUpdatedObjectIds }
         : {}),
       ...(resolvedChannelCreateIds !== undefined
         ? { expectedChannelCreateIds: resolvedChannelCreateIds }
@@ -1596,6 +1877,21 @@ export const captureNavigationMenuItemAudit = ({
         ? {
             expectedTimelineActivityTypeDeleteIds:
               resolvedTimelineActivityTypeDeleteIds,
+          }
+        : {}),
+      ...(resolvedCommandMenuItemCreateIds !== undefined
+        ? {
+            expectedCommandMenuItemCreateIds: resolvedCommandMenuItemCreateIds,
+          }
+        : {}),
+      ...(resolvedCommandMenuItemUpdateIds !== undefined
+        ? {
+            expectedCommandMenuItemUpdateIds: resolvedCommandMenuItemUpdateIds,
+          }
+        : {}),
+      ...(resolvedCommandMenuItemDeleteIds !== undefined
+        ? {
+            expectedCommandMenuItemDeleteIds: resolvedCommandMenuItemDeleteIds,
           }
         : {}),
     });
@@ -1970,6 +2266,23 @@ const readTimelineActivityTypeSnapshot = async (
   );
 };
 
+const readCommandMenuItemSnapshot = async (
+  runner: QueryRunner,
+  workspaceId: string,
+  lock: boolean,
+): Promise<Map<string, Record<string, unknown>>> => {
+  const rows = await runner.query(
+    `SELECT to_jsonb(cmi) AS row FROM core."commandMenuItem" cmi WHERE cmi."workspaceId"=$1 ORDER BY cmi.id${lock ? ' FOR UPDATE' : ''}`,
+    [workspaceId],
+  );
+  return new Map(
+    rows.map((entry: { row: Record<string, unknown> }) => [
+      uuid(entry.row.id),
+      entry.row,
+    ]),
+  );
+};
+
 const serializeNavSnapshot = (
   snapshot: Map<string, Record<string, unknown>>,
 ): string =>
@@ -2031,6 +2344,16 @@ const serializeLogicFunctionSnapshot = (
   );
 
 const serializeTimelineActivityTypeSnapshot = (
+  snapshot: Map<string, Record<string, unknown>>,
+): string =>
+  canonicalAuditJson(
+    [...snapshot.entries()].map(([id, row]) => [
+      id,
+      scalarNavigationMenuItemWithoutTimestamps(row),
+    ]),
+  );
+
+const serializeCommandMenuItemSnapshot = (
   snapshot: Map<string, Record<string, unknown>>,
 ): string =>
   canonicalAuditJson(
@@ -2175,7 +2498,8 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         to_regclass('core."settingsMenuItem"') IS NOT NULL AS "hasSettingsMenuItemTable",
         to_regclass('core."logicFunction"') IS NOT NULL AS "hasLogicFunctionTable",
         to_regclass('core."workflowVersion"') IS NOT NULL AS "hasWorkflowVersionTable",
-        to_regclass('core."timelineActivityType"') IS NOT NULL AS "hasTimelineActivityTypeTable"`,
+        to_regclass('core."timelineActivityType"') IS NOT NULL AS "hasTimelineActivityTypeTable",
+        to_regclass('core."commandMenuItem"') IS NOT NULL AS "hasCommandMenuItemTable"`,
     );
     if (
       request.mode !== 'webhook' &&
@@ -2183,6 +2507,11 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       request.mode !== 'frontComponent' &&
       request.mode !== 'logicFunction' &&
       request.mode !== 'timelineActivityType' &&
+      request.mode !== 'commandMenuItem' &&
+      !(
+        request.mode === 'cascade' &&
+        request.expectedUpdatedObjectIds !== undefined
+      ) &&
       reg?.hasNavTable !== true
     ) {
       throw new Error(
@@ -2359,6 +2688,37 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       assertTimelineActivityTypeRowInvariants(row, request.workspaceId);
     }
 
+    const requiresCommandMenuItemTable =
+      request.mode === 'commandMenuItem' ||
+      request.expectedCommandMenuItemCreateIds !== undefined ||
+      request.expectedCommandMenuItemUpdateIds !== undefined ||
+      request.expectedCommandMenuItemDeleteIds !== undefined ||
+      actions.some((action) => action.metadataName === 'commandMenuItem');
+    if (requiresCommandMenuItemTable && reg?.hasCommandMenuItemTable !== true) {
+      throw new Error(
+        'Command menu item audit table core.commandMenuItem unavailable',
+      );
+    }
+    const touchesCommandMenuItems =
+      requiresCommandMenuItemTable ||
+      (reg?.hasCommandMenuItemTable === true &&
+        (touchesFrontComponents ||
+          isWorkflowCascadeMode ||
+          request.expectedParentPageLayoutDeleteIds !== undefined ||
+          request.expectedCreatedObjectId !== undefined ||
+          request.expectedUpdatedObjectIds !== undefined ||
+          actions.some(
+            (action) =>
+              action.metadataName === 'pageLayout' && action.type === 'delete',
+          )));
+    const beforeCommandMenuItems =
+      touchesCommandMenuItems && reg?.hasCommandMenuItemTable === true
+        ? await readCommandMenuItemSnapshot(runner, request.workspaceId, true)
+        : new Map<string, Record<string, unknown>>();
+    for (const row of beforeCommandMenuItems.values()) {
+      assertCommandMenuItemRowInvariants(row, request.workspaceId);
+    }
+
     const touchesChannelsOrRoles =
       request.mode === 'channel' ||
       request.expectedParentChannelDeleteIds !== undefined ||
@@ -2413,6 +2773,7 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       request.mode !== 'frontComponent' &&
       request.mode !== 'logicFunction' &&
       request.mode !== 'timelineActivityType' &&
+      request.mode !== 'commandMenuItem' &&
       reg?.hasNavTable === true
         ? await readNavSnapshot(runner, request.workspaceId, true)
         : new Map<string, Record<string, unknown>>();
@@ -2486,7 +2847,17 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       Record<string, unknown>
     >();
     const plannedTimelineActivityTypeDeletes = new Set<string>();
+    const plannedCommandMenuItemCreatesByUniversalIdentifier = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedCommandMenuItemUpdates = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    const plannedCommandMenuItemDeletes = new Set<string>();
     const plannedObjectCreates = new Set<string>();
+    const plannedObjectUpdates = new Set<string>();
     const plannedObjectDeletes = new Set<string>();
     const plannedFieldDeletes = new Set<string>();
 
@@ -2552,7 +2923,8 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         if (
           action.metadataName !== 'frontComponent' &&
           !(
-            action.metadataName === 'settingsMenuItem' &&
+            (action.metadataName === 'settingsMenuItem' ||
+              action.metadataName === 'commandMenuItem') &&
             action.type === 'delete'
           )
         ) {
@@ -2578,6 +2950,12 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         if (action.metadataName !== 'timelineActivityType') {
           throw new Error(
             `Timeline activity type audit disallows ${action.metadataName} actions`,
+          );
+        }
+      } else if (request.mode === 'commandMenuItem') {
+        if (action.metadataName !== 'commandMenuItem') {
+          throw new Error(
+            `Command menu item audit disallows ${action.metadataName} actions`,
           );
         }
       } else {
@@ -2807,6 +3185,15 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           } else if (action.flatEntity?.id !== undefined) {
             plannedObjectCreates.add(uuid(action.flatEntity.id));
           }
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.objectMetadatas?.[universalId]?.id;
+          if (!mappedId) {
+            throw new Error(
+              'Navigation menu item cascade audit missing objectMetadata mapping',
+            );
+          }
+          plannedObjectUpdates.add(uuid(mappedId));
         } else if (action.type === 'delete') {
           const universalId = uuid(action.universalIdentifier);
           const mappedId = mappings.objectMetadatas?.[universalId]?.id;
@@ -3195,6 +3582,77 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
             `Unsupported timelineActivityType action type ${action.type}`,
           );
         }
+      } else if (action.metadataName === 'commandMenuItem') {
+        if (action.type === 'create') {
+          if (!action.flatEntity) {
+            throw new Error(
+              'Command menu item create action requires flatEntity',
+            );
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (
+            plannedCommandMenuItemCreatesByUniversalIdentifier.has(universalId)
+          ) {
+            throw new Error(
+              'Command menu item create audit duplicate universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error(
+              'Command menu item create action application mismatch',
+            );
+          }
+          const explicitId =
+            action.id !== undefined
+              ? uuid(action.id)
+              : action.flatEntity.id !== undefined
+                ? uuid(action.flatEntity.id)
+                : undefined;
+          if (
+            explicitId !== undefined &&
+            beforeCommandMenuItems.has(explicitId)
+          ) {
+            throw new Error(
+              'Command menu item create target ID already exists',
+            );
+          }
+          plannedCommandMenuItemCreatesByUniversalIdentifier.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.commandMenuItems?.[universalId]?.id;
+          if (!mappedId || !action.update) {
+            throw new Error(
+              'Command menu item update audit missing mapping or update payload',
+            );
+          }
+          const targetId = uuid(mappedId);
+          if (plannedCommandMenuItemUpdates.has(targetId)) {
+            throw new Error('Command menu item update audit duplicate ID');
+          }
+          plannedCommandMenuItemUpdates.set(targetId, action.update);
+        } else if (action.type === 'delete') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.commandMenuItems?.[universalId]?.id;
+          if (!mappedId) {
+            throw new Error('Command menu item delete audit missing mapping');
+          }
+          const targetId = uuid(mappedId);
+          if (plannedCommandMenuItemDeletes.has(targetId)) {
+            throw new Error('Command menu item delete audit duplicate ID');
+          }
+          plannedCommandMenuItemDeletes.add(targetId);
+        } else {
+          throw new Error(
+            `Unsupported commandMenuItem action type ${action.type}`,
+          );
+        }
       }
     }
 
@@ -3205,7 +3663,8 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         request.expectedParentViewDeleteIds !== undefined ||
         request.expectedParentPageLayoutDeleteIds !== undefined ||
         request.expectedParentChannelDeleteIds !== undefined ||
-        request.expectedCreatedObjectId !== undefined;
+        request.expectedCreatedObjectId !== undefined ||
+        request.expectedUpdatedObjectIds !== undefined;
       if (!hasCascadeConstraint) {
         throw new Error(
           'Navigation menu item cascade audit requires explicit expected scope',
@@ -3274,6 +3733,16 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       if (!hasTimelineActivityTypeConstraint) {
         throw new Error(
           'Timeline activity type audit requires explicit expected scope',
+        );
+      }
+    } else if (request.mode === 'commandMenuItem') {
+      const hasCommandMenuItemConstraint =
+        request.expectedCommandMenuItemCreateIds !== undefined ||
+        request.expectedCommandMenuItemUpdateIds !== undefined ||
+        request.expectedCommandMenuItemDeleteIds !== undefined;
+      if (!hasCommandMenuItemConstraint) {
+        throw new Error(
+          'Command menu item audit requires explicit expected scope',
         );
       }
     }
@@ -3893,6 +4362,255 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       }
     }
 
+    if (request.expectedUpdatedObjectIds !== undefined) {
+      if (
+        plannedObjectUpdates.size !== request.expectedUpdatedObjectIds.length ||
+        request.expectedUpdatedObjectIds.some(
+          (id) => !plannedObjectUpdates.has(id),
+        )
+      ) {
+        throw new Error(
+          'Navigation menu item cascade object update plan does not match expected object IDs',
+        );
+      }
+    } else if (request.mode === 'cascade' && plannedObjectUpdates.size > 0) {
+      throw new Error(
+        'Navigation menu item cascade audit detected unexpected objectMetadata update',
+      );
+    }
+
+    if (request.expectedCommandMenuItemCreateIds !== undefined) {
+      const actualCommandMenuItemCreateIds = [
+        ...plannedCommandMenuItemCreatesByUniversalIdentifier.values(),
+      ]
+        .map((entry) => entry.id)
+        .filter((id): id is string => id !== undefined);
+      if (
+        plannedCommandMenuItemCreatesByUniversalIdentifier.size !==
+          request.expectedCommandMenuItemCreateIds.length ||
+        actualCommandMenuItemCreateIds.length !==
+          request.expectedCommandMenuItemCreateIds.length ||
+        request.expectedCommandMenuItemCreateIds.some(
+          (id) => !actualCommandMenuItemCreateIds.includes(id),
+        )
+      ) {
+        throw new Error(
+          'Command menu item create plan does not match expected IDs',
+        );
+      }
+    } else if (
+      request.mode === 'commandMenuItem' &&
+      plannedCommandMenuItemCreatesByUniversalIdentifier.size > 0
+    ) {
+      throw new Error(
+        'Command menu item audit detected unexpected commandMenuItem create',
+      );
+    } else if (
+      request.mode === 'cascade' &&
+      plannedCommandMenuItemCreatesByUniversalIdentifier.size > 0
+    ) {
+      if (
+        request.expectedCreatedObjectId === undefined ||
+        plannedCommandMenuItemCreatesByUniversalIdentifier.size > 1 ||
+        [...plannedCommandMenuItemCreatesByUniversalIdentifier.values()].some(
+          (entry) => entry.flatEntity.isSystemSideEffect !== true,
+        )
+      ) {
+        throw new Error(
+          'Navigation menu item cascade audit detected unexpected commandMenuItem create',
+        );
+      }
+    }
+
+    if (request.expectedCommandMenuItemUpdateIds !== undefined) {
+      if (
+        plannedCommandMenuItemUpdates.size !==
+          request.expectedCommandMenuItemUpdateIds.length ||
+        request.expectedCommandMenuItemUpdateIds.some(
+          (id) => !plannedCommandMenuItemUpdates.has(id),
+        )
+      ) {
+        throw new Error(
+          'Command menu item update plan does not match expected IDs',
+        );
+      }
+    } else if (
+      request.mode === 'commandMenuItem' &&
+      plannedCommandMenuItemUpdates.size > 0
+    ) {
+      throw new Error(
+        'Command menu item audit detected unexpected commandMenuItem update',
+      );
+    } else if (
+      request.mode === 'cascade' &&
+      plannedCommandMenuItemUpdates.size > 0
+    ) {
+      const allowedObjectIds = new Set(request.expectedUpdatedObjectIds ?? []);
+      for (const targetId of plannedCommandMenuItemUpdates.keys()) {
+        const beforeCmi = beforeCommandMenuItems.get(targetId);
+        const navObjId = beforeCmi
+          ? nullableUuid(beforeCmi.navigationTargetObjectMetadataId)
+          : null;
+        if (
+          !beforeCmi ||
+          beforeCmi.isSystemSideEffect !== true ||
+          navObjId === null ||
+          !allowedObjectIds.has(navObjId)
+        ) {
+          throw new Error(
+            'Navigation menu item cascade audit detected unexpected commandMenuItem update',
+          );
+        }
+      }
+    }
+
+    if (request.expectedCommandMenuItemDeleteIds !== undefined) {
+      if (
+        plannedCommandMenuItemDeletes.size !==
+          request.expectedCommandMenuItemDeleteIds.length ||
+        request.expectedCommandMenuItemDeleteIds.some(
+          (id) => !plannedCommandMenuItemDeletes.has(id),
+        )
+      ) {
+        throw new Error(
+          'Command menu item delete plan does not match expected IDs',
+        );
+      }
+    } else if (
+      request.mode === 'commandMenuItem' &&
+      plannedCommandMenuItemDeletes.size > 0
+    ) {
+      throw new Error(
+        'Command menu item audit detected unexpected commandMenuItem delete',
+      );
+    } else if (
+      request.mode === 'frontComponent' &&
+      plannedCommandMenuItemDeletes.size > 0
+    ) {
+      for (const cmiId of plannedCommandMenuItemDeletes) {
+        const beforeCmi = beforeCommandMenuItems.get(cmiId);
+        const fcId = beforeCmi
+          ? nullableUuid(beforeCmi.frontComponentId)
+          : null;
+        if (
+          !beforeCmi ||
+          fcId === null ||
+          !plannedFrontComponentDeletes.has(fcId)
+        ) {
+          throw new Error(
+            'Front component audit cannot delete unrelated commandMenuItem',
+          );
+        }
+      }
+    } else if (
+      isWorkflowCascadeMode &&
+      plannedCommandMenuItemDeletes.size > 0
+    ) {
+      const deletedCoreVersionIds = new Set<string>(
+        plannedWorkflowVersionDeletes,
+      );
+      const deletedWorkspaceVersionIds = new Set<string>();
+      for (const [
+        versionId,
+        versionRow,
+      ] of beforeWorkflowVersionsForLogicFunctionCascade.entries()) {
+        const coreWfId = nullableUuid(versionRow.coreWorkflowId);
+        if (
+          deletedCoreVersionIds.has(versionId) ||
+          (coreWfId !== null && plannedWorkflowDeletes.has(coreWfId))
+        ) {
+          deletedCoreVersionIds.add(versionId);
+          const wsVerId = nullableUuid(versionRow.workspaceWorkflowVersionId);
+          if (wsVerId !== null) {
+            deletedWorkspaceVersionIds.add(wsVerId);
+          }
+        }
+      }
+      for (const cmiId of plannedCommandMenuItemDeletes) {
+        const beforeCmi = beforeCommandMenuItems.get(cmiId);
+        const coreVerId = beforeCmi
+          ? nullableUuid(beforeCmi.coreWorkflowVersionId)
+          : null;
+        const wsVerId = beforeCmi
+          ? nullableUuid(beforeCmi.workflowVersionId)
+          : null;
+        if (
+          !beforeCmi ||
+          ((coreVerId === null || !deletedCoreVersionIds.has(coreVerId)) &&
+            (wsVerId === null || !deletedWorkspaceVersionIds.has(wsVerId)))
+        ) {
+          throw new Error(
+            'Logic function workflow cascade audit cannot delete unrelated commandMenuItem',
+          );
+        }
+      }
+    } else if (
+      request.mode === 'cascade' &&
+      plannedCommandMenuItemDeletes.size > 0
+    ) {
+      for (const cmiId of plannedCommandMenuItemDeletes) {
+        const beforeCmi = beforeCommandMenuItems.get(cmiId);
+        const plId = beforeCmi ? nullableUuid(beforeCmi.pageLayoutId) : null;
+        if (
+          !beforeCmi ||
+          plId === null ||
+          !plannedPageLayoutDeletes.has(plId)
+        ) {
+          throw new Error(
+            'Navigation menu item cascade audit cannot delete unrelated commandMenuItem',
+          );
+        }
+      }
+    }
+
+    const foreignCommandMenuItemAppIds = new Set<string>();
+    for (const targetId of plannedCommandMenuItemUpdates.keys()) {
+      const beforeCmi = beforeCommandMenuItems.get(targetId);
+      if (!beforeCmi) {
+        throw new Error('Command menu item update target row unavailable');
+      }
+      const cmiAppId = uuid(beforeCmi.applicationId);
+      if (cmiAppId !== applicationId) {
+        if (request.mode !== 'commandMenuItem' && request.mode !== 'cascade') {
+          throw new Error(
+            'Command menu item update target row belongs to another application',
+          );
+        }
+        foreignCommandMenuItemAppIds.add(cmiAppId);
+      }
+    }
+    for (const targetId of plannedCommandMenuItemDeletes) {
+      const beforeCmi = beforeCommandMenuItems.get(targetId);
+      if (!beforeCmi) {
+        throw new Error('Command menu item delete target row unavailable');
+      }
+      const cmiAppId = uuid(beforeCmi.applicationId);
+      if (cmiAppId !== applicationId) {
+        if (
+          request.mode !== 'commandMenuItem' &&
+          request.mode !== 'frontComponent' &&
+          request.mode !== 'cascade' &&
+          !isWorkflowCascadeMode
+        ) {
+          throw new Error(
+            'Command menu item delete target row belongs to another application',
+          );
+        }
+        foreignCommandMenuItemAppIds.add(cmiAppId);
+      }
+    }
+    if (foreignCommandMenuItemAppIds.size > 0) {
+      const activeApps = await runner.query(
+        `SELECT id FROM core.application a WHERE a."workspaceId"=$1 AND a.id=ANY($2::uuid[]) AND to_jsonb(a)->>'deletedAt' IS NULL ORDER BY a.id FOR NO KEY UPDATE`,
+        [request.workspaceId, [...foreignCommandMenuItemAppIds]],
+      );
+      if (activeApps.length !== foreignCommandMenuItemAppIds.size) {
+        throw new Error(
+          'Command menu item target row belongs to an unavailable application',
+        );
+      }
+    }
+
     if (request.expectedChannelCreateIds !== undefined) {
       const actualChannelCreateIds = [
         ...plannedChannelCreatesByUniversalIdentifier.values(),
@@ -4387,6 +5105,7 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       request.mode !== 'frontComponent' &&
       request.mode !== 'logicFunction' &&
       request.mode !== 'timelineActivityType' &&
+      request.mode !== 'commandMenuItem' &&
       reg?.hasNavTable === true
         ? await readNavSnapshot(runner, request.workspaceId, false)
         : new Map<string, Record<string, unknown>>();
@@ -6335,6 +7054,532 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         serializeTimelineActivityTypeSnapshot(afterTimelineActivityTypes);
     }
 
+    let expectedCommandMenuItemsSerialized: string | undefined;
+    if (touchesCommandMenuItems && reg?.hasCommandMenuItemTable === true) {
+      const afterCommandMenuItems = await readCommandMenuItemSnapshot(
+        runner,
+        request.workspaceId,
+        false,
+      );
+      const createdCommandMenuItemsByUniversalId = new Map<
+        string,
+        Record<string, unknown>
+      >();
+      for (const [id, afterRow] of afterCommandMenuItems.entries()) {
+        assertCommandMenuItemRowInvariants(afterRow, request.workspaceId);
+        if (!beforeCommandMenuItems.has(id)) {
+          const universalId = uuid(afterRow.universalIdentifier);
+          if (createdCommandMenuItemsByUniversalId.has(universalId)) {
+            throw new Error(
+              'Command menu item audit detected duplicate created universalIdentifier',
+            );
+          }
+          createdCommandMenuItemsByUniversalId.set(universalId, afterRow);
+        }
+      }
+      if (
+        createdCommandMenuItemsByUniversalId.size !==
+        plannedCommandMenuItemCreatesByUniversalIdentifier.size
+      ) {
+        throw new Error('Command menu item audit created row count mismatch');
+      }
+
+      const resolveMappedRelationId = (
+        source: Record<string, unknown>,
+        directKey: string,
+        universalKey: string,
+        map?: Record<string, { id: string } | undefined>,
+      ): string | null | undefined => {
+        if (universalKey in source && source[universalKey] !== undefined) {
+          if (source[universalKey] === null) return null;
+          const mappedId = map?.[uuid(source[universalKey])]?.id;
+          return mappedId ? uuid(mappedId) : null;
+        }
+        if (directKey in source && source[directKey] !== undefined) {
+          return nullableUuid(source[directKey]);
+        }
+        return undefined;
+      };
+
+      for (const [
+        universalId,
+        planned,
+      ] of plannedCommandMenuItemCreatesByUniversalIdentifier.entries()) {
+        const afterRow = createdCommandMenuItemsByUniversalId.get(universalId);
+        if (!afterRow) {
+          throw new Error(
+            'Command menu item create did not persist expected row',
+          );
+        }
+        const createdId = uuid(afterRow.id);
+        if (planned.id !== undefined && createdId !== planned.id) {
+          throw new Error('Command menu item create persisted unexpected ID');
+        }
+        if (uuid(afterRow.applicationId) !== applicationId) {
+          throw new Error(
+            'Command menu item create persisted unexpected applicationId',
+          );
+        }
+        const afterProj = projectCommandMenuItem(afterRow);
+        for (const textKey of [
+          'engineComponentKey',
+          'label',
+          'availabilityType',
+        ] as const) {
+          if (
+            planned.flatEntity[textKey] !== undefined &&
+            afterProj[textKey] !== String(planned.flatEntity[textKey])
+          ) {
+            throw new Error(
+              `Command menu item create persisted unexpected ${textKey}`,
+            );
+          }
+        }
+        for (const nullableTextKey of [
+          'icon',
+          'shortLabel',
+          'conditionalAvailabilityExpression',
+          'conditionalPinnedExpression',
+        ] as const) {
+          if (planned.flatEntity[nullableTextKey] !== undefined) {
+            const expectedVal =
+              planned.flatEntity[nullableTextKey] === null
+                ? null
+                : String(planned.flatEntity[nullableTextKey]);
+            if (afterProj[nullableTextKey] !== expectedVal) {
+              throw new Error(
+                `Command menu item create persisted unexpected ${nullableTextKey}`,
+              );
+            }
+          }
+        }
+        if (
+          planned.flatEntity.position !== undefined &&
+          afterProj.position !== Number(planned.flatEntity.position)
+        ) {
+          throw new Error(
+            'Command menu item create persisted unexpected position',
+          );
+        }
+        for (const boolKey of [
+          'isPinned',
+          'isActive',
+          'isSystemSideEffect',
+        ] as const) {
+          if (
+            planned.flatEntity[boolKey] !== undefined &&
+            afterProj[boolKey] !== Boolean(planned.flatEntity[boolKey])
+          ) {
+            throw new Error(
+              `Command menu item create persisted unexpected ${boolKey}`,
+            );
+          }
+        }
+        for (const directUuidKey of [
+          'workflowVersionId',
+          'coreWorkflowVersionId',
+        ] as const) {
+          if (
+            planned.flatEntity[directUuidKey] !== undefined &&
+            afterProj[directUuidKey] !==
+              nullableUuid(planned.flatEntity[directUuidKey])
+          ) {
+            throw new Error(
+              `Command menu item create persisted unexpected ${directUuidKey}`,
+            );
+          }
+        }
+        const expectedFrontComponentId = resolveMappedRelationId(
+          planned.flatEntity,
+          'frontComponentId',
+          'frontComponentUniversalIdentifier',
+          mappings.frontComponents,
+        );
+        if (
+          expectedFrontComponentId !== undefined &&
+          afterProj.frontComponentId !== expectedFrontComponentId
+        ) {
+          throw new Error(
+            'Command menu item create persisted unexpected frontComponentId',
+          );
+        }
+        const expectedAvailObjId = resolveMappedRelationId(
+          planned.flatEntity,
+          'availabilityObjectMetadataId',
+          'availabilityObjectMetadataUniversalIdentifier',
+          mappings.objectMetadatas,
+        );
+        if (
+          expectedAvailObjId !== undefined &&
+          afterProj.availabilityObjectMetadataId !== expectedAvailObjId
+        ) {
+          throw new Error(
+            'Command menu item create persisted unexpected availabilityObjectMetadataId',
+          );
+        }
+        const expectedNavObjId =
+          request.mode === 'cascade' &&
+          request.expectedCreatedObjectId !== undefined &&
+          planned.flatEntity.navigationTargetObjectMetadataId === undefined
+            ? request.expectedCreatedObjectId
+            : resolveMappedRelationId(
+                planned.flatEntity,
+                'navigationTargetObjectMetadataId',
+                'navigationTargetObjectMetadataUniversalIdentifier',
+                mappings.objectMetadatas,
+              );
+        if (
+          expectedNavObjId !== undefined &&
+          afterProj.navigationTargetObjectMetadataId !== expectedNavObjId
+        ) {
+          throw new Error(
+            'Command menu item create persisted unexpected navigationTargetObjectMetadataId',
+          );
+        }
+        const expectedPageLayoutId = resolveMappedRelationId(
+          planned.flatEntity,
+          'pageLayoutId',
+          'pageLayoutUniversalIdentifier',
+          mappings.pageLayouts,
+        );
+        if (
+          expectedPageLayoutId !== undefined &&
+          afterProj.pageLayoutId !== expectedPageLayoutId
+        ) {
+          throw new Error(
+            'Command menu item create persisted unexpected pageLayoutId',
+          );
+        }
+        if (planned.flatEntity.payload !== undefined) {
+          const expectedPayload =
+            planned.flatEntity.payload === null
+              ? null
+              : planned.flatEntity.payload;
+          if (
+            canonicalAuditJson(afterProj.payload) !==
+            canonicalAuditJson(expectedPayload)
+          ) {
+            throw new Error(
+              'Command menu item create persisted unexpected payload',
+            );
+          }
+        }
+        if (planned.flatEntity.hotKeys !== undefined) {
+          const expectedHotKeys = Array.isArray(planned.flatEntity.hotKeys)
+            ? planned.flatEntity.hotKeys.map((item: unknown) => String(item))
+            : null;
+          if (
+            canonicalAuditJson(afterProj.hotKeys) !==
+            canonicalAuditJson(expectedHotKeys)
+          ) {
+            throw new Error(
+              'Command menu item create persisted unexpected hotKeys',
+            );
+          }
+        }
+        const expectedOverrides = resolveExpectedCommandMenuItemOverrides(
+          planned.flatEntity,
+          mappings.objectMetadatas,
+          mappings.pageLayouts,
+        );
+        if (
+          expectedOverrides !== undefined &&
+          canonicalAuditJson(afterProj.overrides) !==
+            canonicalAuditJson(expectedOverrides)
+        ) {
+          throw new Error(
+            'Command menu item create persisted unexpected overrides',
+          );
+        }
+        audit.record({
+          resourceKind: 'commandMenuItem',
+          resourceId: createdId,
+          action: 'create',
+          before: null,
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'commandMenuItem',
+            resourceId: createdId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        recordedMutations += 1;
+      }
+
+      for (const [
+        targetId,
+        update,
+      ] of plannedCommandMenuItemUpdates.entries()) {
+        const beforeRow = beforeCommandMenuItems.get(targetId);
+        const afterRow = afterCommandMenuItems.get(targetId);
+        if (!beforeRow || !afterRow) {
+          throw new Error(
+            'Command menu item update removed or lost target row',
+          );
+        }
+        if (
+          uuid(beforeRow.applicationId) !== uuid(afterRow.applicationId) ||
+          uuid(beforeRow.universalIdentifier) !==
+            uuid(afterRow.universalIdentifier) ||
+          Boolean(beforeRow.isSystemSideEffect) !==
+            Boolean(afterRow.isSystemSideEffect)
+        ) {
+          throw new Error('Command menu item update modified immutable fields');
+        }
+        const beforeProj = projectCommandMenuItem(beforeRow);
+        const afterProj = projectCommandMenuItem(afterRow);
+        for (const textKey of [
+          'engineComponentKey',
+          'label',
+          'availabilityType',
+        ] as const) {
+          const expectedVal =
+            textKey in update && update[textKey] !== undefined
+              ? String(update[textKey])
+              : beforeProj[textKey];
+          if (afterProj[textKey] !== expectedVal) {
+            throw new Error(
+              `Command menu item update did not persist expected ${textKey}`,
+            );
+          }
+        }
+        for (const nullableTextKey of [
+          'icon',
+          'shortLabel',
+          'conditionalAvailabilityExpression',
+          'conditionalPinnedExpression',
+        ] as const) {
+          const expectedVal =
+            nullableTextKey in update && update[nullableTextKey] !== undefined
+              ? update[nullableTextKey] === null
+                ? null
+                : String(update[nullableTextKey])
+              : beforeProj[nullableTextKey];
+          if (afterProj[nullableTextKey] !== expectedVal) {
+            throw new Error(
+              `Command menu item update did not persist expected ${nullableTextKey}`,
+            );
+          }
+        }
+        const expectedPosition =
+          'position' in update && update.position !== undefined
+            ? Number(update.position)
+            : beforeProj.position;
+        if (afterProj.position !== expectedPosition) {
+          throw new Error(
+            'Command menu item update did not persist expected position',
+          );
+        }
+        for (const boolKey of ['isPinned', 'isActive'] as const) {
+          const expectedVal =
+            boolKey in update && update[boolKey] !== undefined
+              ? Boolean(update[boolKey])
+              : beforeProj[boolKey];
+          if (afterProj[boolKey] !== expectedVal) {
+            throw new Error(
+              `Command menu item update did not persist expected ${boolKey}`,
+            );
+          }
+        }
+        for (const directUuidKey of [
+          'workflowVersionId',
+          'coreWorkflowVersionId',
+        ] as const) {
+          const expectedVal =
+            directUuidKey in update && update[directUuidKey] !== undefined
+              ? nullableUuid(update[directUuidKey])
+              : beforeProj[directUuidKey];
+          if (afterProj[directUuidKey] !== expectedVal) {
+            throw new Error(
+              `Command menu item update did not persist expected ${directUuidKey}`,
+            );
+          }
+        }
+        const resolvedFrontComponentId = resolveMappedRelationId(
+          update,
+          'frontComponentId',
+          'frontComponentUniversalIdentifier',
+          mappings.frontComponents,
+        );
+        const expectedFrontComponentId =
+          resolvedFrontComponentId !== undefined
+            ? resolvedFrontComponentId
+            : beforeProj.frontComponentId;
+        if (afterProj.frontComponentId !== expectedFrontComponentId) {
+          throw new Error(
+            'Command menu item update did not persist expected frontComponentId',
+          );
+        }
+        const resolvedAvailObjId = resolveMappedRelationId(
+          update,
+          'availabilityObjectMetadataId',
+          'availabilityObjectMetadataUniversalIdentifier',
+          mappings.objectMetadatas,
+        );
+        const expectedAvailObjId =
+          resolvedAvailObjId !== undefined
+            ? resolvedAvailObjId
+            : beforeProj.availabilityObjectMetadataId;
+        if (afterProj.availabilityObjectMetadataId !== expectedAvailObjId) {
+          throw new Error(
+            'Command menu item update did not persist expected availabilityObjectMetadataId',
+          );
+        }
+        const resolvedNavObjId = resolveMappedRelationId(
+          update,
+          'navigationTargetObjectMetadataId',
+          'navigationTargetObjectMetadataUniversalIdentifier',
+          mappings.objectMetadatas,
+        );
+        const expectedNavObjId =
+          resolvedNavObjId !== undefined
+            ? resolvedNavObjId
+            : beforeProj.navigationTargetObjectMetadataId;
+        if (afterProj.navigationTargetObjectMetadataId !== expectedNavObjId) {
+          throw new Error(
+            'Command menu item update did not persist expected navigationTargetObjectMetadataId',
+          );
+        }
+        const resolvedPageLayoutId = resolveMappedRelationId(
+          update,
+          'pageLayoutId',
+          'pageLayoutUniversalIdentifier',
+          mappings.pageLayouts,
+        );
+        const expectedPageLayoutId =
+          resolvedPageLayoutId !== undefined
+            ? resolvedPageLayoutId
+            : beforeProj.pageLayoutId;
+        if (afterProj.pageLayoutId !== expectedPageLayoutId) {
+          throw new Error(
+            'Command menu item update did not persist expected pageLayoutId',
+          );
+        }
+        const expectedPayload =
+          'payload' in update && update.payload !== undefined
+            ? update.payload === null
+              ? null
+              : update.payload
+            : beforeProj.payload;
+        if (
+          canonicalAuditJson(afterProj.payload) !==
+          canonicalAuditJson(expectedPayload)
+        ) {
+          throw new Error(
+            'Command menu item update did not persist expected payload',
+          );
+        }
+        const expectedHotKeys =
+          'hotKeys' in update && update.hotKeys !== undefined
+            ? Array.isArray(update.hotKeys)
+              ? update.hotKeys.map((item: unknown) => String(item))
+              : null
+            : beforeProj.hotKeys;
+        if (
+          canonicalAuditJson(afterProj.hotKeys) !==
+          canonicalAuditJson(expectedHotKeys)
+        ) {
+          throw new Error(
+            'Command menu item update did not persist expected hotKeys',
+          );
+        }
+        const resolvedOverrides = resolveExpectedCommandMenuItemOverrides(
+          update,
+          mappings.objectMetadatas,
+          mappings.pageLayouts,
+        );
+        const expectedOverrides =
+          resolvedOverrides !== undefined
+            ? resolvedOverrides
+            : beforeProj.overrides;
+        if (
+          canonicalAuditJson(afterProj.overrides) !==
+          canonicalAuditJson(expectedOverrides)
+        ) {
+          throw new Error(
+            'Command menu item update did not persist expected overrides',
+          );
+        }
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          audit.record({
+            resourceKind: 'commandMenuItem',
+            resourceId: targetId,
+            action: 'update',
+            before: beforeProj,
+            after: afterProj,
+            securityDescriptor: {
+              resourceKind: 'commandMenuItem',
+              resourceId: targetId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedMutations += 1;
+        }
+      }
+
+      for (const deletedId of plannedCommandMenuItemDeletes) {
+        if (!beforeCommandMenuItems.has(deletedId)) {
+          throw new Error(
+            'Command menu item delete expected row missing before migration',
+          );
+        }
+      }
+
+      for (const [cmiId, beforeCmi] of beforeCommandMenuItems.entries()) {
+        const fcId = nullableUuid(beforeCmi.frontComponentId);
+        const plId = nullableUuid(beforeCmi.pageLayoutId);
+        const isExpectedDelete =
+          plannedCommandMenuItemDeletes.has(cmiId) ||
+          (fcId !== null && plannedFrontComponentDeletes.has(fcId)) ||
+          (plId !== null && plannedPageLayoutDeletes.has(plId));
+        const afterCmi = afterCommandMenuItems.get(cmiId);
+        if (isExpectedDelete) {
+          if (afterCmi) {
+            throw new Error(
+              'Command menu item delete did not remove expected row',
+            );
+          }
+          audit.record({
+            resourceKind: 'commandMenuItem',
+            resourceId: cmiId,
+            action: 'delete',
+            before: projectCommandMenuItem(beforeCmi),
+            after: null,
+            securityDescriptor: {
+              resourceKind: 'commandMenuItem',
+              resourceId: cmiId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedMutations += 1;
+        } else {
+          if (!afterCmi) {
+            throw new Error(
+              'Command menu item audit detected unplanned row deletion',
+            );
+          }
+          if (!plannedCommandMenuItemUpdates.has(cmiId)) {
+            if (
+              canonicalAuditJson(
+                scalarNavigationMenuItemWithoutTimestamps(beforeCmi),
+              ) !==
+              canonicalAuditJson(
+                scalarNavigationMenuItemWithoutTimestamps(afterCmi),
+              )
+            ) {
+              throw new Error(
+                'Command menu item audit detected unplanned row mutation',
+              );
+            }
+          }
+        }
+      }
+
+      expectedCommandMenuItemsSerialized = serializeCommandMenuItemSnapshot(
+        afterCommandMenuItems,
+      );
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized =
         request.mode !== 'webhook' &&
@@ -6342,6 +7587,7 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         request.mode !== 'frontComponent' &&
         request.mode !== 'logicFunction' &&
         request.mode !== 'timelineActivityType' &&
+        request.mode !== 'commandMenuItem' &&
         reg?.hasNavTable === true
           ? serializeNavSnapshot(afterNavItems)
           : undefined;
@@ -6459,6 +7705,19 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           throw new Error(
             'Timeline activity type state changed during audit flush',
           );
+        }
+      }
+      if (expectedCommandMenuItemsSerialized !== undefined) {
+        const postFlushCommandMenuItems = await readCommandMenuItemSnapshot(
+          runner,
+          request.workspaceId,
+          false,
+        );
+        if (
+          serializeCommandMenuItemSnapshot(postFlushCommandMenuItems) !==
+          expectedCommandMenuItemsSerialized
+        ) {
+          throw new Error('Command menu item state changed during audit flush');
         }
       }
     }

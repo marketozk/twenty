@@ -1,10 +1,11 @@
 import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
-import { Args, Mutation } from '@nestjs/graphql';
+import { Args, Context, Mutation } from '@nestjs/graphql';
 
 import { PermissionFlagType } from 'twenty-shared/constants';
 
 import { CoreResolver } from 'src/engine/api/graphql/graphql-config/decorators/core-resolver.decorator';
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
+import { type NavigationMenuItemAuditIdentity } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { PreventNestToAutoLogGraphqlErrorsFilter } from 'src/engine/core-modules/graphql/filters/prevent-nest-to-auto-log-graphql-errors.filter';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
 import { CoreWorkflowVersionDTO } from 'src/engine/core-modules/workflow/dtos/core-workflow-version.dto';
@@ -72,6 +73,7 @@ export class CoreWorkflowVersionMutationResolver {
     userWorkspaceId: string | undefined,
     @Args('coreWorkflowVersionId', { type: () => UUIDScalarType })
     coreWorkflowVersionId: string,
+    @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<boolean> {
     return this.coreWorkflowLifecycleWorkspaceService.activateCoreWorkflowVersion(
       {
@@ -79,6 +81,7 @@ export class CoreWorkflowVersionMutationResolver {
 
         userWorkspaceId,
         coreWorkflowVersionId,
+        auditIdentity: context?.req,
       },
     );
   }
@@ -90,6 +93,7 @@ export class CoreWorkflowVersionMutationResolver {
     userWorkspaceId: string | undefined,
     @Args('coreWorkflowVersionId', { type: () => UUIDScalarType })
     coreWorkflowVersionId: string,
+    @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<boolean> {
     return this.coreWorkflowLifecycleWorkspaceService.deactivateCoreWorkflowVersion(
       {
@@ -97,6 +101,7 @@ export class CoreWorkflowVersionMutationResolver {
 
         userWorkspaceId,
         coreWorkflowVersionId,
+        auditIdentity: context?.req,
       },
     );
   }
