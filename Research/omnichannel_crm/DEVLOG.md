@@ -5309,6 +5309,13 @@ cc29bda1-c785-489f-b74b-eed60f23f211 и все 11 состояний задач 
 In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
 Публикация и сверка Linear фиксируются после push.
 
+11.11.2026 LOG183 опубликован. Code c361484ac3f141cc22686c85acb5e8aea331044b
+отправлен в GitHub, ref подтверждён через API. Описание ROB765, комментарий
+3dd19925-f29b-444d-b210-ef3364d39194 и все 11 состояний задач прочитаны обратно
+и совпали. [Публикация](implementation/log183/publication.json).
+Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG184` `view` / `viewFieldGroup` / `viewField` / `viewFilterGroup` / `viewFilter` / `viewSort` / `viewGroup`).
+
+
 
 
 
