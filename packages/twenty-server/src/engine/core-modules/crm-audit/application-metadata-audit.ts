@@ -35,11 +35,17 @@ import {
   assertFrontComponentRowInvariants,
   assertLogicFunctionRowInvariants,
   assertNavigationMenuItemRowInvariants,
+  assertPageLayoutRowInvariants,
+  assertPageLayoutTabRowInvariants,
+  assertPageLayoutWidgetRowInvariants,
   assertSettingsMenuItemRowInvariants,
   assertTimelineActivityTypeRowInvariants,
   assertWebhookRowInvariants,
   computeCascadeDeletedCodeStepLogicFunctionIds,
   computeCascadeDeletedNavigationMenuItemIds,
+  computeCascadeDeletedPageLayoutIds,
+  computeCascadeDeletedPageLayoutTabIds,
+  computeCascadeDeletedPageLayoutWidgetIds,
   LOGIC_FUNCTION_TRIGGER_SETTINGS_KEYS,
   projectAgentChatChannel,
   projectAgentChatChannelRole,
@@ -47,12 +53,18 @@ import {
   projectFrontComponent,
   projectLogicFunction,
   projectNavigationMenuItem,
+  projectPageLayout,
+  projectPageLayoutTab,
+  projectPageLayoutWidget,
   projectSettingsMenuItem,
   projectTimelineActivityType,
   projectWebhook,
   resolveExpectedCommandMenuItemOverrides,
   resolveExpectedFrontComponentWidgetAvailability,
+  resolveExpectedPageLayoutWidgetConfiguration,
+  resolveExpectedPageLayoutWidgetOverrides,
   scalarNavigationMenuItemWithoutTimestamps,
+  stripUndefinedJson,
   TIMELINE_ACTIVITY_TYPE_NULLABLE_UUID_KEYS,
   type NavigationMenuItemAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
@@ -105,8 +117,11 @@ export type ApplicationMetadataAuditMappings = {
   applicationVariables?: Record<string, { id: string } | undefined>;
   workflows?: Record<string, { id: string } | undefined>;
   views?: Record<string, { id: string } | undefined>;
+  viewFieldGroups?: Record<string, { id: string } | undefined>;
   navigationMenuItems?: Record<string, { id: string } | undefined>;
   pageLayouts?: Record<string, { id: string } | undefined>;
+  pageLayoutTabs?: Record<string, { id: string } | undefined>;
+  pageLayoutWidgets?: Record<string, { id: string } | undefined>;
   agentChatChannels?: Record<string, { id: string } | undefined>;
   agentChatChannelRoles?: Record<string, { id: string } | undefined>;
   webhooks?: Record<string, { id: string } | undefined>;
@@ -161,6 +176,9 @@ export const AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES = new Set<string>([
   'logicFunction',
   'timelineActivityType',
   'commandMenuItem',
+  'pageLayout',
+  'pageLayoutTab',
+  'pageLayoutWidget',
 ]);
 
 export const AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES =
@@ -840,6 +858,8 @@ const readExistingTables = async (
       to_regclass('core.view') IS NOT NULL AS "view",
       to_regclass('core."navigationMenuItem"') IS NOT NULL AS "navigationMenuItem",
       to_regclass('core."pageLayout"') IS NOT NULL AS "pageLayout",
+      to_regclass('core."pageLayoutTab"') IS NOT NULL AS "pageLayoutTab",
+      to_regclass('core."pageLayoutWidget"') IS NOT NULL AS "pageLayoutWidget",
       to_regclass('core."agentChatChannel"') IS NOT NULL AS "agentChatChannel",
       to_regclass('core."agentChatChannelRole"') IS NOT NULL AS "agentChatChannelRole",
       to_regclass('core.webhook') IS NOT NULL AS "webhook",
@@ -1377,6 +1397,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
 
     const hasNavTable = existingTables.has('navigationMenuItem');
     const hasPageLayoutTable = existingTables.has('pageLayout');
+    const hasPageLayoutTabTable = existingTables.has('pageLayoutTab');
+    const hasPageLayoutWidgetTable = existingTables.has('pageLayoutWidget');
     const beforeNavigationMenuItems = hasNavTable
       ? await readTableSnapshot(
           runner,
@@ -1398,6 +1420,33 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           true,
         )
       : new Map<string, Record<string, unknown>>();
+    for (const plRow of beforePageLayouts.values()) {
+      assertPageLayoutRowInvariants(plRow, workspaceId);
+    }
+    const beforePageLayoutTabs = hasPageLayoutTabTable
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'pageLayoutTab',
+          workspaceId,
+          true,
+        )
+      : new Map<string, Record<string, unknown>>();
+    for (const pltRow of beforePageLayoutTabs.values()) {
+      assertPageLayoutTabRowInvariants(pltRow, workspaceId);
+    }
+    const beforePageLayoutWidgets = hasPageLayoutWidgetTable
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'pageLayoutWidget',
+          workspaceId,
+          true,
+        )
+      : new Map<string, Record<string, unknown>>();
+    for (const plwRow of beforePageLayoutWidgets.values()) {
+      assertPageLayoutWidgetRowInvariants(plwRow, workspaceId);
+    }
 
     const plannedViewDeletes = resolveMappedIds(
       actions,
@@ -1410,6 +1459,36 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       'pageLayout',
       'delete',
       mappings.pageLayouts ?? {},
+    );
+    const plannedPageLayoutUpdates = resolveMappedIds(
+      actions,
+      'pageLayout',
+      'update',
+      mappings.pageLayouts ?? {},
+    );
+    const plannedPageLayoutTabDeletes = resolveMappedIds(
+      actions,
+      'pageLayoutTab',
+      'delete',
+      mappings.pageLayoutTabs ?? {},
+    );
+    const plannedPageLayoutTabUpdates = resolveMappedIds(
+      actions,
+      'pageLayoutTab',
+      'update',
+      mappings.pageLayoutTabs ?? {},
+    );
+    const plannedPageLayoutWidgetDeletes = resolveMappedIds(
+      actions,
+      'pageLayoutWidget',
+      'delete',
+      mappings.pageLayoutWidgets ?? {},
+    );
+    const plannedPageLayoutWidgetUpdates = resolveMappedIds(
+      actions,
+      'pageLayoutWidget',
+      'update',
+      mappings.pageLayoutWidgets ?? {},
     );
     const plannedAgentChatChannelDeletes = resolveMappedIds(
       actions,
@@ -2625,6 +2704,335 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       }
     }
 
+    const plannedPageLayoutCreatesByUniversalId = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedPageLayoutUpdatePayloads = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    const plannedPageLayoutTabCreatesByUniversalId = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedPageLayoutTabUpdatePayloads = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    const plannedPageLayoutWidgetCreatesByUniversalId = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedPageLayoutWidgetUpdatePayloads = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    for (const action of actions) {
+      if (action.metadataName === 'pageLayout') {
+        if (action.type === 'create') {
+          if (!hasPageLayoutTable) {
+            throw new Error(
+              'Application metadata audit table pageLayout is unavailable',
+            );
+          }
+          if (!action.flatEntity) {
+            throw new Error(
+              'Application metadata audit requires flatEntity on pageLayout create action',
+            );
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (plannedPageLayoutCreatesByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit duplicate pageLayout create universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error(
+              'Application metadata audit pageLayout create belongs to another application',
+            );
+          }
+          const explicitId =
+            action.id !== undefined
+              ? uuid(action.id)
+              : action.flatEntity.id !== undefined
+                ? uuid(action.flatEntity.id)
+                : undefined;
+          if (explicitId !== undefined && beforePageLayouts.has(explicitId)) {
+            throw new Error(
+              'Application metadata audit pageLayout create ID already exists',
+            );
+          }
+          plannedPageLayoutCreatesByUniversalId.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.pageLayouts?.[universalId]?.id;
+          if (!mappedId || !action.update) {
+            throw new Error(
+              'Application metadata audit pageLayout update missing mapping or update payload',
+            );
+          }
+          plannedPageLayoutUpdatePayloads.set(uuid(mappedId), action.update);
+        }
+      } else if (action.metadataName === 'pageLayoutTab') {
+        if (action.type === 'create') {
+          if (!hasPageLayoutTabTable) {
+            throw new Error(
+              'Application metadata audit table pageLayoutTab is unavailable',
+            );
+          }
+          if (!action.flatEntity) {
+            throw new Error(
+              'Application metadata audit requires flatEntity on pageLayoutTab create action',
+            );
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (plannedPageLayoutTabCreatesByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit duplicate pageLayoutTab create universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error(
+              'Application metadata audit pageLayoutTab create belongs to another application',
+            );
+          }
+          const explicitId =
+            action.id !== undefined
+              ? uuid(action.id)
+              : action.flatEntity.id !== undefined
+                ? uuid(action.flatEntity.id)
+                : undefined;
+          if (
+            explicitId !== undefined &&
+            beforePageLayoutTabs.has(explicitId)
+          ) {
+            throw new Error(
+              'Application metadata audit pageLayoutTab create ID already exists',
+            );
+          }
+          plannedPageLayoutTabCreatesByUniversalId.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.pageLayoutTabs?.[universalId]?.id;
+          if (!mappedId || !action.update) {
+            throw new Error(
+              'Application metadata audit pageLayoutTab update missing mapping or update payload',
+            );
+          }
+          plannedPageLayoutTabUpdatePayloads.set(uuid(mappedId), action.update);
+        }
+      } else if (action.metadataName === 'pageLayoutWidget') {
+        if (action.type === 'create') {
+          if (!hasPageLayoutWidgetTable) {
+            throw new Error(
+              'Application metadata audit table pageLayoutWidget is unavailable',
+            );
+          }
+          if (!action.flatEntity) {
+            throw new Error(
+              'Application metadata audit requires flatEntity on pageLayoutWidget create action',
+            );
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (plannedPageLayoutWidgetCreatesByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit duplicate pageLayoutWidget create universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error(
+              'Application metadata audit pageLayoutWidget create belongs to another application',
+            );
+          }
+          const explicitId =
+            action.id !== undefined
+              ? uuid(action.id)
+              : action.flatEntity.id !== undefined
+                ? uuid(action.flatEntity.id)
+                : undefined;
+          if (
+            explicitId !== undefined &&
+            beforePageLayoutWidgets.has(explicitId)
+          ) {
+            throw new Error(
+              'Application metadata audit pageLayoutWidget create ID already exists',
+            );
+          }
+          plannedPageLayoutWidgetCreatesByUniversalId.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.pageLayoutWidgets?.[universalId]?.id;
+          if (!mappedId || !action.update) {
+            throw new Error(
+              'Application metadata audit pageLayoutWidget update missing mapping or update payload',
+            );
+          }
+          plannedPageLayoutWidgetUpdatePayloads.set(
+            uuid(mappedId),
+            action.update,
+          );
+        }
+      }
+    }
+    for (const plId of plannedPageLayoutUpdates) {
+      const beforePl = beforePageLayouts.get(plId);
+      if (!beforePl || uuid(beforePl.applicationId) !== applicationId) {
+        throw new Error(
+          'Application metadata audit cannot update missing or foreign pageLayout',
+        );
+      }
+    }
+    for (const pltId of plannedPageLayoutTabUpdates) {
+      const beforePlt = beforePageLayoutTabs.get(pltId);
+      if (!beforePlt || uuid(beforePlt.applicationId) !== applicationId) {
+        throw new Error(
+          'Application metadata audit cannot update missing or foreign pageLayoutTab',
+        );
+      }
+    }
+    for (const plwId of plannedPageLayoutWidgetUpdates) {
+      const beforePlw = beforePageLayoutWidgets.get(plwId);
+      if (!beforePlw || uuid(beforePlw.applicationId) !== applicationId) {
+        throw new Error(
+          'Application metadata audit cannot update missing or foreign pageLayoutWidget',
+        );
+      }
+    }
+    const effectiveCascadePageLayoutTabIds =
+      computeCascadeDeletedPageLayoutTabIds({
+        beforePageLayoutTabs,
+        plannedPageLayoutTabDeletes,
+        effectiveDeletedPageLayoutIds: effectiveCascadePageLayoutIds,
+      });
+    const isWidgetReferencingDeletedField = (
+      beforeWidget: Record<string, unknown>,
+      deletedFieldIds: ReadonlySet<string>,
+    ): boolean => {
+      const cfg = beforeWidget.configuration as
+        | Record<string, unknown>
+        | undefined;
+      if (!cfg || typeof cfg !== 'object') return false;
+      for (const key of [
+        'fieldMetadataId',
+        'aggregateFieldMetadataId',
+        'groupByFieldMetadataId',
+        'primaryAxisGroupByFieldMetadataId',
+        'secondaryAxisGroupByFieldMetadataId',
+        'nestedRelationFieldMetadataId',
+      ]) {
+        const fid = nullableUuid(cfg[key]);
+        if (fid !== null && deletedFieldIds.has(fid)) return true;
+      }
+      return false;
+    };
+    const isParentCascadeDeletedPageLayoutWidget = (
+      beforeWidget: Record<string, unknown>,
+    ): boolean => {
+      const tabId = nullableUuid(beforeWidget.pageLayoutTabId);
+      const objId = nullableUuid(beforeWidget.objectMetadataId);
+      const cfg = beforeWidget.configuration as
+        | Record<string, unknown>
+        | undefined;
+      const cfgFcId = cfg ? nullableUuid(cfg.frontComponentId) : null;
+      return (
+        (tabId !== null && effectiveCascadePageLayoutTabIds.has(tabId)) ||
+        (objId !== null && plannedObjectDeletes.has(objId)) ||
+        isWidgetReferencingDeletedField(beforeWidget, plannedFieldDeletes) ||
+        (cfgFcId !== null && plannedFrontComponentDeletes.has(cfgFcId))
+      );
+    };
+    for (const plId of plannedPageLayoutDeletes) {
+      const beforePl = beforePageLayouts.get(plId);
+      if (!beforePl) {
+        throw new Error(
+          'Application metadata audit cannot delete missing pageLayout',
+        );
+      }
+      const objId = nullableUuid(beforePl.objectMetadataId);
+      if (
+        mode !== 'objectDelete' &&
+        uuid(beforePl.applicationId) !== applicationId &&
+        (objId === null || !plannedObjectDeletes.has(objId))
+      ) {
+        throw new Error(
+          'Application metadata audit cannot delete foreign pageLayout',
+        );
+      }
+    }
+    for (const pltId of plannedPageLayoutTabDeletes) {
+      const beforePlt = beforePageLayoutTabs.get(pltId);
+      if (!beforePlt) {
+        throw new Error(
+          'Application metadata audit cannot delete missing pageLayoutTab',
+        );
+      }
+      const plId = nullableUuid(beforePlt.pageLayoutId);
+      if (mode === 'objectDelete' || mode === 'fieldDelete') {
+        if (plId === null || !effectiveCascadePageLayoutIds.has(plId)) {
+          throw new Error(
+            `Application metadata ${mode} cannot delete unrelated pageLayoutTab`,
+          );
+        }
+      } else if (
+        uuid(beforePlt.applicationId) !== applicationId &&
+        (plId === null || !effectiveCascadePageLayoutIds.has(plId))
+      ) {
+        throw new Error(
+          'Application metadata audit cannot delete foreign pageLayoutTab',
+        );
+      }
+    }
+    for (const plwId of plannedPageLayoutWidgetDeletes) {
+      const beforePlw = beforePageLayoutWidgets.get(plwId);
+      if (!beforePlw) {
+        throw new Error(
+          'Application metadata audit cannot delete missing pageLayoutWidget',
+        );
+      }
+      if (mode === 'objectDelete') {
+        if (!isParentCascadeDeletedPageLayoutWidget(beforePlw)) {
+          throw new Error(
+            'Application metadata objectDelete cannot delete unrelated pageLayoutWidget',
+          );
+        }
+      } else if (mode === 'fieldDelete') {
+        if (!isWidgetReferencingDeletedField(beforePlw, plannedFieldDeletes)) {
+          throw new Error(
+            'Application metadata fieldDelete cannot delete unrelated pageLayoutWidget',
+          );
+        }
+      } else if (
+        uuid(beforePlw.applicationId) !== applicationId &&
+        !isParentCascadeDeletedPageLayoutWidget(beforePlw)
+      ) {
+        throw new Error(
+          'Application metadata audit cannot delete foreign pageLayoutWidget',
+        );
+      }
+    }
+
     const plannedNavCreatesByUniversalIdentifier = new Map<
       string,
       { id?: string; flatEntity: Record<string, unknown> }
@@ -2834,6 +3242,8 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
             action.metadataName === 'rowLevelPermissionPredicate' ||
             action.metadataName === 'view' ||
             action.metadataName === 'pageLayout' ||
+            action.metadataName === 'pageLayoutTab' ||
+            action.metadataName === 'pageLayoutWidget' ||
             action.metadataName === 'navigationMenuItem' ||
             action.metadataName === 'commandMenuItem') &&
           action.type !== 'delete'
@@ -2981,6 +3391,7 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           action.metadataName === 'rowLevelPermissionPredicateGroup' ||
           action.metadataName === 'applicationVariable' ||
           action.metadataName === 'pageLayout' ||
+          action.metadataName === 'pageLayoutTab' ||
           action.metadataName === 'agentChatChannel' ||
           action.metadataName === 'agentChatChannelRole' ||
           action.metadataName === 'webhook' ||
@@ -3001,6 +3412,7 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
             action.metadataName === 'fieldPermission' ||
             action.metadataName === 'rowLevelPermissionPredicate' ||
             action.metadataName === 'view' ||
+            action.metadataName === 'pageLayoutWidget' ||
             action.metadataName === 'navigationMenuItem') &&
           action.type !== 'delete'
         ) {
@@ -7172,6 +7584,1140 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       );
     }
 
+    // 20. Verify and record core.pageLayout, core.pageLayoutTab, and core.pageLayoutWidget lifecycle and cascade deletions
+    let expectedPageLayoutsSerialized: string | undefined;
+    let expectedPageLayoutTabsSerialized: string | undefined;
+    let expectedPageLayoutWidgetsSerialized: string | undefined;
+
+    const afterPageLayouts = hasPageLayoutTable
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'pageLayout',
+          workspaceId,
+          false,
+        )
+      : new Map<string, Record<string, unknown>>();
+    const afterPageLayoutTabs = hasPageLayoutTabTable
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'pageLayoutTab',
+          workspaceId,
+          false,
+        )
+      : new Map<string, Record<string, unknown>>();
+    const afterPageLayoutWidgets = hasPageLayoutWidgetTable
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'pageLayoutWidget',
+          workspaceId,
+          false,
+        )
+      : new Map<string, Record<string, unknown>>();
+
+    const createdPageLayoutsByUniversalId = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    if (hasPageLayoutTable) {
+      for (const [id, afterRow] of afterPageLayouts.entries()) {
+        assertPageLayoutRowInvariants(afterRow, workspaceId);
+        if (!beforePageLayouts.has(id)) {
+          const universalId = uuid(afterRow.universalIdentifier);
+          if (createdPageLayoutsByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit detected duplicate created pageLayout universalIdentifier',
+            );
+          }
+          createdPageLayoutsByUniversalId.set(universalId, afterRow);
+        }
+      }
+      if (
+        createdPageLayoutsByUniversalId.size !==
+        plannedPageLayoutCreatesByUniversalId.size
+      ) {
+        throw new Error(
+          'Application metadata audit pageLayout created row count mismatch',
+        );
+      }
+    }
+
+    const createdPageLayoutTabsByUniversalId = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    if (hasPageLayoutTabTable) {
+      for (const [id, afterRow] of afterPageLayoutTabs.entries()) {
+        assertPageLayoutTabRowInvariants(afterRow, workspaceId);
+        if (!beforePageLayoutTabs.has(id)) {
+          const universalId = uuid(afterRow.universalIdentifier);
+          if (createdPageLayoutTabsByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit detected duplicate created pageLayoutTab universalIdentifier',
+            );
+          }
+          createdPageLayoutTabsByUniversalId.set(universalId, afterRow);
+        }
+      }
+      if (
+        createdPageLayoutTabsByUniversalId.size !==
+        plannedPageLayoutTabCreatesByUniversalId.size
+      ) {
+        throw new Error(
+          'Application metadata audit pageLayoutTab created row count mismatch',
+        );
+      }
+    }
+
+    const createdPageLayoutWidgetsByUniversalId = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    if (hasPageLayoutWidgetTable) {
+      for (const [id, afterRow] of afterPageLayoutWidgets.entries()) {
+        assertPageLayoutWidgetRowInvariants(afterRow, workspaceId);
+        if (!beforePageLayoutWidgets.has(id)) {
+          const universalId = uuid(afterRow.universalIdentifier);
+          if (createdPageLayoutWidgetsByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit detected duplicate created pageLayoutWidget universalIdentifier',
+            );
+          }
+          createdPageLayoutWidgetsByUniversalId.set(universalId, afterRow);
+        }
+      }
+      if (
+        createdPageLayoutWidgetsByUniversalId.size !==
+        plannedPageLayoutWidgetCreatesByUniversalId.size
+      ) {
+        throw new Error(
+          'Application metadata audit pageLayoutWidget created row count mismatch',
+        );
+      }
+    }
+
+    const appPageLayoutObjectMap: Record<string, { id: string } | undefined> = {
+      ...mappings.objectMetadatas,
+    };
+    for (const action of actions) {
+      if (
+        action.metadataName === 'objectMetadata' &&
+        action.type === 'create' &&
+        action.flatEntity?.universalIdentifier !== undefined
+      ) {
+        const objId = action.id ?? action.flatEntity.id;
+        if (typeof objId === 'string' && isUUID(objId)) {
+          appPageLayoutObjectMap[uuid(action.flatEntity.universalIdentifier)] =
+            {
+              id: uuid(objId),
+            };
+        }
+      }
+    }
+    const appPageLayoutMap: Record<string, { id: string } | undefined> = {
+      ...(mappings.pageLayouts ?? {}),
+    };
+    for (const [uid, afterRow] of createdPageLayoutsByUniversalId.entries()) {
+      appPageLayoutMap[uid] = { id: uuid(afterRow.id) };
+    }
+    const appPageLayoutTabMap: Record<string, { id: string } | undefined> = {
+      ...(mappings.pageLayoutTabs ?? {}),
+    };
+    for (const [
+      uid,
+      afterRow,
+    ] of createdPageLayoutTabsByUniversalId.entries()) {
+      appPageLayoutTabMap[uid] = { id: uuid(afterRow.id) };
+    }
+    const resolveAppPlRelationId = (
+      source: Record<string, unknown>,
+      directKey: string,
+      universalKey: string,
+      map?: Record<string, { id: string } | undefined>,
+    ): string | null | undefined => {
+      if (universalKey in source && source[universalKey] !== undefined) {
+        if (source[universalKey] === null) return null;
+        const mappedId = map?.[uuid(source[universalKey])]?.id;
+        return mappedId ? uuid(mappedId) : uuid(source[universalKey]);
+      }
+      if (directKey in source && source[directKey] !== undefined) {
+        return nullableUuid(source[directKey]);
+      }
+      return undefined;
+    };
+
+    if (hasPageLayoutTable) {
+      for (const [
+        universalId,
+        planned,
+      ] of plannedPageLayoutCreatesByUniversalId.entries()) {
+        const afterRow = createdPageLayoutsByUniversalId.get(universalId);
+        if (!afterRow) {
+          throw new Error(
+            'Application metadata pageLayout create did not persist expected row',
+          );
+        }
+        const createdId = uuid(afterRow.id);
+        if (planned.id !== undefined && createdId !== planned.id) {
+          throw new Error(
+            'Application metadata pageLayout create persisted unexpected ID',
+          );
+        }
+        if (uuid(afterRow.applicationId) !== applicationId) {
+          throw new Error(
+            'Application metadata pageLayout create persisted unexpected applicationId',
+          );
+        }
+        const afterProj = projectPageLayout(afterRow);
+        if (
+          planned.flatEntity.name !== undefined &&
+          afterProj.name !== String(planned.flatEntity.name)
+        ) {
+          throw new Error(
+            'Application metadata pageLayout create persisted unexpected name',
+          );
+        }
+        if (
+          planned.flatEntity.type !== undefined &&
+          afterProj.type !== String(planned.flatEntity.type)
+        ) {
+          throw new Error(
+            'Application metadata pageLayout create persisted unexpected type',
+          );
+        }
+        const expectedObjId = resolveAppPlRelationId(
+          planned.flatEntity,
+          'objectMetadataId',
+          'objectMetadataUniversalIdentifier',
+          appPageLayoutObjectMap,
+        );
+        if (
+          expectedObjId !== undefined &&
+          afterProj.objectMetadataId !== expectedObjId
+        ) {
+          throw new Error(
+            'Application metadata pageLayout create persisted unexpected objectMetadataId',
+          );
+        }
+        if ('defaultTabToFocusOnMobileAndSidePanelId' in afterRow) {
+          const expectedDefaultTabId = resolveAppPlRelationId(
+            planned.flatEntity,
+            'defaultTabToFocusOnMobileAndSidePanelId',
+            'defaultTabToFocusOnMobileAndSidePanelUniversalIdentifier',
+            appPageLayoutTabMap,
+          );
+          if (
+            expectedDefaultTabId !== undefined &&
+            afterProj.defaultTabToFocusOnMobileAndSidePanelId !==
+              expectedDefaultTabId
+          ) {
+            throw new Error(
+              'Application metadata pageLayout create persisted unexpected defaultTabToFocusOnMobileAndSidePanelId',
+            );
+          }
+        }
+        if (
+          'isSystemSideEffect' in afterRow &&
+          planned.flatEntity.isSystemSideEffect !== undefined &&
+          afterProj.isSystemSideEffect !==
+            Boolean(planned.flatEntity.isSystemSideEffect)
+        ) {
+          throw new Error(
+            'Application metadata pageLayout create persisted unexpected isSystemSideEffect',
+          );
+        }
+        if (
+          'isFirstTabPinned' in afterRow &&
+          planned.flatEntity.isFirstTabPinned !== undefined &&
+          afterProj.isFirstTabPinned !==
+            Boolean(planned.flatEntity.isFirstTabPinned)
+        ) {
+          throw new Error(
+            'Application metadata pageLayout create persisted unexpected isFirstTabPinned',
+          );
+        }
+        recordMutation('pageLayout', createdId, 'create', null, afterProj);
+      }
+
+      for (const [
+        plId,
+        updatePayload,
+      ] of plannedPageLayoutUpdatePayloads.entries()) {
+        const beforeRow = beforePageLayouts.get(plId);
+        const afterRow = afterPageLayouts.get(plId);
+        if (
+          !beforeRow ||
+          !afterRow ||
+          uuid(beforeRow.applicationId) !== uuid(afterRow.applicationId) ||
+          uuid(beforeRow.universalIdentifier) !==
+            uuid(afterRow.universalIdentifier) ||
+          Boolean(beforeRow.isSystemSideEffect ?? false) !==
+            Boolean(afterRow.isSystemSideEffect ?? false)
+        ) {
+          throw new Error(
+            'Application metadata pageLayout update removed or corrupted target row',
+          );
+        }
+        const beforeProj = projectPageLayout(beforeRow);
+        const afterProj = projectPageLayout(afterRow);
+        const expectedName =
+          'name' in updatePayload && updatePayload.name !== undefined
+            ? String(updatePayload.name)
+            : beforeProj.name;
+        if (afterProj.name !== expectedName) {
+          throw new Error(
+            'Application metadata pageLayout update did not persist expected name',
+          );
+        }
+        const expectedType =
+          'type' in updatePayload && updatePayload.type !== undefined
+            ? String(updatePayload.type)
+            : beforeProj.type;
+        if (afterProj.type !== expectedType) {
+          throw new Error(
+            'Application metadata pageLayout update did not persist expected type',
+          );
+        }
+        const resolvedObjId = resolveAppPlRelationId(
+          updatePayload,
+          'objectMetadataId',
+          'objectMetadataUniversalIdentifier',
+          appPageLayoutObjectMap,
+        );
+        const expectedObjId =
+          resolvedObjId !== undefined
+            ? resolvedObjId
+            : beforeProj.objectMetadataId;
+        if (afterProj.objectMetadataId !== expectedObjId) {
+          throw new Error(
+            'Application metadata pageLayout update did not persist expected objectMetadataId',
+          );
+        }
+        if ('defaultTabToFocusOnMobileAndSidePanelId' in afterRow) {
+          const resolvedDefaultTabId = resolveAppPlRelationId(
+            updatePayload,
+            'defaultTabToFocusOnMobileAndSidePanelId',
+            'defaultTabToFocusOnMobileAndSidePanelUniversalIdentifier',
+            appPageLayoutTabMap,
+          );
+          const expectedDefaultTabId =
+            resolvedDefaultTabId !== undefined
+              ? resolvedDefaultTabId
+              : beforeProj.defaultTabToFocusOnMobileAndSidePanelId !== null &&
+                  effectiveCascadePageLayoutTabIds.has(
+                    beforeProj.defaultTabToFocusOnMobileAndSidePanelId,
+                  )
+                ? null
+                : beforeProj.defaultTabToFocusOnMobileAndSidePanelId;
+          if (
+            afterProj.defaultTabToFocusOnMobileAndSidePanelId !==
+            expectedDefaultTabId
+          ) {
+            throw new Error(
+              'Application metadata pageLayout update did not persist expected defaultTabToFocusOnMobileAndSidePanelId',
+            );
+          }
+        }
+        if ('isFirstTabPinned' in afterRow) {
+          const expectedFirstTabPinned =
+            'isFirstTabPinned' in updatePayload &&
+            updatePayload.isFirstTabPinned !== undefined
+              ? Boolean(updatePayload.isFirstTabPinned)
+              : beforeProj.isFirstTabPinned;
+          if (afterProj.isFirstTabPinned !== expectedFirstTabPinned) {
+            throw new Error(
+              'Application metadata pageLayout update did not persist expected isFirstTabPinned',
+            );
+          }
+        }
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          recordMutation('pageLayout', plId, 'update', beforeProj, afterProj);
+        }
+      }
+
+      for (const plId of effectiveCascadePageLayoutIds) {
+        const beforePl = beforePageLayouts.get(plId);
+        if (!beforePl) {
+          throw new Error(
+            'Application metadata pageLayout delete expected row missing before migration',
+          );
+        }
+        if (afterPageLayouts.has(plId)) {
+          throw new Error(
+            'Application metadata pageLayout delete did not remove expected row',
+          );
+        }
+        recordMutation(
+          'pageLayout',
+          plId,
+          'delete',
+          projectPageLayout(beforePl),
+          null,
+        );
+      }
+
+      for (const [plId, beforePl] of beforePageLayouts.entries()) {
+        if (
+          effectiveCascadePageLayoutIds.has(plId) ||
+          plannedPageLayoutUpdates.has(plId)
+        ) {
+          continue;
+        }
+        const afterPl = afterPageLayouts.get(plId);
+        if (!afterPl) {
+          throw new Error(
+            'Application metadata audit detected unplanned pageLayout deletion',
+          );
+        }
+        const beforeDefaultTabId = nullableUuid(
+          beforePl.defaultTabToFocusOnMobileAndSidePanelId,
+        );
+        if (
+          beforeDefaultTabId !== null &&
+          effectiveCascadePageLayoutTabIds.has(beforeDefaultTabId)
+        ) {
+          const afterDefaultTabId = nullableUuid(
+            afterPl.defaultTabToFocusOnMobileAndSidePanelId,
+          );
+          const beforeWithoutDefaultTab = {
+            ...scalarWithoutTimestamps(beforePl),
+            defaultTabToFocusOnMobileAndSidePanelId: null,
+          };
+          const afterWithoutDefaultTab = {
+            ...scalarWithoutTimestamps(afterPl),
+            defaultTabToFocusOnMobileAndSidePanelId: null,
+          };
+          if (
+            afterDefaultTabId !== null ||
+            canonicalAuditJson(beforeWithoutDefaultTab) !==
+              canonicalAuditJson(afterWithoutDefaultTab)
+          ) {
+            throw new Error(
+              'Application metadata audit detected unexpected mutation on pageLayout defaultTabToFocusOnMobileAndSidePanelId cascade',
+            );
+          }
+          recordMutation(
+            'pageLayout',
+            plId,
+            'update',
+            projectPageLayout(beforePl),
+            projectPageLayout(afterPl),
+          );
+        } else if (
+          canonicalAuditJson(scalarWithoutTimestamps(beforePl)) !==
+          canonicalAuditJson(scalarWithoutTimestamps(afterPl))
+        ) {
+          throw new Error(
+            'Application metadata audit detected unplanned pageLayout mutation',
+          );
+        }
+      }
+
+      expectedPageLayoutsSerialized = canonicalAuditJson(
+        [...afterPageLayouts.entries()].map(([id, row]) => [
+          id,
+          scalarWithoutTimestamps(row),
+        ]),
+      );
+    }
+
+    if (hasPageLayoutTabTable) {
+      for (const [
+        universalId,
+        planned,
+      ] of plannedPageLayoutTabCreatesByUniversalId.entries()) {
+        const afterRow = createdPageLayoutTabsByUniversalId.get(universalId);
+        if (!afterRow) {
+          throw new Error(
+            'Application metadata pageLayoutTab create did not persist expected row',
+          );
+        }
+        const createdId = uuid(afterRow.id);
+        if (planned.id !== undefined && createdId !== planned.id) {
+          throw new Error(
+            'Application metadata pageLayoutTab create persisted unexpected ID',
+          );
+        }
+        if (uuid(afterRow.applicationId) !== applicationId) {
+          throw new Error(
+            'Application metadata pageLayoutTab create persisted unexpected applicationId',
+          );
+        }
+        const afterProj = projectPageLayoutTab(afterRow);
+        const expectedPlId = resolveAppPlRelationId(
+          planned.flatEntity,
+          'pageLayoutId',
+          'pageLayoutUniversalIdentifier',
+          appPageLayoutMap,
+        );
+        if (
+          expectedPlId !== undefined &&
+          afterProj.pageLayoutId !== expectedPlId
+        ) {
+          throw new Error(
+            'Application metadata pageLayoutTab create persisted unexpected pageLayoutId',
+          );
+        }
+        if (
+          planned.flatEntity.title !== undefined &&
+          afterProj.title !== String(planned.flatEntity.title)
+        ) {
+          throw new Error(
+            'Application metadata pageLayoutTab create persisted unexpected title',
+          );
+        }
+        if (
+          planned.flatEntity.position !== undefined &&
+          afterProj.position !== Number(planned.flatEntity.position)
+        ) {
+          throw new Error(
+            'Application metadata pageLayoutTab create persisted unexpected position',
+          );
+        }
+        if (
+          planned.flatEntity.layoutMode !== undefined &&
+          afterProj.layoutMode !== String(planned.flatEntity.layoutMode)
+        ) {
+          throw new Error(
+            'Application metadata pageLayoutTab create persisted unexpected layoutMode',
+          );
+        }
+        if (planned.flatEntity.icon !== undefined) {
+          const expectedIcon =
+            planned.flatEntity.icon === null
+              ? null
+              : String(planned.flatEntity.icon);
+          if (afterProj.icon !== expectedIcon) {
+            throw new Error(
+              'Application metadata pageLayoutTab create persisted unexpected icon',
+            );
+          }
+        }
+        for (const boolKey of ['isActive', 'isSystemSideEffect'] as const) {
+          if (
+            planned.flatEntity[boolKey] !== undefined &&
+            afterProj[boolKey] !== Boolean(planned.flatEntity[boolKey])
+          ) {
+            throw new Error(
+              `Application metadata pageLayoutTab create persisted unexpected ${boolKey}`,
+            );
+          }
+        }
+        if (planned.flatEntity.overrides !== undefined) {
+          const expectedOverrides =
+            planned.flatEntity.overrides === null
+              ? null
+              : stripUndefinedJson(planned.flatEntity.overrides);
+          if (
+            canonicalAuditJson(afterProj.overrides) !==
+            canonicalAuditJson(expectedOverrides)
+          ) {
+            throw new Error(
+              'Application metadata pageLayoutTab create persisted unexpected overrides',
+            );
+          }
+        }
+        recordMutation('pageLayoutTab', createdId, 'create', null, afterProj);
+      }
+
+      for (const [
+        pltId,
+        updatePayload,
+      ] of plannedPageLayoutTabUpdatePayloads.entries()) {
+        const beforeRow = beforePageLayoutTabs.get(pltId);
+        const afterRow = afterPageLayoutTabs.get(pltId);
+        if (
+          !beforeRow ||
+          !afterRow ||
+          uuid(beforeRow.applicationId) !== uuid(afterRow.applicationId) ||
+          uuid(beforeRow.universalIdentifier) !==
+            uuid(afterRow.universalIdentifier) ||
+          uuid(beforeRow.pageLayoutId) !== uuid(afterRow.pageLayoutId) ||
+          Boolean(beforeRow.isSystemSideEffect) !==
+            Boolean(afterRow.isSystemSideEffect)
+        ) {
+          throw new Error(
+            'Application metadata pageLayoutTab update removed or corrupted target row',
+          );
+        }
+        const beforeProj = projectPageLayoutTab(beforeRow);
+        const afterProj = projectPageLayoutTab(afterRow);
+        for (const textKey of ['title', 'layoutMode'] as const) {
+          const expectedVal =
+            textKey in updatePayload && updatePayload[textKey] !== undefined
+              ? String(updatePayload[textKey])
+              : beforeProj[textKey];
+          if (afterProj[textKey] !== expectedVal) {
+            throw new Error(
+              `Application metadata pageLayoutTab update did not persist expected ${textKey}`,
+            );
+          }
+        }
+        const expectedPosition =
+          'position' in updatePayload && updatePayload.position !== undefined
+            ? Number(updatePayload.position)
+            : beforeProj.position;
+        if (afterProj.position !== expectedPosition) {
+          throw new Error(
+            'Application metadata pageLayoutTab update did not persist expected position',
+          );
+        }
+        const expectedIcon =
+          'icon' in updatePayload && updatePayload.icon !== undefined
+            ? updatePayload.icon === null
+              ? null
+              : String(updatePayload.icon)
+            : beforeProj.icon;
+        if (afterProj.icon !== expectedIcon) {
+          throw new Error(
+            'Application metadata pageLayoutTab update did not persist expected icon',
+          );
+        }
+        const expectedIsActive =
+          'isActive' in updatePayload && updatePayload.isActive !== undefined
+            ? Boolean(updatePayload.isActive)
+            : beforeProj.isActive;
+        if (afterProj.isActive !== expectedIsActive) {
+          throw new Error(
+            'Application metadata pageLayoutTab update did not persist expected isActive',
+          );
+        }
+        const expectedOverrides =
+          'overrides' in updatePayload && updatePayload.overrides !== undefined
+            ? updatePayload.overrides === null
+              ? null
+              : stripUndefinedJson(updatePayload.overrides)
+            : beforeProj.overrides;
+        if (
+          canonicalAuditJson(afterProj.overrides) !==
+          canonicalAuditJson(expectedOverrides)
+        ) {
+          throw new Error(
+            'Application metadata pageLayoutTab update did not persist expected overrides',
+          );
+        }
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          recordMutation(
+            'pageLayoutTab',
+            pltId,
+            'update',
+            beforeProj,
+            afterProj,
+          );
+        }
+      }
+
+      for (const pltId of effectiveCascadePageLayoutTabIds) {
+        const beforePlt = beforePageLayoutTabs.get(pltId);
+        if (!beforePlt) {
+          throw new Error(
+            'Application metadata pageLayoutTab delete expected row missing before migration',
+          );
+        }
+        if (afterPageLayoutTabs.has(pltId)) {
+          throw new Error(
+            'Application metadata pageLayoutTab delete did not remove expected row',
+          );
+        }
+        recordMutation(
+          'pageLayoutTab',
+          pltId,
+          'delete',
+          projectPageLayoutTab(beforePlt),
+          null,
+        );
+      }
+
+      for (const [pltId, beforePlt] of beforePageLayoutTabs.entries()) {
+        if (
+          effectiveCascadePageLayoutTabIds.has(pltId) ||
+          plannedPageLayoutTabUpdates.has(pltId)
+        ) {
+          continue;
+        }
+        const afterPlt = afterPageLayoutTabs.get(pltId);
+        if (!afterPlt) {
+          throw new Error(
+            'Application metadata audit detected unplanned pageLayoutTab deletion',
+          );
+        }
+        if (
+          canonicalAuditJson(scalarWithoutTimestamps(beforePlt)) !==
+          canonicalAuditJson(scalarWithoutTimestamps(afterPlt))
+        ) {
+          throw new Error(
+            'Application metadata audit detected unplanned pageLayoutTab mutation',
+          );
+        }
+      }
+
+      expectedPageLayoutTabsSerialized = canonicalAuditJson(
+        [...afterPageLayoutTabs.entries()].map(([id, row]) => [
+          id,
+          scalarWithoutTimestamps(row),
+        ]),
+      );
+    }
+
+    if (hasPageLayoutWidgetTable) {
+      const appFieldMetadatasMap: Record<string, { id: string } | undefined> = {
+        ...mappings.fieldMetadatas,
+      };
+      const appViewsMap: Record<string, { id: string } | undefined> = {
+        ...(mappings.views ?? {}),
+      };
+      const appFrontComponentsMap: Record<string, { id: string } | undefined> =
+        {
+          ...(mappings.frontComponents ?? {}),
+        };
+      const appViewFieldGroupsMap: Record<string, { id: string } | undefined> =
+        {
+          ...(mappings.viewFieldGroups ?? {}),
+        };
+      for (const action of actions) {
+        if (
+          action.type === 'create' &&
+          action.flatEntity?.universalIdentifier !== undefined
+        ) {
+          const createdEntityId = action.id ?? action.flatEntity.id;
+          if (typeof createdEntityId === 'string' && isUUID(createdEntityId)) {
+            const uid = uuid(action.flatEntity.universalIdentifier);
+            const normalizedId = uuid(createdEntityId);
+            if (action.metadataName === 'fieldMetadata') {
+              appFieldMetadatasMap[uid] = { id: normalizedId };
+            } else if (action.metadataName === 'view') {
+              appViewsMap[uid] = { id: normalizedId };
+            } else if (action.metadataName === 'frontComponent') {
+              appFrontComponentsMap[uid] = { id: normalizedId };
+            } else if (action.metadataName === 'viewFieldGroup') {
+              appViewFieldGroupsMap[uid] = { id: normalizedId };
+            }
+          }
+        }
+      }
+      if (
+        (plannedPageLayoutWidgetCreatesByUniversalId.size > 0 ||
+          plannedPageLayoutWidgetUpdatePayloads.size > 0) &&
+        existingTables.has('fieldMetadata')
+      ) {
+        const dbFields = await runner.query(
+          `SELECT id, "universalIdentifier" FROM core."fieldMetadata" WHERE "workspaceId"=$1`,
+          [workspaceId],
+        );
+        for (const fRow of dbFields) {
+          if (
+            typeof fRow.universalIdentifier === 'string' &&
+            isUUID(fRow.universalIdentifier) &&
+            typeof fRow.id === 'string' &&
+            isUUID(fRow.id)
+          ) {
+            appFieldMetadatasMap[uuid(fRow.universalIdentifier)] = {
+              id: uuid(fRow.id),
+            };
+          }
+        }
+      }
+
+      for (const [
+        universalId,
+        planned,
+      ] of plannedPageLayoutWidgetCreatesByUniversalId.entries()) {
+        const afterRow = createdPageLayoutWidgetsByUniversalId.get(universalId);
+        if (!afterRow) {
+          throw new Error(
+            'Application metadata pageLayoutWidget create did not persist expected row',
+          );
+        }
+        const createdId = uuid(afterRow.id);
+        if (planned.id !== undefined && createdId !== planned.id) {
+          throw new Error(
+            'Application metadata pageLayoutWidget create persisted unexpected ID',
+          );
+        }
+        if (uuid(afterRow.applicationId) !== applicationId) {
+          throw new Error(
+            'Application metadata pageLayoutWidget create persisted unexpected applicationId',
+          );
+        }
+        const afterProj = projectPageLayoutWidget(afterRow);
+        const expectedTabId = resolveAppPlRelationId(
+          planned.flatEntity,
+          'pageLayoutTabId',
+          'pageLayoutTabUniversalIdentifier',
+          appPageLayoutTabMap,
+        );
+        if (
+          expectedTabId !== undefined &&
+          afterProj.pageLayoutTabId !== expectedTabId
+        ) {
+          throw new Error(
+            'Application metadata pageLayoutWidget create persisted unexpected pageLayoutTabId',
+          );
+        }
+        const expectedObjId = resolveAppPlRelationId(
+          planned.flatEntity,
+          'objectMetadataId',
+          'objectMetadataUniversalIdentifier',
+          appPageLayoutObjectMap,
+        );
+        if (
+          expectedObjId !== undefined &&
+          afterProj.objectMetadataId !== expectedObjId
+        ) {
+          throw new Error(
+            'Application metadata pageLayoutWidget create persisted unexpected objectMetadataId',
+          );
+        }
+        for (const textKey of ['title', 'type'] as const) {
+          if (
+            planned.flatEntity[textKey] !== undefined &&
+            afterProj[textKey] !== String(planned.flatEntity[textKey])
+          ) {
+            throw new Error(
+              `Application metadata pageLayoutWidget create persisted unexpected ${textKey}`,
+            );
+          }
+        }
+        if (
+          planned.flatEntity.conditionalAvailabilityExpression !== undefined
+        ) {
+          const expectedExpr =
+            planned.flatEntity.conditionalAvailabilityExpression === null
+              ? null
+              : String(planned.flatEntity.conditionalAvailabilityExpression);
+          if (afterProj.conditionalAvailabilityExpression !== expectedExpr) {
+            throw new Error(
+              'Application metadata pageLayoutWidget create persisted unexpected conditionalAvailabilityExpression',
+            );
+          }
+        }
+        if (planned.flatEntity.conditionalDisplay !== undefined) {
+          const expectedDisplay =
+            planned.flatEntity.conditionalDisplay === null
+              ? null
+              : stripUndefinedJson(planned.flatEntity.conditionalDisplay);
+          if (
+            canonicalAuditJson(afterProj.conditionalDisplay) !==
+            canonicalAuditJson(expectedDisplay)
+          ) {
+            throw new Error(
+              'Application metadata pageLayoutWidget create persisted unexpected conditionalDisplay',
+            );
+          }
+        }
+        if (
+          planned.flatEntity.gridPosition !== undefined &&
+          planned.flatEntity.gridPosition !== null
+        ) {
+          if (
+            canonicalAuditJson(afterProj.gridPosition) !==
+            canonicalAuditJson(
+              stripUndefinedJson(planned.flatEntity.gridPosition),
+            )
+          ) {
+            throw new Error(
+              'Application metadata pageLayoutWidget create persisted unexpected gridPosition',
+            );
+          }
+        }
+        if (planned.flatEntity.position !== undefined) {
+          const expectedPos =
+            planned.flatEntity.position === null
+              ? null
+              : stripUndefinedJson(planned.flatEntity.position);
+          if (
+            canonicalAuditJson(afterProj.position) !==
+            canonicalAuditJson(expectedPos)
+          ) {
+            throw new Error(
+              'Application metadata pageLayoutWidget create persisted unexpected position',
+            );
+          }
+        }
+        for (const boolKey of ['isActive', 'isSystemSideEffect'] as const) {
+          if (
+            planned.flatEntity[boolKey] !== undefined &&
+            afterProj[boolKey] !== Boolean(planned.flatEntity[boolKey])
+          ) {
+            throw new Error(
+              `Application metadata pageLayoutWidget create persisted unexpected ${boolKey}`,
+            );
+          }
+        }
+        const expectedConfig = resolveExpectedPageLayoutWidgetConfiguration(
+          planned.flatEntity,
+          {
+            fieldMetadatas: appFieldMetadatasMap,
+            frontComponents: appFrontComponentsMap,
+            views: appViewsMap,
+            viewFieldGroups: appViewFieldGroupsMap,
+          },
+        );
+        if (
+          expectedConfig !== undefined &&
+          canonicalAuditJson(afterProj.configuration) !==
+            canonicalAuditJson(expectedConfig)
+        ) {
+          throw new Error(
+            'Application metadata pageLayoutWidget create persisted unexpected configuration',
+          );
+        }
+        const expectedOverrides = resolveExpectedPageLayoutWidgetOverrides(
+          planned.flatEntity,
+          appPageLayoutTabMap,
+        );
+        if (
+          expectedOverrides !== undefined &&
+          canonicalAuditJson(afterProj.overrides) !==
+            canonicalAuditJson(expectedOverrides)
+        ) {
+          throw new Error(
+            'Application metadata pageLayoutWidget create persisted unexpected overrides',
+          );
+        }
+        recordMutation(
+          'pageLayoutWidget',
+          createdId,
+          'create',
+          null,
+          afterProj,
+        );
+      }
+
+      for (const [
+        plwId,
+        updatePayload,
+      ] of plannedPageLayoutWidgetUpdatePayloads.entries()) {
+        const beforeRow = beforePageLayoutWidgets.get(plwId);
+        const afterRow = afterPageLayoutWidgets.get(plwId);
+        if (
+          !beforeRow ||
+          !afterRow ||
+          uuid(beforeRow.applicationId) !== uuid(afterRow.applicationId) ||
+          uuid(beforeRow.universalIdentifier) !==
+            uuid(afterRow.universalIdentifier) ||
+          Boolean(beforeRow.isSystemSideEffect) !==
+            Boolean(afterRow.isSystemSideEffect)
+        ) {
+          throw new Error(
+            'Application metadata pageLayoutWidget update removed or corrupted target row',
+          );
+        }
+        const beforeProj = projectPageLayoutWidget(beforeRow);
+        const afterProj = projectPageLayoutWidget(afterRow);
+        const resolvedTabId = resolveAppPlRelationId(
+          updatePayload,
+          'pageLayoutTabId',
+          'pageLayoutTabUniversalIdentifier',
+          appPageLayoutTabMap,
+        );
+        const expectedTabId =
+          resolvedTabId !== undefined
+            ? resolvedTabId
+            : beforeProj.pageLayoutTabId;
+        if (afterProj.pageLayoutTabId !== expectedTabId) {
+          throw new Error(
+            'Application metadata pageLayoutWidget update did not persist expected pageLayoutTabId',
+          );
+        }
+        const resolvedObjId = resolveAppPlRelationId(
+          updatePayload,
+          'objectMetadataId',
+          'objectMetadataUniversalIdentifier',
+          appPageLayoutObjectMap,
+        );
+        const expectedObjId =
+          resolvedObjId !== undefined
+            ? resolvedObjId
+            : beforeProj.objectMetadataId;
+        if (afterProj.objectMetadataId !== expectedObjId) {
+          throw new Error(
+            'Application metadata pageLayoutWidget update did not persist expected objectMetadataId',
+          );
+        }
+        for (const textKey of ['title', 'type'] as const) {
+          const expectedVal =
+            textKey in updatePayload && updatePayload[textKey] !== undefined
+              ? String(updatePayload[textKey])
+              : beforeProj[textKey];
+          if (afterProj[textKey] !== expectedVal) {
+            throw new Error(
+              `Application metadata pageLayoutWidget update did not persist expected ${textKey}`,
+            );
+          }
+        }
+        const expectedExpr =
+          'conditionalAvailabilityExpression' in updatePayload &&
+          updatePayload.conditionalAvailabilityExpression !== undefined
+            ? updatePayload.conditionalAvailabilityExpression === null
+              ? null
+              : String(updatePayload.conditionalAvailabilityExpression)
+            : beforeProj.conditionalAvailabilityExpression;
+        if (afterProj.conditionalAvailabilityExpression !== expectedExpr) {
+          throw new Error(
+            'Application metadata pageLayoutWidget update did not persist expected conditionalAvailabilityExpression',
+          );
+        }
+        const expectedDisplay =
+          'conditionalDisplay' in updatePayload &&
+          updatePayload.conditionalDisplay !== undefined
+            ? updatePayload.conditionalDisplay === null
+              ? null
+              : stripUndefinedJson(updatePayload.conditionalDisplay)
+            : beforeProj.conditionalDisplay;
+        if (
+          canonicalAuditJson(afterProj.conditionalDisplay) !==
+          canonicalAuditJson(expectedDisplay)
+        ) {
+          throw new Error(
+            'Application metadata pageLayoutWidget update did not persist expected conditionalDisplay',
+          );
+        }
+        const expectedGridPos =
+          'gridPosition' in updatePayload &&
+          updatePayload.gridPosition !== undefined
+            ? stripUndefinedJson(updatePayload.gridPosition)
+            : beforeProj.gridPosition;
+        if (
+          canonicalAuditJson(afterProj.gridPosition) !==
+          canonicalAuditJson(expectedGridPos)
+        ) {
+          throw new Error(
+            'Application metadata pageLayoutWidget update did not persist expected gridPosition',
+          );
+        }
+        const expectedPos =
+          'position' in updatePayload && updatePayload.position !== undefined
+            ? updatePayload.position === null
+              ? null
+              : stripUndefinedJson(updatePayload.position)
+            : beforeProj.position;
+        if (
+          canonicalAuditJson(afterProj.position) !==
+          canonicalAuditJson(expectedPos)
+        ) {
+          throw new Error(
+            'Application metadata pageLayoutWidget update did not persist expected position',
+          );
+        }
+        const expectedIsActive =
+          'isActive' in updatePayload && updatePayload.isActive !== undefined
+            ? Boolean(updatePayload.isActive)
+            : beforeProj.isActive;
+        if (afterProj.isActive !== expectedIsActive) {
+          throw new Error(
+            'Application metadata pageLayoutWidget update did not persist expected isActive',
+          );
+        }
+        const resolvedConfig = resolveExpectedPageLayoutWidgetConfiguration(
+          updatePayload,
+          {
+            fieldMetadatas: appFieldMetadatasMap,
+            frontComponents: appFrontComponentsMap,
+            views: appViewsMap,
+            viewFieldGroups: appViewFieldGroupsMap,
+          },
+        );
+        const expectedConfig =
+          resolvedConfig !== undefined
+            ? resolvedConfig
+            : beforeProj.configuration;
+        if (
+          canonicalAuditJson(afterProj.configuration) !==
+          canonicalAuditJson(expectedConfig)
+        ) {
+          throw new Error(
+            'Application metadata pageLayoutWidget update did not persist expected configuration',
+          );
+        }
+        const resolvedOverrides = resolveExpectedPageLayoutWidgetOverrides(
+          updatePayload,
+          appPageLayoutTabMap,
+        );
+        const expectedOverrides =
+          resolvedOverrides !== undefined
+            ? resolvedOverrides
+            : beforeProj.overrides;
+        if (
+          canonicalAuditJson(afterProj.overrides) !==
+          canonicalAuditJson(expectedOverrides)
+        ) {
+          throw new Error(
+            'Application metadata pageLayoutWidget update did not persist expected overrides',
+          );
+        }
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          recordMutation(
+            'pageLayoutWidget',
+            plwId,
+            'update',
+            beforeProj,
+            afterProj,
+          );
+        }
+      }
+
+      const effectiveCascadePageLayoutWidgetIds =
+        computeCascadeDeletedPageLayoutWidgetIds({
+          beforePageLayoutWidgets,
+          plannedPageLayoutWidgetDeletes,
+          effectiveDeletedPageLayoutTabIds: effectiveCascadePageLayoutTabIds,
+          plannedObjectDeletes,
+        });
+      for (const plwId of effectiveCascadePageLayoutWidgetIds) {
+        const beforePlw = beforePageLayoutWidgets.get(plwId);
+        if (!beforePlw) {
+          throw new Error(
+            'Application metadata pageLayoutWidget delete expected row missing before migration',
+          );
+        }
+        if (afterPageLayoutWidgets.has(plwId)) {
+          throw new Error(
+            'Application metadata pageLayoutWidget delete did not remove expected row',
+          );
+        }
+        recordMutation(
+          'pageLayoutWidget',
+          plwId,
+          'delete',
+          projectPageLayoutWidget(beforePlw),
+          null,
+        );
+      }
+
+      for (const [plwId, beforePlw] of beforePageLayoutWidgets.entries()) {
+        if (
+          effectiveCascadePageLayoutWidgetIds.has(plwId) ||
+          plannedPageLayoutWidgetUpdates.has(plwId)
+        ) {
+          continue;
+        }
+        const afterPlw = afterPageLayoutWidgets.get(plwId);
+        if (!afterPlw) {
+          throw new Error(
+            'Application metadata audit detected unplanned pageLayoutWidget deletion',
+          );
+        }
+        if (
+          canonicalAuditJson(scalarWithoutTimestamps(beforePlw)) !==
+          canonicalAuditJson(scalarWithoutTimestamps(afterPlw))
+        ) {
+          throw new Error(
+            'Application metadata audit detected unplanned pageLayoutWidget mutation',
+          );
+        }
+      }
+
+      expectedPageLayoutWidgetsSerialized = canonicalAuditJson(
+        [...afterPageLayoutWidgets.entries()].map(([id, row]) => [
+          id,
+          scalarWithoutTimestamps(row),
+        ]),
+      );
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized = serializeFullSnapshot(after);
       await audit.flush();
@@ -7471,6 +9017,66 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           );
         }
       }
+      if (expectedPageLayoutsSerialized !== undefined) {
+        const postFlushPageLayouts = await readTableSnapshot(
+          runner,
+          existingTables,
+          'pageLayout',
+          workspaceId,
+          false,
+        );
+        const postFlushSerialized = canonicalAuditJson(
+          [...postFlushPageLayouts.entries()].map(([id, row]) => [
+            id,
+            scalarWithoutTimestamps(row),
+          ]),
+        );
+        if (postFlushSerialized !== expectedPageLayoutsSerialized) {
+          throw new Error(
+            'Application metadata state changed during audit flush',
+          );
+        }
+      }
+      if (expectedPageLayoutTabsSerialized !== undefined) {
+        const postFlushPageLayoutTabs = await readTableSnapshot(
+          runner,
+          existingTables,
+          'pageLayoutTab',
+          workspaceId,
+          false,
+        );
+        const postFlushSerialized = canonicalAuditJson(
+          [...postFlushPageLayoutTabs.entries()].map(([id, row]) => [
+            id,
+            scalarWithoutTimestamps(row),
+          ]),
+        );
+        if (postFlushSerialized !== expectedPageLayoutTabsSerialized) {
+          throw new Error(
+            'Application metadata state changed during audit flush',
+          );
+        }
+      }
+      if (expectedPageLayoutWidgetsSerialized !== undefined) {
+        const postFlushPageLayoutWidgets = await readTableSnapshot(
+          runner,
+          existingTables,
+          'pageLayoutWidget',
+          workspaceId,
+          false,
+        );
+        const postFlushSerialized = canonicalAuditJson(
+          [...postFlushPageLayoutWidgets.entries()].map(([id, row]) => [
+            id,
+            scalarWithoutTimestamps(row),
+          ]),
+        );
+        if (postFlushSerialized !== expectedPageLayoutWidgetsSerialized) {
+          throw new Error(
+            'Application metadata state changed during audit flush',
+          );
+        }
+      }
     }
 
     return result;
@@ -7516,6 +9122,9 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
     'logicFunction',
     'timelineActivityType',
     'commandMenuItem',
+    'pageLayout',
+    'pageLayoutTab',
+    'pageLayoutWidget',
   ]) {
     if (!existingTables.has(tableName)) continue;
     const [ownRow] = await runner.query(
@@ -7788,6 +9397,80 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
       }
     }
   }
+
+  if (
+    existingTables.has('pageLayout') &&
+    existingTables.has('objectMetadata')
+  ) {
+    const [depRow] = await runner.query(
+      `SELECT pl.id FROM core."pageLayout" pl INNER JOIN core."objectMetadata" o ON o.id=pl."objectMetadataId" WHERE pl."workspaceId"=$1 AND o."workspaceId"=$1 AND o."applicationId"=$2 LIMIT 1`,
+      [normalizedWorkspaceId, normalizedApplicationId],
+    );
+    if (depRow) {
+      throw new Error(
+        'Application delete requires prior audited removal of role and permission metadata',
+      );
+    }
+  }
+
+  if (existingTables.has('pageLayoutTab') && existingTables.has('pageLayout')) {
+    const [depRow] = await runner.query(
+      `SELECT plt.id FROM core."pageLayoutTab" plt INNER JOIN core."pageLayout" pl ON pl.id=plt."pageLayoutId" WHERE plt."workspaceId"=$1 AND pl."workspaceId"=$1 AND pl."applicationId"=$2 LIMIT 1`,
+      [normalizedWorkspaceId, normalizedApplicationId],
+    );
+    if (depRow) {
+      throw new Error(
+        'Application delete requires prior audited removal of role and permission metadata',
+      );
+    }
+    if (existingTables.has('objectMetadata')) {
+      const [depObjRow] = await runner.query(
+        `SELECT plt.id FROM core."pageLayoutTab" plt INNER JOIN core."pageLayout" pl ON pl.id=plt."pageLayoutId" INNER JOIN core."objectMetadata" o ON o.id=pl."objectMetadataId" WHERE plt."workspaceId"=$1 AND pl."workspaceId"=$1 AND o."workspaceId"=$1 AND o."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depObjRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+    }
+  }
+
+  if (existingTables.has('pageLayoutWidget')) {
+    if (existingTables.has('objectMetadata')) {
+      const [depRow] = await runner.query(
+        `SELECT plw.id FROM core."pageLayoutWidget" plw INNER JOIN core."objectMetadata" o ON o.id=plw."objectMetadataId" WHERE plw."workspaceId"=$1 AND o."workspaceId"=$1 AND o."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+    }
+    if (existingTables.has('pageLayoutTab')) {
+      const [depTabRow] = await runner.query(
+        `SELECT plw.id FROM core."pageLayoutWidget" plw INNER JOIN core."pageLayoutTab" plt ON plt.id=plw."pageLayoutTabId" WHERE plw."workspaceId"=$1 AND plt."workspaceId"=$1 AND plt."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depTabRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+      if (existingTables.has('pageLayout')) {
+        const [depPlRow] = await runner.query(
+          `SELECT plw.id FROM core."pageLayoutWidget" plw INNER JOIN core."pageLayoutTab" plt ON plt.id=plw."pageLayoutTabId" INNER JOIN core."pageLayout" pl ON pl.id=plt."pageLayoutId" WHERE plw."workspaceId"=$1 AND plt."workspaceId"=$1 AND pl."workspaceId"=$1 AND pl."applicationId"=$2 LIMIT 1`,
+          [normalizedWorkspaceId, normalizedApplicationId],
+        );
+        if (depPlRow) {
+          throw new Error(
+            'Application delete requires prior audited removal of role and permission metadata',
+          );
+        }
+      }
+    }
+  }
 };
 
 type ReconcilableEntity = {
@@ -7810,12 +9493,15 @@ type ReconcilableEntity = {
   navigationTargetObjectMetadataUniversalIdentifier?: string | null;
   viewUniversalIdentifier?: string | null;
   pageLayoutUniversalIdentifier?: string | null;
+  pageLayoutTabUniversalIdentifier?: string | null;
   agentChatChannelUniversalIdentifier?: string | null;
   channelUniversalIdentifier?: string | null;
   frontComponentUniversalIdentifier?: string | null;
   folderUniversalIdentifier?: string | null;
   calendarFieldMetadataUniversalIdentifier?: string | null;
   mainGroupByFieldMetadataUniversalIdentifier?: string | null;
+  configuration?: unknown;
+  universalConfiguration?: unknown;
   deletedAt?: string | Date | null;
 };
 
@@ -7879,6 +9565,12 @@ export const reconcileApplicationRoleAndPermissionOperations = ({
       byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
     };
     flatPageLayoutMaps?: {
+      byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
+    };
+    flatPageLayoutTabMaps?: {
+      byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
+    };
+    flatPageLayoutWidgetMaps?: {
       byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
     };
     flatAgentChatChannelMaps?: {
@@ -8382,6 +10074,120 @@ export const reconcileApplicationRoleAndPermissionOperations = ({
         const bucket = ensureOperationBucket(record, 'commandMenuItem');
         bucket.flatEntityToDelete[existingCommandMenuItem.universalIdentifier] =
           existingCommandMenuItem;
+      }
+    }
+  }
+
+  const deletedPageLayoutUniversalIdentifiers = new Set(
+    Object.keys(record.pageLayout?.flatEntityToDelete ?? {}),
+  );
+  if (existingAllFlatEntityMaps.flatPageLayoutMaps) {
+    for (const existingLayout of Object.values(
+      existingAllFlatEntityMaps.flatPageLayoutMaps.byUniversalIdentifier,
+    )) {
+      if (!isPresent(existingLayout) || isPresent(existingLayout.deletedAt)) {
+        continue;
+      }
+      if (
+        isPresent(existingLayout.objectMetadataUniversalIdentifier) &&
+        deletedObjectUniversalIdentifiers.has(
+          existingLayout.objectMetadataUniversalIdentifier,
+        )
+      ) {
+        deletedPageLayoutUniversalIdentifiers.add(
+          existingLayout.universalIdentifier,
+        );
+        if (
+          existingAllFlatEntityMaps.flatPageLayoutTabMaps ||
+          existingAllFlatEntityMaps.flatPageLayoutWidgetMaps
+        ) {
+          const bucket = ensureOperationBucket(record, 'pageLayout');
+          bucket.flatEntityToDelete[existingLayout.universalIdentifier] =
+            existingLayout;
+        }
+      }
+    }
+  }
+
+  const deletedPageLayoutTabUniversalIdentifiers = new Set(
+    Object.keys(record.pageLayoutTab?.flatEntityToDelete ?? {}),
+  );
+  if (existingAllFlatEntityMaps.flatPageLayoutTabMaps) {
+    for (const existingTab of Object.values(
+      existingAllFlatEntityMaps.flatPageLayoutTabMaps.byUniversalIdentifier,
+    )) {
+      if (!isPresent(existingTab) || isPresent(existingTab.deletedAt)) continue;
+      if (
+        isPresent(existingTab.pageLayoutUniversalIdentifier) &&
+        deletedPageLayoutUniversalIdentifiers.has(
+          existingTab.pageLayoutUniversalIdentifier,
+        )
+      ) {
+        const bucket = ensureOperationBucket(record, 'pageLayoutTab');
+        bucket.flatEntityToDelete[existingTab.universalIdentifier] =
+          existingTab;
+        deletedPageLayoutTabUniversalIdentifiers.add(
+          existingTab.universalIdentifier,
+        );
+      }
+    }
+  }
+
+  if (existingAllFlatEntityMaps.flatPageLayoutWidgetMaps) {
+    const deletedFieldIdSet = new Set<string>();
+    for (const existingField of allExistingFields) {
+      if (
+        deletedFieldUniversalIdentifiers.has(
+          existingField.universalIdentifier,
+        ) &&
+        isPresent(existingField.id)
+      ) {
+        deletedFieldIdSet.add(existingField.id);
+      }
+    }
+    for (const existingWidget of Object.values(
+      existingAllFlatEntityMaps.flatPageLayoutWidgetMaps.byUniversalIdentifier,
+    )) {
+      if (!isPresent(existingWidget) || isPresent(existingWidget.deletedAt)) {
+        continue;
+      }
+      const tabUid = existingWidget.pageLayoutTabUniversalIdentifier;
+      const objUid = existingWidget.objectMetadataUniversalIdentifier;
+      const cfg = (existingWidget.universalConfiguration ??
+        existingWidget.configuration) as Record<string, unknown> | undefined;
+      const referencesDeletedFieldOrFc =
+        isPresent(cfg) &&
+        ([
+          'fieldMetadataId',
+          'fieldMetadataUniversalIdentifier',
+          'aggregateFieldMetadataId',
+          'aggregateFieldMetadataUniversalIdentifier',
+          'groupByFieldMetadataId',
+          'groupByFieldMetadataUniversalIdentifier',
+          'primaryAxisGroupByFieldMetadataId',
+          'primaryAxisGroupByFieldMetadataUniversalIdentifier',
+          'secondaryAxisGroupByFieldMetadataId',
+          'secondaryAxisGroupByFieldMetadataUniversalIdentifier',
+          'nestedRelationFieldMetadataId',
+        ].some(
+          (k) =>
+            typeof cfg[k] === 'string' &&
+            (deletedFieldUniversalIdentifiers.has(cfg[k] as string) ||
+              deletedFieldIdSet.has(cfg[k] as string)),
+        ) ||
+          (typeof cfg.frontComponentUniversalIdentifier === 'string' &&
+            deletedFrontComponentUniversalIdentifiers.has(
+              cfg.frontComponentUniversalIdentifier,
+            )));
+      if (
+        (isPresent(tabUid) &&
+          deletedPageLayoutTabUniversalIdentifiers.has(tabUid)) ||
+        (isPresent(objUid) && deletedObjectUniversalIdentifiers.has(objUid)) ||
+        referencesDeletedFieldOrFc
+      ) {
+        const bucket = ensureOperationBucket(record, 'pageLayoutWidget');
+        bucket.flatEntityToDelete[existingWidget.universalIdentifier] =
+          existingWidget;
       }
     }
   }

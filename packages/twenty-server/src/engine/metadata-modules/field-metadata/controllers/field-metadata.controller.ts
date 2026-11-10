@@ -190,10 +190,14 @@ export class FieldMetadataController {
   async createOne(
     @Body() input: CreateFieldInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Req() request?: AuthenticatedRequest,
   ) {
     const flatField = await this.fieldMetadataService.createOneField({
       createFieldInput: input,
       workspaceId,
+      auditIdentity: request
+        ? roleAuditIdentityFromRequest(request)
+        : undefined,
     });
 
     const result = fromFlatFieldMetadataToFieldMetadataDto(flatField);

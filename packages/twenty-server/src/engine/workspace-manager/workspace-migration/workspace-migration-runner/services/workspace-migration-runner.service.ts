@@ -335,6 +335,12 @@ export class WorkspaceMigrationRunnerService {
       (action) =>
         action.type === 'delete' && action.metadataName === 'frontComponent',
     );
+    const hasPageLayoutOrTabDeleteAction = actions.some(
+      (action) =>
+        action.type === 'delete' &&
+        (action.metadataName === 'pageLayout' ||
+          action.metadataName === 'pageLayoutTab'),
+    );
     const permissionCascadeMetadataNames: AllMetadataName[] = [
       ...(hasObjectOrFieldDeleteAction
         ? ([
@@ -344,12 +350,17 @@ export class WorkspaceMigrationRunnerService {
             'rowLevelPermissionPredicate',
             'view',
             'pageLayout',
+            'pageLayoutTab',
+            'pageLayoutWidget',
             'navigationMenuItem',
             'commandMenuItem',
           ] as const)
         : hasNavCascadeParentDeleteAction
           ? (['navigationMenuItem', 'commandMenuItem'] as const)
           : []),
+      ...(hasPageLayoutOrTabDeleteAction
+        ? (['pageLayout', 'pageLayoutTab', 'pageLayoutWidget'] as const)
+        : []),
       ...(hasChannelRoleCascadeParentDeleteAction
         ? (['agentChatChannelRole'] as const)
         : []),
@@ -514,11 +525,20 @@ export class WorkspaceMigrationRunnerService {
             allFlatEntityMaps.flatRowLevelPermissionPredicateGroupMaps
               ?.byUniversalIdentifier ?? {},
           views: allFlatEntityMaps.flatViewMaps?.byUniversalIdentifier ?? {},
+          viewFieldGroups:
+            allFlatEntityMaps.flatViewFieldGroupMaps?.byUniversalIdentifier ??
+            {},
           navigationMenuItems:
             allFlatEntityMaps.flatNavigationMenuItemMaps
               ?.byUniversalIdentifier ?? {},
           pageLayouts:
             allFlatEntityMaps.flatPageLayoutMaps?.byUniversalIdentifier ?? {},
+          pageLayoutTabs:
+            allFlatEntityMaps.flatPageLayoutTabMaps?.byUniversalIdentifier ??
+            {},
+          pageLayoutWidgets:
+            allFlatEntityMaps.flatPageLayoutWidgetMaps?.byUniversalIdentifier ??
+            {},
           agentChatChannels:
             allFlatEntityMaps.flatAgentChatChannelMaps?.byUniversalIdentifier ??
             {},
@@ -795,11 +815,18 @@ export class WorkspaceMigrationRunnerService {
         workflows:
           allFlatEntityMaps.flatWorkflowMaps?.byUniversalIdentifier ?? {},
         views: allFlatEntityMaps.flatViewMaps?.byUniversalIdentifier ?? {},
+        viewFieldGroups:
+          allFlatEntityMaps.flatViewFieldGroupMaps?.byUniversalIdentifier ?? {},
         navigationMenuItems:
           allFlatEntityMaps.flatNavigationMenuItemMaps?.byUniversalIdentifier ??
           {},
         pageLayouts:
           allFlatEntityMaps.flatPageLayoutMaps?.byUniversalIdentifier ?? {},
+        pageLayoutTabs:
+          allFlatEntityMaps.flatPageLayoutTabMaps?.byUniversalIdentifier ?? {},
+        pageLayoutWidgets:
+          allFlatEntityMaps.flatPageLayoutWidgetMaps?.byUniversalIdentifier ??
+          {},
         agentChatChannels:
           allFlatEntityMaps.flatAgentChatChannelMaps?.byUniversalIdentifier ??
           {},

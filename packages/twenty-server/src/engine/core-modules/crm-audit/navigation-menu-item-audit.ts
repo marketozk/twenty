@@ -46,7 +46,8 @@ export type NavigationMenuItemAuditMode =
   | 'frontComponent'
   | 'logicFunction'
   | 'timelineActivityType'
-  | 'commandMenuItem';
+  | 'commandMenuItem'
+  | 'pageLayout';
 
 export type NavigationMenuItemAuditRequest = Readonly<{
   workspaceId: string;
@@ -64,6 +65,8 @@ export type NavigationMenuItemAuditRequest = Readonly<{
   expectedParentChannelDeleteIds?: readonly string[];
   expectedCreatedObjectId?: string;
   expectedUpdatedObjectIds?: readonly string[];
+  expectedCreatedFieldCount?: number;
+  expectedUpdatedFieldCount?: number;
   expectedChannelCreateIds?: readonly string[];
   expectedChannelUpdateIds?: readonly string[];
   expectedChannelRoleCreateKeys?: readonly string[];
@@ -88,6 +91,15 @@ export type NavigationMenuItemAuditRequest = Readonly<{
   expectedCommandMenuItemCreateIds?: readonly string[];
   expectedCommandMenuItemUpdateIds?: readonly string[];
   expectedCommandMenuItemDeleteIds?: readonly string[];
+  expectedPageLayoutCreateIds?: readonly string[];
+  expectedPageLayoutUpdateIds?: readonly string[];
+  expectedPageLayoutDeleteIds?: readonly string[];
+  expectedPageLayoutTabCreateIds?: readonly string[];
+  expectedPageLayoutTabUpdateIds?: readonly string[];
+  expectedPageLayoutTabDeleteIds?: readonly string[];
+  expectedPageLayoutWidgetCreateIds?: readonly string[];
+  expectedPageLayoutWidgetUpdateIds?: readonly string[];
+  expectedPageLayoutWidgetDeleteIds?: readonly string[];
 }>;
 
 export type NavigationMenuItemAuditMappings = {
@@ -95,6 +107,8 @@ export type NavigationMenuItemAuditMappings = {
   navigationMenuItems?: Record<string, { id: string } | undefined>;
   views?: Record<string, { id: string } | undefined>;
   pageLayouts?: Record<string, { id: string } | undefined>;
+  pageLayoutTabs?: Record<string, { id: string } | undefined>;
+  pageLayoutWidgets?: Record<string, { id: string } | undefined>;
   agentChatChannels?: Record<string, { id: string } | undefined>;
   agentChatChannelRoles?: Record<string, { id: string } | undefined>;
   webhooks?: Record<string, { id: string } | undefined>;
@@ -109,6 +123,7 @@ export type NavigationMenuItemAuditMappings = {
   roles?: Record<string, { id: string } | undefined>;
   objectMetadatas?: Record<string, { id: string } | undefined>;
   fieldMetadatas?: Record<string, { id: string } | undefined>;
+  viewFieldGroups?: Record<string, { id: string } | undefined>;
 };
 
 type MigrationAction = {
@@ -1169,6 +1184,722 @@ export const resolveExpectedCommandMenuItemOverrides = (
   return undefined;
 };
 
+export const VALID_PAGE_LAYOUT_TYPES = new Set<string>([
+  'RECORD_INDEX',
+  'RECORD_PAGE',
+  'DASHBOARD',
+  'STANDALONE_PAGE',
+  'RECORD_FORM',
+]);
+
+export const VALID_PAGE_LAYOUT_TAB_LAYOUT_MODES = new Set<string>([
+  'GRID',
+  'VERTICAL_LIST',
+  'CANVAS',
+]);
+
+export const VALID_PAGE_LAYOUT_WIDGET_TYPES = new Set<string>([
+  'VIEW',
+  'IFRAME',
+  'FIELD',
+  'FIELDS',
+  'GRAPH',
+  'STANDALONE_RICH_TEXT',
+  'TIMELINE',
+  'TASKS',
+  'NOTES',
+  'FILES',
+  'EMAILS',
+  'CALENDAR',
+  'FIELD_RICH_TEXT',
+  'WORKFLOW',
+  'WORKFLOW_VERSION',
+  'WORKFLOW_RUN',
+  'FRONT_COMPONENT',
+  'RECORD_TABLE',
+  'EMAIL_THREAD',
+  'CALL_RECORDING_SUMMARY',
+  'CALL_RECORDING_TRANSCRIPT',
+  'MESSAGE_CAMPAIGN_BODY',
+  'MESSAGE_CAMPAIGN_DETAILS',
+  'FORM_FIELD',
+  'CHAT_THREADS',
+  'CHAT',
+]);
+
+export const assertPageLayoutType = (value: unknown): string => {
+  if (typeof value !== 'string' || !VALID_PAGE_LAYOUT_TYPES.has(value)) {
+    throw new Error('Page layout audit type is invalid');
+  }
+  return value;
+};
+
+export const assertPageLayoutRowInvariants = (
+  row: Record<string, unknown>,
+  workspaceId: string,
+): void => {
+  uuid(row.id);
+  if (uuid(row.workspaceId) !== workspaceId) {
+    throw new Error('Page layout audit row workspace mismatch');
+  }
+  uuid(row.applicationId);
+  uuid(row.universalIdentifier);
+  if (row.deletedAt !== null && row.deletedAt !== undefined) {
+    throw new Error('Page layout audit soft-deleted row is unsupported');
+  }
+  if (typeof row.name !== 'string' || row.name.trim().length === 0) {
+    throw new Error('Page layout audit name is invalid');
+  }
+  assertPageLayoutType(row.type);
+  nullableUuid(row.objectMetadataId);
+  nullableUuid(row.defaultTabToFocusOnMobileAndSidePanelId);
+  if (
+    row.isSystemSideEffect !== undefined &&
+    typeof row.isSystemSideEffect !== 'boolean'
+  ) {
+    throw new Error('Page layout audit isSystemSideEffect is invalid');
+  }
+  if (
+    row.isFirstTabPinned !== undefined &&
+    typeof row.isFirstTabPinned !== 'boolean'
+  ) {
+    throw new Error('Page layout audit isFirstTabPinned is invalid');
+  }
+};
+
+export const projectPageLayout = (row: Record<string, unknown>) => ({
+  applicationId: uuid(row.applicationId),
+  type: assertPageLayoutType(row.type),
+  objectMetadataId: nullableUuid(row.objectMetadataId),
+  defaultTabToFocusOnMobileAndSidePanelId: nullableUuid(
+    row.defaultTabToFocusOnMobileAndSidePanelId,
+  ),
+  isSystemSideEffect: Boolean(row.isSystemSideEffect ?? false),
+  isFirstTabPinned:
+    row.isFirstTabPinned === undefined ? true : Boolean(row.isFirstTabPinned),
+  name: String(row.name),
+});
+
+export const assertPageLayoutTabLayoutMode = (value: unknown): string => {
+  if (
+    typeof value !== 'string' ||
+    !VALID_PAGE_LAYOUT_TAB_LAYOUT_MODES.has(value)
+  ) {
+    throw new Error('Page layout tab audit layoutMode is invalid');
+  }
+  return value;
+};
+
+export const assertPageLayoutTabRowInvariants = (
+  row: Record<string, unknown>,
+  workspaceId: string,
+): void => {
+  uuid(row.id);
+  if (uuid(row.workspaceId) !== workspaceId) {
+    throw new Error('Page layout tab audit row workspace mismatch');
+  }
+  uuid(row.applicationId);
+  uuid(row.universalIdentifier);
+  if (row.deletedAt !== null && row.deletedAt !== undefined) {
+    throw new Error('Page layout tab audit soft-deleted row is unsupported');
+  }
+  uuid(row.pageLayoutId);
+  if (typeof row.title !== 'string' || row.title.trim().length === 0) {
+    throw new Error('Page layout tab audit title is invalid');
+  }
+  const position =
+    typeof row.position === 'number' ? row.position : Number(row.position);
+  if (!Number.isFinite(position)) {
+    throw new Error('Page layout tab audit position is invalid');
+  }
+  if (
+    row.icon !== null &&
+    row.icon !== undefined &&
+    typeof row.icon !== 'string'
+  ) {
+    throw new Error('Page layout tab audit icon is invalid');
+  }
+  assertPageLayoutTabLayoutMode(row.layoutMode);
+  if (typeof row.isActive !== 'boolean') {
+    throw new Error('Page layout tab audit isActive is invalid');
+  }
+  if (typeof row.isSystemSideEffect !== 'boolean') {
+    throw new Error('Page layout tab audit isSystemSideEffect is invalid');
+  }
+  if (
+    row.overrides !== null &&
+    row.overrides !== undefined &&
+    (typeof row.overrides !== 'object' || Array.isArray(row.overrides))
+  ) {
+    throw new Error('Page layout tab audit overrides is invalid');
+  }
+};
+
+export const projectPageLayoutTab = (row: Record<string, unknown>) => ({
+  applicationId: uuid(row.applicationId),
+  pageLayoutId: uuid(row.pageLayoutId),
+  layoutMode: assertPageLayoutTabLayoutMode(row.layoutMode),
+  isActive: Boolean(row.isActive),
+  isSystemSideEffect: Boolean(row.isSystemSideEffect),
+  title: String(row.title),
+  position:
+    typeof row.position === 'number' ? row.position : Number(row.position),
+  icon: row.icon === undefined || row.icon === null ? null : String(row.icon),
+  overrides:
+    row.overrides === undefined || row.overrides === null
+      ? null
+      : row.overrides,
+});
+
+export const assertPageLayoutWidgetType = (value: unknown): string => {
+  if (typeof value !== 'string' || !VALID_PAGE_LAYOUT_WIDGET_TYPES.has(value)) {
+    throw new Error('Page layout widget audit type is invalid');
+  }
+  return value;
+};
+
+export const assertPageLayoutWidgetRowInvariants = (
+  row: Record<string, unknown>,
+  workspaceId: string,
+): void => {
+  uuid(row.id);
+  if (uuid(row.workspaceId) !== workspaceId) {
+    throw new Error('Page layout widget audit row workspace mismatch');
+  }
+  uuid(row.applicationId);
+  uuid(row.universalIdentifier);
+  if (row.deletedAt !== null && row.deletedAt !== undefined) {
+    throw new Error('Page layout widget audit soft-deleted row is unsupported');
+  }
+  uuid(row.pageLayoutTabId);
+  if (typeof row.title !== 'string') {
+    throw new Error('Page layout widget audit title is invalid');
+  }
+  assertPageLayoutWidgetType(row.type);
+  nullableUuid(row.objectMetadataId);
+  if (
+    row.conditionalDisplay !== null &&
+    row.conditionalDisplay !== undefined &&
+    (typeof row.conditionalDisplay !== 'object' ||
+      Array.isArray(row.conditionalDisplay))
+  ) {
+    throw new Error('Page layout widget audit conditionalDisplay is invalid');
+  }
+  if (
+    row.conditionalAvailabilityExpression !== null &&
+    row.conditionalAvailabilityExpression !== undefined &&
+    typeof row.conditionalAvailabilityExpression !== 'string'
+  ) {
+    throw new Error(
+      'Page layout widget audit conditionalAvailabilityExpression is invalid',
+    );
+  }
+  if (
+    !row.gridPosition ||
+    typeof row.gridPosition !== 'object' ||
+    Array.isArray(row.gridPosition)
+  ) {
+    throw new Error('Page layout widget audit gridPosition is invalid');
+  }
+  if (
+    row.position !== null &&
+    row.position !== undefined &&
+    (typeof row.position !== 'object' || Array.isArray(row.position))
+  ) {
+    throw new Error('Page layout widget audit position is invalid');
+  }
+  if (
+    !row.configuration ||
+    typeof row.configuration !== 'object' ||
+    Array.isArray(row.configuration)
+  ) {
+    throw new Error('Page layout widget audit configuration is invalid');
+  }
+  if (typeof row.isActive !== 'boolean') {
+    throw new Error('Page layout widget audit isActive is invalid');
+  }
+  if (typeof row.isSystemSideEffect !== 'boolean') {
+    throw new Error('Page layout widget audit isSystemSideEffect is invalid');
+  }
+  if (
+    row.overrides !== null &&
+    row.overrides !== undefined &&
+    (typeof row.overrides !== 'object' || Array.isArray(row.overrides))
+  ) {
+    throw new Error('Page layout widget audit overrides is invalid');
+  }
+};
+
+export const projectPageLayoutWidget = (row: Record<string, unknown>) => ({
+  applicationId: uuid(row.applicationId),
+  pageLayoutTabId: uuid(row.pageLayoutTabId),
+  type: assertPageLayoutWidgetType(row.type),
+  objectMetadataId: nullableUuid(row.objectMetadataId),
+  isActive: Boolean(row.isActive),
+  isSystemSideEffect: Boolean(row.isSystemSideEffect),
+  title: String(row.title),
+  conditionalDisplay:
+    row.conditionalDisplay === undefined || row.conditionalDisplay === null
+      ? null
+      : row.conditionalDisplay,
+  conditionalAvailabilityExpression:
+    row.conditionalAvailabilityExpression === undefined ||
+    row.conditionalAvailabilityExpression === null
+      ? null
+      : String(row.conditionalAvailabilityExpression),
+  gridPosition: row.gridPosition,
+  position:
+    row.position === undefined || row.position === null ? null : row.position,
+  configuration: row.configuration,
+  overrides:
+    row.overrides === undefined || row.overrides === null
+      ? null
+      : row.overrides,
+});
+
+export const stripUndefinedJson = (value: unknown): unknown => {
+  if (value === undefined) return undefined;
+  if (
+    value === null ||
+    typeof value === 'boolean' ||
+    typeof value === 'number' ||
+    typeof value === 'string'
+  ) {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => {
+      const stripped = stripUndefinedJson(item);
+      return stripped === undefined ? null : stripped;
+    });
+  }
+  if (typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      const stripped = stripUndefinedJson(v);
+      if (stripped !== undefined) {
+        out[k] = stripped;
+      }
+    }
+    return out;
+  }
+  return value;
+};
+
+const mapUniversalPageLayoutWidgetOverridesEntry = (
+  entry: Record<string, unknown>,
+  pageLayoutTabs?: Record<string, { id: string } | undefined>,
+): Record<string, unknown> => {
+  const { pageLayoutTabUniversalIdentifier, ...rest } = entry;
+  const mapped: Record<string, unknown> = { ...rest };
+  if (pageLayoutTabUniversalIdentifier !== undefined) {
+    if (pageLayoutTabUniversalIdentifier === null) {
+      mapped.pageLayoutTabId = null;
+    } else {
+      const resolvedId =
+        pageLayoutTabs?.[uuid(pageLayoutTabUniversalIdentifier)]?.id;
+      mapped.pageLayoutTabId = resolvedId ? uuid(resolvedId) : null;
+    }
+  }
+  return mapped;
+};
+
+const PAGE_LAYOUT_WIDGET_OVERRIDE_ENTRY_KEYS = new Set([
+  'title',
+  'position',
+  'pageLayoutTabId',
+  'pageLayoutTabUniversalIdentifier',
+  'conditionalDisplay',
+  'conditionalAvailabilityExpression',
+  'isActive',
+  'translations',
+]);
+
+export const resolveExpectedPageLayoutWidgetOverrides = (
+  source: Record<string, unknown>,
+  pageLayoutTabs?: Record<string, { id: string } | undefined>,
+): unknown => {
+  if ('overrides' in source && source.overrides !== undefined) {
+    return source.overrides === null
+      ? null
+      : stripUndefinedJson(source.overrides);
+  }
+  if (
+    'universalOverrides' in source &&
+    source.universalOverrides !== undefined
+  ) {
+    if (source.universalOverrides === null) {
+      return null;
+    }
+    if (
+      typeof source.universalOverrides !== 'object' ||
+      Array.isArray(source.universalOverrides)
+    ) {
+      throw new Error(
+        'Page layout widget audit universalOverrides must be an object or null',
+      );
+    }
+    const raw = source.universalOverrides as Record<string, unknown>;
+    if (
+      Object.keys(raw).some((key) =>
+        PAGE_LAYOUT_WIDGET_OVERRIDE_ENTRY_KEYS.has(key),
+      )
+    ) {
+      return stripUndefinedJson(
+        mapUniversalPageLayoutWidgetOverridesEntry(raw, pageLayoutTabs),
+      );
+    }
+    const mapped: Record<string, unknown> = {};
+    for (const [authorKey, authorVal] of Object.entries(raw)) {
+      if (
+        authorKey === 'application' &&
+        authorVal &&
+        typeof authorVal === 'object' &&
+        !Array.isArray(authorVal) &&
+        !Object.keys(authorVal as Record<string, unknown>).some((innerKey) =>
+          PAGE_LAYOUT_WIDGET_OVERRIDE_ENTRY_KEYS.has(innerKey),
+        )
+      ) {
+        const appEntries: Record<string, unknown> = {};
+        for (const [appAuthorKey, appAuthorEntry] of Object.entries(
+          authorVal as Record<string, unknown>,
+        )) {
+          if (
+            appAuthorEntry &&
+            typeof appAuthorEntry === 'object' &&
+            !Array.isArray(appAuthorEntry)
+          ) {
+            appEntries[appAuthorKey] =
+              mapUniversalPageLayoutWidgetOverridesEntry(
+                appAuthorEntry as Record<string, unknown>,
+                pageLayoutTabs,
+              );
+          }
+        }
+        if (Object.keys(appEntries).length > 0) {
+          mapped.application = appEntries;
+        }
+      } else if (
+        authorVal &&
+        typeof authorVal === 'object' &&
+        !Array.isArray(authorVal)
+      ) {
+        mapped[authorKey] = mapUniversalPageLayoutWidgetOverridesEntry(
+          authorVal as Record<string, unknown>,
+          pageLayoutTabs,
+        );
+      }
+    }
+    return Object.keys(mapped).length > 0 ? stripUndefinedJson(mapped) : null;
+  }
+  return undefined;
+};
+
+export const resolveExpectedPageLayoutWidgetConfiguration = (
+  source: Record<string, unknown>,
+  maps: {
+    fieldMetadatas?: Record<string, { id: string } | undefined>;
+    frontComponents?: Record<string, { id: string } | undefined>;
+    views?: Record<string, { id: string } | undefined>;
+    viewFieldGroups?: Record<string, { id: string } | undefined>;
+  },
+): unknown => {
+  if ('configuration' in source && source.configuration !== undefined) {
+    return stripUndefinedJson(source.configuration);
+  }
+  if (
+    !('universalConfiguration' in source) ||
+    source.universalConfiguration === undefined
+  ) {
+    return undefined;
+  }
+  const uc = source.universalConfiguration;
+  if (!uc || typeof uc !== 'object' || Array.isArray(uc)) {
+    throw new Error(
+      'Page layout widget audit universalConfiguration is invalid',
+    );
+  }
+  const raw = uc as Record<string, unknown>;
+  const resolveFieldId = (val: unknown): string => {
+    const uid = uuid(val);
+    const mapped = maps.fieldMetadatas?.[uid]?.id;
+    return mapped ? uuid(mapped) : uid;
+  };
+  const resolveFilter = (filterVal: unknown): unknown => {
+    if (!filterVal || typeof filterVal !== 'object' || Array.isArray(filterVal))
+      return undefined;
+    const fObj = filterVal as Record<string, unknown>;
+    const recordFilters = Array.isArray(fObj.recordFilters)
+      ? fObj.recordFilters.map((rf: unknown) => {
+          const rfObj = rf as Record<string, unknown>;
+          const {
+            fieldMetadataUniversalIdentifier,
+            relationTargetFieldMetadataUniversalIdentifier,
+            ...restRf
+          } = rfObj;
+          return {
+            ...restRf,
+            fieldMetadataId: resolveFieldId(fieldMetadataUniversalIdentifier),
+            ...(relationTargetFieldMetadataUniversalIdentifier !== undefined &&
+            relationTargetFieldMetadataUniversalIdentifier !== null
+              ? {
+                  relationTargetFieldMetadataId: resolveFieldId(
+                    relationTargetFieldMetadataUniversalIdentifier,
+                  ),
+                }
+              : {}),
+          };
+        })
+      : undefined;
+    return {
+      ...fObj,
+      ...(recordFilters !== undefined ? { recordFilters } : {}),
+    };
+  };
+
+  switch (raw.configurationType) {
+    case 'AGGREGATE_CHART': {
+      const {
+        aggregateFieldMetadataUniversalIdentifier,
+        ratioAggregateConfig,
+        filter,
+        ...rest
+      } = raw;
+      const ratioCfg =
+        ratioAggregateConfig &&
+        typeof ratioAggregateConfig === 'object' &&
+        !Array.isArray(ratioAggregateConfig)
+          ? {
+              optionValue: (ratioAggregateConfig as Record<string, unknown>)
+                .optionValue,
+              fieldMetadataId: resolveFieldId(
+                (ratioAggregateConfig as Record<string, unknown>)
+                  .fieldMetadataUniversalIdentifier,
+              ),
+            }
+          : undefined;
+      return stripUndefinedJson({
+        ...rest,
+        aggregateFieldMetadataId: resolveFieldId(
+          aggregateFieldMetadataUniversalIdentifier,
+        ),
+        ratioAggregateConfig: ratioCfg,
+        filter: resolveFilter(filter),
+      });
+    }
+    case 'PIE_CHART': {
+      const {
+        aggregateFieldMetadataUniversalIdentifier,
+        groupByFieldMetadataUniversalIdentifier,
+        filter,
+        ...rest
+      } = raw;
+      return stripUndefinedJson({
+        ...rest,
+        aggregateFieldMetadataId: resolveFieldId(
+          aggregateFieldMetadataUniversalIdentifier,
+        ),
+        groupByFieldMetadataId: resolveFieldId(
+          groupByFieldMetadataUniversalIdentifier,
+        ),
+        filter: resolveFilter(filter),
+      });
+    }
+    case 'BAR_CHART':
+    case 'LINE_CHART': {
+      const {
+        aggregateFieldMetadataUniversalIdentifier,
+        primaryAxisGroupByFieldMetadataUniversalIdentifier,
+        secondaryAxisGroupByFieldMetadataUniversalIdentifier,
+        filter,
+        ...rest
+      } = raw;
+      return stripUndefinedJson({
+        ...rest,
+        aggregateFieldMetadataId: resolveFieldId(
+          aggregateFieldMetadataUniversalIdentifier,
+        ),
+        primaryAxisGroupByFieldMetadataId: resolveFieldId(
+          primaryAxisGroupByFieldMetadataUniversalIdentifier,
+        ),
+        secondaryAxisGroupByFieldMetadataId:
+          secondaryAxisGroupByFieldMetadataUniversalIdentifier !== undefined &&
+          secondaryAxisGroupByFieldMetadataUniversalIdentifier !== null
+            ? resolveFieldId(
+                secondaryAxisGroupByFieldMetadataUniversalIdentifier,
+              )
+            : undefined,
+        filter: resolveFilter(filter),
+      });
+    }
+    case 'FIELDS': {
+      const { viewUniversalIdentifier, newFieldDefaultVisibility, ...rest } =
+        raw;
+      const resolvedViewId =
+        viewUniversalIdentifier !== undefined &&
+        viewUniversalIdentifier !== null
+          ? (maps.views?.[uuid(viewUniversalIdentifier)]?.id ??
+            uuid(viewUniversalIdentifier))
+          : null;
+      return stripUndefinedJson({
+        ...rest,
+        viewId: resolvedViewId ? uuid(resolvedViewId) : null,
+        newFieldDefaultVisibility,
+      });
+    }
+    case 'RECORD_TABLE': {
+      const { viewUniversalIdentifier, ...rest } = raw;
+      const resolvedViewId =
+        viewUniversalIdentifier !== undefined &&
+        viewUniversalIdentifier !== null
+          ? (maps.views?.[uuid(viewUniversalIdentifier)]?.id ??
+            uuid(viewUniversalIdentifier))
+          : null;
+      return stripUndefinedJson({
+        ...rest,
+        viewId: resolvedViewId ? uuid(resolvedViewId) : null,
+      });
+    }
+    case 'FRONT_COMPONENT': {
+      const {
+        frontComponentUniversalIdentifier,
+        configurationType,
+        headerCommandMenuItemUniversalIdentifiers,
+      } = raw;
+      const fcUid = uuid(frontComponentUniversalIdentifier);
+      const fcId = maps.frontComponents?.[fcUid]?.id ?? fcUid;
+      return stripUndefinedJson({
+        configurationType,
+        frontComponentId: uuid(fcId),
+        headerCommandMenuItemUniversalIdentifiers,
+      });
+    }
+    case 'FORM_FIELD':
+    case 'FIELD_RICH_TEXT': {
+      const { fieldMetadataId: fieldUniversalId, ...rest } = raw;
+      return stripUndefinedJson({
+        ...rest,
+        fieldMetadataId: resolveFieldId(fieldUniversalId),
+      });
+    }
+    case 'VIEW_FIELD_GROUP': {
+      const {
+        viewId: viewUniversalId,
+        viewFieldGroupId: groupUniversalId,
+        ...rest
+      } = raw;
+      const vUid = uuid(viewUniversalId);
+      const vId = maps.views?.[vUid]?.id ?? vUid;
+      const gUid = uuid(groupUniversalId);
+      const gId = maps.viewFieldGroups?.[gUid]?.id ?? gUid;
+      return stripUndefinedJson({
+        ...rest,
+        viewId: uuid(vId),
+        viewFieldGroupId: uuid(gId),
+      });
+    }
+    case 'FIELD': {
+      const {
+        fieldMetadataId: fieldUniversalId,
+        viewId: viewUniversalId,
+        nestedRelationFieldMetadataId: nestedFieldUniversalId,
+        ...rest
+      } = raw;
+      const resolvedViewId =
+        viewUniversalId !== undefined && viewUniversalId !== null
+          ? maps.views?.[uuid(viewUniversalId)]?.id
+          : undefined;
+      return stripUndefinedJson({
+        ...rest,
+        fieldMetadataId: resolveFieldId(fieldUniversalId),
+        viewId: resolvedViewId ? uuid(resolvedViewId) : undefined,
+        ...(nestedFieldUniversalId !== undefined &&
+        nestedFieldUniversalId !== null
+          ? {
+              nestedRelationFieldMetadataId: resolveFieldId(
+                nestedFieldUniversalId,
+              ),
+            }
+          : {}),
+      });
+    }
+    default:
+      return stripUndefinedJson(raw);
+  }
+};
+
+export const computeCascadeDeletedPageLayoutIds = ({
+  beforePageLayouts,
+  plannedPageLayoutDeletes,
+  plannedObjectDeletes = new Set<string>(),
+}: {
+  beforePageLayouts: Map<string, Record<string, unknown>>;
+  plannedPageLayoutDeletes: ReadonlySet<string>;
+  plannedObjectDeletes?: ReadonlySet<string>;
+}): Set<string> => {
+  const cascadeDeleted = new Set<string>(plannedPageLayoutDeletes);
+  if (plannedObjectDeletes.size > 0) {
+    for (const [layoutId, layoutRow] of beforePageLayouts.entries()) {
+      const objId = nullableUuid(layoutRow.objectMetadataId);
+      if (objId !== null && plannedObjectDeletes.has(objId)) {
+        cascadeDeleted.add(layoutId);
+      }
+    }
+  }
+  return cascadeDeleted;
+};
+
+export const computeCascadeDeletedPageLayoutTabIds = ({
+  beforePageLayoutTabs,
+  plannedPageLayoutTabDeletes,
+  effectiveDeletedPageLayoutIds,
+}: {
+  beforePageLayoutTabs: Map<string, Record<string, unknown>>;
+  plannedPageLayoutTabDeletes: ReadonlySet<string>;
+  effectiveDeletedPageLayoutIds: ReadonlySet<string>;
+}): Set<string> => {
+  const cascadeDeleted = new Set<string>(plannedPageLayoutTabDeletes);
+  if (effectiveDeletedPageLayoutIds.size > 0) {
+    for (const [tabId, tabRow] of beforePageLayoutTabs.entries()) {
+      const layoutId = nullableUuid(tabRow.pageLayoutId);
+      if (layoutId !== null && effectiveDeletedPageLayoutIds.has(layoutId)) {
+        cascadeDeleted.add(tabId);
+      }
+    }
+  }
+  return cascadeDeleted;
+};
+
+export const computeCascadeDeletedPageLayoutWidgetIds = ({
+  beforePageLayoutWidgets,
+  plannedPageLayoutWidgetDeletes,
+  effectiveDeletedPageLayoutTabIds,
+  plannedObjectDeletes = new Set<string>(),
+}: {
+  beforePageLayoutWidgets: Map<string, Record<string, unknown>>;
+  plannedPageLayoutWidgetDeletes: ReadonlySet<string>;
+  effectiveDeletedPageLayoutTabIds: ReadonlySet<string>;
+  plannedObjectDeletes?: ReadonlySet<string>;
+}): Set<string> => {
+  const cascadeDeleted = new Set<string>(plannedPageLayoutWidgetDeletes);
+  if (
+    effectiveDeletedPageLayoutTabIds.size > 0 ||
+    plannedObjectDeletes.size > 0
+  ) {
+    for (const [widgetId, widgetRow] of beforePageLayoutWidgets.entries()) {
+      const tabId = nullableUuid(widgetRow.pageLayoutTabId);
+      const objId = nullableUuid(widgetRow.objectMetadataId);
+      if (
+        (tabId !== null && effectiveDeletedPageLayoutTabIds.has(tabId)) ||
+        (objId !== null && plannedObjectDeletes.has(objId))
+      ) {
+        cascadeDeleted.add(widgetId);
+      }
+    }
+  }
+  return cascadeDeleted;
+};
+
 export const getNavigationMenuItemAudit = (workspaceId: string) => {
   const request = storage.getStore();
   if (!request) return undefined;
@@ -1493,6 +2224,8 @@ export type NavigationMenuItemAuditExpectedScope = {
   expectedParentChannelDeleteIds?: readonly string[];
   expectedCreatedObjectId?: string;
   expectedUpdatedObjectIds?: readonly string[];
+  expectedCreatedFieldCount?: number;
+  expectedUpdatedFieldCount?: number;
   expectedChannelCreateIds?: readonly string[];
   expectedChannelUpdateIds?: readonly string[];
   expectedChannelRoleCreateKeys?: readonly string[];
@@ -1517,6 +2250,15 @@ export type NavigationMenuItemAuditExpectedScope = {
   expectedCommandMenuItemCreateIds?: readonly string[];
   expectedCommandMenuItemUpdateIds?: readonly string[];
   expectedCommandMenuItemDeleteIds?: readonly string[];
+  expectedPageLayoutCreateIds?: readonly string[];
+  expectedPageLayoutUpdateIds?: readonly string[];
+  expectedPageLayoutDeleteIds?: readonly string[];
+  expectedPageLayoutTabCreateIds?: readonly string[];
+  expectedPageLayoutTabUpdateIds?: readonly string[];
+  expectedPageLayoutTabDeleteIds?: readonly string[];
+  expectedPageLayoutWidgetCreateIds?: readonly string[];
+  expectedPageLayoutWidgetUpdateIds?: readonly string[];
+  expectedPageLayoutWidgetDeleteIds?: readonly string[];
 };
 
 export const captureNavigationMenuItemAudit = ({
@@ -1536,6 +2278,8 @@ export const captureNavigationMenuItemAudit = ({
   expectedParentChannelDeleteIds,
   expectedCreatedObjectId,
   expectedUpdatedObjectIds,
+  expectedCreatedFieldCount,
+  expectedUpdatedFieldCount,
   expectedChannelCreateIds,
   expectedChannelUpdateIds,
   expectedChannelRoleCreateKeys,
@@ -1560,6 +2304,15 @@ export const captureNavigationMenuItemAudit = ({
   expectedCommandMenuItemCreateIds,
   expectedCommandMenuItemUpdateIds,
   expectedCommandMenuItemDeleteIds,
+  expectedPageLayoutCreateIds,
+  expectedPageLayoutUpdateIds,
+  expectedPageLayoutDeleteIds,
+  expectedPageLayoutTabCreateIds,
+  expectedPageLayoutTabUpdateIds,
+  expectedPageLayoutTabDeleteIds,
+  expectedPageLayoutWidgetCreateIds,
+  expectedPageLayoutWidgetUpdateIds,
+  expectedPageLayoutWidgetDeleteIds,
 }: {
   workspaceId: string;
   mode: NavigationMenuItemAuditMode;
@@ -1683,6 +2436,29 @@ export const captureNavigationMenuItemAudit = ({
   const baseCommandMenuItemDeleteIds = normalizeIds(
     expectedCommandMenuItemDeleteIds,
   );
+  const basePageLayoutCreateIds = normalizeIds(expectedPageLayoutCreateIds);
+  const basePageLayoutUpdateIds = normalizeIds(expectedPageLayoutUpdateIds);
+  const basePageLayoutDeleteIds = normalizeIds(expectedPageLayoutDeleteIds);
+  const basePageLayoutTabCreateIds = normalizeIds(
+    expectedPageLayoutTabCreateIds,
+  );
+  const basePageLayoutTabUpdateIds = normalizeIds(
+    expectedPageLayoutTabUpdateIds,
+  );
+  const basePageLayoutTabDeleteIds = normalizeIds(
+    expectedPageLayoutTabDeleteIds,
+  );
+  const basePageLayoutWidgetCreateIds = normalizeIds(
+    expectedPageLayoutWidgetCreateIds,
+  );
+  const basePageLayoutWidgetUpdateIds = normalizeIds(
+    expectedPageLayoutWidgetUpdateIds,
+  );
+  const basePageLayoutWidgetDeleteIds = normalizeIds(
+    expectedPageLayoutWidgetDeleteIds,
+  );
+  const baseCreatedFieldCount = expectedCreatedFieldCount;
+  const baseUpdatedFieldCount = expectedUpdatedFieldCount;
 
   return (overrides) => {
     const resolvedCreatedIds =
@@ -1705,6 +2481,10 @@ export const captureNavigationMenuItemAudit = ({
         : baseCreatedObjectId;
     const resolvedUpdatedObjectIds =
       normalizeIds(overrides?.expectedUpdatedObjectIds) ?? baseUpdatedObjectIds;
+    const resolvedCreatedFieldCount =
+      overrides?.expectedCreatedFieldCount ?? baseCreatedFieldCount;
+    const resolvedUpdatedFieldCount =
+      overrides?.expectedUpdatedFieldCount ?? baseUpdatedFieldCount;
     const resolvedChannelCreateIds =
       normalizeIds(overrides?.expectedChannelCreateIds) ?? baseChannelCreateIds;
     const resolvedChannelUpdateIds =
@@ -1769,6 +2549,33 @@ export const captureNavigationMenuItemAudit = ({
     const resolvedCommandMenuItemDeleteIds =
       normalizeIds(overrides?.expectedCommandMenuItemDeleteIds) ??
       baseCommandMenuItemDeleteIds;
+    const resolvedPageLayoutCreateIds =
+      normalizeIds(overrides?.expectedPageLayoutCreateIds) ??
+      basePageLayoutCreateIds;
+    const resolvedPageLayoutUpdateIds =
+      normalizeIds(overrides?.expectedPageLayoutUpdateIds) ??
+      basePageLayoutUpdateIds;
+    const resolvedPageLayoutDeleteIds =
+      normalizeIds(overrides?.expectedPageLayoutDeleteIds) ??
+      basePageLayoutDeleteIds;
+    const resolvedPageLayoutTabCreateIds =
+      normalizeIds(overrides?.expectedPageLayoutTabCreateIds) ??
+      basePageLayoutTabCreateIds;
+    const resolvedPageLayoutTabUpdateIds =
+      normalizeIds(overrides?.expectedPageLayoutTabUpdateIds) ??
+      basePageLayoutTabUpdateIds;
+    const resolvedPageLayoutTabDeleteIds =
+      normalizeIds(overrides?.expectedPageLayoutTabDeleteIds) ??
+      basePageLayoutTabDeleteIds;
+    const resolvedPageLayoutWidgetCreateIds =
+      normalizeIds(overrides?.expectedPageLayoutWidgetCreateIds) ??
+      basePageLayoutWidgetCreateIds;
+    const resolvedPageLayoutWidgetUpdateIds =
+      normalizeIds(overrides?.expectedPageLayoutWidgetUpdateIds) ??
+      basePageLayoutWidgetUpdateIds;
+    const resolvedPageLayoutWidgetDeleteIds =
+      normalizeIds(overrides?.expectedPageLayoutWidgetDeleteIds) ??
+      basePageLayoutWidgetDeleteIds;
 
     return Object.freeze({
       workspaceId: normalizedWorkspaceId,
@@ -1803,6 +2610,12 @@ export const captureNavigationMenuItemAudit = ({
         : {}),
       ...(resolvedUpdatedObjectIds !== undefined
         ? { expectedUpdatedObjectIds: resolvedUpdatedObjectIds }
+        : {}),
+      ...(resolvedCreatedFieldCount !== undefined
+        ? { expectedCreatedFieldCount: resolvedCreatedFieldCount }
+        : {}),
+      ...(resolvedUpdatedFieldCount !== undefined
+        ? { expectedUpdatedFieldCount: resolvedUpdatedFieldCount }
         : {}),
       ...(resolvedChannelCreateIds !== undefined
         ? { expectedChannelCreateIds: resolvedChannelCreateIds }
@@ -1892,6 +2705,42 @@ export const captureNavigationMenuItemAudit = ({
       ...(resolvedCommandMenuItemDeleteIds !== undefined
         ? {
             expectedCommandMenuItemDeleteIds: resolvedCommandMenuItemDeleteIds,
+          }
+        : {}),
+      ...(resolvedPageLayoutCreateIds !== undefined
+        ? { expectedPageLayoutCreateIds: resolvedPageLayoutCreateIds }
+        : {}),
+      ...(resolvedPageLayoutUpdateIds !== undefined
+        ? { expectedPageLayoutUpdateIds: resolvedPageLayoutUpdateIds }
+        : {}),
+      ...(resolvedPageLayoutDeleteIds !== undefined
+        ? { expectedPageLayoutDeleteIds: resolvedPageLayoutDeleteIds }
+        : {}),
+      ...(resolvedPageLayoutTabCreateIds !== undefined
+        ? { expectedPageLayoutTabCreateIds: resolvedPageLayoutTabCreateIds }
+        : {}),
+      ...(resolvedPageLayoutTabUpdateIds !== undefined
+        ? { expectedPageLayoutTabUpdateIds: resolvedPageLayoutTabUpdateIds }
+        : {}),
+      ...(resolvedPageLayoutTabDeleteIds !== undefined
+        ? { expectedPageLayoutTabDeleteIds: resolvedPageLayoutTabDeleteIds }
+        : {}),
+      ...(resolvedPageLayoutWidgetCreateIds !== undefined
+        ? {
+            expectedPageLayoutWidgetCreateIds:
+              resolvedPageLayoutWidgetCreateIds,
+          }
+        : {}),
+      ...(resolvedPageLayoutWidgetUpdateIds !== undefined
+        ? {
+            expectedPageLayoutWidgetUpdateIds:
+              resolvedPageLayoutWidgetUpdateIds,
+          }
+        : {}),
+      ...(resolvedPageLayoutWidgetDeleteIds !== undefined
+        ? {
+            expectedPageLayoutWidgetDeleteIds:
+              resolvedPageLayoutWidgetDeleteIds,
           }
         : {}),
     });
@@ -2283,6 +3132,57 @@ const readCommandMenuItemSnapshot = async (
   );
 };
 
+const readPageLayoutSnapshot = async (
+  runner: QueryRunner,
+  workspaceId: string,
+  lock: boolean,
+): Promise<Map<string, Record<string, unknown>>> => {
+  const rows = await runner.query(
+    `SELECT to_jsonb(pl) AS row FROM core."pageLayout" pl WHERE pl."workspaceId"=$1 ORDER BY pl.id${lock ? ' FOR UPDATE' : ''}`,
+    [workspaceId],
+  );
+  return new Map(
+    rows.map((entry: { row: Record<string, unknown> }) => [
+      uuid(entry.row.id),
+      entry.row,
+    ]),
+  );
+};
+
+const readPageLayoutTabSnapshot = async (
+  runner: QueryRunner,
+  workspaceId: string,
+  lock: boolean,
+): Promise<Map<string, Record<string, unknown>>> => {
+  const rows = await runner.query(
+    `SELECT to_jsonb(plt) AS row FROM core."pageLayoutTab" plt WHERE plt."workspaceId"=$1 ORDER BY plt.id${lock ? ' FOR UPDATE' : ''}`,
+    [workspaceId],
+  );
+  return new Map(
+    rows.map((entry: { row: Record<string, unknown> }) => [
+      uuid(entry.row.id),
+      entry.row,
+    ]),
+  );
+};
+
+const readPageLayoutWidgetSnapshot = async (
+  runner: QueryRunner,
+  workspaceId: string,
+  lock: boolean,
+): Promise<Map<string, Record<string, unknown>>> => {
+  const rows = await runner.query(
+    `SELECT to_jsonb(plw) AS row FROM core."pageLayoutWidget" plw WHERE plw."workspaceId"=$1 ORDER BY plw.id${lock ? ' FOR UPDATE' : ''}`,
+    [workspaceId],
+  );
+  return new Map(
+    rows.map((entry: { row: Record<string, unknown> }) => [
+      uuid(entry.row.id),
+      entry.row,
+    ]),
+  );
+};
+
 const serializeNavSnapshot = (
   snapshot: Map<string, Record<string, unknown>>,
 ): string =>
@@ -2354,6 +3254,36 @@ const serializeTimelineActivityTypeSnapshot = (
   );
 
 const serializeCommandMenuItemSnapshot = (
+  snapshot: Map<string, Record<string, unknown>>,
+): string =>
+  canonicalAuditJson(
+    [...snapshot.entries()].map(([id, row]) => [
+      id,
+      scalarNavigationMenuItemWithoutTimestamps(row),
+    ]),
+  );
+
+const serializePageLayoutSnapshot = (
+  snapshot: Map<string, Record<string, unknown>>,
+): string =>
+  canonicalAuditJson(
+    [...snapshot.entries()].map(([id, row]) => [
+      id,
+      scalarNavigationMenuItemWithoutTimestamps(row),
+    ]),
+  );
+
+const serializePageLayoutTabSnapshot = (
+  snapshot: Map<string, Record<string, unknown>>,
+): string =>
+  canonicalAuditJson(
+    [...snapshot.entries()].map(([id, row]) => [
+      id,
+      scalarNavigationMenuItemWithoutTimestamps(row),
+    ]),
+  );
+
+const serializePageLayoutWidgetSnapshot = (
   snapshot: Map<string, Record<string, unknown>>,
 ): string =>
   canonicalAuditJson(
@@ -2489,6 +3419,8 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         to_regclass('core."navigationMenuItem"') IS NOT NULL AS "hasNavTable",
         to_regclass('core.view') IS NOT NULL AS "hasViewTable",
         to_regclass('core."pageLayout"') IS NOT NULL AS "hasPageLayoutTable",
+        to_regclass('core."pageLayoutTab"') IS NOT NULL AS "hasPageLayoutTabTable",
+        to_regclass('core."pageLayoutWidget"') IS NOT NULL AS "hasPageLayoutWidgetTable",
         to_regclass('core."agentChatChannel"') IS NOT NULL AS "hasChannelTable",
         to_regclass('core."agentChatChannelRole"') IS NOT NULL AS "hasChannelRoleTable",
         to_regclass('core.role') IS NOT NULL AS "hasRoleTable",
@@ -2508,9 +3440,12 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       request.mode !== 'logicFunction' &&
       request.mode !== 'timelineActivityType' &&
       request.mode !== 'commandMenuItem' &&
+      request.mode !== 'pageLayout' &&
       !(
         request.mode === 'cascade' &&
-        request.expectedUpdatedObjectIds !== undefined
+        (request.expectedUpdatedObjectIds !== undefined ||
+          request.expectedCreatedFieldCount !== undefined ||
+          request.expectedUpdatedFieldCount !== undefined)
       ) &&
       reg?.hasNavTable !== true
     ) {
@@ -2705,6 +3640,7 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         (touchesFrontComponents ||
           isWorkflowCascadeMode ||
           request.expectedParentPageLayoutDeleteIds !== undefined ||
+          request.expectedPageLayoutDeleteIds !== undefined ||
           request.expectedCreatedObjectId !== undefined ||
           request.expectedUpdatedObjectIds !== undefined ||
           actions.some(
@@ -2717,6 +3653,94 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         : new Map<string, Record<string, unknown>>();
     for (const row of beforeCommandMenuItems.values()) {
       assertCommandMenuItemRowInvariants(row, request.workspaceId);
+    }
+
+    const requiresPageLayoutTable =
+      request.expectedPageLayoutCreateIds !== undefined ||
+      request.expectedPageLayoutUpdateIds !== undefined ||
+      request.expectedPageLayoutDeleteIds !== undefined ||
+      (request.mode === 'pageLayout' &&
+        actions.some((action) => action.metadataName === 'pageLayout'));
+    if (requiresPageLayoutTable && reg?.hasPageLayoutTable !== true) {
+      throw new Error('Page layout audit table core.pageLayout unavailable');
+    }
+    const touchesPageLayouts =
+      requiresPageLayoutTable ||
+      (reg?.hasPageLayoutTable === true &&
+        (request.mode === 'pageLayout' ||
+          request.expectedParentPageLayoutDeleteIds !== undefined ||
+          request.expectedCreatedObjectId !== undefined ||
+          actions.some(
+            (action) =>
+              action.metadataName === 'pageLayout' ||
+              (action.metadataName === 'pageLayoutTab' &&
+                action.type === 'delete') ||
+              (action.metadataName === 'objectMetadata' &&
+                action.type === 'delete'),
+          )));
+    const beforePageLayouts =
+      touchesPageLayouts && reg?.hasPageLayoutTable === true
+        ? await readPageLayoutSnapshot(runner, request.workspaceId, true)
+        : new Map<string, Record<string, unknown>>();
+    for (const row of beforePageLayouts.values()) {
+      assertPageLayoutRowInvariants(row, request.workspaceId);
+    }
+
+    const requiresPageLayoutTabTable =
+      request.mode === 'pageLayout' &&
+      (request.expectedPageLayoutTabCreateIds !== undefined ||
+        request.expectedPageLayoutTabUpdateIds !== undefined ||
+        request.expectedPageLayoutTabDeleteIds !== undefined ||
+        actions.some((action) => action.metadataName === 'pageLayoutTab'));
+    if (requiresPageLayoutTabTable && reg?.hasPageLayoutTabTable !== true) {
+      throw new Error(
+        'Page layout tab audit table core.pageLayoutTab unavailable',
+      );
+    }
+    const touchesPageLayoutTabs =
+      requiresPageLayoutTabTable ||
+      (reg?.hasPageLayoutTabTable === true &&
+        (request.mode === 'pageLayout' ||
+          touchesPageLayouts ||
+          actions.some((action) => action.metadataName === 'pageLayoutTab')));
+    const beforePageLayoutTabs =
+      touchesPageLayoutTabs && reg?.hasPageLayoutTabTable === true
+        ? await readPageLayoutTabSnapshot(runner, request.workspaceId, true)
+        : new Map<string, Record<string, unknown>>();
+    for (const row of beforePageLayoutTabs.values()) {
+      assertPageLayoutTabRowInvariants(row, request.workspaceId);
+    }
+
+    const requiresPageLayoutWidgetTable =
+      request.mode === 'pageLayout' &&
+      (request.expectedPageLayoutWidgetCreateIds !== undefined ||
+        request.expectedPageLayoutWidgetUpdateIds !== undefined ||
+        request.expectedPageLayoutWidgetDeleteIds !== undefined ||
+        actions.some((action) => action.metadataName === 'pageLayoutWidget'));
+    if (
+      requiresPageLayoutWidgetTable &&
+      reg?.hasPageLayoutWidgetTable !== true
+    ) {
+      throw new Error(
+        'Page layout widget audit table core.pageLayoutWidget unavailable',
+      );
+    }
+    const touchesPageLayoutWidgets =
+      requiresPageLayoutWidgetTable ||
+      (reg?.hasPageLayoutWidgetTable === true &&
+        (request.mode === 'pageLayout' ||
+          touchesPageLayoutTabs ||
+          request.expectedCreatedFieldCount !== undefined ||
+          request.expectedUpdatedFieldCount !== undefined ||
+          actions.some(
+            (action) => action.metadataName === 'pageLayoutWidget',
+          )));
+    const beforePageLayoutWidgets =
+      touchesPageLayoutWidgets && reg?.hasPageLayoutWidgetTable === true
+        ? await readPageLayoutWidgetSnapshot(runner, request.workspaceId, true)
+        : new Map<string, Record<string, unknown>>();
+    for (const row of beforePageLayoutWidgets.values()) {
+      assertPageLayoutWidgetRowInvariants(row, request.workspaceId);
     }
 
     const touchesChannelsOrRoles =
@@ -2767,16 +3791,26 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       assertAgentChatChannelRoleRowInvariants(row, request.workspaceId);
     }
 
-    const beforeNavItems =
+    const touchesNavItems =
       request.mode !== 'webhook' &&
       request.mode !== 'skill' &&
       request.mode !== 'frontComponent' &&
       request.mode !== 'logicFunction' &&
       request.mode !== 'timelineActivityType' &&
       request.mode !== 'commandMenuItem' &&
-      reg?.hasNavTable === true
-        ? await readNavSnapshot(runner, request.workspaceId, true)
-        : new Map<string, Record<string, unknown>>();
+      (request.mode !== 'pageLayout' ||
+        request.expectedParentPageLayoutDeleteIds !== undefined ||
+        request.expectedPageLayoutDeleteIds !== undefined ||
+        actions.some(
+          (action) =>
+            (action.metadataName === 'pageLayout' &&
+              action.type === 'delete') ||
+            action.metadataName === 'navigationMenuItem',
+        )) &&
+      reg?.hasNavTable === true;
+    const beforeNavItems = touchesNavItems
+      ? await readNavSnapshot(runner, request.workspaceId, true)
+      : new Map<string, Record<string, unknown>>();
     for (const row of beforeNavItems.values()) {
       assertNavigationMenuItemRowInvariants(row, request.workspaceId);
     }
@@ -2788,7 +3822,30 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
     const plannedNavUpdates = new Map<string, Record<string, unknown>>();
     const plannedNavDeletes = new Set<string>();
     const plannedViewDeletes = new Set<string>();
+    const plannedPageLayoutCreatesByUniversalIdentifier = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedPageLayoutUpdates = new Map<string, Record<string, unknown>>();
     const plannedPageLayoutDeletes = new Set<string>();
+    const plannedPageLayoutTabCreatesByUniversalIdentifier = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedPageLayoutTabUpdates = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    const plannedPageLayoutTabDeletes = new Set<string>();
+    const plannedPageLayoutWidgetCreatesByUniversalIdentifier = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedPageLayoutWidgetUpdates = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    const plannedPageLayoutWidgetDeletes = new Set<string>();
     const plannedChannelCreatesByUniversalIdentifier = new Map<
       string,
       { id?: string; flatEntity: Record<string, unknown> }
@@ -2860,6 +3917,8 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
     const plannedObjectUpdates = new Set<string>();
     const plannedObjectDeletes = new Set<string>();
     const plannedFieldDeletes = new Set<string>();
+    let plannedFieldCreateCount = 0;
+    let plannedFieldUpdateCount = 0;
 
     for (const action of actions) {
       if (request.mode === 'create') {
@@ -2958,6 +4017,22 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
             `Command menu item audit disallows ${action.metadataName} actions`,
           );
         }
+      } else if (request.mode === 'pageLayout') {
+        const isPageLayoutEntity =
+          action.metadataName === 'pageLayout' ||
+          action.metadataName === 'pageLayoutTab' ||
+          action.metadataName === 'pageLayoutWidget' ||
+          action.metadataName === 'viewFieldGroup' ||
+          action.metadataName === 'viewField';
+        const isAllowedCascadeDelete =
+          action.type === 'delete' &&
+          (action.metadataName === 'navigationMenuItem' ||
+            action.metadataName === 'commandMenuItem');
+        if (!isPageLayoutEntity && !isAllowedCascadeDelete) {
+          throw new Error(
+            `Page layout audit disallows ${action.metadataName} actions`,
+          );
+        }
       } else {
         if (!CASCADE_ALLOWED_METADATA_NAMES.has(action.metadataName)) {
           throw new Error(
@@ -3043,18 +4118,206 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           );
         }
         plannedViewDeletes.add(uuid(mappedId));
-      } else if (
-        action.metadataName === 'pageLayout' &&
-        action.type === 'delete'
-      ) {
-        const universalId = uuid(action.universalIdentifier);
-        const mappedId = mappings.pageLayouts?.[universalId]?.id;
-        if (!mappedId) {
+      } else if (action.metadataName === 'pageLayout') {
+        if (action.type === 'create') {
+          if (!action.flatEntity) {
+            throw new Error('Page layout create action requires flatEntity');
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (plannedPageLayoutCreatesByUniversalIdentifier.has(universalId)) {
+            throw new Error(
+              'Page layout create audit duplicate universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error('Page layout create action application mismatch');
+          }
+          const explicitId =
+            action.id !== undefined
+              ? uuid(action.id)
+              : action.flatEntity.id !== undefined
+                ? uuid(action.flatEntity.id)
+                : undefined;
+          if (explicitId !== undefined && beforePageLayouts.has(explicitId)) {
+            throw new Error('Page layout create target ID already exists');
+          }
+          plannedPageLayoutCreatesByUniversalIdentifier.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.pageLayouts?.[universalId]?.id;
+          if (!mappedId || !action.update) {
+            throw new Error(
+              'Page layout update audit missing mapping or update payload',
+            );
+          }
+          const targetId = uuid(mappedId);
+          if (plannedPageLayoutUpdates.has(targetId)) {
+            throw new Error('Page layout update audit duplicate ID');
+          }
+          plannedPageLayoutUpdates.set(targetId, action.update);
+        } else if (action.type === 'delete') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.pageLayouts?.[universalId]?.id;
+          if (!mappedId) {
+            throw new Error(
+              'Navigation menu item cascade audit missing pageLayout mapping',
+            );
+          }
+          const targetId = uuid(mappedId);
+          if (plannedPageLayoutDeletes.has(targetId)) {
+            throw new Error('Page layout delete audit duplicate ID');
+          }
+          plannedPageLayoutDeletes.add(targetId);
+        } else {
+          throw new Error(`Unsupported pageLayout action type ${action.type}`);
+        }
+      } else if (action.metadataName === 'pageLayoutTab') {
+        if (action.type === 'create') {
+          if (!action.flatEntity) {
+            throw new Error(
+              'Page layout tab create action requires flatEntity',
+            );
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (
+            plannedPageLayoutTabCreatesByUniversalIdentifier.has(universalId)
+          ) {
+            throw new Error(
+              'Page layout tab create audit duplicate universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error(
+              'Page layout tab create action application mismatch',
+            );
+          }
+          const explicitId =
+            action.id !== undefined
+              ? uuid(action.id)
+              : action.flatEntity.id !== undefined
+                ? uuid(action.flatEntity.id)
+                : undefined;
+          if (
+            explicitId !== undefined &&
+            beforePageLayoutTabs.has(explicitId)
+          ) {
+            throw new Error('Page layout tab create target ID already exists');
+          }
+          plannedPageLayoutTabCreatesByUniversalIdentifier.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.pageLayoutTabs?.[universalId]?.id;
+          if (!mappedId || !action.update) {
+            throw new Error(
+              'Page layout tab update audit missing mapping or update payload',
+            );
+          }
+          const targetId = uuid(mappedId);
+          if (plannedPageLayoutTabUpdates.has(targetId)) {
+            throw new Error('Page layout tab update audit duplicate ID');
+          }
+          plannedPageLayoutTabUpdates.set(targetId, action.update);
+        } else if (action.type === 'delete') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.pageLayoutTabs?.[universalId]?.id;
+          if (!mappedId) {
+            throw new Error('Page layout tab delete audit missing mapping');
+          }
+          const targetId = uuid(mappedId);
+          if (plannedPageLayoutTabDeletes.has(targetId)) {
+            throw new Error('Page layout tab delete audit duplicate ID');
+          }
+          plannedPageLayoutTabDeletes.add(targetId);
+        } else {
           throw new Error(
-            'Navigation menu item cascade audit missing pageLayout mapping',
+            `Unsupported pageLayoutTab action type ${action.type}`,
           );
         }
-        plannedPageLayoutDeletes.add(uuid(mappedId));
+      } else if (action.metadataName === 'pageLayoutWidget') {
+        if (action.type === 'create') {
+          if (!action.flatEntity) {
+            throw new Error(
+              'Page layout widget create action requires flatEntity',
+            );
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (
+            plannedPageLayoutWidgetCreatesByUniversalIdentifier.has(universalId)
+          ) {
+            throw new Error(
+              'Page layout widget create audit duplicate universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error(
+              'Page layout widget create action application mismatch',
+            );
+          }
+          const explicitId =
+            action.id !== undefined
+              ? uuid(action.id)
+              : action.flatEntity.id !== undefined
+                ? uuid(action.flatEntity.id)
+                : undefined;
+          if (
+            explicitId !== undefined &&
+            beforePageLayoutWidgets.has(explicitId)
+          ) {
+            throw new Error(
+              'Page layout widget create target ID already exists',
+            );
+          }
+          plannedPageLayoutWidgetCreatesByUniversalIdentifier.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (action.type === 'update') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.pageLayoutWidgets?.[universalId]?.id;
+          if (!mappedId || !action.update) {
+            throw new Error(
+              'Page layout widget update audit missing mapping or update payload',
+            );
+          }
+          const targetId = uuid(mappedId);
+          if (plannedPageLayoutWidgetUpdates.has(targetId)) {
+            throw new Error('Page layout widget update audit duplicate ID');
+          }
+          plannedPageLayoutWidgetUpdates.set(targetId, action.update);
+        } else if (action.type === 'delete') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.pageLayoutWidgets?.[universalId]?.id;
+          if (!mappedId) {
+            throw new Error('Page layout widget delete audit missing mapping');
+          }
+          const targetId = uuid(mappedId);
+          if (plannedPageLayoutWidgetDeletes.has(targetId)) {
+            throw new Error('Page layout widget delete audit duplicate ID');
+          }
+          plannedPageLayoutWidgetDeletes.add(targetId);
+        } else {
+          throw new Error(
+            `Unsupported pageLayoutWidget action type ${action.type}`,
+          );
+        }
       } else if (action.metadataName === 'agentChatChannel') {
         if (action.type === 'create') {
           if (!action.flatEntity) {
@@ -3204,18 +4467,21 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           }
           plannedObjectDeletes.add(uuid(mappedId));
         }
-      } else if (
-        action.metadataName === 'fieldMetadata' &&
-        action.type === 'delete'
-      ) {
-        const universalId = uuid(action.universalIdentifier);
-        const mappedId = mappings.fieldMetadatas?.[universalId]?.id;
-        if (!mappedId) {
-          throw new Error(
-            'Navigation menu item cascade audit missing fieldMetadata mapping',
-          );
+      } else if (action.metadataName === 'fieldMetadata') {
+        if (action.type === 'create') {
+          plannedFieldCreateCount += 1;
+        } else if (action.type === 'update') {
+          plannedFieldUpdateCount += 1;
+        } else if (action.type === 'delete') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.fieldMetadatas?.[universalId]?.id;
+          if (!mappedId) {
+            throw new Error(
+              'Navigation menu item cascade audit missing fieldMetadata mapping',
+            );
+          }
+          plannedFieldDeletes.add(uuid(mappedId));
         }
-        plannedFieldDeletes.add(uuid(mappedId));
       } else if (action.metadataName === 'webhook') {
         if (action.type === 'create') {
           if (!action.flatEntity) {
@@ -3664,7 +4930,9 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         request.expectedParentPageLayoutDeleteIds !== undefined ||
         request.expectedParentChannelDeleteIds !== undefined ||
         request.expectedCreatedObjectId !== undefined ||
-        request.expectedUpdatedObjectIds !== undefined;
+        request.expectedUpdatedObjectIds !== undefined ||
+        request.expectedCreatedFieldCount !== undefined ||
+        request.expectedUpdatedFieldCount !== undefined;
       if (!hasCascadeConstraint) {
         throw new Error(
           'Navigation menu item cascade audit requires explicit expected scope',
@@ -3744,6 +5012,21 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         throw new Error(
           'Command menu item audit requires explicit expected scope',
         );
+      }
+    } else if (request.mode === 'pageLayout') {
+      const hasPageLayoutConstraint =
+        request.expectedPageLayoutCreateIds !== undefined ||
+        request.expectedPageLayoutUpdateIds !== undefined ||
+        request.expectedPageLayoutDeleteIds !== undefined ||
+        request.expectedParentPageLayoutDeleteIds !== undefined ||
+        request.expectedPageLayoutTabCreateIds !== undefined ||
+        request.expectedPageLayoutTabUpdateIds !== undefined ||
+        request.expectedPageLayoutTabDeleteIds !== undefined ||
+        request.expectedPageLayoutWidgetCreateIds !== undefined ||
+        request.expectedPageLayoutWidgetUpdateIds !== undefined ||
+        request.expectedPageLayoutWidgetDeleteIds !== undefined;
+      if (!hasPageLayoutConstraint) {
+        throw new Error('Page layout audit requires explicit expected scope');
       }
     }
 
@@ -4545,7 +5828,7 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         }
       }
     } else if (
-      request.mode === 'cascade' &&
+      (request.mode === 'cascade' || request.mode === 'pageLayout') &&
       plannedCommandMenuItemDeletes.size > 0
     ) {
       for (const cmiId of plannedCommandMenuItemDeletes) {
@@ -4590,6 +5873,7 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           request.mode !== 'commandMenuItem' &&
           request.mode !== 'frontComponent' &&
           request.mode !== 'cascade' &&
+          request.mode !== 'pageLayout' &&
           !isWorkflowCascadeMode
         ) {
           throw new Error(
@@ -4855,6 +6139,46 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       );
     }
 
+    if (request.expectedCreatedFieldCount !== undefined) {
+      if (
+        plannedFieldCreateCount === 0 ||
+        plannedFieldCreateCount > request.expectedCreatedFieldCount
+      ) {
+        throw new Error(
+          'Navigation menu item cascade field create plan does not match expected count',
+        );
+      }
+    } else if (
+      request.mode === 'cascade' &&
+      plannedFieldCreateCount > 0 &&
+      request.expectedCreatedObjectId === undefined &&
+      request.expectedUpdatedFieldCount === undefined
+    ) {
+      throw new Error(
+        'Navigation menu item cascade audit detected unexpected fieldMetadata create',
+      );
+    }
+
+    if (request.expectedUpdatedFieldCount !== undefined) {
+      if (
+        plannedFieldUpdateCount === 0 ||
+        plannedFieldUpdateCount > request.expectedUpdatedFieldCount
+      ) {
+        throw new Error(
+          'Navigation menu item cascade field update plan does not match expected count',
+        );
+      }
+    } else if (
+      request.mode === 'cascade' &&
+      plannedFieldUpdateCount > 0 &&
+      request.expectedUpdatedObjectIds === undefined &&
+      request.expectedParentViewDeleteIds === undefined
+    ) {
+      throw new Error(
+        'Navigation menu item cascade audit detected unexpected fieldMetadata update',
+      );
+    }
+
     if (request.expectedParentViewDeleteIds !== undefined) {
       if (
         plannedViewDeletes.size !==
@@ -4873,25 +6197,370 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       );
     }
 
-    if (request.expectedParentPageLayoutDeleteIds !== undefined) {
+    if (request.expectedPageLayoutCreateIds !== undefined) {
+      const actualPageLayoutCreateIds = [
+        ...plannedPageLayoutCreatesByUniversalIdentifier.values(),
+      ]
+        .map((entry) => entry.id)
+        .filter((id): id is string => id !== undefined);
       if (
-        plannedPageLayoutDeletes.size !==
-          request.expectedParentPageLayoutDeleteIds.length ||
-        request.expectedParentPageLayoutDeleteIds.some(
-          (id) => !plannedPageLayoutDeletes.has(id),
+        plannedPageLayoutCreatesByUniversalIdentifier.size !==
+          request.expectedPageLayoutCreateIds.length ||
+        actualPageLayoutCreateIds.length !==
+          request.expectedPageLayoutCreateIds.length ||
+        request.expectedPageLayoutCreateIds.some(
+          (id) => !actualPageLayoutCreateIds.includes(id),
         )
+      ) {
+        throw new Error('Page layout create plan does not match expected IDs');
+      }
+    } else if (
+      request.mode === 'pageLayout' &&
+      plannedPageLayoutCreatesByUniversalIdentifier.size > 0
+    ) {
+      throw new Error(
+        'Page layout audit detected unexpected pageLayout create',
+      );
+    } else if (
+      request.mode === 'cascade' &&
+      plannedPageLayoutCreatesByUniversalIdentifier.size > 0 &&
+      request.expectedCreatedObjectId !== undefined
+    ) {
+      if (
+        [...plannedPageLayoutCreatesByUniversalIdentifier.values()].some(
+          (entry) => entry.flatEntity.isSystemSideEffect !== true,
+        )
+      ) {
+        throw new Error(
+          'Navigation menu item cascade audit detected unexpected pageLayout create',
+        );
+      }
+    }
+
+    if (request.expectedPageLayoutUpdateIds !== undefined) {
+      if (
+        plannedPageLayoutUpdates.size !==
+          request.expectedPageLayoutUpdateIds.length ||
+        request.expectedPageLayoutUpdateIds.some(
+          (id) => !plannedPageLayoutUpdates.has(id),
+        )
+      ) {
+        throw new Error('Page layout update plan does not match expected IDs');
+      }
+    } else if (
+      (request.mode === 'pageLayout' || request.mode === 'cascade') &&
+      plannedPageLayoutUpdates.size > 0
+    ) {
+      throw new Error(
+        'Page layout audit detected unexpected pageLayout update',
+      );
+    }
+
+    const expectedLayoutDeleteIds =
+      request.expectedPageLayoutDeleteIds ??
+      request.expectedParentPageLayoutDeleteIds;
+    if (expectedLayoutDeleteIds !== undefined) {
+      if (
+        plannedPageLayoutDeletes.size !== expectedLayoutDeleteIds.length ||
+        expectedLayoutDeleteIds.some((id) => !plannedPageLayoutDeletes.has(id))
       ) {
         throw new Error(
           'Navigation menu item cascade pageLayout delete plan does not match expected IDs',
         );
       }
     } else if (
-      request.mode === 'cascade' &&
+      (request.mode === 'cascade' || request.mode === 'pageLayout') &&
       plannedPageLayoutDeletes.size > 0
     ) {
       throw new Error(
         'Navigation menu item cascade audit detected unexpected pageLayout delete',
       );
+    }
+
+    if (request.expectedPageLayoutTabCreateIds !== undefined) {
+      const actualPageLayoutTabCreateIds = [
+        ...plannedPageLayoutTabCreatesByUniversalIdentifier.values(),
+      ]
+        .map((entry) => entry.id)
+        .filter((id): id is string => id !== undefined);
+      if (
+        plannedPageLayoutTabCreatesByUniversalIdentifier.size !==
+          request.expectedPageLayoutTabCreateIds.length ||
+        actualPageLayoutTabCreateIds.length !==
+          request.expectedPageLayoutTabCreateIds.length ||
+        request.expectedPageLayoutTabCreateIds.some(
+          (id) => !actualPageLayoutTabCreateIds.includes(id),
+        )
+      ) {
+        throw new Error(
+          'Page layout tab create plan does not match expected IDs',
+        );
+      }
+    } else if (
+      request.mode === 'pageLayout' &&
+      plannedPageLayoutTabCreatesByUniversalIdentifier.size > 0
+    ) {
+      throw new Error(
+        'Page layout tab audit detected unexpected pageLayoutTab create',
+      );
+    } else if (
+      request.mode === 'cascade' &&
+      plannedPageLayoutTabCreatesByUniversalIdentifier.size > 0 &&
+      request.expectedCreatedObjectId !== undefined
+    ) {
+      if (
+        [...plannedPageLayoutTabCreatesByUniversalIdentifier.values()].some(
+          (entry) => entry.flatEntity.isSystemSideEffect !== true,
+        )
+      ) {
+        throw new Error(
+          'Navigation menu item cascade audit detected unexpected pageLayoutTab create',
+        );
+      }
+    }
+
+    if (request.expectedPageLayoutTabUpdateIds !== undefined) {
+      if (
+        plannedPageLayoutTabUpdates.size !==
+          request.expectedPageLayoutTabUpdateIds.length ||
+        request.expectedPageLayoutTabUpdateIds.some(
+          (id) => !plannedPageLayoutTabUpdates.has(id),
+        )
+      ) {
+        throw new Error(
+          'Page layout tab update plan does not match expected IDs',
+        );
+      }
+    } else if (
+      (request.mode === 'pageLayout' || request.mode === 'cascade') &&
+      plannedPageLayoutTabUpdates.size > 0
+    ) {
+      throw new Error(
+        'Page layout tab audit detected unexpected pageLayoutTab update',
+      );
+    }
+
+    if (request.expectedPageLayoutTabDeleteIds !== undefined) {
+      if (
+        plannedPageLayoutTabDeletes.size !==
+          request.expectedPageLayoutTabDeleteIds.length ||
+        request.expectedPageLayoutTabDeleteIds.some(
+          (id) => !plannedPageLayoutTabDeletes.has(id),
+        )
+      ) {
+        throw new Error(
+          'Page layout tab delete plan does not match expected IDs',
+        );
+      }
+    } else if (
+      (request.mode === 'pageLayout' || request.mode === 'cascade') &&
+      plannedPageLayoutTabDeletes.size > 0
+    ) {
+      for (const tabId of plannedPageLayoutTabDeletes) {
+        const beforeTab = beforePageLayoutTabs.get(tabId);
+        const plId = beforeTab ? nullableUuid(beforeTab.pageLayoutId) : null;
+        if (
+          !beforeTab ||
+          plId === null ||
+          !plannedPageLayoutDeletes.has(plId)
+        ) {
+          throw new Error(
+            'Page layout tab audit detected unexpected pageLayoutTab delete',
+          );
+        }
+      }
+    }
+
+    if (request.expectedPageLayoutWidgetCreateIds !== undefined) {
+      const actualPageLayoutWidgetCreateIds = [
+        ...plannedPageLayoutWidgetCreatesByUniversalIdentifier.values(),
+      ]
+        .map((entry) => entry.id)
+        .filter((id): id is string => id !== undefined);
+      if (
+        plannedPageLayoutWidgetCreatesByUniversalIdentifier.size !==
+          request.expectedPageLayoutWidgetCreateIds.length ||
+        actualPageLayoutWidgetCreateIds.length !==
+          request.expectedPageLayoutWidgetCreateIds.length ||
+        request.expectedPageLayoutWidgetCreateIds.some(
+          (id) => !actualPageLayoutWidgetCreateIds.includes(id),
+        )
+      ) {
+        throw new Error(
+          'Page layout widget create plan does not match expected IDs',
+        );
+      }
+    } else if (
+      request.mode === 'pageLayout' &&
+      plannedPageLayoutWidgetCreatesByUniversalIdentifier.size > 0
+    ) {
+      throw new Error(
+        'Page layout widget audit detected unexpected pageLayoutWidget create',
+      );
+    } else if (
+      request.mode === 'cascade' &&
+      plannedPageLayoutWidgetCreatesByUniversalIdentifier.size > 0 &&
+      (request.expectedCreatedObjectId !== undefined ||
+        request.expectedCreatedFieldCount !== undefined ||
+        request.expectedUpdatedFieldCount !== undefined)
+    ) {
+      if (
+        [...plannedPageLayoutWidgetCreatesByUniversalIdentifier.values()].some(
+          (entry) => entry.flatEntity.isSystemSideEffect !== true,
+        )
+      ) {
+        throw new Error(
+          'Navigation menu item cascade audit detected unexpected pageLayoutWidget create',
+        );
+      }
+    }
+
+    if (request.expectedPageLayoutWidgetUpdateIds !== undefined) {
+      if (
+        plannedPageLayoutWidgetUpdates.size !==
+          request.expectedPageLayoutWidgetUpdateIds.length ||
+        request.expectedPageLayoutWidgetUpdateIds.some(
+          (id) => !plannedPageLayoutWidgetUpdates.has(id),
+        )
+      ) {
+        throw new Error(
+          'Page layout widget update plan does not match expected IDs',
+        );
+      }
+    } else if (
+      request.mode === 'pageLayout' &&
+      plannedPageLayoutWidgetUpdates.size > 0
+    ) {
+      throw new Error(
+        'Page layout widget audit detected unexpected pageLayoutWidget update',
+      );
+    } else if (
+      request.mode === 'cascade' &&
+      plannedPageLayoutWidgetUpdates.size > 0
+    ) {
+      for (const targetId of plannedPageLayoutWidgetUpdates.keys()) {
+        const beforePlw = beforePageLayoutWidgets.get(targetId);
+        if (!beforePlw || beforePlw.isSystemSideEffect !== true) {
+          throw new Error(
+            'Navigation menu item cascade audit detected unexpected pageLayoutWidget update',
+          );
+        }
+      }
+    }
+
+    if (request.expectedPageLayoutWidgetDeleteIds !== undefined) {
+      if (
+        plannedPageLayoutWidgetDeletes.size !==
+          request.expectedPageLayoutWidgetDeleteIds.length ||
+        request.expectedPageLayoutWidgetDeleteIds.some(
+          (id) => !plannedPageLayoutWidgetDeletes.has(id),
+        )
+      ) {
+        throw new Error(
+          'Page layout widget delete plan does not match expected IDs',
+        );
+      }
+    } else if (
+      (request.mode === 'pageLayout' || request.mode === 'cascade') &&
+      plannedPageLayoutWidgetDeletes.size > 0
+    ) {
+      for (const widgetId of plannedPageLayoutWidgetDeletes) {
+        const beforeWidget = beforePageLayoutWidgets.get(widgetId);
+        const tabId = beforeWidget
+          ? nullableUuid(beforeWidget.pageLayoutTabId)
+          : null;
+        const parentTab = tabId ? beforePageLayoutTabs.get(tabId) : undefined;
+        const plId = parentTab ? nullableUuid(parentTab.pageLayoutId) : null;
+        if (
+          !beforeWidget ||
+          tabId === null ||
+          (!plannedPageLayoutTabDeletes.has(tabId) &&
+            (plId === null || !plannedPageLayoutDeletes.has(plId)))
+        ) {
+          throw new Error(
+            'Page layout widget audit detected unexpected pageLayoutWidget delete',
+          );
+        }
+      }
+    }
+
+    const foreignPageLayoutAppIds = new Set<string>();
+    const verifyPageLayoutEntityOwner = (
+      targetId: string,
+      beforeMap: Map<string, Record<string, unknown>>,
+      errorMsg: string,
+    ) => {
+      const beforeRow = beforeMap.get(targetId);
+      if (!beforeRow) {
+        throw new Error(errorMsg);
+      }
+      const rowAppId = uuid(beforeRow.applicationId);
+      if (rowAppId !== applicationId) {
+        if (request.mode !== 'pageLayout' && request.mode !== 'cascade') {
+          throw new Error(errorMsg);
+        }
+        foreignPageLayoutAppIds.add(rowAppId);
+      }
+    };
+    for (const targetId of plannedPageLayoutUpdates.keys()) {
+      verifyPageLayoutEntityOwner(
+        targetId,
+        beforePageLayouts,
+        'Page layout update target row unavailable',
+      );
+    }
+    for (const targetId of plannedPageLayoutDeletes) {
+      verifyPageLayoutEntityOwner(
+        targetId,
+        beforePageLayouts,
+        'Page layout delete target row unavailable',
+      );
+    }
+    if (reg?.hasPageLayoutTabTable === true || request.mode === 'pageLayout') {
+      for (const targetId of plannedPageLayoutTabUpdates.keys()) {
+        verifyPageLayoutEntityOwner(
+          targetId,
+          beforePageLayoutTabs,
+          'Page layout tab update target row unavailable',
+        );
+      }
+      for (const targetId of plannedPageLayoutTabDeletes) {
+        verifyPageLayoutEntityOwner(
+          targetId,
+          beforePageLayoutTabs,
+          'Page layout tab delete target row unavailable',
+        );
+      }
+    }
+    if (
+      reg?.hasPageLayoutWidgetTable === true ||
+      request.mode === 'pageLayout'
+    ) {
+      for (const targetId of plannedPageLayoutWidgetUpdates.keys()) {
+        verifyPageLayoutEntityOwner(
+          targetId,
+          beforePageLayoutWidgets,
+          'Page layout widget update target row unavailable',
+        );
+      }
+      for (const targetId of plannedPageLayoutWidgetDeletes) {
+        verifyPageLayoutEntityOwner(
+          targetId,
+          beforePageLayoutWidgets,
+          'Page layout widget delete target row unavailable',
+        );
+      }
+    }
+    if (foreignPageLayoutAppIds.size > 0) {
+      const activeApps = await runner.query(
+        `SELECT id FROM core.application a WHERE a."workspaceId"=$1 AND a.id=ANY($2::uuid[]) AND to_jsonb(a)->>'deletedAt' IS NULL ORDER BY a.id FOR NO KEY UPDATE`,
+        [request.workspaceId, [...foreignPageLayoutAppIds]],
+      );
+      if (activeApps.length !== foreignPageLayoutAppIds.size) {
+        throw new Error(
+          'Page layout target row belongs to an unavailable application',
+        );
+      }
     }
 
     if (request.expectedParentChannelDeleteIds !== undefined) {
@@ -4932,7 +6601,9 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         );
       }
     } else if (
-      (request.mode === 'cascade' || request.mode === 'channel') &&
+      (request.mode === 'cascade' ||
+        request.mode === 'channel' ||
+        request.mode === 'pageLayout') &&
       plannedNavCreatesByUniversalIdentifier.size > 0
     ) {
       throw new Error(
@@ -4967,6 +6638,20 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       throw new Error(
         'Navigation menu item cascade audit detected unexpected navigationMenuItem delete',
       );
+    } else if (request.mode === 'pageLayout' && plannedNavDeletes.size > 0) {
+      for (const navId of plannedNavDeletes) {
+        const beforeNav = beforeNavItems.get(navId);
+        const plId = beforeNav ? nullableUuid(beforeNav.pageLayoutId) : null;
+        if (
+          !beforeNav ||
+          plId === null ||
+          !plannedPageLayoutDeletes.has(plId)
+        ) {
+          throw new Error(
+            'Page layout audit cannot delete unrelated navigationMenuItem',
+          );
+        }
+      }
     }
 
     const beforeViews =
@@ -4978,22 +6663,6 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
             (
               await runner.query(
                 `SELECT to_jsonb(v) AS row FROM core.view v WHERE v."workspaceId"=$1 ORDER BY v.id FOR UPDATE`,
-                [request.workspaceId],
-              )
-            ).map((entry: { row: Record<string, unknown> }) => [
-              uuid(entry.row.id),
-              entry.row,
-            ]),
-          )
-        : new Map<string, Record<string, unknown>>();
-
-    const beforePageLayouts =
-      reg?.hasPageLayoutTable === true &&
-      (plannedPageLayoutDeletes.size > 0 || plannedObjectDeletes.size > 0)
-        ? new Map<string, Record<string, unknown>>(
-            (
-              await runner.query(
-                `SELECT to_jsonb(pl) AS row FROM core."pageLayout" pl WHERE pl."workspaceId"=$1 ORDER BY pl.id FOR UPDATE`,
                 [request.workspaceId],
               )
             ).map((entry: { row: Record<string, unknown> }) => [
@@ -5099,16 +6768,9 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
 
     const result = await execute(runner);
 
-    const afterNavItems =
-      request.mode !== 'webhook' &&
-      request.mode !== 'skill' &&
-      request.mode !== 'frontComponent' &&
-      request.mode !== 'logicFunction' &&
-      request.mode !== 'timelineActivityType' &&
-      request.mode !== 'commandMenuItem' &&
-      reg?.hasNavTable === true
-        ? await readNavSnapshot(runner, request.workspaceId, false)
-        : new Map<string, Record<string, unknown>>();
+    const afterNavItems = touchesNavItems
+      ? await readNavSnapshot(runner, request.workspaceId, false)
+      : new Map<string, Record<string, unknown>>();
 
     const createdByUniversalId = new Map<string, Record<string, unknown>>();
     for (const [id, afterRow] of afterNavItems.entries()) {
@@ -7580,17 +9242,1191 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       );
     }
 
+    let expectedPageLayoutsSerialized: string | undefined;
+    let expectedPageLayoutTabsSerialized: string | undefined;
+    let expectedPageLayoutWidgetsSerialized: string | undefined;
+
+    const afterPageLayouts =
+      touchesPageLayouts && reg?.hasPageLayoutTable === true
+        ? await readPageLayoutSnapshot(runner, request.workspaceId, false)
+        : new Map<string, Record<string, unknown>>();
+    const afterPageLayoutTabs =
+      touchesPageLayoutTabs && reg?.hasPageLayoutTabTable === true
+        ? await readPageLayoutTabSnapshot(runner, request.workspaceId, false)
+        : new Map<string, Record<string, unknown>>();
+    const afterPageLayoutWidgets =
+      touchesPageLayoutWidgets && reg?.hasPageLayoutWidgetTable === true
+        ? await readPageLayoutWidgetSnapshot(runner, request.workspaceId, false)
+        : new Map<string, Record<string, unknown>>();
+
+    const createdPageLayoutsByUniversalId = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    if (touchesPageLayouts && reg?.hasPageLayoutTable === true) {
+      for (const [id, afterRow] of afterPageLayouts.entries()) {
+        assertPageLayoutRowInvariants(afterRow, request.workspaceId);
+        if (!beforePageLayouts.has(id)) {
+          const universalId = uuid(afterRow.universalIdentifier);
+          if (createdPageLayoutsByUniversalId.has(universalId)) {
+            throw new Error(
+              'Page layout audit detected duplicate created universalIdentifier',
+            );
+          }
+          createdPageLayoutsByUniversalId.set(universalId, afterRow);
+        }
+      }
+      if (
+        createdPageLayoutsByUniversalId.size !==
+        plannedPageLayoutCreatesByUniversalIdentifier.size
+      ) {
+        throw new Error('Page layout audit created row count mismatch');
+      }
+    }
+
+    const createdPageLayoutTabsByUniversalId = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    if (touchesPageLayoutTabs && reg?.hasPageLayoutTabTable === true) {
+      for (const [id, afterRow] of afterPageLayoutTabs.entries()) {
+        assertPageLayoutTabRowInvariants(afterRow, request.workspaceId);
+        if (!beforePageLayoutTabs.has(id)) {
+          const universalId = uuid(afterRow.universalIdentifier);
+          if (createdPageLayoutTabsByUniversalId.has(universalId)) {
+            throw new Error(
+              'Page layout tab audit detected duplicate created universalIdentifier',
+            );
+          }
+          createdPageLayoutTabsByUniversalId.set(universalId, afterRow);
+        }
+      }
+      if (
+        createdPageLayoutTabsByUniversalId.size !==
+        plannedPageLayoutTabCreatesByUniversalIdentifier.size
+      ) {
+        throw new Error('Page layout tab audit created row count mismatch');
+      }
+    }
+
+    const createdPageLayoutWidgetsByUniversalId = new Map<
+      string,
+      Record<string, unknown>
+    >();
+    if (touchesPageLayoutWidgets && reg?.hasPageLayoutWidgetTable === true) {
+      for (const [id, afterRow] of afterPageLayoutWidgets.entries()) {
+        assertPageLayoutWidgetRowInvariants(afterRow, request.workspaceId);
+        if (!beforePageLayoutWidgets.has(id)) {
+          const universalId = uuid(afterRow.universalIdentifier);
+          if (createdPageLayoutWidgetsByUniversalId.has(universalId)) {
+            throw new Error(
+              'Page layout widget audit detected duplicate created universalIdentifier',
+            );
+          }
+          createdPageLayoutWidgetsByUniversalId.set(universalId, afterRow);
+        }
+      }
+      if (
+        createdPageLayoutWidgetsByUniversalId.size !==
+        plannedPageLayoutWidgetCreatesByUniversalIdentifier.size
+      ) {
+        throw new Error('Page layout widget audit created row count mismatch');
+      }
+    }
+
+    const effectiveObjectMetadatasMap: Record<
+      string,
+      { id: string } | undefined
+    > = {
+      ...mappings.objectMetadatas,
+    };
+    for (const action of actions) {
+      if (
+        action.metadataName === 'objectMetadata' &&
+        action.type === 'create' &&
+        action.flatEntity?.universalIdentifier !== undefined
+      ) {
+        const objId =
+          action.id ?? action.flatEntity.id ?? request.expectedCreatedObjectId;
+        if (typeof objId === 'string' && isUUID(objId)) {
+          effectiveObjectMetadatasMap[
+            uuid(action.flatEntity.universalIdentifier)
+          ] = {
+            id: uuid(objId),
+          };
+        }
+      }
+    }
+
+    const effectivePageLayoutsMap: Record<string, { id: string } | undefined> =
+      {
+        ...mappings.pageLayouts,
+      };
+    for (const [uid, afterRow] of createdPageLayoutsByUniversalId.entries()) {
+      effectivePageLayoutsMap[uid] = { id: uuid(afterRow.id) };
+    }
+
+    const effectivePageLayoutTabsMap: Record<
+      string,
+      { id: string } | undefined
+    > = {
+      ...mappings.pageLayoutTabs,
+    };
+    for (const [
+      uid,
+      afterRow,
+    ] of createdPageLayoutTabsByUniversalId.entries()) {
+      effectivePageLayoutTabsMap[uid] = { id: uuid(afterRow.id) };
+    }
+
+    const effectiveDeletedPageLayoutIds = computeCascadeDeletedPageLayoutIds({
+      beforePageLayouts,
+      plannedPageLayoutDeletes,
+      plannedObjectDeletes,
+    });
+    const effectiveDeletedPageLayoutTabIds =
+      computeCascadeDeletedPageLayoutTabIds({
+        beforePageLayoutTabs,
+        plannedPageLayoutTabDeletes,
+        effectiveDeletedPageLayoutIds,
+      });
+    const effectiveDeletedPageLayoutWidgetIds =
+      computeCascadeDeletedPageLayoutWidgetIds({
+        beforePageLayoutWidgets,
+        plannedPageLayoutWidgetDeletes,
+        effectiveDeletedPageLayoutTabIds,
+        plannedObjectDeletes,
+      });
+
+    const resolveEffectiveRelationId = (
+      source: Record<string, unknown>,
+      directKey: string,
+      universalKey: string,
+      map?: Record<string, { id: string } | undefined>,
+    ): string | null | undefined => {
+      if (universalKey in source && source[universalKey] !== undefined) {
+        if (source[universalKey] === null) return null;
+        const mappedId = map?.[uuid(source[universalKey])]?.id;
+        return mappedId ? uuid(mappedId) : uuid(source[universalKey]);
+      }
+      if (directKey in source && source[directKey] !== undefined) {
+        return nullableUuid(source[directKey]);
+      }
+      return undefined;
+    };
+
+    if (touchesPageLayouts && reg?.hasPageLayoutTable === true) {
+      for (const [
+        universalId,
+        planned,
+      ] of plannedPageLayoutCreatesByUniversalIdentifier.entries()) {
+        const afterRow = createdPageLayoutsByUniversalId.get(universalId);
+        if (!afterRow) {
+          throw new Error('Page layout create did not persist expected row');
+        }
+        const createdId = uuid(afterRow.id);
+        if (planned.id !== undefined && createdId !== planned.id) {
+          throw new Error('Page layout create persisted unexpected ID');
+        }
+        if (uuid(afterRow.applicationId) !== applicationId) {
+          throw new Error(
+            'Page layout create persisted unexpected applicationId',
+          );
+        }
+        const afterProj = projectPageLayout(afterRow);
+        if (
+          planned.flatEntity.name !== undefined &&
+          afterProj.name !== String(planned.flatEntity.name)
+        ) {
+          throw new Error('Page layout create persisted unexpected name');
+        }
+        if (
+          planned.flatEntity.type !== undefined &&
+          afterProj.type !== String(planned.flatEntity.type)
+        ) {
+          throw new Error('Page layout create persisted unexpected type');
+        }
+        const expectedObjId = resolveEffectiveRelationId(
+          planned.flatEntity,
+          'objectMetadataId',
+          'objectMetadataUniversalIdentifier',
+          effectiveObjectMetadatasMap,
+        );
+        if (
+          expectedObjId !== undefined &&
+          afterProj.objectMetadataId !== expectedObjId
+        ) {
+          throw new Error(
+            'Page layout create persisted unexpected objectMetadataId',
+          );
+        }
+        if ('defaultTabToFocusOnMobileAndSidePanelId' in afterRow) {
+          const expectedDefaultTabId = resolveEffectiveRelationId(
+            planned.flatEntity,
+            'defaultTabToFocusOnMobileAndSidePanelId',
+            'defaultTabToFocusOnMobileAndSidePanelUniversalIdentifier',
+            effectivePageLayoutTabsMap,
+          );
+          if (
+            expectedDefaultTabId !== undefined &&
+            afterProj.defaultTabToFocusOnMobileAndSidePanelId !==
+              expectedDefaultTabId
+          ) {
+            throw new Error(
+              'Page layout create persisted unexpected defaultTabToFocusOnMobileAndSidePanelId',
+            );
+          }
+        }
+        if (
+          'isSystemSideEffect' in afterRow &&
+          planned.flatEntity.isSystemSideEffect !== undefined &&
+          afterProj.isSystemSideEffect !==
+            Boolean(planned.flatEntity.isSystemSideEffect)
+        ) {
+          throw new Error(
+            'Page layout create persisted unexpected isSystemSideEffect',
+          );
+        }
+        if (
+          'isFirstTabPinned' in afterRow &&
+          planned.flatEntity.isFirstTabPinned !== undefined &&
+          afterProj.isFirstTabPinned !==
+            Boolean(planned.flatEntity.isFirstTabPinned)
+        ) {
+          throw new Error(
+            'Page layout create persisted unexpected isFirstTabPinned',
+          );
+        }
+        audit.record({
+          resourceKind: 'pageLayout',
+          resourceId: createdId,
+          action: 'create',
+          before: null,
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'pageLayout',
+            resourceId: createdId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        recordedMutations += 1;
+      }
+
+      for (const [targetId, update] of plannedPageLayoutUpdates.entries()) {
+        const beforeRow = beforePageLayouts.get(targetId);
+        const afterRow = afterPageLayouts.get(targetId);
+        if (!beforeRow || !afterRow) {
+          throw new Error('Page layout update removed or lost target row');
+        }
+        if (
+          uuid(beforeRow.applicationId) !== uuid(afterRow.applicationId) ||
+          uuid(beforeRow.universalIdentifier) !==
+            uuid(afterRow.universalIdentifier) ||
+          Boolean(beforeRow.isSystemSideEffect ?? false) !==
+            Boolean(afterRow.isSystemSideEffect ?? false)
+        ) {
+          throw new Error('Page layout update modified immutable fields');
+        }
+        const beforeProj = projectPageLayout(beforeRow);
+        const afterProj = projectPageLayout(afterRow);
+        const expectedName =
+          'name' in update && update.name !== undefined
+            ? String(update.name)
+            : beforeProj.name;
+        if (afterProj.name !== expectedName) {
+          throw new Error('Page layout update did not persist expected name');
+        }
+        const expectedType =
+          'type' in update && update.type !== undefined
+            ? String(update.type)
+            : beforeProj.type;
+        if (afterProj.type !== expectedType) {
+          throw new Error('Page layout update did not persist expected type');
+        }
+        const resolvedObjId = resolveEffectiveRelationId(
+          update,
+          'objectMetadataId',
+          'objectMetadataUniversalIdentifier',
+          effectiveObjectMetadatasMap,
+        );
+        const expectedObjId =
+          resolvedObjId !== undefined
+            ? resolvedObjId
+            : beforeProj.objectMetadataId;
+        if (afterProj.objectMetadataId !== expectedObjId) {
+          throw new Error(
+            'Page layout update did not persist expected objectMetadataId',
+          );
+        }
+        if ('defaultTabToFocusOnMobileAndSidePanelId' in afterRow) {
+          const resolvedDefaultTabId = resolveEffectiveRelationId(
+            update,
+            'defaultTabToFocusOnMobileAndSidePanelId',
+            'defaultTabToFocusOnMobileAndSidePanelUniversalIdentifier',
+            effectivePageLayoutTabsMap,
+          );
+          const expectedDefaultTabId =
+            resolvedDefaultTabId !== undefined
+              ? resolvedDefaultTabId
+              : beforeProj.defaultTabToFocusOnMobileAndSidePanelId !== null &&
+                  effectiveDeletedPageLayoutTabIds.has(
+                    beforeProj.defaultTabToFocusOnMobileAndSidePanelId,
+                  )
+                ? null
+                : beforeProj.defaultTabToFocusOnMobileAndSidePanelId;
+          if (
+            afterProj.defaultTabToFocusOnMobileAndSidePanelId !==
+            expectedDefaultTabId
+          ) {
+            throw new Error(
+              'Page layout update did not persist expected defaultTabToFocusOnMobileAndSidePanelId',
+            );
+          }
+        }
+        if ('isFirstTabPinned' in afterRow) {
+          const expectedFirstTabPinned =
+            'isFirstTabPinned' in update &&
+            update.isFirstTabPinned !== undefined
+              ? Boolean(update.isFirstTabPinned)
+              : beforeProj.isFirstTabPinned;
+          if (afterProj.isFirstTabPinned !== expectedFirstTabPinned) {
+            throw new Error(
+              'Page layout update did not persist expected isFirstTabPinned',
+            );
+          }
+        }
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          audit.record({
+            resourceKind: 'pageLayout',
+            resourceId: targetId,
+            action: 'update',
+            before: beforeProj,
+            after: afterProj,
+            securityDescriptor: {
+              resourceKind: 'pageLayout',
+              resourceId: targetId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedMutations += 1;
+        }
+      }
+
+      for (const deletedId of effectiveDeletedPageLayoutIds) {
+        const beforeRow = beforePageLayouts.get(deletedId);
+        if (!beforeRow) {
+          throw new Error(
+            'Page layout delete expected row missing before migration',
+          );
+        }
+        if (afterPageLayouts.has(deletedId)) {
+          throw new Error('Page layout delete did not remove expected row');
+        }
+        audit.record({
+          resourceKind: 'pageLayout',
+          resourceId: deletedId,
+          action: 'delete',
+          before: projectPageLayout(beforeRow),
+          after: null,
+          securityDescriptor: {
+            resourceKind: 'pageLayout',
+            resourceId: deletedId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        recordedMutations += 1;
+      }
+
+      for (const [id, beforeRow] of beforePageLayouts.entries()) {
+        if (
+          effectiveDeletedPageLayoutIds.has(id) ||
+          plannedPageLayoutUpdates.has(id)
+        ) {
+          continue;
+        }
+        const afterRow = afterPageLayouts.get(id);
+        if (!afterRow) {
+          throw new Error('Page layout audit detected unplanned row deletion');
+        }
+        const beforeDefaultTabId = nullableUuid(
+          beforeRow.defaultTabToFocusOnMobileAndSidePanelId,
+        );
+        if (
+          beforeDefaultTabId !== null &&
+          effectiveDeletedPageLayoutTabIds.has(beforeDefaultTabId)
+        ) {
+          const afterDefaultTabId = nullableUuid(
+            afterRow.defaultTabToFocusOnMobileAndSidePanelId,
+          );
+          const beforeWithoutDefaultTab = {
+            ...scalarNavigationMenuItemWithoutTimestamps(beforeRow),
+            defaultTabToFocusOnMobileAndSidePanelId: null,
+          };
+          const afterWithoutDefaultTab = {
+            ...scalarNavigationMenuItemWithoutTimestamps(afterRow),
+            defaultTabToFocusOnMobileAndSidePanelId: null,
+          };
+          if (
+            afterDefaultTabId !== null ||
+            canonicalAuditJson(beforeWithoutDefaultTab) !==
+              canonicalAuditJson(afterWithoutDefaultTab)
+          ) {
+            throw new Error(
+              'Page layout audit detected unexpected mutation on defaultTabToFocusOnMobileAndSidePanelId cascade',
+            );
+          }
+          audit.record({
+            resourceKind: 'pageLayout',
+            resourceId: id,
+            action: 'update',
+            before: projectPageLayout(beforeRow),
+            after: projectPageLayout(afterRow),
+            securityDescriptor: {
+              resourceKind: 'pageLayout',
+              resourceId: id,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedMutations += 1;
+        } else if (
+          canonicalAuditJson(
+            scalarNavigationMenuItemWithoutTimestamps(beforeRow),
+          ) !==
+          canonicalAuditJson(
+            scalarNavigationMenuItemWithoutTimestamps(afterRow),
+          )
+        ) {
+          throw new Error('Page layout audit detected unplanned row mutation');
+        }
+      }
+
+      expectedPageLayoutsSerialized =
+        serializePageLayoutSnapshot(afterPageLayouts);
+    }
+
+    if (touchesPageLayoutTabs && reg?.hasPageLayoutTabTable === true) {
+      for (const [
+        universalId,
+        planned,
+      ] of plannedPageLayoutTabCreatesByUniversalIdentifier.entries()) {
+        const afterRow = createdPageLayoutTabsByUniversalId.get(universalId);
+        if (!afterRow) {
+          throw new Error(
+            'Page layout tab create did not persist expected row',
+          );
+        }
+        const createdId = uuid(afterRow.id);
+        if (planned.id !== undefined && createdId !== planned.id) {
+          throw new Error('Page layout tab create persisted unexpected ID');
+        }
+        if (uuid(afterRow.applicationId) !== applicationId) {
+          throw new Error(
+            'Page layout tab create persisted unexpected applicationId',
+          );
+        }
+        const afterProj = projectPageLayoutTab(afterRow);
+        const expectedPlId = resolveEffectiveRelationId(
+          planned.flatEntity,
+          'pageLayoutId',
+          'pageLayoutUniversalIdentifier',
+          effectivePageLayoutsMap,
+        );
+        if (
+          expectedPlId !== undefined &&
+          afterProj.pageLayoutId !== expectedPlId
+        ) {
+          throw new Error(
+            'Page layout tab create persisted unexpected pageLayoutId',
+          );
+        }
+        if (
+          planned.flatEntity.title !== undefined &&
+          afterProj.title !== String(planned.flatEntity.title)
+        ) {
+          throw new Error('Page layout tab create persisted unexpected title');
+        }
+        if (
+          planned.flatEntity.position !== undefined &&
+          afterProj.position !== Number(planned.flatEntity.position)
+        ) {
+          throw new Error(
+            'Page layout tab create persisted unexpected position',
+          );
+        }
+        if (
+          planned.flatEntity.layoutMode !== undefined &&
+          afterProj.layoutMode !== String(planned.flatEntity.layoutMode)
+        ) {
+          throw new Error(
+            'Page layout tab create persisted unexpected layoutMode',
+          );
+        }
+        if (planned.flatEntity.icon !== undefined) {
+          const expectedIcon =
+            planned.flatEntity.icon === null
+              ? null
+              : String(planned.flatEntity.icon);
+          if (afterProj.icon !== expectedIcon) {
+            throw new Error('Page layout tab create persisted unexpected icon');
+          }
+        }
+        for (const boolKey of ['isActive', 'isSystemSideEffect'] as const) {
+          if (
+            planned.flatEntity[boolKey] !== undefined &&
+            afterProj[boolKey] !== Boolean(planned.flatEntity[boolKey])
+          ) {
+            throw new Error(
+              `Page layout tab create persisted unexpected ${boolKey}`,
+            );
+          }
+        }
+        if (planned.flatEntity.overrides !== undefined) {
+          const expectedOverrides =
+            planned.flatEntity.overrides === null
+              ? null
+              : stripUndefinedJson(planned.flatEntity.overrides);
+          if (
+            canonicalAuditJson(afterProj.overrides) !==
+            canonicalAuditJson(expectedOverrides)
+          ) {
+            throw new Error(
+              'Page layout tab create persisted unexpected overrides',
+            );
+          }
+        }
+        audit.record({
+          resourceKind: 'pageLayoutTab',
+          resourceId: createdId,
+          action: 'create',
+          before: null,
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'pageLayoutTab',
+            resourceId: createdId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        recordedMutations += 1;
+      }
+
+      for (const [targetId, update] of plannedPageLayoutTabUpdates.entries()) {
+        const beforeRow = beforePageLayoutTabs.get(targetId);
+        const afterRow = afterPageLayoutTabs.get(targetId);
+        if (!beforeRow || !afterRow) {
+          throw new Error('Page layout tab update removed or lost target row');
+        }
+        if (
+          uuid(beforeRow.applicationId) !== uuid(afterRow.applicationId) ||
+          uuid(beforeRow.universalIdentifier) !==
+            uuid(afterRow.universalIdentifier) ||
+          uuid(beforeRow.pageLayoutId) !== uuid(afterRow.pageLayoutId) ||
+          Boolean(beforeRow.isSystemSideEffect) !==
+            Boolean(afterRow.isSystemSideEffect)
+        ) {
+          throw new Error('Page layout tab update modified immutable fields');
+        }
+        const beforeProj = projectPageLayoutTab(beforeRow);
+        const afterProj = projectPageLayoutTab(afterRow);
+        for (const textKey of ['title', 'layoutMode'] as const) {
+          const expectedVal =
+            textKey in update && update[textKey] !== undefined
+              ? String(update[textKey])
+              : beforeProj[textKey];
+          if (afterProj[textKey] !== expectedVal) {
+            throw new Error(
+              `Page layout tab update did not persist expected ${textKey}`,
+            );
+          }
+        }
+        const expectedPosition =
+          'position' in update && update.position !== undefined
+            ? Number(update.position)
+            : beforeProj.position;
+        if (afterProj.position !== expectedPosition) {
+          throw new Error(
+            'Page layout tab update did not persist expected position',
+          );
+        }
+        const expectedIcon =
+          'icon' in update && update.icon !== undefined
+            ? update.icon === null
+              ? null
+              : String(update.icon)
+            : beforeProj.icon;
+        if (afterProj.icon !== expectedIcon) {
+          throw new Error(
+            'Page layout tab update did not persist expected icon',
+          );
+        }
+        const expectedIsActive =
+          'isActive' in update && update.isActive !== undefined
+            ? Boolean(update.isActive)
+            : beforeProj.isActive;
+        if (afterProj.isActive !== expectedIsActive) {
+          throw new Error(
+            'Page layout tab update did not persist expected isActive',
+          );
+        }
+        const expectedOverrides =
+          'overrides' in update && update.overrides !== undefined
+            ? update.overrides === null
+              ? null
+              : stripUndefinedJson(update.overrides)
+            : beforeProj.overrides;
+        if (
+          canonicalAuditJson(afterProj.overrides) !==
+          canonicalAuditJson(expectedOverrides)
+        ) {
+          throw new Error(
+            'Page layout tab update did not persist expected overrides',
+          );
+        }
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          audit.record({
+            resourceKind: 'pageLayoutTab',
+            resourceId: targetId,
+            action: 'update',
+            before: beforeProj,
+            after: afterProj,
+            securityDescriptor: {
+              resourceKind: 'pageLayoutTab',
+              resourceId: targetId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedMutations += 1;
+        }
+      }
+
+      for (const deletedId of effectiveDeletedPageLayoutTabIds) {
+        const beforeRow = beforePageLayoutTabs.get(deletedId);
+        if (!beforeRow) {
+          throw new Error(
+            'Page layout tab delete expected row missing before migration',
+          );
+        }
+        if (afterPageLayoutTabs.has(deletedId)) {
+          throw new Error('Page layout tab delete did not remove expected row');
+        }
+        audit.record({
+          resourceKind: 'pageLayoutTab',
+          resourceId: deletedId,
+          action: 'delete',
+          before: projectPageLayoutTab(beforeRow),
+          after: null,
+          securityDescriptor: {
+            resourceKind: 'pageLayoutTab',
+            resourceId: deletedId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        recordedMutations += 1;
+      }
+
+      for (const [id, beforeRow] of beforePageLayoutTabs.entries()) {
+        if (
+          effectiveDeletedPageLayoutTabIds.has(id) ||
+          plannedPageLayoutTabUpdates.has(id)
+        ) {
+          continue;
+        }
+        const afterRow = afterPageLayoutTabs.get(id);
+        if (!afterRow) {
+          throw new Error(
+            'Page layout tab audit detected unplanned row deletion',
+          );
+        }
+        if (
+          canonicalAuditJson(
+            scalarNavigationMenuItemWithoutTimestamps(beforeRow),
+          ) !==
+          canonicalAuditJson(
+            scalarNavigationMenuItemWithoutTimestamps(afterRow),
+          )
+        ) {
+          throw new Error(
+            'Page layout tab audit detected unplanned row mutation',
+          );
+        }
+      }
+
+      expectedPageLayoutTabsSerialized =
+        serializePageLayoutTabSnapshot(afterPageLayoutTabs);
+    }
+
+    if (touchesPageLayoutWidgets && reg?.hasPageLayoutWidgetTable === true) {
+      const effectiveFieldMetadatasMap: Record<
+        string,
+        { id: string } | undefined
+      > = {
+        ...mappings.fieldMetadatas,
+      };
+      const effectiveViewsMap: Record<string, { id: string } | undefined> = {
+        ...mappings.views,
+      };
+      const effectiveViewFieldGroupsMap: Record<
+        string,
+        { id: string } | undefined
+      > = {
+        ...mappings.viewFieldGroups,
+      };
+      for (const action of actions) {
+        if (
+          action.type === 'create' &&
+          action.flatEntity?.universalIdentifier !== undefined
+        ) {
+          const createdEntityId = action.id ?? action.flatEntity.id;
+          if (typeof createdEntityId === 'string' && isUUID(createdEntityId)) {
+            const uid = uuid(action.flatEntity.universalIdentifier);
+            const normalizedId = uuid(createdEntityId);
+            if (action.metadataName === 'fieldMetadata') {
+              effectiveFieldMetadatasMap[uid] = { id: normalizedId };
+            } else if (action.metadataName === 'view') {
+              effectiveViewsMap[uid] = { id: normalizedId };
+            } else if (action.metadataName === 'viewFieldGroup') {
+              effectiveViewFieldGroupsMap[uid] = { id: normalizedId };
+            }
+          }
+        }
+      }
+      if (
+        (plannedPageLayoutWidgetCreatesByUniversalIdentifier.size > 0 ||
+          plannedPageLayoutWidgetUpdates.size > 0) &&
+        (plannedObjectCreates.size > 0 || plannedFieldCreateCount > 0) &&
+        reg?.hasFieldTable === true
+      ) {
+        const dbFields = await runner.query(
+          `SELECT id, "universalIdentifier" FROM core."fieldMetadata" WHERE "workspaceId"=$1`,
+          [request.workspaceId],
+        );
+        for (const fRow of dbFields) {
+          if (
+            typeof fRow.universalIdentifier === 'string' &&
+            isUUID(fRow.universalIdentifier) &&
+            typeof fRow.id === 'string' &&
+            isUUID(fRow.id)
+          ) {
+            effectiveFieldMetadatasMap[uuid(fRow.universalIdentifier)] = {
+              id: uuid(fRow.id),
+            };
+          }
+        }
+      }
+
+      for (const [
+        universalId,
+        planned,
+      ] of plannedPageLayoutWidgetCreatesByUniversalIdentifier.entries()) {
+        const afterRow = createdPageLayoutWidgetsByUniversalId.get(universalId);
+        if (!afterRow) {
+          throw new Error(
+            'Page layout widget create did not persist expected row',
+          );
+        }
+        const createdId = uuid(afterRow.id);
+        if (planned.id !== undefined && createdId !== planned.id) {
+          throw new Error('Page layout widget create persisted unexpected ID');
+        }
+        if (uuid(afterRow.applicationId) !== applicationId) {
+          throw new Error(
+            'Page layout widget create persisted unexpected applicationId',
+          );
+        }
+        const afterProj = projectPageLayoutWidget(afterRow);
+        const expectedTabId = resolveEffectiveRelationId(
+          planned.flatEntity,
+          'pageLayoutTabId',
+          'pageLayoutTabUniversalIdentifier',
+          effectivePageLayoutTabsMap,
+        );
+        if (
+          expectedTabId !== undefined &&
+          afterProj.pageLayoutTabId !== expectedTabId
+        ) {
+          throw new Error(
+            'Page layout widget create persisted unexpected pageLayoutTabId',
+          );
+        }
+        const expectedObjId = resolveEffectiveRelationId(
+          planned.flatEntity,
+          'objectMetadataId',
+          'objectMetadataUniversalIdentifier',
+          effectiveObjectMetadatasMap,
+        );
+        if (
+          expectedObjId !== undefined &&
+          afterProj.objectMetadataId !== expectedObjId
+        ) {
+          throw new Error(
+            'Page layout widget create persisted unexpected objectMetadataId',
+          );
+        }
+        for (const textKey of ['title', 'type'] as const) {
+          if (
+            planned.flatEntity[textKey] !== undefined &&
+            afterProj[textKey] !== String(planned.flatEntity[textKey])
+          ) {
+            throw new Error(
+              `Page layout widget create persisted unexpected ${textKey}`,
+            );
+          }
+        }
+        if (
+          planned.flatEntity.conditionalAvailabilityExpression !== undefined
+        ) {
+          const expectedExpr =
+            planned.flatEntity.conditionalAvailabilityExpression === null
+              ? null
+              : String(planned.flatEntity.conditionalAvailabilityExpression);
+          if (afterProj.conditionalAvailabilityExpression !== expectedExpr) {
+            throw new Error(
+              'Page layout widget create persisted unexpected conditionalAvailabilityExpression',
+            );
+          }
+        }
+        if (planned.flatEntity.conditionalDisplay !== undefined) {
+          const expectedDisplay =
+            planned.flatEntity.conditionalDisplay === null
+              ? null
+              : stripUndefinedJson(planned.flatEntity.conditionalDisplay);
+          if (
+            canonicalAuditJson(afterProj.conditionalDisplay) !==
+            canonicalAuditJson(expectedDisplay)
+          ) {
+            throw new Error(
+              'Page layout widget create persisted unexpected conditionalDisplay',
+            );
+          }
+        }
+        if (
+          planned.flatEntity.gridPosition !== undefined &&
+          planned.flatEntity.gridPosition !== null
+        ) {
+          if (
+            canonicalAuditJson(afterProj.gridPosition) !==
+            canonicalAuditJson(
+              stripUndefinedJson(planned.flatEntity.gridPosition),
+            )
+          ) {
+            throw new Error(
+              'Page layout widget create persisted unexpected gridPosition',
+            );
+          }
+        }
+        if (planned.flatEntity.position !== undefined) {
+          const expectedPos =
+            planned.flatEntity.position === null
+              ? null
+              : stripUndefinedJson(planned.flatEntity.position);
+          if (
+            canonicalAuditJson(afterProj.position) !==
+            canonicalAuditJson(expectedPos)
+          ) {
+            throw new Error(
+              'Page layout widget create persisted unexpected position',
+            );
+          }
+        }
+        for (const boolKey of ['isActive', 'isSystemSideEffect'] as const) {
+          if (
+            planned.flatEntity[boolKey] !== undefined &&
+            afterProj[boolKey] !== Boolean(planned.flatEntity[boolKey])
+          ) {
+            throw new Error(
+              `Page layout widget create persisted unexpected ${boolKey}`,
+            );
+          }
+        }
+        const expectedConfig = resolveExpectedPageLayoutWidgetConfiguration(
+          planned.flatEntity,
+          {
+            fieldMetadatas: effectiveFieldMetadatasMap,
+            frontComponents: mappings.frontComponents,
+            views: effectiveViewsMap,
+            viewFieldGroups: effectiveViewFieldGroupsMap,
+          },
+        );
+        if (
+          expectedConfig !== undefined &&
+          canonicalAuditJson(afterProj.configuration) !==
+            canonicalAuditJson(expectedConfig)
+        ) {
+          throw new Error(
+            'Page layout widget create persisted unexpected configuration',
+          );
+        }
+        const expectedOverrides = resolveExpectedPageLayoutWidgetOverrides(
+          planned.flatEntity,
+          effectivePageLayoutTabsMap,
+        );
+        if (
+          expectedOverrides !== undefined &&
+          canonicalAuditJson(afterProj.overrides) !==
+            canonicalAuditJson(expectedOverrides)
+        ) {
+          throw new Error(
+            'Page layout widget create persisted unexpected overrides',
+          );
+        }
+        audit.record({
+          resourceKind: 'pageLayoutWidget',
+          resourceId: createdId,
+          action: 'create',
+          before: null,
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'pageLayoutWidget',
+            resourceId: createdId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        recordedMutations += 1;
+      }
+
+      for (const [
+        targetId,
+        update,
+      ] of plannedPageLayoutWidgetUpdates.entries()) {
+        const beforeRow = beforePageLayoutWidgets.get(targetId);
+        const afterRow = afterPageLayoutWidgets.get(targetId);
+        if (!beforeRow || !afterRow) {
+          throw new Error(
+            'Page layout widget update removed or lost target row',
+          );
+        }
+        if (
+          uuid(beforeRow.applicationId) !== uuid(afterRow.applicationId) ||
+          uuid(beforeRow.universalIdentifier) !==
+            uuid(afterRow.universalIdentifier) ||
+          Boolean(beforeRow.isSystemSideEffect) !==
+            Boolean(afterRow.isSystemSideEffect)
+        ) {
+          throw new Error(
+            'Page layout widget update modified immutable fields',
+          );
+        }
+        const beforeProj = projectPageLayoutWidget(beforeRow);
+        const afterProj = projectPageLayoutWidget(afterRow);
+        const resolvedTabId = resolveEffectiveRelationId(
+          update,
+          'pageLayoutTabId',
+          'pageLayoutTabUniversalIdentifier',
+          effectivePageLayoutTabsMap,
+        );
+        const expectedTabId =
+          resolvedTabId !== undefined
+            ? resolvedTabId
+            : beforeProj.pageLayoutTabId;
+        if (afterProj.pageLayoutTabId !== expectedTabId) {
+          throw new Error(
+            'Page layout widget update did not persist expected pageLayoutTabId',
+          );
+        }
+        const resolvedObjId = resolveEffectiveRelationId(
+          update,
+          'objectMetadataId',
+          'objectMetadataUniversalIdentifier',
+          effectiveObjectMetadatasMap,
+        );
+        const expectedObjId =
+          resolvedObjId !== undefined
+            ? resolvedObjId
+            : beforeProj.objectMetadataId;
+        if (afterProj.objectMetadataId !== expectedObjId) {
+          throw new Error(
+            'Page layout widget update did not persist expected objectMetadataId',
+          );
+        }
+        for (const textKey of ['title', 'type'] as const) {
+          const expectedVal =
+            textKey in update && update[textKey] !== undefined
+              ? String(update[textKey])
+              : beforeProj[textKey];
+          if (afterProj[textKey] !== expectedVal) {
+            throw new Error(
+              `Page layout widget update did not persist expected ${textKey}`,
+            );
+          }
+        }
+        const expectedExpr =
+          'conditionalAvailabilityExpression' in update &&
+          update.conditionalAvailabilityExpression !== undefined
+            ? update.conditionalAvailabilityExpression === null
+              ? null
+              : String(update.conditionalAvailabilityExpression)
+            : beforeProj.conditionalAvailabilityExpression;
+        if (afterProj.conditionalAvailabilityExpression !== expectedExpr) {
+          throw new Error(
+            'Page layout widget update did not persist expected conditionalAvailabilityExpression',
+          );
+        }
+        const expectedDisplay =
+          'conditionalDisplay' in update &&
+          update.conditionalDisplay !== undefined
+            ? update.conditionalDisplay === null
+              ? null
+              : stripUndefinedJson(update.conditionalDisplay)
+            : beforeProj.conditionalDisplay;
+        if (
+          canonicalAuditJson(afterProj.conditionalDisplay) !==
+          canonicalAuditJson(expectedDisplay)
+        ) {
+          throw new Error(
+            'Page layout widget update did not persist expected conditionalDisplay',
+          );
+        }
+        const expectedGridPos =
+          'gridPosition' in update && update.gridPosition !== undefined
+            ? stripUndefinedJson(update.gridPosition)
+            : beforeProj.gridPosition;
+        if (
+          canonicalAuditJson(afterProj.gridPosition) !==
+          canonicalAuditJson(expectedGridPos)
+        ) {
+          throw new Error(
+            'Page layout widget update did not persist expected gridPosition',
+          );
+        }
+        const expectedPos =
+          'position' in update && update.position !== undefined
+            ? update.position === null
+              ? null
+              : stripUndefinedJson(update.position)
+            : beforeProj.position;
+        if (
+          canonicalAuditJson(afterProj.position) !==
+          canonicalAuditJson(expectedPos)
+        ) {
+          throw new Error(
+            'Page layout widget update did not persist expected position',
+          );
+        }
+        const expectedIsActive =
+          'isActive' in update && update.isActive !== undefined
+            ? Boolean(update.isActive)
+            : beforeProj.isActive;
+        if (afterProj.isActive !== expectedIsActive) {
+          throw new Error(
+            'Page layout widget update did not persist expected isActive',
+          );
+        }
+        const resolvedConfig = resolveExpectedPageLayoutWidgetConfiguration(
+          update,
+          {
+            fieldMetadatas: effectiveFieldMetadatasMap,
+            frontComponents: mappings.frontComponents,
+            views: effectiveViewsMap,
+            viewFieldGroups: effectiveViewFieldGroupsMap,
+          },
+        );
+        const expectedConfig =
+          resolvedConfig !== undefined
+            ? resolvedConfig
+            : beforeProj.configuration;
+        if (
+          canonicalAuditJson(afterProj.configuration) !==
+          canonicalAuditJson(expectedConfig)
+        ) {
+          throw new Error(
+            'Page layout widget update did not persist expected configuration',
+          );
+        }
+        const resolvedOverrides = resolveExpectedPageLayoutWidgetOverrides(
+          update,
+          effectivePageLayoutTabsMap,
+        );
+        const expectedOverrides =
+          resolvedOverrides !== undefined
+            ? resolvedOverrides
+            : beforeProj.overrides;
+        if (
+          canonicalAuditJson(afterProj.overrides) !==
+          canonicalAuditJson(expectedOverrides)
+        ) {
+          throw new Error(
+            'Page layout widget update did not persist expected overrides',
+          );
+        }
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          audit.record({
+            resourceKind: 'pageLayoutWidget',
+            resourceId: targetId,
+            action: 'update',
+            before: beforeProj,
+            after: afterProj,
+            securityDescriptor: {
+              resourceKind: 'pageLayoutWidget',
+              resourceId: targetId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedMutations += 1;
+        }
+      }
+
+      for (const deletedId of effectiveDeletedPageLayoutWidgetIds) {
+        const beforeRow = beforePageLayoutWidgets.get(deletedId);
+        if (!beforeRow) {
+          throw new Error(
+            'Page layout widget delete expected row missing before migration',
+          );
+        }
+        if (afterPageLayoutWidgets.has(deletedId)) {
+          throw new Error(
+            'Page layout widget delete did not remove expected row',
+          );
+        }
+        audit.record({
+          resourceKind: 'pageLayoutWidget',
+          resourceId: deletedId,
+          action: 'delete',
+          before: projectPageLayoutWidget(beforeRow),
+          after: null,
+          securityDescriptor: {
+            resourceKind: 'pageLayoutWidget',
+            resourceId: deletedId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        recordedMutations += 1;
+      }
+
+      for (const [id, beforeRow] of beforePageLayoutWidgets.entries()) {
+        if (
+          effectiveDeletedPageLayoutWidgetIds.has(id) ||
+          plannedPageLayoutWidgetUpdates.has(id)
+        ) {
+          continue;
+        }
+        const afterRow = afterPageLayoutWidgets.get(id);
+        if (!afterRow) {
+          throw new Error(
+            'Page layout widget audit detected unplanned row deletion',
+          );
+        }
+        if (
+          canonicalAuditJson(
+            scalarNavigationMenuItemWithoutTimestamps(beforeRow),
+          ) !==
+          canonicalAuditJson(
+            scalarNavigationMenuItemWithoutTimestamps(afterRow),
+          )
+        ) {
+          throw new Error(
+            'Page layout widget audit detected unplanned row mutation',
+          );
+        }
+      }
+
+      expectedPageLayoutWidgetsSerialized = serializePageLayoutWidgetSnapshot(
+        afterPageLayoutWidgets,
+      );
+    }
+
     if (recordedMutations > 0) {
-      const expectedSerialized =
-        request.mode !== 'webhook' &&
-        request.mode !== 'skill' &&
-        request.mode !== 'frontComponent' &&
-        request.mode !== 'logicFunction' &&
-        request.mode !== 'timelineActivityType' &&
-        request.mode !== 'commandMenuItem' &&
-        reg?.hasNavTable === true
-          ? serializeNavSnapshot(afterNavItems)
-          : undefined;
+      const expectedSerialized = touchesNavItems
+        ? serializeNavSnapshot(afterNavItems)
+        : undefined;
       await audit.flush();
       if (expectedSerialized !== undefined) {
         const postFlushNavItems = await readNavSnapshot(
@@ -7718,6 +10554,47 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           expectedCommandMenuItemsSerialized
         ) {
           throw new Error('Command menu item state changed during audit flush');
+        }
+      }
+      if (expectedPageLayoutsSerialized !== undefined) {
+        const postFlushPageLayouts = await readPageLayoutSnapshot(
+          runner,
+          request.workspaceId,
+          false,
+        );
+        if (
+          serializePageLayoutSnapshot(postFlushPageLayouts) !==
+          expectedPageLayoutsSerialized
+        ) {
+          throw new Error('Page layout state changed during audit flush');
+        }
+      }
+      if (expectedPageLayoutTabsSerialized !== undefined) {
+        const postFlushPageLayoutTabs = await readPageLayoutTabSnapshot(
+          runner,
+          request.workspaceId,
+          false,
+        );
+        if (
+          serializePageLayoutTabSnapshot(postFlushPageLayoutTabs) !==
+          expectedPageLayoutTabsSerialized
+        ) {
+          throw new Error('Page layout tab state changed during audit flush');
+        }
+      }
+      if (expectedPageLayoutWidgetsSerialized !== undefined) {
+        const postFlushPageLayoutWidgets = await readPageLayoutWidgetSnapshot(
+          runner,
+          request.workspaceId,
+          false,
+        );
+        if (
+          serializePageLayoutWidgetSnapshot(postFlushPageLayoutWidgets) !==
+          expectedPageLayoutWidgetsSerialized
+        ) {
+          throw new Error(
+            'Page layout widget state changed during audit flush',
+          );
         }
       }
     }

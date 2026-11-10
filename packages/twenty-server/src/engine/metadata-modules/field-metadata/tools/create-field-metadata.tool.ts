@@ -31,10 +31,11 @@ export class CreateFieldMetadataTool extends BaseTool<
 
   async execute({
     input,
-    context: { workspaceId },
+    context,
   }: ToolExecuteArgs<
     typeof createFieldMetadataInputSchema
   >): Promise<ToolOutput> {
+    const { workspaceId } = context;
     const { icon, relationCreationPayload, ...createFieldInput } = input;
 
     const flatFieldMetadata = await this.fieldMetadataService.createOneField({
@@ -48,6 +49,25 @@ export class CreateFieldMetadataTool extends BaseTool<
         typeof this.fieldMetadataService.createOneField
       >[0]['createFieldInput'],
       workspaceId,
+      auditIdentity: context.authContext
+        ? {
+            auth: context.authContext,
+            agentId: context.agentId,
+          }
+        : context.userId ||
+            context.actorContext?.workspaceMemberId ||
+            context.application ||
+            context.agentId
+          ? {
+              user: context.userId ? { id: context.userId } : undefined,
+              workspaceMemberId:
+                context.actorContext?.workspaceMemberId ?? undefined,
+              application: context.application
+                ? { id: context.application.id }
+                : undefined,
+              agentId: context.agentId,
+            }
+          : undefined,
     });
 
     return {

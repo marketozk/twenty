@@ -80,15 +80,18 @@ export class FieldMetadataService {
     createFieldInput,
     workspaceId,
     ownerFlatApplication,
+    auditIdentity,
   }: {
     createFieldInput: Omit<CreateFieldInput, 'workspaceId'>;
     workspaceId: string;
     ownerFlatApplication?: FlatApplication;
+    auditIdentity?: ApplicationMetadataAuditIdentity;
   }): Promise<FlatFieldMetadata> {
     const [createdFieldMetadata] = await this.createManyFields({
       workspaceId,
       createFieldInputs: [createFieldInput],
       ownerFlatApplication,
+      auditIdentity,
     });
 
     if (!isDefined(createdFieldMetadata)) {
@@ -486,15 +489,18 @@ export class FieldMetadataService {
         },
       );
 
-    const validateAndBuildResult =
-      flatViewsToDelete.length > 0
-        ? await withNavigationMenuItemAudit(
-            getCascadeAudit({
-              expectedParentViewDeleteIds: flatViewsToDelete.map((v) => v.id),
-            }),
-            runMigration,
-          )
-        : await runMigration();
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getCascadeAudit({
+        expectedUpdatedFieldCount: flatFieldMetadatasToUpdate.length,
+        ...(flatFieldMetadatasToCreate.length > 0
+          ? { expectedCreatedFieldCount: flatFieldMetadatasToCreate.length }
+          : {}),
+        ...(flatViewsToDelete.length > 0
+          ? { expectedParentViewDeleteIds: flatViewsToDelete.map((v) => v.id) }
+          : {}),
+      }),
+      runMigration,
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -522,12 +528,21 @@ export class FieldMetadataService {
     workspaceId,
     ownerFlatApplication,
     isSystemBuild = false,
+    auditIdentity,
   }: {
     createFieldInputs: Omit<CreateFieldInput, 'workspaceId'>[];
     workspaceId: string;
     ownerFlatApplication?: FlatApplication;
     isSystemBuild?: boolean;
+    auditIdentity?: ApplicationMetadataAuditIdentity;
   }): Promise<FlatFieldMetadata[]> {
+    const getCascadeAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'cascade',
+      auditIdentity,
+      defaultSystemActorId: 'field-metadata:create',
+    });
+
     if (createFieldInputs.length === 0) {
       return [];
     }
@@ -579,30 +594,40 @@ export class FieldMetadataService {
         ],
         indexMetadatas: [...acc.indexMetadatas, ...result.indexMetadatas],
       }),
-      { flatFieldMetadatas: [], indexMetadatas: [] },
+      {
+        flatFieldMetadatas:
+          [] as (typeof allTranspiledTranspilationInputs)[number]['result']['flatFieldMetadatas'],
+        indexMetadatas:
+          [] as (typeof allTranspiledTranspilationInputs)[number]['result']['indexMetadatas'],
+      },
     );
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            fieldMetadata: {
-              flatEntityToCreate: flatFieldMetadatasToCreate,
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getCascadeAudit({
+        expectedCreatedFieldCount: flatFieldMetadatasToCreate.length,
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              fieldMetadata: {
+                flatEntityToCreate: flatFieldMetadatasToCreate,
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [],
+              },
+              index: {
+                flatEntityToCreate: flatIndexMetadatasToCreate,
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [],
+              },
             },
-            index: {
-              flatEntityToCreate: flatIndexMetadatasToCreate,
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [],
-            },
+            workspaceId,
+            isSystemBuild,
+            applicationUniversalIdentifier:
+              resolvedOwnerFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild,
-          applicationUniversalIdentifier:
-            resolvedOwnerFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

@@ -4,6 +4,7 @@ import { msg } from '@lingui/core/macro';
 import { isDefined } from 'twenty-shared/utils';
 import { In } from 'typeorm';
 
+import { type NavigationMenuItemAuditIdentity } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { PageLayoutTabService } from 'src/engine/metadata-modules/page-layout-tab/services/page-layout-tab.service';
 import { PageLayoutType } from 'twenty-shared/types';
 import { PageLayoutService } from 'src/engine/metadata-modules/page-layout/services/page-layout.service';
@@ -22,8 +23,10 @@ export class DashboardToPageLayoutSyncService {
 
   public async createPageLayoutForDashboard({
     workspaceId,
+    auditIdentity,
   }: {
     workspaceId: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<string> {
     const pageLayout = await this.pageLayoutService.create({
       createPageLayoutInput: {
@@ -32,6 +35,8 @@ export class DashboardToPageLayoutSyncService {
         name: 'Dashboard Layout',
       },
       workspaceId,
+      auditIdentity,
+      defaultSystemActorId: 'dashboard-to-page-layout-sync:create',
     });
 
     await this.pageLayoutTabService.create({
@@ -42,6 +47,8 @@ export class DashboardToPageLayoutSyncService {
         pageLayoutId: pageLayout.id,
       },
       workspaceId,
+      auditIdentity,
+      defaultSystemActorId: 'dashboard-to-page-layout-sync:create',
     });
 
     return pageLayout.id;
@@ -50,9 +57,11 @@ export class DashboardToPageLayoutSyncService {
   public async destroyPageLayoutsForDashboards({
     dashboardIds,
     workspaceId,
+    auditIdentity,
   }: {
     dashboardIds: string[];
     workspaceId: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<void> {
     const authContext = buildSystemAuthContext(workspaceId);
 
@@ -77,6 +86,7 @@ export class DashboardToPageLayoutSyncService {
       await this.pageLayoutService.destroyMany({
         ids: pageLayoutIds,
         workspaceId,
+        auditIdentity,
       });
     }, authContext);
   }

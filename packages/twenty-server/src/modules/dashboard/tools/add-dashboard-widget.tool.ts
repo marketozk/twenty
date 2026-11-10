@@ -82,6 +82,9 @@ See create_complete_dashboard for full configuration examples.`,
           pageLayoutTabId: parameters.pageLayoutTabId,
         } as CreatePageLayoutWidgetInput,
         workspaceId: context.workspaceId,
+        auditIdentity: context.auditIdentity,
+        authUserWorkspaceId: context.authUserWorkspaceId,
+        defaultSystemActorId: 'dashboard-tool:add-dashboard-widget',
       });
 
       return {
@@ -96,10 +99,13 @@ See create_complete_dashboard for full configuration examples.`,
         },
       };
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
       return {
         success: false,
-        message: `Failed to add widget: ${error.message}`,
-        error: error.message,
+        message: `Failed to add widget: ${errorMessage}`,
+        error: errorMessage,
       };
     }
   },

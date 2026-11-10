@@ -3,6 +3,11 @@ import { Injectable } from '@nestjs/common';
 import { isDefined } from 'twenty-shared/utils';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
+import {
+  captureNavigationMenuItemAudit,
+  withNavigationMenuItemAudit,
+  type NavigationMenuItemAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
 import { findFlatEntityByIdInFlatEntityMapsOrThrow } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps-or-throw.util';
@@ -116,10 +121,24 @@ export class PageLayoutTabService {
   async create({
     createPageLayoutTabInput,
     workspaceId,
+    auditIdentity,
+    authUserWorkspaceId,
+    defaultSystemActorId,
   }: {
     createPageLayoutTabInput: CreatePageLayoutTabInput;
     workspaceId: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
+    authUserWorkspaceId?: string;
+    defaultSystemActorId?: string;
   }): Promise<Omit<PageLayoutTabDTO, 'widgets'>> {
+    const getAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'pageLayout',
+      auditIdentity,
+      authUserWorkspaceId,
+      defaultSystemActorId,
+    });
+
     if (!isDefined(createPageLayoutTabInput.title)) {
       throw new PageLayoutTabException(
         generatePageLayoutTabExceptionMessage(
@@ -159,22 +178,27 @@ export class PageLayoutTabService {
         flatPageLayoutMaps: existingFlatPageLayoutMaps,
       });
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            pageLayoutTab: {
-              flatEntityToCreate: [flatPageLayoutTabToCreate],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getAudit({
+        expectedPageLayoutTabCreateIds: [flatPageLayoutTabToCreate.id],
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              pageLayoutTab: {
+                flatEntityToCreate: [flatPageLayoutTabToCreate],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [],
+              },
             },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -209,11 +233,26 @@ export class PageLayoutTabService {
     id,
     workspaceId,
     updateData,
+    auditIdentity,
+    authUserWorkspaceId,
+    defaultSystemActorId,
   }: {
     id: string;
     workspaceId: string;
     updateData: UpdatePageLayoutTabInput;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
+    authUserWorkspaceId?: string;
+    defaultSystemActorId?: string;
   }): Promise<Omit<PageLayoutTabDTO, 'widgets'>> {
+    const getAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'pageLayout',
+      auditIdentity,
+      authUserWorkspaceId,
+      defaultSystemActorId,
+      expectedPageLayoutTabUpdateIds: [id],
+    });
+
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         { workspaceId },
@@ -242,22 +281,27 @@ export class PageLayoutTabService {
           workspaceCustomFlatApplication.universalIdentifier,
       });
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            pageLayoutTab: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [flatPageLayoutTabToUpdate],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getAudit({
+        expectedPageLayoutTabUpdateIds: [flatPageLayoutTabToUpdate.id],
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              pageLayoutTab: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [flatPageLayoutTabToUpdate],
+              },
             },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -291,10 +335,25 @@ export class PageLayoutTabService {
   async destroy({
     id,
     workspaceId,
+    auditIdentity,
+    authUserWorkspaceId,
+    defaultSystemActorId,
   }: {
     id: string;
     workspaceId: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
+    authUserWorkspaceId?: string;
+    defaultSystemActorId?: string;
   }): Promise<boolean> {
+    const getAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'pageLayout',
+      auditIdentity,
+      authUserWorkspaceId,
+      defaultSystemActorId,
+      expectedPageLayoutTabDeleteIds: [id],
+    });
+
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         { workspaceId },
@@ -314,22 +373,27 @@ export class PageLayoutTabService {
         flatPageLayoutTabMaps: existingFlatPageLayoutTabMaps,
       });
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            pageLayoutTab: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: [flatPageLayoutTabToDestroy],
-              flatEntityToUpdate: [],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getAudit({
+        expectedPageLayoutTabDeleteIds: [flatPageLayoutTabToDestroy.id],
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              pageLayoutTab: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: [flatPageLayoutTabToDestroy],
+                flatEntityToUpdate: [],
+              },
             },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

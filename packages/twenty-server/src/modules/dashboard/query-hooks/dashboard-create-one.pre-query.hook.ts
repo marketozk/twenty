@@ -13,7 +13,9 @@ import { type DashboardWorkspaceEntity } from 'src/modules/dashboard/standard-ob
 
 @Injectable()
 @WorkspaceQueryHook(`dashboard.createOne`)
-export class DashboardCreateOnePreQueryHook implements WorkspacePreQueryHookInstance {
+export class DashboardCreateOnePreQueryHook
+  implements WorkspacePreQueryHookInstance
+{
   constructor(
     private readonly dashboardToPageLayoutSyncService: DashboardToPageLayoutSyncService,
   ) {}
@@ -34,6 +36,7 @@ export class DashboardCreateOnePreQueryHook implements WorkspacePreQueryHookInst
     const pageLayoutId =
       await this.dashboardToPageLayoutSyncService.createPageLayoutForDashboard({
         workspaceId: workspace.id,
+        auditIdentity: { auth: authContext },
       });
 
     payload.data.pageLayoutId = pageLayoutId;

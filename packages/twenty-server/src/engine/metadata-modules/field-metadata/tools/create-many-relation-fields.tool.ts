@@ -59,10 +59,11 @@ export class CreateManyRelationFieldsTool extends BaseTool<
 
   async execute({
     input,
-    context: { workspaceId },
+    context,
   }: ToolExecuteArgs<
     typeof createManyRelationFieldsInputSchema
   >): Promise<ToolOutput> {
+    const { workspaceId } = context;
     await this.fieldMetadataService.createManyFields({
       createFieldInputs: input.relations.map((relation) => ({
         objectMetadataId: relation.objectMetadataId,
@@ -85,6 +86,25 @@ export class CreateManyRelationFieldsTool extends BaseTool<
         typeof this.fieldMetadataService.createManyFields
       >[0]['createFieldInputs'],
       workspaceId,
+      auditIdentity: context.authContext
+        ? {
+            auth: context.authContext,
+            agentId: context.agentId,
+          }
+        : context.userId ||
+            context.actorContext?.workspaceMemberId ||
+            context.application ||
+            context.agentId
+          ? {
+              user: context.userId ? { id: context.userId } : undefined,
+              workspaceMemberId:
+                context.actorContext?.workspaceMemberId ?? undefined,
+              application: context.application
+                ? { id: context.application.id }
+                : undefined,
+              agentId: context.agentId,
+            }
+          : undefined,
     });
 
     return {

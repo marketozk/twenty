@@ -137,10 +137,12 @@ export class PageLayoutWidgetController {
   async create(
     @Body() input: CreatePageLayoutWidgetInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Req() request?: AuthenticatedRequest,
   ): Promise<PageLayoutWidgetDTO> {
     return this.pageLayoutWidgetService.create({
       input,
       workspaceId: workspace.id,
+      auditIdentity: request,
     });
   }
 
@@ -150,11 +152,13 @@ export class PageLayoutWidgetController {
     @Param('id') id: string,
     @Body() input: UpdatePageLayoutWidgetInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Req() request?: AuthenticatedRequest,
   ): Promise<PageLayoutWidgetDTO> {
     return this.pageLayoutWidgetService.update({
       id,
       workspaceId: workspace.id,
       updateData: input,
+      auditIdentity: request,
     });
   }
 
@@ -163,10 +167,12 @@ export class PageLayoutWidgetController {
   async destroy(
     @Param('id') id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Req() request?: AuthenticatedRequest,
   ): Promise<boolean> {
     return this.pageLayoutWidgetService.destroy({
       id,
       workspaceId: workspace.id,
+      auditIdentity: request,
     });
   }
 }

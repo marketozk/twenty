@@ -5,6 +5,11 @@ import { computeDiffBetweenObjects, isDefined } from 'twenty-shared/utils';
 import { v4 } from 'uuid';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
+import {
+  captureNavigationMenuItemAudit,
+  withNavigationMenuItemAudit,
+  type NavigationMenuItemAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { AllFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/types/all-flat-entity-maps.type';
 import { addFlatEntityToFlatEntityMapsOrThrow } from 'src/engine/metadata-modules/flat-entity/utils/add-flat-entity-to-flat-entity-maps-or-throw.util';
@@ -50,6 +55,8 @@ type UpdatePageLayoutWithTabsParams = {
   id: string;
   workspaceId: string;
   input: UpdatePageLayoutWithTabsInput;
+  auditIdentity?: NavigationMenuItemAuditIdentity;
+  authUserWorkspaceId?: string;
 };
 
 @Injectable()
@@ -68,7 +75,15 @@ export class PageLayoutUpdateService {
     id,
     workspaceId,
     input,
+    auditIdentity,
+    authUserWorkspaceId,
   }: UpdatePageLayoutWithTabsParams): Promise<PageLayoutDTO> {
+    const getAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'pageLayout',
+      auditIdentity,
+      authUserWorkspaceId,
+    });
     const {
       flatPageLayoutMaps,
       flatPageLayoutTabMaps,
@@ -186,32 +201,43 @@ export class PageLayoutUpdateService {
       flatPageLayoutWidgetMaps,
     });
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            pageLayout: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [flatPageLayoutToUpdate],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getAudit({
+        expectedPageLayoutUpdateIds: [flatPageLayoutToUpdate.id],
+        expectedPageLayoutTabCreateIds: tabsToCreate.map((tab) => tab.id),
+        expectedPageLayoutTabUpdateIds: tabsToUpdate.map((tab) => tab.id),
+        expectedPageLayoutTabDeleteIds: tabsToDelete.map((tab) => tab.id),
+        expectedPageLayoutWidgetCreateIds: widgetsToCreate.map((w) => w.id),
+        expectedPageLayoutWidgetUpdateIds: widgetsToUpdate.map((w) => w.id),
+        expectedPageLayoutWidgetDeleteIds: widgetsToDelete.map((w) => w.id),
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              pageLayout: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [flatPageLayoutToUpdate],
+              },
+              pageLayoutTab: {
+                flatEntityToCreate: tabsToCreate,
+                flatEntityToDelete: tabsToDelete,
+                flatEntityToUpdate: tabsToUpdate,
+              },
+              pageLayoutWidget: {
+                flatEntityToCreate: widgetsToCreate,
+                flatEntityToDelete: widgetsToDelete,
+                flatEntityToUpdate: widgetsToUpdate,
+              },
             },
-            pageLayoutTab: {
-              flatEntityToCreate: tabsToCreate,
-              flatEntityToDelete: tabsToDelete,
-              flatEntityToUpdate: tabsToUpdate,
-            },
-            pageLayoutWidget: {
-              flatEntityToCreate: widgetsToCreate,
-              flatEntityToDelete: widgetsToDelete,
-              flatEntityToUpdate: widgetsToUpdate,
-            },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -251,6 +277,7 @@ export class PageLayoutUpdateService {
     await this.destroyOrphanedFieldsWidgetViews({
       viewIds: orphanedViewIds,
       workspaceId,
+      auditIdentity,
     });
 
     return fromFlatPageLayoutWithTabsAndWidgetsToPageLayoutDto(
@@ -1037,15 +1064,18 @@ export class PageLayoutUpdateService {
   private async destroyOrphanedFieldsWidgetViews({
     viewIds,
     workspaceId,
+    auditIdentity,
   }: {
     viewIds: string[];
     workspaceId: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<void> {
     for (const viewId of viewIds) {
       try {
         await this.viewService.destroyOne({
           destroyViewInput: { id: viewId },
           workspaceId,
+          auditIdentity,
         });
       } catch (error) {
         this.logger.warn(

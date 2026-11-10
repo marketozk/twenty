@@ -3,6 +3,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { isDefined } from 'twenty-shared/utils';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
+import {
+  captureNavigationMenuItemAudit,
+  withNavigationMenuItemAudit,
+  type NavigationMenuItemAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { findFlatEntityByIdInFlatEntityMapsOrThrow } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps-or-throw.util';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
@@ -60,10 +65,21 @@ export class PageLayoutResetService {
   async resetPageLayoutWidgetToDefault({
     id,
     workspaceId,
+    auditIdentity,
+    authUserWorkspaceId,
   }: {
     id: string;
     workspaceId: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
+    authUserWorkspaceId?: string;
   }): Promise<PageLayoutWidgetDTO> {
+    const getAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'pageLayout',
+      auditIdentity,
+      authUserWorkspaceId,
+      expectedPageLayoutWidgetUpdateIds: [id],
+    });
     const {
       flatPageLayoutWidgetMaps,
       flatViewFieldGroupMaps,
@@ -160,32 +176,37 @@ export class PageLayoutResetService {
           viewFieldsToDelete: [],
         };
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            pageLayoutWidget: {
-              flatEntityToCreate: [],
-              flatEntityToUpdate: [widgetToUpdate],
-              flatEntityToDelete: [],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getAudit({
+        expectedPageLayoutWidgetUpdateIds: [widgetToUpdate.id],
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              pageLayoutWidget: {
+                flatEntityToCreate: [],
+                flatEntityToUpdate: [widgetToUpdate],
+                flatEntityToDelete: [],
+              },
+              viewFieldGroup: {
+                flatEntityToCreate: [],
+                flatEntityToUpdate: viewFieldGroupsToUpdate,
+                flatEntityToDelete: viewFieldGroupsToDelete,
+              },
+              viewField: {
+                flatEntityToCreate: [],
+                flatEntityToUpdate: viewFieldsToUpdate,
+                flatEntityToDelete: viewFieldsToDelete,
+              },
             },
-            viewFieldGroup: {
-              flatEntityToCreate: [],
-              flatEntityToUpdate: viewFieldGroupsToUpdate,
-              flatEntityToDelete: viewFieldGroupsToDelete,
-            },
-            viewField: {
-              flatEntityToCreate: [],
-              flatEntityToUpdate: viewFieldsToUpdate,
-              flatEntityToDelete: viewFieldsToDelete,
-            },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -219,10 +240,20 @@ export class PageLayoutResetService {
   async resetPageLayoutTabToDefault({
     id,
     workspaceId,
+    auditIdentity,
+    authUserWorkspaceId,
   }: {
     id: string;
     workspaceId: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
+    authUserWorkspaceId?: string;
   }): Promise<Omit<PageLayoutTabDTO, 'widgets'>> {
+    const getAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'pageLayout',
+      auditIdentity,
+      authUserWorkspaceId,
+    });
     const {
       flatPageLayoutTabMaps,
       flatPageLayoutWidgetMaps,
@@ -304,37 +335,44 @@ export class PageLayoutResetService {
       now,
     });
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            pageLayoutTab: {
-              flatEntityToCreate: [],
-              flatEntityToUpdate: [tabToUpdate],
-              flatEntityToDelete: [],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getAudit({
+        expectedPageLayoutTabUpdateIds: [tabToUpdate.id],
+        expectedPageLayoutWidgetUpdateIds: widgetsToUpdate.map((w) => w.id),
+        expectedPageLayoutWidgetDeleteIds: widgetsToDelete.map((w) => w.id),
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              pageLayoutTab: {
+                flatEntityToCreate: [],
+                flatEntityToUpdate: [tabToUpdate],
+                flatEntityToDelete: [],
+              },
+              pageLayoutWidget: {
+                flatEntityToCreate: [],
+                flatEntityToUpdate: widgetsToUpdate,
+                flatEntityToDelete: widgetsToDelete,
+              },
+              viewFieldGroup: {
+                flatEntityToCreate: [],
+                flatEntityToUpdate: viewFieldGroupsToUpdate,
+                flatEntityToDelete: viewFieldGroupsToDelete,
+              },
+              viewField: {
+                flatEntityToCreate: [],
+                flatEntityToUpdate: viewFieldsToUpdate,
+                flatEntityToDelete: viewFieldsToDelete,
+              },
             },
-            pageLayoutWidget: {
-              flatEntityToCreate: [],
-              flatEntityToUpdate: widgetsToUpdate,
-              flatEntityToDelete: widgetsToDelete,
-            },
-            viewFieldGroup: {
-              flatEntityToCreate: [],
-              flatEntityToUpdate: viewFieldGroupsToUpdate,
-              flatEntityToDelete: viewFieldGroupsToDelete,
-            },
-            viewField: {
-              flatEntityToCreate: [],
-              flatEntityToUpdate: viewFieldsToUpdate,
-              flatEntityToDelete: viewFieldsToDelete,
-            },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -346,6 +384,7 @@ export class PageLayoutResetService {
     await this.destroyOrphanedFieldsWidgetViews({
       viewIds: orphanedViewIds,
       workspaceId,
+      auditIdentity,
     });
 
     const { flatPageLayoutTabMaps: recomputedTabMaps } =
@@ -373,10 +412,20 @@ export class PageLayoutResetService {
   async resetPageLayoutToDefault({
     id,
     workspaceId,
+    auditIdentity,
+    authUserWorkspaceId,
   }: {
     id: string;
     workspaceId: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
+    authUserWorkspaceId?: string;
   }): Promise<PageLayoutDTO> {
+    const getAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'pageLayout',
+      auditIdentity,
+      authUserWorkspaceId,
+    });
     const {
       flatPageLayoutMaps,
       flatPageLayoutTabMaps,
@@ -493,42 +542,51 @@ export class PageLayoutResetService {
       allOrphanedViewIds = [...allOrphanedViewIds, ...orphanedViewIds];
     }
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            pageLayout: {
-              flatEntityToCreate: [],
-              flatEntityToUpdate: [layoutToUpdate],
-              flatEntityToDelete: [],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getAudit({
+        expectedPageLayoutUpdateIds: [layoutToUpdate.id],
+        expectedPageLayoutTabUpdateIds: tabsToReset.map((tab) => tab.id),
+        expectedPageLayoutTabDeleteIds: tabsToDelete.map((tab) => tab.id),
+        expectedPageLayoutWidgetUpdateIds: allWidgetsToUpdate.map((w) => w.id),
+        expectedPageLayoutWidgetDeleteIds: allWidgetsToDelete.map((w) => w.id),
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              pageLayout: {
+                flatEntityToCreate: [],
+                flatEntityToUpdate: [layoutToUpdate],
+                flatEntityToDelete: [],
+              },
+              pageLayoutTab: {
+                flatEntityToCreate: [],
+                flatEntityToUpdate: tabsToReset,
+                flatEntityToDelete: tabsToDelete,
+              },
+              pageLayoutWidget: {
+                flatEntityToCreate: [],
+                flatEntityToUpdate: allWidgetsToUpdate,
+                flatEntityToDelete: allWidgetsToDelete,
+              },
+              viewFieldGroup: {
+                flatEntityToCreate: [],
+                flatEntityToUpdate: allViewFieldGroupsToUpdate,
+                flatEntityToDelete: allViewFieldGroupsToDelete,
+              },
+              viewField: {
+                flatEntityToCreate: [],
+                flatEntityToUpdate: allViewFieldsToUpdate,
+                flatEntityToDelete: allViewFieldsToDelete,
+              },
             },
-            pageLayoutTab: {
-              flatEntityToCreate: [],
-              flatEntityToUpdate: tabsToReset,
-              flatEntityToDelete: tabsToDelete,
-            },
-            pageLayoutWidget: {
-              flatEntityToCreate: [],
-              flatEntityToUpdate: allWidgetsToUpdate,
-              flatEntityToDelete: allWidgetsToDelete,
-            },
-            viewFieldGroup: {
-              flatEntityToCreate: [],
-              flatEntityToUpdate: allViewFieldGroupsToUpdate,
-              flatEntityToDelete: allViewFieldGroupsToDelete,
-            },
-            viewField: {
-              flatEntityToCreate: [],
-              flatEntityToUpdate: allViewFieldsToUpdate,
-              flatEntityToDelete: allViewFieldsToDelete,
-            },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -540,6 +598,7 @@ export class PageLayoutResetService {
     await this.destroyOrphanedFieldsWidgetViews({
       viewIds: allOrphanedViewIds,
       workspaceId,
+      auditIdentity,
     });
 
     const {
@@ -712,15 +771,18 @@ export class PageLayoutResetService {
   private async destroyOrphanedFieldsWidgetViews({
     viewIds,
     workspaceId,
+    auditIdentity,
   }: {
     viewIds: string[];
     workspaceId: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<void> {
     for (const viewId of viewIds) {
       try {
         await this.viewService.destroyOne({
           destroyViewInput: { id: viewId },
           workspaceId,
+          auditIdentity,
         });
       } catch (error) {
         this.logger.warn(

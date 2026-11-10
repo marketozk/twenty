@@ -57,6 +57,9 @@ After creating a tab, use add_dashboard_widget with the returned tab ID to add w
           position,
         },
         workspaceId: context.workspaceId,
+        auditIdentity: context.auditIdentity,
+        authUserWorkspaceId: context.authUserWorkspaceId,
+        defaultSystemActorId: 'dashboard-tool:add-dashboard-tab',
       });
 
       return {

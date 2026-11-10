@@ -122,10 +122,12 @@ export class PageLayoutController {
   async create(
     @Body() input: CreatePageLayoutInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Req() request?: AuthenticatedRequest,
   ): Promise<PageLayoutDTO> {
     return this.pageLayoutService.create({
       createPageLayoutInput: input,
       workspaceId: workspace.id,
+      auditIdentity: request,
     });
   }
 
@@ -135,11 +137,13 @@ export class PageLayoutController {
     @Param('id') id: string,
     @Body() input: UpdatePageLayoutInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Req() request?: AuthenticatedRequest,
   ): Promise<PageLayoutDTO> {
     const updatedPageLayout = await this.pageLayoutService.update({
       id,
       workspaceId: workspace.id,
       updateData: input,
+      auditIdentity: request,
     });
 
     return updatedPageLayout;

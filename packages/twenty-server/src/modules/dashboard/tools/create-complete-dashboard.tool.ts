@@ -136,6 +136,9 @@ AGGREGATION OPERATIONS: COUNT, SUM, AVG, MIN, MAX, COUNT_EMPTY, COUNT_NOT_EMPTY`
           type: PageLayoutType.DASHBOARD,
         },
         workspaceId: context.workspaceId,
+        auditIdentity: context.auditIdentity,
+        authUserWorkspaceId: context.authUserWorkspaceId,
+        defaultSystemActorId: 'dashboard-tool:create-complete-dashboard',
       });
 
       const pageLayoutTab = await deps.pageLayoutTabService.create({
@@ -145,6 +148,9 @@ AGGREGATION OPERATIONS: COUNT, SUM, AVG, MIN, MAX, COUNT_EMPTY, COUNT_NOT_EMPTY`
           position: 0,
         },
         workspaceId: context.workspaceId,
+        auditIdentity: context.auditIdentity,
+        authUserWorkspaceId: context.authUserWorkspaceId,
+        defaultSystemActorId: 'dashboard-tool:create-complete-dashboard',
       });
 
       const createdWidgets = [];
@@ -162,6 +168,9 @@ AGGREGATION OPERATIONS: COUNT, SUM, AVG, MIN, MAX, COUNT_EMPTY, COUNT_NOT_EMPTY`
               pageLayoutTabId: pageLayoutTab.id,
             } as CreatePageLayoutWidgetInput,
             workspaceId: context.workspaceId,
+            auditIdentity: context.auditIdentity,
+            authUserWorkspaceId: context.authUserWorkspaceId,
+            defaultSystemActorId: 'dashboard-tool:create-complete-dashboard',
           });
 
           createdWidgets.push({
@@ -172,7 +181,10 @@ AGGREGATION OPERATIONS: COUNT, SUM, AVG, MIN, MAX, COUNT_EMPTY, COUNT_NOT_EMPTY`
         } catch (widgetError) {
           widgetErrors.push({
             title: widget.title,
-            error: widgetError.message,
+            error:
+              widgetError instanceof Error
+                ? widgetError.message
+                : String(widgetError),
           });
         }
       }
@@ -221,10 +233,13 @@ AGGREGATION OPERATIONS: COUNT, SUM, AVG, MIN, MAX, COUNT_EMPTY, COUNT_NOT_EMPTY`
         ],
       };
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
       return {
         success: false,
-        message: `Failed to create dashboard: ${error.message}`,
-        error: error.message,
+        message: `Failed to create dashboard: ${errorMessage}`,
+        error: errorMessage,
       };
     }
   },
@@ -248,6 +263,12 @@ const createDashboardRecordOrRollBackLayout = async (
         id: params.pageLayoutId,
         workspaceId: params.context.workspaceId,
         isLinkedDashboardAlreadyDestroyed: true,
+        ...(params.context.auditIdentity
+          ? { auditIdentity: params.context.auditIdentity }
+          : {}),
+        ...(params.context.authUserWorkspaceId
+          ? { authUserWorkspaceId: params.context.authUserWorkspaceId }
+          : {}),
       })
       .catch(() => undefined);
 

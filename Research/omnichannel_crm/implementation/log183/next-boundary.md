@@ -1,0 +1,4 @@
+# Следующий участок после LOG183
+
+После закрытия `LOG183` (`pageLayout`, `pageLayoutTab`, `pageLayoutWidget` в `PageLayoutService`, `PageLayoutTabService`, `PageLayoutWidgetService`, `PageLayoutUpdateService`, `PageLayoutResetService`, `PageLayoutDuplicationService`, `navigation-menu-item-audit.ts` и `application-metadata-audit.ts`) следующая открытая граница в рамках `ROB-765`:
+- `LOG184`: транзакционный аудит полного жизненного цикла почтовых доменов (`emailingDomain` в `core."emailingDomain"`) и соглашений об обработке данных (`dpaAgreement` в `core."dpaAgreement"`) через `EmailingDomainService`, `EmailingDomainResolver`, `UnsubscribeHostnameService`, `EmailingDomainTenantStatusService`, `CheckEmailingDomainVerificationCronJob`, `MessageChannelMetadataService`, `DpaService`, `DpaResolver` и `workspace-domain-audit.ts`.

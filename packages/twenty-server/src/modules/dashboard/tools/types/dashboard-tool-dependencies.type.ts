@@ -1,4 +1,5 @@
 import type { ApplicationService } from 'src/engine/core-modules/application/application.service';
+import type { NavigationMenuItemAuditIdentity } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import type { RecordPositionService } from 'src/engine/core-modules/record-position/services/record-position.service';
 import type { PageLayoutTabService } from 'src/engine/metadata-modules/page-layout-tab/services/page-layout-tab.service';
 import type { PageLayoutWidgetService } from 'src/engine/metadata-modules/page-layout-widget/services/page-layout-widget.service';
@@ -19,6 +20,8 @@ export type DashboardToolDependencies = {
 
 export type DashboardToolContext = {
   workspaceId: string;
+  auditIdentity?: NavigationMenuItemAuditIdentity;
+  authUserWorkspaceId?: string;
 };
 
 export type DashboardToolContextWithPermissions = DashboardToolContext & {

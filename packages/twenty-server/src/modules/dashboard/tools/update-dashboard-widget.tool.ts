@@ -130,6 +130,9 @@ Only provide fields you want to change - others remain unchanged.`,
         id: widgetId,
         workspaceId: context.workspaceId,
         updateData,
+        auditIdentity: context.auditIdentity,
+        authUserWorkspaceId: context.authUserWorkspaceId,
+        defaultSystemActorId: 'dashboard-tool:update-dashboard-widget',
       });
 
       return {
@@ -144,10 +147,13 @@ Only provide fields you want to change - others remain unchanged.`,
         },
       };
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
       return {
         success: false,
-        message: `Failed to update widget: ${error.message}`,
-        error: error.message,
+        message: `Failed to update widget: ${errorMessage}`,
+        error: errorMessage,
       };
     }
   },

@@ -295,8 +295,22 @@ LOG182 закрывает транзакционный аудит полного
 `WorkspaceMigrationRunnerService.executeRun` с редактированием `label`, `icon`, `shortLabel`,
 `position`, `payload`, `hotKeys`, `conditionalAvailabilityExpression`,
 `conditionalPinnedExpression` и `overrides`).
+LOG183 закрывает транзакционный аудит полного жизненного цикла макетов страниц
+(`core."pageLayout"`), вкладок (`core."pageLayoutTab"`) и виджетов (`core."pageLayoutWidget"`)
+(`create`, `update`, `delete` в `PageLayoutService`, `PageLayoutUpdateService`,
+`PageLayoutResetService`, `PageLayoutDuplicationService`, `PageLayoutResolver`,
+`PageLayoutController`, `PageLayoutTabService`, `PageLayoutTabResolver`,
+`PageLayoutTabController`, `PageLayoutWidgetService`, `PageLayoutWidgetResolver`,
+`PageLayoutWidgetController`, `DashboardToPageLayoutSyncService`, pre-query хуках и сервисе
+дублирования дашбордов, AI-инструментах дашбордов, `FieldMetadataService`, `seedPageLayouts`,
+`navigation-menu-item-audit.ts`, `runAuditedApplicationMetadataMigration`,
+`reconcileApplicationRoleAndPermissionOperations`,
+`assertNoRemainingApplicationRoleOrPermissionMetadata` и
+`WorkspaceMigrationRunnerService.executeRun` с редактированием `name`, `title`, `position`, `icon`,
+`gridPosition`, `configuration`, `conditionalDisplay`, `conditionalAvailabilityExpression` и
+`overrides`).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log182/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log183/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

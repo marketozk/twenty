@@ -261,11 +261,18 @@ export class FieldMetadataResolver {
   async createOneField(
     @Args('input') input: CreateOneFieldMetadataInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context()
+    context?: {
+      req?: Parameters<typeof roleAuditIdentityFromRequest>[0];
+    },
   ) {
     try {
       const flatFieldMetadata = await this.fieldMetadataService.createOneField({
         createFieldInput: input.field,
         workspaceId,
+        auditIdentity: context?.req
+          ? roleAuditIdentityFromRequest(context.req)
+          : undefined,
       });
 
       return fromFlatFieldMetadataToFieldMetadataDto(flatFieldMetadata);

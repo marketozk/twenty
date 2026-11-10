@@ -15,10 +15,12 @@ import {
 
 import { PermissionFlagType } from 'twenty-shared/constants';
 
+import { type NavigationMenuItemAuditIdentity } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
 import { type I18nContext } from 'src/engine/core-modules/i18n/types/i18n-context.type';
 import { type WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { type IDataloaders } from 'src/engine/dataloaders/dataloader.interface';
+import { AuthUserWorkspaceId } from 'src/engine/decorators/auth/auth-user-workspace-id.decorator';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
 import { NoPermissionGuard } from 'src/engine/guards/no-permission.guard';
@@ -112,10 +114,15 @@ export class PageLayoutWidgetResolver {
   async createPageLayoutWidget(
     @Args('input') input: CreatePageLayoutWidgetInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    authUserWorkspaceId?: string,
+    @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<PageLayoutWidgetDTO> {
     return this.pageLayoutWidgetService.create({
       input,
       workspaceId: workspace.id,
+      auditIdentity: context?.req,
+      authUserWorkspaceId,
     });
   }
 
@@ -125,11 +132,16 @@ export class PageLayoutWidgetResolver {
     @Args('id', { type: () => String }) id: string,
     @Args('input') input: UpdatePageLayoutWidgetInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    authUserWorkspaceId?: string,
+    @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<PageLayoutWidgetDTO> {
     return this.pageLayoutWidgetService.update({
       id,
       workspaceId: workspace.id,
       updateData: input,
+      auditIdentity: context?.req,
+      authUserWorkspaceId,
     });
   }
 
@@ -138,10 +150,15 @@ export class PageLayoutWidgetResolver {
   async destroyPageLayoutWidget(
     @Args('id', { type: () => String }) id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    authUserWorkspaceId?: string,
+    @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<boolean> {
     return this.pageLayoutWidgetService.destroy({
       id,
       workspaceId: workspace.id,
+      auditIdentity: context?.req,
+      authUserWorkspaceId,
     });
   }
 

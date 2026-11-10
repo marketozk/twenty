@@ -12,7 +12,9 @@ import { DashboardToPageLayoutSyncService } from 'src/modules/dashboard/services
 
 @Injectable()
 @WorkspaceQueryHook(`dashboard.destroyMany`)
-export class DashboardDestroyManyPreQueryHook implements WorkspacePreQueryHookInstance {
+export class DashboardDestroyManyPreQueryHook
+  implements WorkspacePreQueryHookInstance
+{
   constructor(
     private readonly dashboardToPageLayoutSyncService: DashboardToPageLayoutSyncService,
   ) {}
@@ -30,6 +32,7 @@ export class DashboardDestroyManyPreQueryHook implements WorkspacePreQueryHookIn
       {
         dashboardIds: payload.filter.id.in,
         workspaceId: workspace.id,
+        auditIdentity: { auth: authContext },
       },
     );
 

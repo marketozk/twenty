@@ -20,6 +20,7 @@ import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/re
 import { type I18nContext } from 'src/engine/core-modules/i18n/types/i18n-context.type';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { type IDataloaders } from 'src/engine/dataloaders/dataloader.interface';
+import { AuthUserWorkspaceId } from 'src/engine/decorators/auth/auth-user-workspace-id.decorator';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
 import { AllowSuspendedWorkspace } from 'src/engine/decorators/auth/allow-suspended-workspace.decorator';
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
@@ -133,10 +134,15 @@ export class PageLayoutResolver {
   async createPageLayout(
     @Args('input') input: CreatePageLayoutInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    authUserWorkspaceId?: string,
+    @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<PageLayoutDTO> {
     return this.pageLayoutService.create({
       createPageLayoutInput: input,
       workspaceId: workspace.id,
+      auditIdentity: context?.req,
+      authUserWorkspaceId,
     });
   }
 
@@ -146,11 +152,16 @@ export class PageLayoutResolver {
     @Args('id', { type: () => String }) id: string,
     @Args('input') input: UpdatePageLayoutInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    authUserWorkspaceId?: string,
+    @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<PageLayoutDTO> {
     return this.pageLayoutService.update({
       id,
       workspaceId: workspace.id,
       updateData: input,
+      auditIdentity: context?.req,
+      authUserWorkspaceId,
     });
   }
 
@@ -159,12 +170,15 @@ export class PageLayoutResolver {
   async destroyPageLayout(
     @Args('id', { type: () => String }) id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    authUserWorkspaceId?: string,
     @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<boolean> {
     return this.pageLayoutService.destroy({
       id,
       workspaceId: workspace.id,
       auditIdentity: context?.req,
+      authUserWorkspaceId,
     });
   }
 
@@ -174,11 +188,16 @@ export class PageLayoutResolver {
     @Args('id', { type: () => String }) id: string,
     @Args('input') input: UpdatePageLayoutWithTabsInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    authUserWorkspaceId?: string,
+    @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<PageLayoutDTO> {
     return this.pageLayoutUpdateService.updatePageLayoutWithTabs({
       id,
       workspaceId: workspace.id,
       input,
+      auditIdentity: context?.req,
+      authUserWorkspaceId,
     });
   }
 
@@ -187,10 +206,15 @@ export class PageLayoutResolver {
   async resetPageLayoutToDefault(
     @Args('id', { type: () => String }) id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    authUserWorkspaceId?: string,
+    @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<PageLayoutDTO> {
     return this.pageLayoutResetService.resetPageLayoutToDefault({
       id,
       workspaceId: workspace.id,
+      auditIdentity: context?.req,
+      authUserWorkspaceId,
     });
   }
 
@@ -199,10 +223,15 @@ export class PageLayoutResolver {
   async resetPageLayoutWidgetToDefault(
     @Args('id', { type: () => String }) id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    authUserWorkspaceId?: string,
+    @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<PageLayoutWidgetDTO> {
     return this.pageLayoutResetService.resetPageLayoutWidgetToDefault({
       id,
       workspaceId: workspace.id,
+      auditIdentity: context?.req,
+      authUserWorkspaceId,
     });
   }
 
@@ -211,10 +240,15 @@ export class PageLayoutResolver {
   async resetPageLayoutTabToDefault(
     @Args('id', { type: () => String }) id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    authUserWorkspaceId?: string,
+    @Context() context?: { req?: NavigationMenuItemAuditIdentity },
   ): Promise<Omit<PageLayoutTabDTO, 'widgets'>> {
     return this.pageLayoutResetService.resetPageLayoutTabToDefault({
       id,
       workspaceId: workspace.id,
+      auditIdentity: context?.req,
+      authUserWorkspaceId,
     });
   }
 }

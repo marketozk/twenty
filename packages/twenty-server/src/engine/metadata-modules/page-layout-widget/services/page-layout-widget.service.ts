@@ -3,6 +3,12 @@ import { Injectable } from '@nestjs/common';
 import { isDefined, isPlainObject } from 'twenty-shared/utils';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
+import {
+  captureNavigationMenuItemAudit,
+  withNavigationMenuItemAudit,
+  type NavigationMenuItemAuditIdentity,
+  type NavigationMenuItemAuditRequest,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { transformRichTextValue } from 'src/engine/core-modules/record-transformer/utils/transform-rich-text.util';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { findFlatEntityByIdInFlatEntityMapsOrThrow } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps-or-throw.util';
@@ -68,28 +74,33 @@ export class PageLayoutWidgetService {
     workspaceId,
     operations,
     errorMessage,
+    auditRequest,
   }: {
     workspaceId: string;
     operations: WidgetMigrationOperations;
     errorMessage: string;
+    auditRequest: NavigationMenuItemAuditRequest;
   }): Promise<void> {
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         { workspaceId },
       );
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            pageLayoutWidget: operations,
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      auditRequest,
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              pageLayoutWidget: operations,
+            },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -217,10 +228,24 @@ export class PageLayoutWidgetService {
   async create({
     input,
     workspaceId,
+    auditIdentity,
+    authUserWorkspaceId,
+    defaultSystemActorId,
   }: {
     input: CreatePageLayoutWidgetInput;
     workspaceId: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
+    authUserWorkspaceId?: string;
+    defaultSystemActorId?: string;
   }): Promise<PageLayoutWidgetDTO> {
+    const getAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'pageLayout',
+      auditIdentity,
+      authUserWorkspaceId,
+      defaultSystemActorId,
+    });
+
     const createInput = isDefined(input.configuration)
       ? {
           ...input,
@@ -288,6 +313,9 @@ export class PageLayoutWidgetService {
       },
       errorMessage:
         'Multiple validation errors occurred while creating page layout widget',
+      auditRequest: getAudit({
+        expectedPageLayoutWidgetCreateIds: [flatPageLayoutWidgetToCreate.id],
+      }),
     });
 
     const recomputedMaps = await this.getFlatPageLayoutWidgetMaps(workspaceId);
@@ -310,11 +338,25 @@ export class PageLayoutWidgetService {
     id,
     workspaceId,
     updateData,
+    auditIdentity,
+    authUserWorkspaceId,
+    defaultSystemActorId,
   }: {
     id: string;
     workspaceId: string;
     updateData: UpdatePageLayoutWidgetInput;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
+    authUserWorkspaceId?: string;
+    defaultSystemActorId?: string;
   }): Promise<PageLayoutWidgetDTO> {
+    const getAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'pageLayout',
+      auditIdentity,
+      authUserWorkspaceId,
+      defaultSystemActorId,
+      expectedPageLayoutWidgetUpdateIds: [id],
+    });
     const existingFlatPageLayoutWidgetMaps =
       await this.getFlatPageLayoutWidgetMaps(workspaceId);
 
@@ -426,6 +468,9 @@ export class PageLayoutWidgetService {
       },
       errorMessage:
         'Multiple validation errors occurred while updating page layout widget',
+      auditRequest: getAudit({
+        expectedPageLayoutWidgetUpdateIds: [flatPageLayoutWidgetToUpdate.id],
+      }),
     });
 
     const recomputedMaps = await this.getFlatPageLayoutWidgetMaps(workspaceId);
@@ -469,10 +514,25 @@ export class PageLayoutWidgetService {
   async destroy({
     id,
     workspaceId,
+    auditIdentity,
+    authUserWorkspaceId,
+    defaultSystemActorId,
   }: {
     id: string;
     workspaceId: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
+    authUserWorkspaceId?: string;
+    defaultSystemActorId?: string;
   }): Promise<boolean> {
+    const getAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'pageLayout',
+      auditIdentity,
+      authUserWorkspaceId,
+      defaultSystemActorId,
+      expectedPageLayoutWidgetDeleteIds: [id],
+    });
+
     const existingFlatPageLayoutWidgetMaps =
       await this.getFlatPageLayoutWidgetMaps(workspaceId);
 
@@ -491,6 +551,9 @@ export class PageLayoutWidgetService {
       },
       errorMessage:
         'Multiple validation errors occurred while destroying page layout widget',
+      auditRequest: getAudit({
+        expectedPageLayoutWidgetDeleteIds: [flatPageLayoutWidgetToDestroy.id],
+      }),
     });
 
     await this.dashboardSyncService.updateLinkedDashboardsUpdatedAtByWidgetId({

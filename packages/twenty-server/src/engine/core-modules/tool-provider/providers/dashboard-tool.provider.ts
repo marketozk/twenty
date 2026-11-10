@@ -97,6 +97,31 @@ export class DashboardToolProvider implements ToolProvider {
     return this.dashboardToolService.generateDashboardTools(
       context.workspaceId,
       context.rolePermissionConfig,
+      {
+        authUserWorkspaceId: context.userWorkspaceId,
+        auditIdentity: context.authContext
+          ? {
+              auth: context.authContext,
+              agentId: context.agentId,
+            }
+          : context.userId ||
+              context.actorContext?.workspaceMemberId ||
+              context.application ||
+              context.agentId
+            ? {
+                ...(context.userId ? { user: { id: context.userId } } : {}),
+                ...(context.actorContext?.workspaceMemberId
+                  ? {
+                      workspaceMemberId: context.actorContext.workspaceMemberId,
+                    }
+                  : {}),
+                ...(context.application?.id
+                  ? { application: { id: context.application.id } }
+                  : {}),
+                ...(context.agentId ? { agentId: context.agentId } : {}),
+              }
+            : undefined,
+      },
     );
   }
 }

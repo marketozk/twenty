@@ -1,0 +1,37 @@
+{
+  "log": "LOG-183",
+  "issue": "ROB-765",
+  "date": "2026-11-11",
+  "title": "Transactional audit of pageLayout, pageLayoutTab, and pageLayoutWidget (core.pageLayout, core.pageLayoutTab, core.pageLayoutWidget) lifecycle and metadata/application cascades",
+  "targetedPostgres": {
+    "suitesPassed": 4,
+    "suitesTotal": 4,
+    "testsPassed": 21,
+    "testsTotal": 21,
+    "newPostgresTests": 5,
+    "durationSeconds": 16.358
+  },
+  "fullRegression": {
+    "suitesPassed": 128,
+    "suitesTotal": 128,
+    "testsPassed": 3196,
+    "testsTotal": 3196,
+    "durationSeconds": 721.285
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.194
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 522,
+    "currentRootFiles": 523,
+    "baselineDiagnostics": 277,
+    "currentDiagnostics": 261,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 40
+}

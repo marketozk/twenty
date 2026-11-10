@@ -122,6 +122,7 @@ export class DashboardDuplicationService {
           {
             pageLayoutId: originalDashboard.pageLayoutId,
             workspaceId,
+            auditIdentity: { auth: authContext },
           },
         );
 
@@ -143,8 +144,8 @@ export class DashboardDuplicationService {
         };
       } catch (error) {
         this.logger.error(
-          `Failed to duplicate dashboard ${dashboardId}: ${error.message}`,
-          error.stack,
+          `Failed to duplicate dashboard ${dashboardId}: ${error instanceof Error ? error.message : String(error)}`,
+          error instanceof Error ? error.stack : undefined,
         );
 
         throw error;
@@ -215,11 +216,12 @@ export class DashboardDuplicationService {
         await this.pageLayoutService.destroy({
           id: newPageLayoutId,
           workspaceId,
+          auditIdentity: { auth: authContext },
         });
       } catch (rollbackError) {
         this.logger.error(
-          `Failed to destroy page layout ${newPageLayoutId} left by a failed dashboard duplication: ${rollbackError.message}`,
-          rollbackError.stack,
+          `Failed to destroy page layout ${newPageLayoutId} left by a failed dashboard duplication: ${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}`,
+          rollbackError instanceof Error ? rollbackError.stack : undefined,
         );
       }
 

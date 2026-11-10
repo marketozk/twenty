@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { type ToolSet } from 'ai';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
+import { type NavigationMenuItemAuditIdentity } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { RecordPositionService } from 'src/engine/core-modules/record-position/services/record-position.service';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { PageLayoutTabService } from 'src/engine/metadata-modules/page-layout-tab/services/page-layout-tab.service';
@@ -46,9 +47,20 @@ export class DashboardToolWorkspaceService {
   generateDashboardTools(
     workspaceId: string,
     rolePermissionConfig: RolePermissionConfig,
+    options?: {
+      auditIdentity?: NavigationMenuItemAuditIdentity;
+      authUserWorkspaceId?: string;
+    },
   ): ToolSet {
-    const context = { workspaceId };
-    const contextWithPermissions = { workspaceId, rolePermissionConfig };
+    const context = {
+      workspaceId,
+      auditIdentity: options?.auditIdentity,
+      authUserWorkspaceId: options?.authUserWorkspaceId,
+    };
+    const contextWithPermissions = {
+      ...context,
+      rolePermissionConfig,
+    };
 
     const createCompleteDashboard = createCreateCompleteDashboardTool(
       this.deps,

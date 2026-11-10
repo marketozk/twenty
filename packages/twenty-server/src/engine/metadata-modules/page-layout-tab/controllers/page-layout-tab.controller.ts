@@ -135,10 +135,12 @@ export class PageLayoutTabController {
   async create(
     @Body() input: CreatePageLayoutTabInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Req() request?: AuthenticatedRequest,
   ): Promise<PageLayoutTabDTO> {
     return this.pageLayoutTabService.create({
       createPageLayoutTabInput: input,
       workspaceId: workspace.id,
+      auditIdentity: request,
     });
   }
 
@@ -148,11 +150,13 @@ export class PageLayoutTabController {
     @Param('id') id: string,
     @Body() input: UpdatePageLayoutTabInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Req() request?: AuthenticatedRequest,
   ): Promise<PageLayoutTabDTO> {
     return this.pageLayoutTabService.update({
       id,
       workspaceId: workspace.id,
       updateData: input,
+      auditIdentity: request,
     });
   }
 
@@ -161,10 +165,12 @@ export class PageLayoutTabController {
   async destroy(
     @Param('id') id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Req() request?: AuthenticatedRequest,
   ): Promise<boolean> {
     return this.pageLayoutTabService.destroy({
       id,
       workspaceId: workspace.id,
+      auditIdentity: request,
     });
   }
 }

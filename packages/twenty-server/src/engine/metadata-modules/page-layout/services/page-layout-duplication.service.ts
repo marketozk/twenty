@@ -4,6 +4,11 @@ import { isDefined } from 'twenty-shared/utils';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
+import {
+  captureNavigationMenuItemAudit,
+  withNavigationMenuItemAudit,
+  type NavigationMenuItemAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
 import { createEmptyFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/constant/create-empty-flat-entity-maps.constant';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { type AllFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/types/all-flat-entity-maps.type';
@@ -42,10 +47,20 @@ export class PageLayoutDuplicationService {
   async duplicate({
     pageLayoutId,
     workspaceId,
+    auditIdentity,
+    authUserWorkspaceId,
   }: {
     pageLayoutId: string;
     workspaceId: string;
+    auditIdentity?: NavigationMenuItemAuditIdentity;
+    authUserWorkspaceId?: string;
   }): Promise<PageLayoutDTO> {
+    const getAudit = captureNavigationMenuItemAudit({
+      workspaceId,
+      mode: 'pageLayout',
+      auditIdentity,
+      authUserWorkspaceId,
+    });
     const {
       flatPageLayoutMaps,
       flatPageLayoutTabMaps,
@@ -122,32 +137,39 @@ export class PageLayoutDuplicationService {
       flatViewMaps,
     });
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            pageLayout: {
-              flatEntityToCreate: [newFlatPageLayout],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [],
+    const validateAndBuildResult = await withNavigationMenuItemAudit(
+      getAudit({
+        expectedPageLayoutCreateIds: [newFlatPageLayout.id],
+        expectedPageLayoutTabCreateIds: newFlatTabs.map((tab) => tab.id),
+        expectedPageLayoutWidgetCreateIds: newFlatWidgets.map((w) => w.id),
+      }),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              pageLayout: {
+                flatEntityToCreate: [newFlatPageLayout],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [],
+              },
+              pageLayoutTab: {
+                flatEntityToCreate: newFlatTabs,
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [],
+              },
+              pageLayoutWidget: {
+                flatEntityToCreate: newFlatWidgets,
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [],
+              },
             },
-            pageLayoutTab: {
-              flatEntityToCreate: newFlatTabs,
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [],
-            },
-            pageLayoutWidget: {
-              flatEntityToCreate: newFlatWidgets,
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [],
-            },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

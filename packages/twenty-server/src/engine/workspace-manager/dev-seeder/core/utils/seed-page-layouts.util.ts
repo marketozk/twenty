@@ -48,6 +48,9 @@ export const seedPageLayouts = async ({
     mode: 'cascade',
     defaultSystemActorId: 'dev-seeder:page-layouts',
     expectedCreatedIds: navigationMenuItems.map((item) => item.id),
+    expectedPageLayoutCreateIds: pageLayouts.map((item) => item.id),
+    expectedPageLayoutTabCreateIds: pageLayoutTabs.map((item) => item.id),
+    expectedPageLayoutWidgetCreateIds: pageLayoutWidgets.map((item) => item.id),
   });
 
   const result = await withNavigationMenuItemAudit(getAudit(), () =>

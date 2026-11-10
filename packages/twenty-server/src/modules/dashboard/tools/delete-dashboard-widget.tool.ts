@@ -26,6 +26,9 @@ export const createDeleteDashboardWidgetTool = (
       await deps.pageLayoutWidgetService.destroy({
         id: parameters.widgetId,
         workspaceId: context.workspaceId,
+        auditIdentity: context.auditIdentity,
+        authUserWorkspaceId: context.authUserWorkspaceId,
+        defaultSystemActorId: 'dashboard-tool:delete-dashboard-widget',
       });
 
       return {
@@ -37,10 +40,13 @@ export const createDeleteDashboardWidgetTool = (
         },
       };
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
       return {
         success: false,
-        message: `Failed to delete widget: ${error.message}`,
-        error: error.message,
+        message: `Failed to delete widget: ${errorMessage}`,
+        error: errorMessage,
       };
     }
   },

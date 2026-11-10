@@ -41,10 +41,11 @@ export class CreateManyFieldMetadataTool extends BaseTool<
 
   async execute({
     input,
-    context: { workspaceId },
+    context,
   }: ToolExecuteArgs<
     typeof createManyFieldMetadataInputSchema
   >): Promise<ToolOutput> {
+    const { workspaceId } = context;
     await this.fieldMetadataService.createManyFields({
       createFieldInputs: input.fields.map(
         ({ icon, relationCreationPayload, ...createFieldInput }) => ({
@@ -60,6 +61,25 @@ export class CreateManyFieldMetadataTool extends BaseTool<
         typeof this.fieldMetadataService.createManyFields
       >[0]['createFieldInputs'],
       workspaceId,
+      auditIdentity: context.authContext
+        ? {
+            auth: context.authContext,
+            agentId: context.agentId,
+          }
+        : context.userId ||
+            context.actorContext?.workspaceMemberId ||
+            context.application ||
+            context.agentId
+          ? {
+              user: context.userId ? { id: context.userId } : undefined,
+              workspaceMemberId:
+                context.actorContext?.workspaceMemberId ?? undefined,
+              application: context.application
+                ? { id: context.application.id }
+                : undefined,
+              agentId: context.agentId,
+            }
+          : undefined,
     });
 
     return {
