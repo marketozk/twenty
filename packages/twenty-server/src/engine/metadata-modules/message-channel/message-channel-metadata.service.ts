@@ -459,6 +459,9 @@ export class MessageChannelMetadataService {
       await this.emailingDomainService.ensureEmailingDomain(
         sendDomain,
         workspaceId,
+        {
+          auditIdentity: { workspaceId, userWorkspaceId },
+        },
       );
     }
 
@@ -662,6 +665,9 @@ export class MessageChannelMetadataService {
       await this.emailingDomainService.deleteEmailingDomainByDomainIfExists(
         workspaceId,
         sendDomain,
+        {
+          auditIdentity: { workspaceId, userWorkspaceId },
+        },
       );
     }
 

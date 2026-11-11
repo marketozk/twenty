@@ -309,8 +309,17 @@ LOG183 закрывает транзакционный аудит полного
 `WorkspaceMigrationRunnerService.executeRun` с редактированием `name`, `title`, `position`, `icon`,
 `gridPosition`, `configuration`, `conditionalDisplay`, `conditionalAvailabilityExpression` и
 `overrides`).
+LOG184 закрывает транзакционный аудит полного жизненного цикла почтовых доменов
+(`core."emailingDomain"` `create`, `update`, `delete` в `EmailingDomainService`,
+`EmailingDomainResolver`, `EmailingDomainTenantStatusService`,
+`CheckEmailingDomainVerificationCronJob`, `OutboundSendingStateHandlerService`,
+`MessageChannelMetadataService`, `seedEmailingDomains` и `workspace-domain-audit.ts` с
+редактированием `domain`, `verificationRecords`, `verifiedAt`, `unsubscribeHostname` и
+`unsubscribeHostnameId`) и соглашений об обработке данных (`core."dpaAgreement"` `create` в
+`DpaService`, `DpaResolver` и `workspace-domain-audit.ts` с редактированием `processorEntity`,
+`customerLegalEntityName`, `signatoryName`, `signatoryTitle`, `acceptedByEmail` и `acceptedAt`).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log183/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log184/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

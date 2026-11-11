@@ -1,0 +1,20 @@
+{
+  "baseCommit": "57f4aadbc102871c14145a3770e19d8aa6e7375f",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "9b5215f4d8a210e6b723da829ea9694906357a5e5fdabc6305d0b92e69335e07",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "f480729c45e3010d4ecbb767a9cf36c92d291feefb6ab01236c92b5f5620202e",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/workspace-domain-audit.ts": "2d34d9ca54578286836e0e33166a4a74b51dc2969d7558df243cdc3747d38005",
+    "packages/twenty-server/src/engine/core-modules/dpa/dpa.resolver.ts": "bc244c722e9c9087635e32531d5dc7460fabeedd7a1f7e0428c6bf13f03abee2",
+    "packages/twenty-server/src/engine/core-modules/dpa/services/dpa.service.ts": "f16230c37da4cd09ed579d39fa9e76eb5a0faf99b72b1f9e1a52fc05e631631d",
+    "packages/twenty-server/src/engine/core-modules/emailing-domain/crons/jobs/check-emailing-domain-verification.cron.job.ts": "21e624cdf336c4f175b3621f5f5dc7517e63718a73fb48a6b5fb340704757f9a",
+    "packages/twenty-server/src/engine/core-modules/emailing-domain/emailing-domain.resolver.ts": "9a70a3bd34a36e884de290d7f08ce9d800c88243be8faa90f8df93967036b44c",
+    "packages/twenty-server/src/engine/core-modules/emailing-domain/services/emailing-domain-tenant-status.service.ts": "eb771ba5bbc8d4337ccc896bd9521ac842a94d8ca0c4263aa015dea0cb8219f1",
+    "packages/twenty-server/src/engine/core-modules/emailing-domain/services/emailing-domain.service.ts": "3508fe91d58735694189a33d6d504864e17ab56bc5bf63b7fba2cdf7eeaf1ca6",
+    "packages/twenty-server/src/engine/metadata-modules/message-channel/message-channel-metadata.service.ts": "f8850a363e914f3b0ec31cd0bc641fc5cab221b5c17ef63bbf4781238aa4619e",
+    "packages/twenty-server/src/engine/workspace-manager/dev-seeder/core/utils/seed-emailing-domains.util.ts": "b34a17202e35f66ba5793906795dbd87c1b253028787d5180d7f4010920547ae",
+    "packages/twenty-server/src/modules/messaging-webhooks/handlers/outbound-sending-state-handler.service.ts": "51e08aadc4a24789284288e6ff8991feda396d2cec956fe575749d126a6a5b7e",
+    "packages/twenty-server/test/fork-migration/crm-audit-email-group-deletion.spec.ts": "1d008ae4ed80b8b543a336b73acd6a0f8e2085e37984928ed4212521851d8149",
+    "packages/twenty-server/test/fork-migration/crm-audit-workspace-domain.postgres-spec.ts": "555a2abc71f4cb00fbb2b8145767559211c95012907cb38d8060b65af2fc4775"
+  },
+  "uploadedSourceHashesVerified": true
+}

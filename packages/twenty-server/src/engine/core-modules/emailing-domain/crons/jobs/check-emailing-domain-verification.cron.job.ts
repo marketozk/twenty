@@ -77,6 +77,7 @@ export class CheckEmailingDomainVerificationCronJob {
         .verifyEmailingDomain({
           workspaceId: emailingDomain.workspaceId,
           emailingDomainId: emailingDomain.id,
+          defaultSystemActorId: CheckEmailingDomainVerificationCronJob.name,
         })
         .catch((error) => {
           this.logger.error(
@@ -97,11 +98,24 @@ export class CheckEmailingDomainVerificationCronJob {
       });
 
     for (const emailingDomain of verifiedDomainsWithPendingHostname) {
-      await this.unsubscribeHostnameService.sync(
-        emailingDomain.workspaceId,
-        emailingDomain.id,
-        { provision: false },
-      );
+      if (
+        typeof this.emailingDomainService.syncUnsubscribeHostname === 'function'
+      ) {
+        await this.emailingDomainService.syncUnsubscribeHostname(
+          emailingDomain.workspaceId,
+          emailingDomain.id,
+          { provision: false },
+          {
+            defaultSystemActorId: CheckEmailingDomainVerificationCronJob.name,
+          },
+        );
+      } else {
+        await this.unsubscribeHostnameService.sync(
+          emailingDomain.workspaceId,
+          emailingDomain.id,
+          { provision: false },
+        );
+      }
     }
   }
 }

@@ -16,6 +16,11 @@ import {
   PublicDomainException,
   PublicDomainExceptionCode,
 } from 'src/engine/core-modules/public-domain/public-domain.exception';
+import { EmailingDomainStatus } from 'src/engine/core-modules/emailing-domain/drivers/types/emailing-domain-status.type';
+import { EmailingDomainTenantStatus } from 'src/engine/core-modules/emailing-domain/drivers/types/emailing-domain-tenant-status.type';
+import { UnsubscribeHostnameStatus } from 'src/engine/core-modules/emailing-domain/drivers/types/unsubscribe-hostname-status.type';
+import { DpaAgreementType } from 'src/engine/core-modules/dpa/enums/dpa-agreement-type.enum';
+import { DpaRegion } from 'src/engine/core-modules/dpa/enums/dpa-region.enum';
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 
 jest.mock('twenty-emails', () => ({
@@ -129,6 +134,42 @@ for (const [modPath, names] of [
     ['PublicDomainExceptionFilter'],
   ],
   [
+    'src/engine/core-modules/emailing-domain/filters/email-group-access-graphql-api-exception.filter',
+    ['EmailGroupAccessGraphqlApiExceptionFilter'],
+  ],
+  [
+    'src/engine/core-modules/emailing-domain/filters/emailing-domain-graphql-api-exception.filter',
+    ['EmailingDomainGraphqlApiExceptionFilter'],
+  ],
+  [
+    'src/engine/core-modules/emailing-domain/services/email-group-access.service',
+    ['EmailGroupAccessService'],
+  ],
+  [
+    'src/engine/core-modules/emailing-domain/drivers/emailing-domain-driver.factory',
+    ['EmailingDomainDriverFactory'],
+  ],
+  [
+    'src/engine/core-modules/emailing-domain/services/dmarc-record.service',
+    ['DmarcRecordService'],
+  ],
+  [
+    'src/modules/emailing/standard-objects/campaign-delivery.workspace-entity',
+    ['CampaignDeliveryWorkspaceEntity'],
+  ],
+  [
+    'src/modules/emailing/standard-objects/message-campaign.workspace-entity',
+    ['MessageCampaignWorkspaceEntity'],
+  ],
+  [
+    'src/engine/metadata-modules/permissions/utils/permissions-graphql-api-exception.filter',
+    ['PermissionsGraphqlApiExceptionFilter'],
+  ],
+  [
+    'src/engine/core-modules/dpa/services/dpa-region.service',
+    ['DpaRegionService'],
+  ],
+  [
     'src/engine/core-modules/twenty-config/twenty-config.service',
     ['TwentyConfigService'],
   ],
@@ -182,6 +223,10 @@ for (const [modPath, names] of [
 }
 
 for (const [modPath, names] of [
+  [
+    'src/engine/api/graphql/graphql-config/decorators/core-resolver.decorator',
+    ['CoreResolver'],
+  ],
   [
     'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator',
     ['MetadataResolver'],
@@ -250,6 +295,26 @@ jest.doMock(
   }),
 );
 
+const EmailingDomainEntity = class EmailingDomainEntity {};
+jest.doMock(
+  'src/engine/core-modules/emailing-domain/emailing-domain.entity',
+  () => ({
+    EmailingDomainEntity,
+  }),
+);
+
+const DpaAgreementEntity = class DpaAgreementEntity {};
+jest.doMock(
+  'src/engine/core-modules/dpa/entities/dpa-agreement.entity',
+  () => ({
+    DpaAgreementEntity,
+  }),
+);
+
+jest.doMock('src/engine/core-modules/dpa/pdf/render-dpa-to-pdf.util', () => ({
+  renderDpaToPdfBuffer: jest.fn(async () => Buffer.from('%PDF-1.4 mock dpa')),
+}));
+
 const { ApprovedAccessDomainResolver } =
   require('src/engine/core-modules/approved-access-domain/approved-access-domain.resolver') as typeof import('src/engine/core-modules/approved-access-domain/approved-access-domain.resolver');
 const { ApprovedAccessDomainService } =
@@ -264,6 +329,24 @@ const { DnsCloudflareService } =
   require('src/engine/core-modules/cloudflare/services/dns-cloudflare.service') as typeof import('src/engine/core-modules/cloudflare/services/dns-cloudflare.service');
 const { ApplicationService } =
   require('src/engine/core-modules/application/application.service') as typeof import('src/engine/core-modules/application/application.service');
+const { EmailingDomainService } =
+  require('src/engine/core-modules/emailing-domain/services/emailing-domain.service') as typeof import('src/engine/core-modules/emailing-domain/services/emailing-domain.service');
+const { EmailingDomainResolver } =
+  require('src/engine/core-modules/emailing-domain/emailing-domain.resolver') as typeof import('src/engine/core-modules/emailing-domain/emailing-domain.resolver');
+const { EmailingDomainTenantStatusService } =
+  require('src/engine/core-modules/emailing-domain/services/emailing-domain-tenant-status.service') as typeof import('src/engine/core-modules/emailing-domain/services/emailing-domain-tenant-status.service');
+const { CheckEmailingDomainVerificationCronJob } =
+  require('src/engine/core-modules/emailing-domain/crons/jobs/check-emailing-domain-verification.cron.job') as typeof import('src/engine/core-modules/emailing-domain/crons/jobs/check-emailing-domain-verification.cron.job');
+const { OutboundSendingStateHandlerService } =
+  require('src/modules/messaging-webhooks/handlers/outbound-sending-state-handler.service') as typeof import('src/modules/messaging-webhooks/handlers/outbound-sending-state-handler.service');
+const { UnsubscribeHostnameService } =
+  require('src/engine/core-modules/emailing-domain/services/unsubscribe-hostname.service') as typeof import('src/engine/core-modules/emailing-domain/services/unsubscribe-hostname.service');
+const { seedEmailingDomains } =
+  require('src/engine/workspace-manager/dev-seeder/core/utils/seed-emailing-domains.util') as typeof import('src/engine/workspace-manager/dev-seeder/core/utils/seed-emailing-domains.util');
+const { DpaService } =
+  require('src/engine/core-modules/dpa/services/dpa.service') as typeof import('src/engine/core-modules/dpa/services/dpa.service');
+const { DpaResolver } =
+  require('src/engine/core-modules/dpa/dpa.resolver') as typeof import('src/engine/core-modules/dpa/dpa.resolver');
 
 jest.setTimeout(120000);
 
@@ -337,6 +420,49 @@ const entities = [
       updatedAt: { type: 'timestamptz' },
     },
   }),
+  new EntitySchema({
+    name: 'EmailingDomainEntity',
+    target: EmailingDomainEntity,
+    schema: 'core',
+    tableName: 'emailingDomain',
+    columns: {
+      id: { type: 'uuid', primary: true, generated: 'uuid' },
+      workspaceId: { type: 'uuid' },
+      domain: { type: 'varchar' },
+      status: { type: 'varchar', default: 'PENDING' },
+      verificationRecords: { type: 'jsonb', nullable: true },
+      verifiedAt: { type: 'timestamptz', nullable: true },
+      tenantStatus: { type: 'varchar', default: 'ACTIVE' },
+      unsubscribeHostname: { type: 'varchar', nullable: true },
+      unsubscribeHostnameId: { type: 'varchar', nullable: true },
+      unsubscribeHostnameStatus: { type: 'varchar', nullable: true },
+      createdAt: { type: 'timestamptz' },
+      updatedAt: { type: 'timestamptz' },
+    },
+  }),
+  new EntitySchema({
+    name: 'DpaAgreementEntity',
+    target: DpaAgreementEntity,
+    schema: 'core',
+    tableName: 'dpaAgreement',
+    columns: {
+      id: { type: 'uuid', primary: true, generated: 'uuid' },
+      workspaceId: { type: 'uuid' },
+      type: { type: 'varchar' },
+      templateVersion: { type: 'varchar' },
+      region: { type: 'varchar' },
+      processorEntity: { type: 'varchar' },
+      customerLegalEntityName: { type: 'varchar', nullable: true },
+      signatoryName: { type: 'varchar', nullable: true },
+      signatoryTitle: { type: 'varchar', nullable: true },
+      signedFileId: { type: 'uuid', nullable: true },
+      acceptedByUserId: { type: 'uuid', nullable: true },
+      acceptedByEmail: { type: 'varchar', nullable: true },
+      acceptedAt: { type: 'timestamptz' },
+      createdAt: { type: 'timestamptz' },
+      updatedAt: { type: 'timestamptz' },
+    },
+  }),
 ];
 
 const owner = new DataSource({
@@ -397,6 +523,37 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
   >;
   let dnsCloudflareService: InstanceType<typeof DnsCloudflareService>;
   let applicationService: InstanceType<typeof ApplicationService>;
+  let emailingDomainService: InstanceType<typeof EmailingDomainService>;
+  let emailingDomainResolver: InstanceType<typeof EmailingDomainResolver>;
+  let emailingDomainTenantStatusService: InstanceType<
+    typeof EmailingDomainTenantStatusService
+  >;
+  let checkEmailingDomainCronJob: InstanceType<
+    typeof CheckEmailingDomainVerificationCronJob
+  >;
+  let outboundSendingStateHandler: InstanceType<
+    typeof OutboundSendingStateHandlerService
+  >;
+  let dpaService: InstanceType<typeof DpaService>;
+  let dpaResolver: InstanceType<typeof DpaResolver>;
+  const emailingDriverMock = {
+    provisionWorkspace: jest.fn(async () => undefined),
+    deprovisionWorkspace: jest.fn(async () => undefined),
+    verifyDomain: jest.fn(async ({ domain }: { domain: string }) => ({
+      status: EmailingDomainStatus.PENDING,
+      verificationRecords: [
+        {
+          type: 'TXT',
+          key: `_amazonses.${domain}`,
+          value: 'secret-ses-token-123',
+        },
+      ],
+    })),
+    registerDomain: jest.fn(async () => undefined),
+    cleanupDomain: jest.fn(async () => undefined),
+  };
+  let campaignSending = false;
+  let isSelfHostedConfig = false;
 
   beforeAll(async () => {
     jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
@@ -480,6 +637,37 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
           "createdAt" timestamptz NOT NULL DEFAULT now(),
           "updatedAt" timestamptz NOT NULL DEFAULT now()
         );
+        CREATE TABLE core."emailingDomain" (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "workspaceId" uuid NOT NULL REFERENCES core.workspace(id) ON DELETE CASCADE,
+          domain varchar NOT NULL UNIQUE,
+          status varchar NOT NULL DEFAULT 'PENDING',
+          "verificationRecords" jsonb NULL,
+          "verifiedAt" timestamptz NULL,
+          "tenantStatus" varchar NOT NULL DEFAULT 'ACTIVE',
+          "unsubscribeHostname" varchar NULL,
+          "unsubscribeHostnameId" varchar NULL,
+          "unsubscribeHostnameStatus" varchar NULL,
+          "createdAt" timestamptz NOT NULL DEFAULT now(),
+          "updatedAt" timestamptz NOT NULL DEFAULT now()
+        );
+        CREATE TABLE core."dpaAgreement" (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "workspaceId" uuid NOT NULL REFERENCES core.workspace(id) ON DELETE CASCADE,
+          type varchar NOT NULL,
+          "templateVersion" varchar NOT NULL,
+          region varchar NOT NULL,
+          "processorEntity" varchar NOT NULL,
+          "customerLegalEntityName" varchar NULL,
+          "signatoryName" varchar NULL,
+          "signatoryTitle" varchar NULL,
+          "signedFileId" uuid NULL,
+          "acceptedByUserId" uuid NULL,
+          "acceptedByEmail" varchar NULL,
+          "acceptedAt" timestamptz NOT NULL,
+          "createdAt" timestamptz NOT NULL DEFAULT now(),
+          "updatedAt" timestamptz NOT NULL DEFAULT now()
+        );
       `);
       await new OmniAuditBootstrapFastInstanceCommand().up(runner);
       await runner.query(
@@ -518,6 +706,14 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
           } as never),
         findOne: (wsId: string, opts?: Record<string, unknown>) =>
           repo.findOne({
+            ...(opts ?? {}),
+            where: {
+              ...((opts?.where as Record<string, unknown>) ?? {}),
+              workspaceId: wsId,
+            },
+          } as never),
+        findOneOrFail: (wsId: string, opts?: Record<string, unknown>) =>
+          repo.findOneOrFail({
             ...(opts ?? {}),
             where: {
               ...((opts?.where as Record<string, unknown>) ?? {}),
@@ -711,6 +907,85 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
         },
       } as never,
     );
+
+    const dnsManagerWithConfiguredMock = {
+      isConfigured: () => true,
+      registerHostname,
+      deleteHostnameSilently,
+      refreshHostname,
+      getHostnameWithRecords,
+      isHostnameWorking,
+    };
+
+    const unsubscribeHostnameService = new UnsubscribeHostnameService(
+      makeScopedRepo(EmailingDomainEntity) as never,
+      dnsManagerWithConfiguredMock as never,
+      { get: () => 'https://crm.twenty.local' } as never,
+    );
+
+    emailingDomainService = new EmailingDomainService(
+      makeScopedRepo(EmailingDomainEntity) as never,
+      runtime.getRepository(EmailingDomainEntity) as never,
+      { getCurrentDriver: () => emailingDriverMock } as never,
+      unsubscribeHostnameService,
+      { withDnsRecord: (ed: unknown) => ed } as never,
+      {
+        executeInWorkspaceContext: async <TResult>(
+          fn: () => Promise<TResult>,
+        ) => fn(),
+        getRepository: () => ({
+          exists: async () => campaignSending,
+        }),
+      } as never,
+      runtime,
+    );
+
+    emailingDomainResolver = new EmailingDomainResolver(emailingDomainService, {
+      validateEmailGroupAccessOrThrow: () => undefined,
+    } as never);
+
+    emailingDomainTenantStatusService = new EmailingDomainTenantStatusService(
+      makeScopedRepo(EmailingDomainEntity) as never,
+      runtime,
+    );
+
+    outboundSendingStateHandler = new OutboundSendingStateHandlerService(
+      emailingDomainTenantStatusService,
+    );
+
+    checkEmailingDomainCronJob = new CheckEmailingDomainVerificationCronJob(
+      runtime.getRepository(EmailingDomainEntity) as never,
+      emailingDomainService,
+      unsubscribeHostnameService,
+      { getCurrentDriver: () => emailingDriverMock } as never,
+    );
+
+    dpaService = new DpaService(
+      runtime.getRepository(DpaAgreementEntity) as never,
+      { getRegionForWorkspace: () => DpaRegion.EU } as never,
+      { writeFile: jest.fn(async () => undefined) } as never,
+      {
+        signFileByIdUrl: jest.fn(
+          async ({ fileId }: { fileId: string }) =>
+            `https://crm.twenty.local/dpa/${fileId}.pdf`,
+        ),
+      } as never,
+      {
+        findWorkspaceTwentyStandardAndCustomApplicationOrThrow: async () => ({
+          workspaceCustomFlatApplication: {
+            id: targetAppId,
+            universalIdentifier: targetAppUniversalId,
+          },
+        }),
+      } as never,
+      {
+        get: (key: string) =>
+          key === 'IS_MULTIWORKSPACE_ENABLED' ? !isSelfHostedConfig : undefined,
+      } as never,
+      runtime,
+    );
+
+    dpaResolver = new DpaResolver(dpaService);
   });
 
   beforeEach(async () => {
@@ -720,6 +995,13 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
     refreshHostname.mockClear();
     getHostnameWithRecords.mockClear();
     isHostnameWorking.mockClear();
+    emailingDriverMock.provisionWorkspace.mockClear();
+    emailingDriverMock.deprovisionWorkspace.mockClear();
+    emailingDriverMock.verifyDomain.mockClear();
+    emailingDriverMock.registerDomain.mockClear();
+    emailingDriverMock.cleanupDomain.mockClear();
+    campaignSending = false;
+    isSelfHostedConfig = false;
     verifyJwtTokenImpl = async (token: string) => {
       const [, payloadSeg] = token.split('.');
 
@@ -727,7 +1009,7 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
     };
 
     await owner.query(
-      'TRUNCATE TABLE crm_audit."crmAuditEntry", core."applicationAuthorization", core."publicDomain", core."approvedAccessDomain", core.application, core."apiKey", core."userWorkspace", core."user", core.workspace CASCADE',
+      'TRUNCATE TABLE crm_audit."crmAuditEntry", core."dpaAgreement", core."emailingDomain", core."applicationAuthorization", core."publicDomain", core."approvedAccessDomain", core.application, core."apiKey", core."userWorkspace", core."user", core.workspace CASCADE',
     );
     await owner.query(
       `INSERT INTO core.workspace (id, "displayName", "customDomain") VALUES ($1, 'Primary WS', 'taken-custom.twenty.io'), ($2, 'Foreign WS', NULL)`,
@@ -1352,5 +1634,381 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
       ),
     ).rejects.toBeInstanceOf(NativeTransactionOutcomeUnknownError);
     expect(deleteHostnameSilently).not.toHaveBeenCalled();
+  });
+
+  it('audits emailingDomain create, unsubscribeHostname sync, verify, cron refresh, tenantStatus update, ensure/deleteByDomain, delete, and seedEmailingDomains with redaction (LOG184)', async () => {
+    const memberContext = {
+      req: {
+        workspace: { id: workspaceId },
+        user: { id: actorUserId },
+        userWorkspaceId: actorUserWorkspaceId,
+        impersonationContext: { impersonatorUserWorkspaceId },
+      },
+    };
+
+    // 1. Create emailingDomain via EmailingDomainResolver (provisions unsubscribeHostname and refreshes status)
+    isHostnameWorking.mockResolvedValueOnce(false);
+    const created = await emailingDomainResolver.createEmailingDomain(
+      { domain: '  MAIL.ACME-CORP.IO  ' },
+      { id: workspaceId } as never,
+      memberContext,
+    );
+    expect(created.domain).toBe('mail.acme-corp.io');
+    expect(created.status).toBe(EmailingDomainStatus.PENDING);
+    expect(
+      (created as unknown as Record<string, unknown>).unsubscribeHostname,
+    ).toBe('unsubscribe.mail.acme-corp.io');
+    expect(
+      (created as unknown as Record<string, unknown>).unsubscribeHostnameId,
+    ).toBe('cf-host-1');
+    expect(created.unsubscribeHostnameStatus).toBe(
+      UnsubscribeHostnameStatus.PENDING,
+    );
+
+    // 2. Cron job refreshes unverified domain -> VERIFIED and refreshes pending unsubscribe hostname -> ACTIVE
+    emailingDriverMock.verifyDomain.mockResolvedValueOnce({
+      status: EmailingDomainStatus.VERIFIED,
+      verificationRecords: [
+        {
+          type: 'TXT',
+          key: '_amazonses.mail.acme-corp.io',
+          value: 'verified-ses-token',
+        },
+      ],
+    });
+    isHostnameWorking.mockResolvedValueOnce(false);
+    isHostnameWorking.mockResolvedValueOnce(true);
+    await checkEmailingDomainCronJob.handle();
+
+    // 3. Ensure second domain (MessageChannelMetadataService path) and seed a SANDBOX domain to test tenantStatus filtering
+    await emailingDomainService.ensureEmailingDomain(
+      'inbound.acme-corp.io',
+      workspaceId,
+      {
+        auditIdentity: {
+          workspaceId,
+          userWorkspaceId: actorUserWorkspaceId,
+        },
+      },
+    );
+    const [sandboxRow] = await owner.query(
+      `INSERT INTO core."emailingDomain" ("workspaceId", domain, status, "tenantStatus")
+       VALUES ($1, 'sandbox.acme-corp.io', 'VERIFIED', 'SANDBOX')
+       RETURNING id`,
+      [workspaceId],
+    );
+
+    // 4. OutboundSendingStateHandlerService transitions non-SANDBOX domains to PAUSED
+    await outboundSendingStateHandler.handle({
+      workspaceId,
+      status: EmailingDomainTenantStatus.PAUSED,
+    } as never);
+
+    const [sandboxAfter] = await owner.query(
+      `SELECT "tenantStatus" FROM core."emailingDomain" WHERE id=$1`,
+      [sandboxRow.id],
+    );
+    expect(sandboxAfter.tenantStatus).toBe('SANDBOX');
+
+    // 5. Delete inbound domain via deleteEmailingDomainByDomainIfExists and primary domain via EmailingDomainResolver
+    await emailingDomainService.deleteEmailingDomainByDomainIfExists(
+      workspaceId,
+      'inbound.acme-corp.io',
+      {
+        auditIdentity: {
+          workspaceId,
+          userWorkspaceId: actorUserWorkspaceId,
+        },
+      },
+    );
+    await emailingDomainResolver.deleteEmailingDomain(
+      created.id,
+      { id: workspaceId } as never,
+      {
+        req: {
+          workspace: { id: workspaceId },
+          apiKey: { id: apiKeyId },
+        },
+      },
+    );
+
+    // 6. seedEmailingDomains records system create audit entries
+    const seedQr = runtime.createQueryRunner();
+    await seedQr.connect();
+    await seedQr.startTransaction();
+    try {
+      await seedEmailingDomains({
+        queryRunner: seedQr,
+        schemaName: 'core',
+        workspaceId,
+      });
+      await seedQr.commitTransaction();
+    } finally {
+      await seedQr.release();
+    }
+
+    const edAudits = (await audits()).filter(
+      (row) => row.resourceKind === 'emailingDomain',
+    );
+    const createdDomainAudits = edAudits.filter(
+      (row) => row.resourceId === created.id,
+    );
+    expect(createdDomainAudits.map((row) => row.action)).toEqual([
+      'create',
+      'update',
+      'update',
+      'update',
+      'update',
+      'delete',
+    ]);
+    expect(createdDomainAudits[0]).toMatchObject({
+      actor: { kind: 'coreUser', id: actorUserId },
+      initiator: { kind: 'coreUser', id: impersonatorUserId },
+      redactedDiff: {
+        changedFields: expect.arrayContaining([
+          'domain',
+          'status',
+          'tenantStatus',
+          'verificationRecords',
+        ]),
+        values: {
+          status: { before: null, after: 'PENDING' },
+          tenantStatus: { before: null, after: 'ACTIVE' },
+        },
+      },
+    });
+    const createdEdValues = (
+      createdDomainAudits[0].redactedDiff as { values: Record<string, unknown> }
+    ).values;
+    expect(createdEdValues).not.toHaveProperty('domain');
+    expect(createdEdValues).not.toHaveProperty('verificationRecords');
+    expect(createdDomainAudits[1]).toMatchObject({
+      actor: { kind: 'coreUser', id: actorUserId },
+      redactedDiff: {
+        changedFields: expect.arrayContaining([
+          'unsubscribeHostname',
+          'unsubscribeHostnameId',
+          'unsubscribeHostnameStatus',
+        ]),
+        values: {
+          unsubscribeHostnameStatus: { before: null, after: 'PENDING' },
+        },
+      },
+    });
+    expect(createdDomainAudits[2]).toMatchObject({
+      actor: {
+        kind: 'system',
+        id: 'CheckEmailingDomainVerificationCronJob',
+      },
+      redactedDiff: {
+        values: {
+          status: { before: 'PENDING', after: 'VERIFIED' },
+        },
+      },
+    });
+    expect(createdDomainAudits[3]).toMatchObject({
+      actor: {
+        kind: 'system',
+        id: 'CheckEmailingDomainVerificationCronJob',
+      },
+      redactedDiff: {
+        values: {
+          unsubscribeHostnameStatus: { before: 'PENDING', after: 'ACTIVE' },
+        },
+      },
+    });
+    expect(createdDomainAudits[4]).toMatchObject({
+      actor: {
+        kind: 'system',
+        id: 'OutboundSendingStateHandlerService',
+      },
+      redactedDiff: {
+        values: {
+          tenantStatus: { before: 'ACTIVE', after: 'PAUSED' },
+        },
+      },
+    });
+    expect(createdDomainAudits[5]).toMatchObject({
+      actor: { kind: 'apiKey', id: apiKeyId },
+      action: 'delete',
+    });
+
+    const seededAudits = edAudits.filter(
+      (row) =>
+        (row.actor as { kind?: string; id?: string })?.id ===
+        'dev-seeder:seed-emailing-domains',
+    );
+    expect(seededAudits).toHaveLength(2);
+
+    const serialized = JSON.stringify(edAudits);
+    expect(serialized).not.toContain('mail.acme-corp.io');
+    expect(serialized).not.toContain('secret-ses-token-123');
+    expect(serialized).not.toContain('verified-ses-token');
+    expect(serialized).not.toContain('cf-host-1');
+  });
+
+  it('audits dpaAgreement create via DpaResolver and DpaService with PII redaction, actor mismatch rejection, and post-flush tamper rollback (LOG184)', async () => {
+    const { agreement, downloadUrl } = await dpaResolver.generateSignedDpa(
+      { id: workspaceId } as never,
+      { id: actorUserId, email: 'admin@acme-corp.io' } as never,
+      {
+        customerLegalEntityName: 'Acme Corporation GmbH',
+        signatoryName: 'Ada Lovelace',
+        signatoryTitle: 'Chief Executive Officer',
+      },
+      {
+        req: {
+          workspace: { id: workspaceId },
+          user: { id: actorUserId },
+          userWorkspaceId: actorUserWorkspaceId,
+          impersonationContext: { impersonatorUserWorkspaceId },
+        },
+      },
+    );
+
+    expect(agreement.id).toBeDefined();
+    expect(agreement.type).toBe(DpaAgreementType.SIGNED);
+    expect(downloadUrl).toContain(agreement.signedFileId!);
+
+    const dpaAudits = (await audits()).filter(
+      (row) => row.resourceKind === 'dpaAgreement',
+    );
+    expect(dpaAudits).toHaveLength(1);
+    expect(dpaAudits[0]).toMatchObject({
+      workspaceId,
+      resourceKind: 'dpaAgreement',
+      resourceId: agreement.id,
+      action: 'create',
+      actor: { kind: 'coreUser', id: actorUserId },
+      initiator: { kind: 'coreUser', id: impersonatorUserId },
+      redactedDiff: {
+        changedFields: expect.arrayContaining([
+          'acceptedAt',
+          'acceptedByEmail',
+          'acceptedByUserId',
+          'customerLegalEntityName',
+          'processorEntity',
+          'region',
+          'signatoryName',
+          'signatoryTitle',
+          'signedFileId',
+          'templateVersion',
+          'type',
+        ]),
+        values: {
+          type: { before: null, after: 'SIGNED' },
+          region: { before: null, after: 'EU' },
+          signedFileId: { before: null, after: agreement.signedFileId },
+          acceptedByUserId: { before: null, after: actorUserId },
+        },
+      },
+      securityDescriptor: {
+        resourceKind: 'dpaAgreement',
+        resourceId: agreement.id,
+        metadataAccess: 'currentWorkspaceAdministration',
+      },
+    });
+    const dpaValues = (
+      dpaAudits[0].redactedDiff as { values: Record<string, unknown> }
+    ).values;
+    expect(dpaValues).not.toHaveProperty('customerLegalEntityName');
+    expect(dpaValues).not.toHaveProperty('signatoryName');
+    expect(dpaValues).not.toHaveProperty('signatoryTitle');
+    expect(dpaValues).not.toHaveProperty('acceptedByEmail');
+    expect(dpaValues).not.toHaveProperty('processorEntity');
+    expect(dpaValues).not.toHaveProperty('acceptedAt');
+
+    const serialized = JSON.stringify(dpaAudits);
+    expect(serialized).not.toContain('Acme Corporation GmbH');
+    expect(serialized).not.toContain('Ada Lovelace');
+    expect(serialized).not.toContain('Chief Executive Officer');
+    expect(serialized).not.toContain('admin@acme-corp.io');
+
+    // Actor mismatch between context user and userId is rejected
+    await expect(
+      dpaResolver.generateSignedDpa(
+        { id: workspaceId } as never,
+        { id: impersonatorUserId, email: 'support@twenty.io' } as never,
+        {
+          customerLegalEntityName: 'Mismatch Corp',
+          signatoryName: 'Mallory',
+          signatoryTitle: 'Director',
+        },
+        {
+          req: {
+            workspace: { id: workspaceId },
+            user: { id: actorUserId },
+            userWorkspaceId: actorUserWorkspaceId,
+          },
+        },
+      ),
+    ).rejects.toThrow(
+      'DPA agreement audit actor mismatch with acceptedByUserId',
+    );
+
+    // Post-flush trigger tampering on core."dpaAgreement" and core."emailingDomain" rolls back transaction
+    await owner.query(`
+      CREATE OR REPLACE FUNCTION core.corrupt_log184_after_audit()
+      RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$
+      BEGIN
+        IF NEW."resourceKind" = 'dpaAgreement' AND NEW.action = 'create' THEN
+          UPDATE core."dpaAgreement" SET "signatoryName" = 'Tampered' WHERE id = NEW."resourceId"::uuid;
+        END IF;
+        IF NEW."resourceKind" = 'emailingDomain' AND NEW.action = 'create' THEN
+          UPDATE core."emailingDomain" SET status = 'VERIFIED' WHERE id = NEW."resourceId"::uuid;
+        END IF;
+        RETURN NEW;
+      END;
+      $$;
+      CREATE TRIGGER corrupt_log184_after_audit_trg
+      AFTER INSERT ON crm_audit."crmAuditEntry"
+      FOR EACH ROW EXECUTE FUNCTION core.corrupt_log184_after_audit();
+    `);
+    try {
+      await expect(
+        dpaResolver.generateSignedDpa(
+          { id: workspaceId } as never,
+          { id: actorUserId, email: 'admin@acme-corp.io' } as never,
+          {
+            customerLegalEntityName: 'Tampered Corp',
+            signatoryName: 'Tampered Signer',
+            signatoryTitle: 'CTO',
+          },
+          {
+            req: {
+              workspace: { id: workspaceId },
+              user: { id: actorUserId },
+              userWorkspaceId: actorUserWorkspaceId,
+            },
+          },
+        ),
+      ).rejects.toThrow('DPA agreement state changed during audit flush');
+
+      emailingDriverMock.cleanupDomain.mockClear();
+      await expect(
+        emailingDomainResolver.createEmailingDomain(
+          { domain: 'tampered.acme-corp.io' },
+          { id: workspaceId } as never,
+          {
+            req: {
+              workspace: { id: workspaceId },
+              user: { id: actorUserId },
+              userWorkspaceId: actorUserWorkspaceId,
+            },
+          },
+        ),
+      ).rejects.toThrow('Emailing domain state changed during audit flush');
+      expect(emailingDriverMock.cleanupDomain).toHaveBeenCalledWith({
+        domain: 'tampered.acme-corp.io',
+        workspaceId,
+      });
+    } finally {
+      await owner.query(
+        'DROP TRIGGER IF EXISTS corrupt_log184_after_audit_trg ON crm_audit."crmAuditEntry"',
+      );
+      await owner.query(
+        'DROP FUNCTION IF EXISTS core.corrupt_log184_after_audit()',
+      );
+    }
   });
 });

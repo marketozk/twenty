@@ -1,9 +1,10 @@
 import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
-import { Args, Mutation, Query } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query } from '@nestjs/graphql';
 
 import { PermissionFlagType } from 'twenty-shared/constants';
 
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
+import { type WorkspaceDomainAuditIdentity } from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { CreateEmailingDomainInput } from 'src/engine/core-modules/emailing-domain/dtos/create-emailing-domain.input';
 import { EmailingDomainDTO } from 'src/engine/core-modules/emailing-domain/dtos/emailing-domain.dto';
 import { EmailGroupAccessGraphqlApiExceptionFilter } from 'src/engine/core-modules/emailing-domain/filters/email-group-access-graphql-api-exception.filter';
@@ -61,6 +62,7 @@ export class EmailingDomainResolver {
   async createEmailingDomain(
     @Args('input') input: CreateEmailingDomainInput,
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ): Promise<EmailingDomainDTO> {
     this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
 
@@ -68,6 +70,7 @@ export class EmailingDomainResolver {
       await this.emailingDomainService.createEmailingDomain(
         input.domain.trim().toLowerCase(),
         currentWorkspace.id,
+        context !== undefined ? { auditIdentity: context.req } : undefined,
       );
 
     return emailingDomain;
@@ -90,10 +93,15 @@ export class EmailingDomainResolver {
   async deleteEmailingDomain(
     @Args('id') id: string,
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ): Promise<boolean> {
     this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
 
-    await this.emailingDomainService.deleteEmailingDomain(currentWorkspace, id);
+    await this.emailingDomainService.deleteEmailingDomain(
+      currentWorkspace,
+      id,
+      context !== undefined ? { auditIdentity: context.req } : undefined,
+    );
 
     return true;
   }
@@ -115,6 +123,7 @@ export class EmailingDomainResolver {
   async verifyEmailingDomain(
     @Args('id') id: string,
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ): Promise<EmailingDomainDTO> {
     this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
 
@@ -122,6 +131,7 @@ export class EmailingDomainResolver {
       await this.emailingDomainService.verifyEmailingDomain({
         workspaceId: currentWorkspace.id,
         emailingDomainId: id,
+        ...(context !== undefined ? { auditIdentity: context.req } : {}),
       });
 
     return emailingDomain;

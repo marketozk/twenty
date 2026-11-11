@@ -1,12 +1,19 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { BadRequestException, Injectable, Optional } from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
 import { FileFolder } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { v4 } from 'uuid';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
+import {
+  captureWorkspaceDomainAudit,
+  consumeWorkspaceDomainAuditRequest,
+  type DpaAgreementTypeValue,
+  runAuditedDpaAgreementCreate,
+  type WorkspaceDomainAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { DpaDocumentDTO } from 'src/engine/core-modules/dpa/dtos/dpa-document.dto';
 import { DpaDocumentBlockKind } from 'src/engine/core-modules/dpa/enums/dpa-document-block-kind.enum';
 import { type GenerateSignedDpaInput } from 'src/engine/core-modules/dpa/dtos/generate-signed-dpa.input';
@@ -59,7 +66,19 @@ export class DpaService {
     private readonly fileUrlService: FileUrlService,
     private readonly applicationService: ApplicationService,
     private readonly twentyConfigService: TwentyConfigService,
+    @Optional()
+    @InjectDataSource()
+    private readonly dataSource?: DataSource,
   ) {}
+
+  private resolveDataSource(): DataSource | undefined {
+    return (
+      this.dataSource ??
+      (this.dpaAgreementRepository?.manager?.connection as
+        | DataSource
+        | undefined)
+    );
+  }
 
   // Keys off IS_MULTIWORKSPACE_ENABLED, not billing — using billing here misclassified cloud as self-hosted.
   private isSelfHosted(): boolean {
@@ -107,11 +126,13 @@ export class DpaService {
     userId,
     userEmail,
     input,
+    auditIdentity,
   }: {
     workspace: Pick<WorkspaceEntity, 'id'>;
     userId: string;
     userEmail: string;
     input: GenerateSignedDpaInput;
+    auditIdentity?: WorkspaceDomainAuditIdentity;
   }): Promise<GenerateSignedDpaResult> {
     if (this.isSelfHosted()) {
       throw new BadRequestException(
@@ -119,43 +140,58 @@ export class DpaService {
       );
     }
 
-    const region = this.dpaRegionService.getRegionForWorkspace(workspace);
-    const executedAt = new Date();
+    const resolvedDataSource = this.resolveDataSource();
+    const auditRequest =
+      resolvedDataSource || auditIdentity !== undefined
+        ? captureWorkspaceDomainAudit({
+            workspaceId: workspace?.id,
+            auditIdentity:
+              auditIdentity ??
+              (userId
+                ? { workspaceId: workspace?.id, user: { id: userId } }
+                : undefined),
+          })
+        : undefined;
 
-    const resolved = resolveDpa({
-      region,
-      mode: 'signed',
-      customerLegalEntityName: input.customerLegalEntityName,
-      signatory: { name: input.signatoryName, title: input.signatoryTitle },
-      executedAt: executedAt.toISOString(),
-      isSelfHosted: this.isSelfHosted(),
-    });
+    try {
+      const region = this.dpaRegionService.getRegionForWorkspace(workspace);
+      const executedAt = new Date();
 
-    const fileId = v4();
+      const resolved = resolveDpa({
+        region,
+        mode: 'signed',
+        customerLegalEntityName: input.customerLegalEntityName,
+        signatory: { name: input.signatoryName, title: input.signatoryTitle },
+        executedAt: executedAt.toISOString(),
+        isSelfHosted: this.isSelfHosted(),
+      });
 
-    const [pdfBuffer, { workspaceCustomFlatApplication }] = await Promise.all([
-      renderDpaToPdfBuffer(resolved),
-      this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
-        { workspaceId: workspace.id },
-      ),
-    ]);
+      const fileId = v4();
 
-    await this.fileStorageService.writeFile({
-      sourceFile: pdfBuffer,
-      resourcePath: `${fileId}.pdf`,
-      fileFolder: FileFolder.Dpa,
-      applicationUniversalIdentifier:
-        workspaceCustomFlatApplication.universalIdentifier,
-      workspaceId: workspace.id,
-      fileId,
-      settings: {
-        isTemporaryFile: false,
-        toDelete: false,
-      },
-    });
+      const [pdfBuffer, { workspaceCustomFlatApplication }] = await Promise.all(
+        [
+          renderDpaToPdfBuffer(resolved),
+          this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
+            { workspaceId: workspace.id },
+          ),
+        ],
+      );
 
-    const agreement = await this.dpaAgreementRepository.save(
-      buildDpaAgreementRecord({
+      await this.fileStorageService.writeFile({
+        sourceFile: pdfBuffer,
+        resourcePath: `${fileId}.pdf`,
+        fileFolder: FileFolder.Dpa,
+        applicationUniversalIdentifier:
+          workspaceCustomFlatApplication.universalIdentifier,
+        workspaceId: workspace.id,
+        fileId,
+        settings: {
+          isTemporaryFile: false,
+          toDelete: false,
+        },
+      });
+
+      const record = buildDpaAgreementRecord({
         workspaceId: workspace.id,
         type: DpaAgreementType.SIGNED,
         region,
@@ -166,15 +202,46 @@ export class DpaService {
         signatoryName: input.signatoryName,
         signatoryTitle: input.signatoryTitle,
         signedFileId: fileId,
-      }),
-    );
+      });
 
-    const downloadUrl = await this.fileUrlService.signFileByIdUrl({
-      fileId,
-      workspaceId: workspace.id,
-      fileFolder: FileFolder.Dpa,
-    });
+      let agreement: DpaAgreementEntity;
+      if (resolvedDataSource && auditRequest) {
+        const createdRow = await runAuditedDpaAgreementCreate(
+          resolvedDataSource,
+          auditRequest,
+          {
+            record: {
+              workspaceId: workspace.id,
+              type: (record.type ??
+                DpaAgreementType.SIGNED) as DpaAgreementTypeValue,
+              templateVersion: String(record.templateVersion),
+              region: String(record.region),
+              processorEntity: String(record.processorEntity),
+              customerLegalEntityName: record.customerLegalEntityName,
+              signatoryName: record.signatoryName,
+              signatoryTitle: record.signatoryTitle,
+              signedFileId: record.signedFileId,
+              acceptedByUserId: record.acceptedByUserId,
+              acceptedByEmail: record.acceptedByEmail,
+              acceptedAt: record.acceptedAt ?? executedAt,
+            },
+            expectedUserId: userId,
+          },
+        );
+        agreement = Object.assign(new DpaAgreementEntity(), createdRow);
+      } else {
+        agreement = await this.dpaAgreementRepository.save(record);
+      }
 
-    return { agreement, downloadUrl };
+      const downloadUrl = await this.fileUrlService.signFileByIdUrl({
+        fileId,
+        workspaceId: workspace.id,
+        fileFolder: FileFolder.Dpa,
+      });
+
+      return { agreement, downloadUrl };
+    } finally {
+      consumeWorkspaceDomainAuditRequest(auditRequest);
+    }
   }
 }

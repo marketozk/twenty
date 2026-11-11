@@ -114,6 +114,12 @@ it('pins the email group account, channel and handle before deletion, then clean
   expect(f.domains.deleteEmailingDomainByDomainIfExists).toHaveBeenCalledWith(
     f.workspaceId,
     'example.test',
+    {
+      auditIdentity: {
+        userWorkspaceId: f.memberId,
+        workspaceId: f.workspaceId,
+      },
+    },
   );
   expect(
     f.domains.validateNoCampaignSendingOrThrow.mock.invocationCallOrder[0],

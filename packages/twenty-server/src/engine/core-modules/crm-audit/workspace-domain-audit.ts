@@ -83,6 +83,55 @@ export type PersistedPublicDomainRow = Readonly<{
   updatedAt: Date;
 }>;
 
+export type EmailingDomainStatusValue =
+  | 'PENDING'
+  | 'VERIFIED'
+  | 'FAILED'
+  | 'TEMPORARY_FAILURE';
+
+export type EmailingDomainTenantStatusValue =
+  | 'ACTIVE'
+  | 'UNDER_REVIEW'
+  | 'PAUSED'
+  | 'SANDBOX';
+
+export type UnsubscribeHostnameStatusValue = 'PENDING' | 'ACTIVE';
+
+export type PersistedEmailingDomainRow = Readonly<{
+  id: string;
+  workspaceId: string;
+  domain: string;
+  status: EmailingDomainStatusValue;
+  verificationRecords: Array<Record<string, unknown>> | null;
+  verifiedAt: Date | null;
+  tenantStatus: EmailingDomainTenantStatusValue;
+  unsubscribeHostname: string | null;
+  unsubscribeHostnameId: string | null;
+  unsubscribeHostnameStatus: UnsubscribeHostnameStatusValue | null;
+  createdAt: Date;
+  updatedAt: Date;
+}>;
+
+export type DpaAgreementTypeValue = 'CLICK_THROUGH' | 'SIGNED';
+
+export type PersistedDpaAgreementRow = Readonly<{
+  id: string;
+  workspaceId: string;
+  type: DpaAgreementTypeValue;
+  templateVersion: string;
+  region: string;
+  processorEntity: string;
+  customerLegalEntityName?: string;
+  signatoryName?: string;
+  signatoryTitle?: string;
+  signedFileId?: string;
+  acceptedByUserId?: string;
+  acceptedByEmail?: string;
+  acceptedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}>;
+
 type AmbientWorkspaceDomainAudit = Readonly<{
   workspaceId?: string;
   actor?: CrmAuditOperation['actor'];
@@ -687,9 +736,11 @@ const resolveOperationFromIdentity = (
 export const captureWorkspaceDomainAudit = ({
   workspaceId,
   auditIdentity,
+  defaultSystemActorId,
 }: {
   workspaceId?: string;
   auditIdentity?: WorkspaceDomainAuditIdentity;
+  defaultSystemActorId?: string;
 }): WorkspaceDomainAuditRequest => {
   if (auditIdentity && typeof auditIdentity === 'object') {
     if (consumedRequests.has(auditIdentity as WorkspaceDomainAuditRequest)) {
@@ -729,13 +780,25 @@ export const captureWorkspaceDomainAudit = ({
     throw new Error('Nested workspace domain audit is unsupported');
   }
 
+  const effectiveIdentity: WorkspaceDomainAuditIdentity | undefined =
+    auditIdentity !== undefined
+      ? auditIdentity
+      : defaultSystemActorId !== undefined &&
+          ambientStorage.getStore()?.actor === undefined &&
+          captureCurrentCrmAuditOperation(resolvedWorkspaceId) === undefined
+        ? {
+            workspaceId: resolvedWorkspaceId,
+            actor: { kind: 'system', id: defaultSystemActorId },
+          }
+        : undefined;
+
   const {
     operation,
     impersonatorUserWorkspaceId,
     expectedUserId,
     expectedUserWorkspaceId,
     pendingUserWorkspaceActorId,
-  } = resolveOperationFromIdentity(resolvedWorkspaceId, auditIdentity);
+  } = resolveOperationFromIdentity(resolvedWorkspaceId, effectiveIdentity);
 
   const request: WorkspaceDomainAuditRequest = Object.freeze({
     workspaceId: resolvedWorkspaceId,
@@ -846,6 +909,277 @@ const hydratePublicDomainRow = (
     applicationId: uuid(row.applicationId),
     domain: String(row.domain),
     isValidated: Boolean(row.isValidated),
+    createdAt:
+      row.createdAt instanceof Date
+        ? row.createdAt
+        : new Date(String(row.createdAt)),
+    updatedAt:
+      row.updatedAt instanceof Date
+        ? row.updatedAt
+        : new Date(String(row.updatedAt)),
+  });
+
+const EMAILING_DOMAIN_STATUS_VALUES = new Set<EmailingDomainStatusValue>([
+  'PENDING',
+  'VERIFIED',
+  'FAILED',
+  'TEMPORARY_FAILURE',
+]);
+
+const EMAILING_DOMAIN_TENANT_STATUS_VALUES =
+  new Set<EmailingDomainTenantStatusValue>([
+    'ACTIVE',
+    'UNDER_REVIEW',
+    'PAUSED',
+    'SANDBOX',
+  ]);
+
+const UNSUBSCRIBE_HOSTNAME_STATUS_VALUES =
+  new Set<UnsubscribeHostnameStatusValue>(['PENDING', 'ACTIVE']);
+
+const DPA_AGREEMENT_TYPE_VALUES = new Set<DpaAgreementTypeValue>([
+  'CLICK_THROUGH',
+  'SIGNED',
+]);
+
+export const projectEmailingDomain = (row: Record<string, unknown>) => {
+  if (typeof row.domain !== 'string' || row.domain.trim().length === 0) {
+    throw new Error('Emailing domain audit row domain is invalid');
+  }
+  if (
+    typeof row.status !== 'string' ||
+    !EMAILING_DOMAIN_STATUS_VALUES.has(row.status as EmailingDomainStatusValue)
+  ) {
+    throw new Error('Emailing domain audit row status is invalid');
+  }
+  if (
+    typeof row.tenantStatus !== 'string' ||
+    !EMAILING_DOMAIN_TENANT_STATUS_VALUES.has(
+      row.tenantStatus as EmailingDomainTenantStatusValue,
+    )
+  ) {
+    throw new Error('Emailing domain audit row tenantStatus is invalid');
+  }
+  if (
+    row.unsubscribeHostnameStatus !== null &&
+    row.unsubscribeHostnameStatus !== undefined &&
+    (typeof row.unsubscribeHostnameStatus !== 'string' ||
+      !UNSUBSCRIBE_HOSTNAME_STATUS_VALUES.has(
+        row.unsubscribeHostnameStatus as UnsubscribeHostnameStatusValue,
+      ))
+  ) {
+    throw new Error(
+      'Emailing domain audit row unsubscribeHostnameStatus is invalid',
+    );
+  }
+  if (
+    row.verificationRecords !== null &&
+    row.verificationRecords !== undefined &&
+    !Array.isArray(row.verificationRecords)
+  ) {
+    throw new Error('Emailing domain audit row verificationRecords is invalid');
+  }
+  if (
+    row.unsubscribeHostname !== null &&
+    row.unsubscribeHostname !== undefined &&
+    typeof row.unsubscribeHostname !== 'string'
+  ) {
+    throw new Error('Emailing domain audit row unsubscribeHostname is invalid');
+  }
+  if (
+    row.unsubscribeHostnameId !== null &&
+    row.unsubscribeHostnameId !== undefined &&
+    typeof row.unsubscribeHostnameId !== 'string'
+  ) {
+    throw new Error(
+      'Emailing domain audit row unsubscribeHostnameId is invalid',
+    );
+  }
+
+  return {
+    status: row.status as EmailingDomainStatusValue,
+    tenantStatus: row.tenantStatus as EmailingDomainTenantStatusValue,
+    unsubscribeHostnameStatus:
+      row.unsubscribeHostnameStatus === undefined ||
+      row.unsubscribeHostnameStatus === null
+        ? null
+        : (row.unsubscribeHostnameStatus as UnsubscribeHostnameStatusValue),
+    domain: row.domain,
+    verificationRecords:
+      row.verificationRecords === undefined || row.verificationRecords === null
+        ? null
+        : row.verificationRecords,
+    verifiedAt:
+      row.verifiedAt === undefined || row.verifiedAt === null
+        ? null
+        : row.verifiedAt instanceof Date
+          ? row.verifiedAt.toISOString()
+          : String(row.verifiedAt),
+    unsubscribeHostname:
+      row.unsubscribeHostname === undefined || row.unsubscribeHostname === null
+        ? null
+        : String(row.unsubscribeHostname),
+    unsubscribeHostnameId:
+      row.unsubscribeHostnameId === undefined ||
+      row.unsubscribeHostnameId === null
+        ? null
+        : String(row.unsubscribeHostnameId),
+  };
+};
+
+export const projectDpaAgreement = (row: Record<string, unknown>) => {
+  if (
+    typeof row.type !== 'string' ||
+    !DPA_AGREEMENT_TYPE_VALUES.has(row.type as DpaAgreementTypeValue)
+  ) {
+    throw new Error('DPA agreement audit row type is invalid');
+  }
+  if (
+    typeof row.templateVersion !== 'string' ||
+    row.templateVersion.trim().length === 0
+  ) {
+    throw new Error('DPA agreement audit row templateVersion is invalid');
+  }
+  if (typeof row.region !== 'string' || row.region.trim().length === 0) {
+    throw new Error('DPA agreement audit row region is invalid');
+  }
+  if (
+    typeof row.processorEntity !== 'string' ||
+    row.processorEntity.trim().length === 0
+  ) {
+    throw new Error('DPA agreement audit row processorEntity is invalid');
+  }
+  if (
+    row.signedFileId !== null &&
+    row.signedFileId !== undefined &&
+    (typeof row.signedFileId !== 'string' || !isUUID(row.signedFileId))
+  ) {
+    throw new Error('DPA agreement audit row signedFileId is invalid');
+  }
+  if (
+    row.acceptedByUserId !== null &&
+    row.acceptedByUserId !== undefined &&
+    (typeof row.acceptedByUserId !== 'string' || !isUUID(row.acceptedByUserId))
+  ) {
+    throw new Error('DPA agreement audit row acceptedByUserId is invalid');
+  }
+  if (row.acceptedAt === null || row.acceptedAt === undefined) {
+    throw new Error('DPA agreement audit row acceptedAt is invalid');
+  }
+
+  return {
+    type: row.type as DpaAgreementTypeValue,
+    templateVersion: String(row.templateVersion),
+    region: String(row.region),
+    signedFileId:
+      row.signedFileId === undefined || row.signedFileId === null
+        ? null
+        : uuid(row.signedFileId),
+    acceptedByUserId:
+      row.acceptedByUserId === undefined || row.acceptedByUserId === null
+        ? null
+        : uuid(row.acceptedByUserId),
+    processorEntity: String(row.processorEntity),
+    customerLegalEntityName:
+      row.customerLegalEntityName === undefined ||
+      row.customerLegalEntityName === null
+        ? null
+        : String(row.customerLegalEntityName),
+    signatoryName:
+      row.signatoryName === undefined || row.signatoryName === null
+        ? null
+        : String(row.signatoryName),
+    signatoryTitle:
+      row.signatoryTitle === undefined || row.signatoryTitle === null
+        ? null
+        : String(row.signatoryTitle),
+    acceptedByEmail:
+      row.acceptedByEmail === undefined || row.acceptedByEmail === null
+        ? null
+        : String(row.acceptedByEmail),
+    acceptedAt:
+      row.acceptedAt instanceof Date
+        ? row.acceptedAt.toISOString()
+        : String(row.acceptedAt),
+  };
+};
+
+const hydrateEmailingDomainRow = (
+  row: Record<string, unknown>,
+): PersistedEmailingDomainRow =>
+  Object.freeze({
+    id: uuid(row.id),
+    workspaceId: uuid(row.workspaceId),
+    domain: String(row.domain),
+    status: row.status as EmailingDomainStatusValue,
+    verificationRecords:
+      row.verificationRecords === undefined || row.verificationRecords === null
+        ? null
+        : (row.verificationRecords as Array<Record<string, unknown>>),
+    verifiedAt:
+      row.verifiedAt === undefined || row.verifiedAt === null
+        ? null
+        : row.verifiedAt instanceof Date
+          ? row.verifiedAt
+          : new Date(String(row.verifiedAt)),
+    tenantStatus: row.tenantStatus as EmailingDomainTenantStatusValue,
+    unsubscribeHostname:
+      row.unsubscribeHostname === undefined || row.unsubscribeHostname === null
+        ? null
+        : String(row.unsubscribeHostname),
+    unsubscribeHostnameId:
+      row.unsubscribeHostnameId === undefined ||
+      row.unsubscribeHostnameId === null
+        ? null
+        : String(row.unsubscribeHostnameId),
+    unsubscribeHostnameStatus:
+      row.unsubscribeHostnameStatus === undefined ||
+      row.unsubscribeHostnameStatus === null
+        ? null
+        : (row.unsubscribeHostnameStatus as UnsubscribeHostnameStatusValue),
+    createdAt:
+      row.createdAt instanceof Date
+        ? row.createdAt
+        : new Date(String(row.createdAt)),
+    updatedAt:
+      row.updatedAt instanceof Date
+        ? row.updatedAt
+        : new Date(String(row.updatedAt)),
+  });
+
+const hydrateDpaAgreementRow = (
+  row: Record<string, unknown>,
+): PersistedDpaAgreementRow =>
+  Object.freeze({
+    id: uuid(row.id),
+    workspaceId: uuid(row.workspaceId),
+    type: row.type as DpaAgreementTypeValue,
+    templateVersion: String(row.templateVersion),
+    region: String(row.region),
+    processorEntity: String(row.processorEntity),
+    ...(row.customerLegalEntityName !== undefined &&
+    row.customerLegalEntityName !== null
+      ? { customerLegalEntityName: String(row.customerLegalEntityName) }
+      : {}),
+    ...(row.signatoryName !== undefined && row.signatoryName !== null
+      ? { signatoryName: String(row.signatoryName) }
+      : {}),
+    ...(row.signatoryTitle !== undefined && row.signatoryTitle !== null
+      ? { signatoryTitle: String(row.signatoryTitle) }
+      : {}),
+    ...(row.signedFileId !== undefined && row.signedFileId !== null
+      ? { signedFileId: uuid(row.signedFileId) }
+      : {}),
+    ...(row.acceptedByUserId !== undefined && row.acceptedByUserId !== null
+      ? { acceptedByUserId: uuid(row.acceptedByUserId) }
+      : {}),
+    ...(row.acceptedByEmail !== undefined && row.acceptedByEmail !== null
+      ? { acceptedByEmail: String(row.acceptedByEmail) }
+      : {}),
+    acceptedAt:
+      row.acceptedAt instanceof Date
+        ? row.acceptedAt
+        : new Date(String(row.acceptedAt)),
     createdAt:
       row.createdAt instanceof Date
         ? row.createdAt
@@ -1743,6 +2077,663 @@ export const runAuditedPublicDomainDelete = async (
       }
 
       return { deleted: true };
+    }),
+  );
+};
+
+export const runAuditedEmailingDomainCreate = async (
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    domain,
+    status,
+    verificationRecords,
+    verifiedAt,
+    onAlreadyRegistered,
+  }: {
+    domain: string;
+    status: EmailingDomainStatusValue;
+    verificationRecords: Array<Record<string, unknown>> | null;
+    verifiedAt: Date | null;
+    onAlreadyRegistered: (existingWorkspaceId: string) => never;
+  },
+): Promise<PersistedEmailingDomainRow> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Emailing domain audit requires core DataSource');
+  }
+  const formattedDomain = domain.trim().toLowerCase();
+  if (formattedDomain.length === 0) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Emailing domain is invalid');
+  }
+  if (!EMAILING_DOMAIN_STATUS_VALUES.has(status)) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Emailing domain status is invalid');
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+      await runner.query(
+        `SELECT pg_advisory_xact_lock(hashtext('emailing_domain'), hashtext($1))`,
+        [formattedDomain],
+      );
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('Emailing domain audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const [existing] = await runner.query(
+        `SELECT id,"workspaceId" FROM core."emailingDomain" WHERE domain=$1 FOR UPDATE`,
+        [formattedDomain],
+      );
+      if (existing) {
+        return onAlreadyRegistered(uuid(existing.workspaceId));
+      }
+
+      const [inserted] = await runner.query(
+        `INSERT INTO core."emailingDomain" (
+           "id","workspaceId","domain","status","verificationRecords","verifiedAt",
+           "tenantStatus","unsubscribeHostname","unsubscribeHostnameId","unsubscribeHostnameStatus",
+           "createdAt","updatedAt"
+         )
+         VALUES (
+           gen_random_uuid(),$1,$2,$3,$4::jsonb,$5,'ACTIVE',NULL,NULL,NULL,now(),now()
+         )
+         RETURNING to_jsonb("emailingDomain") AS row`,
+        [
+          request.workspaceId,
+          formattedDomain,
+          status,
+          verificationRecords === null
+            ? null
+            : JSON.stringify(verificationRecords),
+          verifiedAt,
+        ],
+      );
+      if (!inserted?.row) {
+        throw new Error('Emailing domain insert did not return row');
+      }
+      const afterRow = inserted.row as Record<string, unknown>;
+      const resourceId = uuid(afterRow.id);
+      if (
+        uuid(afterRow.workspaceId) !== request.workspaceId ||
+        afterRow.domain !== formattedDomain ||
+        afterRow.status !== status ||
+        afterRow.tenantStatus !== 'ACTIVE'
+      ) {
+        throw new Error('Emailing domain persisted row failed validation');
+      }
+
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      audit.record({
+        resourceKind: 'emailingDomain',
+        resourceId,
+        action: 'create',
+        before: null,
+        after: projectEmailingDomain(afterRow),
+        securityDescriptor: {
+          resourceKind: 'emailingDomain',
+          resourceId,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+
+      const expectedSerialized = canonicalAuditJson(
+        scalarWithoutTimestamps(afterRow),
+      );
+      await audit.flush();
+      const [postFlush] = await runner.query(
+        `SELECT to_jsonb(ed) AS row FROM core."emailingDomain" ed WHERE ed.id=$1`,
+        [resourceId],
+      );
+      if (
+        !postFlush?.row ||
+        canonicalAuditJson(
+          scalarWithoutTimestamps(postFlush.row as Record<string, unknown>),
+        ) !== expectedSerialized
+      ) {
+        throw new Error('Emailing domain state changed during audit flush');
+      }
+
+      return hydrateEmailingDomainRow(afterRow);
+    }),
+  );
+};
+
+export const runAuditedEmailingDomainUpdate = async (
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    emailingDomainId,
+    patch,
+    onNotFound,
+  }: {
+    emailingDomainId: string;
+    patch: {
+      status?: EmailingDomainStatusValue;
+      verificationRecords?: Array<Record<string, unknown>> | null;
+      verifiedAt?: Date | null;
+      unsubscribeHostname?: string | null;
+      unsubscribeHostnameId?: string | null;
+      unsubscribeHostnameStatus?: UnsubscribeHostnameStatusValue | null;
+    };
+    onNotFound?: () => never;
+  },
+): Promise<{ updated: boolean; row: PersistedEmailingDomainRow | null }> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Emailing domain audit requires core DataSource');
+  }
+  let normalizedId: string;
+  try {
+    normalizedId = uuid(emailingDomainId);
+  } catch (error) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw error;
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('Emailing domain audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const [beforeEntry] = await runner.query(
+        `SELECT to_jsonb(ed) AS row FROM core."emailingDomain" ed WHERE ed.id=$1 AND ed."workspaceId"=$2 FOR UPDATE`,
+        [normalizedId, request.workspaceId],
+      );
+      if (!beforeEntry?.row) {
+        if (onNotFound) {
+          return onNotFound();
+        }
+        return { updated: false, row: null };
+      }
+      const beforeRow = beforeEntry.row as Record<string, unknown>;
+      const beforeProj = projectEmailingDomain(beforeRow);
+
+      const nextStatus =
+        patch.status !== undefined ? patch.status : beforeProj.status;
+      const nextVerificationRecords =
+        patch.verificationRecords !== undefined
+          ? patch.verificationRecords
+          : beforeProj.verificationRecords;
+      const nextVerifiedAt =
+        patch.verifiedAt !== undefined
+          ? patch.verifiedAt
+          : beforeRow.verifiedAt === undefined || beforeRow.verifiedAt === null
+            ? null
+            : new Date(String(beforeRow.verifiedAt));
+      const nextUnsubscribeHostname =
+        patch.unsubscribeHostname !== undefined
+          ? patch.unsubscribeHostname
+          : beforeProj.unsubscribeHostname;
+      const nextUnsubscribeHostnameId =
+        patch.unsubscribeHostnameId !== undefined
+          ? patch.unsubscribeHostnameId
+          : beforeProj.unsubscribeHostnameId;
+      const nextUnsubscribeHostnameStatus =
+        patch.unsubscribeHostnameStatus !== undefined
+          ? patch.unsubscribeHostnameStatus
+          : beforeProj.unsubscribeHostnameStatus;
+
+      await runner.query(
+        `UPDATE core."emailingDomain"
+            SET status=$1,
+                "verificationRecords"=$2::jsonb,
+                "verifiedAt"=$3,
+                "unsubscribeHostname"=$4,
+                "unsubscribeHostnameId"=$5,
+                "unsubscribeHostnameStatus"=$6,
+                "updatedAt"=now()
+          WHERE id=$7 AND "workspaceId"=$8`,
+        [
+          nextStatus,
+          nextVerificationRecords === null
+            ? null
+            : JSON.stringify(nextVerificationRecords),
+          nextVerifiedAt,
+          nextUnsubscribeHostname,
+          nextUnsubscribeHostnameId,
+          nextUnsubscribeHostnameStatus,
+          normalizedId,
+          request.workspaceId,
+        ],
+      );
+
+      const [updated] = await runner.query(
+        `SELECT to_jsonb(ed) AS row FROM core."emailingDomain" ed WHERE ed.id=$1 AND ed."workspaceId"=$2`,
+        [normalizedId, request.workspaceId],
+      );
+      if (!updated?.row) {
+        throw new Error('Emailing domain update did not return row');
+      }
+      const afterRow = updated.row as Record<string, unknown>;
+      const afterProj = projectEmailingDomain(afterRow);
+
+      if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+        const audit = new CrmAuditTransactionContext(runner, operation);
+        audit.record({
+          resourceKind: 'emailingDomain',
+          resourceId: normalizedId,
+          action: 'update',
+          before: beforeProj,
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'emailingDomain',
+            resourceId: normalizedId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+
+        const expectedSerialized = canonicalAuditJson(
+          scalarWithoutTimestamps(afterRow),
+        );
+        await audit.flush();
+        const [postFlush] = await runner.query(
+          `SELECT to_jsonb(ed) AS row FROM core."emailingDomain" ed WHERE ed.id=$1`,
+          [normalizedId],
+        );
+        if (
+          !postFlush?.row ||
+          canonicalAuditJson(
+            scalarWithoutTimestamps(postFlush.row as Record<string, unknown>),
+          ) !== expectedSerialized
+        ) {
+          throw new Error('Emailing domain state changed during audit flush');
+        }
+      }
+
+      return {
+        updated:
+          canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj),
+        row: hydrateEmailingDomainRow(afterRow),
+      };
+    }),
+  );
+};
+
+export const runAuditedEmailingDomainTenantStatusUpdate = async (
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    tenantStatus,
+  }: {
+    tenantStatus: EmailingDomainTenantStatusValue;
+  },
+): Promise<{ affected: number }> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Emailing domain audit requires core DataSource');
+  }
+  if (!EMAILING_DOMAIN_TENANT_STATUS_VALUES.has(tenantStatus)) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Emailing domain tenantStatus is invalid');
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('Emailing domain audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const beforeEntries: Array<{ row: Record<string, unknown> }> =
+        await runner.query(
+          `SELECT to_jsonb(ed) AS row
+             FROM core."emailingDomain" ed
+            WHERE ed."workspaceId"=$1 AND ed."tenantStatus"::text <> 'SANDBOX'
+            ORDER BY ed.id ASC
+            FOR UPDATE`,
+          [request.workspaceId],
+        );
+      if (beforeEntries.length === 0) {
+        return { affected: 0 };
+      }
+
+      const beforeById = new Map<string, Record<string, unknown>>();
+      for (const entry of beforeEntries) {
+        const row = entry.row;
+        beforeById.set(uuid(row.id), row);
+      }
+
+      await runner.query(
+        `UPDATE core."emailingDomain"
+            SET "tenantStatus"=$1,
+                "updatedAt"=now()
+          WHERE "workspaceId"=$2 AND "tenantStatus"::text <> 'SANDBOX'`,
+        [tenantStatus, request.workspaceId],
+      );
+
+      const afterEntries: Array<{ row: Record<string, unknown> }> =
+        await runner.query(
+          `SELECT to_jsonb(ed) AS row
+             FROM core."emailingDomain" ed
+            WHERE ed."workspaceId"=$1 AND ed."tenantStatus"::text <> 'SANDBOX'
+            ORDER BY ed.id ASC`,
+          [request.workspaceId],
+        );
+
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      let recordedCount = 0;
+      const expectedSerializedById = new Map<string, string>();
+      for (const entry of afterEntries) {
+        const afterRow = entry.row;
+        const rowId = uuid(afterRow.id);
+        const beforeRow = beforeById.get(rowId);
+        if (!beforeRow) {
+          throw new Error(
+            'Emailing domain tenantStatus update changed candidate set',
+          );
+        }
+        const beforeProj = projectEmailingDomain(beforeRow);
+        const afterProj = projectEmailingDomain(afterRow);
+        expectedSerializedById.set(
+          rowId,
+          canonicalAuditJson(scalarWithoutTimestamps(afterRow)),
+        );
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          audit.record({
+            resourceKind: 'emailingDomain',
+            resourceId: rowId,
+            action: 'update',
+            before: beforeProj,
+            after: afterProj,
+            securityDescriptor: {
+              resourceKind: 'emailingDomain',
+              resourceId: rowId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedCount += 1;
+        }
+      }
+
+      if (recordedCount > 0) {
+        await audit.flush();
+        const postFlushEntries: Array<{ row: Record<string, unknown> }> =
+          await runner.query(
+            `SELECT to_jsonb(ed) AS row
+               FROM core."emailingDomain" ed
+              WHERE ed."workspaceId"=$1 AND ed.id = ANY($2::uuid[])
+              ORDER BY ed.id ASC`,
+            [request.workspaceId, [...expectedSerializedById.keys()]],
+          );
+        if (postFlushEntries.length !== expectedSerializedById.size) {
+          throw new Error('Emailing domain state changed during audit flush');
+        }
+        for (const entry of postFlushEntries) {
+          const pfRow = entry.row;
+          const rowId = uuid(pfRow.id);
+          if (
+            canonicalAuditJson(scalarWithoutTimestamps(pfRow)) !==
+            expectedSerializedById.get(rowId)
+          ) {
+            throw new Error('Emailing domain state changed during audit flush');
+          }
+        }
+      }
+
+      return { affected: beforeEntries.length };
+    }),
+  );
+};
+
+export const runAuditedEmailingDomainDelete = async (
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    emailingDomainId,
+    domain,
+    onNotFound,
+  }: {
+    emailingDomainId?: string;
+    domain?: string;
+    onNotFound?: () => never;
+  },
+): Promise<{ deleted: boolean; row: PersistedEmailingDomainRow | null }> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Emailing domain audit requires core DataSource');
+  }
+  const normalizedId =
+    emailingDomainId !== undefined ? uuid(emailingDomainId) : undefined;
+  const formattedDomain =
+    domain !== undefined ? domain.trim().toLowerCase() : undefined;
+  if (normalizedId === undefined && !formattedDomain) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Emailing domain delete requires id or domain');
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('Emailing domain audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const [beforeEntry] =
+        normalizedId !== undefined
+          ? await runner.query(
+              `SELECT to_jsonb(ed) AS row FROM core."emailingDomain" ed WHERE ed.id=$1 AND ed."workspaceId"=$2 FOR UPDATE`,
+              [normalizedId, request.workspaceId],
+            )
+          : await runner.query(
+              `SELECT to_jsonb(ed) AS row FROM core."emailingDomain" ed WHERE ed.domain=$1 AND ed."workspaceId"=$2 FOR UPDATE`,
+              [formattedDomain, request.workspaceId],
+            );
+      if (!beforeEntry?.row) {
+        if (onNotFound) {
+          return onNotFound();
+        }
+        return { deleted: false, row: null };
+      }
+      const beforeRow = beforeEntry.row as Record<string, unknown>;
+      const resourceId = uuid(beforeRow.id);
+
+      await runner.query(
+        `DELETE FROM core."emailingDomain" WHERE id=$1 AND "workspaceId"=$2`,
+        [resourceId, request.workspaceId],
+      );
+      const [remaining] = await runner.query(
+        `SELECT id FROM core."emailingDomain" WHERE id=$1`,
+        [resourceId],
+      );
+      if (remaining) {
+        throw new Error('Emailing domain delete did not remove row');
+      }
+
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      audit.record({
+        resourceKind: 'emailingDomain',
+        resourceId,
+        action: 'delete',
+        before: projectEmailingDomain(beforeRow),
+        after: null,
+        securityDescriptor: {
+          resourceKind: 'emailingDomain',
+          resourceId,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+
+      await audit.flush();
+      const [postFlush] = await runner.query(
+        `SELECT id FROM core."emailingDomain" WHERE id=$1`,
+        [resourceId],
+      );
+      if (postFlush) {
+        throw new Error('Emailing domain state changed during audit flush');
+      }
+
+      return { deleted: true, row: hydrateEmailingDomainRow(beforeRow) };
+    }),
+  );
+};
+
+export const runAuditedDpaAgreementCreate = async (
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    record,
+    expectedUserId,
+  }: {
+    record: {
+      workspaceId: string;
+      type: DpaAgreementTypeValue;
+      templateVersion: string;
+      region: string;
+      processorEntity: string;
+      customerLegalEntityName?: string;
+      signatoryName?: string;
+      signatoryTitle?: string;
+      signedFileId?: string;
+      acceptedByUserId?: string;
+      acceptedByEmail?: string;
+      acceptedAt: Date;
+    };
+    expectedUserId?: string;
+  },
+): Promise<PersistedDpaAgreementRow> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('DPA agreement audit requires core DataSource');
+  }
+  if (uuid(record.workspaceId) !== request.workspaceId) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('DPA agreement workspace mismatch');
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('DPA agreement audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+      const operationUserId =
+        request.expectedUserId ??
+        (operation.actor.kind === 'coreUser'
+          ? uuid(operation.actor.id)
+          : undefined);
+      if (
+        operationUserId !== undefined &&
+        ((expectedUserId !== undefined &&
+          uuid(expectedUserId) !== operationUserId) ||
+          (record.acceptedByUserId !== undefined &&
+            uuid(record.acceptedByUserId) !== operationUserId))
+      ) {
+        throw new Error(
+          'DPA agreement audit actor mismatch with acceptedByUserId',
+        );
+      }
+
+      const [inserted] = await runner.query(
+        `INSERT INTO core."dpaAgreement" (
+           "id","workspaceId","type","templateVersion","region","processorEntity",
+           "customerLegalEntityName","signatoryName","signatoryTitle","signedFileId",
+           "acceptedByUserId","acceptedByEmail","acceptedAt","createdAt","updatedAt"
+         )
+         VALUES (
+           gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,now(),now()
+         )
+         RETURNING to_jsonb("dpaAgreement") AS row`,
+        [
+          request.workspaceId,
+          record.type,
+          record.templateVersion,
+          record.region,
+          record.processorEntity,
+          record.customerLegalEntityName ?? null,
+          record.signatoryName ?? null,
+          record.signatoryTitle ?? null,
+          record.signedFileId ? uuid(record.signedFileId) : null,
+          record.acceptedByUserId ? uuid(record.acceptedByUserId) : null,
+          record.acceptedByEmail ?? null,
+          record.acceptedAt,
+        ],
+      );
+      if (!inserted?.row) {
+        throw new Error('DPA agreement insert did not return row');
+      }
+      const afterRow = inserted.row as Record<string, unknown>;
+      const resourceId = uuid(afterRow.id);
+      if (
+        uuid(afterRow.workspaceId) !== request.workspaceId ||
+        afterRow.type !== record.type ||
+        afterRow.templateVersion !== record.templateVersion ||
+        afterRow.region !== record.region
+      ) {
+        throw new Error('DPA agreement persisted row failed validation');
+      }
+
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      audit.record({
+        resourceKind: 'dpaAgreement',
+        resourceId,
+        action: 'create',
+        before: null,
+        after: projectDpaAgreement(afterRow),
+        securityDescriptor: {
+          resourceKind: 'dpaAgreement',
+          resourceId,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+
+      const expectedSerialized = canonicalAuditJson(
+        scalarWithoutTimestamps(afterRow),
+      );
+      await audit.flush();
+      const [postFlush] = await runner.query(
+        `SELECT to_jsonb(da) AS row FROM core."dpaAgreement" da WHERE da.id=$1`,
+        [resourceId],
+      );
+      if (
+        !postFlush?.row ||
+        canonicalAuditJson(
+          scalarWithoutTimestamps(postFlush.row as Record<string, unknown>),
+        ) !== expectedSerialized
+      ) {
+        throw new Error('DPA agreement state changed during audit flush');
+      }
+
+      return hydrateDpaAgreementRow(afterRow);
     }),
   );
 };

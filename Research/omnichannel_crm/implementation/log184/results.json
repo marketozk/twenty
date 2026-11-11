@@ -1,0 +1,37 @@
+{
+  "log": "LOG-184",
+  "issue": "ROB-765",
+  "date": "2026-11-11",
+  "title": "Transactional audit of emailingDomain (core.emailingDomain) and dpaAgreement (core.dpaAgreement) lifecycle",
+  "targetedPostgres": {
+    "suitesPassed": 2,
+    "suitesTotal": 2,
+    "testsPassed": 14,
+    "testsTotal": 14,
+    "newPostgresTests": 2,
+    "durationSeconds": 6.808
+  },
+  "fullRegression": {
+    "suitesPassed": 128,
+    "suitesTotal": 128,
+    "testsPassed": 3198,
+    "testsTotal": 3198,
+    "durationSeconds": 711.165
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.197
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 496,
+    "currentRootFiles": 496,
+    "baselineDiagnostics": 262,
+    "currentDiagnostics": 262,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 14
+}

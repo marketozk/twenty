@@ -99,6 +99,33 @@ const CATALOG: Record<
     values: ['applicationId', 'isValidated'],
     redacted: ['domain'],
   },
+  emailingDomain: {
+    values: ['status', 'tenantStatus', 'unsubscribeHostnameStatus'],
+    redacted: [
+      'domain',
+      'verificationRecords',
+      'verifiedAt',
+      'unsubscribeHostname',
+      'unsubscribeHostnameId',
+    ],
+  },
+  dpaAgreement: {
+    values: [
+      'type',
+      'templateVersion',
+      'region',
+      'signedFileId',
+      'acceptedByUserId',
+    ],
+    redacted: [
+      'processorEntity',
+      'customerLegalEntityName',
+      'signatoryName',
+      'signatoryTitle',
+      'acceptedByEmail',
+      'acceptedAt',
+    ],
+  },
   webhook: {
     values: ['applicationId'],
     redacted: ['targetUrl', 'operations', 'description', 'secret'],
@@ -674,6 +701,8 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   featureFlag: ['create', 'update'],
   approvedAccessDomain: ['create', 'update', 'delete'],
   publicDomain: ['create', 'update', 'delete'],
+  emailingDomain: ['create', 'update', 'delete'],
+  dpaAgreement: ['create'],
   webhook: ['create', 'update', 'delete'],
   connectionProvider: ['create', 'update', 'delete'],
   skill: ['create', 'update', 'delete'],

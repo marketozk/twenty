@@ -5313,22 +5313,19 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 отправлен в GitHub, ref подтверждён через API. Описание ROB765, комментарий
 3dd19925-f29b-444d-b210-ef3364d39194 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log183/publication.json).
-Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG184` `view` / `viewFieldGroup` / `viewField` / `viewFilterGroup` / `viewFilter` / `viewSort` / `viewGroup`).
+Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG184` `emailingDomain` / `dpaAgreement`).
 
+## LOG-184 - транзакционный аудит полного жизненного цикла почтовых доменов (`emailingDomain`, `core."emailingDomain"`) и соглашений об обработке данных (`dpaAgreement`, `core."dpaAgreement"`)
 
+11.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log184/design.md), [design-review.md](implementation/log184/design-review.md)) и реализован участок `LOG-184` (Linear `ROB-765`): транзакционный аудит полного жизненного цикла почтовых доменов (`core."emailingDomain"`) и соглашений об обработке данных (`core."dpaAgreement"`).
 
+В `crm-audit.types.ts` и `crm-audit-transaction-context.ts` добавлены виды ресурсов `emailingDomain` (`values: ['status', 'tenantStatus', 'unsubscribeHostnameStatus']`, `redacted: ['domain', 'verificationRecords', 'verifiedAt', 'unsubscribeHostname', 'unsubscribeHostnameId']`, действия `['create', 'update', 'delete']`) и `dpaAgreement` (`values: ['type', 'templateVersion', 'region', 'signedFileId', 'acceptedByUserId']`, `redacted: ['processorEntity', 'customerLegalEntityName', 'signatoryName', 'signatoryTitle', 'acceptedByEmail', 'acceptedAt']`, действия `['create']`). В `workspace-domain-audit.ts` добавлены `projectEmailingDomain`, `projectDpaAgreement`, `runAuditedEmailingDomainCreate`, `runAuditedEmailingDomainUpdate`, `runAuditedEmailingDomainTenantStatusUpdate`, `runAuditedEmailingDomainDelete` и `runAuditedDpaAgreementCreate` с блокировкой `core.workspace` (`FOR NO KEY UPDATE`) и целевых строк (`FOR UPDATE`), проверкой субъекта операции (`resolveWorkspaceDomainOperation`), записью `emailingDomain:create` / `update` / `delete` и `dpaAgreement:create` и повторной сверкой снимков после `audit.flush()`. Подключены `EmailingDomainResolver`, `EmailingDomainService` (`createEmailingDomain`, `ensureEmailingDomain`, `verifyEmailingDomain`, `deleteEmailingDomain`, `deleteEmailingDomainByDomainIfExists`, `syncUnsubscribeHostname`), `EmailingDomainTenantStatusService.setTenantStatusForWorkspace`, `OutboundSendingStateHandlerService.handle`, `CheckEmailingDomainVerificationCronJob`, `MessageChannelMetadataService` (`createEmailGroupChannel`, `deleteEmailGroupChannel`), `seedEmailingDomains`, `DpaResolver.generateSignedDpa` и `DpaService.generateSignedDpa`.
 
+11.11.2026 проверки LOG184 завершены. 3198 tests/128 suites PASS (711.165s). 14 targeted/2 suites PASS (6.808s), 2 новых PostgreSQL случая. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 496/496 roots, baseline 262 / current 262 diagnostics, 0 новых/changed-code. Совпали 14 local/remote source hashes.
 
+Независимое ревью кода подтвердило полноту закрытия всех входных точек `emailingDomain` и `dpaAgreement`, редактирование чувствительных метаданных (`domain`, `verificationRecords`, `verifiedAt`, `unsubscribeHostname`, `unsubscribeHostnameId`, `processorEntity`, `customerLegalEntityName`, `signatoryName`, `signatoryTitle`, `acceptedByEmail`, `acceptedAt`), корректную обработку `NativeTransactionOutcomeUnknownError` и чистоту границы Enterprise (`0` нарушений).
 
-
-
-
-
-
-
-
-
-
-
-
-
+[Результаты](implementation/log184/results.json), [ревью](implementation/log184/review.md),
+[следующий участок](implementation/log184/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

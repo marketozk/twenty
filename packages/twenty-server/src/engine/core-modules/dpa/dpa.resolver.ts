@@ -1,10 +1,18 @@
 import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
-import { Args, Mutation, Parent, Query, ResolveField } from '@nestjs/graphql';
+import {
+  Args,
+  Context,
+  Mutation,
+  Parent,
+  Query,
+  ResolveField,
+} from '@nestjs/graphql';
 
 import { PermissionFlagType } from 'twenty-shared/constants';
 
 import { CoreResolver } from 'src/engine/api/graphql/graphql-config/decorators/core-resolver.decorator';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
+import { type WorkspaceDomainAuditIdentity } from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { DpaDocumentDTO } from 'src/engine/core-modules/dpa/dtos/dpa-document.dto';
 import { GenerateSignedDpaInput } from 'src/engine/core-modules/dpa/dtos/generate-signed-dpa.input';
 import { GenerateSignedDpaResult } from 'src/engine/core-modules/dpa/dtos/generate-signed-dpa.result';
@@ -58,12 +66,14 @@ export class DpaResolver {
     @AuthWorkspace() workspace: WorkspaceEntity,
     @AuthUser() user: UserEntity,
     @Args('input') input: GenerateSignedDpaInput,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ): Promise<GenerateSignedDpaResult> {
     return this.dpaService.generateSignedDpa({
       workspace,
       userId: user.id,
       userEmail: user.email,
       input,
+      ...(context !== undefined ? { auditIdentity: context.req } : {}),
     });
   }
 

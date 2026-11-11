@@ -13,6 +13,9 @@ export class OutboundSendingStateHandlerService {
     await this.emailingDomainTenantStatusService.setTenantStatusForWorkspace(
       event.workspaceId,
       event.status,
+      {
+        defaultSystemActorId: OutboundSendingStateHandlerService.name,
+      },
     );
   }
 }
