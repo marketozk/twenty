@@ -5329,3 +5329,9 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 [следующий участок](implementation/log184/next-boundary.md). ROB765 остаётся
 In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
 Публикация и сверка Linear фиксируются после push.
+
+11.11.2026 LOG184 опубликован. Code 2040cd5663332bf4c550bf7742d6cac405b13e3b
+отправлен в GitHub, ref подтверждён через API. Описание ROB765, комментарий
+9b0e6416-6b87-4435-ab10-2e9e59f667c8 и все 11 состояний задач прочитаны обратно
+и совпали. [Публикация](implementation/log184/publication.json).
+Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG185` `unsubscribeTopic` / `ssoIdentityProvider`).
