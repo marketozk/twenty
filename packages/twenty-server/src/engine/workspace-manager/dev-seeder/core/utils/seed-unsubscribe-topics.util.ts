@@ -1,5 +1,11 @@
+import { randomUUID } from 'node:crypto';
 import { type QueryRunner } from 'typeorm';
 
+import {
+  captureCrmAuditOperation,
+  CrmAuditTransactionContext,
+} from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
+import { projectUnsubscribeTopic } from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { UnsubscribeTopicVisibility } from 'src/engine/core-modules/emailing-domain/types/unsubscribe-topic-visibility.type';
 import { generateSeedId } from 'src/engine/workspace-manager/dev-seeder/core/utils/generate-seed-id.util';
 
@@ -52,6 +58,14 @@ export const seedUnsubscribeTopics = async ({
 }: SeedUnsubscribeTopicsArgs) => {
   const topicIds = getSeededUnsubscribeTopicIds(workspaceId);
 
+  const existingRows: Array<{ id: string }> = await queryRunner.query(
+    `SELECT id FROM ${schemaName}."${tableName}" WHERE "workspaceId"=$1`,
+    [workspaceId],
+  );
+  const existingIds = new Set(
+    existingRows.map((row) => String(row.id).toLowerCase()),
+  );
+
   await queryRunner.manager
     .createQueryBuilder()
     .insert()
@@ -75,4 +89,46 @@ export const seedUnsubscribeTopics = async ({
       ),
     )
     .execute();
+
+  const [auditReg] = await queryRunner.query(
+    `SELECT to_regclass('crm_audit."crmAuditEntry"') IS NOT NULL AS "hasAudit"`,
+  );
+  if (auditReg?.hasAudit === true) {
+    const afterEntries: Array<{ row: Record<string, unknown> }> =
+      await queryRunner.query(
+        `SELECT to_jsonb(ut) AS row FROM ${schemaName}."${tableName}" ut WHERE ut."workspaceId"=$1 ORDER BY ut.id ASC`,
+        [workspaceId],
+      );
+    const createdRows = afterEntries
+      .map((entry) => entry.row)
+      .filter((row) => !existingIds.has(String(row.id).toLowerCase()));
+    if (createdRows.length > 0) {
+      const operation = captureCrmAuditOperation({
+        workspaceId,
+        operationId: randomUUID(),
+        actor: {
+          kind: 'system',
+          id: 'dev-seeder:seed-unsubscribe-topics',
+        },
+        correlationId: randomUUID(),
+      });
+      const audit = new CrmAuditTransactionContext(queryRunner, operation);
+      for (const row of createdRows) {
+        const resourceId = String(row.id).toLowerCase();
+        audit.record({
+          resourceKind: 'unsubscribeTopic',
+          resourceId,
+          action: 'create',
+          before: null,
+          after: projectUnsubscribeTopic(row),
+          securityDescriptor: {
+            resourceKind: 'unsubscribeTopic',
+            resourceId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+      }
+      await audit.flush();
+    }
+  }
 };

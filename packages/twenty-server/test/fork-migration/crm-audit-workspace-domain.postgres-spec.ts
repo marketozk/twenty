@@ -19,8 +19,13 @@ import {
 import { EmailingDomainStatus } from 'src/engine/core-modules/emailing-domain/drivers/types/emailing-domain-status.type';
 import { EmailingDomainTenantStatus } from 'src/engine/core-modules/emailing-domain/drivers/types/emailing-domain-tenant-status.type';
 import { UnsubscribeHostnameStatus } from 'src/engine/core-modules/emailing-domain/drivers/types/unsubscribe-hostname-status.type';
+import { UnsubscribeTopicVisibility } from 'src/engine/core-modules/emailing-domain/types/unsubscribe-topic-visibility.type';
 import { DpaAgreementType } from 'src/engine/core-modules/dpa/enums/dpa-agreement-type.enum';
 import { DpaRegion } from 'src/engine/core-modules/dpa/enums/dpa-region.enum';
+import {
+  SsoException,
+  SsoExceptionCode,
+} from 'src/engine/core-modules/sso/sso.exception';
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 
 jest.mock('twenty-emails', () => ({
@@ -216,6 +221,26 @@ for (const [modPath, names] of [
     ['WorkspaceMemberWorkspaceEntity'],
   ],
   ['src/engine/guards/application-target.guard', ['ApplicationTargetGuard']],
+  [
+    'src/engine/core-modules/auth/guards/enterprise-features-enabled.guard',
+    ['EnterpriseFeaturesEnabledGuard'],
+  ],
+  [
+    'src/engine/core-modules/sso/filters/sso-graphql-api-exception.filter',
+    ['SsoGraphqlApiExceptionFilter'],
+  ],
+  [
+    'src/engine/core-modules/billing/services/billing.service',
+    ['BillingService'],
+  ],
+  [
+    'src/engine/core-modules/exception-handler/exception-handler.service',
+    ['ExceptionHandlerService'],
+  ],
+  [
+    'src/engine/core-modules/secure-http-client/secure-http-client.service',
+    ['SecureHttpClientService'],
+  ],
 ] as const) {
   jest.doMock(modPath, () =>
     Object.fromEntries(names.map((name) => [name, class {}])),
@@ -263,6 +288,7 @@ for (const [modPath, names] of [
   ],
   ['src/engine/decorators/auth/auth-workspace.decorator', ['AuthWorkspace']],
   ['src/engine/guards/auth-principal.guard', ['AuthPrincipalGuard']],
+  ['src/engine/guards/feature-flag.guard', ['FeatureFlagGuard']],
   ['src/engine/guards/settings-permission.guard', ['SettingsPermissionGuard']],
   [
     'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator',
@@ -311,6 +337,40 @@ jest.doMock(
   }),
 );
 
+const UnsubscribeTopicEntity = class UnsubscribeTopicEntity {};
+jest.doMock(
+  'src/engine/core-modules/emailing-domain/unsubscribe-topic.entity',
+  () => ({
+    UnsubscribeTopicEntity,
+  }),
+);
+
+const WorkspaceSsoIdentityProviderEntity = class WorkspaceSsoIdentityProviderEntity {};
+const IdentityProviderType = {
+  OIDC: 'OIDC',
+  SAML: 'SAML',
+} as const;
+const OidcResponseType = {
+  CODE: 'code',
+  ID_TOKEN: 'id_token',
+  TOKEN: 'token',
+  NONE: 'none',
+} as const;
+const SsoIdentityProviderStatus = {
+  Active: 'Active',
+  Inactive: 'Inactive',
+  Error: 'Error',
+} as const;
+jest.doMock(
+  'src/engine/core-modules/sso/workspace-sso-identity-provider.entity',
+  () => ({
+    WorkspaceSsoIdentityProviderEntity,
+    IdentityProviderType,
+    OidcResponseType,
+    SsoIdentityProviderStatus,
+  }),
+);
+
 jest.doMock('src/engine/core-modules/dpa/pdf/render-dpa-to-pdf.util', () => ({
   renderDpaToPdfBuffer: jest.fn(async () => Buffer.from('%PDF-1.4 mock dpa')),
 }));
@@ -347,6 +407,16 @@ const { DpaService } =
   require('src/engine/core-modules/dpa/services/dpa.service') as typeof import('src/engine/core-modules/dpa/services/dpa.service');
 const { DpaResolver } =
   require('src/engine/core-modules/dpa/dpa.resolver') as typeof import('src/engine/core-modules/dpa/dpa.resolver');
+const { UnsubscribeTopicService } =
+  require('src/modules/emailing/services/unsubscribe-topic.service') as typeof import('src/modules/emailing/services/unsubscribe-topic.service');
+const { UnsubscribeTopicResolver } =
+  require('src/modules/emailing/resolvers/unsubscribe-topic.resolver') as typeof import('src/modules/emailing/resolvers/unsubscribe-topic.resolver');
+const { seedUnsubscribeTopics } =
+  require('src/engine/workspace-manager/dev-seeder/core/utils/seed-unsubscribe-topics.util') as typeof import('src/engine/workspace-manager/dev-seeder/core/utils/seed-unsubscribe-topics.util');
+const { SsoService } =
+  require('src/engine/core-modules/sso/services/sso.service') as typeof import('src/engine/core-modules/sso/services/sso.service');
+const { SsoResolver } =
+  require('src/engine/core-modules/sso/sso.resolver') as typeof import('src/engine/core-modules/sso/sso.resolver');
 
 jest.setTimeout(120000);
 
@@ -463,6 +533,42 @@ const entities = [
       updatedAt: { type: 'timestamptz' },
     },
   }),
+  new EntitySchema({
+    name: 'UnsubscribeTopicEntity',
+    target: UnsubscribeTopicEntity,
+    schema: 'core',
+    tableName: 'unsubscribeTopic',
+    columns: {
+      id: { type: 'uuid', primary: true, generated: 'uuid' },
+      workspaceId: { type: 'uuid' },
+      name: { type: 'varchar', nullable: true },
+      description: { type: 'varchar', nullable: true },
+      visibility: { type: 'varchar', default: 'PRIVATE' },
+      createdAt: { type: 'timestamptz' },
+      updatedAt: { type: 'timestamptz' },
+    },
+  }),
+  new EntitySchema({
+    name: 'WorkspaceSsoIdentityProviderEntity',
+    target: WorkspaceSsoIdentityProviderEntity,
+    schema: 'core',
+    tableName: 'workspaceSSOIdentityProvider',
+    columns: {
+      id: { type: 'uuid', primary: true, generated: 'uuid' },
+      workspaceId: { type: 'uuid' },
+      name: { type: 'varchar' },
+      status: { type: 'varchar', default: 'Active' },
+      type: { type: 'varchar', default: 'OIDC' },
+      issuer: { type: 'varchar' },
+      clientID: { type: 'varchar', nullable: true },
+      clientSecret: { type: 'varchar', nullable: true },
+      ssoURL: { type: 'varchar', nullable: true },
+      certificate: { type: 'varchar', nullable: true },
+      fingerprint: { type: 'varchar', nullable: true },
+      createdAt: { type: 'timestamptz' },
+      updatedAt: { type: 'timestamptz' },
+    },
+  }),
 ];
 
 const owner = new DataSource({
@@ -536,6 +642,10 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
   >;
   let dpaService: InstanceType<typeof DpaService>;
   let dpaResolver: InstanceType<typeof DpaResolver>;
+  let unsubscribeTopicService: InstanceType<typeof UnsubscribeTopicService>;
+  let unsubscribeTopicResolver: InstanceType<typeof UnsubscribeTopicResolver>;
+  let ssoService: InstanceType<typeof SsoService>;
+  let ssoResolver: InstanceType<typeof SsoResolver>;
   const emailingDriverMock = {
     provisionWorkspace: jest.fn(async () => undefined),
     deprovisionWorkspace: jest.fn(async () => undefined),
@@ -665,6 +775,30 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
           "acceptedByUserId" uuid NULL,
           "acceptedByEmail" varchar NULL,
           "acceptedAt" timestamptz NOT NULL,
+          "createdAt" timestamptz NOT NULL DEFAULT now(),
+          "updatedAt" timestamptz NOT NULL DEFAULT now()
+        );
+        CREATE TABLE core."unsubscribeTopic" (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "workspaceId" uuid NOT NULL REFERENCES core.workspace(id) ON DELETE CASCADE,
+          name varchar NULL,
+          description varchar NULL,
+          visibility varchar NOT NULL DEFAULT 'PRIVATE',
+          "createdAt" timestamptz NOT NULL DEFAULT now(),
+          "updatedAt" timestamptz NOT NULL DEFAULT now()
+        );
+        CREATE TABLE core."workspaceSSOIdentityProvider" (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "workspaceId" uuid NOT NULL REFERENCES core.workspace(id) ON DELETE CASCADE,
+          name varchar NOT NULL,
+          status varchar NOT NULL DEFAULT 'Active',
+          type varchar NOT NULL DEFAULT 'OIDC',
+          issuer varchar NOT NULL,
+          "clientID" varchar NULL,
+          "clientSecret" varchar NULL,
+          "ssoURL" varchar NULL,
+          certificate varchar NULL,
+          fingerprint varchar NULL,
           "createdAt" timestamptz NOT NULL DEFAULT now(),
           "updatedAt" timestamptz NOT NULL DEFAULT now()
         );
@@ -986,6 +1120,33 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
     );
 
     dpaResolver = new DpaResolver(dpaService);
+
+    unsubscribeTopicService = new UnsubscribeTopicService(
+      makeScopedRepo(UnsubscribeTopicEntity) as never,
+      runtime,
+    );
+
+    unsubscribeTopicResolver = new UnsubscribeTopicResolver(
+      unsubscribeTopicService,
+      { validateEmailGroupAccessOrThrow: () => undefined } as never,
+    );
+
+    ssoService = new SsoService(
+      runtime.getRepository(WorkspaceSsoIdentityProviderEntity) as never,
+      { get: () => 'https://crm.twenty.local' } as never,
+      { hasEntitlement: async () => true } as never,
+      { captureExceptions: jest.fn() } as never,
+      { getSsrfSafeAgent: () => undefined } as never,
+      runtime,
+    );
+    jest.spyOn(ssoService, 'discoverOidcIssuer').mockImplementation(
+      async (issuerUrl: string) =>
+        ({
+          metadata: { issuer: issuerUrl.trim() },
+        }) as never,
+    );
+
+    ssoResolver = new SsoResolver(ssoService);
   });
 
   beforeEach(async () => {
@@ -1009,7 +1170,7 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
     };
 
     await owner.query(
-      'TRUNCATE TABLE crm_audit."crmAuditEntry", core."dpaAgreement", core."emailingDomain", core."applicationAuthorization", core."publicDomain", core."approvedAccessDomain", core.application, core."apiKey", core."userWorkspace", core."user", core.workspace CASCADE',
+      'TRUNCATE TABLE crm_audit."crmAuditEntry", core."workspaceSSOIdentityProvider", core."unsubscribeTopic", core."dpaAgreement", core."emailingDomain", core."applicationAuthorization", core."publicDomain", core."approvedAccessDomain", core.application, core."apiKey", core."userWorkspace", core."user", core.workspace CASCADE',
     );
     await owner.query(
       `INSERT INTO core.workspace (id, "displayName", "customDomain") VALUES ($1, 'Primary WS', 'taken-custom.twenty.io'), ($2, 'Foreign WS', NULL)`,
@@ -2008,6 +2169,390 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
       );
       await owner.query(
         'DROP FUNCTION IF EXISTS core.corrupt_log184_after_audit()',
+      );
+    }
+  });
+
+  it('audits unsubscribeTopic create, update, delete, and seedUnsubscribeTopics with redaction and post-flush tamper rollback (LOG185)', async () => {
+    const memberContext = () => ({
+      req: {
+        workspace: { id: workspaceId },
+        user: { id: actorUserId },
+        userWorkspaceId: actorUserWorkspaceId,
+        workspaceMemberId: actorMemberId,
+        impersonationContext: { impersonatorUserWorkspaceId },
+      },
+    });
+
+    // 1. Seed unsubscribe topics (3 seeded rows, idempotent on re-run)
+    const seedRunner = runtime.createQueryRunner();
+    try {
+      await seedRunner.connect();
+      await seedRunner.startTransaction();
+      await seedUnsubscribeTopics({
+        queryRunner: seedRunner,
+        schemaName: 'core',
+        workspaceId,
+      });
+      await seedUnsubscribeTopics({
+        queryRunner: seedRunner,
+        schemaName: 'core',
+        workspaceId,
+      });
+      await seedRunner.commitTransaction();
+    } finally {
+      await seedRunner.release();
+    }
+
+    const seededAudits = (await audits()).filter(
+      (row) => row.resourceKind === 'unsubscribeTopic',
+    );
+    expect(seededAudits).toHaveLength(3);
+    expect(seededAudits[0]).toMatchObject({
+      workspaceId,
+      resourceKind: 'unsubscribeTopic',
+      action: 'create',
+      actor: { kind: 'system', id: 'dev-seeder:seed-unsubscribe-topics' },
+      redactedDiff: {
+        changedFields: ['description', 'name', 'visibility'],
+        values: {
+          visibility: { before: null, after: 'PUBLIC' },
+        },
+      },
+    });
+
+    // 2. Create custom topic via UnsubscribeTopicResolver
+    const createdTopic = await unsubscribeTopicResolver.createUnsubscribeTopic(
+      {
+        name: 'VIP Security Advisories',
+        description: 'Critical security bulletins for enterprise admins',
+        visibility: UnsubscribeTopicVisibility.PRIVATE,
+      },
+      { id: workspaceId } as never,
+      memberContext(),
+    );
+    expect(createdTopic.name).toBe('VIP Security Advisories');
+    expect(createdTopic.visibility).toBe(UnsubscribeTopicVisibility.PRIVATE);
+
+    // 3. Update topic via UnsubscribeTopicResolver
+    const updatedTopic = await unsubscribeTopicResolver.updateUnsubscribeTopic(
+      {
+        id: createdTopic.id,
+        name: 'Public Security Advisories',
+        visibility: UnsubscribeTopicVisibility.PUBLIC,
+      },
+      { id: workspaceId } as never,
+      memberContext(),
+    );
+    expect(updatedTopic.name).toBe('Public Security Advisories');
+    expect(updatedTopic.visibility).toBe(UnsubscribeTopicVisibility.PUBLIC);
+
+    // No-op update does not emit a duplicate audit row
+    await unsubscribeTopicResolver.updateUnsubscribeTopic(
+      {
+        id: createdTopic.id,
+        name: 'Public Security Advisories',
+        visibility: UnsubscribeTopicVisibility.PUBLIC,
+      },
+      { id: workspaceId } as never,
+      memberContext(),
+    );
+
+    // 4. Delete topic via UnsubscribeTopicResolver
+    const deleted = await unsubscribeTopicResolver.deleteUnsubscribeTopic(
+      createdTopic.id,
+      { id: workspaceId } as never,
+      memberContext(),
+    );
+    expect(deleted).toBe(true);
+
+    const topicAudits = (await audits()).filter(
+      (row) =>
+        row.resourceKind === 'unsubscribeTopic' &&
+        row.resourceId === createdTopic.id,
+    );
+    expect(topicAudits).toHaveLength(3);
+    expect(topicAudits.map((row) => row.action)).toEqual([
+      'create',
+      'update',
+      'delete',
+    ]);
+    expect(topicAudits[0]).toMatchObject({
+      workspaceId,
+      resourceKind: 'unsubscribeTopic',
+      resourceId: createdTopic.id,
+      action: 'create',
+      actor: { kind: 'coreUser', id: actorUserId },
+      initiator: { kind: 'coreUser', id: impersonatorUserId },
+      redactedDiff: {
+        changedFields: ['description', 'name', 'visibility'],
+        values: {
+          visibility: { before: null, after: 'PRIVATE' },
+        },
+      },
+      securityDescriptor: {
+        resourceKind: 'unsubscribeTopic',
+        resourceId: createdTopic.id,
+        metadataAccess: 'currentWorkspaceAdministration',
+      },
+    });
+    expect(topicAudits[1]).toMatchObject({
+      action: 'update',
+      redactedDiff: {
+        changedFields: ['name', 'visibility'],
+        values: {
+          visibility: { before: 'PRIVATE', after: 'PUBLIC' },
+        },
+      },
+    });
+    expect(topicAudits[2]).toMatchObject({
+      action: 'delete',
+      redactedDiff: {
+        changedFields: ['description', 'name', 'visibility'],
+        values: {
+          visibility: { before: 'PUBLIC', after: null },
+        },
+      },
+    });
+
+    const serializedTopicAudits = JSON.stringify(topicAudits);
+    expect(serializedTopicAudits).not.toContain('VIP Security Advisories');
+    expect(serializedTopicAudits).not.toContain('Public Security Advisories');
+    expect(serializedTopicAudits).not.toContain(
+      'Critical security bulletins for enterprise admins',
+    );
+
+    // Post-flush trigger tampering on core."unsubscribeTopic" rolls back transaction
+    await owner.query(`
+      CREATE OR REPLACE FUNCTION core.corrupt_log185_topic_after_audit()
+      RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$
+      BEGIN
+        IF NEW."resourceKind" = 'unsubscribeTopic' AND NEW.action = 'create' THEN
+          UPDATE core."unsubscribeTopic" SET visibility = 'PUBLIC' WHERE id = NEW."resourceId"::uuid;
+        END IF;
+        RETURN NEW;
+      END;
+      $$;
+      CREATE TRIGGER corrupt_log185_topic_after_audit_trg
+      AFTER INSERT ON crm_audit."crmAuditEntry"
+      FOR EACH ROW EXECUTE FUNCTION core.corrupt_log185_topic_after_audit();
+    `);
+    try {
+      await expect(
+        unsubscribeTopicResolver.createUnsubscribeTopic(
+          {
+            name: 'Tampered Topic',
+            visibility: UnsubscribeTopicVisibility.PRIVATE,
+          },
+          { id: workspaceId } as never,
+          memberContext(),
+        ),
+      ).rejects.toThrow('Unsubscribe topic state changed during audit flush');
+    } finally {
+      await owner.query(
+        'DROP TRIGGER IF EXISTS corrupt_log185_topic_after_audit_trg ON crm_audit."crmAuditEntry"',
+      );
+      await owner.query(
+        'DROP FUNCTION IF EXISTS core.corrupt_log185_topic_after_audit()',
+      );
+    }
+  });
+
+  it('audits ssoIdentityProvider OIDC/SAML create, status edit, delete, duplicate rejection, secret redaction, and post-flush tamper rollback (LOG185)', async () => {
+    const memberContext = () => ({
+      req: {
+        workspace: { id: workspaceId },
+        user: { id: actorUserId },
+        userWorkspaceId: actorUserWorkspaceId,
+        workspaceMemberId: actorMemberId,
+        impersonationContext: { impersonatorUserWorkspaceId },
+      },
+    });
+
+    // 1. Create OIDC SSO identity provider via SsoResolver
+    const oidcResult = await ssoResolver.createOIDCIdentityProvider(
+      {
+        name: 'Acme Okta OIDC',
+        issuer: 'https://okta.acme-corp.io/oauth2/default',
+        clientID: 'oidc-client-id-secret-123',
+        clientSecret: 'super-secret-oidc-client-secret-xyz',
+      },
+      { id: workspaceId } as never,
+      memberContext(),
+    );
+    expect(oidcResult).not.toBeInstanceOf(SsoException);
+    const oidcIdp = oidcResult as {
+      id: string;
+      type: string;
+      name: string;
+      status: string;
+      issuer: string;
+    };
+    expect(oidcIdp.type).toBe('OIDC');
+    expect(oidcIdp.status).toBe('Active');
+
+    // 2. Create SAML SSO identity provider via SsoResolver
+    const samlId = randomUUID();
+    const samlResult = await ssoResolver.createSAMLIdentityProvider(
+      {
+        id: samlId,
+        name: 'Acme Entra SAML',
+        issuer: 'https://sts.windows.net/acme-tenant-id/',
+        ssoURL: 'https://login.microsoftonline.com/acme-tenant-id/saml2',
+        certificate: 'MIIDdTCCAl2gAwIBAgILBAAAAAABFUtaw5QwDQYJKoZIhvcNAQEFBQAw',
+        fingerprint: 'AA:BB:CC:DD:EE:FF:00:11:22:33',
+      },
+      { id: workspaceId } as never,
+      memberContext(),
+    );
+    expect(samlResult).toMatchObject({
+      id: samlId,
+      type: 'SAML',
+      name: 'Acme Entra SAML',
+      status: 'Active',
+    });
+
+    // Duplicate SAML id throws IDENTITY_PROVIDER_ALREADY_EXISTS and writes no extra audit entry
+    await expect(
+      ssoResolver.createSAMLIdentityProvider(
+        {
+          id: samlId,
+          name: 'Duplicate SAML',
+          issuer: 'https://sts.windows.net/acme-tenant-id/',
+          ssoURL: 'https://login.microsoftonline.com/acme-tenant-id/saml2',
+          certificate:
+            'MIIDdTCCAl2gAwIBAgILBAAAAAABFUtaw5QwDQYJKoZIhvcNAQEFBQAw',
+        },
+        { id: workspaceId } as never,
+        memberContext(),
+      ),
+    ).rejects.toMatchObject({
+      code: SsoExceptionCode.IDENTITY_PROVIDER_ALREADY_EXISTS,
+    });
+
+    // 3. Edit status via SsoResolver
+    const edited = await ssoResolver.editSSOIdentityProvider(
+      {
+        id: oidcIdp.id,
+        status: SsoIdentityProviderStatus.Inactive as never,
+      },
+      { id: workspaceId } as never,
+      memberContext(),
+    );
+    expect(edited.status).toBe('Inactive');
+
+    // 4. Delete SAML IdP via SsoResolver
+    const deletedSaml = await ssoResolver.deleteSSOIdentityProvider(
+      { identityProviderId: samlId },
+      { id: workspaceId } as never,
+      memberContext(),
+    );
+    expect(deletedSaml).toEqual({ identityProviderId: samlId });
+
+    const ssoAudits = (await audits()).filter(
+      (row) => row.resourceKind === 'ssoIdentityProvider',
+    );
+    expect(ssoAudits).toHaveLength(4);
+    expect(ssoAudits.map((row) => [row.resourceId, row.action])).toEqual([
+      [oidcIdp.id, 'create'],
+      [samlId, 'create'],
+      [oidcIdp.id, 'update'],
+      [samlId, 'delete'],
+    ]);
+    expect(ssoAudits[0]).toMatchObject({
+      workspaceId,
+      resourceKind: 'ssoIdentityProvider',
+      resourceId: oidcIdp.id,
+      action: 'create',
+      actor: { kind: 'coreUser', id: actorUserId },
+      initiator: { kind: 'coreUser', id: impersonatorUserId },
+      redactedDiff: {
+        changedFields: expect.arrayContaining([
+          'clientID',
+          'clientSecret',
+          'issuer',
+          'name',
+          'status',
+          'type',
+        ]),
+        values: {
+          type: { before: null, after: 'OIDC' },
+          status: { before: null, after: 'Active' },
+        },
+      },
+      securityDescriptor: {
+        resourceKind: 'ssoIdentityProvider',
+        resourceId: oidcIdp.id,
+        metadataAccess: 'currentWorkspaceAdministration',
+      },
+    });
+    expect(ssoAudits[2]).toMatchObject({
+      resourceId: oidcIdp.id,
+      action: 'update',
+      redactedDiff: {
+        changedFields: ['status'],
+        values: {
+          status: { before: 'Active', after: 'Inactive' },
+        },
+      },
+    });
+    expect(ssoAudits[3]).toMatchObject({
+      resourceId: samlId,
+      action: 'delete',
+      redactedDiff: {
+        values: {
+          type: { before: 'SAML', after: null },
+          status: { before: 'Active', after: null },
+        },
+      },
+    });
+
+    const serializedSsoAudits = JSON.stringify(ssoAudits);
+    expect(serializedSsoAudits).not.toContain(
+      'super-secret-oidc-client-secret-xyz',
+    );
+    expect(serializedSsoAudits).not.toContain('oidc-client-id-secret-123');
+    expect(serializedSsoAudits).not.toContain(
+      'MIIDdTCCAl2gAwIBAgILBAAAAAABFUtaw5QwDQYJKoZIhvcNAQEFBQAw',
+    );
+    expect(serializedSsoAudits).not.toContain('AA:BB:CC:DD:EE:FF:00:11:22:33');
+    expect(serializedSsoAudits).not.toContain('Acme Okta OIDC');
+    expect(serializedSsoAudits).not.toContain('Acme Entra SAML');
+
+    // Post-flush trigger tampering on core."workspaceSSOIdentityProvider" rolls back transaction
+    await owner.query(`
+      CREATE OR REPLACE FUNCTION core.corrupt_log185_sso_after_audit()
+      RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$
+      BEGIN
+        IF NEW."resourceKind" = 'ssoIdentityProvider' AND NEW.action = 'update' THEN
+          UPDATE core."workspaceSSOIdentityProvider" SET status = 'Error' WHERE id = NEW."resourceId"::uuid;
+        END IF;
+        RETURN NEW;
+      END;
+      $$;
+      CREATE TRIGGER corrupt_log185_sso_after_audit_trg
+      AFTER INSERT ON crm_audit."crmAuditEntry"
+      FOR EACH ROW EXECUTE FUNCTION core.corrupt_log185_sso_after_audit();
+    `);
+    try {
+      await expect(
+        ssoResolver.editSSOIdentityProvider(
+          {
+            id: oidcIdp.id,
+            status: SsoIdentityProviderStatus.Active as never,
+          },
+          { id: workspaceId } as never,
+          memberContext(),
+        ),
+      ).rejects.toThrow(
+        'SSO identity provider state changed during audit flush',
+      );
+    } finally {
+      await owner.query(
+        'DROP TRIGGER IF EXISTS corrupt_log185_sso_after_audit_trg ON crm_audit."crmAuditEntry"',
+      );
+      await owner.query(
+        'DROP FUNCTION IF EXISTS core.corrupt_log185_sso_after_audit()',
       );
     }
   });

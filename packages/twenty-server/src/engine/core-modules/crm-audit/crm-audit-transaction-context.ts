@@ -126,6 +126,22 @@ const CATALOG: Record<
       'acceptedAt',
     ],
   },
+  unsubscribeTopic: {
+    values: ['visibility'],
+    redacted: ['name', 'description'],
+  },
+  ssoIdentityProvider: {
+    values: ['type', 'status'],
+    redacted: [
+      'name',
+      'issuer',
+      'clientID',
+      'clientSecret',
+      'ssoURL',
+      'certificate',
+      'fingerprint',
+    ],
+  },
   webhook: {
     values: ['applicationId'],
     redacted: ['targetUrl', 'operations', 'description', 'secret'],
@@ -703,6 +719,8 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   publicDomain: ['create', 'update', 'delete'],
   emailingDomain: ['create', 'update', 'delete'],
   dpaAgreement: ['create'],
+  unsubscribeTopic: ['create', 'update', 'delete'],
+  ssoIdentityProvider: ['create', 'update', 'delete'],
   webhook: ['create', 'update', 'delete'],
   connectionProvider: ['create', 'update', 'delete'],
   skill: ['create', 'update', 'delete'],

@@ -132,6 +132,38 @@ export type PersistedDpaAgreementRow = Readonly<{
   updatedAt: Date;
 }>;
 
+export type UnsubscribeTopicVisibilityValue = 'PUBLIC' | 'PRIVATE';
+
+export type PersistedUnsubscribeTopicRow = Readonly<{
+  id: string;
+  workspaceId: string;
+  name: string | null;
+  description: string | null;
+  visibility: UnsubscribeTopicVisibilityValue;
+  createdAt: Date;
+  updatedAt: Date;
+}>;
+
+export type SsoIdentityProviderTypeValue = 'OIDC' | 'SAML';
+
+export type SsoIdentityProviderStatusValue = 'Active' | 'Inactive' | 'Error';
+
+export type PersistedSsoIdentityProviderRow = Readonly<{
+  id: string;
+  workspaceId: string;
+  name: string;
+  status: SsoIdentityProviderStatusValue;
+  type: SsoIdentityProviderTypeValue;
+  issuer: string;
+  clientID?: string;
+  clientSecret?: string;
+  ssoURL?: string;
+  certificate?: string;
+  fingerprint?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}>;
+
 type AmbientWorkspaceDomainAudit = Readonly<{
   workspaceId?: string;
   actor?: CrmAuditOperation['actor'];
@@ -942,6 +974,16 @@ const DPA_AGREEMENT_TYPE_VALUES = new Set<DpaAgreementTypeValue>([
   'SIGNED',
 ]);
 
+const UNSUBSCRIBE_TOPIC_VISIBILITY_VALUES =
+  new Set<UnsubscribeTopicVisibilityValue>(['PUBLIC', 'PRIVATE']);
+
+const SSO_IDENTITY_PROVIDER_TYPE_VALUES = new Set<SsoIdentityProviderTypeValue>(
+  ['OIDC', 'SAML'],
+);
+
+const SSO_IDENTITY_PROVIDER_STATUS_VALUES =
+  new Set<SsoIdentityProviderStatusValue>(['Active', 'Inactive', 'Error']);
+
 export const projectEmailingDomain = (row: Record<string, unknown>) => {
   if (typeof row.domain !== 'string' || row.domain.trim().length === 0) {
     throw new Error('Emailing domain audit row domain is invalid');
@@ -1103,6 +1145,149 @@ export const projectDpaAgreement = (row: Record<string, unknown>) => {
         : String(row.acceptedAt),
   };
 };
+
+export const projectUnsubscribeTopic = (row: Record<string, unknown>) => {
+  if (
+    typeof row.visibility !== 'string' ||
+    !UNSUBSCRIBE_TOPIC_VISIBILITY_VALUES.has(
+      row.visibility as UnsubscribeTopicVisibilityValue,
+    )
+  ) {
+    throw new Error('Unsubscribe topic audit row visibility is invalid');
+  }
+  if (
+    row.name !== undefined &&
+    row.name !== null &&
+    typeof row.name !== 'string'
+  ) {
+    throw new Error('Unsubscribe topic audit row name is invalid');
+  }
+  if (
+    row.description !== undefined &&
+    row.description !== null &&
+    typeof row.description !== 'string'
+  ) {
+    throw new Error('Unsubscribe topic audit row description is invalid');
+  }
+
+  return {
+    visibility: row.visibility as UnsubscribeTopicVisibilityValue,
+    name: row.name === undefined || row.name === null ? null : row.name,
+    description:
+      row.description === undefined || row.description === null
+        ? null
+        : row.description,
+  };
+};
+
+export const projectSsoIdentityProvider = (row: Record<string, unknown>) => {
+  if (
+    typeof row.type !== 'string' ||
+    !SSO_IDENTITY_PROVIDER_TYPE_VALUES.has(
+      row.type as SsoIdentityProviderTypeValue,
+    )
+  ) {
+    throw new Error('SSO identity provider audit row type is invalid');
+  }
+  if (
+    typeof row.status !== 'string' ||
+    !SSO_IDENTITY_PROVIDER_STATUS_VALUES.has(
+      row.status as SsoIdentityProviderStatusValue,
+    )
+  ) {
+    throw new Error('SSO identity provider audit row status is invalid');
+  }
+  if (typeof row.name !== 'string' || row.name.trim().length === 0) {
+    throw new Error('SSO identity provider audit row name is invalid');
+  }
+  if (typeof row.issuer !== 'string' || row.issuer.trim().length === 0) {
+    throw new Error('SSO identity provider audit row issuer is invalid');
+  }
+
+  return {
+    type: row.type as SsoIdentityProviderTypeValue,
+    status: row.status as SsoIdentityProviderStatusValue,
+    name: row.name,
+    issuer: row.issuer,
+    clientID:
+      row.clientID === undefined || row.clientID === null
+        ? null
+        : String(row.clientID),
+    clientSecret:
+      row.clientSecret === undefined || row.clientSecret === null
+        ? null
+        : String(row.clientSecret),
+    ssoURL:
+      row.ssoURL === undefined || row.ssoURL === null
+        ? null
+        : String(row.ssoURL),
+    certificate:
+      row.certificate === undefined || row.certificate === null
+        ? null
+        : String(row.certificate),
+    fingerprint:
+      row.fingerprint === undefined || row.fingerprint === null
+        ? null
+        : String(row.fingerprint),
+  };
+};
+
+const hydrateUnsubscribeTopicRow = (
+  row: Record<string, unknown>,
+): PersistedUnsubscribeTopicRow =>
+  Object.freeze({
+    id: uuid(row.id),
+    workspaceId: uuid(row.workspaceId),
+    name: row.name === undefined || row.name === null ? null : String(row.name),
+    description:
+      row.description === undefined || row.description === null
+        ? null
+        : String(row.description),
+    visibility: row.visibility as UnsubscribeTopicVisibilityValue,
+    createdAt:
+      row.createdAt instanceof Date
+        ? row.createdAt
+        : new Date(String(row.createdAt)),
+    updatedAt:
+      row.updatedAt instanceof Date
+        ? row.updatedAt
+        : new Date(String(row.updatedAt)),
+  });
+
+const hydrateSsoIdentityProviderRow = (
+  row: Record<string, unknown>,
+): PersistedSsoIdentityProviderRow =>
+  Object.freeze({
+    id: uuid(row.id),
+    workspaceId: uuid(row.workspaceId),
+    name: String(row.name),
+    status: row.status as SsoIdentityProviderStatusValue,
+    type: row.type as SsoIdentityProviderTypeValue,
+    issuer: String(row.issuer),
+    ...(row.clientID !== undefined && row.clientID !== null
+      ? { clientID: String(row.clientID) }
+      : {}),
+    ...(row.clientSecret !== undefined && row.clientSecret !== null
+      ? { clientSecret: String(row.clientSecret) }
+      : {}),
+    ...(row.ssoURL !== undefined && row.ssoURL !== null
+      ? { ssoURL: String(row.ssoURL) }
+      : {}),
+    ...(row.certificate !== undefined && row.certificate !== null
+      ? { certificate: String(row.certificate) }
+      : {}),
+    ...(row.fingerprint !== undefined && row.fingerprint !== null
+      ? { fingerprint: String(row.fingerprint) }
+      : {}),
+    createdAt:
+      row.createdAt instanceof Date
+        ? row.createdAt
+        : new Date(String(row.createdAt)),
+    updatedAt:
+      row.updatedAt instanceof Date
+        ? row.updatedAt
+        : new Date(String(row.updatedAt)),
+  });
 
 const hydrateEmailingDomainRow = (
   row: Record<string, unknown>,
@@ -2734,6 +2919,714 @@ export const runAuditedDpaAgreementCreate = async (
       }
 
       return hydrateDpaAgreementRow(afterRow);
+    }),
+  );
+};
+
+export const runAuditedUnsubscribeTopicCreate = async (
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    name,
+    description = null,
+    visibility,
+  }: {
+    name: string;
+    description?: string | null;
+    visibility: UnsubscribeTopicVisibilityValue;
+  },
+): Promise<PersistedUnsubscribeTopicRow> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Unsubscribe topic audit requires core DataSource');
+  }
+  if (!UNSUBSCRIBE_TOPIC_VISIBILITY_VALUES.has(visibility)) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Unsubscribe topic visibility is invalid');
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('Unsubscribe topic audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const [inserted] = await runner.query(
+        `INSERT INTO core."unsubscribeTopic" (
+           "id","workspaceId","name","description","visibility","createdAt","updatedAt"
+         )
+         VALUES (
+           gen_random_uuid(),$1,$2,$3,$4,now(),now()
+         )
+         RETURNING to_jsonb("unsubscribeTopic") AS row`,
+        [request.workspaceId, name, description ?? null, visibility],
+      );
+      if (!inserted?.row) {
+        throw new Error('Unsubscribe topic insert did not return row');
+      }
+      const afterRow = inserted.row as Record<string, unknown>;
+      const resourceId = uuid(afterRow.id);
+      if (
+        uuid(afterRow.workspaceId) !== request.workspaceId ||
+        afterRow.name !== name ||
+        (afterRow.description ?? null) !== (description ?? null) ||
+        afterRow.visibility !== visibility
+      ) {
+        throw new Error('Unsubscribe topic persisted row failed validation');
+      }
+
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      audit.record({
+        resourceKind: 'unsubscribeTopic',
+        resourceId,
+        action: 'create',
+        before: null,
+        after: projectUnsubscribeTopic(afterRow),
+        securityDescriptor: {
+          resourceKind: 'unsubscribeTopic',
+          resourceId,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+
+      const expectedSerialized = canonicalAuditJson(
+        scalarWithoutTimestamps(afterRow),
+      );
+      await audit.flush();
+      const [postFlush] = await runner.query(
+        `SELECT to_jsonb(ut) AS row FROM core."unsubscribeTopic" ut WHERE ut.id=$1`,
+        [resourceId],
+      );
+      if (
+        !postFlush?.row ||
+        canonicalAuditJson(
+          scalarWithoutTimestamps(postFlush.row as Record<string, unknown>),
+        ) !== expectedSerialized
+      ) {
+        throw new Error('Unsubscribe topic state changed during audit flush');
+      }
+
+      return hydrateUnsubscribeTopicRow(afterRow);
+    }),
+  );
+};
+
+export const runAuditedUnsubscribeTopicUpdate = async (
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    unsubscribeTopicId,
+    patch,
+    onNotFound,
+  }: {
+    unsubscribeTopicId: string;
+    patch: {
+      name?: string | null;
+      description?: string | null;
+      visibility?: UnsubscribeTopicVisibilityValue;
+    };
+    onNotFound: () => Promise<never> | never;
+  },
+): Promise<PersistedUnsubscribeTopicRow> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Unsubscribe topic audit requires core DataSource');
+  }
+  let normalizedId: string;
+  try {
+    normalizedId = uuid(unsubscribeTopicId);
+  } catch (error) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw error;
+  }
+  if (
+    patch.visibility !== undefined &&
+    !UNSUBSCRIBE_TOPIC_VISIBILITY_VALUES.has(patch.visibility)
+  ) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Unsubscribe topic visibility is invalid');
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('Unsubscribe topic audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const [beforeEntry] = await runner.query(
+        `SELECT to_jsonb(ut) AS row FROM core."unsubscribeTopic" ut WHERE ut.id=$1 AND ut."workspaceId"=$2 FOR UPDATE`,
+        [normalizedId, request.workspaceId],
+      );
+      if (!beforeEntry?.row) {
+        return await onNotFound();
+      }
+      const beforeRow = beforeEntry.row as Record<string, unknown>;
+      const beforeProj = projectUnsubscribeTopic(beforeRow);
+
+      const nextName = patch.name !== undefined ? patch.name : beforeProj.name;
+      const nextDescription =
+        patch.description !== undefined
+          ? patch.description
+          : beforeProj.description;
+      const nextVisibility =
+        patch.visibility !== undefined
+          ? patch.visibility
+          : beforeProj.visibility;
+
+      await runner.query(
+        `UPDATE core."unsubscribeTopic"
+            SET name=$1,
+                description=$2,
+                visibility=$3,
+                "updatedAt"=now()
+          WHERE id=$4 AND "workspaceId"=$5`,
+        [
+          nextName,
+          nextDescription,
+          nextVisibility,
+          normalizedId,
+          request.workspaceId,
+        ],
+      );
+
+      const [updated] = await runner.query(
+        `SELECT to_jsonb(ut) AS row FROM core."unsubscribeTopic" ut WHERE ut.id=$1 AND ut."workspaceId"=$2`,
+        [normalizedId, request.workspaceId],
+      );
+      if (!updated?.row) {
+        throw new Error('Unsubscribe topic update did not return row');
+      }
+      const afterRow = updated.row as Record<string, unknown>;
+      const afterProj = projectUnsubscribeTopic(afterRow);
+
+      if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+        const audit = new CrmAuditTransactionContext(runner, operation);
+        audit.record({
+          resourceKind: 'unsubscribeTopic',
+          resourceId: normalizedId,
+          action: 'update',
+          before: beforeProj,
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'unsubscribeTopic',
+            resourceId: normalizedId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+
+        const expectedSerialized = canonicalAuditJson(
+          scalarWithoutTimestamps(afterRow),
+        );
+        await audit.flush();
+        const [postFlush] = await runner.query(
+          `SELECT to_jsonb(ut) AS row FROM core."unsubscribeTopic" ut WHERE ut.id=$1`,
+          [normalizedId],
+        );
+        if (
+          !postFlush?.row ||
+          canonicalAuditJson(
+            scalarWithoutTimestamps(postFlush.row as Record<string, unknown>),
+          ) !== expectedSerialized
+        ) {
+          throw new Error('Unsubscribe topic state changed during audit flush');
+        }
+      }
+
+      return hydrateUnsubscribeTopicRow(afterRow);
+    }),
+  );
+};
+
+export const runAuditedUnsubscribeTopicDelete = async (
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    unsubscribeTopicId,
+  }: {
+    unsubscribeTopicId: string;
+  },
+): Promise<{ deleted: boolean }> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Unsubscribe topic audit requires core DataSource');
+  }
+  let normalizedId: string;
+  try {
+    normalizedId = uuid(unsubscribeTopicId);
+  } catch (error) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw error;
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('Unsubscribe topic audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const [beforeEntry] = await runner.query(
+        `SELECT to_jsonb(ut) AS row FROM core."unsubscribeTopic" ut WHERE ut.id=$1 AND ut."workspaceId"=$2 FOR UPDATE`,
+        [normalizedId, request.workspaceId],
+      );
+      if (!beforeEntry?.row) {
+        return { deleted: false };
+      }
+      const beforeRow = beforeEntry.row as Record<string, unknown>;
+      const resourceId = uuid(beforeRow.id);
+
+      await runner.query(
+        `DELETE FROM core."unsubscribeTopic" WHERE id=$1 AND "workspaceId"=$2`,
+        [resourceId, request.workspaceId],
+      );
+      const [remaining] = await runner.query(
+        `SELECT id FROM core."unsubscribeTopic" WHERE id=$1`,
+        [resourceId],
+      );
+      if (remaining) {
+        throw new Error('Unsubscribe topic delete did not remove row');
+      }
+
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      audit.record({
+        resourceKind: 'unsubscribeTopic',
+        resourceId,
+        action: 'delete',
+        before: projectUnsubscribeTopic(beforeRow),
+        after: null,
+        securityDescriptor: {
+          resourceKind: 'unsubscribeTopic',
+          resourceId,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+
+      await audit.flush();
+      const [postFlush] = await runner.query(
+        `SELECT id FROM core."unsubscribeTopic" WHERE id=$1`,
+        [resourceId],
+      );
+      if (postFlush) {
+        throw new Error('Unsubscribe topic state changed during audit flush');
+      }
+
+      return { deleted: true };
+    }),
+  );
+};
+
+export const runAuditedSsoIdentityProviderCreate = async (
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    record,
+  }: {
+    record: {
+      id?: string;
+      type: SsoIdentityProviderTypeValue;
+      name: string;
+      issuer: string;
+      clientID?: string;
+      clientSecret?: string;
+      ssoURL?: string;
+      certificate?: string;
+      fingerprint?: string;
+    };
+  },
+): Promise<PersistedSsoIdentityProviderRow> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('SSO identity provider audit requires core DataSource');
+  }
+  if (!SSO_IDENTITY_PROVIDER_TYPE_VALUES.has(record.type)) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('SSO identity provider type is invalid');
+  }
+  const normalizedExplicitId =
+    record.id !== undefined ? uuid(record.id) : undefined;
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('SSO identity provider audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const [inserted] =
+        normalizedExplicitId !== undefined
+          ? await runner.query(
+              `INSERT INTO core."workspaceSSOIdentityProvider" (
+                 "id","workspaceId","name","status","type","issuer",
+                 "clientID","clientSecret","ssoURL","certificate","fingerprint",
+                 "createdAt","updatedAt"
+               )
+               VALUES ($1,$2,$3,'Active',$4,$5,$6,$7,$8,$9,$10,now(),now())
+               RETURNING to_jsonb("workspaceSSOIdentityProvider") AS row`,
+              [
+                normalizedExplicitId,
+                request.workspaceId,
+                record.name,
+                record.type,
+                record.issuer,
+                record.clientID ?? null,
+                record.clientSecret ?? null,
+                record.ssoURL ?? null,
+                record.certificate ?? null,
+                record.fingerprint ?? null,
+              ],
+            )
+          : await runner.query(
+              `INSERT INTO core."workspaceSSOIdentityProvider" (
+                 "id","workspaceId","name","status","type","issuer",
+                 "clientID","clientSecret","ssoURL","certificate","fingerprint",
+                 "createdAt","updatedAt"
+               )
+               VALUES (gen_random_uuid(),$1,$2,'Active',$3,$4,$5,$6,$7,$8,$9,now(),now())
+               RETURNING to_jsonb("workspaceSSOIdentityProvider") AS row`,
+              [
+                request.workspaceId,
+                record.name,
+                record.type,
+                record.issuer,
+                record.clientID ?? null,
+                record.clientSecret ?? null,
+                record.ssoURL ?? null,
+                record.certificate ?? null,
+                record.fingerprint ?? null,
+              ],
+            );
+      if (!inserted?.row) {
+        throw new Error('SSO identity provider insert did not return row');
+      }
+      const afterRow = inserted.row as Record<string, unknown>;
+      const resourceId = uuid(afterRow.id);
+      if (
+        uuid(afterRow.workspaceId) !== request.workspaceId ||
+        afterRow.type !== record.type ||
+        afterRow.name !== record.name ||
+        afterRow.issuer !== record.issuer
+      ) {
+        throw new Error(
+          'SSO identity provider persisted row failed validation',
+        );
+      }
+
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      audit.record({
+        resourceKind: 'ssoIdentityProvider',
+        resourceId,
+        action: 'create',
+        before: null,
+        after: projectSsoIdentityProvider(afterRow),
+        securityDescriptor: {
+          resourceKind: 'ssoIdentityProvider',
+          resourceId,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+
+      const expectedSerialized = canonicalAuditJson(
+        scalarWithoutTimestamps(afterRow),
+      );
+      await audit.flush();
+      const [postFlush] = await runner.query(
+        `SELECT to_jsonb(idp) AS row FROM core."workspaceSSOIdentityProvider" idp WHERE idp.id=$1`,
+        [resourceId],
+      );
+      if (
+        !postFlush?.row ||
+        canonicalAuditJson(
+          scalarWithoutTimestamps(postFlush.row as Record<string, unknown>),
+        ) !== expectedSerialized
+      ) {
+        throw new Error(
+          'SSO identity provider state changed during audit flush',
+        );
+      }
+
+      return hydrateSsoIdentityProviderRow(afterRow);
+    }),
+  );
+};
+
+export const runAuditedSsoIdentityProviderUpdate = async (
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    identityProviderId,
+    patch,
+    onNotFound,
+  }: {
+    identityProviderId: string;
+    patch: {
+      name?: string;
+      status?: SsoIdentityProviderStatusValue;
+      issuer?: string;
+      clientID?: string;
+      clientSecret?: string;
+      ssoURL?: string;
+      certificate?: string;
+      fingerprint?: string;
+    };
+    onNotFound: () => never;
+  },
+): Promise<PersistedSsoIdentityProviderRow> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('SSO identity provider audit requires core DataSource');
+  }
+  let normalizedId: string;
+  try {
+    normalizedId = uuid(identityProviderId);
+  } catch (error) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw error;
+  }
+  if (
+    patch.status !== undefined &&
+    !SSO_IDENTITY_PROVIDER_STATUS_VALUES.has(patch.status)
+  ) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('SSO identity provider status is invalid');
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('SSO identity provider audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const [beforeEntry] = await runner.query(
+        `SELECT to_jsonb(idp) AS row FROM core."workspaceSSOIdentityProvider" idp WHERE idp.id=$1 AND idp."workspaceId"=$2 FOR UPDATE`,
+        [normalizedId, request.workspaceId],
+      );
+      if (!beforeEntry?.row) {
+        return onNotFound();
+      }
+      const beforeRow = beforeEntry.row as Record<string, unknown>;
+      const beforeProj = projectSsoIdentityProvider(beforeRow);
+
+      const nextName = patch.name !== undefined ? patch.name : beforeProj.name;
+      const nextStatus =
+        patch.status !== undefined ? patch.status : beforeProj.status;
+      const nextIssuer =
+        patch.issuer !== undefined ? patch.issuer : beforeProj.issuer;
+      const nextClientID =
+        patch.clientID !== undefined ? patch.clientID : beforeProj.clientID;
+      const nextClientSecret =
+        patch.clientSecret !== undefined
+          ? patch.clientSecret
+          : beforeProj.clientSecret;
+      const nextSsoURL =
+        patch.ssoURL !== undefined ? patch.ssoURL : beforeProj.ssoURL;
+      const nextCertificate =
+        patch.certificate !== undefined
+          ? patch.certificate
+          : beforeProj.certificate;
+      const nextFingerprint =
+        patch.fingerprint !== undefined
+          ? patch.fingerprint
+          : beforeProj.fingerprint;
+
+      await runner.query(
+        `UPDATE core."workspaceSSOIdentityProvider"
+            SET name=$1,
+                status=$2,
+                issuer=$3,
+                "clientID"=$4,
+                "clientSecret"=$5,
+                "ssoURL"=$6,
+                certificate=$7,
+                fingerprint=$8,
+                "updatedAt"=now()
+          WHERE id=$9 AND "workspaceId"=$10`,
+        [
+          nextName,
+          nextStatus,
+          nextIssuer,
+          nextClientID,
+          nextClientSecret,
+          nextSsoURL,
+          nextCertificate,
+          nextFingerprint,
+          normalizedId,
+          request.workspaceId,
+        ],
+      );
+
+      const [updated] = await runner.query(
+        `SELECT to_jsonb(idp) AS row FROM core."workspaceSSOIdentityProvider" idp WHERE idp.id=$1 AND idp."workspaceId"=$2`,
+        [normalizedId, request.workspaceId],
+      );
+      if (!updated?.row) {
+        throw new Error('SSO identity provider update did not return row');
+      }
+      const afterRow = updated.row as Record<string, unknown>;
+      const afterProj = projectSsoIdentityProvider(afterRow);
+
+      if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+        const audit = new CrmAuditTransactionContext(runner, operation);
+        audit.record({
+          resourceKind: 'ssoIdentityProvider',
+          resourceId: normalizedId,
+          action: 'update',
+          before: beforeProj,
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'ssoIdentityProvider',
+            resourceId: normalizedId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+
+        const expectedSerialized = canonicalAuditJson(
+          scalarWithoutTimestamps(afterRow),
+        );
+        await audit.flush();
+        const [postFlush] = await runner.query(
+          `SELECT to_jsonb(idp) AS row FROM core."workspaceSSOIdentityProvider" idp WHERE idp.id=$1`,
+          [normalizedId],
+        );
+        if (
+          !postFlush?.row ||
+          canonicalAuditJson(
+            scalarWithoutTimestamps(postFlush.row as Record<string, unknown>),
+          ) !== expectedSerialized
+        ) {
+          throw new Error(
+            'SSO identity provider state changed during audit flush',
+          );
+        }
+      }
+
+      return hydrateSsoIdentityProviderRow(afterRow);
+    }),
+  );
+};
+
+export const runAuditedSsoIdentityProviderDelete = async (
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    identityProviderId,
+    onNotFound,
+  }: {
+    identityProviderId: string;
+    onNotFound: () => never;
+  },
+): Promise<{ identityProviderId: string }> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('SSO identity provider audit requires core DataSource');
+  }
+  let normalizedId: string;
+  try {
+    normalizedId = uuid(identityProviderId);
+  } catch (error) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw error;
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('SSO identity provider audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const [beforeEntry] = await runner.query(
+        `SELECT to_jsonb(idp) AS row FROM core."workspaceSSOIdentityProvider" idp WHERE idp.id=$1 AND idp."workspaceId"=$2 FOR UPDATE`,
+        [normalizedId, request.workspaceId],
+      );
+      if (!beforeEntry?.row) {
+        return onNotFound();
+      }
+      const beforeRow = beforeEntry.row as Record<string, unknown>;
+      const resourceId = uuid(beforeRow.id);
+
+      await runner.query(
+        `DELETE FROM core."workspaceSSOIdentityProvider" WHERE id=$1 AND "workspaceId"=$2`,
+        [resourceId, request.workspaceId],
+      );
+      const [remaining] = await runner.query(
+        `SELECT id FROM core."workspaceSSOIdentityProvider" WHERE id=$1`,
+        [resourceId],
+      );
+      if (remaining) {
+        throw new Error('SSO identity provider delete did not remove row');
+      }
+
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      audit.record({
+        resourceKind: 'ssoIdentityProvider',
+        resourceId,
+        action: 'delete',
+        before: projectSsoIdentityProvider(beforeRow),
+        after: null,
+        securityDescriptor: {
+          resourceKind: 'ssoIdentityProvider',
+          resourceId,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+
+      await audit.flush();
+      const [postFlush] = await runner.query(
+        `SELECT id FROM core."workspaceSSOIdentityProvider" idp WHERE idp.id=$1`,
+        [resourceId],
+      );
+      if (postFlush) {
+        throw new Error(
+          'SSO identity provider state changed during audit flush',
+        );
+      }
+
+      return { identityProviderId: resourceId };
     }),
   );
 };

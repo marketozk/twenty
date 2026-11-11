@@ -1,0 +1,15 @@
+{
+  "baseCommit": "158c552e3ad87dccfb574e7d93a53c1b21916259",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "a241f7225f7bca62edc14b8ce05acc03a1bdc0267bff9f87a705793795fbcee4",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "0201b1acac325b74af3eef21547ddc2f2c3c3f43e71490ac457237f144fc9756",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/workspace-domain-audit.ts": "0c43933848bcf39d19d9d9dfe7aaf58f523c6445c58d3f6c52941561d02bc890",
+    "packages/twenty-server/src/engine/core-modules/sso/services/sso.service.ts": "9289f765a0949d6b4524d55f020b22181d7613852b3774f5e1c3f80b96f01a3b",
+    "packages/twenty-server/src/engine/core-modules/sso/sso.resolver.ts": "0dd7b73c1124844d20554bfe805fd6d5f9254f42785bfce49b74b74abfea1cdc",
+    "packages/twenty-server/src/engine/workspace-manager/dev-seeder/core/utils/seed-unsubscribe-topics.util.ts": "12f5357def227b39bed0d8510801b8e620183ac45024c52d2f4db13f6363e270",
+    "packages/twenty-server/src/modules/emailing/resolvers/unsubscribe-topic.resolver.ts": "6dc4ff9c99dcf09fdad441b3a797786c75e5a2b16b804753c7d5f8ee7335c247",
+    "packages/twenty-server/src/modules/emailing/services/unsubscribe-topic.service.ts": "2843b18ddbead9f52089b1af380fe41306b4ab2b4668445fa4eceaae760d1c07",
+    "packages/twenty-server/test/fork-migration/crm-audit-workspace-domain.postgres-spec.ts": "02c0f9afd2b8644ca222fc7322a0ce30552a2ffcea33b86077ce1fb343774437"
+  },
+  "uploadedSourceHashesVerified": true
+}

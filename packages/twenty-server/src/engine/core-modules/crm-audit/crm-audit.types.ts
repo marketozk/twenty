@@ -25,6 +25,8 @@ export type CrmAuditResourceKind =
   | 'publicDomain'
   | 'emailingDomain'
   | 'dpaAgreement'
+  | 'unsubscribeTopic'
+  | 'ssoIdentityProvider'
   | 'webhook'
   | 'connectionProvider'
   | 'skill'

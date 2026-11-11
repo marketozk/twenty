@@ -1,15 +1,24 @@
 /* @license Enterprise */
 
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Injectable, Optional } from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
 import { msg } from '@lingui/core/macro';
 import { custom, Issuer } from 'openid-client';
 import { isDefined } from 'twenty-shared/utils';
-import { QueryFailedError, Repository } from 'typeorm';
+import { DataSource, QueryFailedError, Repository } from 'typeorm';
 
 import { POSTGRESQL_ERROR_CODES } from 'src/engine/api/graphql/workspace-query-runner/constants/postgres-error-codes.constants';
 import { type QueryFailedErrorWithCode } from 'src/engine/api/graphql/workspace-query-runner/utils/workspace-query-runner-graphql-api-exception-handler.util';
+import {
+  captureWorkspaceDomainAudit,
+  consumeWorkspaceDomainAuditRequest,
+  runAuditedSsoIdentityProviderCreate,
+  runAuditedSsoIdentityProviderDelete,
+  runAuditedSsoIdentityProviderUpdate,
+  type SsoIdentityProviderStatusValue,
+  type WorkspaceDomainAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import {
   WorkspaceSsoIdentityProviderEntity,
   IdentityProviderType,
@@ -48,8 +57,20 @@ export class SsoService {
     private readonly billingService: BillingService,
     private readonly exceptionHandlerService: ExceptionHandlerService,
     private readonly secureHttpClientService: SecureHttpClientService,
+    @Optional()
+    @InjectDataSource()
+    private readonly dataSource?: DataSource,
   ) {
     Issuer[custom.http_options] = this.oidcHttpOptions;
+  }
+
+  private resolveDataSource(): DataSource | undefined {
+    return (
+      this.dataSource ??
+      (this.workspaceSsoIdentityProviderRepository?.manager?.connection as
+        | DataSource
+        | undefined)
+    );
   }
 
   private async isSsoEnabled(workspaceId: string) {
@@ -87,40 +108,82 @@ export class SsoService {
       'issuer' | 'clientID' | 'clientSecret' | 'name'
     >,
     workspaceId: string,
+    options?: {
+      auditIdentity?: WorkspaceDomainAuditIdentity;
+    },
   ) {
+    const resolvedDataSource = this.resolveDataSource();
+    const auditRequest =
+      resolvedDataSource || options?.auditIdentity !== undefined
+        ? captureWorkspaceDomainAudit({
+            workspaceId,
+            auditIdentity: options?.auditIdentity,
+          })
+        : undefined;
+
     try {
-      await this.isSsoEnabled(workspaceId);
+      let issuer: Issuer;
+      try {
+        await this.isSsoEnabled(workspaceId);
 
-      const issuer = await this.discoverOidcIssuer(data.issuer);
+        issuer = await this.discoverOidcIssuer(data.issuer);
+      } catch (err) {
+        if (err instanceof SsoException) {
+          return err;
+        }
 
-      const identityProvider =
-        await this.workspaceSsoIdentityProviderRepository.save({
-          type: IdentityProviderType.OIDC,
-          clientID: data.clientID,
-          clientSecret: data.clientSecret,
-          issuer: issuer.metadata.issuer,
-          name: data.name,
-          workspaceId,
-        });
+        this.exceptionHandlerService.captureExceptions([err]);
+
+        return new SsoException(
+          'Unknown SSO configuration error',
+          SsoExceptionCode.UNKNOWN_SSO_CONFIGURATION_ERROR,
+        );
+      }
+
+      if (!resolvedDataSource && !auditRequest) {
+        const identityProvider =
+          await this.workspaceSsoIdentityProviderRepository.save({
+            type: IdentityProviderType.OIDC,
+            clientID: data.clientID,
+            clientSecret: data.clientSecret,
+            issuer: issuer.metadata.issuer,
+            name: data.name,
+            workspaceId,
+          });
+
+        return {
+          id: identityProvider.id,
+          type: identityProvider.type,
+          name: identityProvider.name,
+          status: identityProvider.status,
+          issuer: identityProvider.issuer,
+        };
+      }
+
+      const identityProvider = await runAuditedSsoIdentityProviderCreate(
+        resolvedDataSource,
+        auditRequest!,
+        {
+          record: {
+            type: IdentityProviderType.OIDC,
+            clientID: data.clientID,
+            clientSecret: data.clientSecret,
+            issuer: issuer.metadata.issuer,
+            name: data.name,
+          },
+        },
+      );
 
       return {
         id: identityProvider.id,
-        type: identityProvider.type,
+        type: identityProvider.type as IdentityProviderType,
         name: identityProvider.name,
-        status: identityProvider.status,
+        status:
+          identityProvider.status as WorkspaceSsoIdentityProviderEntity['status'],
         issuer: identityProvider.issuer,
       };
-    } catch (err) {
-      if (err instanceof SsoException) {
-        return err;
-      }
-
-      this.exceptionHandlerService.captureExceptions([err]);
-
-      return new SsoException(
-        'Unknown SSO configuration error',
-        SsoExceptionCode.UNKNOWN_SSO_CONFIGURATION_ERROR,
-      );
+    } finally {
+      consumeWorkspaceDomainAuditRequest(auditRequest);
     }
   }
 
@@ -130,51 +193,95 @@ export class SsoService {
       'ssoURL' | 'certificate' | 'fingerprint' | 'id' | 'name' | 'issuer'
     >,
     workspaceId: string,
+    options?: {
+      auditIdentity?: WorkspaceDomainAuditIdentity;
+    },
   ) {
-    await this.isSsoEnabled(workspaceId);
-
-    const identityProvider = {
-      id: data.id,
-      name: data.name,
-      issuer: data.issuer,
-      ssoURL: data.ssoURL,
-      certificate: data.certificate,
-      fingerprint: data.fingerprint,
-      type: IdentityProviderType.SAML,
-      workspaceId,
-    };
+    const resolvedDataSource = this.resolveDataSource();
+    const auditRequest =
+      resolvedDataSource || options?.auditIdentity !== undefined
+        ? captureWorkspaceDomainAudit({
+            workspaceId,
+            auditIdentity: options?.auditIdentity,
+          })
+        : undefined;
 
     try {
-      const { generatedMaps } =
-        await this.workspaceSsoIdentityProviderRepository.insert(
-          identityProvider,
-        );
+      await this.isSsoEnabled(workspaceId);
 
-      const { status } = generatedMaps[0] as Pick<
-        WorkspaceSsoIdentityProviderEntity,
-        'status'
-      >;
-
-      return {
-        id: identityProvider.id,
-        type: identityProvider.type,
-        name: identityProvider.name,
-        issuer: this.buildIssuerURL(identityProvider),
-        status,
+      const identityProvider = {
+        id: data.id,
+        name: data.name,
+        issuer: data.issuer,
+        ssoURL: data.ssoURL,
+        certificate: data.certificate,
+        fingerprint: data.fingerprint,
+        type: IdentityProviderType.SAML,
+        workspaceId,
       };
-    } catch (error) {
-      if (
-        error instanceof QueryFailedError &&
-        (error as QueryFailedErrorWithCode).code ===
-          POSTGRESQL_ERROR_CODES.UNIQUE_VIOLATION
-      ) {
-        throw new SsoException(
-          'Identity provider already exists',
-          SsoExceptionCode.IDENTITY_PROVIDER_ALREADY_EXISTS,
-        );
-      }
 
-      throw error;
+      try {
+        if (!resolvedDataSource && !auditRequest) {
+          const { generatedMaps } =
+            await this.workspaceSsoIdentityProviderRepository.insert(
+              identityProvider,
+            );
+
+          const { status } = generatedMaps[0] as Pick<
+            WorkspaceSsoIdentityProviderEntity,
+            'status'
+          >;
+
+          return {
+            id: identityProvider.id,
+            type: identityProvider.type,
+            name: identityProvider.name,
+            issuer: this.buildIssuerURL(identityProvider),
+            status,
+          };
+        }
+
+        const created = await runAuditedSsoIdentityProviderCreate(
+          resolvedDataSource,
+          auditRequest!,
+          {
+            record: {
+              id: identityProvider.id,
+              name: identityProvider.name,
+              issuer: identityProvider.issuer,
+              ssoURL: identityProvider.ssoURL,
+              certificate: identityProvider.certificate,
+              fingerprint: identityProvider.fingerprint,
+              type: IdentityProviderType.SAML,
+            },
+          },
+        );
+
+        return {
+          id: created.id,
+          type: created.type as IdentityProviderType,
+          name: created.name,
+          issuer: this.buildIssuerURL(identityProvider),
+          status:
+            created.status as WorkspaceSsoIdentityProviderEntity['status'],
+        };
+      } catch (error) {
+        if (
+          error instanceof QueryFailedError &&
+          (error as QueryFailedErrorWithCode).code ===
+            POSTGRESQL_ERROR_CODES.UNIQUE_VIOLATION &&
+          (error as { table?: string }).table !== 'crmAuditEntry'
+        ) {
+          throw new SsoException(
+            'Identity provider already exists',
+            SsoExceptionCode.IDENTITY_PROVIDER_ALREADY_EXISTS,
+          );
+        }
+
+        throw error;
+      }
+    } finally {
+      consumeWorkspaceDomainAuditRequest(auditRequest);
     }
   }
 
@@ -304,58 +411,150 @@ export class SsoService {
   async deleteSsoIdentityProvider(
     identityProviderId: string,
     workspaceId: string,
+    options?: {
+      auditIdentity?: WorkspaceDomainAuditIdentity;
+    },
   ) {
-    const identityProvider =
-      await this.workspaceSsoIdentityProviderRepository.findOne({
-        where: {
-          id: identityProviderId,
-          workspaceId,
-        },
+    const resolvedDataSource = this.resolveDataSource();
+    const auditRequest =
+      resolvedDataSource || options?.auditIdentity !== undefined
+        ? captureWorkspaceDomainAudit({
+            workspaceId,
+            auditIdentity: options?.auditIdentity,
+          })
+        : undefined;
+
+    if (!resolvedDataSource && !auditRequest) {
+      const identityProvider =
+        await this.workspaceSsoIdentityProviderRepository.findOne({
+          where: {
+            id: identityProviderId,
+            workspaceId,
+          },
+        });
+
+      if (!identityProvider) {
+        throw new SsoException(
+          'Identity Provider not found',
+          SsoExceptionCode.IDENTITY_PROVIDER_NOT_FOUND,
+        );
+      }
+
+      await this.workspaceSsoIdentityProviderRepository.delete({
+        id: identityProvider.id,
       });
 
-    if (!identityProvider) {
-      throw new SsoException(
-        'Identity Provider not found',
-        SsoExceptionCode.IDENTITY_PROVIDER_NOT_FOUND,
-      );
+      return { identityProviderId: identityProvider.id };
     }
 
-    await this.workspaceSsoIdentityProviderRepository.delete({
-      id: identityProvider.id,
-    });
-
-    return { identityProviderId: identityProvider.id };
+    try {
+      return await runAuditedSsoIdentityProviderDelete(
+        resolvedDataSource,
+        auditRequest!,
+        {
+          identityProviderId,
+          onNotFound: () => {
+            throw new SsoException(
+              'Identity Provider not found',
+              SsoExceptionCode.IDENTITY_PROVIDER_NOT_FOUND,
+            );
+          },
+        },
+      );
+    } finally {
+      consumeWorkspaceDomainAuditRequest(auditRequest);
+    }
   }
 
   async editSsoIdentityProvider(
     payload: Partial<WorkspaceSsoIdentityProviderEntity>,
     workspaceId: string,
+    options?: {
+      auditIdentity?: WorkspaceDomainAuditIdentity;
+    },
   ) {
-    const ssoIdp = await this.workspaceSsoIdentityProviderRepository.findOne({
-      where: {
-        id: payload.id,
-        workspaceId,
-      },
-    });
+    const resolvedDataSource = this.resolveDataSource();
+    const auditRequest =
+      resolvedDataSource || options?.auditIdentity !== undefined
+        ? captureWorkspaceDomainAudit({
+            workspaceId,
+            auditIdentity: options?.auditIdentity,
+          })
+        : undefined;
 
-    if (!ssoIdp) {
-      throw new SsoException(
-        'Identity Provider not found',
-        SsoExceptionCode.IDENTITY_PROVIDER_NOT_FOUND,
-      );
+    if (!resolvedDataSource && !auditRequest) {
+      const ssoIdp = await this.workspaceSsoIdentityProviderRepository.findOne({
+        where: {
+          id: payload.id,
+          workspaceId,
+        },
+      });
+
+      if (!ssoIdp) {
+        throw new SsoException(
+          'Identity Provider not found',
+          SsoExceptionCode.IDENTITY_PROVIDER_NOT_FOUND,
+        );
+      }
+
+      const result = await this.workspaceSsoIdentityProviderRepository.save({
+        ...ssoIdp,
+        ...payload,
+      });
+
+      return {
+        id: result.id,
+        type: result.type,
+        issuer: result.issuer,
+        name: result.name,
+        status: result.status,
+      };
     }
 
-    const result = await this.workspaceSsoIdentityProviderRepository.save({
-      ...ssoIdp,
-      ...payload,
-    });
+    try {
+      const result = await runAuditedSsoIdentityProviderUpdate(
+        resolvedDataSource,
+        auditRequest!,
+        {
+          identityProviderId: payload.id ?? '',
+          patch: {
+            ...(payload.name !== undefined ? { name: payload.name } : {}),
+            ...(payload.status !== undefined
+              ? { status: payload.status as SsoIdentityProviderStatusValue }
+              : {}),
+            ...(payload.issuer !== undefined ? { issuer: payload.issuer } : {}),
+            ...(payload.clientID !== undefined
+              ? { clientID: payload.clientID }
+              : {}),
+            ...(payload.clientSecret !== undefined
+              ? { clientSecret: payload.clientSecret }
+              : {}),
+            ...(payload.ssoURL !== undefined ? { ssoURL: payload.ssoURL } : {}),
+            ...(payload.certificate !== undefined
+              ? { certificate: payload.certificate }
+              : {}),
+            ...(payload.fingerprint !== undefined
+              ? { fingerprint: payload.fingerprint }
+              : {}),
+          },
+          onNotFound: () => {
+            throw new SsoException(
+              'Identity Provider not found',
+              SsoExceptionCode.IDENTITY_PROVIDER_NOT_FOUND,
+            );
+          },
+        },
+      );
 
-    return {
-      id: result.id,
-      type: result.type,
-      issuer: result.issuer,
-      name: result.name,
-      status: result.status,
-    };
+      return {
+        id: result.id,
+        type: result.type as IdentityProviderType,
+        issuer: result.issuer,
+        name: result.name,
+        status: result.status as WorkspaceSsoIdentityProviderEntity['status'],
+      };
+    } finally {
+      consumeWorkspaceDomainAuditRequest(auditRequest);
+    }
   }
 }

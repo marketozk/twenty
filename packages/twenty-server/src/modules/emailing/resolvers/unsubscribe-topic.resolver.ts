@@ -1,10 +1,11 @@
 import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
-import { Args, Mutation, Query } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query } from '@nestjs/graphql';
 
 import { PermissionFlagType } from 'twenty-shared/constants';
 import { FeatureFlagKey } from 'twenty-shared/types';
 
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
+import { type WorkspaceDomainRequestAuditIdentity } from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { CreateUnsubscribeTopicInput } from 'src/engine/core-modules/emailing-domain/dtos/create-unsubscribe-topic.input';
 import { UnsubscribeTopicDTO } from 'src/engine/core-modules/emailing-domain/dtos/unsubscribe-topic.dto';
 import { UpdateUnsubscribeTopicInput } from 'src/engine/core-modules/emailing-domain/dtos/update-unsubscribe-topic.input';
@@ -61,12 +62,14 @@ export class UnsubscribeTopicResolver {
   async createUnsubscribeTopic(
     @Args('input') input: CreateUnsubscribeTopicInput,
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
+    @Context() context?: { req?: WorkspaceDomainRequestAuditIdentity },
   ): Promise<UnsubscribeTopicDTO> {
     this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
 
     return this.unsubscribeTopicService.createUnsubscribeTopic(
       currentWorkspace.id,
       input,
+      { auditIdentity: context?.req },
     );
   }
 
@@ -74,12 +77,14 @@ export class UnsubscribeTopicResolver {
   async updateUnsubscribeTopic(
     @Args('input') input: UpdateUnsubscribeTopicInput,
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
+    @Context() context?: { req?: WorkspaceDomainRequestAuditIdentity },
   ): Promise<UnsubscribeTopicDTO> {
     this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
 
     return this.unsubscribeTopicService.updateUnsubscribeTopic(
       currentWorkspace.id,
       input,
+      { auditIdentity: context?.req },
     );
   }
 
@@ -87,12 +92,14 @@ export class UnsubscribeTopicResolver {
   async deleteUnsubscribeTopic(
     @Args('id') id: string,
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
+    @Context() context?: { req?: WorkspaceDomainRequestAuditIdentity },
   ): Promise<boolean> {
     this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
 
     await this.unsubscribeTopicService.deleteUnsubscribeTopic(
       currentWorkspace.id,
       id,
+      { auditIdentity: context?.req },
     );
 
     return true;

@@ -1,11 +1,12 @@
 /* @license Enterprise */
 
 import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
-import { Args, Mutation, Query } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query } from '@nestjs/graphql';
 
 import { PermissionFlagType } from 'twenty-shared/constants';
 
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
+import { type WorkspaceDomainRequestAuditIdentity } from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { EnterpriseFeaturesEnabledGuard } from 'src/engine/core-modules/auth/guards/enterprise-features-enabled.guard';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
 import { PreventNestToAutoLogGraphqlErrorsFilter } from 'src/engine/core-modules/graphql/filters/prevent-nest-to-auto-log-graphql-errors.filter';
@@ -59,10 +60,12 @@ export class SsoResolver {
   async createOIDCIdentityProvider(
     @Args('input') setupSsoInput: SetupOidcSsoInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context() context?: { req?: WorkspaceDomainRequestAuditIdentity },
   ): Promise<SetupSsoDTO | SsoException> {
     return this.ssoService.createOidcIdentityProvider(
       setupSsoInput,
       workspaceId,
+      { auditIdentity: context?.req },
     );
   }
 
@@ -77,10 +80,12 @@ export class SsoResolver {
   async createSAMLIdentityProvider(
     @Args('input') setupSsoInput: SetupSamlSsoInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context() context?: { req?: WorkspaceDomainRequestAuditIdentity },
   ): Promise<SetupSsoDTO | SsoException> {
     return this.ssoService.createSamlIdentityProvider(
       setupSsoInput,
       workspaceId,
+      { auditIdentity: context?.req },
     );
   }
 
@@ -88,10 +93,12 @@ export class SsoResolver {
   async deleteSSOIdentityProvider(
     @Args('input') { identityProviderId }: DeleteSsoInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context() context?: { req?: WorkspaceDomainRequestAuditIdentity },
   ) {
     return this.ssoService.deleteSsoIdentityProvider(
       identityProviderId,
       workspaceId,
+      { auditIdentity: context?.req },
     );
   }
 
@@ -99,7 +106,10 @@ export class SsoResolver {
   async editSSOIdentityProvider(
     @Args('input') input: EditSsoInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context() context?: { req?: WorkspaceDomainRequestAuditIdentity },
   ) {
-    return this.ssoService.editSsoIdentityProvider(input, workspaceId);
+    return this.ssoService.editSsoIdentityProvider(input, workspaceId, {
+      auditIdentity: context?.req,
+    });
   }
 }

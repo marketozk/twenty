@@ -5335,3 +5335,18 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 9b0e6416-6b87-4435-ab10-2e9e59f667c8 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log184/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG185` `unsubscribeTopic` / `ssoIdentityProvider`).
+
+## LOG-185 - транзакционный аудит полного жизненного цикла тем отписки (`unsubscribeTopic`, `core."unsubscribeTopic"`) и SSO-провайдеров рабочего пространства (`ssoIdentityProvider`, `core."workspaceSSOIdentityProvider"`)
+
+12.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log185/design.md), [design-review.md](implementation/log185/design-review.md)) и реализован участок `LOG-185` (Linear `ROB-765`): транзакционный аудит полного жизненного цикла тем отписки (`core."unsubscribeTopic"`) и SSO-провайдеров рабочего пространства (`core."workspaceSSOIdentityProvider"`).
+
+В `crm-audit.types.ts` и `crm-audit-transaction-context.ts` добавлены виды ресурсов `unsubscribeTopic` (`values: ['visibility']`, `redacted: ['name', 'description']`, действия `['create', 'update', 'delete']`) и `ssoIdentityProvider` (`values: ['type', 'status']`, `redacted: ['name', 'issuer', 'clientID', 'clientSecret', 'ssoURL', 'certificate', 'fingerprint']`, действия `['create', 'update', 'delete']`). В `workspace-domain-audit.ts` добавлены `projectUnsubscribeTopic`, `projectSsoIdentityProvider`, `runAuditedUnsubscribeTopicCreate`, `runAuditedUnsubscribeTopicUpdate`, `runAuditedUnsubscribeTopicDelete`, `runAuditedSsoIdentityProviderCreate`, `runAuditedSsoIdentityProviderUpdate` и `runAuditedSsoIdentityProviderDelete` с блокировкой `core.workspace` (`FOR NO KEY UPDATE`) и целевых строк (`FOR UPDATE`), проверкой субъекта операции (`resolveWorkspaceDomainOperation`), записью `unsubscribeTopic:create` / `update` / `delete` и `ssoIdentityProvider:create` / `update` / `delete` и повторной сверкой снимков после `audit.flush()`. Подключены `UnsubscribeTopicResolver`, `UnsubscribeTopicService`, `seedUnsubscribeTopics`, `SsoResolver` и `SsoService`.
+
+12.11.2026 проверки LOG185 завершены. 3200 tests/128 suites PASS (711.253s). 7 targeted/1 suite PASS (6.711s), 2 новых PostgreSQL случая. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 493/493 roots, baseline 263 / current 263 diagnostics, 0 новых/changed-code. Совпали 9 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех входных точек `unsubscribeTopic` и `ssoIdentityProvider`, редактирование чувствительных метаданных (`name`, `description`, `issuer`, `clientID`, `clientSecret`, `ssoURL`, `certificate`, `fingerprint`), выполнение внешнего сетевого вызова `discoverOidcIssuer` вне блокировок БД и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log185/results.json), [ревью](implementation/log185/review.md),
+[следующий участок](implementation/log185/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
