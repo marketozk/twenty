@@ -27,6 +27,7 @@ export type CrmAuditResourceKind =
   | 'dpaAgreement'
   | 'unsubscribeTopic'
   | 'ssoIdentityProvider'
+  | 'applicationTranslation'
   | 'webhook'
   | 'connectionProvider'
   | 'skill'

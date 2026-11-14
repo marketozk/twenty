@@ -1,0 +1,14 @@
+{
+  "baseCommit": "d9f349287bee6fdc6dec0fa883d9d7b6305906d0",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/application/application-manifest/application-sync.service.ts": "cae4e7da76d2e6bb2ffee32694d090593b6d902fc0541eaab18908d82a198234",
+    "packages/twenty-server/src/engine/core-modules/application/application-translation/application-translation-sync.service.ts": "7feed033996bfce234384ff6e528dfc8dd9b6bbb00964a9808d9ab84e22f8a55",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "d8c73af5b4da269fc505fc3831013f13b4a4071d5a4b24e4b246b556d0f2de83",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "8015df4123db7eeabfe366a41bbd71305805e8eb32a455552bad55c649535f56",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/workspace-domain-audit.ts": "3d403845a5e2e859506d028a9eb915d85bbb0f45b5ebafda96fe2ddee4114826",
+    "packages/twenty-server/src/engine/core-modules/file/file-core-picture/resolvers/file-core-picture.resolver.ts": "363606b199953f1ad442b8b4a5cb281190a7944a5d8b63da62124c8b59324df6",
+    "packages/twenty-server/src/engine/core-modules/file/file-core-picture/services/file-core-picture.service.ts": "d6b209a0a41df5b8f0af1363e4aba5141863c3b937ccded264c6d77f8e4fcdfc",
+    "packages/twenty-server/test/fork-migration/crm-audit-workspace-domain.postgres-spec.ts": "4fe3082dcd8921167b4d96811301da54c5c4c0676a2452d2e603941d8ebe28fe"
+  },
+  "uploadedSourceHashesVerified": true
+}

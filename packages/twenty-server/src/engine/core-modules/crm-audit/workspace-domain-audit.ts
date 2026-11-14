@@ -1232,6 +1232,32 @@ export const projectSsoIdentityProvider = (row: Record<string, unknown>) => {
   };
 };
 
+export const projectApplicationTranslation = (row: Record<string, unknown>) => {
+  if (typeof row.locale !== 'string' || row.locale.trim().length === 0) {
+    throw new Error('Application translation audit row locale is invalid');
+  }
+  const messages =
+    row.messages !== null &&
+    typeof row.messages === 'object' &&
+    !Array.isArray(row.messages)
+      ? (row.messages as Record<string, string>)
+      : {};
+
+  return {
+    applicationRegistrationId:
+      row.applicationRegistrationId === undefined ||
+      row.applicationRegistrationId === null
+        ? null
+        : uuid(row.applicationRegistrationId),
+    locale: row.locale,
+    messages,
+    deletedAt:
+      row.deletedAt === undefined || row.deletedAt === null
+        ? null
+        : String(row.deletedAt),
+  };
+};
+
 const hydrateUnsubscribeTopicRow = (
   row: Record<string, unknown>,
 ): PersistedUnsubscribeTopicRow =>
@@ -3627,6 +3653,225 @@ export const runAuditedSsoIdentityProviderDelete = async (
       }
 
       return { identityProviderId: resourceId };
+    }),
+  );
+};
+
+export const runAuditedApplicationTranslationSync = async (
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    applicationRegistrationId,
+    translations,
+  }: {
+    applicationRegistrationId: string;
+    translations: Record<string, Record<string, string>>;
+  },
+): Promise<void> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Application translation audit requires core DataSource');
+  }
+  let normalizedRegistrationId: string;
+  try {
+    normalizedRegistrationId = uuid(applicationRegistrationId);
+  } catch (error) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw error;
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('Application translation audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const readTranslationRows = async (): Promise<
+        Array<Record<string, unknown>>
+      > => {
+        const entries = await runner.query(
+          `SELECT to_jsonb(at) AS row
+             FROM core."applicationTranslation" at
+            WHERE at."applicationRegistrationId"=$1
+            ORDER BY at.id
+            FOR UPDATE`,
+          [normalizedRegistrationId],
+        );
+
+        return entries.map(
+          (entry: { row: Record<string, unknown> }) => entry.row,
+        );
+      };
+
+      const existingRows = await readTranslationRows();
+      const rowByLocale = new Map<string, Record<string, unknown>>();
+      for (const row of existingRows) {
+        const locale = String(row.locale);
+        const current = rowByLocale.get(locale);
+        const shouldPrefer =
+          !current ||
+          (current.deletedAt !== null &&
+            current.deletedAt !== undefined &&
+            (row.deletedAt === null || row.deletedAt === undefined));
+        if (shouldPrefer) {
+          rowByLocale.set(locale, row);
+        }
+      }
+
+      const manifestEntries = Object.entries(translations).sort(([a], [b]) =>
+        a.localeCompare(b),
+      );
+      const manifestLocales = new Set(
+        manifestEntries.map(([locale]) => locale),
+      );
+
+      const mutations: Array<{
+        resourceId: string;
+        action: 'create' | 'update' | 'delete';
+        before: Record<string, unknown> | null;
+        after: Record<string, unknown> | null;
+      }> = [];
+
+      for (const [locale, messages] of manifestEntries) {
+        const existingRow = rowByLocale.get(locale);
+        if (existingRow) {
+          const rowId = uuid(existingRow.id);
+          const wasDeleted =
+            existingRow.deletedAt !== null &&
+            existingRow.deletedAt !== undefined;
+          const beforeProj = projectApplicationTranslation(existingRow);
+
+          await runner.query(
+            `UPDATE core."applicationTranslation"
+                SET messages=$1::jsonb,
+                    "deletedAt"=NULL,
+                    "updatedAt"=now()
+              WHERE id=$2`,
+            [JSON.stringify(messages ?? {}), rowId],
+          );
+
+          const [updatedEntry] = await runner.query(
+            `SELECT to_jsonb(at) AS row FROM core."applicationTranslation" at WHERE at.id=$1`,
+            [rowId],
+          );
+          if (!updatedEntry?.row) {
+            throw new Error(
+              'Application translation update did not return row',
+            );
+          }
+          const afterRow = updatedEntry.row as Record<string, unknown>;
+          const afterProj = projectApplicationTranslation(afterRow);
+
+          if (wasDeleted) {
+            mutations.push({
+              resourceId: rowId,
+              action: 'create',
+              before: null,
+              after: afterProj,
+            });
+          } else if (
+            canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)
+          ) {
+            mutations.push({
+              resourceId: rowId,
+              action: 'update',
+              before: beforeProj,
+              after: afterProj,
+            });
+          }
+        } else {
+          const [insertedEntry] = await runner.query(
+            `INSERT INTO core."applicationTranslation"
+               (id,"applicationRegistrationId",locale,messages,"createdAt","updatedAt","deletedAt")
+             VALUES (gen_random_uuid(),$1,$2,$3::jsonb,now(),now(),NULL)
+             RETURNING to_jsonb("applicationTranslation") AS row`,
+            [normalizedRegistrationId, locale, JSON.stringify(messages ?? {})],
+          );
+          if (!insertedEntry?.row) {
+            throw new Error(
+              'Application translation insert did not return row',
+            );
+          }
+          const afterRow = insertedEntry.row as Record<string, unknown>;
+          const rowId = uuid(afterRow.id);
+          mutations.push({
+            resourceId: rowId,
+            action: 'create',
+            before: null,
+            after: projectApplicationTranslation(afterRow),
+          });
+        }
+      }
+
+      for (const row of existingRows) {
+        const locale = String(row.locale);
+        const isDeleted = row.deletedAt !== null && row.deletedAt !== undefined;
+        if (!manifestLocales.has(locale) && !isDeleted) {
+          const rowId = uuid(row.id);
+          const beforeProj = projectApplicationTranslation(row);
+          await runner.query(
+            `UPDATE core."applicationTranslation"
+                SET "deletedAt"=now(),
+                    "updatedAt"=now()
+              WHERE id=$1`,
+            [rowId],
+          );
+          mutations.push({
+            resourceId: rowId,
+            action: 'delete',
+            before: beforeProj,
+            after: null,
+          });
+        }
+      }
+
+      const afterRows = await readTranslationRows();
+      const expectedSerialized = canonicalAuditJson(
+        afterRows.map((row) => ({
+          id: uuid(row.id),
+          ...projectApplicationTranslation(row),
+        })),
+      );
+
+      if (mutations.length > 0) {
+        const audit = new CrmAuditTransactionContext(runner, operation);
+        for (const mutation of mutations) {
+          audit.record({
+            resourceKind: 'applicationTranslation',
+            resourceId: mutation.resourceId,
+            action: mutation.action,
+            before: mutation.before,
+            after: mutation.after,
+            securityDescriptor: {
+              resourceKind: 'applicationTranslation',
+              resourceId: mutation.resourceId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+        }
+        await audit.flush();
+
+        const postFlushRows = await readTranslationRows();
+        const postFlushSerialized = canonicalAuditJson(
+          postFlushRows.map((row) => ({
+            id: uuid(row.id),
+            ...projectApplicationTranslation(row),
+          })),
+        );
+        if (postFlushSerialized !== expectedSerialized) {
+          throw new Error(
+            'Application translation state changed during audit flush',
+          );
+        }
+      }
     }),
   );
 };

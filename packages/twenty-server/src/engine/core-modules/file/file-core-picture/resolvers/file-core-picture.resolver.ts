@@ -1,5 +1,6 @@
 import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
-import { Args, Mutation } from '@nestjs/graphql';
+import { Args, Context, Mutation } from '@nestjs/graphql';
+import { type Request } from 'express';
 
 import bytes from 'bytes';
 import GraphQLUpload from 'graphql-upload/GraphQLUpload.mjs';
@@ -10,6 +11,7 @@ import type { FileUpload } from 'graphql-upload/processRequest.mjs';
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
 import { settings } from 'src/engine/constants/settings';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
+import { roleAuditIdentityFromRequest } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { FileWithSignedUrlDTO } from 'src/engine/core-modules/file/dtos/file-with-sign-url.dto';
 import { FileCorePictureService } from 'src/engine/core-modules/file/file-core-picture/services/file-core-picture.service';
 import { FileUploadGraphqlApiExceptionFilter } from 'src/engine/core-modules/file/file-upload/filters/file-upload-graphql-api-exception.filter';
@@ -73,7 +75,11 @@ export class FileCorePictureResolver {
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Args({ name: 'file', type: () => GraphQLUpload })
     { createReadStream, filename }: FileUpload,
+    @Context() context?: { req?: Request },
   ): Promise<FileWithSignedUrlDTO> {
+    const auditIdentity = context?.req
+      ? roleAuditIdentityFromRequest(context.req)
+      : undefined;
     const buffer = await streamToBuffer(
       createReadStream(),
       bytes(settings.storage.maxMultipartFileSize) ?? undefined,
@@ -83,6 +89,7 @@ export class FileCorePictureResolver {
       file: buffer,
       filename,
       workspace,
+      auditIdentity,
     });
   }
 
@@ -129,10 +136,16 @@ export class FileCorePictureResolver {
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
     @Args({ name: 'fileId', type: () => String })
     fileId: string,
+    @Context() context?: { req?: Request },
   ): Promise<FileWithSignedUrlDTO> {
+    const auditIdentity = context?.req
+      ? roleAuditIdentityFromRequest(context.req)
+      : undefined;
+
     return this.fileCorePictureService.completeWorkspaceLogoUpload({
       workspaceId,
       fileId,
+      auditIdentity,
     });
   }
 

@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
 import { buffer as streamToBuffer } from 'node:stream/consumers';
 
@@ -9,6 +9,7 @@ import { FileFolder } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 import { WorkspaceActivationStatus } from 'twenty-shared/workspace';
 import {
+  DataSource,
   type EntityManager,
   Like,
   type QueryRunner,
@@ -25,6 +26,13 @@ import {
   AuthExceptionCode,
 } from 'src/engine/core-modules/auth/auth.exception';
 import { CoreEntityCacheService } from 'src/engine/core-entity-cache/services/core-entity-cache.service';
+import { type RoleUpdateAuditIdentity } from 'src/engine/core-modules/crm-audit/role-update-audit';
+import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
+import {
+  captureWorkspaceSettingsAudit,
+  runAuditedWorkspaceSettingsUpdate,
+  type WorkspaceSettingsAuditRequest,
+} from 'src/engine/core-modules/crm-audit/workspace-default-role-audit';
 import { FileStorageService } from 'src/engine/core-modules/file-storage/services/file-storage.service';
 import { FileWithSignedUrlDTO } from 'src/engine/core-modules/file/dtos/file-with-sign-url.dto';
 import { FileEntity } from 'src/engine/core-modules/file/entities/file.entity';
@@ -39,6 +47,7 @@ import { removeFileFolderFromFileEntityPath } from 'src/engine/core-modules/file
 import { SecureHttpClientService } from 'src/engine/core-modules/secure-http-client/secure-http-client.service';
 import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
 import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
 import { fetchImageWithTypeFromUrl } from 'src/utils/image';
@@ -59,7 +68,17 @@ export class FileCorePictureService {
     private readonly secureHttpClientService: SecureHttpClientService,
     private readonly fileUploadService: FileUploadService,
     private readonly coreEntityCacheService: CoreEntityCacheService,
+    @Optional()
+    @InjectDataSource()
+    private readonly coreDataSource?: DataSource,
   ) {}
+
+  private resolveDataSource(): DataSource | undefined {
+    return (
+      this.coreDataSource ??
+      (this.workspaceRepository?.manager?.connection as DataSource | undefined)
+    );
+  }
 
   private async findCustomApplicationUniversalIdentifier(
     workspaceId: string,
@@ -219,11 +238,13 @@ export class FileCorePictureService {
   private async claimFileAsWorkspaceLogo({
     workspaceId,
     fileId,
+    settingsAudit,
   }: {
     workspaceId: string;
     fileId: string;
+    settingsAudit?: WorkspaceSettingsAuditRequest;
   }): Promise<string | null> {
-    return this.workspaceRepository.manager.transaction(async (manager) => {
+    const executeClaim = async (manager: EntityManager) => {
       const workspace = await manager.findOneOrFail(WorkspaceEntity, {
         where: { id: workspaceId },
         select: ['id', 'logoFileId'],
@@ -241,20 +262,55 @@ export class FileCorePictureService {
       });
 
       return workspace.logoFileId;
-    });
+    };
+
+    const resolvedDataSource = this.resolveDataSource();
+    if (isDefined(settingsAudit) && isDefined(resolvedDataSource)) {
+      return runAuditedWorkspaceSettingsUpdate(
+        resolvedDataSource,
+        settingsAudit,
+        ['logoFileId'],
+        (runner) => executeClaim(runner.manager),
+      );
+    }
+
+    return this.workspaceRepository.manager.transaction((manager) =>
+      executeClaim(manager),
+    );
   }
 
   private async bindWorkspaceLogo({
     workspaceId,
     fileId,
+    settingsAudit,
   }: {
     workspaceId: string;
     fileId: string;
+    settingsAudit?: WorkspaceSettingsAuditRequest;
   }): Promise<void> {
-    const replacedLogoFileId = await this.claimFileAsWorkspaceLogo({
-      workspaceId,
-      fileId,
-    });
+    let replacedLogoFileId: string | null;
+    try {
+      replacedLogoFileId = await this.claimFileAsWorkspaceLogo({
+        workspaceId,
+        fileId,
+        settingsAudit,
+      });
+    } catch (error) {
+      if (
+        error instanceof NativeTransactionOutcomeUnknownError ||
+        error instanceof CoreAuditPostCommitError
+      ) {
+        try {
+          await this.coreEntityCacheService.invalidate(
+            'workspaceEntity',
+            workspaceId,
+          );
+        } catch {
+          // Preserve the commit-outcome error as the primary failure.
+        }
+      }
+      throw error;
+    }
 
     await this.coreEntityCacheService.invalidate(
       'workspaceEntity',
@@ -269,10 +325,16 @@ export class FileCorePictureService {
   async completeWorkspaceLogoUpload({
     workspaceId,
     fileId,
+    auditIdentity,
   }: {
     workspaceId: string;
     fileId: string;
+    auditIdentity?: RoleUpdateAuditIdentity;
   }): Promise<FileWithSignedUrlDTO> {
+    const requireSettingsAudit = isDefined(auditIdentity)
+      ? captureWorkspaceSettingsAudit(workspaceId, auditIdentity)
+      : undefined;
+
     const file = await this.findCorePictureFileOrThrow({ workspaceId, fileId });
     const currentLogoFileId = await this.findCurrentLogoFileId(workspaceId);
 
@@ -286,7 +348,11 @@ export class FileCorePictureService {
       dedicatedFileFolder: FileFolder.CorePicture,
     });
 
-    await this.bindWorkspaceLogo({ workspaceId, fileId });
+    await this.bindWorkspaceLogo({
+      workspaceId,
+      fileId,
+      settingsAudit: requireSettingsAudit?.(),
+    });
 
     return completedFile;
   }
@@ -317,11 +383,19 @@ export class FileCorePictureService {
     file,
     filename,
     workspace,
+    auditIdentity,
   }: {
     file: Buffer;
     filename: string;
     workspace: WorkspaceEntity;
+    auditIdentity?: RoleUpdateAuditIdentity;
   }): Promise<FileWithSignedUrlDTO> {
+    const requireSettingsAudit =
+      isDefined(auditIdentity) &&
+      workspace.activationStatus !== WorkspaceActivationStatus.PENDING_CREATION
+        ? captureWorkspaceSettingsAudit(workspace.id, auditIdentity)
+        : undefined;
+
     const savedFile = await this.uploadCorePicture({
       file,
       filename,
@@ -332,6 +406,7 @@ export class FileCorePictureService {
     await this.bindWorkspaceLogo({
       workspaceId: workspace.id,
       fileId: savedFile.id,
+      settingsAudit: requireSettingsAudit?.(),
     });
 
     return this.toFileWithSignedUrl({

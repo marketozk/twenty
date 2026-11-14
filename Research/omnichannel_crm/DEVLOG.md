@@ -5376,4 +5376,19 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 отправлен в GitHub, ref подтверждён через API. Описание ROB765, комментарий
 20e150de-0874-4187-84a0-7922fd0b9fc4 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log186/publication.json).
-Следующий участок - закрытие оставшихся открытых границ ROB765.
+Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG187` `workspace.logoFileId` / `applicationTranslation`).
+
+## LOG-187 - транзакционный аудит привязки логотипа рабочего пространства (`workspace.logoFileId`) и полного жизненного цикла переводов приложений (`applicationTranslation`, `core."applicationTranslation"`)
+
+14.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log187/design.md), [design-review.md](implementation/log187/design-review.md)) и реализован участок `LOG-187` (Linear `ROB-765`): транзакционный аудит привязки загруженного файла логотипа к `core.workspace."logoFileId"` и полного жизненного цикла переводов приложений (`core."applicationTranslation"`).
+
+В `crm-audit.types.ts` и `crm-audit-transaction-context.ts` добавлен вид ресурса `applicationTranslation` (`values: ['applicationRegistrationId', 'locale']`, `redacted: ['messages', 'deletedAt']`, действия `['create', 'update', 'delete']`). В `workspace-domain-audit.ts` добавлены `projectApplicationTranslation` и `runAuditedApplicationTranslationSync` с блокировкой `core.workspace` (`FOR NO KEY UPDATE`) и строк `core."applicationTranslation"` (`ORDER BY id FOR UPDATE`), проверкой субъекта операции (`resolveWorkspaceDomainOperation`), записью `applicationTranslation:create` / `update` / `delete` и повторной сверкой снимков после `audit.flush()`. В `FileCorePictureResolver` (`uploadWorkspaceLogo`, `completeWorkspaceLogoUpload`) и `FileCorePictureService` (`uploadWorkspacePicture`, `completeWorkspaceLogoUpload`, `bindWorkspaceLogo`, `claimFileAsWorkspaceLogo`) подключён `runAuditedWorkspaceSettingsUpdate` для атомарного аудита `workspace:update` (`logoFileId`). Подключены `ApplicationSyncService.synchronizeFromManifest` и `ApplicationTranslationSyncService.syncFromManifest`.
+
+14.11.2026 проверки LOG187 завершены. 3202 tests/128 suites PASS (714.34s). 8 targeted/1 suite PASS (7.037s), 1 новый PostgreSQL случай. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 492/492 roots, baseline 265 / current 265 diagnostics, 0 новых/changed-code. Совпали 8 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия входных точек привязки логотипа и переводов приложений, редактирование чувствительных метаданных (`messages`, `deletedAt`), выполнение внешних файловых операций вне блокировок БД и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log187/results.json), [ревью](implementation/log187/review.md),
+[следующий участок](implementation/log187/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

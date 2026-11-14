@@ -142,6 +142,10 @@ const CATALOG: Record<
       'fingerprint',
     ],
   },
+  applicationTranslation: {
+    values: ['applicationRegistrationId', 'locale'],
+    redacted: ['messages', 'deletedAt'],
+  },
   webhook: {
     values: ['applicationId'],
     redacted: ['targetUrl', 'operations', 'description', 'secret'],
@@ -757,6 +761,7 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   dpaAgreement: ['create'],
   unsubscribeTopic: ['create', 'update', 'delete'],
   ssoIdentityProvider: ['create', 'update', 'delete'],
+  applicationTranslation: ['create', 'update', 'delete'],
   webhook: ['create', 'update', 'delete'],
   connectionProvider: ['create', 'update', 'delete'],
   skill: ['create', 'update', 'delete'],

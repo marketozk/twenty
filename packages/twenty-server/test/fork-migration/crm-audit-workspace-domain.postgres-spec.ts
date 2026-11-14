@@ -241,6 +241,39 @@ for (const [modPath, names] of [
     'src/engine/core-modules/secure-http-client/secure-http-client.service',
     ['SecureHttpClientService'],
   ],
+  [
+    'src/engine/core-entity-cache/services/core-entity-cache.service',
+    ['CoreEntityCacheService'],
+  ],
+  [
+    'src/engine/core-modules/file/dtos/file-with-sign-url.dto',
+    ['FileWithSignedUrlDTO'],
+  ],
+  ['src/engine/core-modules/file/entities/file.entity', ['FileEntity']],
+  [
+    'src/engine/core-modules/file/file-upload/services/file-upload.service',
+    ['FileUploadService'],
+  ],
+  [
+    'src/engine/core-modules/file/file-upload/filters/file-upload-graphql-api-exception.filter',
+    ['FileUploadGraphqlApiExceptionFilter'],
+  ],
+  [
+    'src/engine/core-modules/usage-limit/filters/usage-limit-graphql-api-exception.filter',
+    ['UsageLimitGraphqlApiExceptionFilter'],
+  ],
+  [
+    'src/engine/core-modules/user-workspace/guards/upload-profile-picture-permission.guard',
+    ['UploadProfilePicturePermissionGuard'],
+  ],
+  [
+    'src/engine/core-modules/user-workspace/user-workspace.entity',
+    ['UserWorkspaceEntity'],
+  ],
+  [
+    'src/engine/core-modules/application/application-translation/application-translation-cache.service',
+    ['ApplicationTranslationCacheService'],
+  ],
 ] as const) {
   jest.doMock(modPath, () =>
     Object.fromEntries(names.map((name) => [name, class {}])),
@@ -371,6 +404,28 @@ jest.doMock(
   }),
 );
 
+const ApplicationTranslationEntity = class ApplicationTranslationEntity {};
+jest.doMock(
+  'src/engine/core-modules/application/application-translation/application-translation.entity',
+  () => ({
+    ApplicationTranslationEntity,
+  }),
+);
+
+jest.doMock(
+  'src/engine/core-modules/file/utils/extract-file-info-or-throw.utils',
+  () => ({
+    extractFileInfoOrThrow: jest.fn(async () => ({
+      ext: 'png',
+      mimeType: 'image/png',
+    })),
+  }),
+);
+jest.doMock('src/utils/image', () => ({
+  fetchImageWithTypeFromUrl: jest.fn(),
+}));
+jest.doMock('graphql-upload/GraphQLUpload.mjs', () => ({}), { virtual: true });
+
 jest.doMock('src/engine/core-modules/dpa/pdf/render-dpa-to-pdf.util', () => ({
   renderDpaToPdfBuffer: jest.fn(async () => Buffer.from('%PDF-1.4 mock dpa')),
 }));
@@ -417,6 +472,15 @@ const { SsoService } =
   require('src/engine/core-modules/sso/services/sso.service') as typeof import('src/engine/core-modules/sso/services/sso.service');
 const { SsoResolver } =
   require('src/engine/core-modules/sso/sso.resolver') as typeof import('src/engine/core-modules/sso/sso.resolver');
+const { FileCorePictureService } =
+  require('src/engine/core-modules/file/file-core-picture/services/file-core-picture.service') as typeof import('src/engine/core-modules/file/file-core-picture/services/file-core-picture.service');
+const { FileCorePictureResolver } =
+  require('src/engine/core-modules/file/file-core-picture/resolvers/file-core-picture.resolver') as typeof import('src/engine/core-modules/file/file-core-picture/resolvers/file-core-picture.resolver');
+const { ApplicationTranslationSyncService } =
+  require('src/engine/core-modules/application/application-translation/application-translation-sync.service') as typeof import('src/engine/core-modules/application/application-translation/application-translation-sync.service');
+const {
+  WorkspaceEntity,
+} = require('src/engine/core-modules/workspace/workspace.entity');
 
 jest.setTimeout(120000);
 
@@ -445,6 +509,22 @@ const cascadeAppId = randomUUID();
 const cascadeAppUniversalId = randomUUID();
 
 const entities = [
+  new EntitySchema({
+    name: 'WorkspaceEntity',
+    target: WorkspaceEntity,
+    schema: 'core',
+    tableName: 'workspace',
+    columns: {
+      id: { type: 'uuid', primary: true },
+      displayName: { type: 'text', nullable: true },
+      customDomain: { type: 'varchar', nullable: true },
+      isCustomDomainEnabled: { type: 'boolean', default: false },
+      logoFileId: { type: 'uuid', nullable: true },
+      workspaceCustomApplicationId: { type: 'uuid', nullable: true },
+      activationStatus: { type: 'varchar', default: 'ACTIVE' },
+      deletedAt: { type: 'timestamptz', nullable: true },
+    },
+  }),
   new EntitySchema({
     name: 'ApplicationEntity',
     target: ApplicationEntity,
@@ -569,6 +649,21 @@ const entities = [
       updatedAt: { type: 'timestamptz' },
     },
   }),
+  new EntitySchema({
+    name: 'ApplicationTranslationEntity',
+    target: ApplicationTranslationEntity,
+    schema: 'core',
+    tableName: 'applicationTranslation',
+    columns: {
+      id: { type: 'uuid', primary: true, generated: 'uuid' },
+      applicationRegistrationId: { type: 'uuid', nullable: true },
+      locale: { type: 'text' },
+      messages: { type: 'jsonb', default: '{}' },
+      createdAt: { type: 'timestamptz' },
+      updatedAt: { type: 'timestamptz' },
+      deletedAt: { type: 'timestamptz', nullable: true },
+    },
+  }),
 ];
 
 const owner = new DataSource({
@@ -683,6 +778,8 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
           "customDomain" varchar NULL,
           "isCustomDomainEnabled" boolean NOT NULL DEFAULT false,
           "logoFileId" uuid NULL,
+          "workspaceCustomApplicationId" uuid NULL,
+          "activationStatus" varchar NOT NULL DEFAULT 'ACTIVE',
           "deletedAt" timestamptz NULL
         );
         CREATE TABLE core."user" (
@@ -801,6 +898,15 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
           fingerprint varchar NULL,
           "createdAt" timestamptz NOT NULL DEFAULT now(),
           "updatedAt" timestamptz NOT NULL DEFAULT now()
+        );
+        CREATE TABLE core."applicationTranslation" (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "applicationRegistrationId" uuid NULL,
+          locale text NOT NULL,
+          messages jsonb NOT NULL DEFAULT '{}'::jsonb,
+          "createdAt" timestamptz NOT NULL DEFAULT now(),
+          "updatedAt" timestamptz NOT NULL DEFAULT now(),
+          "deletedAt" timestamptz NULL
         );
       `);
       await new OmniAuditBootstrapFastInstanceCommand().up(runner);
@@ -1170,11 +1276,11 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
     };
 
     await owner.query(
-      'TRUNCATE TABLE crm_audit."crmAuditEntry", core."workspaceSSOIdentityProvider", core."unsubscribeTopic", core."dpaAgreement", core."emailingDomain", core."applicationAuthorization", core."publicDomain", core."approvedAccessDomain", core.application, core."apiKey", core."userWorkspace", core."user", core.workspace CASCADE',
+      'TRUNCATE TABLE crm_audit."crmAuditEntry", core."applicationTranslation", core."workspaceSSOIdentityProvider", core."unsubscribeTopic", core."dpaAgreement", core."emailingDomain", core."applicationAuthorization", core."publicDomain", core."approvedAccessDomain", core.application, core."apiKey", core."userWorkspace", core."user", core.workspace CASCADE',
     );
     await owner.query(
-      `INSERT INTO core.workspace (id, "displayName", "customDomain") VALUES ($1, 'Primary WS', 'taken-custom.twenty.io'), ($2, 'Foreign WS', NULL)`,
-      [workspaceId, foreignWorkspaceId],
+      `INSERT INTO core.workspace (id, "displayName", "customDomain", "workspaceCustomApplicationId", "activationStatus") VALUES ($1, 'Primary WS', 'taken-custom.twenty.io', $3, 'ACTIVE'), ($2, 'Foreign WS', NULL, NULL, 'ACTIVE')`,
+      [workspaceId, foreignWorkspaceId, targetAppUniversalId],
     );
     await owner.query(
       `INSERT INTO core."user" (id, email) VALUES ($1, 'admin@acme-corp.io'), ($2, 'support@twenty.io')`,
@@ -2555,5 +2661,347 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
         'DROP FUNCTION IF EXISTS core.corrupt_log185_sso_after_audit()',
       );
     }
+  });
+
+  it('audits workspace logo binding in FileCorePictureService/FileCorePictureResolver and applicationTranslation sync in ApplicationTranslationSyncService with redaction (LOG187)', async () => {
+    const firstLogoFileId = randomUUID();
+    const secondLogoFileId = randomUUID();
+    const fileRecords = new Map<
+      string,
+      {
+        id: string;
+        path: string;
+        settings: { isTemporaryFile: boolean; toDelete: boolean };
+      }
+    >([
+      [
+        firstLogoFileId,
+        {
+          id: firstLogoFileId,
+          path: `core-picture/${firstLogoFileId}.png`,
+          settings: { isTemporaryFile: true, toDelete: false },
+        },
+      ],
+    ]);
+
+    const deleteStorageFile = jest.fn(async () => undefined);
+    const invalidateCache = jest.fn(async () => undefined);
+    const fileRepoMock: {
+      findOne: jest.Mock;
+      findOneOrFail: jest.Mock;
+      update: jest.Mock;
+      withManager: jest.Mock;
+    } = {
+      findOne: jest.fn(
+        async (_wsId: string, opts: { where: { id: string } }) =>
+          fileRecords.get(opts.where.id) ?? null,
+      ),
+      findOneOrFail: jest.fn(
+        async (_wsId: string, opts: { where: { id: string } }) => {
+          const found = fileRecords.get(opts.where.id);
+          if (!found) throw new Error('File not found');
+          return found;
+        },
+      ),
+      update: jest.fn(
+        async (
+          _wsId: string,
+          criteria: { id: string },
+          partial: {
+            settings: { isTemporaryFile: boolean; toDelete: boolean };
+          },
+        ) => {
+          const existing = fileRecords.get(criteria.id);
+          if (existing) {
+            existing.settings = partial.settings;
+          }
+        },
+      ),
+      withManager: jest.fn(),
+    };
+    fileRepoMock.withManager.mockImplementation(() => fileRepoMock);
+
+    const fileCorePictureService = new FileCorePictureService(
+      {
+        writeFile: jest.fn(async () => {
+          const created = {
+            id: secondLogoFileId,
+            path: `core-picture/${secondLogoFileId}.png`,
+            settings: { isTemporaryFile: true, toDelete: false },
+          };
+          fileRecords.set(secondLogoFileId, created);
+          return created;
+        }),
+        deleteFile: deleteStorageFile,
+      } as never,
+      runtime.getRepository(WorkspaceEntity) as never,
+      {} as never,
+      fileRepoMock as never,
+      {
+        signFileByIdUrl: jest.fn(
+          async ({ fileId }: { fileId: string }) =>
+            `https://crm.twenty.local/files/${fileId}`,
+        ),
+      } as never,
+      {} as never,
+      {
+        completeFileUpload: jest.fn(async ({ fileId }: { fileId: string }) => ({
+          id: fileId,
+          path: `core-picture/${fileId}.png`,
+          url: `https://crm.twenty.local/files/${fileId}`,
+        })),
+      } as never,
+      { invalidate: invalidateCache } as never,
+      runtime,
+    );
+
+    const fileCorePictureResolver = new FileCorePictureResolver(
+      fileCorePictureService,
+    );
+
+    const req = {
+      workspace: { id: workspaceId },
+      user: { id: actorUserId },
+      userWorkspaceId: actorUserWorkspaceId,
+      workspaceMemberId: actorMemberId,
+      impersonationContext: { impersonatorUserWorkspaceId },
+    };
+
+    // 1. Complete workspace logo upload (null -> firstLogoFileId)
+    const completedFirst =
+      await fileCorePictureResolver.completeWorkspaceLogoUpload(
+        { id: workspaceId } as never,
+        firstLogoFileId,
+        { req: req as never },
+      );
+    expect(completedFirst.id).toBe(firstLogoFileId);
+    expect(invalidateCache).toHaveBeenCalledWith(
+      'workspaceEntity',
+      workspaceId,
+    );
+    expect(deleteStorageFile).not.toHaveBeenCalled();
+
+    // Idempotent repeat of same fileId writes no extra audit entry
+    await fileCorePictureResolver.completeWorkspaceLogoUpload(
+      { id: workspaceId } as never,
+      firstLogoFileId,
+      { req: req as never },
+    );
+
+    // 2. Replace workspace logo via uploadWorkspacePicture (firstLogoFileId -> secondLogoFileId)
+    const uploadedSecond = await fileCorePictureService.uploadWorkspacePicture({
+      file: Buffer.from('fake-png-bytes'),
+      filename: 'logo.png',
+      workspace: {
+        id: workspaceId,
+        activationStatus: 'ACTIVE',
+      } as never,
+      auditIdentity: {
+        auth: {
+          type: 'user',
+          workspace: { id: workspaceId },
+          workspaceMemberId: actorMemberId,
+        },
+        impersonatorUserWorkspaceId,
+      },
+    });
+    expect(uploadedSecond.id).toBe(secondLogoFileId);
+    expect(deleteStorageFile).toHaveBeenCalledTimes(1);
+
+    const workspaceLogoAudits = (await audits()).filter(
+      (row) => row.resourceKind === 'workspace',
+    );
+    expect(workspaceLogoAudits).toHaveLength(2);
+    expect(workspaceLogoAudits[0]).toMatchObject({
+      workspaceId,
+      resourceKind: 'workspace',
+      resourceId: workspaceId,
+      action: 'update',
+      actor: { kind: 'workspaceMember', id: actorMemberId },
+      initiator: { kind: 'coreUser', id: impersonatorUserId },
+      redactedDiff: {
+        changedFields: ['logoFileId'],
+        values: {
+          logoFileId: { before: null, after: firstLogoFileId },
+        },
+      },
+      securityDescriptor: {
+        resourceKind: 'workspace',
+        resourceId: workspaceId,
+        metadataAccess: 'currentWorkspaceAdministration',
+      },
+    });
+    expect(workspaceLogoAudits[1]).toMatchObject({
+      workspaceId,
+      resourceKind: 'workspace',
+      resourceId: workspaceId,
+      action: 'update',
+      actor: { kind: 'workspaceMember', id: actorMemberId },
+      initiator: { kind: 'coreUser', id: impersonatorUserId },
+      redactedDiff: {
+        changedFields: ['logoFileId'],
+        values: {
+          logoFileId: { before: firstLogoFileId, after: secondLogoFileId },
+        },
+      },
+    });
+
+    // 3. ApplicationTranslationSyncService create, update, soft-delete, revive, and no-op
+    const appRegistrationId = randomUUID();
+    const invalidateTranslationCache = jest.fn(async () => undefined);
+    const translationSyncService = new ApplicationTranslationSyncService(
+      runtime.getRepository(ApplicationTranslationEntity) as never,
+      { invalidate: invalidateTranslationCache } as never,
+      runtime,
+    );
+
+    await translationSyncService.syncFromManifest({
+      workspaceId,
+      applicationRegistrationId: appRegistrationId,
+      translations: {
+        en: { greeting: 'Hello Private Acme' },
+        'fr-FR': { greeting: 'Bonjour Privé Acme' },
+      } as never,
+      auditIdentity: {
+        workspaceId,
+        user: { id: actorUserId },
+        userWorkspaceId: actorUserWorkspaceId,
+        impersonatorUserWorkspaceId,
+      },
+    });
+    expect(invalidateTranslationCache).toHaveBeenCalledWith(appRegistrationId);
+
+    // Identical manifest is a no-op
+    await translationSyncService.syncFromManifest({
+      workspaceId,
+      applicationRegistrationId: appRegistrationId,
+      translations: {
+        en: { greeting: 'Hello Private Acme' },
+        'fr-FR': { greeting: 'Bonjour Privé Acme' },
+      } as never,
+    });
+
+    // Update 'en', remove 'fr-FR' (soft-delete), and add 'de-DE'
+    await translationSyncService.syncFromManifest({
+      workspaceId,
+      applicationRegistrationId: appRegistrationId,
+      translations: {
+        en: { greeting: 'Updated Hello Private Acme' },
+        'de-DE': { greeting: 'Hallo Privat Acme' },
+      } as never,
+    });
+
+    // Revive 'fr-FR' from soft-deleted state (audited as create)
+    await translationSyncService.syncFromManifest({
+      workspaceId,
+      applicationRegistrationId: appRegistrationId,
+      translations: {
+        en: { greeting: 'Updated Hello Private Acme' },
+        'de-DE': { greeting: 'Hallo Privat Acme' },
+        'fr-FR': { greeting: 'Bonjour Relancé Acme' },
+      } as never,
+    });
+
+    const translationAudits = (await audits()).filter(
+      (row) => row.resourceKind === 'applicationTranslation',
+    );
+    expect(translationAudits).toHaveLength(6);
+    expect(
+      translationAudits.slice(0, 2).map((row) => [
+        row.action,
+        (
+          row.redactedDiff as {
+            values: {
+              locale?: { before: string | null; after: string | null };
+            };
+          }
+        ).values.locale,
+      ]),
+    ).toEqual(
+      expect.arrayContaining([
+        ['create', { before: null, after: 'en' }],
+        ['create', { before: null, after: 'fr-FR' }],
+      ]),
+    );
+    expect(
+      translationAudits.slice(2, 5).map((row) => [
+        row.action,
+        (
+          row.redactedDiff as {
+            values: {
+              locale?: { before: string | null; after: string | null };
+            };
+          }
+        ).values.locale,
+      ]),
+    ).toEqual(
+      expect.arrayContaining([
+        ['create', { before: null, after: 'de-DE' }],
+        ['update', undefined],
+        ['delete', { before: 'fr-FR', after: null }],
+      ]),
+    );
+    expect(translationAudits[5]).toMatchObject({
+      action: 'create',
+      redactedDiff: {
+        values: {
+          locale: { before: null, after: 'fr-FR' },
+        },
+      },
+    });
+
+    const firstCreateAudit = translationAudits.find(
+      (row) =>
+        row.action === 'create' &&
+        (
+          row.redactedDiff as {
+            values: { locale?: { after: string } };
+          }
+        ).values.locale?.after === 'en',
+    );
+    expect(firstCreateAudit).toMatchObject({
+      workspaceId,
+      resourceKind: 'applicationTranslation',
+      action: 'create',
+      actor: { kind: 'coreUser', id: actorUserId },
+      initiator: { kind: 'coreUser', id: impersonatorUserId },
+      redactedDiff: {
+        changedFields: [
+          'applicationRegistrationId',
+          'deletedAt',
+          'locale',
+          'messages',
+        ],
+        values: {
+          applicationRegistrationId: {
+            before: null,
+            after: appRegistrationId,
+          },
+          locale: { before: null, after: 'en' },
+        },
+      },
+    });
+    const updateAudit = translationAudits.find(
+      (row) => row.action === 'update',
+    );
+    expect(updateAudit).toMatchObject({
+      workspaceId,
+      resourceKind: 'applicationTranslation',
+      action: 'update',
+      actor: {
+        kind: 'system',
+        id: 'ApplicationTranslationSyncService.syncFromManifest',
+      },
+      redactedDiff: {
+        changedFields: ['messages'],
+        values: {},
+      },
+    });
+
+    const serializedTranslationAudits = JSON.stringify(translationAudits);
+    expect(serializedTranslationAudits).not.toContain('Hello Private Acme');
+    expect(serializedTranslationAudits).not.toContain('Bonjour Privé Acme');
+    expect(serializedTranslationAudits).not.toContain('Hallo Privat Acme');
+    expect(serializedTranslationAudits).not.toContain('Bonjour Relancé Acme');
   });
 });

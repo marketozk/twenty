@@ -333,8 +333,14 @@ iframe-источников и статуса кастомного домена 
 `workspace-default-role-audit.ts` с редактированием `displayName`, `subdomain`, `customDomain`,
 `logo`, `inviteHash`, `allowedIframeOrigins`, `editableProfileFields`, `aiModelIdByTier` и
 `aiAdditionalInstructions`).
+LOG187 закрывает транзакционный аудит привязки логотипа рабочего пространства
+(`core.workspace."logoFileId"` в `FileCorePictureService.completeWorkspaceLogoUpload`,
+`FileCorePictureService.uploadWorkspacePicture` и `FileCorePictureResolver`) и полного жизненного
+цикла переводов приложений (`core."applicationTranslation"` `create`, `update`, `delete` в
+`ApplicationTranslationSyncService.syncFromManifest`, `ApplicationSyncService.synchronizeFromManifest`
+и `workspace-domain-audit.ts` с редактированием `messages` и `deletedAt`).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log186/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log187/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

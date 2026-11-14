@@ -137,6 +137,7 @@ export class ApplicationSyncService {
       // Non-critical and self-healing on next sync, so a failure must not abort the install
       try {
         await this.applicationTranslationSyncService.syncFromManifest({
+          workspaceId,
           applicationRegistrationId:
             ownerFlatApplication.applicationRegistrationId,
           translations: manifest.translations,

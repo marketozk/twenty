@@ -1,0 +1,37 @@
+{
+  "log": "LOG-187",
+  "issue": "ROB-765",
+  "date": "2026-11-14",
+  "title": "Transactional audit of workspace logo binding (FileCorePictureService) and applicationTranslation lifecycle (core.applicationTranslation)",
+  "targetedPostgres": {
+    "suitesPassed": 1,
+    "suitesTotal": 1,
+    "testsPassed": 8,
+    "testsTotal": 8,
+    "newPostgresTests": 1,
+    "durationSeconds": 7.037
+  },
+  "fullRegression": {
+    "suitesPassed": 128,
+    "suitesTotal": 128,
+    "testsPassed": 3202,
+    "testsTotal": 3202,
+    "durationSeconds": 714.34
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.173
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 492,
+    "currentRootFiles": 492,
+    "baselineDiagnostics": 265,
+    "currentDiagnostics": 265,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 8
+}
