@@ -44,6 +44,7 @@ import { TransferApplicationRegistrationOwnershipInput } from 'src/engine/core-m
 import { UpdateApplicationRegistrationInput } from 'src/engine/core-modules/application/application-registration/dtos/update-application-registration.input';
 import { ApplicationRegistrationSourceType } from 'src/engine/core-modules/application/application-registration/enums/application-registration-source-type.enum';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
+import { type WorkspaceDomainAuditIdentity } from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { FileUploadGraphqlApiExceptionFilter } from 'src/engine/core-modules/file/file-upload/filters/file-upload-graphql-api-exception.filter';
 import { FileUrlService } from 'src/engine/core-modules/file/file-url/file-url.service';
 import { PreventNestToAutoLogGraphqlErrorsFilter } from 'src/engine/core-modules/graphql/filters/prevent-nest-to-auto-log-graphql-errors.filter';
@@ -253,11 +254,13 @@ export class ApplicationRegistrationResolver {
     @Args('input') input: CreateApplicationRegistrationInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
     @AuthUser({ allowUndefined: true }) user: UserEntity | undefined,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ): Promise<CreateApplicationRegistrationDTO> {
     return this.applicationRegistrationService.createWithClientSecret({
       input,
       ownerWorkspaceId: workspaceId,
       createdByUserId: user?.id ?? null,
+      auditIdentity: context?.req,
     });
   }
 
@@ -285,8 +288,13 @@ export class ApplicationRegistrationResolver {
     })
     input: UpdateApplicationRegistrationInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ): Promise<ApplicationRegistrationEntity> {
-    return this.applicationRegistrationService.update(input, workspaceId);
+    return this.applicationRegistrationService.update(
+      input,
+      workspaceId,
+      context?.req ? { auditIdentity: context.req } : undefined,
+    );
   }
 
   @UseGuards(
@@ -312,10 +320,12 @@ export class ApplicationRegistrationResolver {
     })
     applicationRegistrationId: string,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ): Promise<boolean> {
     return this.applicationRegistrationService.delete({
       applicationRegistrationId,
       ownerWorkspaceId: workspaceId,
+      auditIdentity: context?.req,
     });
   }
 
@@ -345,11 +355,13 @@ export class ApplicationRegistrationResolver {
     })
     applicationRegistrationId: string,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ): Promise<RotateClientSecretDTO> {
     const clientSecret =
       await this.applicationRegistrationService.rotateClientSecret({
         applicationRegistrationId,
         ownerWorkspaceId: workspaceId,
+        auditIdentity: context?.req,
       });
 
     return { clientSecret };
@@ -404,11 +416,13 @@ export class ApplicationRegistrationResolver {
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
     @AuthApplication({ allowUndefined: true })
     callingApplication: FlatApplication | undefined,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ): Promise<ApplicationRegistrationVariableDTO> {
     return this.applicationRegistrationVariableService.updateVariable({
       input,
       workspaceId,
       callingApplication,
+      auditIdentity: context?.req,
     });
   }
 
@@ -583,10 +597,12 @@ export class ApplicationRegistrationResolver {
     @Args()
     { applicationRegistrationId }: ClaimApplicationRegistrationOwnershipInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ): Promise<ApplicationRegistrationEntity> {
     return this.applicationRegistrationService.claimOwnership({
       applicationRegistrationId,
       claimingWorkspaceId: workspaceId,
+      auditIdentity: context?.req,
     });
   }
 
@@ -652,11 +668,13 @@ export class ApplicationRegistrationResolver {
       targetWorkspaceSubdomain,
     }: TransferApplicationRegistrationOwnershipInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ): Promise<ApplicationRegistrationEntity> {
     return this.applicationRegistrationService.transferOwnership({
       applicationRegistrationId,
       targetWorkspaceSubdomain,
       currentOwnerWorkspaceId: workspaceId,
+      auditIdentity: context?.req,
     });
   }
 

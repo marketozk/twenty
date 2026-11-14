@@ -350,8 +350,17 @@ LOG188 закрывает транзакционный аудит настрое
 `ApplicationKeyValueService.set` / `delete`, `ApplicationKeyValueResolver`,
 `workspace-domain-audit.ts` и каскадного удаления в `ApplicationService.delete` с редактированием
 `key` и `value`).
+LOG189 закрывает транзакционный аудит полного жизненного цикла регистраций приложений
+(`core."applicationRegistration"` `create`, `update`, `delete` в `ApplicationRegistrationService`,
+`ApplicationRegistrationResolver`, `ApplicationRegistrationClaimService` и
+`workspace-domain-audit.ts` с редактированием `oAuthClientSecretHash`, `oAuthClientId`,
+`oAuthRedirectUris`, `oAuthScopes`, `name`, `manifest`, `sourcePackage`) и серверных переменных
+регистраций (`core."applicationRegistrationVariable"` `create`, `update`, `delete` в
+`ApplicationRegistrationVariableService`, `ApplicationRegistrationResolver`,
+`workspace-domain-audit.ts` и каскадного удаления в `ApplicationRegistrationService.delete` с
+редактированием `key` и `encryptedValue`).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log188/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log189/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

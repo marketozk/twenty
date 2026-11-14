@@ -29,6 +29,8 @@ export type CrmAuditResourceKind =
   | 'ssoIdentityProvider'
   | 'applicationTranslation'
   | 'applicationKeyValuePair'
+  | 'applicationRegistration'
+  | 'applicationRegistrationVariable'
   | 'webhook'
   | 'connectionProvider'
   | 'skill'

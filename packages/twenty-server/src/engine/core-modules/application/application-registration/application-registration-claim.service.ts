@@ -169,6 +169,12 @@ export class ApplicationRegistrationClaimService {
     return this.applicationRegistrationService.claimOwnership({
       applicationRegistrationId: registration.id,
       claimingWorkspaceId: params.statePayload.workspaceId,
+      auditIdentity: isDefined(params.statePayload.userId)
+        ? {
+            workspaceId: params.statePayload.workspaceId,
+            actor: { kind: 'coreUser', id: params.statePayload.userId },
+          }
+        : undefined,
     });
   }
 

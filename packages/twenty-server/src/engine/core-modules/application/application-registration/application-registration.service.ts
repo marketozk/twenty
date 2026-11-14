@@ -72,6 +72,13 @@ import {
   UPGRADE_APPLICATIONS_JOB_NAME,
   type UpgradeApplicationsJobData,
 } from 'src/engine/core-modules/application/jobs/upgrade-applications.job-constants';
+import {
+  captureWorkspaceDomainAudit,
+  runAuditedApplicationRegistrationCreate,
+  runAuditedApplicationRegistrationDelete,
+  runAuditedApplicationRegistrationUpdate,
+  type WorkspaceDomainAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { validateRedirectUri } from 'src/engine/core-modules/auth/utils/validate-redirect-uri.util';
 import { CacheLockService } from 'src/engine/core-modules/cache-lock/cache-lock.service';
 import { FileStorageService } from 'src/engine/core-modules/file-storage/services/file-storage.service';
@@ -494,10 +501,12 @@ export class ApplicationRegistrationService {
     input,
     ownerWorkspaceId,
     createdByUserId,
+    auditIdentity,
   }: {
     input: CreateApplicationRegistrationInput;
     ownerWorkspaceId: string;
     createdByUserId: string | null;
+    auditIdentity?: WorkspaceDomainAuditIdentity;
   }): Promise<{
     applicationRegistration: ApplicationRegistrationEntity;
     clientSecret: string;
@@ -513,16 +522,19 @@ export class ApplicationRegistrationService {
     const { clientSecret, clientSecretHash } =
       await this.generateClientSecret();
 
-    const applicationRegistration = await this.create({
-      universalIdentifier: input.universalIdentifier ?? v4(),
-      name: input.name,
-      oAuthClientId: v4(),
-      oAuthClientSecretHash: clientSecretHash,
-      oAuthRedirectUris: input.oAuthRedirectUris ?? [],
-      oAuthScopes: input.oAuthScopes ?? [],
-      createdByUserId,
-      ownerWorkspaceId,
-    });
+    const applicationRegistration = await this.create(
+      {
+        universalIdentifier: input.universalIdentifier ?? v4(),
+        name: input.name,
+        oAuthClientId: v4(),
+        oAuthClientSecretHash: clientSecretHash,
+        oAuthRedirectUris: input.oAuthRedirectUris ?? [],
+        oAuthScopes: input.oAuthScopes ?? [],
+        createdByUserId,
+        ownerWorkspaceId,
+      },
+      { auditIdentity },
+    );
 
     return { applicationRegistration, clientSecret };
   }
@@ -530,6 +542,9 @@ export class ApplicationRegistrationService {
   async create(
     fields: DeepPartial<ApplicationRegistrationEntity> & {
       universalIdentifier: string;
+    },
+    options?: {
+      auditIdentity?: WorkspaceDomainAuditIdentity;
     },
   ): Promise<ApplicationRegistrationEntity> {
     const existingByUid =
@@ -548,9 +563,29 @@ export class ApplicationRegistrationService {
       );
     }
 
-    const saved = await this.applicationRegistrationRepository.save(
-      this.applicationRegistrationRepository.create(fields),
-    );
+    const dataSource =
+      this.applicationRegistrationRepository.manager?.connection;
+    const ownerWorkspaceId = fields.ownerWorkspaceId ?? undefined;
+    const saved =
+      isDefined(dataSource) && isDefined(ownerWorkspaceId)
+        ? await runAuditedApplicationRegistrationCreate(
+            dataSource,
+            captureWorkspaceDomainAudit({
+              workspaceId: ownerWorkspaceId,
+              auditIdentity: options?.auditIdentity,
+              defaultSystemActorId: 'ApplicationRegistrationService.create',
+            }),
+            {
+              work: (runner) =>
+                runner.manager
+                  .getRepository(ApplicationRegistrationEntity)
+                  .save(this.applicationRegistrationRepository.create(fields)),
+              extractRegistrationId: (created) => created.id,
+            },
+          )
+        : await this.applicationRegistrationRepository.save(
+            this.applicationRegistrationRepository.create(fields),
+          );
 
     await this.invalidateMarketplaceAppsCache();
 
@@ -565,6 +600,9 @@ export class ApplicationRegistrationService {
   async update(
     input: UpdateApplicationRegistrationInput,
     ownerWorkspaceId: string,
+    options?: {
+      auditIdentity?: WorkspaceDomainAuditIdentity;
+    },
   ): Promise<ApplicationRegistrationEntity> {
     const { id, update } = input;
 
@@ -574,7 +612,12 @@ export class ApplicationRegistrationService {
         ownerWorkspaceId,
       });
 
-    await this.applyUpdate({ id, update });
+    await this.applyUpdate({
+      id,
+      update,
+      ownerWorkspaceId,
+      auditIdentity: options?.auditIdentity,
+    });
 
     await this.broadcastApplicationRegistrationUpdatedById(
       id,
@@ -610,6 +653,8 @@ export class ApplicationRegistrationService {
     id,
     update,
     instanceFlags = {},
+    ownerWorkspaceId,
+    auditIdentity,
   }: {
     id: string;
     update: UpdateApplicationRegistrationPayload;
@@ -617,6 +662,8 @@ export class ApplicationRegistrationService {
       AdminUpdateApplicationRegistrationPayload,
       'isListed' | 'isPreInstalled' | 'isVetted'
     >;
+    ownerWorkspaceId?: string;
+    auditIdentity?: WorkspaceDomainAuditIdentity;
   }): Promise<void> {
     if (isDefined(update.oAuthRedirectUris)) {
       this.validateRedirectUris(update.oAuthRedirectUris);
@@ -644,7 +691,25 @@ export class ApplicationRegistrationService {
       return;
     }
 
-    await this.applicationRegistrationRepository.update(id, updateData);
+    const dataSource =
+      this.applicationRegistrationRepository.manager?.connection;
+    if (isDefined(dataSource) && isDefined(ownerWorkspaceId)) {
+      const auditRequest = captureWorkspaceDomainAudit({
+        workspaceId: ownerWorkspaceId,
+        auditIdentity,
+        defaultSystemActorId: 'ApplicationRegistrationService.update',
+      });
+      await runAuditedApplicationRegistrationUpdate(dataSource, auditRequest, {
+        applicationRegistrationId: id,
+        work: async (runner) => {
+          await runner.manager
+            .getRepository(ApplicationRegistrationEntity)
+            .update(id, updateData);
+        },
+      });
+    } else {
+      await this.applicationRegistrationRepository.update(id, updateData);
+    }
     await this.invalidateMarketplaceAppsCache();
   }
 
@@ -740,28 +805,73 @@ export class ApplicationRegistrationService {
           updateFields as QueryDeepPartialEntity<ApplicationRegistrationEntity>;
 
         // One transaction keeps the row and its variable schemas on the same manifest; partial so columns written outside this lock survive
-        await this.applicationRegistrationRepository.manager.transaction(
-          async (entityManager) => {
-            await entityManager
-              .getRepository(ApplicationRegistrationEntity)
-              .update(applicationRegistrationId, updatePayload);
+        const dataSource =
+          this.applicationRegistrationRepository.manager?.connection;
+        const effectiveWorkspaceId =
+          additionalFields?.ownerWorkspaceId ??
+          existing.ownerWorkspaceId ??
+          undefined;
+        if (isDefined(dataSource) && isDefined(effectiveWorkspaceId)) {
+          const auditRequest = captureWorkspaceDomainAudit({
+            workspaceId: effectiveWorkspaceId,
+            defaultSystemActorId:
+              'ApplicationRegistrationService.updateFromManifest',
+          });
+          await runAuditedApplicationRegistrationUpdate(
+            dataSource,
+            auditRequest,
+            {
+              applicationRegistrationId,
+              includeVariables: isDefined(
+                manifest.application?.serverVariables,
+              ),
+              work: async (runner) => {
+                const entityManager = runner.manager;
+                await entityManager
+                  .getRepository(ApplicationRegistrationEntity)
+                  .update(applicationRegistrationId, updatePayload);
 
-            if (isDefined(manifest.application?.serverVariables)) {
-              await this.applicationRegistrationVariableService.syncVariableSchemas(
-                applicationRegistrationId,
-                manifest.application.serverVariables,
-                entityManager,
-              );
-            }
+                if (isDefined(manifest.application?.serverVariables)) {
+                  await this.applicationRegistrationVariableService.syncVariableSchemas(
+                    applicationRegistrationId,
+                    manifest.application.serverVariables,
+                    entityManager,
+                  );
+                }
 
-            if (isDefined(publishedVersion)) {
-              await this.applicationRegistrationVersionService.createApplicationRegistrationVersion(
-                { ...publishedVersion, applicationRegistrationId },
-                entityManager,
-              );
-            }
-          },
-        );
+                if (isDefined(publishedVersion)) {
+                  await this.applicationRegistrationVersionService.createApplicationRegistrationVersion(
+                    { ...publishedVersion, applicationRegistrationId },
+                    entityManager,
+                  );
+                }
+              },
+            },
+          );
+        } else {
+          await this.applicationRegistrationRepository.manager.transaction(
+            async (entityManager) => {
+              await entityManager
+                .getRepository(ApplicationRegistrationEntity)
+                .update(applicationRegistrationId, updatePayload);
+
+              if (isDefined(manifest.application?.serverVariables)) {
+                await this.applicationRegistrationVariableService.syncVariableSchemas(
+                  applicationRegistrationId,
+                  manifest.application.serverVariables,
+                  entityManager,
+                );
+              }
+
+              if (isDefined(publishedVersion)) {
+                await this.applicationRegistrationVersionService.createApplicationRegistrationVersion(
+                  { ...publishedVersion, applicationRegistrationId },
+                  entityManager,
+                );
+              }
+            },
+          );
+        }
 
         await this.invalidateMarketplaceAppsCache();
 
@@ -783,9 +893,11 @@ export class ApplicationRegistrationService {
   async delete({
     applicationRegistrationId,
     ownerWorkspaceId,
+    auditIdentity,
   }: {
     applicationRegistrationId: string;
     ownerWorkspaceId: string;
+    auditIdentity?: WorkspaceDomainAuditIdentity;
   }): Promise<boolean> {
     const applicationRegistration =
       await this.applicationRegistrationLookupService.findOneByIdOrThrow({
@@ -831,9 +943,22 @@ export class ApplicationRegistrationService {
       await this.deleteTarballFileSilently({ fileId, workspaceId });
     }
 
-    await this.applicationRegistrationRepository.delete(
-      applicationRegistrationId,
-    );
+    const dataSource =
+      this.applicationRegistrationRepository.manager?.connection;
+    if (isDefined(dataSource)) {
+      const auditRequest = captureWorkspaceDomainAudit({
+        workspaceId: ownerWorkspaceId,
+        auditIdentity,
+        defaultSystemActorId: 'ApplicationRegistrationService.delete',
+      });
+      await runAuditedApplicationRegistrationDelete(dataSource, auditRequest, {
+        applicationRegistrationId,
+      });
+    } else {
+      await this.applicationRegistrationRepository.delete(
+        applicationRegistrationId,
+      );
+    }
 
     await this.invalidateMarketplaceAppsCache();
 
@@ -868,9 +993,11 @@ export class ApplicationRegistrationService {
   async rotateClientSecret({
     applicationRegistrationId,
     ownerWorkspaceId,
+    auditIdentity,
   }: {
     applicationRegistrationId: string;
     ownerWorkspaceId: string;
+    auditIdentity?: WorkspaceDomainAuditIdentity;
   }): Promise<string> {
     await this.applicationRegistrationLookupService.findOneByIdOrThrow({
       applicationRegistrationId,
@@ -880,12 +1007,33 @@ export class ApplicationRegistrationService {
     const { clientSecret, clientSecretHash } =
       await this.generateClientSecret();
 
-    await this.applicationRegistrationRepository.update(
-      applicationRegistrationId,
-      {
-        oAuthClientSecretHash: clientSecretHash,
-      },
-    );
+    const dataSource =
+      this.applicationRegistrationRepository.manager?.connection;
+    if (isDefined(dataSource)) {
+      const auditRequest = captureWorkspaceDomainAudit({
+        workspaceId: ownerWorkspaceId,
+        auditIdentity,
+        defaultSystemActorId:
+          'ApplicationRegistrationService.rotateClientSecret',
+      });
+      await runAuditedApplicationRegistrationUpdate(dataSource, auditRequest, {
+        applicationRegistrationId,
+        work: async (runner) => {
+          await runner.manager
+            .getRepository(ApplicationRegistrationEntity)
+            .update(applicationRegistrationId, {
+              oAuthClientSecretHash: clientSecretHash,
+            });
+        },
+      });
+    } else {
+      await this.applicationRegistrationRepository.update(
+        applicationRegistrationId,
+        {
+          oAuthClientSecretHash: clientSecretHash,
+        },
+      );
+    }
 
     await this.invalidateMarketplaceAppsCache();
 
@@ -1462,6 +1610,7 @@ export class ApplicationRegistrationService {
   async claimOwnership(params: {
     applicationRegistrationId: string;
     claimingWorkspaceId: string;
+    auditIdentity?: WorkspaceDomainAuditIdentity;
   }): Promise<ApplicationRegistrationEntity> {
     const registration = await this.findOneByIdGlobal(
       params.applicationRegistrationId,
@@ -1474,17 +1623,45 @@ export class ApplicationRegistrationService {
       );
     }
 
-    // Conditional update so concurrent claimers cannot overwrite each other
-    const updateResult = await this.applicationRegistrationRepository.update(
-      { id: registration.id, ownerWorkspaceId: IsNull() },
-      { ownerWorkspaceId: params.claimingWorkspaceId },
-    );
+    const dataSource =
+      this.applicationRegistrationRepository.manager?.connection;
+    if (isDefined(dataSource)) {
+      const auditRequest = captureWorkspaceDomainAudit({
+        workspaceId: params.claimingWorkspaceId,
+        auditIdentity: params.auditIdentity,
+        defaultSystemActorId: 'ApplicationRegistrationService.claimOwnership',
+      });
+      await runAuditedApplicationRegistrationUpdate(dataSource, auditRequest, {
+        applicationRegistrationId: registration.id,
+        work: async (runner) => {
+          const updateResult = await runner.manager
+            .getRepository(ApplicationRegistrationEntity)
+            .update(
+              { id: registration.id, ownerWorkspaceId: IsNull() },
+              { ownerWorkspaceId: params.claimingWorkspaceId },
+            );
 
-    if (updateResult.affected === 0) {
-      throw new ApplicationRegistrationException(
-        'Application registration is already owned by a workspace',
-        ApplicationRegistrationExceptionCode.APPLICATION_REGISTRATION_ALREADY_OWNED,
+          if (updateResult.affected === 0) {
+            throw new ApplicationRegistrationException(
+              'Application registration is already owned by a workspace',
+              ApplicationRegistrationExceptionCode.APPLICATION_REGISTRATION_ALREADY_OWNED,
+            );
+          }
+        },
+      });
+    } else {
+      // Conditional update so concurrent claimers cannot overwrite each other
+      const updateResult = await this.applicationRegistrationRepository.update(
+        { id: registration.id, ownerWorkspaceId: IsNull() },
+        { ownerWorkspaceId: params.claimingWorkspaceId },
       );
+
+      if (updateResult.affected === 0) {
+        throw new ApplicationRegistrationException(
+          'Application registration is already owned by a workspace',
+          ApplicationRegistrationExceptionCode.APPLICATION_REGISTRATION_ALREADY_OWNED,
+        );
+      }
     }
 
     await this.invalidateMarketplaceAppsCache();
@@ -1506,6 +1683,7 @@ export class ApplicationRegistrationService {
     applicationRegistrationId: string;
     targetWorkspaceSubdomain: string;
     currentOwnerWorkspaceId: string;
+    auditIdentity?: WorkspaceDomainAuditIdentity;
   }): Promise<ApplicationRegistrationEntity> {
     const registration =
       await this.applicationRegistrationLookupService.findOneByIdOrThrow({
@@ -1531,9 +1709,30 @@ export class ApplicationRegistrationService {
       );
     }
 
-    await this.applicationRegistrationRepository.update(registration.id, {
-      ownerWorkspaceId: targetWorkspace.id,
-    });
+    const dataSource =
+      this.applicationRegistrationRepository.manager?.connection;
+    if (isDefined(dataSource)) {
+      const auditRequest = captureWorkspaceDomainAudit({
+        workspaceId: params.currentOwnerWorkspaceId,
+        auditIdentity: params.auditIdentity,
+        defaultSystemActorId:
+          'ApplicationRegistrationService.transferOwnership',
+      });
+      await runAuditedApplicationRegistrationUpdate(dataSource, auditRequest, {
+        applicationRegistrationId: registration.id,
+        work: async (runner) => {
+          await runner.manager
+            .getRepository(ApplicationRegistrationEntity)
+            .update(registration.id, {
+              ownerWorkspaceId: targetWorkspace.id,
+            });
+        },
+      });
+    } else {
+      await this.applicationRegistrationRepository.update(registration.id, {
+        ownerWorkspaceId: targetWorkspace.id,
+      });
+    }
 
     await this.invalidateMarketplaceAppsCache();
 

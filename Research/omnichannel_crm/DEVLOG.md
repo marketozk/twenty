@@ -5418,4 +5418,19 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 отправлен в GitHub, ref подтверждён через API. Описание ROB765, комментарий
 925bd68c-00bd-4e4d-b3d3-3372d16adbbd и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log188/publication.json).
-Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG188` `core.application`).
+Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG189` `applicationRegistration` и `applicationRegistrationVariable`).
+
+## LOG-189 - транзакционный аудит регистраций приложений (`applicationRegistration`, `core."applicationRegistration"`) и серверных переменных регистраций (`applicationRegistrationVariable`, `core."applicationRegistrationVariable"`)
+
+15.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log189/design.md), [design-review.md](implementation/log189/design-review.md)) и реализован участок `LOG-189` (Linear `ROB-765`): транзакционный аудит полного жизненного цикла регистраций приложений в `core."applicationRegistration"` и серверных переменных регистраций в `core."applicationRegistrationVariable"`.
+
+В `crm-audit.types.ts` и `crm-audit-transaction-context.ts` добавлены виды ресурсов `applicationRegistration` (`values: ['universalIdentifier', 'ownerWorkspaceId', 'createdByUserId', 'sourceType', 'tarballFileId', 'logoFileId', 'latestAvailableVersion', 'isListed', 'isVetted', 'isPreInstalled']`, `redacted: ['name', 'oAuthClientId', 'oAuthClientSecretHash', 'oAuthRedirectUris', 'oAuthScopes', 'sourcePackage', 'manifest', 'logo', 'description', 'author', 'category', 'websiteUrl', 'aboutDescription', 'pricingDescription', 'termsUrl', 'emailSupport', 'issueReportUrl', 'screenshots', 'galleryImages', 'deletedAt']`, действия `['create', 'update', 'delete']`) и `applicationRegistrationVariable` (`values: ['applicationRegistrationId', 'type', 'isSecret', 'isRequired', 'isDeprecated']`, `redacted: ['key', 'encryptedValue', 'description', 'options']`, действия `['create', 'update', 'delete']`). В `workspace-domain-audit.ts`, `ApplicationRegistrationService`, `ApplicationRegistrationVariableService`, `ApplicationRegistrationResolver` и `ApplicationRegistrationClaimService` подключены `projectApplicationRegistration`, `projectApplicationRegistrationVariable`, `runAuditedApplicationRegistrationCreate`, `runAuditedApplicationRegistrationUpdate`, `runAuditedApplicationRegistrationDelete` и `runAuditedApplicationRegistrationVariableSync` с блокировками `core.workspace` (`FOR NO KEY UPDATE`) и строк `FOR UPDATE`, каскадным аудитом удаления переменных при удалении регистрации и перепроверкой состояния после `audit.flush()`.
+
+15.11.2026 проверки LOG189 завершены. 3205 tests/128 suites PASS (716.335s). 10 targeted/1 suite PASS (7.799s), 1 новый PostgreSQL случай. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 492/492 roots, baseline 269 / current 269 diagnostics, 0 новых/changed-code. Совпали 8 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия входных точек регистраций приложений и серверных переменных, редактирование чувствительных метаданных и OAuth/серверных секретов (`oAuthClientSecretHash`, `encryptedValue`, `key`), атомарность каскадного удаления переменных при удалении регистрации и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log189/results.json), [ревью](implementation/log189/review.md),
+[следующий участок](implementation/log189/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

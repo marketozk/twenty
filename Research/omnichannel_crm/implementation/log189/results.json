@@ -1,0 +1,37 @@
+{
+  "log": "LOG-189",
+  "issue": "ROB-765",
+  "date": "2026-11-15",
+  "title": "Transactional audit of application registrations (core.applicationRegistration) and application registration variables (core.applicationRegistrationVariable)",
+  "targetedPostgres": {
+    "suitesPassed": 1,
+    "suitesTotal": 1,
+    "testsPassed": 10,
+    "testsTotal": 10,
+    "newPostgresTests": 1,
+    "durationSeconds": 7.799
+  },
+  "fullRegression": {
+    "suitesPassed": 128,
+    "suitesTotal": 128,
+    "testsPassed": 3205,
+    "testsTotal": 3205,
+    "durationSeconds": 716.335
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.168
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 492,
+    "currentRootFiles": 492,
+    "baselineDiagnostics": 269,
+    "currentDiagnostics": 269,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 8
+}

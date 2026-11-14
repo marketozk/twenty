@@ -22,6 +22,11 @@ import { canCallerReachApplicationRegistrationOrThrow } from 'src/engine/core-mo
 import { findEngineInjectedEnvVariableNames } from 'src/engine/core-modules/logic-function/logic-function-executor/utils/find-engine-injected-env-variable-names.util';
 import { type PlaintextString } from 'src/engine/core-modules/secret-encryption/branded-strings/plaintext-string.type';
 import { SecretEncryptionService } from 'src/engine/core-modules/secret-encryption/secret-encryption.service';
+import {
+  captureWorkspaceDomainAudit,
+  runAuditedApplicationRegistrationVariableSync,
+  type WorkspaceDomainAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { ApplicationRegistrationVariableDTO } from 'src/engine/core-modules/application/application-registration-variable/dtos/application-registration-variable.dto';
 
 @Injectable()
@@ -72,10 +77,12 @@ export class ApplicationRegistrationVariableService {
     input,
     workspaceId,
     callingApplication,
+    auditIdentity,
   }: {
     input: UpdateApplicationRegistrationVariableInput;
     workspaceId: string;
     callingApplication: FlatApplication | undefined;
+    auditIdentity?: WorkspaceDomainAuditIdentity;
   }): Promise<ApplicationRegistrationVariableDTO> {
     const variable = await this.findVariableOrThrow(input.id);
 
@@ -88,6 +95,26 @@ export class ApplicationRegistrationVariableService {
       callingApplication,
       applicationRegistrationId: variable.applicationRegistrationId,
     });
+
+    const dataSource = this.variableRepository.manager?.connection;
+    if (isDefined(dataSource)) {
+      const auditRequest = captureWorkspaceDomainAudit({
+        workspaceId,
+        auditIdentity,
+        defaultSystemActorId:
+          'ApplicationRegistrationVariableService.updateVariable',
+      });
+      const updated = await runAuditedApplicationRegistrationVariableSync(
+        dataSource,
+        auditRequest,
+        {
+          applicationRegistrationId: variable.applicationRegistrationId,
+          work: (runner) => this.applyVariableUpdate(input, runner.manager),
+        },
+      );
+
+      return this.toObfuscatedDTO(updated);
+    }
 
     return this.toObfuscatedDTO(await this.applyVariableUpdate(input));
   }
@@ -103,6 +130,51 @@ export class ApplicationRegistrationVariableService {
   }
 
   async syncVariableSchemas(
+    applicationRegistrationId: string,
+    serverVariables: ServerVariables,
+    entityManager?: EntityManager,
+    options?: {
+      workspaceId?: string;
+      auditIdentity?: WorkspaceDomainAuditIdentity;
+    },
+  ): Promise<void> {
+    const dataSource = this.variableRepository.manager?.connection;
+    if (
+      !isDefined(entityManager) &&
+      isDefined(dataSource) &&
+      isDefined(options?.workspaceId)
+    ) {
+      const auditRequest = captureWorkspaceDomainAudit({
+        workspaceId: options.workspaceId,
+        auditIdentity: options.auditIdentity,
+        defaultSystemActorId:
+          'ApplicationRegistrationVariableService.syncVariableSchemas',
+      });
+      await runAuditedApplicationRegistrationVariableSync(
+        dataSource,
+        auditRequest,
+        {
+          applicationRegistrationId,
+          work: (runner) =>
+            this.syncVariableSchemasWithManager(
+              applicationRegistrationId,
+              serverVariables,
+              runner.manager,
+            ),
+        },
+      );
+
+      return;
+    }
+
+    await this.syncVariableSchemasWithManager(
+      applicationRegistrationId,
+      serverVariables,
+      entityManager,
+    );
+  }
+
+  private async syncVariableSchemasWithManager(
     applicationRegistrationId: string,
     serverVariables: ServerVariables,
     entityManager?: EntityManager,
@@ -312,8 +384,12 @@ export class ApplicationRegistrationVariableService {
 
   private async applyVariableUpdate(
     input: UpdateApplicationRegistrationVariableInput,
+    entityManager?: EntityManager,
   ): Promise<ApplicationRegistrationVariableEntity> {
     const { id, update } = input;
+    const variableRepository = isDefined(entityManager)
+      ? entityManager.getRepository(ApplicationRegistrationVariableEntity)
+      : this.variableRepository;
 
     const updateData: Record<string, unknown> = {};
 
@@ -334,10 +410,10 @@ export class ApplicationRegistrationVariableService {
     }
 
     if (Object.keys(updateData).length > 0) {
-      await this.variableRepository.update(id, updateData);
+      await variableRepository.update(id, updateData);
     }
 
-    return this.variableRepository.findOneOrFail({ where: { id } });
+    return variableRepository.findOneOrFail({ where: { id } });
   }
 
   private decryptValue(

@@ -1276,6 +1276,142 @@ export const projectApplicationKeyValuePair = (
   };
 };
 
+export const projectApplicationRegistration = (
+  row: Record<string, unknown>,
+) => {
+  const ownerWorkspaceRaw = row.ownerWorkspaceId ?? row.workspaceId;
+
+  return {
+    universalIdentifier: uuid(row.universalIdentifier),
+    ownerWorkspaceId:
+      ownerWorkspaceRaw === undefined || ownerWorkspaceRaw === null
+        ? null
+        : uuid(ownerWorkspaceRaw),
+    createdByUserId:
+      row.createdByUserId === undefined || row.createdByUserId === null
+        ? null
+        : uuid(row.createdByUserId),
+    sourceType:
+      row.sourceType === undefined || row.sourceType === null
+        ? 'local'
+        : String(row.sourceType),
+    tarballFileId:
+      row.tarballFileId === undefined || row.tarballFileId === null
+        ? null
+        : uuid(row.tarballFileId),
+    logoFileId:
+      row.logoFileId === undefined || row.logoFileId === null
+        ? null
+        : uuid(row.logoFileId),
+    latestAvailableVersion:
+      row.latestAvailableVersion === undefined ||
+      row.latestAvailableVersion === null
+        ? null
+        : String(row.latestAvailableVersion),
+    isListed: Boolean(row.isListed),
+    isVetted: Boolean(row.isVetted),
+    isPreInstalled: Boolean(row.isPreInstalled),
+    name: row.name === undefined || row.name === null ? '' : String(row.name),
+    oAuthClientId:
+      row.oAuthClientId === undefined || row.oAuthClientId === null
+        ? ''
+        : String(row.oAuthClientId),
+    oAuthClientSecretHash:
+      row.oAuthClientSecretHash === undefined ||
+      row.oAuthClientSecretHash === null
+        ? null
+        : String(row.oAuthClientSecretHash),
+    oAuthRedirectUris: Array.isArray(row.oAuthRedirectUris)
+      ? row.oAuthRedirectUris.map((item) => String(item))
+      : [],
+    oAuthScopes: Array.isArray(row.oAuthScopes)
+      ? row.oAuthScopes.map((item) => String(item))
+      : [],
+    sourcePackage:
+      row.sourcePackage === undefined || row.sourcePackage === null
+        ? null
+        : String(row.sourcePackage),
+    manifest: row.manifest === undefined ? null : row.manifest,
+    logo: row.logo === undefined || row.logo === null ? null : String(row.logo),
+    description:
+      row.description === undefined || row.description === null
+        ? null
+        : String(row.description),
+    author:
+      row.author === undefined || row.author === null
+        ? null
+        : String(row.author),
+    category:
+      row.category === undefined || row.category === null
+        ? null
+        : String(row.category),
+    websiteUrl:
+      row.websiteUrl === undefined || row.websiteUrl === null
+        ? null
+        : String(row.websiteUrl),
+    aboutDescription:
+      row.aboutDescription === undefined || row.aboutDescription === null
+        ? null
+        : String(row.aboutDescription),
+    pricingDescription:
+      row.pricingDescription === undefined || row.pricingDescription === null
+        ? null
+        : String(row.pricingDescription),
+    termsUrl:
+      row.termsUrl === undefined || row.termsUrl === null
+        ? null
+        : String(row.termsUrl),
+    emailSupport:
+      row.emailSupport === undefined || row.emailSupport === null
+        ? null
+        : String(row.emailSupport),
+    issueReportUrl:
+      row.issueReportUrl === undefined || row.issueReportUrl === null
+        ? null
+        : String(row.issueReportUrl),
+    screenshots: Array.isArray(row.screenshots)
+      ? row.screenshots.map((item) => String(item))
+      : [],
+    galleryImages: Array.isArray(row.galleryImages) ? row.galleryImages : null,
+    deletedAt:
+      row.deletedAt === undefined || row.deletedAt === null
+        ? null
+        : String(row.deletedAt),
+  };
+};
+
+export const projectApplicationRegistrationVariable = (
+  row: Record<string, unknown>,
+) => {
+  if (typeof row.key !== 'string' || row.key.length === 0) {
+    throw new Error(
+      'Application registration variable audit row key is invalid',
+    );
+  }
+
+  return {
+    applicationRegistrationId: uuid(row.applicationRegistrationId),
+    type:
+      row.type === undefined || row.type === null ? 'TEXT' : String(row.type),
+    isSecret:
+      row.isSecret === undefined || row.isSecret === null
+        ? true
+        : Boolean(row.isSecret),
+    isRequired: Boolean(row.isRequired),
+    isDeprecated: Boolean(row.isDeprecated),
+    key: row.key,
+    encryptedValue:
+      row.encryptedValue === undefined || row.encryptedValue === null
+        ? ''
+        : String(row.encryptedValue),
+    description:
+      row.description === undefined || row.description === null
+        ? ''
+        : String(row.description),
+    options: Array.isArray(row.options) ? row.options : null,
+  };
+};
+
 const hydrateUnsubscribeTopicRow = (
   row: Record<string, unknown>,
 ): PersistedUnsubscribeTopicRow =>
@@ -4297,6 +4433,612 @@ export const runAuditedApplicationKeyValueDelete = async (
       }
 
       return { deleted: true };
+    }),
+  );
+};
+
+export const runAuditedApplicationRegistrationCreate = async <TResult>(
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    work,
+    extractRegistrationId,
+  }: {
+    work: (runner: QueryRunner) => Promise<TResult>;
+    extractRegistrationId: (result: TResult) => string;
+  },
+): Promise<TResult> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Application registration audit requires core DataSource');
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('Application registration audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+      const result = await work(runner);
+      const registrationId = uuid(extractRegistrationId(result));
+
+      const [entry] = await runner.query(
+        `SELECT to_jsonb(ar) AS row FROM core."applicationRegistration" ar WHERE ar.id=$1 FOR UPDATE`,
+        [registrationId],
+      );
+      if (!entry?.row) {
+        throw new Error('Application registration create did not persist row');
+      }
+      const afterRow = entry.row as Record<string, unknown>;
+      const afterProj = projectApplicationRegistration(afterRow);
+
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      audit.record({
+        resourceKind: 'applicationRegistration',
+        resourceId: registrationId,
+        action: 'create',
+        before: null,
+        after: afterProj,
+        securityDescriptor: {
+          resourceKind: 'applicationRegistration',
+          resourceId: registrationId,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+      await audit.flush();
+
+      const [postFlushEntry] = await runner.query(
+        `SELECT to_jsonb(ar) AS row FROM core."applicationRegistration" ar WHERE ar.id=$1`,
+        [registrationId],
+      );
+      if (
+        !postFlushEntry?.row ||
+        canonicalAuditJson(
+          projectApplicationRegistration(
+            postFlushEntry.row as Record<string, unknown>,
+          ),
+        ) !== canonicalAuditJson(afterProj)
+      ) {
+        throw new Error(
+          'Application registration state changed during audit flush',
+        );
+      }
+
+      return result;
+    }),
+  );
+};
+
+export const runAuditedApplicationRegistrationUpdate = async <TResult>(
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    applicationRegistrationId,
+    includeVariables = false,
+    work,
+  }: {
+    applicationRegistrationId: string;
+    includeVariables?: boolean;
+    work: (runner: QueryRunner) => Promise<TResult>;
+  },
+): Promise<TResult> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Application registration audit requires core DataSource');
+  }
+  let normalizedId: string;
+  try {
+    normalizedId = uuid(applicationRegistrationId);
+  } catch (error) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw error;
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('Application registration audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const [beforeEntry] = await runner.query(
+        `SELECT to_jsonb(ar) AS row FROM core."applicationRegistration" ar WHERE ar.id=$1 FOR UPDATE`,
+        [normalizedId],
+      );
+      if (!beforeEntry?.row) {
+        throw new Error(
+          'Application registration audit target row unavailable',
+        );
+      }
+      const beforeRow = beforeEntry.row as Record<string, unknown>;
+      const beforeProj = projectApplicationRegistration(beforeRow);
+
+      const beforeVars = new Map<string, Record<string, unknown>>();
+      if (includeVariables) {
+        const varEntries = await runner.query(
+          `SELECT to_jsonb(arv) AS row
+             FROM core."applicationRegistrationVariable" arv
+            WHERE arv."applicationRegistrationId"=$1
+            ORDER BY arv.id
+            FOR UPDATE`,
+          [normalizedId],
+        );
+        for (const entry of varEntries) {
+          const row = entry.row as Record<string, unknown>;
+          beforeVars.set(uuid(row.id), row);
+        }
+      }
+
+      const result = await work(runner);
+
+      const [afterEntry] = await runner.query(
+        `SELECT to_jsonb(ar) AS row FROM core."applicationRegistration" ar WHERE ar.id=$1`,
+        [normalizedId],
+      );
+      if (!afterEntry?.row) {
+        throw new Error('Application registration update did not preserve row');
+      }
+      const afterRow = afterEntry.row as Record<string, unknown>;
+      const afterProj = projectApplicationRegistration(afterRow);
+
+      const afterVars = new Map<string, Record<string, unknown>>();
+      if (includeVariables) {
+        const varEntries = await runner.query(
+          `SELECT to_jsonb(arv) AS row
+             FROM core."applicationRegistrationVariable" arv
+            WHERE arv."applicationRegistrationId"=$1
+            ORDER BY arv.id`,
+          [normalizedId],
+        );
+        for (const entry of varEntries) {
+          const row = entry.row as Record<string, unknown>;
+          afterVars.set(uuid(row.id), row);
+        }
+      }
+
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      let recordedCount = 0;
+
+      if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+        audit.record({
+          resourceKind: 'applicationRegistration',
+          resourceId: normalizedId,
+          action: 'update',
+          before: beforeProj,
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'applicationRegistration',
+            resourceId: normalizedId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        recordedCount += 1;
+      }
+
+      if (includeVariables) {
+        for (const [varId, afterVarRow] of afterVars.entries()) {
+          const beforeVarRow = beforeVars.get(varId);
+          const afterVarProj =
+            projectApplicationRegistrationVariable(afterVarRow);
+          if (!beforeVarRow) {
+            audit.record({
+              resourceKind: 'applicationRegistrationVariable',
+              resourceId: varId,
+              action: 'create',
+              before: null,
+              after: afterVarProj,
+              securityDescriptor: {
+                resourceKind: 'applicationRegistrationVariable',
+                resourceId: varId,
+                metadataAccess: 'currentWorkspaceAdministration',
+              },
+            });
+            recordedCount += 1;
+          } else {
+            const beforeVarProj =
+              projectApplicationRegistrationVariable(beforeVarRow);
+            if (
+              canonicalAuditJson(beforeVarProj) !==
+              canonicalAuditJson(afterVarProj)
+            ) {
+              audit.record({
+                resourceKind: 'applicationRegistrationVariable',
+                resourceId: varId,
+                action: 'update',
+                before: beforeVarProj,
+                after: afterVarProj,
+                securityDescriptor: {
+                  resourceKind: 'applicationRegistrationVariable',
+                  resourceId: varId,
+                  metadataAccess: 'currentWorkspaceAdministration',
+                },
+              });
+              recordedCount += 1;
+            }
+          }
+        }
+        for (const [varId, beforeVarRow] of beforeVars.entries()) {
+          if (!afterVars.has(varId)) {
+            audit.record({
+              resourceKind: 'applicationRegistrationVariable',
+              resourceId: varId,
+              action: 'delete',
+              before: projectApplicationRegistrationVariable(beforeVarRow),
+              after: null,
+              securityDescriptor: {
+                resourceKind: 'applicationRegistrationVariable',
+                resourceId: varId,
+                metadataAccess: 'currentWorkspaceAdministration',
+              },
+            });
+            recordedCount += 1;
+          }
+        }
+      }
+
+      if (recordedCount > 0) {
+        await audit.flush();
+
+        const [postFlushEntry] = await runner.query(
+          `SELECT to_jsonb(ar) AS row FROM core."applicationRegistration" ar WHERE ar.id=$1`,
+          [normalizedId],
+        );
+        if (
+          !postFlushEntry?.row ||
+          canonicalAuditJson(
+            projectApplicationRegistration(
+              postFlushEntry.row as Record<string, unknown>,
+            ),
+          ) !== canonicalAuditJson(afterProj)
+        ) {
+          throw new Error(
+            'Application registration state changed during audit flush',
+          );
+        }
+
+        if (includeVariables) {
+          const postFlushVarEntries = await runner.query(
+            `SELECT to_jsonb(arv) AS row
+               FROM core."applicationRegistrationVariable" arv
+              WHERE arv."applicationRegistrationId"=$1
+              ORDER BY arv.id`,
+            [normalizedId],
+          );
+          const expectedVarsJson = canonicalAuditJson(
+            [...afterVars.entries()].map(([id, row]) => ({
+              id,
+              ...projectApplicationRegistrationVariable(row),
+            })),
+          );
+          const actualVarsJson = canonicalAuditJson(
+            postFlushVarEntries.map(
+              (entry: { row: Record<string, unknown> }) => ({
+                id: uuid(entry.row.id),
+                ...projectApplicationRegistrationVariable(entry.row),
+              }),
+            ),
+          );
+          if (actualVarsJson !== expectedVarsJson) {
+            throw new Error(
+              'Application registration variable state changed during audit flush',
+            );
+          }
+        }
+      }
+
+      return result;
+    }),
+  );
+};
+
+export const runAuditedApplicationRegistrationDelete = async (
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    applicationRegistrationId,
+  }: {
+    applicationRegistrationId: string;
+  },
+): Promise<void> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Application registration audit requires core DataSource');
+  }
+  let normalizedId: string;
+  try {
+    normalizedId = uuid(applicationRegistrationId);
+  } catch (error) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw error;
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('Application registration audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const [beforeEntry] = await runner.query(
+        `SELECT to_jsonb(ar) AS row FROM core."applicationRegistration" ar WHERE ar.id=$1 FOR UPDATE`,
+        [normalizedId],
+      );
+      if (!beforeEntry?.row) {
+        throw new Error(
+          'Application registration audit target row unavailable',
+        );
+      }
+      const beforeRow = beforeEntry.row as Record<string, unknown>;
+      const beforeProj = projectApplicationRegistration(beforeRow);
+
+      const [reg] = await runner.query(
+        `SELECT to_regclass('core."applicationRegistrationVariable"') IS NOT NULL AS "hasVarTable"`,
+      );
+      const hasVarTable = reg?.hasVarTable === true;
+      const beforeVars = new Map<string, Record<string, unknown>>();
+      if (hasVarTable) {
+        const varEntries = await runner.query(
+          `SELECT to_jsonb(arv) AS row
+             FROM core."applicationRegistrationVariable" arv
+            WHERE arv."applicationRegistrationId"=$1
+            ORDER BY arv.id
+            FOR UPDATE`,
+          [normalizedId],
+        );
+        for (const entry of varEntries) {
+          const row = entry.row as Record<string, unknown>;
+          beforeVars.set(uuid(row.id), row);
+        }
+      }
+
+      await runner.query(
+        `DELETE FROM core."applicationRegistration" WHERE id=$1`,
+        [normalizedId],
+      );
+
+      const [remaining] = await runner.query(
+        `SELECT id FROM core."applicationRegistration" WHERE id=$1`,
+        [normalizedId],
+      );
+      if (remaining) {
+        throw new Error('Application registration delete did not remove row');
+      }
+
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      for (const [varId, varRow] of beforeVars.entries()) {
+        audit.record({
+          resourceKind: 'applicationRegistrationVariable',
+          resourceId: varId,
+          action: 'delete',
+          before: projectApplicationRegistrationVariable(varRow),
+          after: null,
+          securityDescriptor: {
+            resourceKind: 'applicationRegistrationVariable',
+            resourceId: varId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+      }
+      audit.record({
+        resourceKind: 'applicationRegistration',
+        resourceId: normalizedId,
+        action: 'delete',
+        before: beforeProj,
+        after: null,
+        securityDescriptor: {
+          resourceKind: 'applicationRegistration',
+          resourceId: normalizedId,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+      await audit.flush();
+
+      const [postFlush] = await runner.query(
+        `SELECT id FROM core."applicationRegistration" WHERE id=$1`,
+        [normalizedId],
+      );
+      if (postFlush) {
+        throw new Error(
+          'Application registration state changed during audit flush',
+        );
+      }
+      if (hasVarTable) {
+        const postFlushVars = await runner.query(
+          `SELECT id FROM core."applicationRegistrationVariable" WHERE "applicationRegistrationId"=$1`,
+          [normalizedId],
+        );
+        if (postFlushVars.length > 0) {
+          throw new Error(
+            'Application registration variable state changed during audit flush',
+          );
+        }
+      }
+    }),
+  );
+};
+
+export const runAuditedApplicationRegistrationVariableSync = async <TResult>(
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    applicationRegistrationId,
+    work,
+  }: {
+    applicationRegistrationId: string;
+    work: (runner: QueryRunner) => Promise<TResult>;
+  },
+): Promise<TResult> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error(
+      'Application registration variable audit requires core DataSource',
+    );
+  }
+  let normalizedId: string;
+  try {
+    normalizedId = uuid(applicationRegistrationId);
+  } catch (error) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw error;
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error(
+          'Application registration variable audit workspace unavailable',
+        );
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const [regEntry] = await runner.query(
+        `SELECT id FROM core."applicationRegistration" WHERE id=$1 FOR NO KEY UPDATE`,
+        [normalizedId],
+      );
+      if (!regEntry) {
+        throw new Error(
+          'Application registration variable audit registration unavailable',
+        );
+      }
+
+      const readVarRows = async (): Promise<
+        Map<string, Record<string, unknown>>
+      > => {
+        const entries = await runner.query(
+          `SELECT to_jsonb(arv) AS row
+             FROM core."applicationRegistrationVariable" arv
+            WHERE arv."applicationRegistrationId"=$1
+            ORDER BY arv.id
+            FOR UPDATE`,
+          [normalizedId],
+        );
+        const map = new Map<string, Record<string, unknown>>();
+        for (const entry of entries) {
+          const row = entry.row as Record<string, unknown>;
+          map.set(uuid(row.id), row);
+        }
+
+        return map;
+      };
+
+      const beforeVars = await readVarRows();
+      const result = await work(runner);
+      const afterVars = await readVarRows();
+
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      let recordedCount = 0;
+
+      for (const [varId, afterVarRow] of afterVars.entries()) {
+        const beforeVarRow = beforeVars.get(varId);
+        const afterVarProj =
+          projectApplicationRegistrationVariable(afterVarRow);
+        if (!beforeVarRow) {
+          audit.record({
+            resourceKind: 'applicationRegistrationVariable',
+            resourceId: varId,
+            action: 'create',
+            before: null,
+            after: afterVarProj,
+            securityDescriptor: {
+              resourceKind: 'applicationRegistrationVariable',
+              resourceId: varId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedCount += 1;
+        } else {
+          const beforeVarProj =
+            projectApplicationRegistrationVariable(beforeVarRow);
+          if (
+            canonicalAuditJson(beforeVarProj) !==
+            canonicalAuditJson(afterVarProj)
+          ) {
+            audit.record({
+              resourceKind: 'applicationRegistrationVariable',
+              resourceId: varId,
+              action: 'update',
+              before: beforeVarProj,
+              after: afterVarProj,
+              securityDescriptor: {
+                resourceKind: 'applicationRegistrationVariable',
+                resourceId: varId,
+                metadataAccess: 'currentWorkspaceAdministration',
+              },
+            });
+            recordedCount += 1;
+          }
+        }
+      }
+      for (const [varId, beforeVarRow] of beforeVars.entries()) {
+        if (!afterVars.has(varId)) {
+          audit.record({
+            resourceKind: 'applicationRegistrationVariable',
+            resourceId: varId,
+            action: 'delete',
+            before: projectApplicationRegistrationVariable(beforeVarRow),
+            after: null,
+            securityDescriptor: {
+              resourceKind: 'applicationRegistrationVariable',
+              resourceId: varId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedCount += 1;
+        }
+      }
+
+      if (recordedCount > 0) {
+        const expectedSerialized = canonicalAuditJson(
+          [...afterVars.entries()].map(([id, row]) => ({
+            id,
+            ...projectApplicationRegistrationVariable(row),
+          })),
+        );
+        await audit.flush();
+
+        const postFlushVars = await readVarRows();
+        const actualSerialized = canonicalAuditJson(
+          [...postFlushVars.entries()].map(([id, row]) => ({
+            id,
+            ...projectApplicationRegistrationVariable(row),
+          })),
+        );
+        if (actualSerialized !== expectedSerialized) {
+          throw new Error(
+            'Application registration variable state changed during audit flush',
+          );
+        }
+      }
+
+      return result;
     }),
   );
 };

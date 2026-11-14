@@ -1,0 +1,14 @@
+{
+  "log": "LOG-189",
+  "verifiedFileCount": 8,
+  "files": {
+    "packages/twenty-server/src/engine/core-modules/application/application-registration-variable/application-registration-variable.service.ts": "5604a487df60030eeeba92c868c6a1ab13f743641c7418a102a252218d88d3f8",
+    "packages/twenty-server/src/engine/core-modules/application/application-registration/application-registration-claim.service.ts": "71a7bd1501cdc33223767b0cf51edc28e4a6747df0d82ac7d15e4ce9998bc3a4",
+    "packages/twenty-server/src/engine/core-modules/application/application-registration/application-registration.resolver.ts": "f711b997dc3cb6788fc2488d404a86fc22f62a36008da83db0677b4a213af6e9",
+    "packages/twenty-server/src/engine/core-modules/application/application-registration/application-registration.service.ts": "49bd7f08ab0a6374fc1a71dec9b17f1e078b91568821922257468d39e79f010f",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "76eb5fad00147d2229bde7ffdb012c0e9c9004faa236ead37d26c70a34a294c9",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "c90f735d23b8d77a902108e45c092b727e08f562c08636a4542e197b9c4d9fd3",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/workspace-domain-audit.ts": "3550cb76ba75d212c3523d8a55d70e296241305e9b59a05b084617fb2c11d1bd",
+    "packages/twenty-server/test/fork-migration/crm-audit-workspace-domain.postgres-spec.ts": "56f5113fb892fdf166c800668a46e4bf2e177eb51c1bbd5eac31fd63740e23a3"
+  }
+}
