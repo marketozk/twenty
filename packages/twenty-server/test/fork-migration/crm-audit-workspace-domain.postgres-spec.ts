@@ -322,6 +322,7 @@ for (const [modPath, names] of [
   ['src/engine/decorators/auth/auth-workspace.decorator', ['AuthWorkspace']],
   ['src/engine/guards/auth-principal.guard', ['AuthPrincipalGuard']],
   ['src/engine/guards/feature-flag.guard', ['FeatureFlagGuard']],
+  ['src/engine/guards/no-permission.guard', ['NoPermissionGuard']],
   ['src/engine/guards/settings-permission.guard', ['SettingsPermissionGuard']],
   [
     'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator',
@@ -412,6 +413,29 @@ jest.doMock(
   }),
 );
 
+const KeyValuePairEntity = class KeyValuePairEntity {};
+const KeyValuePairType = {
+  USER_VARIABLE: 'USER_VARIABLE',
+  FEATURE_FLAG: 'FEATURE_FLAG',
+  CONFIG_VARIABLE: 'CONFIG_VARIABLE',
+  APPLICATION_VARIABLE: 'APPLICATION_VARIABLE',
+} as const;
+jest.doMock(
+  'src/engine/core-modules/key-value-pair/key-value-pair.entity',
+  () => ({
+    KeyValuePairEntity,
+    KeyValuePairType,
+  }),
+);
+
+const ApplicationRegistrationEntity = class ApplicationRegistrationEntity {};
+jest.doMock(
+  'src/engine/core-modules/application/application-registration/application-registration.entity',
+  () => ({
+    ApplicationRegistrationEntity,
+  }),
+);
+
 jest.doMock(
   'src/engine/core-modules/file/utils/extract-file-info-or-throw.utils',
   () => ({
@@ -478,6 +502,12 @@ const { FileCorePictureResolver } =
   require('src/engine/core-modules/file/file-core-picture/resolvers/file-core-picture.resolver') as typeof import('src/engine/core-modules/file/file-core-picture/resolvers/file-core-picture.resolver');
 const { ApplicationTranslationSyncService } =
   require('src/engine/core-modules/application/application-translation/application-translation-sync.service') as typeof import('src/engine/core-modules/application/application-translation/application-translation-sync.service');
+const { ApplicationKeyValueService } =
+  require('src/engine/core-modules/application/application-key-value/services/application-key-value.service') as typeof import('src/engine/core-modules/application/application-key-value/services/application-key-value.service');
+const { ApplicationKeyValueResolver } =
+  require('src/engine/core-modules/application/application-key-value/application-key-value.resolver') as typeof import('src/engine/core-modules/application/application-key-value/application-key-value.resolver');
+const { AppKeyValueScope } =
+  require('src/engine/core-modules/application/application-key-value/enums/app-key-value-scope.enum') as typeof import('src/engine/core-modules/application/application-key-value/enums/app-key-value-scope.enum');
 const {
   WorkspaceEntity,
 } = require('src/engine/core-modules/workspace/workspace.entity');
@@ -662,6 +692,33 @@ const entities = [
       createdAt: { type: 'timestamptz' },
       updatedAt: { type: 'timestamptz' },
       deletedAt: { type: 'timestamptz', nullable: true },
+    },
+  }),
+  new EntitySchema({
+    name: 'KeyValuePairEntity',
+    target: KeyValuePairEntity,
+    schema: 'core',
+    tableName: 'keyValuePair',
+    columns: {
+      id: { type: 'uuid', primary: true, generated: 'uuid' },
+      userId: { type: 'uuid', nullable: true },
+      workspaceId: { type: 'uuid', nullable: true },
+      applicationId: { type: 'uuid', nullable: true },
+      key: { type: 'text' },
+      value: { type: 'jsonb', nullable: true },
+      type: { type: 'text', default: 'USER_VARIABLE' },
+      createdAt: { type: 'timestamptz' },
+      updatedAt: { type: 'timestamptz' },
+    },
+  }),
+  new EntitySchema({
+    name: 'ApplicationRegistrationEntity',
+    target: ApplicationRegistrationEntity,
+    schema: 'core',
+    tableName: 'applicationRegistration',
+    columns: {
+      id: { type: 'uuid', primary: true, generated: 'uuid' },
+      ownerWorkspaceId: { type: 'uuid', nullable: true },
     },
   }),
 ];
@@ -908,6 +965,27 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
           "updatedAt" timestamptz NOT NULL DEFAULT now(),
           "deletedAt" timestamptz NULL
         );
+        CREATE TABLE core."applicationRegistration" (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "ownerWorkspaceId" uuid NULL REFERENCES core.workspace(id) ON DELETE SET NULL
+        );
+        CREATE TABLE core."keyValuePair" (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "userId" uuid NULL REFERENCES core."user"(id) ON DELETE CASCADE,
+          "workspaceId" uuid NULL REFERENCES core.workspace(id) ON DELETE CASCADE,
+          "applicationId" uuid NULL REFERENCES core.application(id) ON DELETE CASCADE,
+          key text NOT NULL,
+          value jsonb NULL,
+          type text NOT NULL DEFAULT 'USER_VARIABLE',
+          "createdAt" timestamptz NOT NULL DEFAULT now(),
+          "updatedAt" timestamptz NOT NULL DEFAULT now()
+        );
+        CREATE UNIQUE INDEX "IDX_KEY_VALUE_PAIR_KEY_APPLICATION_ID_WORKSPACE_UNIQUE"
+          ON core."keyValuePair" (key, "applicationId")
+          WHERE "applicationId" IS NOT NULL AND "workspaceId" IS NOT NULL;
+        CREATE UNIQUE INDEX "IDX_KEY_VALUE_PAIR_KEY_APPLICATION_ID_GLOBAL_UNIQUE"
+          ON core."keyValuePair" (key, "applicationId")
+          WHERE "applicationId" IS NOT NULL AND "workspaceId" IS NULL;
       `);
       await new OmniAuditBootstrapFastInstanceCommand().up(runner);
       await runner.query(
@@ -1276,7 +1354,7 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
     };
 
     await owner.query(
-      'TRUNCATE TABLE crm_audit."crmAuditEntry", core."applicationTranslation", core."workspaceSSOIdentityProvider", core."unsubscribeTopic", core."dpaAgreement", core."emailingDomain", core."applicationAuthorization", core."publicDomain", core."approvedAccessDomain", core.application, core."apiKey", core."userWorkspace", core."user", core.workspace CASCADE',
+      'TRUNCATE TABLE crm_audit."crmAuditEntry", core."keyValuePair", core."applicationRegistration", core."applicationTranslation", core."workspaceSSOIdentityProvider", core."unsubscribeTopic", core."dpaAgreement", core."emailingDomain", core."applicationAuthorization", core."publicDomain", core."approvedAccessDomain", core.application, core."apiKey", core."userWorkspace", core."user", core.workspace CASCADE',
     );
     await owner.query(
       `INSERT INTO core.workspace (id, "displayName", "customDomain", "workspaceCustomApplicationId", "activationStatus") VALUES ($1, 'Primary WS', 'taken-custom.twenty.io', $3, 'ACTIVE'), ($2, 'Foreign WS', NULL, NULL, 'ACTIVE')`,
@@ -3003,5 +3081,257 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
     expect(serializedTranslationAudits).not.toContain('Bonjour Privé Acme');
     expect(serializedTranslationAudits).not.toContain('Hallo Privat Acme');
     expect(serializedTranslationAudits).not.toContain('Bonjour Relancé Acme');
+  });
+
+  it('audits applicationKeyValuePair create, update, delete, server key claim, and cascade delete on ApplicationService.delete with key/value redaction (LOG188)', async () => {
+    const keyValueService = new ApplicationKeyValueService(
+      runtime.getRepository(KeyValuePairEntity) as never,
+      {
+        findOne: async (wsId: string, opts: { where: { id?: string } }) => {
+          const [row] = await runtime.query(
+            `SELECT * FROM core.application WHERE "workspaceId"=$1 AND id=$2`,
+            [wsId, opts.where.id],
+          );
+
+          return row ?? null;
+        },
+      } as never,
+      runtime.getRepository(ApplicationRegistrationEntity) as never,
+    );
+    const keyValueResolver = new ApplicationKeyValueResolver(keyValueService);
+
+    const flatTargetApp = {
+      id: targetAppId,
+      workspaceId,
+      universalIdentifier: targetAppUniversalId,
+      applicationRegistrationId: null,
+    };
+    const flatCascadeApp = {
+      id: cascadeAppId,
+      workspaceId,
+      universalIdentifier: cascadeAppUniversalId,
+      applicationRegistrationId: null,
+    };
+
+    const appReq = {
+      workspace: { id: workspaceId },
+      application: { id: targetAppId },
+      user: { id: actorUserId },
+      userWorkspaceId: actorUserWorkspaceId,
+    };
+
+    // 1. WORKSPACE scope create, update, no-op repeat, and delete
+    const createdWsKv = await keyValueResolver.setAppKeyValue(
+      flatTargetApp as never,
+      { id: workspaceId } as never,
+      {
+        key: 'secret-webhook-signing-token',
+        value: { token: 'whsec_acme_v1_secret' },
+        scope: AppKeyValueScope.WORKSPACE,
+      },
+      { req: appReq as never },
+    );
+    expect(createdWsKv).toEqual({
+      key: 'secret-webhook-signing-token',
+      value: { token: 'whsec_acme_v1_secret' },
+      scope: AppKeyValueScope.WORKSPACE,
+    });
+
+    // Identical value is a no-op
+    await keyValueResolver.setAppKeyValue(
+      flatTargetApp as never,
+      { id: workspaceId } as never,
+      {
+        key: 'secret-webhook-signing-token',
+        value: { token: 'whsec_acme_v1_secret' },
+        scope: AppKeyValueScope.WORKSPACE,
+      },
+      { req: appReq as never },
+    );
+
+    // Update value
+    await keyValueResolver.setAppKeyValue(
+      flatTargetApp as never,
+      { id: workspaceId } as never,
+      {
+        key: 'secret-webhook-signing-token',
+        value: { token: 'whsec_acme_v2_rotated' },
+        scope: AppKeyValueScope.WORKSPACE,
+      },
+      { req: appReq as never },
+    );
+
+    // Delete WORKSPACE key (and repeat delete for false no-op)
+    expect(
+      await keyValueResolver.deleteAppKeyValue(
+        flatTargetApp as never,
+        { id: workspaceId } as never,
+        'secret-webhook-signing-token',
+        AppKeyValueScope.WORKSPACE,
+        { req: appReq as never },
+      ),
+    ).toBe(true);
+    expect(
+      await keyValueResolver.deleteAppKeyValue(
+        flatTargetApp as never,
+        { id: workspaceId } as never,
+        'secret-webhook-signing-token',
+        AppKeyValueScope.WORKSPACE,
+        { req: appReq as never },
+      ),
+    ).toBe(false);
+
+    // 2. SERVER scope claim, idempotent repeat by same workspace, rejection for foreign workspace, and delete
+    const claimedServerKv = await keyValueResolver.setAppKeyValue(
+      flatTargetApp as never,
+      { id: workspaceId } as never,
+      {
+        key: 'tenant-routing-handle-acme',
+        value: 'ignored-caller-value',
+        scope: AppKeyValueScope.SERVER,
+      },
+      { req: appReq as never },
+    );
+    expect(claimedServerKv).toEqual({
+      key: 'tenant-routing-handle-acme',
+      value: workspaceId,
+      scope: AppKeyValueScope.SERVER,
+    });
+
+    // Repeat claim by same workspace is a no-op
+    await keyValueResolver.setAppKeyValue(
+      flatTargetApp as never,
+      { id: workspaceId } as never,
+      {
+        key: 'tenant-routing-handle-acme',
+        value: 'ignored-caller-value',
+        scope: AppKeyValueScope.SERVER,
+      },
+      { req: appReq as never },
+    );
+
+    expect(
+      await keyValueResolver.deleteAppKeyValue(
+        flatTargetApp as never,
+        { id: workspaceId } as never,
+        'tenant-routing-handle-acme',
+        AppKeyValueScope.SERVER,
+        { req: appReq as never },
+      ),
+    ).toBe(true);
+
+    // 3. Seed WORKSPACE and SERVER keys on cascadeAppId and delete application via ApplicationService.delete
+    await keyValueService.set({
+      application: flatCascadeApp as never,
+      workspaceId,
+      key: 'cascade-ws-secret-key',
+      value: 'cascade-ws-secret-val',
+      scope: AppKeyValueScope.WORKSPACE,
+    });
+    await keyValueService.set({
+      application: flatCascadeApp as never,
+      workspaceId,
+      key: 'cascade-server-claim-key',
+      value: workspaceId,
+      scope: AppKeyValueScope.SERVER,
+    });
+
+    const cascadeCorrId = `corr-kv-cascade-${randomUUID()}`;
+    await applicationService.delete(cascadeAppUniversalId, workspaceId, {
+      auditIdentity: {
+        workspaceId,
+        actor: { kind: 'coreUser', id: actorUserId },
+        impersonatorUserWorkspaceId,
+        correlationId: cascadeCorrId,
+      },
+    });
+
+    const remainingCascadeKv = await owner.query(
+      `SELECT id FROM core."keyValuePair" WHERE "applicationId"=$1`,
+      [cascadeAppId],
+    );
+    expect(remainingCascadeKv).toHaveLength(0);
+
+    const kvAudits = (await audits()).filter(
+      (row) => row.resourceKind === 'applicationKeyValuePair',
+    );
+    expect(kvAudits).toHaveLength(9);
+    expect(
+      kvAudits.slice(0, 5).map((row) => [
+        row.action,
+        (
+          row.redactedDiff as {
+            values: {
+              scope?: { before: string | null; after: string | null };
+            };
+          }
+        ).values.scope,
+      ]),
+    ).toEqual([
+      ['create', { before: null, after: 'WORKSPACE' }],
+      ['update', undefined],
+      ['delete', { before: 'WORKSPACE', after: null }],
+      ['create', { before: null, after: 'SERVER' }],
+      ['delete', { before: 'SERVER', after: null }],
+    ]);
+
+    expect(kvAudits[0]).toMatchObject({
+      workspaceId,
+      resourceKind: 'applicationKeyValuePair',
+      action: 'create',
+      actor: { kind: 'application', id: targetAppId },
+      initiator: { kind: 'coreUser', id: actorUserId },
+      redactedDiff: {
+        changedFields: ['applicationId', 'key', 'scope', 'value'],
+        values: {
+          applicationId: { before: null, after: targetAppId },
+          scope: { before: null, after: 'WORKSPACE' },
+        },
+      },
+      securityDescriptor: {
+        resourceKind: 'applicationKeyValuePair',
+        resourceId: kvAudits[0].resourceId,
+        metadataAccess: 'currentWorkspaceAdministration',
+      },
+    });
+
+    expect(kvAudits[1]).toMatchObject({
+      workspaceId,
+      resourceKind: 'applicationKeyValuePair',
+      resourceId: kvAudits[0].resourceId,
+      action: 'update',
+      actor: { kind: 'application', id: targetAppId },
+      initiator: { kind: 'coreUser', id: actorUserId },
+      redactedDiff: {
+        changedFields: ['value'],
+        values: {},
+      },
+    });
+
+    const cascadeAudits = kvAudits.filter(
+      (row) => row.correlationId === cascadeCorrId,
+    );
+    expect(cascadeAudits).toHaveLength(2);
+    expect(cascadeAudits[0].operationId).toBe(cascadeAudits[1].operationId);
+    expect(
+      cascadeAudits
+        .map(
+          (row) =>
+            (
+              row.redactedDiff as {
+                values: { scope: { before: string; after: null } };
+              }
+            ).values.scope.before,
+        )
+        .sort(),
+    ).toEqual(['SERVER', 'WORKSPACE']);
+
+    const serializedKvAudits = JSON.stringify(kvAudits);
+    expect(serializedKvAudits).not.toContain('secret-webhook-signing-token');
+    expect(serializedKvAudits).not.toContain('whsec_acme_v1_secret');
+    expect(serializedKvAudits).not.toContain('whsec_acme_v2_rotated');
+    expect(serializedKvAudits).not.toContain('tenant-routing-handle-acme');
+    expect(serializedKvAudits).not.toContain('cascade-ws-secret-key');
+    expect(serializedKvAudits).not.toContain('cascade-ws-secret-val');
   });
 });

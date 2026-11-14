@@ -28,6 +28,7 @@ export type CrmAuditResourceKind =
   | 'unsubscribeTopic'
   | 'ssoIdentityProvider'
   | 'applicationTranslation'
+  | 'applicationKeyValuePair'
   | 'webhook'
   | 'connectionProvider'
   | 'skill'

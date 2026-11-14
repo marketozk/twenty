@@ -146,6 +146,10 @@ const CATALOG: Record<
     values: ['applicationRegistrationId', 'locale'],
     redacted: ['messages', 'deletedAt'],
   },
+  applicationKeyValuePair: {
+    values: ['applicationId', 'scope'],
+    redacted: ['key', 'value'],
+  },
   webhook: {
     values: ['applicationId'],
     redacted: ['targetUrl', 'operations', 'description', 'secret'],
@@ -361,7 +365,16 @@ const CATALOG: Record<
       'aiAdditionalInstructions',
     ],
   },
-  application: { values: ['defaultRoleId'], redacted: [] },
+  application: {
+    values: [
+      'defaultRoleId',
+      'settingsCustomTabFrontComponentId',
+      'uninstallLogicFunctionId',
+      'healthCheckLogicFunctionId',
+      'autoUpgrade',
+    ],
+    redacted: ['grantedCapabilities'],
+  },
   roleTarget: {
     values: ['roleId', 'userWorkspaceId', 'agentId', 'apiKeyId'],
     redacted: [],
@@ -762,6 +775,7 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   unsubscribeTopic: ['create', 'update', 'delete'],
   ssoIdentityProvider: ['create', 'update', 'delete'],
   applicationTranslation: ['create', 'update', 'delete'],
+  applicationKeyValuePair: ['create', 'update', 'delete'],
   webhook: ['create', 'update', 'delete'],
   connectionProvider: ['create', 'update', 'delete'],
   skill: ['create', 'update', 'delete'],

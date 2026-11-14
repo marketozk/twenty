@@ -1,0 +1,37 @@
+{
+  "log": "LOG-188",
+  "issue": "ROB-765",
+  "date": "2026-11-15",
+  "title": "Transactional audit of application settings, capabilities, and manifest reference bindings (core.application) and application key-value store (core.keyValuePair)",
+  "targetedPostgres": {
+    "suitesPassed": 2,
+    "suitesTotal": 2,
+    "testsPassed": 17,
+    "testsTotal": 17,
+    "newPostgresTests": 2,
+    "durationSeconds": 8.093
+  },
+  "fullRegression": {
+    "suitesPassed": 128,
+    "suitesTotal": 128,
+    "testsPassed": 3204,
+    "testsTotal": 3204,
+    "durationSeconds": 712.774
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.171
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 493,
+    "currentRootFiles": 493,
+    "baselineDiagnostics": 265,
+    "currentDiagnostics": 265,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 12
+}

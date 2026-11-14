@@ -5,11 +5,17 @@ import {
   type ApplicationAuthorizationAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/application-authorization-and-variable-audit';
 import {
+  APPLICATION_AUDIT_NON_ROLE_KEYS,
   captureApplicationDefaultRoleAudit,
+  captureApplicationSettingsAudit,
   runAuditedApplicationDefaultRoleUpdate,
+  runAuditedApplicationSettingsUpdate,
   type ApplicationDefaultRoleAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/application-default-role-audit';
-import { captureCurrentCrmAuditIdentity } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
+import {
+  captureCurrentCrmAuditIdentity,
+  captureCurrentCrmAuditOperation,
+} from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
 import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
@@ -827,6 +833,11 @@ export class ApplicationService {
     },
   ): Promise<ApplicationEntity> {
     const capturedData = { ...data };
+    const changedKeys = Object.keys(capturedData).filter(
+      (field) =>
+        field !== 'workspaceId' &&
+        (capturedData as Record<string, unknown>)[field] !== undefined,
+    );
     const defaultRoleAudit =
       capturedData.defaultRoleId !== undefined
         ? captureApplicationDefaultRoleAudit({
@@ -843,6 +854,84 @@ export class ApplicationService {
           this.coreDataSource,
           defaultRoleAudit,
           capturedData.defaultRoleId as string | null | undefined,
+          async (queryRunner) => {
+            await queryRunner.manager.update(
+              ApplicationEntity,
+              { id, workspaceId: capturedData.workspaceId },
+              capturedData,
+            );
+
+            const found = await queryRunner.manager.findOne(ApplicationEntity, {
+              where: { id, workspaceId: capturedData.workspaceId },
+            });
+
+            if (!isDefined(found)) {
+              throw new ApplicationException(
+                `Application with id ${id} not found after update`,
+                ApplicationExceptionCode.APPLICATION_NOT_FOUND,
+              );
+            }
+
+            return found;
+          },
+          changedKeys,
+        );
+      } catch (error) {
+        if (
+          error instanceof NativeTransactionOutcomeUnknownError ||
+          error instanceof CoreAuditPostCommitError
+        ) {
+          try {
+            await this.workspaceCacheService.invalidateAndRecompute(
+              capturedData.workspaceId,
+              ['flatApplicationMaps'],
+            );
+          } catch {
+            // Preserve the commit uncertainty error over cache refresh failures.
+          }
+        }
+        throw error;
+      }
+
+      await this.workspaceCacheService.invalidateAndRecompute(
+        capturedData.workspaceId,
+        ['flatApplicationMaps'],
+      );
+
+      await this.broadcastApplicationEvent({
+        type: 'updated',
+        application: updatedApplication,
+        updatedFields: Object.keys(capturedData).filter(
+          (field) => field !== 'workspaceId',
+        ),
+      });
+
+      return updatedApplication;
+    }
+
+    const auditedSettingsKeys = changedKeys.filter((key) =>
+      APPLICATION_AUDIT_NON_ROLE_KEYS.has(key),
+    );
+    const shouldAuditSettings =
+      auditedSettingsKeys.length > 0 &&
+      isDefined(this.coreDataSource) &&
+      (options?.auditIdentity !== undefined ||
+        captureCurrentCrmAuditOperation(capturedData.workspaceId) !==
+          undefined);
+
+    if (shouldAuditSettings) {
+      const settingsAudit = captureApplicationSettingsAudit({
+        workspaceId: capturedData.workspaceId,
+        applicationId: id,
+        auditIdentity: options?.auditIdentity,
+      })();
+
+      let updatedApplication: ApplicationEntity;
+      try {
+        updatedApplication = await runAuditedApplicationSettingsUpdate(
+          this.coreDataSource,
+          settingsAudit,
+          auditedSettingsKeys,
           async (queryRunner) => {
             await queryRunner.manager.update(
               ApplicationEntity,

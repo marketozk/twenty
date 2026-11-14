@@ -5397,4 +5397,20 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 отправлен в GitHub, ref подтверждён через API. Описание ROB765, комментарий
 7f568b5f-d2a2-4c19-b330-d9302baa6237 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log187/publication.json).
+Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG188` настройки/привилегии `core.application` и `applicationKeyValuePair`).
+
+## LOG-188 - транзакционный аудит настроек, привилегий и манифестных привязок приложений (`application`, `core.application`) и key-value хранилища приложений (`applicationKeyValuePair`, `core."keyValuePair"`)
+
+15.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log188/design.md), [design-review.md](implementation/log188/design-review.md)) и реализован участок `LOG-188` (Linear `ROB-765`): транзакционный аудит настроек, привилегий и манифестных привязок приложений в `core.application` и полного жизненного цикла пар ключ-значение приложений в `core."keyValuePair"`.
+
+В `crm-audit.types.ts` и `crm-audit-transaction-context.ts` расширен каталог `application` (`values: ['defaultRoleId', 'settingsCustomTabFrontComponentId', 'uninstallLogicFunctionId', 'healthCheckLogicFunctionId', 'autoUpgrade']`, `redacted: ['grantedCapabilities']`) и добавлен вид ресурса `applicationKeyValuePair` (`values: ['applicationId', 'scope']`, `redacted: ['key', 'value']`, действия `['create', 'update', 'delete']`). В `application-default-role-audit.ts`, `ApplicationService.update`, `ApplicationInstallResolver.updateApplication` и `ApplicationCapabilityResolver.grantApplicationCapabilities` подключены `projectApplicationAuditFields`, `captureApplicationSettingsAudit` и `runAuditedApplicationSettingsUpdate`, а также расширен `runAuditedApplicationDefaultRoleUpdate` для совместного проецирования `defaultRoleId` и сопутствующих привязок манифеста с перепроверкой состояния после `audit.flush()`. В `workspace-domain-audit.ts`, `ApplicationKeyValueService`, `ApplicationKeyValueResolver` и `runAuditedApplicationDelete` (`application-authorization-and-variable-audit.ts`) добавлены `projectApplicationKeyValuePair`, `runAuditedApplicationKeyValueSet`, `runAuditedApplicationKeyValueDelete` и каскадный аудит `applicationKeyValuePair:delete` при удалении `core.application`.
+
+15.11.2026 проверки LOG188 завершены. 3204 tests/128 suites PASS (712.774s). 17 targeted/2 suites PASS (8.093s), 2 новых PostgreSQL случая. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 493/493 roots, baseline 265 / current 265 diagnostics, 0 новых/changed-code. Совпали 12 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех входных точек настроек, привилегий и key-value хранилища приложений, редактирование чувствительных метаданных (`grantedCapabilities`, `key`, `value`), атомарность каскадного удаления при `ApplicationService.delete` и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log188/results.json), [ревью](implementation/log188/review.md),
+[следующий участок](implementation/log188/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
 Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG188` `core.application`).

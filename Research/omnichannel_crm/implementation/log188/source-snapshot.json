@@ -1,0 +1,18 @@
+{
+  "log": "LOG-188",
+  "verifiedFileCount": 12,
+  "files": {
+    "packages/twenty-server/src/engine/core-modules/application/application-install/application-capability.resolver.ts": "84735f3f9a7b6eb59c66af0d711d71f9c7bf5feefd11b5fde3ffd2c795f8ad42",
+    "packages/twenty-server/src/engine/core-modules/application/application-install/application-install.resolver.ts": "ca67a0636e1a89a021399f5380cff2e7a91d61a3fe55ddaea72792986e4b93ed",
+    "packages/twenty-server/src/engine/core-modules/application/application-key-value/application-key-value.resolver.ts": "18d624ed45eefd6b793a438a67c33ed490df7562a9c7b53e3a4e7119c03f5229",
+    "packages/twenty-server/src/engine/core-modules/application/application-key-value/services/application-key-value.service.ts": "26a22b26a5566bd45a8ec1330680dbfa08008806ea46a021cabed9f844ac72af",
+    "packages/twenty-server/src/engine/core-modules/application/application.service.ts": "e8266b1c6e723b2e7f1a9b4423aec229be0a8417e69a192f8f1a926e2afeea05",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/application-authorization-and-variable-audit.ts": "1e71a24e9acd76675491e4fc58d4f5a3620a4bb947e251f59db80a8f29cb4269",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/application-default-role-audit.ts": "152a28bec372dd67acffbd21ee929f9fed8d4c62ee9877662a468dccb80671d1",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "851e1d029432dea8c88a979607c134c917cc07cacedc90389f943822f7daf9c9",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "03f7f8745b30757150239e24e7308fe68c0f385d7d057bb05fe3107e8ec58a7a",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/workspace-domain-audit.ts": "dd8c7e37f3571a227d410ee5c57716906975fb90e94e52b09985e278c8459c5d",
+    "packages/twenty-server/test/fork-migration/crm-audit-application-default-role.postgres-spec.ts": "313be02090bd843f12d3af02fcfa1e36c9d24e1d8b1794b4eaafb64ee7a13928",
+    "packages/twenty-server/test/fork-migration/crm-audit-workspace-domain.postgres-spec.ts": "d8150db16bff3e38887d2e65d2708b4df814055a4b168a8b756900d2c4cebaeb"
+  }
+}

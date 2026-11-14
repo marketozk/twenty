@@ -1258,6 +1258,24 @@ export const projectApplicationTranslation = (row: Record<string, unknown>) => {
   };
 };
 
+export const projectApplicationKeyValuePair = (
+  row: Record<string, unknown>,
+) => {
+  if (typeof row.key !== 'string' || row.key.length === 0) {
+    throw new Error('Application key-value pair audit row key is invalid');
+  }
+
+  return {
+    applicationId: uuid(row.applicationId),
+    scope:
+      row.workspaceId === undefined || row.workspaceId === null
+        ? 'SERVER'
+        : 'WORKSPACE',
+    key: row.key,
+    value: row.value === undefined ? null : row.value,
+  };
+};
+
 const hydrateUnsubscribeTopicRow = (
   row: Record<string, unknown>,
 ): PersistedUnsubscribeTopicRow =>
@@ -3872,6 +3890,413 @@ export const runAuditedApplicationTranslationSync = async (
           );
         }
       }
+    }),
+  );
+};
+
+export const runAuditedApplicationKeyValueSet = async (
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    targetApplicationId,
+    scope,
+    key,
+    value,
+    onPersistenceFailed,
+    onServerKeyClaimedByOtherWorkspace,
+  }: {
+    targetApplicationId: string;
+    scope: 'WORKSPACE' | 'SERVER';
+    key: string;
+    value: unknown;
+    onPersistenceFailed: () => never;
+    onServerKeyClaimedByOtherWorkspace: () => never;
+  },
+): Promise<{ key: string; value: unknown; scope: 'WORKSPACE' | 'SERVER' }> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error(
+      'Application key-value pair audit requires core DataSource',
+    );
+  }
+  let normalizedTargetAppId: string;
+  try {
+    normalizedTargetAppId = uuid(targetApplicationId);
+  } catch (error) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw error;
+  }
+  if (typeof key !== 'string' || key.length === 0) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Application key-value pair key is invalid');
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+      await runner.query(
+        `SELECT pg_advisory_xact_lock(hashtext('application_key_value_pair'), hashtext($1))`,
+        [`${normalizedTargetAppId}:${scope}:${key}`],
+      );
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error(
+          'Application key-value pair audit workspace unavailable',
+        );
+      }
+
+      const [targetApp] = await runner.query(
+        `SELECT id,"workspaceId",to_jsonb(a)->>'deletedAt' AS "deletedAt" FROM core.application a WHERE a.id=$1 FOR NO KEY UPDATE`,
+        [normalizedTargetAppId],
+      );
+      if (
+        !targetApp ||
+        targetApp.deletedAt !== null ||
+        (scope === 'WORKSPACE' &&
+          uuid(targetApp.workspaceId) !== request.workspaceId)
+      ) {
+        throw new Error(
+          'Application key-value pair audit application unavailable',
+        );
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      if (scope === 'SERVER') {
+        const [beforeEntry] = await runner.query(
+          `SELECT to_jsonb(kv) AS row
+             FROM core."keyValuePair" kv
+            WHERE kv."applicationId"=$1
+              AND kv."workspaceId" IS NULL
+              AND kv.type='APPLICATION_VARIABLE'
+              AND kv.key=$2
+            FOR UPDATE`,
+          [normalizedTargetAppId, key],
+        );
+        if (beforeEntry?.row) {
+          const existingRow = beforeEntry.row as Record<string, unknown>;
+          const claimedWorkspaceId =
+            typeof existingRow.value === 'string'
+              ? existingRow.value.toLowerCase()
+              : existingRow.value;
+          if (claimedWorkspaceId !== request.workspaceId) {
+            return onServerKeyClaimedByOtherWorkspace();
+          }
+
+          return {
+            key,
+            value: existingRow.value,
+            scope: 'SERVER',
+          };
+        }
+
+        const [insertedEntry] = await runner.query(
+          `INSERT INTO core."keyValuePair"
+             (id,"userId","workspaceId","applicationId",key,value,type,"createdAt","updatedAt")
+           VALUES (gen_random_uuid(),NULL,NULL,$1,$2,$3::jsonb,'APPLICATION_VARIABLE',now(),now())
+           ON CONFLICT (key,"applicationId") WHERE "applicationId" IS NOT NULL AND "workspaceId" IS NULL
+           DO NOTHING
+           RETURNING to_jsonb("keyValuePair") AS row`,
+          [normalizedTargetAppId, key, JSON.stringify(request.workspaceId)],
+        );
+        if (!insertedEntry?.row) {
+          return onPersistenceFailed();
+        }
+        const afterRow = insertedEntry.row as Record<string, unknown>;
+        const rowId = uuid(afterRow.id);
+        const afterProj = projectApplicationKeyValuePair(afterRow);
+
+        const audit = new CrmAuditTransactionContext(runner, operation);
+        audit.record({
+          resourceKind: 'applicationKeyValuePair',
+          resourceId: rowId,
+          action: 'create',
+          before: null,
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'applicationKeyValuePair',
+            resourceId: rowId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        await audit.flush();
+
+        const [postFlushEntry] = await runner.query(
+          `SELECT to_jsonb(kv) AS row FROM core."keyValuePair" kv WHERE kv.id=$1`,
+          [rowId],
+        );
+        if (
+          !postFlushEntry?.row ||
+          canonicalAuditJson(
+            projectApplicationKeyValuePair(
+              postFlushEntry.row as Record<string, unknown>,
+            ),
+          ) !== canonicalAuditJson(afterProj)
+        ) {
+          throw new Error(
+            'Application key-value pair state changed during audit flush',
+          );
+        }
+
+        return {
+          key,
+          value: afterRow.value,
+          scope: 'SERVER',
+        };
+      }
+
+      const [beforeEntry] = await runner.query(
+        `SELECT to_jsonb(kv) AS row
+           FROM core."keyValuePair" kv
+          WHERE kv."applicationId"=$1
+            AND kv."workspaceId"=$2
+            AND kv.type='APPLICATION_VARIABLE'
+            AND kv.key=$3
+          FOR UPDATE`,
+        [normalizedTargetAppId, request.workspaceId, key],
+      );
+      const beforeRow = beforeEntry?.row as Record<string, unknown> | undefined;
+      const serializedValue =
+        value === undefined ? 'null' : JSON.stringify(value);
+
+      if (beforeRow) {
+        const rowId = uuid(beforeRow.id);
+        const beforeProj = projectApplicationKeyValuePair(beforeRow);
+        await runner.query(
+          `UPDATE core."keyValuePair"
+              SET value=$1::jsonb,
+                  "userId"=NULL,
+                  type='APPLICATION_VARIABLE',
+                  "updatedAt"=now()
+            WHERE id=$2 AND "workspaceId"=$3`,
+          [serializedValue, rowId, request.workspaceId],
+        );
+        const [updatedEntry] = await runner.query(
+          `SELECT to_jsonb(kv) AS row FROM core."keyValuePair" kv WHERE kv.id=$1`,
+          [rowId],
+        );
+        if (!updatedEntry?.row) {
+          return onPersistenceFailed();
+        }
+        const afterRow = updatedEntry.row as Record<string, unknown>;
+        const afterProj = projectApplicationKeyValuePair(afterRow);
+
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          const audit = new CrmAuditTransactionContext(runner, operation);
+          audit.record({
+            resourceKind: 'applicationKeyValuePair',
+            resourceId: rowId,
+            action: 'update',
+            before: beforeProj,
+            after: afterProj,
+            securityDescriptor: {
+              resourceKind: 'applicationKeyValuePair',
+              resourceId: rowId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          await audit.flush();
+
+          const [postFlushEntry] = await runner.query(
+            `SELECT to_jsonb(kv) AS row FROM core."keyValuePair" kv WHERE kv.id=$1`,
+            [rowId],
+          );
+          if (
+            !postFlushEntry?.row ||
+            canonicalAuditJson(
+              projectApplicationKeyValuePair(
+                postFlushEntry.row as Record<string, unknown>,
+              ),
+            ) !== canonicalAuditJson(afterProj)
+          ) {
+            throw new Error(
+              'Application key-value pair state changed during audit flush',
+            );
+          }
+        }
+
+        return {
+          key,
+          value,
+          scope: 'WORKSPACE',
+        };
+      }
+
+      const [insertedEntry] = await runner.query(
+        `INSERT INTO core."keyValuePair"
+           (id,"userId","workspaceId","applicationId",key,value,type,"createdAt","updatedAt")
+         VALUES (gen_random_uuid(),NULL,$1,$2,$3,$4::jsonb,'APPLICATION_VARIABLE',now(),now())
+         RETURNING to_jsonb("keyValuePair") AS row`,
+        [request.workspaceId, normalizedTargetAppId, key, serializedValue],
+      );
+      if (!insertedEntry?.row) {
+        return onPersistenceFailed();
+      }
+      const afterRow = insertedEntry.row as Record<string, unknown>;
+      const rowId = uuid(afterRow.id);
+      const afterProj = projectApplicationKeyValuePair(afterRow);
+
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      audit.record({
+        resourceKind: 'applicationKeyValuePair',
+        resourceId: rowId,
+        action: 'create',
+        before: null,
+        after: afterProj,
+        securityDescriptor: {
+          resourceKind: 'applicationKeyValuePair',
+          resourceId: rowId,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+      await audit.flush();
+
+      const [postFlushEntry] = await runner.query(
+        `SELECT to_jsonb(kv) AS row FROM core."keyValuePair" kv WHERE kv.id=$1`,
+        [rowId],
+      );
+      if (
+        !postFlushEntry?.row ||
+        canonicalAuditJson(
+          projectApplicationKeyValuePair(
+            postFlushEntry.row as Record<string, unknown>,
+          ),
+        ) !== canonicalAuditJson(afterProj)
+      ) {
+        throw new Error(
+          'Application key-value pair state changed during audit flush',
+        );
+      }
+
+      return {
+        key,
+        value,
+        scope: 'WORKSPACE',
+      };
+    }),
+  );
+};
+
+export const runAuditedApplicationKeyValueDelete = async (
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    targetApplicationId,
+    scope,
+    key,
+  }: {
+    targetApplicationId: string;
+    scope: 'WORKSPACE' | 'SERVER';
+    key: string;
+  },
+): Promise<{ deleted: boolean }> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error(
+      'Application key-value pair audit requires core DataSource',
+    );
+  }
+  let normalizedTargetAppId: string;
+  try {
+    normalizedTargetAppId = uuid(targetApplicationId);
+  } catch (error) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw error;
+  }
+  if (typeof key !== 'string' || key.length === 0) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Application key-value pair key is invalid');
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error(
+          'Application key-value pair audit workspace unavailable',
+        );
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const [beforeEntry] =
+        scope === 'SERVER'
+          ? await runner.query(
+              `SELECT to_jsonb(kv) AS row
+                 FROM core."keyValuePair" kv
+                WHERE kv."applicationId"=$1
+                  AND kv."workspaceId" IS NULL
+                  AND kv.type='APPLICATION_VARIABLE'
+                  AND kv.key=$2
+                  AND kv.value=$3::jsonb
+                FOR UPDATE`,
+              [normalizedTargetAppId, key, JSON.stringify(request.workspaceId)],
+            )
+          : await runner.query(
+              `SELECT to_jsonb(kv) AS row
+                 FROM core."keyValuePair" kv
+                WHERE kv."applicationId"=$1
+                  AND kv."workspaceId"=$2
+                  AND kv.type='APPLICATION_VARIABLE'
+                  AND kv.key=$3
+                FOR UPDATE`,
+              [normalizedTargetAppId, request.workspaceId, key],
+            );
+
+      if (!beforeEntry?.row) {
+        return { deleted: false };
+      }
+
+      const beforeRow = beforeEntry.row as Record<string, unknown>;
+      const rowId = uuid(beforeRow.id);
+      const beforeProj = projectApplicationKeyValuePair(beforeRow);
+
+      await runner.query(`DELETE FROM core."keyValuePair" WHERE id=$1`, [
+        rowId,
+      ]);
+      const [remaining] = await runner.query(
+        `SELECT id FROM core."keyValuePair" WHERE id=$1`,
+        [rowId],
+      );
+      if (remaining) {
+        throw new Error('Application key-value pair delete did not remove row');
+      }
+
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      audit.record({
+        resourceKind: 'applicationKeyValuePair',
+        resourceId: rowId,
+        action: 'delete',
+        before: beforeProj,
+        after: null,
+        securityDescriptor: {
+          resourceKind: 'applicationKeyValuePair',
+          resourceId: rowId,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+      await audit.flush();
+
+      const [postFlush] = await runner.query(
+        `SELECT id FROM core."keyValuePair" WHERE id=$1`,
+        [rowId],
+      );
+      if (postFlush) {
+        throw new Error(
+          'Application key-value pair state changed during audit flush',
+        );
+      }
+
+      return { deleted: true };
     }),
   );
 };

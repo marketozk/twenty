@@ -1,5 +1,5 @@
 import { UseFilters, UseGuards } from '@nestjs/common';
-import { Args, Mutation, Query } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query } from '@nestjs/graphql';
 
 import { type AppKeyValue } from 'twenty-shared/application';
 
@@ -10,6 +10,7 @@ import { SetAppKeyValueInput } from 'src/engine/core-modules/application/applica
 import { AppKeyValueScope } from 'src/engine/core-modules/application/application-key-value/enums/app-key-value-scope.enum';
 import { ApplicationKeyValueService } from 'src/engine/core-modules/application/application-key-value/services/application-key-value.service';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
+import { type WorkspaceDomainAuditIdentity } from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { type FlatWorkspace } from 'src/engine/core-modules/workspace/types/flat-workspace.type';
 import { AuthApplication } from 'src/engine/decorators/auth/auth-application.decorator';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
@@ -58,6 +59,7 @@ export class ApplicationKeyValueResolver {
     @AuthApplication() application: FlatApplication,
     @AuthWorkspace() workspace: FlatWorkspace,
     @Args('input') input: SetAppKeyValueInput,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ): Promise<AppKeyValue> {
     return this.applicationKeyValueService.set({
       application,
@@ -65,6 +67,7 @@ export class ApplicationKeyValueResolver {
       key: input.key,
       value: input.value,
       scope: input.scope ?? AppKeyValueScope.WORKSPACE,
+      auditIdentity: context?.req,
     });
   }
 
@@ -79,12 +82,14 @@ export class ApplicationKeyValueResolver {
       defaultValue: AppKeyValueScope.WORKSPACE,
     })
     scope: AppKeyValueScope,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ): Promise<boolean> {
     return this.applicationKeyValueService.delete({
       application,
       workspaceId: workspace.id,
       key,
       scope,
+      auditIdentity: context?.req,
     });
   }
 }

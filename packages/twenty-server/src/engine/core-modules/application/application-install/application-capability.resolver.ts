@@ -1,5 +1,5 @@
 import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
-import { Args, Mutation } from '@nestjs/graphql';
+import { Args, Context, Mutation } from '@nestjs/graphql';
 
 import { PermissionFlagType } from 'twenty-shared/constants';
 
@@ -10,6 +10,10 @@ import { GrantApplicationCapabilitiesInput } from 'src/engine/core-modules/appli
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
 import { buildApplicationCapabilityGrantQuery } from 'src/engine/core-modules/application/utils/build-application-capability-grant-query.util';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
+import {
+  captureCrmAuditRequest,
+  withCrmAuditRequest,
+} from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
 import { type WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
@@ -40,16 +44,26 @@ export class ApplicationCapabilityResolver {
   async grantApplicationCapabilities(
     @Args('input') input: GrantApplicationCapabilitiesInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Context() context?: { req?: Parameters<typeof captureCrmAuditRequest>[0] },
   ): Promise<ApplicationCapabilityGrantDTO> {
+    const capturedRequest = context?.req
+      ? captureCrmAuditRequest(context.req)
+      : undefined;
+
     await this.applicationService.findOneApplicationWithRelationsOrThrow({
       id: input.applicationId,
       workspaceId: workspace.id,
     });
 
-    return this.applicationService.update(input.applicationId, {
-      workspaceId: workspace.id,
-      grantedCapabilities: () =>
-        buildApplicationCapabilityGrantQuery(input.capabilities),
-    });
+    const executeUpdate = () =>
+      this.applicationService.update(input.applicationId, {
+        workspaceId: workspace.id,
+        grantedCapabilities: () =>
+          buildApplicationCapabilityGrantQuery(input.capabilities),
+      });
+
+    return capturedRequest
+      ? withCrmAuditRequest(capturedRequest, executeUpdate)
+      : executeUpdate();
   }
 }

@@ -31,6 +31,34 @@ export type ApplicationDefaultRoleAuditRequest = Readonly<{
   impersonatorUserWorkspaceId?: string;
 }>;
 
+export type ApplicationSettingsAuditRequest =
+  ApplicationDefaultRoleAuditRequest;
+
+export const APPLICATION_AUDIT_UUID_KEYS = new Set([
+  'defaultRoleId',
+  'settingsCustomTabFrontComponentId',
+  'uninstallLogicFunctionId',
+  'healthCheckLogicFunctionId',
+]);
+
+export const APPLICATION_AUDIT_BOOLEAN_KEYS = new Set(['autoUpgrade']);
+
+export const APPLICATION_AUDIT_ARRAY_KEYS = new Set(['grantedCapabilities']);
+
+export const APPLICATION_AUDIT_ALL_KEYS = new Set<string>([
+  ...APPLICATION_AUDIT_UUID_KEYS,
+  ...APPLICATION_AUDIT_BOOLEAN_KEYS,
+  ...APPLICATION_AUDIT_ARRAY_KEYS,
+]);
+
+export const APPLICATION_AUDIT_NON_ROLE_KEYS = new Set<string>([
+  'settingsCustomTabFrontComponentId',
+  'uninstallLogicFunctionId',
+  'healthCheckLogicFunctionId',
+  'autoUpgrade',
+  'grantedCapabilities',
+]);
+
 const storage = new AsyncLocalStorage<ApplicationDefaultRoleAuditRequest>();
 const active = new WeakSet<ApplicationDefaultRoleAuditRequest>();
 const consumed = new WeakSet<ApplicationDefaultRoleAuditRequest>();
@@ -49,6 +77,30 @@ const nullableUuid = (value: unknown): string | null => {
   }
 
   return uuid(value);
+};
+
+export const projectApplicationAuditFields = (
+  row: Record<string, unknown>,
+  keys: readonly string[],
+): Record<string, unknown> => {
+  const projected: Record<string, unknown> = {};
+  for (const key of keys) {
+    if (!APPLICATION_AUDIT_ALL_KEYS.has(key)) {
+      continue;
+    }
+    const raw = row[key];
+    if (APPLICATION_AUDIT_UUID_KEYS.has(key)) {
+      projected[key] = nullableUuid(raw);
+    } else if (APPLICATION_AUDIT_BOOLEAN_KEYS.has(key)) {
+      projected[key] = raw === undefined || raw === null ? false : Boolean(raw);
+    } else if (APPLICATION_AUDIT_ARRAY_KEYS.has(key)) {
+      projected[key] = Array.isArray(raw)
+        ? [...new Set(raw.map((item) => String(item)))].sort()
+        : [];
+    }
+  }
+
+  return projected;
 };
 
 export const getApplicationDefaultRoleAudit = (workspaceId: string) => {
@@ -169,11 +221,15 @@ export const captureApplicationDefaultRoleAudit = ({
   }
 };
 
+export const captureApplicationSettingsAudit =
+  captureApplicationDefaultRoleAudit;
+
 export const runAuditedApplicationDefaultRoleUpdate = async <TResult>(
   dataSource: DataSource | undefined,
   request: ApplicationDefaultRoleAuditRequest,
   defaultRoleId: string | null | undefined,
   work: (runner: QueryRunner) => Promise<TResult>,
+  changedKeys: readonly string[] = ['defaultRoleId'],
 ): Promise<TResult> => {
   if (
     !request ||
@@ -202,6 +258,12 @@ export const runAuditedApplicationDefaultRoleUpdate = async <TResult>(
   }
   const normalizedDefaultRoleId =
     defaultRoleId === null ? null : defaultRoleId.toLowerCase();
+  const keysToProject = [
+    ...new Set([
+      'defaultRoleId',
+      ...changedKeys.filter((key) => APPLICATION_AUDIT_ALL_KEYS.has(key)),
+    ]),
+  ];
 
   consumed.add(request);
   active.add(request);
@@ -219,19 +281,29 @@ export const runAuditedApplicationDefaultRoleUpdate = async <TResult>(
           );
         }
 
-        const readApplication = () =>
-          runner.query(
-            `SELECT id,"workspaceId","universalIdentifier",to_jsonb(a)->>'defaultRoleId' AS "defaultRoleId",to_jsonb(a)->>'deletedAt' AS "deletedAt" FROM core.application a WHERE a.id=$1 AND a."workspaceId"=$2 FOR UPDATE`,
+        const readApplication = async (): Promise<
+          Record<string, unknown> | undefined
+        > => {
+          const [entry] = await runner.query(
+            `SELECT to_jsonb(a) AS row FROM core.application a WHERE a.id=$1 AND a."workspaceId"=$2 FOR UPDATE`,
             [request.applicationId, request.workspaceId],
           );
-        const [beforeApplication] = await readApplication();
-        if (!beforeApplication || beforeApplication.deletedAt !== null) {
+
+          return entry?.row as Record<string, unknown> | undefined;
+        };
+        const beforeApplication = await readApplication();
+        if (
+          !beforeApplication ||
+          (beforeApplication.deletedAt !== undefined &&
+            beforeApplication.deletedAt !== null)
+        ) {
           throw new Error(
             'Application default role audit application unavailable',
           );
         }
-        const beforeDefaultRoleId = nullableUuid(
-          beforeApplication.defaultRoleId,
+        const beforeProjected = projectApplicationAuditFields(
+          beforeApplication,
+          keysToProject,
         );
         const applicationUniversalIdentifier = uuid(
           beforeApplication.universalIdentifier,
@@ -263,11 +335,14 @@ export const runAuditedApplicationDefaultRoleUpdate = async <TResult>(
         const audit = new CrmAuditTransactionContext(runner, operation);
         const result = await work(runner);
 
+        let expectedProjected: Record<string, unknown> | undefined;
+
         const verifyState = async (stage: 'update' | 'flush') => {
-          const [afterApplication] = await readApplication();
+          const afterApplication = await readApplication();
           if (
             !afterApplication ||
-            afterApplication.deletedAt !== null ||
+            (afterApplication.deletedAt !== undefined &&
+              afterApplication.deletedAt !== null) ||
             uuid(afterApplication.universalIdentifier) !==
               applicationUniversalIdentifier ||
             nullableUuid(afterApplication.defaultRoleId) !==
@@ -277,6 +352,21 @@ export const runAuditedApplicationDefaultRoleUpdate = async <TResult>(
               stage === 'update'
                 ? 'Application default role update did not persist expected value'
                 : 'Application default role state changed during audit flush',
+            );
+          }
+          const currentProjected = projectApplicationAuditFields(
+            afterApplication,
+            keysToProject,
+          );
+          if (stage === 'update') {
+            expectedProjected = currentProjected;
+          } else if (
+            !expectedProjected ||
+            canonicalAuditJson(currentProjected) !==
+              canonicalAuditJson(expectedProjected)
+          ) {
+            throw new Error(
+              'Application default role state changed during audit flush',
             );
           }
           if (normalizedDefaultRoleId !== null) {
@@ -298,13 +388,17 @@ export const runAuditedApplicationDefaultRoleUpdate = async <TResult>(
 
         await verifyState('update');
 
-        if (beforeDefaultRoleId !== normalizedDefaultRoleId) {
+        if (
+          expectedProjected &&
+          canonicalAuditJson(beforeProjected) !==
+            canonicalAuditJson(expectedProjected)
+        ) {
           audit.record({
             resourceKind: 'application',
             resourceId: request.applicationId,
             action: 'update',
-            before: { defaultRoleId: beforeDefaultRoleId },
-            after: { defaultRoleId: normalizedDefaultRoleId },
+            before: beforeProjected,
+            after: expectedProjected,
             securityDescriptor: {
               resourceKind: 'application',
               resourceId: request.applicationId,
@@ -313,6 +407,150 @@ export const runAuditedApplicationDefaultRoleUpdate = async <TResult>(
           });
           await audit.flush();
           await verifyState('flush');
+        }
+
+        return result;
+      }),
+    );
+  } finally {
+    active.delete(request);
+  }
+};
+
+export const runAuditedApplicationSettingsUpdate = async <TResult>(
+  dataSource: DataSource | undefined,
+  request: ApplicationSettingsAuditRequest,
+  changedKeys: readonly string[],
+  work: (runner: QueryRunner) => Promise<TResult>,
+): Promise<TResult> => {
+  if (
+    !request ||
+    typeof request !== 'object' ||
+    consumed.has(request) ||
+    getApplicationDefaultRoleAudit(request.workspaceId) ||
+    hasConflictingMetadataAuditScope(
+      request.workspaceId,
+      getApplicationDefaultRoleAudit,
+    )
+  ) {
+    throw new Error('Nested application default role audit is unsupported');
+  }
+  if (!dataSource) {
+    throw new Error(
+      'Application settings update audit requires core DataSource',
+    );
+  }
+  const keysToProject = [
+    ...new Set(
+      changedKeys.filter((key) => APPLICATION_AUDIT_ALL_KEYS.has(key)),
+    ),
+  ];
+
+  consumed.add(request);
+  active.add(request);
+  try {
+    return await storage.run(request, () =>
+      runInCoreAuditTransaction(dataSource, async (runner) => {
+        await runner.query("SET LOCAL lock_timeout = '8s'");
+        const [workspace] = await runner.query(
+          `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+          [request.workspaceId],
+        );
+        if (!workspace || workspace.deletedAt !== null) {
+          throw new Error(
+            'Application default role audit workspace unavailable',
+          );
+        }
+
+        const readApplication = async (): Promise<
+          Record<string, unknown> | undefined
+        > => {
+          const [entry] = await runner.query(
+            `SELECT to_jsonb(a) AS row FROM core.application a WHERE a.id=$1 AND a."workspaceId"=$2 FOR UPDATE`,
+            [request.applicationId, request.workspaceId],
+          );
+
+          return entry?.row as Record<string, unknown> | undefined;
+        };
+        const beforeApplication = await readApplication();
+        if (
+          !beforeApplication ||
+          (beforeApplication.deletedAt !== undefined &&
+            beforeApplication.deletedAt !== null)
+        ) {
+          throw new Error(
+            'Application default role audit application unavailable',
+          );
+        }
+        const beforeProjected = projectApplicationAuditFields(
+          beforeApplication,
+          keysToProject,
+        );
+        const applicationUniversalIdentifier = uuid(
+          beforeApplication.universalIdentifier,
+        );
+
+        const operation = await resolveRoleAuditInitiator(
+          runner,
+          request.operation,
+          request.impersonatorUserWorkspaceId,
+        );
+        const audit = new CrmAuditTransactionContext(runner, operation);
+        const result = await work(runner);
+
+        const afterApplication = await readApplication();
+        if (
+          !afterApplication ||
+          (afterApplication.deletedAt !== undefined &&
+            afterApplication.deletedAt !== null) ||
+          uuid(afterApplication.universalIdentifier) !==
+            applicationUniversalIdentifier
+        ) {
+          throw new Error(
+            'Application default role audit application unavailable',
+          );
+        }
+        const afterProjected = projectApplicationAuditFields(
+          afterApplication,
+          keysToProject,
+        );
+
+        if (
+          keysToProject.length > 0 &&
+          canonicalAuditJson(beforeProjected) !==
+            canonicalAuditJson(afterProjected)
+        ) {
+          audit.record({
+            resourceKind: 'application',
+            resourceId: request.applicationId,
+            action: 'update',
+            before: beforeProjected,
+            after: afterProjected,
+            securityDescriptor: {
+              resourceKind: 'application',
+              resourceId: request.applicationId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          await audit.flush();
+          const postFlushApplication = await readApplication();
+          if (
+            !postFlushApplication ||
+            (postFlushApplication.deletedAt !== undefined &&
+              postFlushApplication.deletedAt !== null) ||
+            uuid(postFlushApplication.universalIdentifier) !==
+              applicationUniversalIdentifier ||
+            canonicalAuditJson(
+              projectApplicationAuditFields(
+                postFlushApplication,
+                keysToProject,
+              ),
+            ) !== canonicalAuditJson(afterProjected)
+          ) {
+            throw new Error(
+              'Application settings state changed during audit flush',
+            );
+          }
         }
 
         return result;

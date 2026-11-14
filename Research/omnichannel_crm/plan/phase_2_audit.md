@@ -339,8 +339,19 @@ LOG187 закрывает транзакционный аудит привязк
 цикла переводов приложений (`core."applicationTranslation"` `create`, `update`, `delete` в
 `ApplicationTranslationSyncService.syncFromManifest`, `ApplicationSyncService.synchronizeFromManifest`
 и `workspace-domain-audit.ts` с редактированием `messages` и `deletedAt`).
+LOG188 закрывает транзакционный аудит настроек, привилегий и манифестных привязок приложений
+(`core.application` `update` для `defaultRoleId`, `settingsCustomTabFrontComponentId`,
+`uninstallLogicFunctionId`, `healthCheckLogicFunctionId`, `autoUpgrade`, `grantedCapabilities` в
+`ApplicationService.update`, `ApplicationInstallResolver.updateApplication`,
+`ApplicationCapabilityResolver.grantApplicationCapabilities`,
+`ApplicationManifestMigrationService.syncApplicationReferencesFromManifest` и
+`application-default-role-audit.ts` с редактированием `grantedCapabilities`) и полного жизненного
+цикла пар ключ-значение приложений (`core."keyValuePair"` `create`, `update`, `delete` в
+`ApplicationKeyValueService.set` / `delete`, `ApplicationKeyValueResolver`,
+`workspace-domain-audit.ts` и каскадного удаления в `ApplicationService.delete` с редактированием
+`key` и `value`).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log187/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log188/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

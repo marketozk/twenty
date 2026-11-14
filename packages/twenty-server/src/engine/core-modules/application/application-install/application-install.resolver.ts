@@ -4,7 +4,7 @@ import {
   UseInterceptors,
   UsePipes,
 } from '@nestjs/common';
-import { Args, Mutation, Query } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query } from '@nestjs/graphql';
 
 import { PermissionFlagType } from 'twenty-shared/constants';
 import { isDefined } from 'twenty-shared/utils';
@@ -32,6 +32,7 @@ import { UpdateApplicationInput } from 'src/engine/core-modules/application/dtos
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
 import { resolveTargetApplicationOrThrow } from 'src/engine/core-modules/application/utils/resolve-target-application-or-throw.util';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
+import { roleAuditIdentityFromRequest } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
 import { JobStatusDTO } from 'src/engine/core-modules/message-queue/dtos/job-status.dto';
 import { type WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
@@ -399,18 +400,28 @@ export class ApplicationInstallResolver {
     id: string,
     @Args('input') input: UpdateApplicationInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context()
+    context?: { req?: Parameters<typeof roleAuditIdentityFromRequest>[0] },
   ) {
+    const auditIdentity = isDefined(context?.req)
+      ? roleAuditIdentityFromRequest(context.req)
+      : undefined;
+
     await this.applicationService.findOneApplicationWithRelationsOrThrow({
       id,
       workspaceId,
     });
 
-    return this.applicationService.update(id, {
-      ...(isDefined(input.autoUpgrade)
-        ? { autoUpgrade: input.autoUpgrade }
-        : {}),
-      workspaceId,
-    });
+    return this.applicationService.update(
+      id,
+      {
+        ...(isDefined(input.autoUpgrade)
+          ? { autoUpgrade: input.autoUpgrade }
+          : {}),
+        workspaceId,
+      },
+      auditIdentity !== undefined ? { auditIdentity } : undefined,
+    );
   }
 
   @Mutation(() => Boolean)

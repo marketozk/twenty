@@ -210,6 +210,78 @@ jest.mock(
     ),
   }),
 );
+jest.mock(
+  'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator',
+  () => ({ MetadataResolver: () => () => {} }),
+);
+jest.mock(
+  'src/engine/core-modules/application/application-exception-filter',
+  () => ({ ApplicationExceptionFilter: class {} }),
+);
+jest.mock(
+  'src/engine/core-modules/application/application-install/application-install.service',
+  () => ({ ApplicationInstallService: class {} }),
+);
+jest.mock(
+  'src/engine/core-modules/application/application-install/services/application-lifecycle-job.service',
+  () => ({ ApplicationLifecycleJobService: class {} }),
+);
+jest.mock(
+  'src/engine/core-modules/application/application-install/services/application-uninstall-runner.service',
+  () => ({ ApplicationUninstallRunnerService: class {} }),
+);
+jest.mock(
+  'src/engine/core-modules/application/application-marketplace/marketplace-query.service',
+  () => ({ MarketplaceQueryService: class {} }),
+);
+jest.mock(
+  'src/engine/core-modules/application/application-registration/application-registration-exception-filter',
+  () => ({ ApplicationRegistrationExceptionFilter: class {} }),
+);
+jest.mock('src/engine/core-modules/application/dtos/application.dto', () => ({
+  ApplicationDTO: class {},
+}));
+jest.mock(
+  'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter',
+  () => ({ AuthGraphqlApiExceptionFilter: class {} }),
+);
+jest.mock(
+  'src/engine/core-modules/graphql/pipes/resolver-validation.pipe',
+  () => ({ ResolverValidationPipe: class {} }),
+);
+jest.mock(
+  'src/engine/decorators/auth/application-target-arg.decorator',
+  () => ({
+    ApplicationTargetArg: () => () => {},
+  }),
+);
+jest.mock(
+  'src/engine/decorators/auth/application-target-args.decorator',
+  () => ({ ApplicationTargetArgs: () => () => {} }),
+);
+jest.mock('src/engine/decorators/auth/auth-application.decorator', () => ({
+  AuthApplication: () => () => {},
+}));
+jest.mock('src/engine/decorators/auth/auth-workspace.decorator', () => ({
+  AuthWorkspace: () => () => {},
+}));
+jest.mock(
+  'src/engine/decorators/auth/allow-suspended-workspace.decorator',
+  () => ({ AllowSuspendedWorkspace: () => () => {} }),
+);
+jest.mock('src/engine/guards/settings-permission.guard', () => ({
+  SettingsPermissionGuard: () => () => {},
+}));
+jest.mock('src/engine/guards/auth-principal.guard', () => ({
+  AuthPrincipalGuard: () => () => {},
+}));
+jest.mock('src/engine/guards/application-target.guard', () => ({
+  ApplicationTargetGuard: class {},
+}));
+jest.mock(
+  'src/engine/workspace-manager/workspace-migration/interceptors/workspace-migration-graphql-api-exception.interceptor',
+  () => ({ WorkspaceMigrationGraphqlApiExceptionInterceptor: class {} }),
+);
 
 const {
   WorkspaceEntity,
@@ -225,6 +297,10 @@ const { ApplicationService } =
   require('src/engine/core-modules/application/application.service') as typeof import('src/engine/core-modules/application/application.service');
 const { ApplicationManifestMigrationService } =
   require('src/engine/core-modules/application/application-manifest/application-manifest-migration.service') as typeof import('src/engine/core-modules/application/application-manifest/application-manifest-migration.service');
+const { ApplicationInstallResolver } =
+  require('src/engine/core-modules/application/application-install/application-install.resolver') as typeof import('src/engine/core-modules/application/application-install/application-install.resolver');
+const { ApplicationCapabilityResolver } =
+  require('src/engine/core-modules/application/application-install/application-capability.resolver') as typeof import('src/engine/core-modules/application/application-install/application-capability.resolver');
 const { RoleService } =
   require('src/engine/metadata-modules/role/role.service') as typeof import('src/engine/metadata-modules/role/role.service');
 const { TwentyStandardApplicationService } =
@@ -242,6 +318,7 @@ const workspaceId = randomUUID();
 const foreignWorkspaceId = randomUUID();
 const actorMemberId = randomUUID();
 const actorUserId = randomUUID();
+const actorUserWorkspaceId = randomUUID();
 const impersonatorUserWorkspaceId = randomUUID();
 const impersonatorUserId = randomUUID();
 
@@ -295,6 +372,11 @@ const applicationSchema = new EntitySchema({
     healthCheckLogicFunctionId: { type: 'uuid', nullable: true },
     uninstallLogicFunctionId: { type: 'uuid', nullable: true },
     autoUpgrade: { type: Boolean, default: false },
+    grantedCapabilities: {
+      type: 'varchar',
+      array: true,
+      default: () => "'{}'",
+    },
     createdAt: { type: 'timestamptz', createDate: true },
     updatedAt: { type: 'timestamptz', updateDate: true },
     deletedAt: { type: 'timestamptz', nullable: true, deleteDate: true },
@@ -561,6 +643,23 @@ const buildHarness = () => {
       { deleteManyByConnectionProviderIds: jest.fn(async () => {}) } as never,
     );
 
+  const applicationInstallResolver = Object.assign(
+    Object.create(ApplicationInstallResolver.prototype),
+    {
+      applicationService: Object.assign(applicationService, {
+        findOneApplicationWithRelationsOrThrow: jest.fn(async () => ({
+          id: manifestAppId,
+          workspaceId,
+          universalIdentifier: manifestAppUniversalId,
+        })),
+      }),
+    },
+  ) as InstanceType<typeof ApplicationInstallResolver>;
+
+  const applicationCapabilityResolver = new ApplicationCapabilityResolver(
+    applicationService,
+  );
+
   return {
     applicationService,
     applicationRepository,
@@ -569,6 +668,8 @@ const buildHarness = () => {
     roleService,
     twentyStandardApplicationService,
     applicationManifestMigrationService,
+    applicationInstallResolver,
+    applicationCapabilityResolver,
   };
 };
 
@@ -680,12 +781,20 @@ beforeEach(async () => {
       canBeAssignedToApiKeys: true,
     },
   ]);
-  await owner.getRepository(UserWorkspaceEntity).insert({
-    id: impersonatorUserWorkspaceId,
-    workspaceId,
-    userId: impersonatorUserId,
-    deletedAt: null,
-  });
+  await owner.getRepository(UserWorkspaceEntity).insert([
+    {
+      id: actorUserWorkspaceId,
+      workspaceId,
+      userId: actorUserId,
+      deletedAt: null,
+    },
+    {
+      id: impersonatorUserWorkspaceId,
+      workspaceId,
+      userId: impersonatorUserId,
+      deletedAt: null,
+    },
+  ]);
   await owner.getRepository(WorkspaceEntity).update(workspaceId, {
     displayName: 'Acme',
     subdomain: 'acme',
@@ -1400,5 +1509,152 @@ describe('Application defaultRoleId CRM audit (LOG164)', () => {
       ['flatApplicationMaps'],
     );
     expect(workspaceEventBroadcaster.broadcast).not.toHaveBeenCalled();
+  });
+
+  it('audits application autoUpgrade, grantedCapabilities, and manifest reference bindings across ApplicationInstallResolver, ApplicationCapabilityResolver, and ApplicationService.update (LOG188)', async () => {
+    const {
+      applicationService,
+      applicationInstallResolver,
+      applicationCapabilityResolver,
+    } = buildHarness();
+
+    const req = {
+      workspace: { id: workspaceId },
+      user: { id: actorUserId },
+      userWorkspaceId: actorUserWorkspaceId,
+      workspaceMemberId: actorMemberId,
+      impersonationContext: { impersonatorUserWorkspaceId },
+    };
+
+    // 1. Update autoUpgrade false -> true via ApplicationInstallResolver.updateApplication
+    const updatedAutoUpgrade =
+      await applicationInstallResolver.updateApplication(
+        manifestAppId,
+        { autoUpgrade: true },
+        { id: workspaceId } as never,
+        { req: req as never },
+      );
+    expect(updatedAutoUpgrade.autoUpgrade).toBe(true);
+
+    // Repeat identical autoUpgrade is a no-op
+    await applicationInstallResolver.updateApplication(
+      manifestAppId,
+      { autoUpgrade: true },
+      { id: workspaceId } as never,
+      { req: req as never },
+    );
+
+    // 2. Grant capabilities via ApplicationCapabilityResolver.grantApplicationCapabilities
+    const granted =
+      await applicationCapabilityResolver.grantApplicationCapabilities(
+        {
+          applicationId: manifestAppId,
+          capabilities: ['microphone', 'camera'] as never,
+        },
+        { id: workspaceId } as never,
+        { req: req as never },
+      );
+    expect([...granted.grantedCapabilities].sort()).toEqual([
+      'camera',
+      'microphone',
+    ]);
+
+    // Repeat identical capability grant is a no-op
+    await applicationCapabilityResolver.grantApplicationCapabilities(
+      {
+        applicationId: manifestAppId,
+        capabilities: ['camera', 'microphone'] as never,
+      },
+      { id: workspaceId } as never,
+      { req: req as never },
+    );
+
+    // 3. Update manifest reference bindings + defaultRoleId together on ApplicationService.update
+    const settingsFrontComponentId = randomUUID();
+    const uninstallFnId = randomUUID();
+    const healthCheckFnId = randomUUID();
+
+    const updatedRefs = await applicationService.update(
+      manifestAppId,
+      {
+        workspaceId,
+        defaultRoleId: manifestRoleOneId,
+        settingsCustomTabFrontComponentId: settingsFrontComponentId,
+        uninstallLogicFunctionId: uninstallFnId,
+        healthCheckLogicFunctionId: healthCheckFnId,
+      },
+      {
+        auditIdentity: userIdentity({ impersonatorUserWorkspaceId }),
+      },
+    );
+    expect(updatedRefs.settingsCustomTabFrontComponentId).toBe(
+      settingsFrontComponentId,
+    );
+    expect(updatedRefs.uninstallLogicFunctionId).toBe(uninstallFnId);
+    expect(updatedRefs.healthCheckLogicFunctionId).toBe(healthCheckFnId);
+
+    const entries = await audits();
+    expect(entries).toHaveLength(3);
+
+    expect(entries[0]).toMatchObject({
+      workspaceId,
+      resourceKind: 'application',
+      resourceId: manifestAppId,
+      action: 'update',
+      actor: { kind: 'workspaceMember', id: actorMemberId },
+      initiator: { kind: 'coreUser', id: impersonatorUserId },
+      redactedDiff: {
+        changedFields: ['autoUpgrade'],
+        values: {
+          autoUpgrade: { before: false, after: true },
+        },
+      },
+      securityDescriptor: {
+        resourceKind: 'application',
+        resourceId: manifestAppId,
+        metadataAccess: 'currentWorkspaceAdministration',
+      },
+    });
+
+    expect(entries[1]).toMatchObject({
+      workspaceId,
+      resourceKind: 'application',
+      resourceId: manifestAppId,
+      action: 'update',
+      actor: { kind: 'coreUser', id: actorUserId },
+      initiator: { kind: 'coreUser', id: impersonatorUserId },
+      redactedDiff: {
+        changedFields: ['grantedCapabilities'],
+        values: {},
+      },
+    });
+    expect(JSON.stringify(entries[1].redactedDiff)).not.toContain('microphone');
+    expect(JSON.stringify(entries[1].redactedDiff)).not.toContain('camera');
+
+    expect(entries[2]).toMatchObject({
+      workspaceId,
+      resourceKind: 'application',
+      resourceId: manifestAppId,
+      action: 'update',
+      actor: { kind: 'workspaceMember', id: actorMemberId },
+      initiator: { kind: 'coreUser', id: impersonatorUserId },
+      redactedDiff: {
+        changedFields: [
+          'defaultRoleId',
+          'healthCheckLogicFunctionId',
+          'settingsCustomTabFrontComponentId',
+          'uninstallLogicFunctionId',
+        ],
+        values: {
+          defaultRoleId: { before: null, after: manifestRoleOneId },
+          healthCheckLogicFunctionId: { before: null, after: healthCheckFnId },
+          settingsCustomTabFrontComponentId: {
+            before: null,
+            after: settingsFrontComponentId,
+          },
+          uninstallLogicFunctionId: { before: null, after: uninstallFnId },
+        },
+      },
+    });
   });
 });

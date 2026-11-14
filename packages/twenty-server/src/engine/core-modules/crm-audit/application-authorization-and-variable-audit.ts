@@ -31,7 +31,10 @@ import {
   type RoleUpdateAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
-import { projectPublicDomain } from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
+import {
+  projectApplicationKeyValuePair,
+  projectPublicDomain,
+} from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 
 export type ApplicationAuthorizationAuditIdentity =
   | ApplicationMetadataAuditIdentity
@@ -1324,10 +1327,12 @@ export const runAuditedApplicationDelete = async <TResult>(
       const [reg] = await runner.query(
         `SELECT
            to_regclass('core."applicationAuthorization"') IS NOT NULL AS "hasAuthTable",
-           to_regclass('core."publicDomain"') IS NOT NULL AS "hasPublicDomainTable"`,
+           to_regclass('core."publicDomain"') IS NOT NULL AS "hasPublicDomainTable",
+           to_regclass('core."keyValuePair"') IS NOT NULL AS "hasKeyValuePairTable"`,
       );
       const hasAuthTable = reg?.hasAuthTable === true;
       const hasPublicDomainTable = reg?.hasPublicDomainTable === true;
+      const hasKeyValuePairTable = reg?.hasKeyValuePairTable === true;
 
       const beforeAuthorizations = new Map<string, Record<string, unknown>>();
       if (hasAuthTable) {
@@ -1363,8 +1368,31 @@ export const runAuditedApplicationDelete = async <TResult>(
         }
       }
 
+      const beforeKeyValuePairs = new Map<string, Record<string, unknown>>();
+      if (hasKeyValuePairTable) {
+        const keyValueRows = await runner.query(
+          `SELECT to_jsonb(kv) AS row FROM core."keyValuePair" kv WHERE kv."applicationId"=$1 AND kv.type='APPLICATION_VARIABLE' ORDER BY kv.id FOR UPDATE`,
+          [normalizedApplicationId],
+        );
+        for (const entry of keyValueRows) {
+          const row = entry.row as Record<string, unknown>;
+          if (
+            row.workspaceId !== undefined &&
+            row.workspaceId !== null &&
+            uuid(row.workspaceId) !== request.workspaceId
+          ) {
+            throw new Error(
+              'Application delete audit detected cross-workspace keyValuePair',
+            );
+          }
+          beforeKeyValuePairs.set(uuid(row.id), row);
+        }
+      }
+
       const hasCascadedAuditRows =
-        beforeAuthorizations.size > 0 || beforePublicDomains.size > 0;
+        beforeAuthorizations.size > 0 ||
+        beforePublicDomains.size > 0 ||
+        beforeKeyValuePairs.size > 0;
 
       if (hasCascadedAuditRows && !request.operation) {
         throw (
@@ -1419,6 +1447,18 @@ export const runAuditedApplicationDelete = async <TResult>(
         }
       }
 
+      if (hasKeyValuePairTable) {
+        const remainingKeyValuePairs = await runner.query(
+          `SELECT id FROM core."keyValuePair" WHERE "applicationId"=$1`,
+          [normalizedApplicationId],
+        );
+        if (remainingKeyValuePairs.length > 0) {
+          throw new Error(
+            'Application delete did not cascade-remove keyValuePair rows',
+          );
+        }
+      }
+
       if (audit && hasCascadedAuditRows) {
         for (const [id, beforeRow] of beforeAuthorizations.entries()) {
           audit.record({
@@ -1448,6 +1488,20 @@ export const runAuditedApplicationDelete = async <TResult>(
             },
           });
         }
+        for (const [id, beforeRow] of beforeKeyValuePairs.entries()) {
+          audit.record({
+            resourceKind: 'applicationKeyValuePair',
+            resourceId: id,
+            action: 'delete',
+            before: projectApplicationKeyValuePair(beforeRow),
+            after: null,
+            securityDescriptor: {
+              resourceKind: 'applicationKeyValuePair',
+              resourceId: id,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+        }
         await audit.flush();
         if (hasAuthTable) {
           const postFlushAuth = await runner.query(
@@ -1467,6 +1521,17 @@ export const runAuditedApplicationDelete = async <TResult>(
           );
           if (postFlushPublicDomains.length > 0) {
             throw new Error('Public domain state changed during audit flush');
+          }
+        }
+        if (hasKeyValuePairTable) {
+          const postFlushKeyValuePairs = await runner.query(
+            `SELECT id FROM core."keyValuePair" WHERE "applicationId"=$1`,
+            [normalizedApplicationId],
+          );
+          if (postFlushKeyValuePairs.length > 0) {
+            throw new Error(
+              'Application key-value pair state changed during audit flush',
+            );
           }
         }
       }

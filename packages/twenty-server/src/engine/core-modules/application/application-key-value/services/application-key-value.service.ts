@@ -15,6 +15,12 @@ import {
   ApplicationExceptionCode,
 } from 'src/engine/core-modules/application/application.exception';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
+import {
+  captureWorkspaceDomainAudit,
+  runAuditedApplicationKeyValueDelete,
+  runAuditedApplicationKeyValueSet,
+  type WorkspaceDomainAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
 import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
 import {
@@ -76,13 +82,65 @@ export class ApplicationKeyValueService {
     key,
     value,
     scope,
+    auditIdentity,
   }: {
     application: FlatApplication;
     workspaceId: string;
     key: string;
     value: unknown;
     scope: AppKeyValueScope;
+    auditIdentity?: WorkspaceDomainAuditIdentity;
   }): Promise<AppKeyValue> {
+    const dataSource = this.keyValuePairRepository.manager?.connection;
+
+    if (isDefined(dataSource)) {
+      const targetApplicationId =
+        scope === AppKeyValueScope.SERVER
+          ? await this.resolveServerApplicationId(application)
+          : application.id;
+      const auditRequest = captureWorkspaceDomainAudit({
+        workspaceId,
+        auditIdentity: auditIdentity ?? {
+          workspaceId,
+          actor: { kind: 'application', id: application.id },
+        },
+      });
+      const persisted = await runAuditedApplicationKeyValueSet(
+        dataSource,
+        auditRequest,
+        {
+          targetApplicationId,
+          scope: scope === AppKeyValueScope.SERVER ? 'SERVER' : 'WORKSPACE',
+          key,
+          value,
+          onPersistenceFailed: () => {
+            throw new ApplicationException(
+              `Could not persist server key "${key}"`,
+              ApplicationExceptionCode.KEY_VALUE_PERSISTENCE_FAILED,
+            );
+          },
+          onServerKeyClaimedByOtherWorkspace: () => {
+            throw new ApplicationException(
+              `Server key "${key}" is already claimed by another workspace`,
+              ApplicationExceptionCode.FORBIDDEN,
+              {
+                userFriendlyMessage: msg`This server key is already claimed by another workspace.`,
+              },
+            );
+          },
+        },
+      );
+
+      return {
+        key: persisted.key,
+        value: persisted.value,
+        scope:
+          persisted.scope === 'SERVER'
+            ? AppKeyValueScope.SERVER
+            : AppKeyValueScope.WORKSPACE,
+      };
+    }
+
     if (scope === AppKeyValueScope.SERVER) {
       return this.claimServerKey({ application, workspaceId, key });
     }
@@ -111,12 +169,41 @@ export class ApplicationKeyValueService {
     workspaceId,
     key,
     scope,
+    auditIdentity,
   }: {
     application: FlatApplication;
     workspaceId: string;
     key: string;
     scope: AppKeyValueScope;
+    auditIdentity?: WorkspaceDomainAuditIdentity;
   }): Promise<boolean> {
+    const dataSource = this.keyValuePairRepository.manager?.connection;
+
+    if (isDefined(dataSource)) {
+      const targetApplicationId =
+        scope === AppKeyValueScope.SERVER
+          ? await this.resolveServerApplicationId(application)
+          : application.id;
+      const auditRequest = captureWorkspaceDomainAudit({
+        workspaceId,
+        auditIdentity: auditIdentity ?? {
+          workspaceId,
+          actor: { kind: 'application', id: application.id },
+        },
+      });
+      const { deleted } = await runAuditedApplicationKeyValueDelete(
+        dataSource,
+        auditRequest,
+        {
+          targetApplicationId,
+          scope: scope === AppKeyValueScope.SERVER ? 'SERVER' : 'WORKSPACE',
+          key,
+        },
+      );
+
+      return deleted;
+    }
+
     if (scope === AppKeyValueScope.SERVER) {
       const result = await this.keyValuePairRepository
         .createQueryBuilder()
