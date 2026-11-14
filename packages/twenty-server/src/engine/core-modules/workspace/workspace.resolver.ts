@@ -225,14 +225,20 @@ export class WorkspaceResolver {
   async updateWorkspaceAllowedIframeOrigins(
     @Args('data') data: UpdateWorkspaceAllowedIframeOriginsInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Context() context?: { req?: Request },
   ) {
     try {
       return await this.workspaceService.updateWorkspaceAllowedIframeOrigins(
         workspace.id,
         data,
+        {
+          auditIdentity: isDefined(context?.req)
+            ? roleAuditIdentityFromRequest(context.req)
+            : undefined,
+        },
       );
     } catch (error) {
-      workspaceGraphqlApiExceptionHandler(error);
+      workspaceGraphqlApiExceptionHandler(error as Error);
     }
   }
 
@@ -580,7 +586,11 @@ export class WorkspaceResolver {
   )
   async checkCustomDomainValidRecords(
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Context() context?: { req?: Request },
   ): Promise<DomainValidRecords | undefined> {
+    const auditIdentity = isDefined(context?.req)
+      ? roleAuditIdentityFromRequest(context.req)
+      : undefined;
     assertIsDefinedOrThrow(
       workspace.customDomain,
       new WorkspaceException(
@@ -596,6 +606,7 @@ export class WorkspaceResolver {
     return this.customDomainManagerService.checkCustomDomainValidRecords(
       workspace,
       domainValidRecords,
+      { auditIdentity },
     );
   }
 }

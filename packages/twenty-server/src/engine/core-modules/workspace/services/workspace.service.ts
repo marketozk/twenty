@@ -9,7 +9,9 @@ import { type RoleUpdateAuditIdentity } from 'src/engine/core-modules/crm-audit/
 import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
 import {
   captureWorkspaceDefaultRoleAudit,
+  captureWorkspaceSettingsAudit,
   runAuditedWorkspaceDefaultRoleUpdate,
+  runAuditedWorkspaceSettingsUpdate,
 } from 'src/engine/core-modules/crm-audit/workspace-default-role-audit';
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -306,40 +308,74 @@ export class WorkspaceService {
   async updateWorkspaceAllowedIframeOrigins(
     workspaceId: string,
     input: UpdateWorkspaceAllowedIframeOriginsInput,
+    options?: {
+      auditIdentity?: RoleUpdateAuditIdentity;
+    },
   ): Promise<WorkspaceEntity> {
-    const updatedWorkspace = await this.workspaceRepository.manager.transaction(
-      async (manager) => {
-        const repository = manager.getRepository(WorkspaceEntity);
-        const workspace = await repository.findOne({
-          where: { id: workspaceId },
-          lock: { mode: 'pessimistic_write' },
-        });
-        assertIsDefinedOrThrow(workspace, WorkspaceNotFoundDefaultError);
-        const origin = normalizeAllowedIframeOrigin(input.origin);
-        assertIsDefinedOrThrow(origin);
-        const origins = workspace.allowedIframeOrigins ?? [];
-        const allowedIframeOrigins =
-          input.operation === 'add'
-            ? [...new Set([...origins, origin])]
-            : origins.filter((existingOrigin) => existingOrigin !== origin);
+    const requireSettingsAudit = isDefined(options?.auditIdentity)
+      ? captureWorkspaceSettingsAudit(workspaceId, options.auditIdentity)
+      : undefined;
+    const settingsAudit = requireSettingsAudit?.();
 
-        if (allowedIframeOrigins.length > MAX_ALLOWED_IFRAME_ORIGINS) {
-          throw new WorkspaceException(
-            'Too many embedding origins',
-            WorkspaceExceptionCode.IFRAME_ORIGIN_LIMIT_EXCEEDED,
+    const executeUpdate = async (manager: DataSource['manager']) => {
+      const repository = manager.getRepository(WorkspaceEntity);
+      const workspace = await repository.findOne({
+        where: { id: workspaceId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      assertIsDefinedOrThrow(workspace, WorkspaceNotFoundDefaultError);
+      const origin = normalizeAllowedIframeOrigin(input.origin);
+      assertIsDefinedOrThrow(origin);
+      const origins = workspace.allowedIframeOrigins ?? [];
+      const allowedIframeOrigins =
+        input.operation === 'add'
+          ? [...new Set([...origins, origin])]
+          : origins.filter((existingOrigin) => existingOrigin !== origin);
+
+      if (allowedIframeOrigins.length > MAX_ALLOWED_IFRAME_ORIGINS) {
+        throw new WorkspaceException(
+          'Too many embedding origins',
+          WorkspaceExceptionCode.IFRAME_ORIGIN_LIMIT_EXCEEDED,
+        );
+      }
+
+      await repository.update(workspaceId, { allowedIframeOrigins });
+      return { ...workspace, allowedIframeOrigins };
+    };
+
+    try {
+      const updatedWorkspace = isDefined(settingsAudit)
+        ? await runAuditedWorkspaceSettingsUpdate(
+            this.coreDataSource,
+            settingsAudit,
+            ['allowedIframeOrigins'],
+            (runner) => executeUpdate(runner.manager),
+          )
+        : await this.workspaceRepository.manager.transaction((manager) =>
+            executeUpdate(manager),
           );
+
+      await this.coreEntityCacheService.invalidate(
+        'workspaceEntity',
+        workspaceId,
+      );
+      return updatedWorkspace;
+    } catch (error) {
+      if (
+        error instanceof NativeTransactionOutcomeUnknownError ||
+        error instanceof CoreAuditPostCommitError
+      ) {
+        try {
+          await this.coreEntityCacheService.invalidate(
+            'workspaceEntity',
+            workspaceId,
+          );
+        } catch {
+          // Preserve the commit-outcome error as the primary failure.
         }
-
-        await repository.update(workspaceId, { allowedIframeOrigins });
-        return { ...workspace, allowedIframeOrigins };
-      },
-    );
-
-    await this.coreEntityCacheService.invalidate(
-      'workspaceEntity',
-      workspaceId,
-    );
-    return updatedWorkspace;
+      }
+      throw error;
+    }
   }
 
   async updateWorkspaceById({
@@ -361,6 +397,10 @@ export class WorkspaceService {
     const requireDefaultRoleAudit =
       payload.defaultRoleId !== undefined
         ? captureWorkspaceDefaultRoleAudit(payload.id, auditIdentity)
+        : undefined;
+    const requireSettingsAudit =
+      payload.defaultRoleId === undefined && isDefined(auditIdentity)
+        ? captureWorkspaceSettingsAudit(payload.id, auditIdentity)
         : undefined;
     if (isDefined(requireDefaultRoleAudit) && !isDefined(auditIdentity)) {
       requireDefaultRoleAudit();
@@ -390,6 +430,10 @@ export class WorkspaceService {
     });
 
     const defaultRoleAudit = requireDefaultRoleAudit?.();
+    const settingsAudit =
+      workspace.activationStatus !== WorkspaceActivationStatus.PENDING_CREATION
+        ? requireSettingsAudit?.()
+        : undefined;
 
     if (
       isDefined(payload.subdomain) &&
@@ -510,12 +554,33 @@ export class WorkspaceService {
       ...(payload.logo === null ? { logoFileId: null } : {}),
     };
 
+    const changedPayloadKeys = Object.keys(workspaceUpdatePayload).filter(
+      (key) => key !== 'id',
+    );
+
     try {
       if (isDefined(defaultRoleAudit)) {
         updatedWorkspace = await runAuditedWorkspaceDefaultRoleUpdate(
           this.coreDataSource,
           defaultRoleAudit,
           payload.defaultRoleId,
+          async (queryRunner) => {
+            await queryRunner.manager.update(
+              WorkspaceEntity,
+              workspace.id,
+              workspaceUpdatePayload,
+            );
+            return queryRunner.manager.findOneByOrFail(WorkspaceEntity, {
+              id: workspace.id,
+            });
+          },
+          changedPayloadKeys,
+        );
+      } else if (isDefined(settingsAudit)) {
+        updatedWorkspace = await runAuditedWorkspaceSettingsUpdate(
+          this.coreDataSource,
+          settingsAudit,
+          changedPayloadKeys,
           async (queryRunner) => {
             await queryRunner.manager.update(
               WorkspaceEntity,

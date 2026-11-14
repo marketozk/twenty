@@ -1,0 +1,14 @@
+{
+  "baseCommit": "4415c2b1bae876be9bad8783be44a0a7a04be488",
+  "lfSha256": {
+    "packages/twenty-server/src/engine/core-modules/cloudflare/services/dns-cloudflare.service.ts": "0d99ae0d265b9301f8f9bde39a2b9d532696bb4b0697e1552842ad01d1ee051e",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "ccd9f0e9452c058aea100431693648dbd2f94c7cf335311539fb2504483e4821",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/workspace-default-role-audit.ts": "93cf9fe7ef2e1b06cb5bc4fb839fc9d945625b31cf49bbd3ba1c415c09a29778",
+    "packages/twenty-server/src/engine/core-modules/domain/custom-domain-manager/services/custom-domain-manager.service.ts": "b800b6bdd40815591d92842202cbb49417e4eb30c8b7873711442d70e26aa30e",
+    "packages/twenty-server/src/engine/core-modules/workspace/crons/jobs/check-custom-domain-valid-records.cron.job.ts": "7f04580bb19e0a08bfadeb9499edd88428909962fc722b3710266b8e8a958166",
+    "packages/twenty-server/src/engine/core-modules/workspace/services/workspace.service.ts": "77a5434612eaf6fd372c1042dfe44324f3aa6bf506e00bf3c9f71b2b1e0b73bf",
+    "packages/twenty-server/src/engine/core-modules/workspace/workspace.resolver.ts": "a2ca19400d2a6b27f65b1c5cc6bb6606bacd807ce2df7d1a3044fe17c0429bfe",
+    "packages/twenty-server/test/fork-migration/crm-audit-workspace-default-role.postgres-spec.ts": "311184ab7ec194a6a2eba75bdcb37da28f69ac60aa8251b61460ed265dbfd970"
+  },
+  "uploadedSourceHashesVerified": true
+}

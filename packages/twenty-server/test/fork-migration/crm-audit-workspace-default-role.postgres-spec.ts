@@ -78,9 +78,16 @@ jest.mock(
   'src/engine/core-modules/dns-manager/services/dns-manager.service',
   () => ({ DnsManagerService: class {} }),
 );
+jest.mock('src/engine/core-modules/public-domain/public-domain.entity', () => ({
+  PublicDomainEntity: class {},
+}));
 jest.mock(
-  'src/engine/core-modules/domain/custom-domain-manager/services/custom-domain-manager.service',
-  () => ({ CustomDomainManagerService: class {} }),
+  'src/engine/core-modules/public-domain/public-domain.service',
+  () => ({ PublicDomainService: class {} }),
+);
+jest.mock(
+  'src/engine/core-modules/event-logs/emit/event-log-emitter.service',
+  () => ({ EventLogEmitterService: class {} }),
 );
 jest.mock(
   'src/engine/core-modules/domain/ subdomain-manager/services/subdomain-manager.service'.replace(
@@ -318,6 +325,12 @@ const { WorkspaceManagerService } =
   require('src/engine/workspace-manager/workspace-manager.service') as typeof import('src/engine/workspace-manager/workspace-manager.service');
 const { DevSeederPermissionsService } =
   require('src/engine/workspace-manager/dev-seeder/core/services/dev-seeder-permissions.service') as typeof import('src/engine/workspace-manager/dev-seeder/core/services/dev-seeder-permissions.service');
+const { CustomDomainManagerService } =
+  require('src/engine/core-modules/domain/custom-domain-manager/services/custom-domain-manager.service') as typeof import('src/engine/core-modules/domain/custom-domain-manager/services/custom-domain-manager.service');
+const { CheckCustomDomainValidRecordsCronJob } =
+  require('src/engine/core-modules/workspace/crons/jobs/check-custom-domain-valid-records.cron.job') as typeof import('src/engine/core-modules/workspace/crons/jobs/check-custom-domain-valid-records.cron.job');
+const { DnsCloudflareService } =
+  require('src/engine/core-modules/cloudflare/services/dns-cloudflare.service') as typeof import('src/engine/core-modules/cloudflare/services/dns-cloudflare.service');
 
 const databaseUrl = process.env.FORK_MIGRATION_TEST_URL;
 if (
@@ -349,6 +362,15 @@ const workspaceSchema = new EntitySchema({
     subdomain: { type: 'text', nullable: true },
     customDomain: { type: 'text', nullable: true },
     isCustomDomainEnabled: { type: Boolean, default: false },
+    allowImpersonation: { type: Boolean, default: true },
+    isPublicInviteLinkEnabled: { type: Boolean, default: true },
+    isTwoFactorAuthenticationEnforced: { type: Boolean, default: false },
+    trashRetentionDays: { type: 'int', default: 14 },
+    eventLogRetentionDays: { type: 'int', default: 1095 },
+    allowedIframeOrigins: { type: 'text', array: true, default: '{}' },
+    editableProfileFields: { type: 'text', array: true, default: '{}' },
+    aiModelIdByTier: { type: 'jsonb', default: '{}' },
+    aiAdditionalInstructions: { type: 'text', nullable: true },
     logo: { type: 'text', nullable: true },
     logoFileId: { type: 'uuid', nullable: true },
     databaseSchema: { type: 'text', nullable: true },
@@ -591,6 +613,15 @@ beforeEach(async () => {
     subdomain: 'acme',
     customDomain: null,
     isCustomDomainEnabled: false,
+    allowImpersonation: true,
+    isPublicInviteLinkEnabled: true,
+    isTwoFactorAuthenticationEnforced: false,
+    trashRetentionDays: 14,
+    eventLogRetentionDays: 1095,
+    allowedIframeOrigins: [],
+    editableProfileFields: [],
+    aiModelIdByTier: {},
+    aiAdditionalInstructions: null,
     logo: null,
     logoFileId: null,
     databaseSchema: 'workspace_acme',
@@ -665,7 +696,7 @@ describe('Workspace defaultRoleId CRM audit (LOG163)', () => {
       actor: { kind: 'workspaceMember', id: actorMemberId },
       initiator: null,
       redactedDiff: {
-        changedFields: ['defaultRoleId'],
+        changedFields: ['defaultRoleId', 'displayName'],
         values: {
           defaultRoleId: { before: memberRoleId, after: secondUserRoleId },
         },
@@ -699,7 +730,7 @@ describe('Workspace defaultRoleId CRM audit (LOG163)', () => {
     const updated = await workspaceService.updateWorkspaceById({
       payload: {
         id: workspaceId,
-        displayName: 'Acme Same Role',
+        displayName: 'Acme',
         defaultRoleId: memberRoleId.toUpperCase(),
       },
       userWorkspaceId: actorUserWorkspaceId,
@@ -707,7 +738,7 @@ describe('Workspace defaultRoleId CRM audit (LOG163)', () => {
       auditIdentity: userIdentity(),
     });
 
-    expect(updated.displayName).toBe('Acme Same Role');
+    expect(updated.displayName).toBe('Acme');
     expect(updated.defaultRoleId).toBe(memberRoleId);
     expect(await audits()).toHaveLength(0);
   });
@@ -1144,5 +1175,253 @@ describe('Workspace defaultRoleId CRM audit (LOG163)', () => {
         } as unknown as RoleUpdateAuditIdentity,
       }),
     ).rejects.toThrow('Entity performing the request does not have permission');
+  });
+
+  it('audits workspace settings updates, allowedIframeOrigins mutations, and customDomain validation status transitions (LOG186)', async () => {
+    const {
+      workspaceService,
+      workspaceResolver,
+      permissionsService,
+      coreEntityCacheService,
+    } = buildHarness();
+    Object.assign(
+      (
+        workspaceService as unknown as {
+          WORKSPACE_FIELD_PERMISSIONS: Record<string, string>;
+        }
+      ).WORKSPACE_FIELD_PERMISSIONS,
+      {
+        allowImpersonation: 'SECURITY',
+        isTwoFactorAuthenticationEnforced: 'SECURITY',
+        trashRetentionDays: 'WORKSPACE',
+        aiAdditionalInstructions: 'WORKSPACE',
+      },
+    );
+
+    const req = {
+      workspace: { id: workspaceId },
+      userWorkspaceId: actorUserWorkspaceId,
+      workspaceMemberId: actorMemberId,
+      user: { id: actorUserId },
+    } as unknown as Request;
+
+    const updatedSettings = await workspaceResolver.updateWorkspace(
+      {
+        displayName: 'Acme Global',
+        allowImpersonation: false,
+        isTwoFactorAuthenticationEnforced: true,
+        trashRetentionDays: 30,
+        aiAdditionalInstructions: 'Private instructions',
+      },
+      { id: workspaceId } as never,
+      actorUserWorkspaceId,
+      undefined,
+      undefined,
+      { req },
+    );
+    expect(updatedSettings?.displayName).toBe('Acme Global');
+    expect(updatedSettings?.allowImpersonation).toBe(false);
+    expect(updatedSettings?.isTwoFactorAuthenticationEnforced).toBe(true);
+    expect(updatedSettings?.trashRetentionDays).toBe(30);
+
+    await workspaceResolver.updateWorkspace(
+      {
+        displayName: 'Acme Global',
+        allowImpersonation: false,
+      },
+      { id: workspaceId } as never,
+      actorUserWorkspaceId,
+      undefined,
+      undefined,
+      { req },
+    );
+
+    const afterAddOrigin =
+      await workspaceResolver.updateWorkspaceAllowedIframeOrigins(
+        {
+          origin: 'https://Embed.Acme.Example:443',
+          operation: 'add',
+        },
+        { id: workspaceId } as never,
+        { req },
+      );
+    expect(afterAddOrigin?.allowedIframeOrigins).toEqual([
+      'https://embed.acme.example',
+    ]);
+    expect(coreEntityCacheService.invalidate).toHaveBeenCalledWith(
+      'workspaceEntity',
+      workspaceId,
+    );
+
+    await workspaceResolver.updateWorkspaceAllowedIframeOrigins(
+      {
+        origin: 'https://embed.acme.example',
+        operation: 'add',
+      },
+      { id: workspaceId } as never,
+      { req },
+    );
+
+    const dnsManagerForCheck = {
+      getHostnameWithRecords: jest.fn(async (domain: string) => ({
+        id: 'cf-host-1',
+        domain,
+        records: [],
+      })),
+      isHostnameWorking: jest
+        .fn()
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce(false),
+    };
+    const eventLogEmitterService = {
+      createContext: jest.fn(() => ({
+        insertWorkspaceEvent: jest.fn(),
+      })),
+    };
+    const realCustomDomainManager = new CustomDomainManagerService(
+      runtime.getRepository(WorkspaceEntity),
+      {} as never,
+      {} as never,
+      dnsManagerForCheck as never,
+      eventLogEmitterService as never,
+      runtime,
+    );
+
+    await owner.getRepository(WorkspaceEntity).update(workspaceId, {
+      customDomain: 'crm.acme.example',
+      isCustomDomainEnabled: false,
+    });
+    const wsForCron = await runtime
+      .getRepository(WorkspaceEntity)
+      .findOneByOrFail({ id: workspaceId });
+
+    const cronJob = new CheckCustomDomainValidRecordsCronJob(
+      {
+        find: jest.fn(async () => [wsForCron]),
+      } as never,
+      realCustomDomainManager,
+    );
+    await cronJob.handle();
+
+    await cronJob.handle();
+
+    const cloudflareService = new DnsCloudflareService(
+      { findByDomain: jest.fn(async () => null) } as never,
+      realCustomDomainManager,
+      {
+        findByCustomDomain: jest.fn(async () =>
+          runtime.getRepository(WorkspaceEntity).findOneByOrFail({
+            id: workspaceId,
+          }),
+        ),
+      } as never,
+    );
+    await cloudflareService.checkHostname('crm.acme.example');
+
+    expect(
+      permissionsService.userHasWorkspaceSettingPermission,
+    ).toHaveBeenCalled();
+
+    const entries = await audits();
+    expect(entries).toHaveLength(4);
+    expect(entries[0]).toMatchObject({
+      workspaceId,
+      action: 'update',
+      resourceKind: 'workspace',
+      resourceId: workspaceId,
+      outcome: 'success',
+      actor: { kind: 'workspaceMember', id: actorMemberId },
+      redactedDiff: {
+        changedFields: [
+          'aiAdditionalInstructions',
+          'allowImpersonation',
+          'displayName',
+          'isTwoFactorAuthenticationEnforced',
+          'trashRetentionDays',
+        ],
+        values: {
+          allowImpersonation: { before: true, after: false },
+          isTwoFactorAuthenticationEnforced: { before: false, after: true },
+          trashRetentionDays: { before: 14, after: 30 },
+        },
+      },
+      securityDescriptor: {
+        resourceKind: 'workspace',
+        resourceId: workspaceId,
+        metadataAccess: 'currentWorkspaceAdministration',
+      },
+    });
+    const firstRedactedDiff = entries[0].redactedDiff as {
+      values: Record<string, unknown>;
+    };
+    expect(firstRedactedDiff.values).not.toHaveProperty('displayName');
+    expect(firstRedactedDiff.values).not.toHaveProperty(
+      'aiAdditionalInstructions',
+    );
+    expect(JSON.stringify(entries[0].redactedDiff)).not.toContain(
+      'Acme Global',
+    );
+    expect(JSON.stringify(entries[0].redactedDiff)).not.toContain(
+      'Private instructions',
+    );
+
+    expect(entries[1]).toMatchObject({
+      workspaceId,
+      action: 'update',
+      resourceKind: 'workspace',
+      resourceId: workspaceId,
+      outcome: 'success',
+      actor: { kind: 'workspaceMember', id: actorMemberId },
+      redactedDiff: {
+        changedFields: ['allowedIframeOrigins'],
+        values: {},
+      },
+    });
+    const secondRedactedDiff = entries[1].redactedDiff as {
+      values: Record<string, unknown>;
+    };
+    expect(secondRedactedDiff.values).not.toHaveProperty(
+      'allowedIframeOrigins',
+    );
+    expect(JSON.stringify(entries[1].redactedDiff)).not.toContain(
+      'embed.acme.example',
+    );
+
+    expect(entries[2]).toMatchObject({
+      workspaceId,
+      action: 'update',
+      resourceKind: 'workspace',
+      resourceId: workspaceId,
+      outcome: 'success',
+      actor: {
+        kind: 'system',
+        id: 'CheckCustomDomainValidRecordsCronJob',
+      },
+      redactedDiff: {
+        changedFields: ['isCustomDomainEnabled'],
+        values: {
+          isCustomDomainEnabled: { before: false, after: true },
+        },
+      },
+    });
+
+    expect(entries[3]).toMatchObject({
+      workspaceId,
+      action: 'update',
+      resourceKind: 'workspace',
+      resourceId: workspaceId,
+      outcome: 'success',
+      actor: {
+        kind: 'system',
+        id: 'DnsCloudflareService.checkHostname',
+      },
+      redactedDiff: {
+        changedFields: ['isCustomDomainEnabled'],
+        values: {
+          isCustomDomainEnabled: { before: true, after: false },
+        },
+      },
+    });
   });
 });

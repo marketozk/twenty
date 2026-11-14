@@ -21,6 +21,13 @@ export class DnsCloudflareService {
     if (isDefined(workspace)) {
       await this.customDomainManagerService.checkCustomDomainValidRecords(
         workspace,
+        undefined,
+        {
+          auditIdentity: {
+            auth: { type: 'system', workspace: { id: workspace.id } },
+            systemActorId: 'DnsCloudflareService.checkHostname',
+          },
+        },
       );
     }
 

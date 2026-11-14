@@ -5356,3 +5356,18 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 9fcaee50-9905-4b0c-ac59-5e8d64f29b78 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log185/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG186` обновления настроек и доменов `core.workspace`).
+
+## LOG-186 - транзакционный аудит обновлений настроек, разрешённых iframe-источников и статуса кастомного домена рабочего пространства (`workspace`, `core.workspace`)
+
+14.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log186/design.md), [design-review.md](implementation/log186/design-review.md)) и реализован участок `LOG-186` (Linear `ROB-765`): транзакционный аудит обновлений настроек рабочего пространства, разрешённых iframe-источников (`allowedIframeOrigins`) и статуса валидации кастомного домена (`isCustomDomainEnabled`) в `core.workspace`.
+
+В `crm-audit-transaction-context.ts` расширен каталог полей `workspace` (`values: ['defaultRoleId', 'logoFileId', 'allowImpersonation', 'isPublicInviteLinkEnabled', 'isCampaignClickTrackingEnabled', 'isCampaignOpenTrackingEnabled', 'workspaceDiscoverability', 'trashRetentionDays', 'eventLogRetentionDays', 'isGoogleAuthEnabled', 'isGoogleAuthBypassEnabled', 'isTwoFactorAuthenticationEnforced', 'isPasswordAuthEnabled', 'isPasswordAuthBypassEnabled', 'isMicrosoftAuthEnabled', 'isMicrosoftAuthBypassEnabled', 'isCustomDomainEnabled', 'isInternalMessagesImportEnabled', 'aiChatModelTier', 'aiAgentModelTier', 'isAutoModelSelectionEnabled', 'aiEvaluationModelId']`, `redacted: ['displayName', 'subdomain', 'customDomain', 'logo', 'inviteHash', 'allowedIframeOrigins', 'editableProfileFields', 'aiModelIdByTier', 'aiAdditionalInstructions']`). В `workspace-default-role-audit.ts` добавлены `projectWorkspaceAuditFields`, `captureWorkspaceSettingsAudit` и `runAuditedWorkspaceSettingsUpdate`, а также расширен `runAuditedWorkspaceDefaultRoleUpdate` для совместного проецирования `defaultRoleId` и сопутствующих обновляемых полей `core.workspace` под блокировкой `FOR NO KEY UPDATE` с перепроверкой снимка после `audit.flush()`. Подключены `WorkspaceResolver` (`updateWorkspace`, `updateWorkspaceAllowedIframeOrigins`, `checkCustomDomainValidRecords`), `WorkspaceService` (`updateWorkspaceById`, `updateWorkspaceAllowedIframeOrigins`), `CustomDomainManagerService.checkCustomDomainValidRecords`, `CheckCustomDomainValidRecordsCronJob.handle` и `DnsCloudflareService.checkHostname`.
+
+14.11.2026 проверки LOG186 завершены. 3201 tests/128 suites PASS (715.516s). 9 targeted/1 suite PASS (6.095s), 1 новый PostgreSQL случай. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 492/492 roots, baseline 264 / current 262 diagnostics, 0 новых/changed-code. Совпали 8 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех входных точек `core.workspace`, редактирование чувствительных метаданных (`displayName`, `subdomain`, `customDomain`, `logo`, `inviteHash`, `allowedIframeOrigins`, `editableProfileFields`, `aiModelIdByTier`, `aiAdditionalInstructions`), выполнение внешних DNS-проверок вне блокировок БД и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log186/results.json), [ревью](implementation/log186/review.md),
+[следующий участок](implementation/log186/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

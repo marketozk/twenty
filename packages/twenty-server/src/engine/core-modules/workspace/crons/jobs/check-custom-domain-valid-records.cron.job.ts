@@ -41,10 +41,17 @@ export class CheckCustomDomainValidRecordsCronJob {
       try {
         await this.customDomainManagerService.checkCustomDomainValidRecords(
           workspace,
+          undefined,
+          {
+            auditIdentity: {
+              auth: { type: 'system', workspace: { id: workspace.id } },
+              systemActorId: CheckCustomDomainValidRecordsCronJob.name,
+            },
+          },
         );
       } catch (error) {
         throw new Error(
-          `[${CheckCustomDomainValidRecordsCronJob.name}] Cannot check custom domain for workspaces: ${error.message}`,
+          `[${CheckCustomDomainValidRecordsCronJob.name}] Cannot check custom domain for workspaces: ${(error as Error).message}`,
         );
       }
     }

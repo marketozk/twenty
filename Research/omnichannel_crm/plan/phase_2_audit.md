@@ -325,8 +325,16 @@ LOG185 закрывает транзакционный аудит полного
 (`core."workspaceSSOIdentityProvider"` `create`, `update`, `delete` в `SsoService`, `SsoResolver`
 и `workspace-domain-audit.ts` с редактированием `name`, `issuer`, `clientID`, `clientSecret`,
 `ssoURL`, `certificate` и `fingerprint`).
+LOG186 закрывает транзакционный аудит обновлений настроек рабочего пространства, разрешённых
+iframe-источников и статуса кастомного домена (`core.workspace` `update` в
+`WorkspaceService.updateWorkspaceById`, `WorkspaceService.updateWorkspaceAllowedIframeOrigins`,
+`WorkspaceResolver`, `CustomDomainManagerService.checkCustomDomainValidRecords`,
+`CheckCustomDomainValidRecordsCronJob`, `DnsCloudflareService.checkHostname` и
+`workspace-default-role-audit.ts` с редактированием `displayName`, `subdomain`, `customDomain`,
+`logo`, `inviteHash`, `allowedIframeOrigins`, `editableProfileFields`, `aiModelIdByTier` и
+`aiAdditionalInstructions`).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log185/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log186/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

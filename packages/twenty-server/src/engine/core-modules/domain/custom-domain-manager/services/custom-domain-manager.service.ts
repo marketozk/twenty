@@ -1,10 +1,15 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Injectable, Optional } from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
 import { msg } from '@lingui/core/macro';
 import { assertIsDefinedOrThrow, isDefined } from 'twenty-shared/utils';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 
+import { type RoleUpdateAuditIdentity } from 'src/engine/core-modules/crm-audit/role-update-audit';
+import {
+  captureWorkspaceSettingsAudit,
+  runAuditedWorkspaceSettingsUpdate,
+} from 'src/engine/core-modules/crm-audit/workspace-default-role-audit';
 import { EventLogEmitterService } from 'src/engine/core-modules/event-logs/emit/event-log-emitter.service';
 import { CUSTOM_DOMAIN_ACTIVATED_EVENT } from 'src/engine/core-modules/event-logs/emit/events/workspace-event/custom-domain/custom-domain-activated';
 import { CUSTOM_DOMAIN_DEACTIVATED_EVENT } from 'src/engine/core-modules/event-logs/emit/events/workspace-event/custom-domain/custom-domain-deactivated';
@@ -31,7 +36,17 @@ export class CustomDomainManagerService {
     private readonly billingService: BillingService,
     private readonly dnsManagerService: DnsManagerService,
     private readonly eventLogEmitterService: EventLogEmitterService,
+    @Optional()
+    @InjectDataSource()
+    private readonly coreDataSource?: DataSource,
   ) {}
+
+  private resolveDataSource(): DataSource | undefined {
+    return (
+      this.coreDataSource ??
+      (this.workspaceRepository?.manager?.connection as DataSource | undefined)
+    );
+  }
 
   async isCustomDomainEnabled(workspaceId: string) {
     const isCustomDomainBillingEnabled =
@@ -93,7 +108,22 @@ export class CustomDomainManagerService {
   async checkCustomDomainValidRecords(
     workspace: WorkspaceEntity,
     domainValidRecord?: DomainValidRecords,
+    options?: {
+      auditIdentity?: RoleUpdateAuditIdentity;
+    },
   ) {
+    const resolvedDataSource = this.resolveDataSource();
+    const requireSettingsAudit =
+      isDefined(options?.auditIdentity) || isDefined(resolvedDataSource)
+        ? captureWorkspaceSettingsAudit(
+            workspace.id,
+            options?.auditIdentity ?? {
+              auth: { type: 'system', workspace: { id: workspace.id } },
+              systemActorId: CustomDomainManagerService.name,
+            },
+          )
+        : undefined;
+
     assertIsDefinedOrThrow(workspace.customDomain);
 
     const customDomainWithRecords =
@@ -108,22 +138,37 @@ export class CustomDomainManagerService {
       await this.dnsManagerService.isHostnameWorking(workspace.customDomain);
 
     if (workspace.isCustomDomainEnabled !== isCustomDomainWorking) {
+      if (isDefined(resolvedDataSource) && isDefined(requireSettingsAudit)) {
+        await runAuditedWorkspaceSettingsUpdate(
+          resolvedDataSource,
+          requireSettingsAudit(),
+          ['isCustomDomainEnabled'],
+          async (runner) => {
+            await runner.manager.update(WorkspaceEntity, workspace.id, {
+              isCustomDomainEnabled: isCustomDomainWorking,
+            });
+          },
+        );
+      } else {
+        await this.workspaceRepository.update(workspace.id, {
+          isCustomDomainEnabled: isCustomDomainWorking,
+        });
+      }
+
       workspace.isCustomDomainEnabled = isCustomDomainWorking;
 
-      await this.workspaceRepository.update(workspace.id, {
-        isCustomDomainEnabled: isCustomDomainWorking,
-      });
+      if (isDefined(this.eventLogEmitterService)) {
+        const eventLogContext = this.eventLogEmitterService.createContext({
+          workspaceId: workspace.id,
+        });
 
-      const eventLogContext = this.eventLogEmitterService.createContext({
-        workspaceId: workspace.id,
-      });
-
-      void eventLogContext.insertWorkspaceEvent(
-        workspace.isCustomDomainEnabled
-          ? CUSTOM_DOMAIN_ACTIVATED_EVENT
-          : CUSTOM_DOMAIN_DEACTIVATED_EVENT,
-        {},
-      );
+        void eventLogContext.insertWorkspaceEvent(
+          workspace.isCustomDomainEnabled
+            ? CUSTOM_DOMAIN_ACTIVATED_EVENT
+            : CUSTOM_DOMAIN_DEACTIVATED_EVENT,
+          {},
+        );
+      }
     }
 
     return {

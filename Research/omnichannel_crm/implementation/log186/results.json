@@ -1,0 +1,37 @@
+{
+  "log": "LOG-186",
+  "issue": "ROB-765",
+  "date": "2026-11-14",
+  "title": "Transactional audit of workspace settings, allowedIframeOrigins, and customDomain validation updates (core.workspace)",
+  "targetedPostgres": {
+    "suitesPassed": 1,
+    "suitesTotal": 1,
+    "testsPassed": 9,
+    "testsTotal": 9,
+    "newPostgresTests": 1,
+    "durationSeconds": 6.095
+  },
+  "fullRegression": {
+    "suitesPassed": 128,
+    "suitesTotal": 128,
+    "testsPassed": 3201,
+    "testsTotal": 3201,
+    "durationSeconds": 715.516
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.15
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 492,
+    "currentRootFiles": 492,
+    "baselineDiagnostics": 264,
+    "currentDiagnostics": 262,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 8
+}
