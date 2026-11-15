@@ -242,11 +242,13 @@ export class ApplicationTarballService {
       appRegistration,
       version: packageJson?.version ?? null,
       tarballFileId: appRegistration.tarballFileId,
+      ownerWorkspaceId: appRegistration.ownerWorkspaceId,
     });
 
     await this.applicationRegistrationAssetService.storeRegistrationAssets({
       applicationRegistrationId: appRegistration.id,
       manifestApplication: manifest.application,
+      workspaceId: appRegistration.ownerWorkspaceId ?? undefined,
       readAsset: (path) => this.readAssetFromContentDir(contentDir, path),
     });
 
@@ -349,6 +351,7 @@ export class ApplicationTarballService {
     await this.applicationRegistrationAssetService.storeRegistrationAssets({
       applicationRegistrationId: appRegistration.id,
       manifestApplication: manifest.application,
+      workspaceId: ownerWorkspaceId,
       readAsset: (path) => this.readAssetFromContentDir(contentDir, path),
     });
 
@@ -399,6 +402,7 @@ export class ApplicationTarballService {
     appRegistration,
     version,
     tarballFileId,
+    ownerWorkspaceId,
   }: {
     appRegistration: Pick<
       ApplicationRegistrationEntity,
@@ -406,6 +410,7 @@ export class ApplicationTarballService {
     >;
     version: string | null;
     tarballFileId: string | null;
+    ownerWorkspaceId?: string | null;
   }): Promise<void> {
     if (!isDefined(version)) {
       this.logger.warn(
@@ -422,6 +427,10 @@ export class ApplicationTarballService {
         sourceType: ApplicationRegistrationSourceType.TARBALL,
         tarballFileId,
       },
+      undefined,
+      isDefined(ownerWorkspaceId)
+        ? { workspaceId: ownerWorkspaceId }
+        : undefined,
     );
   }
 

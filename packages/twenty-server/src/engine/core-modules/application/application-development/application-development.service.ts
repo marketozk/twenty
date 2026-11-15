@@ -31,6 +31,7 @@ import { ThrottlerService } from 'src/engine/core-modules/throttler/throttler.se
 import { FileStorageService } from 'src/engine/core-modules/file-storage/services/file-storage.service';
 import { validateFilePath } from 'src/engine/core-modules/file-storage/utils/validate-file-path.util';
 import { type FileDTO } from 'src/engine/core-modules/file/dtos/file.dto';
+import { type WorkspaceDomainAuditIdentity } from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { streamToBuffer } from 'src/utils/stream-to-buffer';
 
 const APP_SYNC_LOCK_OPTIONS = { ttl: 60_000, ms: 500, maxRetries: 120 };
@@ -57,10 +58,12 @@ export class ApplicationDevelopmentService {
     universalIdentifier,
     name,
     workspaceId,
+    auditIdentity,
   }: {
     universalIdentifier: string;
     name: string;
     workspaceId: string;
+    auditIdentity?: WorkspaceDomainAuditIdentity;
   }): Promise<DevelopmentApplicationDTO> {
     await this.throttlePerApplication(universalIdentifier, workspaceId);
 
@@ -85,14 +88,18 @@ export class ApplicationDevelopmentService {
       };
     }
 
-    const application = await this.applicationService.create({
-      universalIdentifier,
-      name,
-      sourcePath: universalIdentifier,
-      sourceType: ApplicationRegistrationSourceType.LOCAL,
-      applicationRegistrationId: applicationRegistration.id,
-      workspaceId,
-    });
+    const application = await this.applicationService.create(
+      {
+        universalIdentifier,
+        name,
+        sourcePath: universalIdentifier,
+        sourceType: ApplicationRegistrationSourceType.LOCAL,
+        applicationRegistrationId: applicationRegistration.id,
+        workspaceId,
+      },
+      undefined,
+      { auditIdentity },
+    );
 
     return {
       id: application.id,
@@ -330,6 +337,7 @@ export class ApplicationDevelopmentService {
     await this.applicationRegistrationAssetService.storeRegistrationAssets({
       applicationRegistrationId,
       manifestApplication: manifest.application,
+      workspaceId,
       readAsset: (path) =>
         this.readPublicAssetFromWorkspaceStorage({
           workspaceId,

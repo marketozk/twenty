@@ -466,12 +466,15 @@ export class ApplicationInstallService {
         appRegistration.sourceType === ApplicationRegistrationSourceType.NPM &&
         isDefined(resolvedPackage.registryTarballUrl)
       ) {
-        await this.applicationRegistrationVersionService.ensureNpmVersion({
-          applicationRegistrationId: appRegistration.id,
-          version: newVersion,
-          sourcePackage: appRegistration.sourcePackage,
-          tarballUrl: resolvedPackage.registryTarballUrl,
-        });
+        await this.applicationRegistrationVersionService.ensureNpmVersion(
+          {
+            applicationRegistrationId: appRegistration.id,
+            version: newVersion,
+            sourcePackage: appRegistration.sourcePackage,
+            tarballUrl: resolvedPackage.registryTarballUrl,
+          },
+          { workspaceId: params.workspaceId },
+        );
       }
 
       if (isVersionUpgrade && shouldApplyApprovedCapabilities) {

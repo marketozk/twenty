@@ -4,7 +4,7 @@ import {
   UseInterceptors,
   UsePipes,
 } from '@nestjs/common';
-import { Args, Mutation } from '@nestjs/graphql';
+import { Args, Context, Mutation } from '@nestjs/graphql';
 
 import bytes from 'bytes';
 import GraphQLUpload from 'graphql-upload/GraphQLUpload.mjs';
@@ -36,6 +36,7 @@ import { AuthPrincipalGuard } from 'src/engine/guards/auth-principal.guard';
 import { WorkspaceMigrationGraphqlApiExceptionInterceptor } from 'src/engine/workspace-manager/workspace-migration/interceptors/workspace-migration-graphql-api-exception.interceptor';
 import { streamToBuffer } from 'src/utils/stream-to-buffer';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
+import { type WorkspaceDomainAuditIdentity } from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { ApplicationTargetGuard } from 'src/engine/guards/application-target.guard';
 
 @UsePipes(ResolverValidationPipe)
@@ -72,11 +73,13 @@ export class ApplicationDevelopmentResolver {
     })
     { universalIdentifier, name }: CreateDevelopmentApplicationInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ): Promise<DevelopmentApplicationDTO> {
     return this.applicationDevelopmentService.createDevelopmentApplication({
       universalIdentifier,
       name,
       workspaceId,
+      auditIdentity: context?.req,
     });
   }
 

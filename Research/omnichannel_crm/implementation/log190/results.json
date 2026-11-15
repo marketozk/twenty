@@ -1,0 +1,37 @@
+{
+  "log": "LOG-190",
+  "issue": "ROB-765",
+  "date": "2026-11-15",
+  "title": "Transactional audit of application registration versions (core.applicationRegistrationVersion), registration asset updates (ApplicationRegistrationAssetService), and application creation (core.application)",
+  "targetedPostgres": {
+    "suitesPassed": 2,
+    "suitesTotal": 2,
+    "testsPassed": 19,
+    "testsTotal": 19,
+    "newPostgresTests": 1,
+    "durationSeconds": 9.659
+  },
+  "fullRegression": {
+    "suitesPassed": 128,
+    "suitesTotal": 128,
+    "testsPassed": 3206,
+    "testsTotal": 3206,
+    "durationSeconds": 718.451
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.169
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 496,
+    "currentRootFiles": 496,
+    "baselineDiagnostics": 274,
+    "currentDiagnostics": 274,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 12
+}

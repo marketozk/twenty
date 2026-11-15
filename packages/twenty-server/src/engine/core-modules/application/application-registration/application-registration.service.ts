@@ -825,6 +825,7 @@ export class ApplicationRegistrationService {
               includeVariables: isDefined(
                 manifest.application?.serverVariables,
               ),
+              includeVersions: isDefined(publishedVersion),
               work: async (runner) => {
                 const entityManager = runner.manager;
                 await entityManager

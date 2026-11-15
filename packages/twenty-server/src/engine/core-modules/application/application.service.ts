@@ -17,6 +17,11 @@ import {
   captureCurrentCrmAuditOperation,
 } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
 import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
+import {
+  captureWorkspaceDomainAudit,
+  runAuditedApplicationCreate,
+  type WorkspaceDomainAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
@@ -794,6 +799,9 @@ export class ApplicationService {
   async create(
     data: Partial<ApplicationEntity> & { workspaceId: string },
     queryRunner?: QueryRunner,
+    options?: {
+      auditIdentity?: WorkspaceDomainAuditIdentity;
+    },
   ): Promise<ApplicationEntity> {
     if (data.defaultRoleId !== undefined && data.defaultRoleId !== null) {
       throw new Error(
@@ -805,11 +813,26 @@ export class ApplicationService {
       return queryRunner.manager.save(ApplicationEntity, data);
     }
 
-    const savedApplication =
-      await this.applicationRepository.insertAndReturnOne(
-        data.workspaceId,
-        data as QueryDeepPartialEntity<ApplicationEntity>,
-      );
+    const savedApplication = isDefined(this.coreDataSource)
+      ? await runAuditedApplicationCreate(
+          this.coreDataSource,
+          captureWorkspaceDomainAudit({
+            workspaceId: data.workspaceId,
+            auditIdentity: options?.auditIdentity,
+            defaultSystemActorId: 'ApplicationService.create',
+          }),
+          {
+            work: (runner) =>
+              runner.manager
+                .getRepository(ApplicationEntity)
+                .save({ id: data.id ?? v4(), ...data }),
+            extractApplicationId: (created) => created.id,
+          },
+        )
+      : await this.applicationRepository.insertAndReturnOne(
+          data.workspaceId,
+          data as QueryDeepPartialEntity<ApplicationEntity>,
+        );
 
     await this.workspaceCacheService.invalidateAndRecompute(data.workspaceId, [
       'flatApplicationMaps',

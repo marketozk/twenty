@@ -12,6 +12,11 @@ import { ApplicationRegistrationService } from 'src/engine/core-modules/applicat
 import { type ApplicationRegistrationGalleryImage } from 'src/engine/core-modules/application/application-registration/types/application-registration-gallery-image.type';
 import { isStorableAssetPath } from 'src/engine/core-modules/application/application-registration/utils/is-storable-asset-path.util';
 import { toGalleryImagePaths } from 'src/engine/core-modules/application/application-registration/utils/to-gallery-image-paths.util';
+import {
+  captureWorkspaceDomainAudit,
+  runAuditedApplicationRegistrationUpdate,
+  type WorkspaceDomainAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { FileStorageException } from 'src/engine/core-modules/file-storage/interfaces/file-storage-exception';
 import { ServerFileStorageService } from 'src/engine/core-modules/file-storage/services/server-file-storage.service';
 import { prepareFileForStorageOrThrow } from 'src/engine/core-modules/file-storage/utils/prepare-file-for-storage-or-throw.util';
@@ -40,6 +45,8 @@ export class ApplicationRegistrationAssetService {
     manifestApplication,
     readAsset,
     skipAlreadyStoredPaths = false,
+    workspaceId,
+    auditIdentity,
   }: {
     applicationRegistrationId: string;
     manifestApplication: ApplicationManifest | undefined;
@@ -48,6 +55,8 @@ export class ApplicationRegistrationAssetService {
     // version): assets that already have a stored file for the same path are
     // not re-downloaded, only missing ones are.
     skipAlreadyStoredPaths?: boolean;
+    workspaceId?: string;
+    auditIdentity?: WorkspaceDomainAuditIdentity;
   }): Promise<void> {
     const logoPath = manifestApplication?.logo ?? manifestApplication?.logoUrl;
 
@@ -77,17 +86,47 @@ export class ApplicationRegistrationAssetService {
 
     const registrationBeforeAssetWrite =
       await this.applicationRegistrationRepository.findOne({
-        select: { id: true, logoFileId: true, galleryImages: true },
+        select: {
+          id: true,
+          logoFileId: true,
+          galleryImages: true,
+          ownerWorkspaceId: true,
+        },
         where: { id: applicationRegistrationId },
       });
 
-    await this.applicationRegistrationRepository.update(
-      applicationRegistrationId,
-      {
-        logoFileId,
-        galleryImages,
-      } as QueryDeepPartialEntity<ApplicationRegistrationEntity>,
-    );
+    const dataSource =
+      this.applicationRegistrationRepository.manager?.connection;
+    const effectiveWorkspaceId =
+      workspaceId ??
+      registrationBeforeAssetWrite?.ownerWorkspaceId ??
+      undefined;
+    const updatePayload = {
+      logoFileId,
+      galleryImages,
+    } as QueryDeepPartialEntity<ApplicationRegistrationEntity>;
+
+    if (isDefined(dataSource) && isDefined(effectiveWorkspaceId)) {
+      const auditRequest = captureWorkspaceDomainAudit({
+        workspaceId: effectiveWorkspaceId,
+        auditIdentity,
+        defaultSystemActorId:
+          'ApplicationRegistrationAssetService.storeRegistrationAssets',
+      });
+      await runAuditedApplicationRegistrationUpdate(dataSource, auditRequest, {
+        applicationRegistrationId,
+        work: async (runner) => {
+          await runner.manager
+            .getRepository(ApplicationRegistrationEntity)
+            .update(applicationRegistrationId, updatePayload);
+        },
+      });
+    } else {
+      await this.applicationRegistrationRepository.update(
+        applicationRegistrationId,
+        updatePayload,
+      );
+    }
 
     const haveAssetsChanged =
       !isDefined(registrationBeforeAssetWrite) ||

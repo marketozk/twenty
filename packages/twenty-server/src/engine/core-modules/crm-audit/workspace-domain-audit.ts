@@ -1412,6 +1412,132 @@ export const projectApplicationRegistrationVariable = (
   };
 };
 
+export const projectApplicationRegistrationVersion = (
+  row: Record<string, unknown>,
+) => {
+  if (typeof row.version !== 'string' || row.version.length === 0) {
+    throw new Error(
+      'Application registration version audit row version is invalid',
+    );
+  }
+
+  return {
+    applicationRegistrationId: uuid(row.applicationRegistrationId),
+    version: row.version,
+    sourceType:
+      row.sourceType === undefined || row.sourceType === null
+        ? 'local'
+        : String(row.sourceType),
+    tarballFileId:
+      row.tarballFileId === undefined || row.tarballFileId === null
+        ? null
+        : uuid(row.tarballFileId),
+    sourcePackage:
+      row.sourcePackage === undefined || row.sourcePackage === null
+        ? null
+        : String(row.sourcePackage),
+    tarballUrl:
+      row.tarballUrl === undefined || row.tarballUrl === null
+        ? null
+        : String(row.tarballUrl),
+    publishedAt:
+      row.publishedAt === undefined || row.publishedAt === null
+        ? null
+        : String(row.publishedAt),
+  };
+};
+
+export const projectApplication = (row: Record<string, unknown>) => {
+  const nullableUuidField = (val: unknown) =>
+    val === undefined || val === null ? null : uuid(val);
+
+  return {
+    universalIdentifier: uuid(row.universalIdentifier),
+    applicationRegistrationId: nullableUuidField(row.applicationRegistrationId),
+    sourceType:
+      row.sourceType === undefined || row.sourceType === null
+        ? 'local'
+        : String(row.sourceType),
+    state:
+      row.state === undefined || row.state === null
+        ? 'INSTALLED'
+        : String(row.state),
+    version:
+      row.version === undefined || row.version === null
+        ? null
+        : String(row.version),
+    logoFileId: nullableUuidField(row.logoFileId),
+    packageJsonFileId: nullableUuidField(row.packageJsonFileId),
+    yarnLockFileId: nullableUuidField(row.yarnLockFileId),
+    logicFunctionLayerId: nullableUuidField(row.logicFunctionLayerId),
+    defaultRoleId: nullableUuidField(row.defaultRoleId),
+    settingsCustomTabFrontComponentId: nullableUuidField(
+      row.settingsCustomTabFrontComponentId,
+    ),
+    uninstallLogicFunctionId: nullableUuidField(row.uninstallLogicFunctionId),
+    healthCheckLogicFunctionId: nullableUuidField(
+      row.healthCheckLogicFunctionId,
+    ),
+    primaryPublicDomainId: nullableUuidField(row.primaryPublicDomainId),
+    canBeUninstalled:
+      row.canBeUninstalled === undefined || row.canBeUninstalled === null
+        ? true
+        : Boolean(row.canBeUninstalled),
+    autoUpgrade: Boolean(row.autoUpgrade),
+    isSdkLayerStale: Boolean(row.isSdkLayerStale),
+    name: row.name === undefined || row.name === null ? '' : String(row.name),
+    description:
+      row.description === undefined || row.description === null
+        ? null
+        : String(row.description),
+    logo: row.logo === undefined || row.logo === null ? null : String(row.logo),
+    sourcePath:
+      row.sourcePath === undefined || row.sourcePath === null
+        ? ''
+        : String(row.sourcePath),
+    packageJsonChecksum:
+      row.packageJsonChecksum === undefined || row.packageJsonChecksum === null
+        ? null
+        : String(row.packageJsonChecksum),
+    yarnLockChecksum:
+      row.yarnLockChecksum === undefined || row.yarnLockChecksum === null
+        ? null
+        : String(row.yarnLockChecksum),
+    availablePackages:
+      row.availablePackages && typeof row.availablePackages === 'object'
+        ? row.availablePackages
+        : {},
+    billing: row.billing && typeof row.billing === 'object' ? row.billing : {},
+    grantedCapabilities: Array.isArray(row.grantedCapabilities)
+      ? [...new Set(row.grantedCapabilities.map((item) => String(item)))].sort()
+      : [],
+    uninstallHookCompletedForRequestedAt:
+      row.uninstallHookCompletedForRequestedAt === undefined ||
+      row.uninstallHookCompletedForRequestedAt === null
+        ? null
+        : String(row.uninstallHookCompletedForRequestedAt),
+    sdkClientCoreChecksum:
+      row.sdkClientCoreChecksum === undefined ||
+      row.sdkClientCoreChecksum === null
+        ? null
+        : String(row.sdkClientCoreChecksum),
+    frontComponentSharedDependenciesChecksum:
+      row.frontComponentSharedDependenciesChecksum === undefined ||
+      row.frontComponentSharedDependenciesChecksum === null
+        ? null
+        : String(row.frontComponentSharedDependenciesChecksum),
+    frontComponentSharedDependenciesBuiltPath:
+      row.frontComponentSharedDependenciesBuiltPath === undefined ||
+      row.frontComponentSharedDependenciesBuiltPath === null
+        ? null
+        : String(row.frontComponentSharedDependenciesBuiltPath),
+    deletedAt:
+      row.deletedAt === undefined || row.deletedAt === null
+        ? null
+        : String(row.deletedAt),
+  };
+};
+
 const hydrateUnsubscribeTopicRow = (
   row: Record<string, unknown>,
 ): PersistedUnsubscribeTopicRow =>
@@ -4522,10 +4648,12 @@ export const runAuditedApplicationRegistrationUpdate = async <TResult>(
   {
     applicationRegistrationId,
     includeVariables = false,
+    includeVersions = false,
     work,
   }: {
     applicationRegistrationId: string;
     includeVariables?: boolean;
+    includeVersions?: boolean;
     work: (runner: QueryRunner) => Promise<TResult>;
   },
 ): Promise<TResult> => {
@@ -4583,6 +4711,22 @@ export const runAuditedApplicationRegistrationUpdate = async <TResult>(
         }
       }
 
+      const beforeVersions = new Map<string, Record<string, unknown>>();
+      if (includeVersions) {
+        const verEntries = await runner.query(
+          `SELECT to_jsonb(arver) AS row
+             FROM core."applicationRegistrationVersion" arver
+            WHERE arver."applicationRegistrationId"=$1
+            ORDER BY arver.id
+            FOR UPDATE`,
+          [normalizedId],
+        );
+        for (const entry of verEntries) {
+          const row = entry.row as Record<string, unknown>;
+          beforeVersions.set(uuid(row.id), row);
+        }
+      }
+
       const result = await work(runner);
 
       const [afterEntry] = await runner.query(
@@ -4607,6 +4751,21 @@ export const runAuditedApplicationRegistrationUpdate = async <TResult>(
         for (const entry of varEntries) {
           const row = entry.row as Record<string, unknown>;
           afterVars.set(uuid(row.id), row);
+        }
+      }
+
+      const afterVersions = new Map<string, Record<string, unknown>>();
+      if (includeVersions) {
+        const verEntries = await runner.query(
+          `SELECT to_jsonb(arver) AS row
+             FROM core."applicationRegistrationVersion" arver
+            WHERE arver."applicationRegistrationId"=$1
+            ORDER BY arver.id`,
+          [normalizedId],
+        );
+        for (const entry of verEntries) {
+          const row = entry.row as Record<string, unknown>;
+          afterVersions.set(uuid(row.id), row);
         }
       }
 
@@ -4690,6 +4849,67 @@ export const runAuditedApplicationRegistrationUpdate = async <TResult>(
         }
       }
 
+      if (includeVersions) {
+        for (const [verId, afterVerRow] of afterVersions.entries()) {
+          const beforeVerRow = beforeVersions.get(verId);
+          const afterVerProj =
+            projectApplicationRegistrationVersion(afterVerRow);
+          if (!beforeVerRow) {
+            audit.record({
+              resourceKind: 'applicationRegistrationVersion',
+              resourceId: verId,
+              action: 'create',
+              before: null,
+              after: afterVerProj,
+              securityDescriptor: {
+                resourceKind: 'applicationRegistrationVersion',
+                resourceId: verId,
+                metadataAccess: 'currentWorkspaceAdministration',
+              },
+            });
+            recordedCount += 1;
+          } else {
+            const beforeVerProj =
+              projectApplicationRegistrationVersion(beforeVerRow);
+            if (
+              canonicalAuditJson(beforeVerProj) !==
+              canonicalAuditJson(afterVerProj)
+            ) {
+              audit.record({
+                resourceKind: 'applicationRegistrationVersion',
+                resourceId: verId,
+                action: 'update',
+                before: beforeVerProj,
+                after: afterVerProj,
+                securityDescriptor: {
+                  resourceKind: 'applicationRegistrationVersion',
+                  resourceId: verId,
+                  metadataAccess: 'currentWorkspaceAdministration',
+                },
+              });
+              recordedCount += 1;
+            }
+          }
+        }
+        for (const [verId, beforeVerRow] of beforeVersions.entries()) {
+          if (!afterVersions.has(verId)) {
+            audit.record({
+              resourceKind: 'applicationRegistrationVersion',
+              resourceId: verId,
+              action: 'delete',
+              before: projectApplicationRegistrationVersion(beforeVerRow),
+              after: null,
+              securityDescriptor: {
+                resourceKind: 'applicationRegistrationVersion',
+                resourceId: verId,
+                metadataAccess: 'currentWorkspaceAdministration',
+              },
+            });
+            recordedCount += 1;
+          }
+        }
+      }
+
       if (recordedCount > 0) {
         await audit.flush();
 
@@ -4735,6 +4955,35 @@ export const runAuditedApplicationRegistrationUpdate = async <TResult>(
           if (actualVarsJson !== expectedVarsJson) {
             throw new Error(
               'Application registration variable state changed during audit flush',
+            );
+          }
+        }
+
+        if (includeVersions) {
+          const postFlushVerEntries = await runner.query(
+            `SELECT to_jsonb(arver) AS row
+               FROM core."applicationRegistrationVersion" arver
+              WHERE arver."applicationRegistrationId"=$1
+              ORDER BY arver.id`,
+            [normalizedId],
+          );
+          const expectedVersJson = canonicalAuditJson(
+            [...afterVersions.entries()].map(([id, row]) => ({
+              id,
+              ...projectApplicationRegistrationVersion(row),
+            })),
+          );
+          const actualVersJson = canonicalAuditJson(
+            postFlushVerEntries.map(
+              (entry: { row: Record<string, unknown> }) => ({
+                id: uuid(entry.row.id),
+                ...projectApplicationRegistrationVersion(entry.row),
+              }),
+            ),
+          );
+          if (actualVersJson !== expectedVersJson) {
+            throw new Error(
+              'Application registration version state changed during audit flush',
             );
           }
         }
@@ -4793,9 +5042,12 @@ export const runAuditedApplicationRegistrationDelete = async (
       const beforeProj = projectApplicationRegistration(beforeRow);
 
       const [reg] = await runner.query(
-        `SELECT to_regclass('core."applicationRegistrationVariable"') IS NOT NULL AS "hasVarTable"`,
+        `SELECT
+           to_regclass('core."applicationRegistrationVariable"') IS NOT NULL AS "hasVarTable",
+           to_regclass('core."applicationRegistrationVersion"') IS NOT NULL AS "hasVerTable"`,
       );
       const hasVarTable = reg?.hasVarTable === true;
+      const hasVerTable = reg?.hasVerTable === true;
       const beforeVars = new Map<string, Record<string, unknown>>();
       if (hasVarTable) {
         const varEntries = await runner.query(
@@ -4809,6 +5061,22 @@ export const runAuditedApplicationRegistrationDelete = async (
         for (const entry of varEntries) {
           const row = entry.row as Record<string, unknown>;
           beforeVars.set(uuid(row.id), row);
+        }
+      }
+
+      const beforeVersions = new Map<string, Record<string, unknown>>();
+      if (hasVerTable) {
+        const verEntries = await runner.query(
+          `SELECT to_jsonb(arver) AS row
+             FROM core."applicationRegistrationVersion" arver
+            WHERE arver."applicationRegistrationId"=$1
+            ORDER BY arver.id
+            FOR UPDATE`,
+          [normalizedId],
+        );
+        for (const entry of verEntries) {
+          const row = entry.row as Record<string, unknown>;
+          beforeVersions.set(uuid(row.id), row);
         }
       }
 
@@ -4836,6 +5104,20 @@ export const runAuditedApplicationRegistrationDelete = async (
           securityDescriptor: {
             resourceKind: 'applicationRegistrationVariable',
             resourceId: varId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+      }
+      for (const [verId, verRow] of beforeVersions.entries()) {
+        audit.record({
+          resourceKind: 'applicationRegistrationVersion',
+          resourceId: verId,
+          action: 'delete',
+          before: projectApplicationRegistrationVersion(verRow),
+          after: null,
+          securityDescriptor: {
+            resourceKind: 'applicationRegistrationVersion',
+            resourceId: verId,
             metadataAccess: 'currentWorkspaceAdministration',
           },
         });
@@ -4871,6 +5153,17 @@ export const runAuditedApplicationRegistrationDelete = async (
         if (postFlushVars.length > 0) {
           throw new Error(
             'Application registration variable state changed during audit flush',
+          );
+        }
+      }
+      if (hasVerTable) {
+        const postFlushVers = await runner.query(
+          `SELECT id FROM core."applicationRegistrationVersion" WHERE "applicationRegistrationId"=$1`,
+          [normalizedId],
+        );
+        if (postFlushVers.length > 0) {
+          throw new Error(
+            'Application registration version state changed during audit flush',
           );
         }
       }
@@ -5036,6 +5329,245 @@ export const runAuditedApplicationRegistrationVariableSync = async <TResult>(
             'Application registration variable state changed during audit flush',
           );
         }
+      }
+
+      return result;
+    }),
+  );
+};
+
+export const runAuditedApplicationRegistrationVersionSync = async <TResult>(
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    applicationRegistrationId,
+    work,
+  }: {
+    applicationRegistrationId: string;
+    work: (runner: QueryRunner) => Promise<TResult>;
+  },
+): Promise<TResult> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error(
+      'Application registration version audit requires core DataSource',
+    );
+  }
+  let normalizedId: string;
+  try {
+    normalizedId = uuid(applicationRegistrationId);
+  } catch (error) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw error;
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error(
+          'Application registration version audit workspace unavailable',
+        );
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const [regEntry] = await runner.query(
+        `SELECT id FROM core."applicationRegistration" WHERE id=$1 FOR NO KEY UPDATE`,
+        [normalizedId],
+      );
+      if (!regEntry) {
+        throw new Error(
+          'Application registration version audit registration unavailable',
+        );
+      }
+
+      const readVersionRows = async (): Promise<
+        Map<string, Record<string, unknown>>
+      > => {
+        const entries = await runner.query(
+          `SELECT to_jsonb(arver) AS row
+             FROM core."applicationRegistrationVersion" arver
+            WHERE arver."applicationRegistrationId"=$1
+            ORDER BY arver.id
+            FOR UPDATE`,
+          [normalizedId],
+        );
+        const map = new Map<string, Record<string, unknown>>();
+        for (const entry of entries) {
+          const row = entry.row as Record<string, unknown>;
+          map.set(uuid(row.id), row);
+        }
+
+        return map;
+      };
+
+      const beforeVersions = await readVersionRows();
+      const result = await work(runner);
+      const afterVersions = await readVersionRows();
+
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      let recordedCount = 0;
+
+      for (const [verId, afterVerRow] of afterVersions.entries()) {
+        const beforeVerRow = beforeVersions.get(verId);
+        const afterVerProj = projectApplicationRegistrationVersion(afterVerRow);
+        if (!beforeVerRow) {
+          audit.record({
+            resourceKind: 'applicationRegistrationVersion',
+            resourceId: verId,
+            action: 'create',
+            before: null,
+            after: afterVerProj,
+            securityDescriptor: {
+              resourceKind: 'applicationRegistrationVersion',
+              resourceId: verId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedCount += 1;
+        } else {
+          const beforeVerProj =
+            projectApplicationRegistrationVersion(beforeVerRow);
+          if (
+            canonicalAuditJson(beforeVerProj) !==
+            canonicalAuditJson(afterVerProj)
+          ) {
+            audit.record({
+              resourceKind: 'applicationRegistrationVersion',
+              resourceId: verId,
+              action: 'update',
+              before: beforeVerProj,
+              after: afterVerProj,
+              securityDescriptor: {
+                resourceKind: 'applicationRegistrationVersion',
+                resourceId: verId,
+                metadataAccess: 'currentWorkspaceAdministration',
+              },
+            });
+            recordedCount += 1;
+          }
+        }
+      }
+      for (const [verId, beforeVerRow] of beforeVersions.entries()) {
+        if (!afterVersions.has(verId)) {
+          audit.record({
+            resourceKind: 'applicationRegistrationVersion',
+            resourceId: verId,
+            action: 'delete',
+            before: projectApplicationRegistrationVersion(beforeVerRow),
+            after: null,
+            securityDescriptor: {
+              resourceKind: 'applicationRegistrationVersion',
+              resourceId: verId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedCount += 1;
+        }
+      }
+
+      if (recordedCount > 0) {
+        const expectedSerialized = canonicalAuditJson(
+          [...afterVersions.entries()].map(([id, row]) => ({
+            id,
+            ...projectApplicationRegistrationVersion(row),
+          })),
+        );
+        await audit.flush();
+
+        const postFlushVersions = await readVersionRows();
+        const actualSerialized = canonicalAuditJson(
+          [...postFlushVersions.entries()].map(([id, row]) => ({
+            id,
+            ...projectApplicationRegistrationVersion(row),
+          })),
+        );
+        if (actualSerialized !== expectedSerialized) {
+          throw new Error(
+            'Application registration version state changed during audit flush',
+          );
+        }
+      }
+
+      return result;
+    }),
+  );
+};
+
+export const runAuditedApplicationCreate = async <TResult>(
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    work,
+    extractApplicationId,
+  }: {
+    work: (runner: QueryRunner) => Promise<TResult>;
+    extractApplicationId: (result: TResult) => string;
+  },
+): Promise<TResult> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Application create audit requires core DataSource');
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('Application create audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+      const result = await work(runner);
+      const applicationId = uuid(extractApplicationId(result));
+
+      const [entry] = await runner.query(
+        `SELECT to_jsonb(a) AS row FROM core.application a WHERE a.id=$1 AND a."workspaceId"=$2 FOR UPDATE`,
+        [applicationId, request.workspaceId],
+      );
+      if (!entry?.row) {
+        throw new Error('Application create did not persist row');
+      }
+      const afterRow = entry.row as Record<string, unknown>;
+      const afterProj = projectApplication(afterRow);
+
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      audit.record({
+        resourceKind: 'application',
+        resourceId: applicationId,
+        action: 'create',
+        before: null,
+        after: afterProj,
+        securityDescriptor: {
+          resourceKind: 'application',
+          resourceId: applicationId,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+      await audit.flush();
+
+      const [postFlushEntry] = await runner.query(
+        `SELECT to_jsonb(a) AS row FROM core.application a WHERE a.id=$1 AND a."workspaceId"=$2`,
+        [applicationId, request.workspaceId],
+      );
+      if (
+        !postFlushEntry?.row ||
+        canonicalAuditJson(
+          projectApplication(postFlushEntry.row as Record<string, unknown>),
+        ) !== canonicalAuditJson(afterProj)
+      ) {
+        throw new Error('Application state changed during audit flush');
       }
 
       return result;

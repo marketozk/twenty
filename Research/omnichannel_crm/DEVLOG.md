@@ -5440,3 +5440,18 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 bc25f140-9e7a-49f2-bc54-6855ea14a9d8 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log189/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG190`).
+
+## LOG-190 - транзакционный аудит версий регистраций приложений (`applicationRegistrationVersion`, `core."applicationRegistrationVersion"`), ассетов регистраций (`ApplicationRegistrationAssetService`) и создания приложений (`application`, `core.application`)
+
+15.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log190/design.md), [design-review.md](implementation/log190/design-review.md)) и реализован участок `LOG-190` (Linear `ROB-765`): транзакционный аудит полного жизненного цикла версий регистраций приложений в `core."applicationRegistrationVersion"`, обновления ассетов регистраций и создания экземпляров приложений в `core.application`.
+
+В `crm-audit.types.ts` и `crm-audit-transaction-context.ts` добавлен вид ресурса `applicationRegistrationVersion` (`values: ['applicationRegistrationId', 'version', 'sourceType', 'tarballFileId']`, `redacted: ['sourcePackage', 'tarballUrl', 'publishedAt']`, действия `['create', 'update', 'delete']`) и расширен каталог `application` (`values: ['universalIdentifier', 'applicationRegistrationId', 'sourceType', 'state', 'version', 'logoFileId', 'packageJsonFileId', 'yarnLockFileId', 'logicFunctionLayerId', 'defaultRoleId', 'settingsCustomTabFrontComponentId', 'uninstallLogicFunctionId', 'healthCheckLogicFunctionId', 'primaryPublicDomainId', 'canBeUninstalled', 'autoUpgrade', 'isSdkLayerStale']`, `redacted: ['name', 'description', 'logo', 'sourcePath', 'packageJsonChecksum', 'yarnLockChecksum', 'availablePackages', 'billing', 'grantedCapabilities', 'uninstallHookCompletedForRequestedAt', 'sdkClientCoreChecksum', 'frontComponentSharedDependenciesChecksum', 'frontComponentSharedDependenciesBuiltPath', 'deletedAt']`, действия `['create', 'update', 'delete']`). В `workspace-domain-audit.ts`, `ApplicationRegistrationVersionService`, `ApplicationRegistrationAssetService`, `ApplicationRegistrationService`, `ApplicationTarballService`, `ApplicationInstallService`, `ApplicationDevelopmentService`, `ApplicationDevelopmentResolver` и `ApplicationService.create` подключены `projectApplicationRegistrationVersion`, `projectApplication`, `runAuditedApplicationRegistrationVersionSync`, `runAuditedApplicationCreate`, а также расширены `runAuditedApplicationRegistrationUpdate` (`includeVersions`) и `runAuditedApplicationRegistrationDelete` (каскадное удаление версий).
+
+15.11.2026 проверки LOG190 завершены. 3206 tests/128 suites PASS (718.451s). 19 targeted/2 suites PASS (9.659s), 1 новый PostgreSQL случай. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 496/496 roots, baseline 274 / current 274 diagnostics, 0 новых/changed-code. Совпали 12 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия входных точек версий и ассетов регистраций и создания приложений, редактирование чувствительных метаданных (`sourcePackage`, `tarballUrl`, `name`, `sourcePath`, `availablePackages`, `billing`), атомарность каскадного удаления версий и переменных при удалении регистрации и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log190/results.json), [ревью](implementation/log190/review.md),
+[следующий участок](implementation/log190/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

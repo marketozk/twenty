@@ -291,10 +291,6 @@ for (const [modPath, names] of [
     ['ApplicationRegistrationClaimService'],
   ],
   [
-    'src/engine/core-modules/application/application-registration-version/application-registration-version.service',
-    ['ApplicationRegistrationVersionService'],
-  ],
-  [
     'src/engine/core-modules/cache-lock/cache-lock.service',
     ['CacheLockService'],
   ],
@@ -496,6 +492,14 @@ jest.doMock(
   }),
 );
 
+const ApplicationRegistrationVersionEntity = class ApplicationRegistrationVersionEntity {};
+jest.doMock(
+  'src/engine/core-modules/application/application-registration-version/application-registration-version.entity',
+  () => ({
+    ApplicationRegistrationVersionEntity,
+  }),
+);
+
 jest.doMock(
   'src/engine/core-modules/file/utils/extract-file-info-or-throw.utils',
   () => ({
@@ -505,6 +509,34 @@ jest.doMock(
     })),
   }),
 );
+jest.doMock('src/engine/core-modules/file/utils/sanitize-file.util', () => ({
+  sanitizeFile: jest.fn(({ file }: { file: unknown }) => file),
+}));
+jest.doMock(
+  'src/engine/core-modules/application/application-manifest/application-manifest-apply.service',
+  () => ({
+    ApplicationManifestApplyService: class {},
+  }),
+);
+jest.doMock(
+  'src/engine/core-modules/application/application-manifest/application-sync.service',
+  () => ({
+    ApplicationSyncService: class {},
+  }),
+);
+jest.doMock(
+  'src/engine/core-modules/application/application-manifest/services/application-manifest-export.service',
+  () => ({
+    ApplicationManifestExportService: class {},
+  }),
+);
+jest.doMock(
+  'src/engine/core-modules/application/application-development/application-file-upload.service',
+  () => ({
+    ApplicationFileUploadService: class {},
+  }),
+);
+jest.doMock('graphql-upload/processRequest.mjs', () => ({}), { virtual: true });
 jest.doMock('src/utils/image', () => ({
   fetchImageWithTypeFromUrl: jest.fn(),
 }));
@@ -574,6 +606,14 @@ const { ApplicationRegistrationLookupService } =
   require('src/engine/core-modules/application/application-registration/application-registration-lookup/application-registration-lookup.service') as typeof import('src/engine/core-modules/application/application-registration/application-registration-lookup/application-registration-lookup.service');
 const { ApplicationRegistrationVariableService } =
   require('src/engine/core-modules/application/application-registration-variable/application-registration-variable.service') as typeof import('src/engine/core-modules/application/application-registration-variable/application-registration-variable.service');
+const { ApplicationRegistrationVersionService } =
+  require('src/engine/core-modules/application/application-registration-version/application-registration-version.service') as typeof import('src/engine/core-modules/application/application-registration-version/application-registration-version.service');
+const { ApplicationRegistrationAssetService } =
+  require('src/engine/core-modules/application/application-registration/application-registration-asset.service') as typeof import('src/engine/core-modules/application/application-registration/application-registration-asset.service');
+const { ApplicationDevelopmentService } =
+  require('src/engine/core-modules/application/application-development/application-development.service') as typeof import('src/engine/core-modules/application/application-development/application-development.service');
+const { ApplicationDevelopmentResolver } =
+  require('src/engine/core-modules/application/application-development/application-development.resolver') as typeof import('src/engine/core-modules/application/application-development/application-development.resolver');
 const { ApplicationRegistrationResolver } =
   require('src/engine/core-modules/application/application-registration/application-registration.resolver') as typeof import('src/engine/core-modules/application/application-registration/application-registration.resolver');
 const {
@@ -634,9 +674,49 @@ const entities = [
       workspaceId: { type: 'uuid' },
       universalIdentifier: { type: 'uuid' },
       name: { type: 'text' },
+      description: { type: 'text', nullable: true },
+      logo: { type: 'text', nullable: true },
+      logoFileId: { type: 'uuid', nullable: true },
+      version: { type: 'text', nullable: true },
+      sourceType: { type: 'text', default: 'local' },
+      state: { type: 'text', default: 'INSTALLED' },
+      sourcePath: { type: 'text', default: 'local' },
+      packageJsonChecksum: { type: 'text', nullable: true },
       packageJsonFileId: { type: 'uuid', nullable: true },
+      yarnLockChecksum: { type: 'text', nullable: true },
       yarnLockFileId: { type: 'uuid', nullable: true },
+      availablePackages: { type: 'jsonb', default: () => "'{}'" },
+      billing: { type: 'jsonb', default: () => "'{}'" },
+      grantedCapabilities: {
+        type: 'varchar',
+        array: true,
+        default: () => "'{}'",
+      },
+      logicFunctionLayerId: { type: 'uuid', nullable: true },
+      defaultRoleId: { type: 'uuid', nullable: true },
+      settingsCustomTabFrontComponentId: { type: 'uuid', nullable: true },
+      uninstallLogicFunctionId: { type: 'uuid', nullable: true },
+      uninstallHookCompletedForRequestedAt: {
+        type: 'timestamptz',
+        nullable: true,
+      },
+      healthCheckLogicFunctionId: { type: 'uuid', nullable: true },
+      canBeUninstalled: { type: 'boolean', default: true },
+      autoUpgrade: { type: 'boolean', default: false },
+      isSdkLayerStale: { type: 'boolean', default: false },
+      sdkClientCoreChecksum: { type: 'text', nullable: true },
+      frontComponentSharedDependenciesChecksum: {
+        type: 'text',
+        nullable: true,
+      },
+      frontComponentSharedDependenciesBuiltPath: {
+        type: 'text',
+        nullable: true,
+      },
+      applicationRegistrationId: { type: 'uuid', nullable: true },
       primaryPublicDomainId: { type: 'uuid', nullable: true },
+      createdAt: { type: 'timestamptz', createDate: true },
+      updatedAt: { type: 'timestamptz', updateDate: true },
       deletedAt: { type: 'timestamptz', nullable: true },
     },
   }),
@@ -849,6 +929,24 @@ const entities = [
       updatedAt: { type: 'timestamptz', updateDate: true },
     },
   }),
+  new EntitySchema({
+    name: 'ApplicationRegistrationVersionEntity',
+    target: ApplicationRegistrationVersionEntity,
+    schema: 'core',
+    tableName: 'applicationRegistrationVersion',
+    columns: {
+      id: { type: 'uuid', primary: true, generated: 'uuid' },
+      applicationRegistrationId: { type: 'uuid' },
+      version: { type: 'varchar' },
+      sourceType: { type: 'varchar' },
+      sourcePackage: { type: 'varchar', nullable: true },
+      tarballFileId: { type: 'uuid', nullable: true },
+      tarballUrl: { type: 'varchar', nullable: true },
+      publishedAt: { type: 'timestamptz', default: () => 'now()' },
+      createdAt: { type: 'timestamptz', createDate: true },
+      updatedAt: { type: 'timestamptz', updateDate: true },
+    },
+  }),
 ];
 
 const owner = new DataSource({
@@ -986,13 +1084,40 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
           "revokedAt" timestamptz NULL
         );
         CREATE TABLE core.application (
-          id uuid PRIMARY KEY,
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
           "workspaceId" uuid NOT NULL REFERENCES core.workspace(id) ON DELETE CASCADE,
           "universalIdentifier" uuid NOT NULL,
           name text NOT NULL DEFAULT 'App',
+          description text NULL,
+          logo text NULL,
+          "logoFileId" uuid NULL,
+          version text NULL,
+          "sourceType" text NOT NULL DEFAULT 'local',
+          state text NOT NULL DEFAULT 'INSTALLED',
+          "sourcePath" text NOT NULL DEFAULT 'local',
+          "packageJsonChecksum" text NULL,
           "packageJsonFileId" uuid NULL,
+          "yarnLockChecksum" text NULL,
           "yarnLockFileId" uuid NULL,
+          "availablePackages" jsonb NOT NULL DEFAULT '{}'::jsonb,
+          billing jsonb NOT NULL DEFAULT '{}'::jsonb,
+          "grantedCapabilities" varchar[] NOT NULL DEFAULT '{}'::varchar[],
+          "logicFunctionLayerId" uuid NULL,
+          "defaultRoleId" uuid NULL,
+          "settingsCustomTabFrontComponentId" uuid NULL,
+          "uninstallLogicFunctionId" uuid NULL,
+          "uninstallHookCompletedForRequestedAt" timestamptz NULL,
+          "healthCheckLogicFunctionId" uuid NULL,
+          "canBeUninstalled" boolean NOT NULL DEFAULT true,
+          "autoUpgrade" boolean NOT NULL DEFAULT false,
+          "isSdkLayerStale" boolean NOT NULL DEFAULT false,
+          "sdkClientCoreChecksum" text NULL,
+          "frontComponentSharedDependenciesChecksum" text NULL,
+          "frontComponentSharedDependenciesBuiltPath" text NULL,
+          "applicationRegistrationId" uuid NULL,
           "primaryPublicDomainId" uuid NULL,
+          "createdAt" timestamptz NOT NULL DEFAULT now(),
+          "updatedAt" timestamptz NOT NULL DEFAULT now(),
           "deletedAt" timestamptz NULL
         );
         CREATE TABLE core."approvedAccessDomain" (
@@ -1143,6 +1268,19 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
           "createdAt" timestamptz NOT NULL DEFAULT now(),
           "updatedAt" timestamptz NOT NULL DEFAULT now(),
           CONSTRAINT "IDX_APP_REG_VAR_KEY_APP_REGISTRATION_ID_UNIQUE" UNIQUE (key, "applicationRegistrationId")
+        );
+        CREATE TABLE core."applicationRegistrationVersion" (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "applicationRegistrationId" uuid NOT NULL REFERENCES core."applicationRegistration"(id) ON DELETE CASCADE,
+          version varchar NOT NULL,
+          "sourceType" varchar NOT NULL,
+          "sourcePackage" varchar NULL,
+          "tarballFileId" uuid NULL,
+          "tarballUrl" varchar NULL,
+          "publishedAt" timestamptz NOT NULL DEFAULT now(),
+          "createdAt" timestamptz NOT NULL DEFAULT now(),
+          "updatedAt" timestamptz NOT NULL DEFAULT now(),
+          CONSTRAINT "IDX_APP_REG_VERSION_APP_REGISTRATION_ID_VERSION_UNIQUE" UNIQUE ("applicationRegistrationId", version)
         );
         CREATE TABLE core."keyValuePair" (
           id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1529,7 +1667,7 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
     };
 
     await owner.query(
-      'TRUNCATE TABLE crm_audit."crmAuditEntry", core."applicationRegistrationVariable", core."keyValuePair", core."applicationRegistration", core."applicationTranslation", core."workspaceSSOIdentityProvider", core."unsubscribeTopic", core."dpaAgreement", core."emailingDomain", core."applicationAuthorization", core."publicDomain", core."approvedAccessDomain", core.application, core."apiKey", core."userWorkspace", core."user", core.workspace CASCADE',
+      'TRUNCATE TABLE crm_audit."crmAuditEntry", core."applicationRegistrationVersion", core."applicationRegistrationVariable", core."keyValuePair", core."applicationRegistration", core."applicationTranslation", core."workspaceSSOIdentityProvider", core."unsubscribeTopic", core."dpaAgreement", core."emailingDomain", core."applicationAuthorization", core."publicDomain", core."approvedAccessDomain", core.application, core."apiKey", core."userWorkspace", core."user", core.workspace CASCADE',
     );
     await owner.query(
       `INSERT INTO core.workspace (id, "displayName", subdomain, "customDomain", "workspaceCustomApplicationId", "activationStatus") VALUES ($1, 'Primary WS', 'primary-ws', 'taken-custom.twenty.io', $3, 'ACTIVE'), ($2, 'Foreign WS', 'foreign-ws', NULL, NULL, 'ACTIVE')`,
@@ -3817,5 +3955,345 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
     expect(serialized).not.toContain('oauth.secret-acme.example');
     expect(serialized).not.toContain('WEBHOOK_SIGNING_SECRET');
     expect(serialized).not.toContain('top-secret-registration-var-value-xyz');
+  });
+
+  it('audits applicationRegistrationVersion lifecycle, ApplicationRegistrationAssetService asset updates, and ApplicationDevelopmentResolver/ApplicationService.create with redaction (LOG190)', async () => {
+    const appRegRepo = runtime.getRepository(ApplicationRegistrationEntity);
+    const appRegVarRepo = runtime.getRepository(
+      ApplicationRegistrationVariableEntity,
+    );
+    const appRegVerRepo = runtime.getRepository(
+      ApplicationRegistrationVersionEntity,
+    );
+
+    const appRegLookupService = new ApplicationRegistrationLookupService(
+      appRegRepo as never,
+    );
+    const encryptionServiceMock = {
+      encryptVersioned: jest.fn(
+        (plain: string) =>
+          `enc:v2:${Buffer.from(plain, 'utf8').toString('base64')}`,
+      ),
+      decryptVersionedOrThrow: jest.fn((enc: string) =>
+        Buffer.from(enc.replace(/^enc:v2:/, ''), 'base64').toString('utf8'),
+      ),
+    };
+    const appRegVariableService = new ApplicationRegistrationVariableService(
+      appRegVarRepo as never,
+      appRegRepo as never,
+      runtime.getRepository(ApplicationEntity) as never,
+      encryptionServiceMock as never,
+      appRegLookupService,
+    );
+    const appRegVersionService = new ApplicationRegistrationVersionService(
+      appRegVerRepo as never,
+    );
+    jest
+      .spyOn(appRegVersionService, 'findTarballFilesOfRegistration')
+      .mockResolvedValue([]);
+    const appRegService = new ApplicationRegistrationService(
+      appRegRepo as never,
+      runtime.getRepository(ApplicationEntity) as never,
+      runtime.getRepository(WorkspaceEntity) as never,
+      appRegVariableService,
+      { buildLogoUrl: () => null, buildGalleryImageUrls: () => [] } as never,
+      {
+        deleteByApplicationRegistrationId: jest.fn(async () => undefined),
+      } as never,
+      { deleteByFileId: jest.fn(async () => undefined) } as never,
+      appRegVersionService,
+      {
+        withLock: async <TResult>(fn: () => Promise<TResult>) => fn(),
+      } as never,
+      { invalidate: jest.fn(async () => undefined) } as never,
+      { incrementCounterBy: jest.fn() } as never,
+      {} as never,
+      { add: jest.fn(async () => undefined) } as never,
+      { broadcast: jest.fn(async () => undefined) } as never,
+      appRegLookupService,
+    );
+
+    const storedLogoFileId = randomUUID();
+    const storedGalleryFileId = randomUUID();
+    let assetCallIndex = 0;
+    const appRegAssetService = new ApplicationRegistrationAssetService(
+      appRegRepo as never,
+      {
+        writeServerFile: jest.fn(async () => {
+          assetCallIndex += 1;
+          return {
+            id: assetCallIndex === 1 ? storedLogoFileId : storedGalleryFileId,
+          };
+        }),
+        findServerFile: jest.fn(async () => null),
+      } as never,
+      appRegService,
+    );
+
+    const appDevService = new ApplicationDevelopmentService(
+      applicationService,
+      {
+        findByUniversalIdentifier: async ({
+          universalIdentifier,
+          workspaceId: wsId,
+        }: {
+          universalIdentifier: string;
+          workspaceId: string;
+        }) => {
+          const [row] = await runtime.query(
+            `SELECT * FROM core.application WHERE "universalIdentifier"=$1 AND "workspaceId"=$2 AND "deletedAt" IS NULL`,
+            [universalIdentifier, wsId],
+          );
+
+          return row ?? null;
+        },
+      } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      appRegLookupService,
+      appRegAssetService,
+      {} as never,
+      {} as never,
+      { tokenBucketThrottleOrThrow: jest.fn(async () => undefined) } as never,
+      {
+        withLock: async <TResult>(fn: () => Promise<TResult>) => fn(),
+      } as never,
+    );
+    const appDevResolver = new ApplicationDevelopmentResolver(
+      appDevService,
+      {} as never,
+    );
+
+    const req = {
+      workspace: { id: workspaceId },
+      user: { id: actorUserId },
+      userWorkspaceId: actorUserWorkspaceId,
+      workspaceMemberId: actorMemberId,
+      impersonationContext: { impersonatorUserWorkspaceId },
+    };
+
+    // 1. Create registration owned by workspaceId
+    const regUid = randomUUID();
+    const createdReg = await appRegService.create(
+      {
+        universalIdentifier: regUid,
+        name: 'Tarball Release App',
+        oAuthClientId: `client-${randomUUID()}`,
+        oAuthRedirectUris: [],
+        oAuthScopes: [],
+        ownerWorkspaceId: workspaceId,
+      },
+      { auditIdentity: req as never },
+    );
+
+    // 2. Publish manifest update with publishedVersion ('1.0.0') and serverVariables
+    const tarballFileId = randomUUID();
+    await appRegService.updateFromManifest({
+      applicationRegistrationId: createdReg.id,
+      manifest: {
+        application: {
+          universalIdentifier: regUid,
+          displayName: 'Tarball Release App v1',
+          serverVariables: {
+            SECRET_API_TOKEN: {
+              description: 'Secret token for v1',
+              isSecret: true,
+              isRequired: true,
+            },
+          },
+        },
+      } as never,
+      sourceType: 'tarball' as never,
+      latestAvailableVersion: '1.0.0',
+      additionalFields: {
+        tarballFileId,
+        ownerWorkspaceId: workspaceId,
+      },
+      publishedVersion: {
+        version: '1.0.0',
+        sourceType: 'tarball' as never,
+        tarballFileId,
+      },
+    });
+
+    // 3. Create NPM version 1.1.0 without tarballUrl, then backfill tarballUrl via ensureNpmVersion
+    await appRegVersionService.createApplicationRegistrationVersion(
+      {
+        applicationRegistrationId: createdReg.id,
+        version: '1.1.0',
+        sourceType: 'npm' as never,
+        sourcePackage: '@acme/secret-npm-pkg',
+        tarballUrl: null,
+      },
+      undefined,
+      { workspaceId, auditIdentity: req as never },
+    );
+    await appRegVersionService.ensureNpmVersion(
+      {
+        applicationRegistrationId: createdReg.id,
+        version: '1.1.0',
+        sourcePackage: '@acme/secret-npm-pkg',
+        tarballUrl:
+          'https://registry.npmjs.org/@acme/secret-npm-pkg/-/secret-npm-pkg-1.1.0.tgz',
+      },
+      { workspaceId, auditIdentity: req as never },
+    );
+
+    // 4. Store registration assets (logoFileId + galleryImages) via ApplicationRegistrationAssetService
+    const pngBuffer = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+      'base64',
+    );
+    await appRegAssetService.storeRegistrationAssets({
+      applicationRegistrationId: createdReg.id,
+      manifestApplication: {
+        logo: 'public/secret-logo.png',
+        screenshots: ['public/secret-gallery-shot.png'],
+      } as never,
+      workspaceId,
+      auditIdentity: req as never,
+      readAsset: async () => pngBuffer,
+    });
+
+    // 5. Create development application in core.application via ApplicationDevelopmentResolver.createDevelopmentApplication
+    const devAppDto = await appDevResolver.createDevelopmentApplication(
+      {
+        universalIdentifier: regUid,
+        name: 'Secret Dev App Instance',
+      },
+      { id: workspaceId } as never,
+      { req: req as never },
+    );
+    expect(devAppDto.universalIdentifier).toBe(regUid);
+
+    // 6. Delete registration (cascades both applicationRegistrationVariable and applicationRegistrationVersion rows)
+    await appRegService.delete({
+      applicationRegistrationId: createdReg.id,
+      ownerWorkspaceId: workspaceId,
+      auditIdentity: req as never,
+    });
+
+    const remainingVerRows = await owner.query(
+      `SELECT id FROM core."applicationRegistrationVersion" WHERE "applicationRegistrationId"=$1`,
+      [createdReg.id],
+    );
+    expect(remainingVerRows).toHaveLength(0);
+
+    const allAudits = await audits();
+    const regAudits = allAudits.filter(
+      (row) => row.resourceKind === 'applicationRegistration',
+    );
+    const varAudits = allAudits.filter(
+      (row) => row.resourceKind === 'applicationRegistrationVariable',
+    );
+    const verAudits = allAudits.filter(
+      (row) => row.resourceKind === 'applicationRegistrationVersion',
+    );
+    const appAudits = allAudits.filter(
+      (row) => row.resourceKind === 'application',
+    );
+
+    // regAudits: create, updateFromManifest, storeRegistrationAssets, delete
+    expect(regAudits.map((row) => row.action)).toEqual([
+      'create',
+      'update',
+      'update',
+      'delete',
+    ]);
+    expect(regAudits[2]).toMatchObject({
+      resourceId: createdReg.id,
+      action: 'update',
+      redactedDiff: {
+        changedFields: ['galleryImages', 'logoFileId'],
+        values: {
+          logoFileId: { before: null, after: storedLogoFileId },
+        },
+      },
+    });
+
+    // updateFromManifest recorded regAudits[1], varAudits[0], and verAudits[0] in one operation
+    expect(varAudits[0].operationId).toBe(regAudits[1].operationId);
+    expect(verAudits[0].operationId).toBe(regAudits[1].operationId);
+    expect(verAudits[0]).toMatchObject({
+      workspaceId,
+      resourceKind: 'applicationRegistrationVersion',
+      action: 'create',
+      redactedDiff: {
+        changedFields: expect.arrayContaining([
+          'applicationRegistrationId',
+          'publishedAt',
+          'sourceType',
+          'tarballFileId',
+          'version',
+        ]),
+        values: {
+          applicationRegistrationId: { before: null, after: createdReg.id },
+          version: { before: null, after: '1.0.0' },
+          sourceType: { before: null, after: 'tarball' },
+          tarballFileId: { before: null, after: tarballFileId },
+        },
+      },
+    });
+
+    // verAudits: create (1.0.0), create (1.1.0), update (1.1.0 tarballUrl), delete (1.0.0), delete (1.1.0)
+    expect(verAudits.map((row) => row.action)).toEqual([
+      'create',
+      'create',
+      'update',
+      'delete',
+      'delete',
+    ]);
+    expect(verAudits[2]).toMatchObject({
+      resourceKind: 'applicationRegistrationVersion',
+      action: 'update',
+      redactedDiff: {
+        changedFields: ['tarballUrl'],
+        values: {},
+      },
+    });
+    expect(verAudits[3].operationId).toBe(regAudits[3].operationId);
+    expect(verAudits[4].operationId).toBe(regAudits[3].operationId);
+    expect(varAudits[1].operationId).toBe(regAudits[3].operationId);
+
+    // appAudits: createDevelopmentApplication -> application:create
+    expect(appAudits).toHaveLength(1);
+    expect(appAudits[0]).toMatchObject({
+      workspaceId,
+      resourceKind: 'application',
+      resourceId: devAppDto.id,
+      action: 'create',
+      actor: { kind: 'coreUser', id: actorUserId },
+      initiator: { kind: 'coreUser', id: impersonatorUserId },
+      redactedDiff: {
+        changedFields: expect.arrayContaining([
+          'applicationRegistrationId',
+          'autoUpgrade',
+          'canBeUninstalled',
+          'isSdkLayerStale',
+          'name',
+          'sourcePath',
+          'sourceType',
+          'state',
+          'universalIdentifier',
+        ]),
+        values: {
+          universalIdentifier: { before: null, after: regUid },
+          applicationRegistrationId: { before: null, after: createdReg.id },
+          sourceType: { before: null, after: 'local' },
+          state: { before: null, after: 'INSTALLED' },
+          canBeUninstalled: { before: null, after: true },
+          autoUpgrade: { before: null, after: false },
+          isSdkLayerStale: { before: null, after: false },
+        },
+      },
+    });
+
+    const serialized = JSON.stringify(allAudits);
+    expect(serialized).not.toContain('@acme/secret-npm-pkg');
+    expect(serialized).not.toContain('secret-npm-pkg-1.1.0.tgz');
+    expect(serialized).not.toContain('secret-gallery-shot.png');
+    expect(serialized).not.toContain('Secret Dev App Instance');
+    expect(serialized).not.toContain('SECRET_API_TOKEN');
   });
 });

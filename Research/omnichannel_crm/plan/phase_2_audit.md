@@ -359,8 +359,18 @@ LOG189 закрывает транзакционный аудит полного
 `ApplicationRegistrationVariableService`, `ApplicationRegistrationResolver`,
 `workspace-domain-audit.ts` и каскадного удаления в `ApplicationRegistrationService.delete` с
 редактированием `key` и `encryptedValue`).
+LOG190 закрывает транзакционный аудит полного жизненного цикла версий регистраций приложений
+(`core."applicationRegistrationVersion"` `create`, `update`, `delete` в
+`ApplicationRegistrationVersionService`, `ApplicationRegistrationService.updateFromManifest`,
+`ApplicationTarballService`, `ApplicationInstallService`, `workspace-domain-audit.ts` и каскадного
+удаления в `ApplicationRegistrationService.delete` с редактированием `sourcePackage`,
+`tarballUrl`, `publishedAt`), обновлений ассетов регистраций
+(`ApplicationRegistrationAssetService.storeRegistrationAssets`) и создания экземпляров приложений
+(`core.application` `create` в `ApplicationService.create`,
+`ApplicationDevelopmentService.createDevelopmentApplication`,
+`ApplicationDevelopmentResolver.createDevelopmentApplication` и `workspace-domain-audit.ts`).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log189/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log190/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

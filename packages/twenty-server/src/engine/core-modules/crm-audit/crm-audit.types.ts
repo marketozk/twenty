@@ -31,6 +31,7 @@ export type CrmAuditResourceKind =
   | 'applicationKeyValuePair'
   | 'applicationRegistration'
   | 'applicationRegistrationVariable'
+  | 'applicationRegistrationVersion'
   | 'webhook'
   | 'connectionProvider'
   | 'skill'

@@ -1,0 +1,18 @@
+{
+  "log": "LOG-190",
+  "verifiedFileCount": 12,
+  "files": {
+    "packages/twenty-server/src/engine/core-modules/application/application-development/application-development.resolver.ts": "b26e2ae59e2d436e9bb74e8f8e062e30fc4521e4e5259d80fa7ef6013082bca5",
+    "packages/twenty-server/src/engine/core-modules/application/application-development/application-development.service.ts": "e9e0facb8eeebd8dc7ae9868d08ea3d175f2a52dc20c52e3f701a7a1055002b9",
+    "packages/twenty-server/src/engine/core-modules/application/application-install/application-install.service.ts": "f5403b22c09c581367564db324d0483a34ae199969420a0e5cd1c0c8157df1ee",
+    "packages/twenty-server/src/engine/core-modules/application/application-registration-version/application-registration-version.service.ts": "675dd48f08667197f168fc8a7615cb0a40a58653a5c9c2628aad32b1b2a07ad5",
+    "packages/twenty-server/src/engine/core-modules/application/application-registration/application-registration-asset.service.ts": "93d931ee5b5ac199ca4ea24f19d5929a9e1bd196eee8751e6f71c66c9d8c0810",
+    "packages/twenty-server/src/engine/core-modules/application/application-registration/application-registration.service.ts": "491f64a2fdaa05403eb665b5986fa80cd004dc48da6ff3f6ef2521bae5535499",
+    "packages/twenty-server/src/engine/core-modules/application/application-registration/application-tarball.service.ts": "233115b9081ba4d2d768317f051c0bfbef9fd307d8dd0687880ccfa97c20b6f1",
+    "packages/twenty-server/src/engine/core-modules/application/application.service.ts": "dad18b5fbe56cc9c83b61210bb6cb9385a5e9176c632c5bd49265a69b74c9ae4",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "75c5e410b500e1b7fa897b73d07edade6bb7cabcf2de86e75c31907680a8af6e",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "2efee4115928effe5d03c9448b34c6c2dbe3fdb527a60d928db91dad7396f0cb",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/workspace-domain-audit.ts": "69da978d033bd85eba8bc09790d6ed0925b44bbad1f86f98527da48564342eb1",
+    "packages/twenty-server/test/fork-migration/crm-audit-workspace-domain.postgres-spec.ts": "f6ab536e92d0b32d101a04b1700581b5af59021c3e2dd8e50f6e0863ee00ebd1"
+  }
+}
