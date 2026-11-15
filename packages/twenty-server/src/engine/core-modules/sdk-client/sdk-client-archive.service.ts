@@ -1,10 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
 
 import * as fs from 'fs/promises';
 
 import { FileFolder } from 'twenty-shared/types';
+import { DataSource } from 'typeorm';
 
 import { ApplicationEntity } from 'src/engine/core-modules/application/application.entity';
+import {
+  captureApplicationSettingsAudit,
+  runAuditedApplicationSettingsUpdate,
+} from 'src/engine/core-modules/crm-audit/application-default-role-audit';
 import { FileStorageService } from 'src/engine/core-modules/file-storage/services/file-storage.service';
 import {
   FileStorageException,
@@ -33,6 +39,9 @@ export class SdkClientArchiveService {
     private readonly applicationRepository: WorkspaceScopedRepository<ApplicationEntity>,
     private readonly workspaceCacheService: WorkspaceCacheService,
     private readonly sdkClientGenerationService: SdkClientGenerationService,
+    @Optional()
+    @InjectDataSource()
+    private readonly coreDataSource?: DataSource,
   ) {}
 
   async downloadAndExtractToPackage({
@@ -120,11 +129,31 @@ export class SdkClientArchiveService {
     applicationId: string;
     workspaceId: string;
   }): Promise<void> {
-    await this.applicationRepository.update(
-      workspaceId,
-      { id: applicationId },
-      { isSdkLayerStale: false },
-    );
+    if (this.coreDataSource !== undefined && this.coreDataSource !== null) {
+      const settingsAudit = captureApplicationSettingsAudit({
+        workspaceId,
+        applicationId,
+        defaultSystemActorId: 'SdkClientArchiveService.markSdkLayerFresh',
+      })();
+      await runAuditedApplicationSettingsUpdate(
+        this.coreDataSource,
+        settingsAudit,
+        ['isSdkLayerStale'],
+        async (runner) => {
+          await runner.manager.update(
+            ApplicationEntity,
+            { id: applicationId, workspaceId },
+            { isSdkLayerStale: false },
+          );
+        },
+      );
+    } else {
+      await this.applicationRepository.update(
+        workspaceId,
+        { id: applicationId },
+        { isSdkLayerStale: false },
+      );
+    }
 
     await this.workspaceCacheService.invalidateAndRecompute(workspaceId, [
       'flatApplicationMaps',

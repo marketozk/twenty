@@ -1,0 +1,37 @@
+{
+  "log": "LOG-191",
+  "issue": "ROB-765",
+  "date": "2026-11-15",
+  "title": "Transactional audit of application manifest sync metadata, package file bindings, and SDK layer state updates (core.application) and custom application registration bootstrap",
+  "targetedPostgres": {
+    "suitesPassed": 2,
+    "suitesTotal": 2,
+    "testsPassed": 20,
+    "testsTotal": 20,
+    "newPostgresTests": 1,
+    "durationSeconds": 13.859
+  },
+  "fullRegression": {
+    "suitesPassed": 128,
+    "suitesTotal": 128,
+    "testsPassed": 3207,
+    "testsTotal": 3207,
+    "durationSeconds": 714.18
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.167
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 490,
+    "currentRootFiles": 490,
+    "baselineDiagnostics": 274,
+    "currentDiagnostics": 274,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 4
+}

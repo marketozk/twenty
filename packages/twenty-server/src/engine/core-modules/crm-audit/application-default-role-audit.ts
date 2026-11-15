@@ -1,10 +1,14 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { randomUUID } from 'node:crypto';
 import { isUUID } from 'class-validator';
 import { type DataSource, type QueryRunner } from 'typeorm';
 
 import { captureCurrentCrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
 import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
-import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
+import {
+  captureCrmAuditOperation,
+  CrmAuditTransactionContext,
+} from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import {
   membershipCleanupOperation,
@@ -39,24 +43,96 @@ export const APPLICATION_AUDIT_UUID_KEYS = new Set([
   'settingsCustomTabFrontComponentId',
   'uninstallLogicFunctionId',
   'healthCheckLogicFunctionId',
+  'applicationRegistrationId',
+  'logoFileId',
+  'packageJsonFileId',
+  'yarnLockFileId',
+  'logicFunctionLayerId',
+  'primaryPublicDomainId',
 ]);
 
-export const APPLICATION_AUDIT_BOOLEAN_KEYS = new Set(['autoUpgrade']);
+export const APPLICATION_AUDIT_BOOLEAN_KEYS = new Set([
+  'autoUpgrade',
+  'canBeUninstalled',
+  'isSdkLayerStale',
+]);
 
 export const APPLICATION_AUDIT_ARRAY_KEYS = new Set(['grantedCapabilities']);
 
-export const APPLICATION_AUDIT_ALL_KEYS = new Set<string>([
-  ...APPLICATION_AUDIT_UUID_KEYS,
-  ...APPLICATION_AUDIT_BOOLEAN_KEYS,
-  ...APPLICATION_AUDIT_ARRAY_KEYS,
+export const APPLICATION_AUDIT_NULLABLE_STRING_KEYS = new Set([
+  'version',
+  'description',
+  'logo',
+  'packageJsonChecksum',
+  'yarnLockChecksum',
+  'uninstallHookCompletedForRequestedAt',
+  'sdkClientCoreChecksum',
+  'frontComponentSharedDependenciesChecksum',
+  'frontComponentSharedDependenciesBuiltPath',
 ]);
 
-export const APPLICATION_AUDIT_NON_ROLE_KEYS = new Set<string>([
+export const APPLICATION_AUDIT_STRING_KEYS = new Set([
+  'name',
+  'sourceType',
+  'state',
+  'sourcePath',
+]);
+
+export const APPLICATION_AUDIT_JSON_KEYS = new Set([
+  'availablePackages',
+  'billing',
+]);
+
+export const APPLICATION_AUDIT_ROLE_COMPANION_KEYS = new Set<string>([
   'settingsCustomTabFrontComponentId',
   'uninstallLogicFunctionId',
   'healthCheckLogicFunctionId',
   'autoUpgrade',
   'grantedCapabilities',
+]);
+
+export const APPLICATION_AUDIT_ALL_KEYS = new Set<string>([
+  ...APPLICATION_AUDIT_UUID_KEYS,
+  ...APPLICATION_AUDIT_BOOLEAN_KEYS,
+  ...APPLICATION_AUDIT_ARRAY_KEYS,
+  ...APPLICATION_AUDIT_NULLABLE_STRING_KEYS,
+  ...APPLICATION_AUDIT_STRING_KEYS,
+  ...APPLICATION_AUDIT_JSON_KEYS,
+]);
+
+export const APPLICATION_AUDIT_ALWAYS_NON_ROLE_KEYS = new Set<string>([
+  'settingsCustomTabFrontComponentId',
+  'uninstallLogicFunctionId',
+  'healthCheckLogicFunctionId',
+  'autoUpgrade',
+  'grantedCapabilities',
+  'applicationRegistrationId',
+  'logoFileId',
+  'packageJsonFileId',
+  'yarnLockFileId',
+  'logicFunctionLayerId',
+  'primaryPublicDomainId',
+  'canBeUninstalled',
+  'isSdkLayerStale',
+  'description',
+  'logo',
+  'packageJsonChecksum',
+  'yarnLockChecksum',
+  'uninstallHookCompletedForRequestedAt',
+  'sdkClientCoreChecksum',
+  'frontComponentSharedDependenciesChecksum',
+  'frontComponentSharedDependenciesBuiltPath',
+  'name',
+  'sourceType',
+  'state',
+  'sourcePath',
+  'availablePackages',
+  'billing',
+]);
+
+export const APPLICATION_AUDIT_NON_ROLE_KEYS = new Set<string>([
+  ...APPLICATION_AUDIT_ALWAYS_NON_ROLE_KEYS,
+  'version',
 ]);
 
 const storage = new AsyncLocalStorage<ApplicationDefaultRoleAuditRequest>();
@@ -92,11 +168,20 @@ export const projectApplicationAuditFields = (
     if (APPLICATION_AUDIT_UUID_KEYS.has(key)) {
       projected[key] = nullableUuid(raw);
     } else if (APPLICATION_AUDIT_BOOLEAN_KEYS.has(key)) {
-      projected[key] = raw === undefined || raw === null ? false : Boolean(raw);
+      projected[key] =
+        raw === undefined || raw === null
+          ? key === 'canBeUninstalled'
+          : Boolean(raw);
     } else if (APPLICATION_AUDIT_ARRAY_KEYS.has(key)) {
       projected[key] = Array.isArray(raw)
         ? [...new Set(raw.map((item) => String(item)))].sort()
         : [];
+    } else if (APPLICATION_AUDIT_NULLABLE_STRING_KEYS.has(key)) {
+      projected[key] = raw === undefined || raw === null ? null : String(raw);
+    } else if (APPLICATION_AUDIT_STRING_KEYS.has(key)) {
+      projected[key] = raw === undefined || raw === null ? '' : String(raw);
+    } else if (APPLICATION_AUDIT_JSON_KEYS.has(key)) {
+      projected[key] = raw && typeof raw === 'object' ? raw : {};
     }
   }
 
@@ -118,6 +203,7 @@ registerMetadataAuditScopeCheck(getApplicationDefaultRoleAudit);
 const resolveCapturedOperation = (
   normalizedWorkspaceId: string,
   identity: ApplicationDefaultRoleAuditIdentity | undefined,
+  defaultSystemActorId?: string,
 ): {
   operation: CrmAuditOperation;
   impersonatorUserWorkspaceId?: string;
@@ -165,6 +251,18 @@ const resolveCapturedOperation = (
 
   const ambient = captureCurrentCrmAuditOperation(normalizedWorkspaceId);
   if (!ambient) {
+    if (defaultSystemActorId !== undefined) {
+      return {
+        operation: captureCrmAuditOperation({
+          workspaceId: normalizedWorkspaceId,
+          operationId: randomUUID(),
+          actor: Object.freeze({
+            kind: 'system' as const,
+            id: defaultSystemActorId,
+          }),
+        }),
+      };
+    }
     throw new Error('Role mutation requires authenticated audit identity');
   }
 
@@ -184,10 +282,12 @@ export const captureApplicationDefaultRoleAudit = ({
   workspaceId,
   applicationId,
   auditIdentity,
+  defaultSystemActorId,
 }: {
   workspaceId: string;
   applicationId: string;
   auditIdentity?: ApplicationDefaultRoleAuditIdentity;
+  defaultSystemActorId?: string;
 }): (() => ApplicationDefaultRoleAuditRequest) => {
   const normalizedWorkspaceId = uuid(workspaceId);
   const normalizedApplicationId = uuid(applicationId);
@@ -205,6 +305,7 @@ export const captureApplicationDefaultRoleAudit = ({
     const { operation, impersonatorUserWorkspaceId } = resolveCapturedOperation(
       normalizedWorkspaceId,
       auditIdentity,
+      defaultSystemActorId,
     );
     const request: ApplicationDefaultRoleAuditRequest = Object.freeze({
       workspaceId: normalizedWorkspaceId,
@@ -221,8 +322,23 @@ export const captureApplicationDefaultRoleAudit = ({
   }
 };
 
-export const captureApplicationSettingsAudit =
-  captureApplicationDefaultRoleAudit;
+export const captureApplicationSettingsAudit = ({
+  workspaceId,
+  applicationId,
+  auditIdentity,
+  defaultSystemActorId = 'ApplicationService.update',
+}: {
+  workspaceId: string;
+  applicationId: string;
+  auditIdentity?: ApplicationDefaultRoleAuditIdentity;
+  defaultSystemActorId?: string;
+}) =>
+  captureApplicationDefaultRoleAudit({
+    workspaceId,
+    applicationId,
+    auditIdentity,
+    defaultSystemActorId,
+  });
 
 export const runAuditedApplicationDefaultRoleUpdate = async <TResult>(
   dataSource: DataSource | undefined,
@@ -261,7 +377,9 @@ export const runAuditedApplicationDefaultRoleUpdate = async <TResult>(
   const keysToProject = [
     ...new Set([
       'defaultRoleId',
-      ...changedKeys.filter((key) => APPLICATION_AUDIT_ALL_KEYS.has(key)),
+      ...changedKeys.filter((key) =>
+        APPLICATION_AUDIT_ROLE_COMPANION_KEYS.has(key),
+      ),
     ]),
   ];
 

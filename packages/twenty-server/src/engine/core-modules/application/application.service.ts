@@ -5,6 +5,7 @@ import {
   type ApplicationAuthorizationAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/application-authorization-and-variable-audit';
 import {
+  APPLICATION_AUDIT_ALWAYS_NON_ROLE_KEYS,
   APPLICATION_AUDIT_NON_ROLE_KEYS,
   captureApplicationDefaultRoleAudit,
   captureApplicationSettingsAudit,
@@ -20,6 +21,7 @@ import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core
 import {
   captureWorkspaceDomainAudit,
   runAuditedApplicationCreate,
+  runAuditedApplicationRegistrationCreate,
   type WorkspaceDomainAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
@@ -670,6 +672,24 @@ export class ApplicationService {
       );
     }
 
+    if (isDefined(this.coreDataSource)) {
+      return runAuditedApplicationRegistrationCreate(
+        this.coreDataSource,
+        captureWorkspaceDomainAudit({
+          workspaceId,
+          defaultSystemActorId:
+            'ApplicationService.createWorkspaceCustomApplicationRegistration',
+        }),
+        {
+          work: (runner) =>
+            runner.manager
+              .getRepository(ApplicationRegistrationEntity)
+              .save(applicationRegistration),
+          extractRegistrationId: (created) => created.id,
+        },
+      );
+    }
+
     return this.applicationRegistrationRepository.save(applicationRegistration);
   }
 
@@ -935,10 +955,14 @@ export class ApplicationService {
     const auditedSettingsKeys = changedKeys.filter((key) =>
       APPLICATION_AUDIT_NON_ROLE_KEYS.has(key),
     );
+    const hasAlwaysAuditedNonRoleKey = changedKeys.some((key) =>
+      APPLICATION_AUDIT_ALWAYS_NON_ROLE_KEYS.has(key),
+    );
     const shouldAuditSettings =
       auditedSettingsKeys.length > 0 &&
       isDefined(this.coreDataSource) &&
-      (options?.auditIdentity !== undefined ||
+      (hasAlwaysAuditedNonRoleKey ||
+        options?.auditIdentity !== undefined ||
         captureCurrentCrmAuditOperation(capturedData.workspaceId) !==
           undefined);
 

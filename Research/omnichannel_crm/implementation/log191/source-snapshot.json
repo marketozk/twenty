@@ -1,0 +1,10 @@
+{
+  "log": "LOG-191",
+  "verifiedFileCount": 4,
+  "files": {
+    "packages/twenty-server/src/engine/core-modules/application/application.service.ts": "9e81873c823084c89acdf0b3bd0690fb6a18c61e133e6fd18a02b5609a65321c",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/application-default-role-audit.ts": "afef24a0ce307ec7cc93a5d01f33c0dfcbe659e97ac9d4ab7240bd2f4b265b09",
+    "packages/twenty-server/src/engine/core-modules/sdk-client/sdk-client-archive.service.ts": "ca23f9f0a3f8c7f78de914e2ba5dfcbf8eb6f005803629acce893db3e963df06",
+    "packages/twenty-server/test/fork-migration/crm-audit-application-default-role.postgres-spec.ts": "3191d61400100c2b8e383eeae5d77d2a1a2b2ad712a8a191f42386fa829cfca8"
+  }
+}

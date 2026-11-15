@@ -364,19 +364,46 @@ const applicationSchema = new EntitySchema({
     universalIdentifier: { type: 'uuid' },
     name: { type: 'text' },
     description: { type: 'text', nullable: true },
+    logo: { type: 'text', nullable: true },
+    logoFileId: { type: 'uuid', nullable: true },
     version: { type: 'text', nullable: true },
     sourceType: { type: 'text', default: 'local' },
+    state: { type: 'text', default: 'INSTALLED' },
     sourcePath: { type: 'text', default: 'cli-sync' },
-    defaultRoleId: { type: 'uuid', nullable: true },
-    settingsCustomTabFrontComponentId: { type: 'uuid', nullable: true },
-    healthCheckLogicFunctionId: { type: 'uuid', nullable: true },
-    uninstallLogicFunctionId: { type: 'uuid', nullable: true },
-    autoUpgrade: { type: Boolean, default: false },
+    packageJsonChecksum: { type: 'text', nullable: true },
+    packageJsonFileId: { type: 'uuid', nullable: true },
+    yarnLockChecksum: { type: 'text', nullable: true },
+    yarnLockFileId: { type: 'uuid', nullable: true },
+    availablePackages: { type: 'jsonb', default: () => "'{}'" },
+    billing: { type: 'jsonb', default: () => "'{}'" },
     grantedCapabilities: {
       type: 'varchar',
       array: true,
       default: () => "'{}'",
     },
+    logicFunctionLayerId: { type: 'uuid', nullable: true },
+    defaultRoleId: { type: 'uuid', nullable: true },
+    settingsCustomTabFrontComponentId: { type: 'uuid', nullable: true },
+    healthCheckLogicFunctionId: { type: 'uuid', nullable: true },
+    uninstallLogicFunctionId: { type: 'uuid', nullable: true },
+    uninstallHookCompletedForRequestedAt: {
+      type: 'timestamptz',
+      nullable: true,
+    },
+    canBeUninstalled: { type: Boolean, default: true },
+    autoUpgrade: { type: Boolean, default: false },
+    isSdkLayerStale: { type: Boolean, default: false },
+    sdkClientCoreChecksum: { type: 'text', nullable: true },
+    frontComponentSharedDependenciesChecksum: {
+      type: 'text',
+      nullable: true,
+    },
+    frontComponentSharedDependenciesBuiltPath: {
+      type: 'text',
+      nullable: true,
+    },
+    applicationRegistrationId: { type: 'uuid', nullable: true },
+    primaryPublicDomainId: { type: 'uuid', nullable: true },
     createdAt: { type: 'timestamptz', createDate: true },
     updatedAt: { type: 'timestamptz', updateDate: true },
     deletedAt: { type: 'timestamptz', nullable: true, deleteDate: true },
@@ -1656,5 +1683,182 @@ describe('Application defaultRoleId CRM audit (LOG164)', () => {
         },
       },
     });
+  });
+
+  it('audits application manifest sync metadata, package file bindings, and SDK layer state updates with redaction (LOG191)', async () => {
+    const { applicationService, workspaceCacheService } = buildHarness();
+    const { SdkClientArchiveService } =
+      require('src/engine/core-modules/sdk-client/sdk-client-archive.service') as typeof import('src/engine/core-modules/sdk-client/sdk-client-archive.service');
+
+    const pkgFileId = randomUUID();
+    const lockFileId = randomUUID();
+    let uploadedIndex = 0;
+    (
+      applicationService as unknown as {
+        fileStorageService: { writeFile: jest.Mock };
+      }
+    ).fileStorageService = {
+      writeFile: jest.fn(async () => {
+        uploadedIndex += 1;
+        return { id: uploadedIndex === 1 ? pkgFileId : lockFileId };
+      }),
+    };
+
+    const sdkClientArchiveService = new SdkClientArchiveService(
+      {} as never,
+      {} as never,
+      workspaceCacheService as never,
+      {} as never,
+      runtime,
+    );
+
+    const registrationId = randomUUID();
+    const logoFileId = randomUUID();
+
+    // 1. Manifest sync metadata update via ApplicationService.update (as called by ApplicationSyncService.syncApplication)
+    const syncedApp = await applicationService.update(
+      manifestAppId,
+      {
+        workspaceId,
+        name: 'Secret Synced Manifest App',
+        description: 'Confidential manifest description',
+        logo: 'public/secret-manifest-logo.png',
+        logoFileId,
+        version: '1.4.2',
+        packageJsonChecksum: 'pkg-checksum-secret-v1',
+        yarnLockChecksum: 'lock-checksum-secret-v1',
+        billing: { plan: 'enterprise-secret' } as never,
+        grantedCapabilities: ['network_egress'] as never,
+        frontComponentSharedDependenciesChecksum: 'fc-shared-checksum-v1',
+        frontComponentSharedDependenciesBuiltPath: 'dist/fc-shared-secret.mjs',
+        applicationRegistrationId: registrationId,
+      },
+      {
+        auditIdentity: userIdentity({ impersonatorUserWorkspaceId }),
+      },
+    );
+    expect(syncedApp.version).toBe('1.4.2');
+    expect(syncedApp.logoFileId).toBe(logoFileId);
+    expect(syncedApp.applicationRegistrationId).toBe(registrationId);
+
+    // 2. Upload package files and set file IDs via ApplicationService.uploadPackageFilesAndSetFileIds
+    await applicationService.uploadPackageFilesAndSetFileIds({
+      application: {
+        id: manifestAppId,
+        universalIdentifier: manifestAppUniversalId,
+        workspaceId,
+      },
+      packageJsonContent: JSON.stringify({
+        name: 'secret-pkg-app',
+        dependencies: { axios: '1.7.0' },
+      }),
+      yarnLockContent: '"axios@npm:1.7.0":\n  version: 1.7.0\n',
+    });
+
+    // 3. SDK client generation marks layer stale + stores checksum, then SdkClientArchiveService.markSdkLayerFresh clears isSdkLayerStale
+    await applicationService.update(manifestAppId, {
+      workspaceId,
+      isSdkLayerStale: true,
+      sdkClientCoreChecksum: 'sdk-core-secret-checksum-xyz',
+    });
+
+    await sdkClientArchiveService.markSdkLayerFresh({
+      applicationId: manifestAppId,
+      workspaceId,
+    });
+
+    const entries = await audits();
+    expect(entries).toHaveLength(4);
+
+    expect(entries[0]).toMatchObject({
+      workspaceId,
+      resourceKind: 'application',
+      resourceId: manifestAppId,
+      action: 'update',
+      actor: { kind: 'workspaceMember', id: actorMemberId },
+      initiator: { kind: 'coreUser', id: impersonatorUserId },
+      redactedDiff: {
+        changedFields: [
+          'applicationRegistrationId',
+          'billing',
+          'description',
+          'frontComponentSharedDependenciesBuiltPath',
+          'frontComponentSharedDependenciesChecksum',
+          'grantedCapabilities',
+          'logo',
+          'logoFileId',
+          'name',
+          'packageJsonChecksum',
+          'version',
+          'yarnLockChecksum',
+        ],
+        values: {
+          applicationRegistrationId: { before: null, after: registrationId },
+          logoFileId: { before: null, after: logoFileId },
+          version: { before: null, after: '1.4.2' },
+        },
+      },
+    });
+
+    expect(entries[1]).toMatchObject({
+      workspaceId,
+      resourceKind: 'application',
+      resourceId: manifestAppId,
+      action: 'update',
+      actor: { kind: 'system', id: 'ApplicationService.update' },
+      redactedDiff: {
+        changedFields: [
+          'availablePackages',
+          'packageJsonChecksum',
+          'packageJsonFileId',
+          'yarnLockChecksum',
+          'yarnLockFileId',
+        ],
+        values: {
+          packageJsonFileId: { before: null, after: pkgFileId },
+          yarnLockFileId: { before: null, after: lockFileId },
+        },
+      },
+    });
+
+    expect(entries[2]).toMatchObject({
+      workspaceId,
+      resourceKind: 'application',
+      resourceId: manifestAppId,
+      action: 'update',
+      actor: { kind: 'system', id: 'ApplicationService.update' },
+      redactedDiff: {
+        changedFields: ['isSdkLayerStale', 'sdkClientCoreChecksum'],
+        values: {
+          isSdkLayerStale: { before: false, after: true },
+        },
+      },
+    });
+
+    expect(entries[3]).toMatchObject({
+      workspaceId,
+      resourceKind: 'application',
+      resourceId: manifestAppId,
+      action: 'update',
+      actor: {
+        kind: 'system',
+        id: 'SdkClientArchiveService.markSdkLayerFresh',
+      },
+      redactedDiff: {
+        changedFields: ['isSdkLayerStale'],
+        values: {
+          isSdkLayerStale: { before: true, after: false },
+        },
+      },
+    });
+
+    const serialized = JSON.stringify(entries);
+    expect(serialized).not.toContain('Secret Synced Manifest App');
+    expect(serialized).not.toContain('Confidential manifest description');
+    expect(serialized).not.toContain('secret-manifest-logo.png');
+    expect(serialized).not.toContain('pkg-checksum-secret-v1');
+    expect(serialized).not.toContain('enterprise-secret');
+    expect(serialized).not.toContain('fc-shared-secret.mjs');
+    expect(serialized).not.toContain('sdk-core-secret-checksum-xyz');
   });
 });

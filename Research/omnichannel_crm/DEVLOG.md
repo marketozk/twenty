@@ -5461,3 +5461,18 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 fcad93a8-e98f-42a3-a51e-49a70a87c102 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log190/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG191`).
+
+## LOG-191 - транзакционный аудит обновлений метаданных манифеста, пакетных файлов и состояния SDK-слоя установленных приложений (`application`, `core.application`) и создания кастомной регистрации рабочего пространства (`ApplicationService.createWorkspaceCustomApplicationRegistration`)
+
+15.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log191/design.md), [design-review.md](implementation/log191/design-review.md)) и реализован участок `LOG-191` (Linear `ROB-765`): транзакционный аудит обновлений метаданных манифеста, привязок пакетных файлов и состояния SDK-слоя установленных приложений в `core.application`, а также создания кастомной регистрации рабочего пространства в `ApplicationService.createWorkspaceCustomApplicationRegistration`.
+
+В `application-default-role-audit.ts`, `ApplicationService` и `SdkClientArchiveService` расширены множества проецируемых полей `core.application` (`applicationRegistrationId`, `logoFileId`, `packageJsonFileId`, `yarnLockFileId`, `logicFunctionLayerId`, `primaryPublicDomainId`, `canBeUninstalled`, `isSdkLayerStale`, `version`, `name`, `description`, `logo`, `sourceType`, `state`, `sourcePath`, `packageJsonChecksum`, `yarnLockChecksum`, `uninstallHookCompletedForRequestedAt`, `sdkClientCoreChecksum`, `frontComponentSharedDependenciesChecksum`, `frontComponentSharedDependenciesBuiltPath`, `availablePackages`, `billing`), добавлена поддержка `defaultSystemActorId` в `captureApplicationSettingsAudit` и подключён `runAuditedApplicationRegistrationCreate` в `createWorkspaceCustomApplicationRegistration`.
+
+15.11.2026 проверки LOG191 завершены. 3207 tests/128 suites PASS (714.18s). 20 targeted/2 suites PASS (13.859s), 1 новый PostgreSQL случай. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 490/490 roots, baseline 274 / current 274 diagnostics, 0 новых/changed-code. Совпали 4 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту закрытия всех входных точек обновлений манифеста, пакета и SDK-слоя в `core.application`, редактирование чувствительных метаданных (`name`, `description`, `logo`, `packageJsonChecksum`, `yarnLockChecksum`, `availablePackages`, `billing`, `grantedCapabilities`, `sdkClientCoreChecksum`, `frontComponentSharedDependenciesChecksum`, `frontComponentSharedDependenciesBuiltPath`) и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log191/results.json), [ревью](implementation/log191/review.md),
+[следующий участок](implementation/log191/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

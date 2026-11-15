@@ -369,8 +369,16 @@ LOG190 закрывает транзакционный аудит полного
 (`core.application` `create` в `ApplicationService.create`,
 `ApplicationDevelopmentService.createDevelopmentApplication`,
 `ApplicationDevelopmentResolver.createDevelopmentApplication` и `workspace-domain-audit.ts`).
+LOG191 закрывает транзакционный аудит обновлений метаданных манифеста, привязок пакетных файлов и
+состояния SDK-слоя установленных приложений (`core.application` `update` в
+`ApplicationService.update`, `ApplicationService.uploadPackageFilesAndSetFileIds`,
+`ApplicationSyncService.syncApplication`, `ApplicationInstallService`,
+`SdkClientGenerationService.storeSdkClientCoreChecksum`,
+`SdkClientArchiveService.markSdkLayerFresh` и `application-default-role-audit.ts`) и создания
+кастомной регистрации рабочего пространства
+(`ApplicationService.createWorkspaceCustomApplicationRegistration`).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log190/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log191/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.
