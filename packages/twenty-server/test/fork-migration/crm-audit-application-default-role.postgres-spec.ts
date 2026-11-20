@@ -1686,7 +1686,11 @@ describe('Application defaultRoleId CRM audit (LOG164)', () => {
   });
 
   it('audits application manifest sync metadata, package file bindings, and SDK layer state updates with redaction (LOG191)', async () => {
-    const { applicationService, workspaceCacheService } = buildHarness();
+    const {
+      applicationService,
+      workspaceCacheService,
+      applicationInstallResolver,
+    } = buildHarness();
     const { SdkClientArchiveService } =
       require('src/engine/core-modules/sdk-client/sdk-client-archive.service') as typeof import('src/engine/core-modules/sdk-client/sdk-client-archive.service');
 
@@ -1850,6 +1854,38 @@ describe('Application defaultRoleId CRM audit (LOG164)', () => {
           isSdkLayerStale: { before: true, after: false },
         },
       },
+    });
+
+    const uninstallRunnerSpy = jest.fn(async () => undefined);
+    (
+      applicationInstallResolver as unknown as {
+        applicationUninstallRunnerService: {
+          uninstallApplication: jest.Mock;
+        };
+      }
+    ).applicationUninstallRunnerService = {
+      uninstallApplication: uninstallRunnerSpy,
+    };
+
+    const req = {
+      workspace: { id: workspaceId },
+      user: { id: actorUserId },
+      userWorkspaceId: actorUserWorkspaceId,
+      workspaceMemberId: actorMemberId,
+      impersonationContext: { impersonatorUserWorkspaceId },
+    };
+
+    await applicationInstallResolver.uninstallApplication(
+      { universalIdentifier: manifestAppUniversalId },
+      { id: workspaceId } as never,
+      { req: req as never },
+    );
+    expect(uninstallRunnerSpy).toHaveBeenCalledWith({
+      universalIdentifier: manifestAppUniversalId,
+      workspaceId,
+      auditIdentity: expect.objectContaining({
+        impersonatorUserWorkspaceId,
+      }),
     });
 
     const serialized = JSON.stringify(entries);

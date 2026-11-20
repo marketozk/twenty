@@ -377,8 +377,17 @@ LOG191 закрывает транзакционный аудит обновле
 `SdkClientArchiveService.markSdkLayerFresh` и `application-default-role-audit.ts`) и создания
 кастомной регистрации рабочего пространства
 (`ApplicationService.createWorkspaceCustomApplicationRegistration`).
+LOG192 закрывает транзакционный аудит удаления установленных приложений (`core.application`
+`delete` в `runAuditedApplicationDelete` / `ApplicationService.delete` с безусловной блокировкой
+`FOR UPDATE`, fail-closed при отсутствии `request.operation`, редактированием чувствительных
+метаданных через `projectApplication`, единым `operationId` с каскадными
+`applicationAuthorization:delete`, `publicDomain:delete`, `applicationKeyValuePair:delete` и
+пост-flush проверкой отсутствия строки) и проброс `auditIdentity` при деинсталляции
+(`ApplicationInstallResolver.uninstallApplication` ->
+`ApplicationUninstallRunnerService.uninstallApplication` ->
+`ApplicationSyncService.uninstallApplication`).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log191/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log192/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

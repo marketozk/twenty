@@ -1676,7 +1676,15 @@ describe('CRM audit frontComponent and settingsMenuItem lifecycle and applicatio
        ORDER BY "createdAt" ASC, id ASC`,
       [workspaceId],
     );
-    expect(entries).toHaveLength(8);
+    expect(entries).toHaveLength(9);
+    expect(
+      entries.find(
+        (e: Record<string, unknown>) =>
+          e.resourceKind === 'application' &&
+          e.resourceId === thirdPartyApplicationId &&
+          e.action === 'delete',
+      ),
+    ).toBeDefined();
     const findEntry = (
       resourceKind: string,
       resourceId: string,

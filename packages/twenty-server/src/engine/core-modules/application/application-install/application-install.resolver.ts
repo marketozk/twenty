@@ -448,10 +448,17 @@ export class ApplicationInstallResolver {
     })
     { universalIdentifier }: UninstallApplicationInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context()
+    context?: { req?: Parameters<typeof roleAuditIdentityFromRequest>[0] },
   ) {
+    const auditIdentity = isDefined(context?.req)
+      ? roleAuditIdentityFromRequest(context.req)
+      : undefined;
+
     await this.applicationUninstallRunnerService.uninstallApplication({
       universalIdentifier,
       workspaceId,
+      ...(auditIdentity !== undefined ? { auditIdentity } : {}),
     });
 
     return true;

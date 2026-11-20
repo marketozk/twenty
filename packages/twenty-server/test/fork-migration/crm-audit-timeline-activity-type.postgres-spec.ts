@@ -1268,7 +1268,12 @@ describe('CRM audit timelineActivityType lifecycle and application cascade', () 
       [workspaceId],
     );
 
-    expect(entries).toHaveLength(3);
+    expect(entries).toHaveLength(4);
+    expect(entries[3]).toMatchObject({
+      resourceKind: 'application',
+      resourceId: thirdPartyApplicationId,
+      action: 'delete',
+    });
     expect(entries[0]).toMatchObject({
       resourceKind: 'timelineActivityType',
       resourceId: tatId,

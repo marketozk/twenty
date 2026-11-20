@@ -1,0 +1,20 @@
+{
+  "log": "LOG-192",
+  "verifiedFileCount": 14,
+  "files": {
+    "packages/twenty-server/src/engine/core-modules/application/application-install/application-install.resolver.ts": "58a6928fdf9c897658a1fc253cd12d35a91c5deaac33607451e94be4dd80a86a",
+    "packages/twenty-server/src/engine/core-modules/application/application-install/services/application-uninstall-runner.service.ts": "97c725f690d683807baee81feb1bcc71d14e433179b0ca6a0bc58296e0760e36",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/application-authorization-and-variable-audit.ts": "46efee9760f64b730bd34523d03b78898587896f0a5f30bd5dd805e64d58c389",
+    "packages/twenty-server/test/fork-migration/crm-audit-application-authorization-and-variable.postgres-spec.ts": "827bdcc1003610a73dd590817319ffcd0c546466af6ae6a4b654bdbabe2e95ce",
+    "packages/twenty-server/test/fork-migration/crm-audit-application-default-role.postgres-spec.ts": "cfb2eadb82161519ad19998605ccb1580225db237efea5832a50e43329d78d6d",
+    "packages/twenty-server/test/fork-migration/crm-audit-application-metadata.postgres-spec.ts": "c45fa98e3920258a3591b0e4558a0d08ac731c70c5191e3e03def0292d7e1a30",
+    "packages/twenty-server/test/fork-migration/crm-audit-command-menu-item.postgres-spec.ts": "25ee6252eb3fbfccd3c98a9e7509e417be9d6b2d22e7d0eeb45e1832ac06af5b",
+    "packages/twenty-server/test/fork-migration/crm-audit-front-component-and-settings-menu-item.postgres-spec.ts": "dc2f1a3ef518697bc842a7a347437ccfc9f7d4044fa99f96b027bcd552b575b2",
+    "packages/twenty-server/test/fork-migration/crm-audit-logic-function.postgres-spec.ts": "409683457c8d294fe4cc1ba165ba038bfc997faab264dddca4b0c162a6868a19",
+    "packages/twenty-server/test/fork-migration/crm-audit-page-layout.postgres-spec.ts": "1d3aea0e005e923c820e7ce0cb6914e6627c74415f2659bcadffb6864165d147",
+    "packages/twenty-server/test/fork-migration/crm-audit-skill.postgres-spec.ts": "bba3fe22723145b3ff19171acf8e4035183e8c3614c897145ae95240473eb284",
+    "packages/twenty-server/test/fork-migration/crm-audit-timeline-activity-type.postgres-spec.ts": "2fce3957fc52cf15c0cc9500f244f2f1f3110cf763e73ea03a98e8c215b85996",
+    "packages/twenty-server/test/fork-migration/crm-audit-webhook.postgres-spec.ts": "d1ca1953b1781078f14f641bcf78837c0b459018b22979ccd52b1ae61d190549",
+    "packages/twenty-server/test/fork-migration/crm-audit-workspace-domain.postgres-spec.ts": "125f6f2cf5c2b0e6d295c0e7c1a5a6dec0fe990f4daa2930659e962067b5a9ea"
+  }
+}

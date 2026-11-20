@@ -1993,7 +1993,12 @@ describe('CRM audit commandMenuItem lifecycle and cascades', () => {
       [workspaceId],
     );
 
-    expect(entries).toHaveLength(3);
+    expect(entries).toHaveLength(4);
+    expect(entries[3]).toMatchObject({
+      resourceKind: 'application',
+      resourceId: thirdPartyApplicationId,
+      action: 'delete',
+    });
     expect(entries[0]).toMatchObject({
       resourceKind: 'commandMenuItem',
       resourceId: cmiId,

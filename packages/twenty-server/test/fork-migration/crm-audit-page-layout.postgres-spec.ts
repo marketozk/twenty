@@ -3021,9 +3021,14 @@ describe('CRM audit pageLayout, pageLayoutTab, and pageLayoutWidget lifecycle an
        ORDER BY "createdAt" ASC, id ASC`,
       [workspaceId],
     );
-    expect(entries).toHaveLength(6);
+    expect(entries).toHaveLength(7);
     expect(entries).toEqual(
       expect.arrayContaining([
+        {
+          resourceKind: 'application',
+          resourceId: thirdPartyApplicationId,
+          action: 'delete',
+        },
         { resourceKind: 'pageLayout', resourceId: plId, action: 'create' },
         { resourceKind: 'pageLayoutTab', resourceId: pltId, action: 'create' },
         {

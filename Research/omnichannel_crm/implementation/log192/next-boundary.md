@@ -1,0 +1,4 @@
+# Следующий участок после LOG192
+
+После закрытия `LOG192` (транзакционный аудит удаления установленных приложений `core.application` `delete` в `runAuditedApplicationDelete` / `ApplicationService.delete` и проброс `auditIdentity` через `ApplicationInstallResolver.uninstallApplication` -> `ApplicationUninstallRunnerService.uninstallApplication` -> `ApplicationSyncService.uninstallApplication`) следующая открытая граница в рамках `ROB-765`:
+- `LOG193`: транзакционный аудит полного жизненного цикла приглашений в рабочее пространство (`workspaceInvitation` в `core."appToken"` с типами `INVITATION_TOKEN` и `ONBOARDING_INVITATION_TOKEN` в `WorkspaceInvitationService` и `WorkspaceInvitationResolver`: `createWorkspaceInvitation`, `deleteWorkspaceInvitation`, `invalidateWorkspaceInvitation`, `resendWorkspaceInvitation`, `sendInvitations` с редактированием `email` и `value` и сохранением `roleId`, `type`, `expiresAt`).

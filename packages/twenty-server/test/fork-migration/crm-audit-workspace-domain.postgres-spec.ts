@@ -2054,10 +2054,10 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
     const cascadeDeleteAudits = allAudits.filter(
       (row) => row.correlationId === sharedCorrId,
     );
-    expect(cascadeDeleteAudits).toHaveLength(2);
-    expect(cascadeDeleteAudits[0].operationId).toBe(
-      cascadeDeleteAudits[1].operationId,
-    );
+    expect(cascadeDeleteAudits).toHaveLength(3);
+    expect(
+      new Set(cascadeDeleteAudits.map((row) => row.operationId)).size,
+    ).toBe(1);
     expect(
       [...cascadeDeleteAudits]
         .sort((a, b) =>
@@ -2070,6 +2070,12 @@ describe('Workspace domain (approvedAccessDomain & publicDomain) transactional C
           initiator: row.initiator,
         })),
     ).toEqual([
+      {
+        resourceKind: 'application',
+        resourceId: cascadeAppId,
+        action: 'delete',
+        initiator: { kind: 'coreUser', id: impersonatorUserId },
+      },
       {
         resourceKind: 'applicationAuthorization',
         resourceId: cascadeAuth.id,

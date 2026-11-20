@@ -13,6 +13,7 @@ import { buildApplicationLifecycleLogEntry } from 'src/engine/core-modules/appli
 import { createApplicationLifecycleProgressReporter } from 'src/engine/core-modules/application/application-install/utils/create-application-lifecycle-progress-reporter.util';
 import { getApplicationErrorCode } from 'src/engine/core-modules/application/application-install/utils/get-application-error-code.util';
 import { CacheLockService } from 'src/engine/core-modules/cache-lock/cache-lock.service';
+import { type ApplicationMetadataAuditIdentity } from 'src/engine/core-modules/crm-audit/application-metadata-audit';
 import { EventLogEmitterService } from 'src/engine/core-modules/event-logs/emit/event-log-emitter.service';
 import { type MessageQueueJobProgressContext } from 'src/engine/core-modules/message-queue/interfaces/message-queue-job.interface';
 import { MetricsService } from 'src/engine/core-modules/metrics/metrics.service';
@@ -33,10 +34,12 @@ export class ApplicationUninstallRunnerService {
     universalIdentifier,
     workspaceId,
     updateProgress,
+    auditIdentity,
   }: {
     universalIdentifier: string;
     workspaceId: string;
     updateProgress?: MessageQueueJobProgressContext['updateProgress'];
+    auditIdentity?: ApplicationMetadataAuditIdentity;
   }): Promise<void> {
     let application: ApplicationEntity | null = null;
 
@@ -64,6 +67,7 @@ export class ApplicationUninstallRunnerService {
             applicationUniversalIdentifier: universalIdentifier,
             workspaceId,
             progressReporter,
+            ...(auditIdentity !== undefined ? { auditIdentity } : {}),
           }),
         buildApplicationLifecycleLockKey({ workspaceId, universalIdentifier }),
         APPLICATION_LIFECYCLE_LOCK_OPTIONS,

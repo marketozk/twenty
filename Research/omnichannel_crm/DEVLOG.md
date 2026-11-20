@@ -5482,3 +5482,18 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 8aef3030-ff43-4bab-b3a9-2d5273596744 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log191/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG192`).
+
+## LOG-192 - транзакционный аудит удаления установленных приложений (`application`, `core.application`) и проброс `auditIdentity` при деинсталляции
+
+21.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log192/design.md), [design-review.md](implementation/log192/design-review.md)) и реализован участок `LOG-192` (Linear `ROB-765`): транзакционный аудит удаления установленных приложений в `core.application` (`application:delete`) и проброс `auditIdentity` при деинсталляции через GraphQL-резолвер.
+
+В `application-authorization-and-variable-audit.ts` обновлена `runAuditedApplicationDelete`: строка `core.application` теперь безусловно блокируется `FOR UPDATE` и проецируется через `projectApplication`, отсутствие `request.operation` отклоняется fail-closed даже при отсутствии каскадных дочерних строк, событие `application:delete` записывается в тот же `CrmAuditTransactionContext` с единым `operationId` вместе с каскадными `applicationAuthorization:delete`, `publicDomain:delete` и `applicationKeyValuePair:delete`, а после `audit.flush()` повторно проверяется отсутствие строки в `core.application`. В `ApplicationInstallResolver.uninstallApplication` добавлено извлечение `auditIdentity` через `roleAuditIdentityFromRequest(context.req)` и проброс через `ApplicationUninstallRunnerService.uninstallApplication` в `ApplicationSyncService.uninstallApplication`.
+
+21.11.2026 проверки LOG192 завершены. 3208 tests/128 suites PASS (720.456s). 57 targeted/11 suites PASS (28.479s), 1 новый PostgreSQL случай. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 490/490 roots, baseline 274 / current 274 diagnostics, 0 новых/changed-code. Совпали 14 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту и атомарность аудита удаления `core.application` вместе с каскадами, fail-closed поведение при отсутствии `request.operation`, редактирование чувствительных метаданных через `projectApplication`, проброс `auditIdentity` и имперсонации при деинсталляции и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log192/results.json), [ревью](implementation/log192/review.md),
+[следующий участок](implementation/log192/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

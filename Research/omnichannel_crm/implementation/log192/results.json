@@ -1,0 +1,37 @@
+{
+  "log": "LOG-192",
+  "issue": "ROB-765",
+  "date": "2026-11-21",
+  "title": "Transactional audit of installed application deletion (core.application delete) and uninstall auditIdentity propagation",
+  "targetedPostgres": {
+    "suitesPassed": 11,
+    "suitesTotal": 11,
+    "testsPassed": 57,
+    "testsTotal": 57,
+    "newPostgresTests": 1,
+    "durationSeconds": 28.479
+  },
+  "fullRegression": {
+    "suitesPassed": 128,
+    "suitesTotal": 128,
+    "testsPassed": 3208,
+    "testsTotal": 3208,
+    "durationSeconds": 720.456
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.167
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 490,
+    "currentRootFiles": 490,
+    "baselineDiagnostics": 274,
+    "currentDiagnostics": 274,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 14
+}

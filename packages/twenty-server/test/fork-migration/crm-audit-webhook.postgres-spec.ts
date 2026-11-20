@@ -1306,7 +1306,7 @@ describe('CRM audit webhook lifecycle and application cascade', () => {
        ORDER BY "createdAt" ASC, id ASC`,
       [workspaceId],
     );
-    expect(audits).toHaveLength(4);
+    expect(audits).toHaveLength(5);
     expect(audits[0]).toMatchObject({
       resourceKind: 'webhook',
       resourceId: appWebhookId,
@@ -1337,6 +1337,11 @@ describe('CRM audit webhook lifecycle and application cascade', () => {
       },
     });
     expect(audits[3]).toMatchObject({
+      resourceKind: 'application',
+      resourceId: thirdPartyApplicationId,
+      action: 'delete',
+    });
+    expect(audits[4]).toMatchObject({
       resourceKind: 'webhook',
       resourceId: sysWebhookId,
       action: 'create',

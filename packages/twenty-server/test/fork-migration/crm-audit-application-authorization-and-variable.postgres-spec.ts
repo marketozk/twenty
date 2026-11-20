@@ -1311,8 +1311,9 @@ describe('ApplicationAuthorization and UserApplicationVariableValue lifecycle & 
     ).toHaveLength(0);
 
     const entries = await audits();
-    expect(entries).toHaveLength(3);
+    expect(entries).toHaveLength(4);
     expect(entries.map((e) => `${e.resourceKind}:${e.action}`).sort()).toEqual([
+      'application:delete',
       'applicationAuthorization:delete',
       'applicationAuthorization:delete',
       'role:delete',
@@ -1333,6 +1334,29 @@ describe('ApplicationAuthorization and UserApplicationVariableValue lifecycle & 
         .map((e) => e.operationId),
     );
     expect(authDeleteOpIds.size).toBe(1);
+    const appDeleteEntry = entries.find(
+      (e) => e.resourceKind === 'application',
+    )!;
+    expect(authDeleteOpIds.has(appDeleteEntry.operationId)).toBe(true);
+    expect(appDeleteEntry).toMatchObject({
+      workspaceId,
+      resourceKind: 'application',
+      resourceId: oauthAppId,
+      action: 'delete',
+      redactedDiff: {
+        values: {
+          universalIdentifier: { before: oauthAppUniversalId, after: null },
+          applicationRegistrationId: {
+            before: oauthAppRegistrationId,
+            after: null,
+          },
+          canBeUninstalled: { before: true, after: null },
+        },
+      },
+    });
+    expect(JSON.stringify(appDeleteEntry.redactedDiff)).not.toContain(
+      'OAuth Integration App',
+    );
     const roleDeleteEntry = entries.find((e) => e.resourceKind === 'role')!;
     expect(authDeleteOpIds.has(roleDeleteEntry.operationId)).toBe(false);
   });
@@ -1783,5 +1807,133 @@ describe('ApplicationAuthorization and UserApplicationVariableValue lifecycle & 
     ).not.toHaveBeenCalled();
     expect(workspaceEventBroadcaster.broadcast).not.toHaveBeenCalled();
     expect(workspaceCacheService.invalidateAndRecompute).toHaveBeenCalled();
+  });
+
+  it('audits application:delete even without cascaded rows, fails closed without auditIdentity, and rolls back on post-flush application re-insertion (LOG192)', async () => {
+    const { applicationService, applicationSyncService } = buildHarness();
+
+    await owner.query('DELETE FROM core."applicationVariable" WHERE id=$1', [
+      userVariableId,
+    ]);
+    await owner.query('TRUNCATE crm_audit."crmAuditEntry"');
+
+    // 1. Unauthenticated direct ApplicationService.delete fails closed even when no cascaded rows exist
+    await expect(
+      applicationService.delete(oauthAppUniversalId, workspaceId),
+    ).rejects.toThrow(
+      'Application authorization mutation requires authenticated audit identity',
+    );
+    expect(
+      await owner.query('SELECT id FROM core.application WHERE id=$1', [
+        oauthAppId,
+      ]),
+    ).toHaveLength(1);
+    expect(await audits()).toHaveLength(0);
+
+    // 2. Post-flush tampering that re-inserts core.application during audit.flush() rolls back transaction
+    const origCreateQueryRunner = runtime.createQueryRunner.bind(runtime);
+    jest.spyOn(runtime, 'createQueryRunner').mockImplementationOnce((mode) => {
+      const qr = origCreateQueryRunner(mode);
+      const origQuery = qr.query.bind(qr);
+      jest
+        .spyOn(qr, 'query')
+        .mockImplementation(async (sql: string, params?: unknown[]) => {
+          const res = await origQuery(sql, params);
+          if (sql.includes('INSERT INTO crm_audit."crmAuditEntry"')) {
+            await origQuery(
+              `INSERT INTO core.application (id, "workspaceId", "universalIdentifier", name, "applicationRegistrationId", "canBeUninstalled")
+               VALUES ($1, $2, $3, 'Tampered App', $4, true)`,
+              [
+                oauthAppId,
+                workspaceId,
+                oauthAppUniversalId,
+                oauthAppRegistrationId,
+              ],
+            );
+          }
+          return res;
+        });
+      return qr;
+    });
+
+    await expect(
+      applicationService.delete(oauthAppUniversalId, workspaceId, {
+        auditIdentity: userIdentity(),
+      }),
+    ).rejects.toThrow('Application state changed during audit flush');
+    expect(
+      await owner.query('SELECT id FROM core.application WHERE id=$1', [
+        oauthAppId,
+      ]),
+    ).toHaveLength(1);
+    expect(await audits()).toHaveLength(0);
+
+    // 3. Authenticated uninstall via ApplicationUninstallRunnerService -> ApplicationSyncService -> ApplicationService.delete records application:delete with actor + initiator and redacted name
+    const { ApplicationUninstallRunnerService } =
+      require('src/engine/core-modules/application/application-install/services/application-uninstall-runner.service') as typeof import('src/engine/core-modules/application/application-install/services/application-uninstall-runner.service');
+
+    const uninstallRunnerService = new ApplicationUninstallRunnerService(
+      {
+        findByUniversalIdentifier: async () => ({
+          id: oauthAppId,
+          universalIdentifier: oauthAppUniversalId,
+          applicationRegistrationId: oauthAppRegistrationId,
+          version: '1.0.0',
+        }),
+      } as never,
+      Object.assign(applicationService, {
+        assertUninstallIsNotBlockedByOtherWorkspaceInstallationsOrThrow:
+          jest.fn(async () => undefined),
+      }),
+      applicationSyncService,
+      { incrementCounterBy: jest.fn() } as never,
+      {
+        withLock: async <TResult>(fn: () => Promise<TResult>) => fn(),
+      } as never,
+      {
+        recordApplicationPlatformEvents: jest.fn(async () => undefined),
+      } as never,
+    );
+
+    await uninstallRunnerService.uninstallApplication({
+      universalIdentifier: oauthAppUniversalId,
+      workspaceId,
+      auditIdentity: userIdentity({ impersonatorUserWorkspaceId }),
+    });
+
+    expect(
+      await owner.query('SELECT id FROM core.application WHERE id=$1', [
+        oauthAppId,
+      ]),
+    ).toHaveLength(0);
+
+    const entries = await audits();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      workspaceId,
+      resourceKind: 'application',
+      resourceId: oauthAppId,
+      action: 'delete',
+      actor: { kind: 'workspaceMember', id: actorMemberId },
+      initiator: { kind: 'coreUser', id: impersonatorUserId },
+      redactedDiff: {
+        values: {
+          universalIdentifier: { before: oauthAppUniversalId, after: null },
+          applicationRegistrationId: {
+            before: oauthAppRegistrationId,
+            after: null,
+          },
+          canBeUninstalled: { before: true, after: null },
+        },
+      },
+      securityDescriptor: {
+        resourceKind: 'application',
+        resourceId: oauthAppId,
+        metadataAccess: 'currentWorkspaceAdministration',
+      },
+    });
+    expect(JSON.stringify(entries[0].redactedDiff)).not.toContain(
+      'OAuth Integration App',
+    );
   });
 });

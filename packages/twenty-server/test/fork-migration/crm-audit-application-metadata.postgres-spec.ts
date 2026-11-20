@@ -2509,6 +2509,7 @@ describe('Application metadata CRM audit (LOG165)', () => {
     const entries = await audits();
     expect(entries.map((e) => `${e.resourceKind}:${e.action}`).sort()).toEqual(
       [
+        'application:delete',
         'role:delete',
         'roleTarget:delete',
         'objectPermission:delete',
