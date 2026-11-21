@@ -73,6 +73,17 @@ export class ShareRecordTool implements Tool {
       };
     }
 
+    if (
+      context.workspaceId.toLowerCase() !==
+      authContext.workspace.id.toLowerCase()
+    ) {
+      return {
+        success: false,
+        message: FAILURE_MESSAGE,
+        error: 'Record sharing workspace mismatch',
+      };
+    }
+
     const {
       objectNameSingular,
       recordId,
@@ -109,6 +120,7 @@ export class ShareRecordTool implements Tool {
         },
         accessLevel,
         authContext,
+        ...(isDefined(context.agentId) ? { agentId: context.agentId } : {}),
       });
     } catch (error) {
       if (

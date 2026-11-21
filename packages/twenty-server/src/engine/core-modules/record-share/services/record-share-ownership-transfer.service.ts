@@ -4,6 +4,8 @@ import { Injectable } from '@nestjs/common';
 
 import { isDefined } from 'twenty-shared/utils';
 
+import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
+import { validateRecordShareTransferAuditInput } from 'src/engine/core-modules/crm-audit/record-share-audit';
 import { isRecordShareExceptionObject } from 'src/engine/core-modules/record-share/utils/is-record-share-exception-object.util';
 import { RecordShareStorageService } from 'src/engine/core-modules/record-share/services/record-share-storage.service';
 import { type UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
@@ -25,12 +27,19 @@ export class RecordShareOwnershipTransferService {
     removedUserWorkspace,
     removedWorkspaceMemberId,
     actingUserWorkspaceId,
+    auditOperation,
   }: {
     removedUserWorkspace: UserWorkspaceEntity;
     removedWorkspaceMemberId: string;
     actingUserWorkspaceId?: string;
+    auditOperation?: CrmAuditOperation;
   }): Promise<void> {
     const { workspaceId } = removedUserWorkspace;
+    const { capturedOperation } = validateRecordShareTransferAuditInput({
+      workspaceId,
+      fromWorkspaceMemberId: removedWorkspaceMemberId,
+      auditOperation,
+    });
     const objectMetadataIds =
       await this.findTransferableObjectMetadataIds(workspaceId);
 
@@ -43,11 +52,19 @@ export class RecordShareOwnershipTransferService {
       actingUserWorkspaceId,
     });
 
+    validateRecordShareTransferAuditInput({
+      workspaceId,
+      fromWorkspaceMemberId: removedWorkspaceMemberId,
+      toWorkspaceMemberId,
+      auditOperation: capturedOperation,
+    });
+
     await this.recordShareStorageService.transferMemberGrants({
       workspaceId,
       objectMetadataIds,
       fromWorkspaceMemberId: removedWorkspaceMemberId,
       toWorkspaceMemberId,
+      ...(capturedOperation ? { auditOperation: capturedOperation } : {}),
     });
   }
 

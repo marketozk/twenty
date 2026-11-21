@@ -44,6 +44,7 @@ export type CrmAuditResourceKind =
   | 'timelineActivityType'
   | 'indexMetadata'
   | 'validationRule'
+  | 'recordShare'
   | 'commandMenuItem'
   | 'pageLayout'
   | 'pageLayoutTab'

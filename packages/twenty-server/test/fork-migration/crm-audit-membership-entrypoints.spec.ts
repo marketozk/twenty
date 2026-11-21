@@ -625,6 +625,9 @@ const fixture = () => {
     transfer:
       service['connectedAccountOwnershipTransferService']
         .transferConnectedAccountsOwnershipToCustodian,
+    recordShareTransfer:
+      service['recordShareOwnershipTransferService']
+        .transferRecordSharesToCustodian,
     capture,
     cleanup,
     nativeRepository,
@@ -672,6 +675,14 @@ it.each([false, true])(
         }),
       }),
     );
+    expect(f.recordShareTransfer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auditOperation: expect.objectContaining({
+          actor: coreOperation.actor,
+          correlationId: coreOperation.correlationId,
+        }),
+      }),
+    );
     expect(coreOperation).toMatchObject({
       workspaceId: f.workspaceId,
       actor: {
@@ -711,6 +722,14 @@ it('actual self-account deletion captures impersonator before service reads memb
       }),
     }),
   );
+  expect(f.recordShareTransfer).toHaveBeenCalledWith(
+    expect.objectContaining({
+      auditOperation: expect.objectContaining({
+        actor: { kind: 'coreUser', id: f.userId },
+        initiator: { kind: 'coreUser', id: f.actorId },
+      }),
+    }),
+  );
   expect(f.capture.mock.invocationCallOrder[0]).toBeLessThan(
     f.coreUserRepository.findOne.mock.invocationCallOrder[0],
   );
@@ -734,6 +753,9 @@ it('actual post-query hook forwards the same trusted actor to transfer and core 
     actor: { kind: 'coreUser', id: f.actorId },
   });
   expect(f.cleanup).toHaveBeenCalledWith(
+    expect.objectContaining({ auditOperation: transfer.auditOperation }),
+  );
+  expect(f.recordShareTransfer).toHaveBeenCalledWith(
     expect.objectContaining({ auditOperation: transfer.auditOperation }),
   );
 });

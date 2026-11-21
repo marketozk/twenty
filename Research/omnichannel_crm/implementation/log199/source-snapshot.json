@@ -1,0 +1,18 @@
+{
+  "verified": 13,
+  "hashes": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "0eb42057f123a1f6e9ffeda0a5963b69fa64ac163da2564105a2534db38d59af",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "3e7e74365c3026bb90ed65a29d8deaeed0e822e7d825b6ec981f471b6bf88173",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/record-share-audit.ts": "f01f241113b608c3ad317caf1ea05337b5c204f77266aeb7446b3310602c7a43",
+    "packages/twenty-server/src/engine/core-modules/record-share/resolvers/record-sharing.resolver.ts": "0f75fcacc19cb45f97614cf985a7d5f2104d81807fd18be4d015f8007702771d",
+    "packages/twenty-server/src/engine/core-modules/record-share/services/record-share-ownership-transfer.service.ts": "2c50f0d04b3e3dd586a95ab0ff16f672b65f98a9c3f1a219d30e74cb08497819",
+    "packages/twenty-server/src/engine/core-modules/record-share/services/record-share-storage.service.ts": "756d9c5d4b677c31691b3c1e3968dab03302cb2634df78cfe7b48285ba1af4eb",
+    "packages/twenty-server/src/engine/core-modules/record-share/services/record-sharing.service.ts": "62ce8061ad2bc3bfb6bc787bba009c0f662973e4bbf28a2bf9094914619338ab",
+    "packages/twenty-server/src/engine/core-modules/record-share/utils/build-record-share-lock-key.util.ts": "2c4c56806537f5e6246319926b88cde0bb24b1aa7d5c0950b41b41c436ab383c",
+    "packages/twenty-server/src/engine/core-modules/tool/tools/share-record-tool/share-record-tool.ts": "722fab1cdf8830d7cea9f7adec126cc292afc3f7f6ad424367398fdefca4bda9",
+    "packages/twenty-server/src/engine/core-modules/user/services/user.service.ts": "6382044ec3740754191d09c99659faec3bd04374288cd96f942d92dbfd8c0053",
+    "packages/twenty-server/src/modules/workspace-member/query-hooks/workspace-member-delete-one.post-query.hook.ts": "c13e939a7bc2f33ecb35edba57208f6fae0f64adda16bd88723c231afc0e51f0",
+    "packages/twenty-server/test/fork-migration/crm-audit-membership-entrypoints.spec.ts": "ffb594409123e4dbcc1c0cb97a3d6e8f620ffbbc278f7d61ae681db5c70f535e",
+    "packages/twenty-server/test/fork-migration/crm-audit-record-share.postgres-spec.ts": "558cd745458e918afc30289075be2b5c5015042da6a44cf898328a446077a5c1"
+  }
+}

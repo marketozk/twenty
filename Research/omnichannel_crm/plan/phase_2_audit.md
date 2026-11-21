@@ -438,8 +438,20 @@ LOG198 закрывает транзакционный аудит правил �
 проверкой привязки к обновлённым/удалённым полям и детерминированной предблокировкой сторонних
 `core.application`; неявные FK-каскады `ON DELETE CASCADE` и `ON DELETE SET NULL`; 1-hop и
 2-hop проверка остатков при удалении приложения и каскадный reconciler `flatValidationRuleMaps`).
+LOG199 закрывает транзакционный аудит управления шарами записей (`recordShare` в
+`workspace_*."recordShare"` в `record-share-audit.ts`, `RecordSharingResolver`,
+`RecordSharingService`, `ShareRecordTool`, `RecordShareStorageService.setManualShare` /
+`transferMemberGrants`, `RecordShareOwnershipTransferService`, `buildRecordShareLockKey`,
+`UserService.removeUserFromWorkspaceAndPotentiallyDeleteWorkspace` и
+`WorkspaceMemberDeleteOnePostQueryHook`: `setRecordShare`/`removeRecordShare`/`setRecordGeneralAccess`
+в строгой транзакции `{ commitOutcome: 'strict' }` с каноническим порядком блокировок, in-place
+`update` и idempotent no-op, проверкой `accessLevel`/`sourceId`/`rowCause`/итогового `after`,
+сверкой ALS `ambient.operation.actor`/`initiator` и fail-closed отказом на `deletedAt IS NOT NULL`;
+перенос владения `OWNER`/`MANUAL` грантами при удалении участника в
+`{ commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' }` с 3/4-кортежными инвариантами и
+offboarding `SAVEPOINT record_share_transfer_audit`).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log198/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log199/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

@@ -124,6 +124,7 @@ export class WorkspaceMemberDeleteOnePostQueryHook
           'userWorkspaceId' in authContext
             ? authContext.userWorkspaceId
             : undefined,
+        auditOperation,
       },
     );
 

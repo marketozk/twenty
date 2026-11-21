@@ -1,0 +1,4 @@
+# Следующий участок после LOG199
+
+После закрытия `LOG199` (транзакционный аудит управления шарами записей `recordShare` в `RecordSharingResolver`, `RecordSharingService`, `ShareRecordTool`, `RecordShareOwnershipTransferService`, `RecordShareStorageService.setManualShare` / `transferMemberGrants`, `UserService.deleteUser` и `WorkspaceMemberDeleteOnePostQueryHook`) следующая открытая граница в рамках `ROB-765`:
+- `LOG200`: транзакционный аудит оставшихся писателей `recordShare` - создание шаров вместе с записями (`ShareWithService.insertRecordSharesForCreatedRecords` в `CommonCreateManyQueryRunnerService`) и системная синхронизация шаров (`WorkflowRunRecordShareService.replaceShares`, `AgentChatSharingService.deleteByRecordIdsInTransaction`, `AgentChatChannelGrantService.replaceGrantsInTransaction`).

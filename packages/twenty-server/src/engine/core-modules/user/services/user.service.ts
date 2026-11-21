@@ -461,6 +461,7 @@ export class UserService {
         removedUserWorkspace: userWorkspace,
         removedWorkspaceMemberId: workspaceMemberId,
         actingUserWorkspaceId,
+        auditOperation,
       },
     );
 

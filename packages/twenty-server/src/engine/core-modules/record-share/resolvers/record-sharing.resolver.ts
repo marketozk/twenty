@@ -1,12 +1,13 @@
 import { CustomPermissionGuard } from 'src/engine/guards/custom-permission.guard';
 import { UseGuards } from '@nestjs/common';
-import { Args, Mutation, Query } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query } from '@nestjs/graphql';
 
 import { RecordShareAccessLevel } from 'twenty-shared/types';
 
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
 import { getWorkspaceAuthContext } from 'src/engine/core-modules/auth/storage/workspace-auth-context.storage';
 import { isUserAuthContext } from 'src/engine/core-modules/auth/guards/is-user-auth-context.guard';
+import { type RecordShareRequestContext } from 'src/engine/core-modules/crm-audit/record-share-audit';
 import { AuthenticationError } from 'src/engine/core-modules/graphql/utils/graphql-errors.util';
 import {
   RecordSharePrincipalInput,
@@ -49,12 +50,14 @@ export class RecordSharingResolver {
     @Args('target') target: RecordTargetInput,
     @Args('accessLevel', { type: () => RecordShareAccessLevel })
     accessLevel: RecordShareAccessLevel,
+    @Context() context?: { req?: RecordShareRequestContext },
   ) {
     return this.handleRecordShareException(() =>
       this.sharingService.setGeneralAccess({
         ...target,
         accessLevel,
         authContext: this.getUserContext(),
+        ...(context?.req ? { requestContext: context.req } : {}),
       }),
     );
   }
@@ -65,6 +68,7 @@ export class RecordSharingResolver {
     @Args('principal') principal: RecordSharePrincipalInput,
     @Args('accessLevel', { type: () => RecordShareAccessLevel })
     accessLevel: RecordShareAccessLevel,
+    @Context() context?: { req?: RecordShareRequestContext },
   ) {
     return this.handleRecordShareException(() =>
       this.sharingService.setShare({
@@ -72,6 +76,7 @@ export class RecordSharingResolver {
         principal,
         accessLevel,
         authContext: this.getUserContext(),
+        ...(context?.req ? { requestContext: context.req } : {}),
       }),
     );
   }
@@ -80,12 +85,14 @@ export class RecordSharingResolver {
   removeRecordShare(
     @Args('target') target: RecordTargetInput,
     @Args('principal') principal: RecordSharePrincipalInput,
+    @Context() context?: { req?: RecordShareRequestContext },
   ) {
     return this.handleRecordShareException(() =>
       this.sharingService.removeShare({
         ...target,
         principal,
         authContext: this.getUserContext(),
+        ...(context?.req ? { requestContext: context.req } : {}),
       }),
     );
   }

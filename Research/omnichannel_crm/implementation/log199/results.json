@@ -1,0 +1,39 @@
+{
+  "log": "LOG-199",
+  "issue": "ROB-765",
+  "date": "2026-11-21",
+  "title": "Transactional audit of recordShare management (RecordSharingResolver, RecordSharingService, ShareRecordTool, setManualShare) and member grant ownership transfer",
+  "targetedPostgres": {
+    "suitesPassed": 4,
+    "suitesTotal": 4,
+    "testsPassed": 58,
+    "testsTotal": 58,
+    "newPostgresTests": 4,
+    "durationSeconds": 8.985
+  },
+  "fullRegression": {
+    "suitesPassed": 134,
+    "suitesTotal": 135,
+    "testsPassed": 3238,
+    "testsTotal": 3239,
+    "durationSeconds": 733.377,
+    "preExistingUnrelatedFailure": "test/fork-migration/crm-audit-signing-key.postgres-spec.ts (LOG-195 UUID ordering flake on rotateCurrent line 391, left untouched per scope discipline)"
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.174
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 506,
+    "currentRootFiles": 506,
+    "baselineDiagnostics": 296,
+    "currentDiagnostics": 275,
+    "newDiagnostics": 0,
+    "changedFileDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 13
+}

@@ -6,4 +6,5 @@ export const buildRecordShareLockKey = ({
   workspaceId: string;
   objectMetadataId: string;
   recordId: string;
-}): string => `record-share:${workspaceId}:${objectMetadataId}:${recordId}`;
+}): string =>
+  `record-share:${workspaceId.toLowerCase()}:${objectMetadataId.toLowerCase()}:${recordId.toLowerCase()}`;

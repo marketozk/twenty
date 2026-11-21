@@ -334,6 +334,18 @@ const CATALOG: Record<
       'message',
     ],
   },
+  recordShare: {
+    values: [
+      'objectMetadataId',
+      'recordId',
+      'principalId',
+      'principalType',
+      'accessLevel',
+      'rowCause',
+      'sourceId',
+    ],
+    redacted: [],
+  },
   commandMenuItem: {
     values: [
       'applicationId',
@@ -934,6 +946,7 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   timelineActivityType: ['create', 'update', 'delete'],
   indexMetadata: ['create', 'update', 'delete'],
   validationRule: ['create', 'update', 'delete'],
+  recordShare: ['create', 'update', 'delete'],
   commandMenuItem: ['create', 'update', 'delete'],
   pageLayout: ['create', 'update', 'delete'],
   pageLayoutTab: ['create', 'update', 'delete'],
