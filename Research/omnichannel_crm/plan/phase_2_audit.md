@@ -401,8 +401,15 @@ LOG194 закрывает транзакционный аудит полного
 блокировками БД, каноническая строковая проекция `bigint` для `limitValue`/`burstValue`,
 пост-коммитная инвалидация кэша `usageLimits` и сброс счётчиков `dropCounter`, кросс-workspace
 управление оператора с имперсонацией и пост-flush проверка).
+LOG195 закрывает транзакционный аудит управления ключами подписи JWT (`signingKey` в
+`core."signingKey"` в `JwtKeyManagerService`, `AdminPanelSigningKeyService`,
+`AdminPanelResolver.revokeSigningKey` и `workspace-domain-audit.ts`: fail-closed отзыв
+`revokeSigningKey` с имперсонацией и идемпотентностью, ротация `rotateCurrent` под одним
+`operationId` с явным или системным актором, первичная генерация `generateAndPersistCurrent`,
+редактирование `publicKey`, `privateKey`, `revokedAt`, пост-коммитная инвалидация кэша и
+пост-flush проверка).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log194/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log195/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

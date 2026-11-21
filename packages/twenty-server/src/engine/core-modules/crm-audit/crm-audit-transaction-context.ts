@@ -119,6 +119,10 @@ const CATALOG: Record<
     ],
     redacted: [],
   },
+  signingKey: {
+    values: ['isCurrent', 'hasPrivateKey'],
+    redacted: ['publicKey', 'privateKey', 'revokedAt'],
+  },
   emailingDomain: {
     values: ['status', 'tenantStatus', 'unsubscribeHostnameStatus'],
     redacted: [
@@ -874,6 +878,7 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   publicDomain: ['create', 'update', 'delete'],
   workspaceInvitation: ['create', 'delete'],
   usageLimit: ['create', 'update', 'delete'],
+  signingKey: ['create', 'update'],
   emailingDomain: ['create', 'update', 'delete'],
   dpaAgreement: ['create'],
   unsubscribeTopic: ['create', 'update', 'delete'],

@@ -1,13 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
 import { generateKeyPairSync, randomUUID } from 'crypto';
 
 import { isNonEmptyString } from '@sniptt/guards';
 import { isDefined, isValidUuid } from 'twenty-shared/utils';
-import { IsNull, QueryFailedError, Repository } from 'typeorm';
+import { type DataSource, IsNull, QueryFailedError, Repository } from 'typeorm';
 
 import { CoreEntityCacheService } from 'src/engine/core-entity-cache/services/core-entity-cache.service';
+import {
+  captureWorkspaceDomainAudit,
+  runAuditedSigningKeyBootstrapCreate,
+  runAuditedSigningKeyRevoke,
+  runAuditedSigningKeyRotate,
+  type WorkspaceDomainAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { SigningKeyEntity } from 'src/engine/core-modules/jwt/entities/signing-key.entity';
 import {
   JwtKeyManagerException,
@@ -38,7 +45,17 @@ export class JwtKeyManagerService {
     private readonly signingKeyRepository: Repository<SigningKeyEntity>,
     private readonly coreEntityCacheService: CoreEntityCacheService,
     private readonly secretEncryptionService: SecretEncryptionService,
+    @Optional()
+    @InjectDataSource()
+    private readonly dataSource?: DataSource,
   ) {}
+
+  private resolveDataSource(): DataSource | undefined {
+    return (
+      this.dataSource ??
+      (this.signingKeyRepository?.manager?.connection as DataSource | undefined)
+    );
+  }
 
   async getCurrentSigningKey(): Promise<CurrentSigningKey | null> {
     const isLocalCacheExpired =
@@ -78,13 +95,16 @@ export class JwtKeyManagerService {
     });
   }
 
-  async rotateCurrent(): Promise<CurrentSigningKey> {
+  async rotateCurrent(
+    auditIdentity?: WorkspaceDomainAuditIdentity,
+  ): Promise<CurrentSigningKey> {
     const generated = this.generateEcP256KeyPair();
     const newId = randomUUID();
 
-    await this.signingKeyRepository.manager.transaction(
-      async (entityManager) => {
-        const repository = entityManager.getRepository(SigningKeyEntity);
+    await runAuditedSigningKeyRotate(this.resolveDataSource(), {
+      auditIdentity,
+      work: async (runner) => {
+        const repository = runner.manager.getRepository(SigningKeyEntity);
 
         await repository.update(
           { isCurrent: true },
@@ -100,8 +120,11 @@ export class JwtKeyManagerService {
           isCurrent: true,
           revokedAt: null,
         });
+
+        return newId;
       },
-    );
+      extractNewSigningKeyId: (id) => id,
+    });
 
     await this.coreEntityCacheService.invalidate('signingKeyPublicKey', newId);
     this.invalidateCurrentSigningKeyLocalCache();
@@ -109,7 +132,10 @@ export class JwtKeyManagerService {
     return { id: newId, privateKeyPem: generated.privateKeyPem };
   }
 
-  async revokeSigningKey(id: string): Promise<SigningKeyEntity> {
+  async revokeSigningKey(
+    id: string,
+    auditIdentity?: WorkspaceDomainAuditIdentity,
+  ): Promise<SigningKeyEntity> {
     if (!isNonEmptyString(id) || !isValidUuid(id)) {
       throw new JwtKeyManagerException(
         `Invalid signing key id: ${id}`,
@@ -117,30 +143,53 @@ export class JwtKeyManagerService {
       );
     }
 
-    const existing = await this.signingKeyRepository.findOne({ where: { id } });
+    const auditRequest = captureWorkspaceDomainAudit({
+      auditIdentity,
+    });
 
-    if (!isDefined(existing)) {
-      throw new JwtKeyManagerException(
-        `Signing key not found: ${id}`,
-        JwtKeyManagerExceptionCode.SIGNING_KEY_NOT_FOUND,
-      );
-    }
+    const revoked = await runAuditedSigningKeyRevoke(
+      this.resolveDataSource(),
+      auditRequest,
+      {
+        signingKeyId: id,
+        work: async (runner, beforeRow) => {
+          if (!beforeRow) {
+            throw new JwtKeyManagerException(
+              `Signing key not found: ${id}`,
+              JwtKeyManagerExceptionCode.SIGNING_KEY_NOT_FOUND,
+            );
+          }
 
-    if (!isDefined(existing.revokedAt)) {
-      await this.signingKeyRepository.update(
-        { id },
-        {
-          revokedAt: new Date(),
-          isCurrent: false,
-          privateKey: null,
+          const repository = runner.manager.getRepository(SigningKeyEntity);
+          const existing = await repository.findOne({ where: { id } });
+
+          if (!isDefined(existing)) {
+            throw new JwtKeyManagerException(
+              `Signing key not found: ${id}`,
+              JwtKeyManagerExceptionCode.SIGNING_KEY_NOT_FOUND,
+            );
+          }
+
+          if (!isDefined(existing.revokedAt)) {
+            await repository.update(
+              { id },
+              {
+                revokedAt: new Date(),
+                isCurrent: false,
+                privateKey: null,
+              },
+            );
+          }
+
+          return repository.findOneByOrFail({ id });
         },
-      );
-    }
+      },
+    );
 
     await this.coreEntityCacheService.invalidate('signingKeyPublicKey', id);
     this.invalidateCurrentSigningKeyLocalCache();
 
-    return this.signingKeyRepository.findOneByOrFail({ id });
+    return revoked;
   }
 
   private invalidateCurrentSigningKeyLocalCache(): void {
@@ -201,14 +250,21 @@ export class JwtKeyManagerService {
     const id = randomUUID();
 
     try {
-      await this.signingKeyRepository.insert({
-        id,
-        publicKey: generated.publicKeyPem,
-        privateKey: this.secretEncryptionService.encryptVersioned(
-          generated.privateKeyPem,
-        ),
-        isCurrent: true,
-        revokedAt: null,
+      await runAuditedSigningKeyBootstrapCreate(this.resolveDataSource(), {
+        work: async (runner) => {
+          await runner.manager.getRepository(SigningKeyEntity).insert({
+            id,
+            publicKey: generated.publicKeyPem,
+            privateKey: this.secretEncryptionService.encryptVersioned(
+              generated.privateKeyPem,
+            ),
+            isCurrent: true,
+            revokedAt: null,
+          });
+
+          return id;
+        },
+        extractSigningKeyId: (createdId) => createdId,
       });
 
       await this.coreEntityCacheService.invalidate('signingKeyPublicKey', id);

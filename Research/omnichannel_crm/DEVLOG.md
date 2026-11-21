@@ -5545,3 +5545,18 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 3441ae28-634f-443a-83c6-07005f7ccb67 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log194/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG195`).
+
+## LOG-195 - транзакционный аудит управления ключами подписи JWT (`signingKey` в `core."signingKey"`)
+
+21.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log195/design.md), [design-review.md](implementation/log195/design-review.md)) и реализован участок `LOG-195` (Linear `ROB-765`): транзакционный аудит управления ключами подписи JWT в `core."signingKey"`.
+
+В `crm-audit.types.ts`, `crm-audit-transaction-context.ts` и `workspace-domain-audit.ts` добавлен вид ресурса `signingKey` (`values: ['isCurrent', 'hasPrivateKey']`, `redacted: ['publicKey', 'privateKey', 'revokedAt']`, `ADMINISTRATIVE_ACTIONS: ['create', 'update']`) и транзакционные раннеры `runAuditedSigningKeyRevoke`, `runAuditedSigningKeyRotate`, `runAuditedSigningKeyBootstrapCreate` с блокировками `core.workspace` (`FOR NO KEY UPDATE`) и `core."signingKey"` (`FOR UPDATE`), fail-closed проверкой актора/имперсонации при отзыве, общим `operationId` при ротации (деактивация прежнего ключа + создание нового) и пост-flush сверкой. В `JwtKeyManagerService`, `AdminPanelSigningKeyService` и `AdminPanelResolver.revokeSigningKey` подключён транзакционный аудит отзыва, ротации и первичной генерации ключей с пост-коммитной инвалидацией кэшей.
+
+21.11.2026 проверки LOG195 завершены. 3223 tests/131 suites PASS (723.682s). 16 targeted/2 suites PASS (9.09s), 5 новых PostgreSQL случаев. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 494/494 roots, baseline 300 / current 292 diagnostics, 0 новых/changed-code. Совпали 7 local/remote source hashes.
+
+Независимое ревью кода подтвердило защиту криптографического материала (`publicKey` и `privateKey` в `redacted`), атомарность отзыва и ротации под блокировками БД, идемпотентность повторного отзыва и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log195/results.json), [ревью](implementation/log195/review.md),
+[следующий участок](implementation/log195/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

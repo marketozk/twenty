@@ -25,6 +25,7 @@ export type CrmAuditResourceKind =
   | 'publicDomain'
   | 'workspaceInvitation'
   | 'usageLimit'
+  | 'signingKey'
   | 'emailingDomain'
   | 'dpaAgreement'
   | 'unsubscribeTopic'

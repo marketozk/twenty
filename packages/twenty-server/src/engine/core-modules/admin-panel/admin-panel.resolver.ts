@@ -880,7 +880,31 @@ export class AdminPanelResolver {
   @Mutation(() => SigningKeyDTO)
   async revokeSigningKey(
     @Args() { id }: RevokeSigningKeyInput,
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @AuthUser({ allowUndefined: true }) actor?: AuthContextUser,
+    @Context()
+    context?: {
+      req?: Parameters<typeof roleAuditIdentityFromRequest>[0] & {
+        user?: { id?: string } | null;
+      };
+    },
   ): Promise<SigningKeyDTO> {
-    return this.adminPanelSigningKeyService.revokeSigningKey(id);
+    const actorUserId = actor?.id ?? context?.req?.user?.id;
+    const impersonatorUserWorkspaceId =
+      context?.req?.impersonationContext?.impersonatorUserWorkspaceId;
+    const auditIdentity =
+      isDefined(context?.req) && context.req.workspace?.id === workspace.id
+        ? context.req
+        : isDefined(actorUserId)
+          ? {
+              workspaceId: workspace.id,
+              actor: { kind: 'coreUser' as const, id: actorUserId },
+              ...(isDefined(impersonatorUserWorkspaceId)
+                ? { impersonatorUserWorkspaceId }
+                : {}),
+            }
+          : undefined;
+
+    return this.adminPanelSigningKeyService.revokeSigningKey(id, auditIdentity);
   }
 }

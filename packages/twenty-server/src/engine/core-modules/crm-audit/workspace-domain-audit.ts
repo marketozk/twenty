@@ -6261,3 +6261,370 @@ export const runAuditedUsageLimitDelete = async <TResult>(
     }),
   );
 };
+
+export const projectSigningKey = (row: Record<string, unknown>) => {
+  if (typeof row.publicKey !== 'string' || row.publicKey.length === 0) {
+    throw new Error('Signing key audit publicKey is invalid');
+  }
+
+  const privateKey =
+    row.privateKey === undefined || row.privateKey === null
+      ? null
+      : String(row.privateKey);
+
+  return {
+    isCurrent: Boolean(row.isCurrent),
+    hasPrivateKey: privateKey !== null && privateKey.length > 0,
+    publicKey: row.publicKey,
+    privateKey,
+    revokedAt:
+      row.revokedAt === undefined || row.revokedAt === null
+        ? null
+        : String(row.revokedAt),
+  };
+};
+
+export const runAuditedSigningKeyRevoke = async <TResult>(
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    signingKeyId,
+    work,
+  }: {
+    signingKeyId: string;
+    work: (
+      runner: QueryRunner,
+      beforeRow: Record<string, unknown> | null,
+    ) => Promise<TResult>;
+  },
+): Promise<TResult> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Signing key revoke audit requires core DataSource');
+  }
+
+  const normalizedSigningKeyId = uuid(signingKeyId);
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('Signing key revoke audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const [beforeEntry] = await runner.query(
+        `SELECT to_jsonb(sk) AS row FROM core."signingKey" sk WHERE sk.id=$1 FOR UPDATE`,
+        [normalizedSigningKeyId],
+      );
+      const beforeRow =
+        (beforeEntry?.row as Record<string, unknown> | undefined) ?? null;
+
+      const result = await work(runner, beforeRow);
+
+      if (!beforeRow) {
+        return result;
+      }
+
+      const [afterEntry] = await runner.query(
+        `SELECT to_jsonb(sk) AS row FROM core."signingKey" sk WHERE sk.id=$1 FOR UPDATE`,
+        [normalizedSigningKeyId],
+      );
+      if (!afterEntry?.row) {
+        throw new Error('Signing key disappeared during audited revoke');
+      }
+
+      const beforeProj = projectSigningKey(beforeRow);
+      const afterProj = projectSigningKey(
+        afterEntry.row as Record<string, unknown>,
+      );
+
+      if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+        const audit = new CrmAuditTransactionContext(runner, operation);
+        audit.record({
+          resourceKind: 'signingKey',
+          resourceId: normalizedSigningKeyId,
+          action: 'update',
+          before: beforeProj,
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'signingKey',
+            resourceId: normalizedSigningKeyId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        await audit.flush();
+
+        const [postFlush] = await runner.query(
+          `SELECT to_jsonb(sk) AS row FROM core."signingKey" sk WHERE sk.id=$1`,
+          [normalizedSigningKeyId],
+        );
+        if (
+          !postFlush?.row ||
+          canonicalAuditJson(
+            projectSigningKey(postFlush.row as Record<string, unknown>),
+          ) !== canonicalAuditJson(afterProj)
+        ) {
+          throw new Error('Signing key state changed during audit flush');
+        }
+      }
+
+      return result;
+    }),
+  );
+};
+
+const resolveInstanceSigningKeyAuditOperation = async (
+  runner: QueryRunner,
+  explicitRequest: WorkspaceDomainAuditRequest | undefined,
+  systemActorId: string,
+): Promise<CrmAuditOperation | null> => {
+  if (explicitRequest) {
+    const [workspace] = await runner.query(
+      `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+      [explicitRequest.workspaceId],
+    );
+    if (!workspace || workspace.deletedAt !== null) {
+      throw new Error('Signing key audit workspace unavailable');
+    }
+
+    return resolveWorkspaceDomainOperation(runner, explicitRequest);
+  }
+
+  const [fallbackWorkspace] = await runner.query(
+    `SELECT id FROM core.workspace w WHERE to_jsonb(w)->>'deletedAt' IS NULL ORDER BY w."createdAt" ASC, w.id ASC LIMIT 1 FOR NO KEY UPDATE`,
+  );
+  if (!fallbackWorkspace?.id) {
+    return null;
+  }
+
+  const fallbackWorkspaceId = uuid(fallbackWorkspace.id);
+
+  return Object.freeze(
+    captureCrmAuditOperation({
+      workspaceId: fallbackWorkspaceId,
+      operationId: randomUUID(),
+      actor: { kind: 'system', id: systemActorId },
+      correlationId: randomUUID(),
+    }),
+  );
+};
+
+export const runAuditedSigningKeyRotate = async <TResult>(
+  dataSource: DataSource | undefined,
+  {
+    auditIdentity,
+    systemActorId = 'jwt-key-manager:rotate-current',
+    work,
+    extractNewSigningKeyId,
+  }: {
+    auditIdentity?: WorkspaceDomainAuditIdentity;
+    systemActorId?: string;
+    work: (runner: QueryRunner) => Promise<TResult>;
+    extractNewSigningKeyId: (result: TResult) => string;
+  },
+): Promise<TResult> => {
+  const hasAmbient =
+    ambientStorage.getStore() !== undefined ||
+    peekCurrentCrmAuditWorkspaceId() !== undefined;
+  const explicitRequest =
+    auditIdentity !== undefined || hasAmbient
+      ? captureWorkspaceDomainAudit({
+          auditIdentity,
+          defaultSystemActorId: systemActorId,
+        })
+      : undefined;
+
+  if (!dataSource) {
+    if (explicitRequest) {
+      consumeWorkspaceDomainAuditRequest(explicitRequest);
+    }
+    throw new Error('Signing key rotate audit requires core DataSource');
+  }
+
+  const runTx = () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const operation = await resolveInstanceSigningKeyAuditOperation(
+        runner,
+        explicitRequest,
+        systemActorId,
+      );
+
+      const beforeEntries: Array<{ row: Record<string, unknown> }> =
+        await runner.query(
+          `SELECT to_jsonb(sk) AS row FROM core."signingKey" sk WHERE sk."isCurrent" = true ORDER BY sk.id ASC FOR UPDATE`,
+        );
+      const beforeMap = new Map(
+        beforeEntries.map(({ row }) => [uuid(row.id), row] as const),
+      );
+
+      const result = await work(runner);
+      const newKeyId = uuid(extractNewSigningKeyId(result));
+
+      if (!operation) {
+        return result;
+      }
+
+      const trackedIds = [...new Set([...beforeMap.keys(), newKeyId])].sort();
+      const readTracked = async (forUpdate: boolean) => {
+        const rows: Array<{ row: Record<string, unknown> }> =
+          await runner.query(
+            `SELECT to_jsonb(sk) AS row FROM core."signingKey" sk WHERE sk.id = ANY($1::uuid[]) ORDER BY sk.id ASC${forUpdate ? ' FOR UPDATE' : ''}`,
+            [trackedIds],
+          );
+
+        return new Map(rows.map(({ row }) => [uuid(row.id), row] as const));
+      };
+
+      const afterMap = await readTracked(true);
+      if (!afterMap.has(newKeyId)) {
+        throw new Error('Signing key rotate did not persist new key');
+      }
+
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      for (const [id, beforeRow] of beforeMap.entries()) {
+        const afterRow = afterMap.get(id);
+        if (!afterRow) {
+          throw new Error('Signing key disappeared during audited rotate');
+        }
+        const beforeProj = projectSigningKey(beforeRow);
+        const afterProj = projectSigningKey(afterRow);
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          audit.record({
+            resourceKind: 'signingKey',
+            resourceId: id,
+            action: 'update',
+            before: beforeProj,
+            after: afterProj,
+            securityDescriptor: {
+              resourceKind: 'signingKey',
+              resourceId: id,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+        }
+      }
+
+      const newAfterRow = afterMap.get(newKeyId);
+      if (!newAfterRow) {
+        throw new Error('Signing key rotate did not persist new key');
+      }
+      audit.record({
+        resourceKind: 'signingKey',
+        resourceId: newKeyId,
+        action: 'create',
+        before: null,
+        after: projectSigningKey(newAfterRow),
+        securityDescriptor: {
+          resourceKind: 'signingKey',
+          resourceId: newKeyId,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+
+      const expectedSerialized = canonicalAuditJson(
+        [...afterMap.entries()].map(([id, row]) => ({
+          id,
+          ...projectSigningKey(row),
+        })),
+      );
+      await audit.flush();
+
+      const postFlushMap = await readTracked(false);
+      const actualSerialized = canonicalAuditJson(
+        [...postFlushMap.entries()].map(([id, row]) => ({
+          id,
+          ...projectSigningKey(row),
+        })),
+      );
+      if (actualSerialized !== expectedSerialized) {
+        throw new Error('Signing key state changed during audit flush');
+      }
+
+      return result;
+    });
+
+  return explicitRequest
+    ? withExclusiveAuditScope(explicitRequest, runTx)
+    : runTx();
+};
+
+export const runAuditedSigningKeyBootstrapCreate = async <TResult>(
+  dataSource: DataSource | undefined,
+  {
+    systemActorId = 'jwt-key-manager:bootstrap-current',
+    work,
+    extractSigningKeyId,
+  }: {
+    systemActorId?: string;
+    work: (runner: QueryRunner) => Promise<TResult>;
+    extractSigningKeyId: (result: TResult) => string;
+  },
+): Promise<TResult> => {
+  if (!dataSource) {
+    throw new Error('Signing key bootstrap audit requires core DataSource');
+  }
+
+  return runInCoreAuditTransaction(dataSource, async (runner) => {
+    await runner.query("SET LOCAL lock_timeout = '8s'");
+
+    const operation = await resolveInstanceSigningKeyAuditOperation(
+      runner,
+      undefined,
+      systemActorId,
+    );
+
+    const result = await work(runner);
+    if (!operation) {
+      return result;
+    }
+
+    const signingKeyId = uuid(extractSigningKeyId(result));
+    const [entry] = await runner.query(
+      `SELECT to_jsonb(sk) AS row FROM core."signingKey" sk WHERE sk.id=$1 FOR UPDATE`,
+      [signingKeyId],
+    );
+    if (!entry?.row) {
+      throw new Error('Signing key bootstrap create did not persist row');
+    }
+    const afterProj = projectSigningKey(entry.row as Record<string, unknown>);
+
+    const audit = new CrmAuditTransactionContext(runner, operation);
+    audit.record({
+      resourceKind: 'signingKey',
+      resourceId: signingKeyId,
+      action: 'create',
+      before: null,
+      after: afterProj,
+      securityDescriptor: {
+        resourceKind: 'signingKey',
+        resourceId: signingKeyId,
+        metadataAccess: 'currentWorkspaceAdministration',
+      },
+    });
+    await audit.flush();
+
+    const [postFlush] = await runner.query(
+      `SELECT to_jsonb(sk) AS row FROM core."signingKey" sk WHERE sk.id=$1`,
+      [signingKeyId],
+    );
+    if (
+      !postFlush?.row ||
+      canonicalAuditJson(
+        projectSigningKey(postFlush.row as Record<string, unknown>),
+      ) !== canonicalAuditJson(afterProj)
+    ) {
+      throw new Error('Signing key state changed during audit flush');
+    }
+
+    return result;
+  });
+};

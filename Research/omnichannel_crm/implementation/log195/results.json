@@ -1,0 +1,37 @@
+{
+  "log": "LOG-195",
+  "issue": "ROB-765",
+  "date": "2026-11-21",
+  "title": "Transactional audit of JWT signing key management (signingKey in core.signingKey)",
+  "targetedPostgres": {
+    "suitesPassed": 2,
+    "suitesTotal": 2,
+    "testsPassed": 16,
+    "testsTotal": 16,
+    "newPostgresTests": 5,
+    "durationSeconds": 9.09
+  },
+  "fullRegression": {
+    "suitesPassed": 131,
+    "suitesTotal": 131,
+    "testsPassed": 3223,
+    "testsTotal": 3223,
+    "durationSeconds": 723.682
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.176
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 494,
+    "currentRootFiles": 494,
+    "baselineDiagnostics": 300,
+    "currentDiagnostics": 292,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 7
+}

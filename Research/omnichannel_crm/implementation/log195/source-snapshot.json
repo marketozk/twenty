@@ -1,0 +1,13 @@
+{
+  "log": "LOG-195",
+  "verifiedFileCount": 7,
+  "files": {
+    "packages/twenty-server/src/engine/core-modules/admin-panel/admin-panel.resolver.ts": "eee2a776dc5186ddc9143e0883aa2b6131ed20ae3e2637e8ef7ee04eb62415b2",
+    "packages/twenty-server/src/engine/core-modules/admin-panel/services/admin-panel-signing-key.service.ts": "fe414d4c759583c5f0229d6f741b27161d34ea56fa679bd7739b0d82960869d5",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "868ca8da9359e9f3fb003ce36870e923f3aad66387388a804f0414f00a77dd36",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "65102cf819bce743d57bf7f78db80122ad0b312cf906cc3100da412898e2ab53",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/workspace-domain-audit.ts": "0a2da4cde362474b516a86034a2bbde0a98365046efe69a7ee628a2b5a64e4fc",
+    "packages/twenty-server/src/engine/core-modules/jwt/services/jwt-key-manager.service.ts": "7ff87154d0f67db74ddf5fbd38b08e30175bfbe0ed44a4aa0b7ca33690038fab",
+    "packages/twenty-server/test/fork-migration/crm-audit-signing-key.postgres-spec.ts": "77c6d38387c1460bf8b18ec2cd7c639bf4e4643bbd11a678a2357c99dc634ddc"
+  }
+}

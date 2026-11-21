@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { SigningKeyDTO } from 'src/engine/core-modules/admin-panel/dtos/signing-key.dto';
 import { SigningKeysAdminPanelDTO } from 'src/engine/core-modules/admin-panel/dtos/signing-keys-admin-panel.dto';
+import { type WorkspaceDomainAuditIdentity } from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { type SigningKeyEntity } from 'src/engine/core-modules/jwt/entities/signing-key.entity';
 import { JwtKeyManagerService } from 'src/engine/core-modules/jwt/services/jwt-key-manager.service';
 import { SigningKeyVerifyCounterService } from 'src/engine/core-modules/jwt/services/signing-key-verify-counter.service';
@@ -28,8 +29,14 @@ export class AdminPanelSigningKeyService {
     };
   }
 
-  async revokeSigningKey(id: string): Promise<SigningKeyDTO> {
-    const revoked = await this.jwtKeyManagerService.revokeSigningKey(id);
+  async revokeSigningKey(
+    id: string,
+    auditIdentity?: WorkspaceDomainAuditIdentity,
+  ): Promise<SigningKeyDTO> {
+    const revoked = await this.jwtKeyManagerService.revokeSigningKey(
+      id,
+      auditIdentity,
+    );
     const usage = await this.signingKeyVerifyCounterService.getUsageInWindow([
       revoked.id,
     ]);
