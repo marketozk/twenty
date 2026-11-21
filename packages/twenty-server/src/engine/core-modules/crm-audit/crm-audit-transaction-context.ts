@@ -415,8 +415,18 @@ const CATALOG: Record<
     redacted: [],
   },
   coreView: {
-    values: ['createdByUserWorkspaceId', 'visibility'],
-    redacted: [],
+    values: [
+      'applicationId',
+      'objectMetadataId',
+      'type',
+      'key',
+      'isCustom',
+      'isActive',
+      'isSystemSideEffect',
+      'createdByUserWorkspaceId',
+      'visibility',
+    ],
+    redacted: ['name', 'icon', 'position', 'anyFieldFilterValue', 'overrides'],
   },
   workspace: {
     values: [
@@ -916,7 +926,7 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   agentChatChannel: ['create', 'update', 'delete'],
   agentChatChannelRole: ['create', 'delete'],
   coreWorkflow: ['update'],
-  coreView: ['update'],
+  coreView: ['create', 'update', 'delete'],
   workspace: ['update'],
   application: ['create', 'update', 'delete'],
 };

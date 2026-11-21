@@ -26,7 +26,9 @@ import {
 import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
 import {
   assertWorkflowOrViewVisibility,
+  isAuditedCoreViewAction,
   persistWorkflowRunShareReconciliationIntent,
+  projectCoreView,
 } from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
 import { projectIndexMetadata } from 'src/engine/core-modules/crm-audit/index-metadata-audit';
 import {
@@ -1311,6 +1313,77 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       mappings.applicationVariables ?? {},
     );
 
+    const hasWorkflowTable = existingTables.has('workflow');
+    const hasViewTable = existingTables.has('view');
+    const readViewSnapshotWithOwner = async (lock: boolean) =>
+      hasViewTable
+        ? new Map<
+            string,
+            {
+              row: Record<string, unknown>;
+              ownerApplicationUniversalIdentifier: string | null;
+            }
+          >(
+            (
+              await runner.query(
+                `SELECT to_jsonb(v) AS row,
+                        to_jsonb(a)->>'universalIdentifier' AS "ownerApplicationUniversalIdentifier"
+                   FROM core.view v
+                   LEFT JOIN core.application a ON a.id = v."applicationId"
+                  WHERE v."workspaceId"=$1
+                  ORDER BY v.id${lock ? ' FOR UPDATE OF v' : ''}`,
+                [workspaceId],
+              )
+            ).map(
+              (entry: {
+                row: Record<string, unknown>;
+                ownerApplicationUniversalIdentifier: string | null;
+              }) => [uuid(entry.row.id), entry],
+            ),
+          )
+        : new Map<
+            string,
+            {
+              row: Record<string, unknown>;
+              ownerApplicationUniversalIdentifier: string | null;
+            }
+          >();
+
+    const beforeWorkflows = hasWorkflowTable
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'workflow',
+          workspaceId,
+          true,
+        )
+      : new Map<string, Record<string, unknown>>();
+    const beforeViewsWithOwner = await readViewSnapshotWithOwner(true);
+    const beforeViews = new Map<string, Record<string, unknown>>(
+      [...beforeViewsWithOwner.entries()].map(([id, entry]) => [
+        id,
+        entry.row,
+      ]),
+    );
+    const beforeViewsByUniversalId: Record<
+      string,
+      Record<string, unknown> | undefined
+    > = {};
+    for (const entry of beforeViewsWithOwner.values()) {
+      const viewUid = entry.row.universalIdentifier;
+      if (typeof viewUid === 'string') {
+        beforeViewsByUniversalId[viewUid.toLowerCase()] = {
+          ...entry.row,
+          ...(entry.ownerApplicationUniversalIdentifier
+            ? {
+                applicationUniversalIdentifier:
+                  entry.ownerApplicationUniversalIdentifier,
+              }
+            : {}),
+        };
+      }
+    }
+
     const auditedWorkflowUpdateActions = actions.filter(
       (action) =>
         action.metadataName === 'workflow' &&
@@ -1319,8 +1392,60 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
     const auditedViewUpdateActions = actions.filter(
       (action) =>
         action.metadataName === 'view' &&
-        isAuditedWorkflowOrViewUpdateAction(action),
+        action.type === 'update' &&
+        isAuditedCoreViewAction(action as never, beforeViewsByUniversalId),
     );
+    const plannedViewCreatesByUniversalId = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    for (const action of actions) {
+      if (action.metadataName !== 'view' || action.type !== 'create') continue;
+      if (mode !== 'manifest') {
+        throw new Error(
+          'Application metadata objectDelete/fieldDelete cannot create views',
+        );
+      }
+      if (!existingTables.has('view')) {
+        throw new Error('Application metadata audit table view is unavailable');
+      }
+      if (!action.flatEntity) {
+        throw new Error(
+          'Application metadata audit view create action requires flatEntity',
+        );
+      }
+      const universalId = uuid(action.flatEntity.universalIdentifier);
+      if (plannedViewCreatesByUniversalId.has(universalId)) {
+        throw new Error(
+          'Application metadata audit duplicate view create universalIdentifier',
+        );
+      }
+      if (
+        action.flatEntity.applicationUniversalIdentifier !== undefined &&
+        uuid(action.flatEntity.applicationUniversalIdentifier) !==
+          applicationUniversalIdentifier
+      ) {
+        throw new Error(
+          'Application metadata audit view create application mismatch',
+        );
+      }
+      const explicitId =
+        action.id !== undefined
+          ? uuid(action.id)
+          : action.flatEntity.id !== undefined
+            ? uuid(action.flatEntity.id)
+            : undefined;
+      if (explicitId !== undefined && beforeViews.has(explicitId)) {
+        throw new Error(
+          'Application metadata audit view create target ID already exists',
+        );
+      }
+      plannedViewCreatesByUniversalId.set(universalId, {
+        ...(explicitId !== undefined ? { id: explicitId } : {}),
+        flatEntity: action.flatEntity,
+      });
+    }
+
     const plannedAuditedWorkflowUpdates = new Set<string>();
     for (const action of auditedWorkflowUpdateActions) {
       if (mode !== 'manifest') {
@@ -1361,17 +1486,6 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       plannedAuditedViewUpdates.add(uuid(mappedId));
     }
 
-    const hasWorkflowTable = existingTables.has('workflow');
-    const hasViewTable = existingTables.has('view');
-    const beforeWorkflows = hasWorkflowTable
-      ? await readTableSnapshot(
-          runner,
-          existingTables,
-          'workflow',
-          workspaceId,
-          true,
-        )
-      : new Map<string, Record<string, unknown>>();
     for (const wfId of plannedAuditedWorkflowUpdates) {
       const beforeWf = beforeWorkflows.get(wfId);
       if (
@@ -1385,15 +1499,6 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       }
     }
 
-    const beforeViews = hasViewTable
-      ? await readTableSnapshot(
-          runner,
-          existingTables,
-          'view',
-          workspaceId,
-          true,
-        )
-      : new Map<string, Record<string, unknown>>();
     for (const viewId of plannedAuditedViewUpdates) {
       const beforeVw = beforeViews.get(viewId);
       if (
@@ -3274,13 +3379,18 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
         const mainGroupByFieldId = viewRow
           ? nullableUuid(viewRow.mainGroupByFieldMetadataId)
           : null;
+        const kanbanAggregateFieldId = viewRow
+          ? nullableUuid(viewRow.kanbanAggregateOperationFieldMetadataId)
+          : null;
         if (
           !viewRow ||
           ((objId === null || !plannedObjectDeletes.has(objId)) &&
             (calendarFieldId === null ||
               !plannedFieldDeletes.has(calendarFieldId)) &&
             (mainGroupByFieldId === null ||
-              !plannedFieldDeletes.has(mainGroupByFieldId)))
+              !plannedFieldDeletes.has(mainGroupByFieldId)) &&
+            (kanbanAggregateFieldId === null ||
+              !plannedFieldDeletes.has(kanbanAggregateFieldId)))
         ) {
           throw new Error(
             'Application metadata objectDelete cannot delete unrelated view',
@@ -3441,12 +3551,17 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
         const mainGroupByFieldId = viewRow
           ? nullableUuid(viewRow.mainGroupByFieldMetadataId)
           : null;
+        const kanbanAggregateFieldId = viewRow
+          ? nullableUuid(viewRow.kanbanAggregateOperationFieldMetadataId)
+          : null;
         if (
           !viewRow ||
           ((calendarFieldId === null ||
             !plannedFieldDeletes.has(calendarFieldId)) &&
             (mainGroupByFieldId === null ||
-              !plannedFieldDeletes.has(mainGroupByFieldId)))
+              !plannedFieldDeletes.has(mainGroupByFieldId)) &&
+            (kanbanAggregateFieldId === null ||
+              !plannedFieldDeletes.has(kanbanAggregateFieldId)))
         ) {
           throw new Error(
             'Application metadata fieldDelete cannot delete unrelated view',
@@ -4516,7 +4631,7 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       }
     }
 
-    // 9. Verify and record audited core.workflow and core.view visibility/ownership updates
+    // 9. Verify and record audited core.workflow and core.view lifecycle and visibility/ownership mutations
     let expectedWorkflowsAndViewsSerialized: string | undefined;
     const verifyWorkflowShareIntents: (() => Promise<void>)[] = [];
     if (hasWorkflowTable || hasViewTable) {
@@ -4529,15 +4644,7 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
             false,
           )
         : new Map<string, Record<string, unknown>>();
-      const afterViews = hasViewTable
-        ? await readTableSnapshot(
-            runner,
-            existingTables,
-            'view',
-            workspaceId,
-            false,
-          )
-        : new Map<string, Record<string, unknown>>();
+      const afterViewsWithOwner = await readViewSnapshotWithOwner(false);
 
       for (const wfId of plannedAuditedWorkflowUpdates) {
         const afterWf = afterWorkflows.get(wfId);
@@ -4601,26 +4708,167 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       }
 
       for (const viewId of plannedAuditedViewUpdates) {
-        const afterVw = afterViews.get(viewId);
+        const afterEntry = afterViewsWithOwner.get(viewId);
         if (
-          !afterVw ||
-          afterVw.deletedAt !== null ||
-          uuid(afterVw.applicationId) !== applicationId
+          !afterEntry ||
+          afterEntry.row.deletedAt !== null ||
+          uuid(afterEntry.row.applicationId) !== applicationId
         ) {
           throw new Error(
             'Application metadata view update removed or corrupted target view',
           );
         }
       }
-      for (const [viewId, beforeVw] of beforeViews.entries()) {
-        const afterVw = afterViews.get(viewId);
-        if (!afterVw || afterVw.deletedAt !== null) continue;
-        const beforeProj = projectCoreWorkflowOrView(beforeVw);
-        const afterProj = projectCoreWorkflowOrView(afterVw);
-        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+
+      for (const deletedViewId of plannedViewDeletes) {
+        if (!beforeViewsWithOwner.has(deletedViewId)) {
+          throw new Error(
+            'Application metadata view delete target row missing before migration',
+          );
+        }
+        if (afterViewsWithOwner.has(deletedViewId)) {
+          throw new Error(
+            'Application metadata view delete did not remove expected view',
+          );
+        }
+      }
+
+      const createdViewsByUniversalId = new Map<
+        string,
+        {
+          id: string;
+          row: Record<string, unknown>;
+          ownerApplicationUniversalIdentifier: string | null;
+        }
+      >();
+      for (const [viewId, afterEntry] of afterViewsWithOwner.entries()) {
+        if (uuid(afterEntry.row.workspaceId) !== workspaceId) {
+          throw new Error(
+            'Application metadata audit detected foreign workspace view row',
+          );
+        }
+        if (!beforeViewsWithOwner.has(viewId)) {
+          const universalId = uuid(afterEntry.row.universalIdentifier);
+          if (createdViewsByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit detected duplicate created view universalIdentifier',
+            );
+          }
+          createdViewsByUniversalId.set(universalId, {
+            id: viewId,
+            ...afterEntry,
+          });
+        }
+      }
+
+      if (
+        createdViewsByUniversalId.size !== plannedViewCreatesByUniversalId.size
+      ) {
+        throw new Error(
+          'Application metadata audit detected unplanned view create',
+        );
+      }
+
+      for (const [
+        universalId,
+        planned,
+      ] of plannedViewCreatesByUniversalId.entries()) {
+        const created = createdViewsByUniversalId.get(universalId);
+        if (!created) {
+          throw new Error(
+            'Application metadata view create did not persist expected row',
+          );
+        }
+        if (planned.id !== undefined && created.id !== planned.id) {
+          throw new Error(
+            'Application metadata view create persisted unexpected ID',
+          );
+        }
+        const afterProj = projectCoreView(
+          created.row,
+          created.ownerApplicationUniversalIdentifier,
+        );
+        if (afterProj.applicationId !== applicationId) {
+          throw new Error(
+            'Application metadata view create persisted unexpected applicationId',
+          );
+        }
+        if (
+          afterProj.visibility !== 'WORKSPACE' ||
+          afterProj.createdByUserWorkspaceId !== null
+        ) {
+          throw new Error(
+            'Application metadata audit cannot create view with non-workspace visibility or creator',
+          );
+        }
+        recordMutation('coreView', created.id, 'create', null, afterProj);
+      }
+
+      for (const [viewId, beforeEntry] of beforeViewsWithOwner.entries()) {
+        const beforeProj = projectCoreView(
+          beforeEntry.row,
+          beforeEntry.ownerApplicationUniversalIdentifier,
+        );
+        const afterEntry = afterViewsWithOwner.get(viewId);
+        if (!afterEntry) {
+          const objId = nullableUuid(beforeEntry.row.objectMetadataId);
+          const calendarFieldId = nullableUuid(
+            beforeEntry.row.calendarFieldMetadataId,
+          );
+          const mainGroupByFieldId = nullableUuid(
+            beforeEntry.row.mainGroupByFieldMetadataId,
+          );
+          const kanbanAggregateFieldId = nullableUuid(
+            beforeEntry.row.kanbanAggregateOperationFieldMetadataId,
+          );
+          const isCascaded =
+            (objId !== null && plannedObjectDeletes.has(objId)) ||
+            (calendarFieldId !== null &&
+              plannedFieldDeletes.has(calendarFieldId)) ||
+            (mainGroupByFieldId !== null &&
+              plannedFieldDeletes.has(mainGroupByFieldId)) ||
+            (kanbanAggregateFieldId !== null &&
+              plannedFieldDeletes.has(kanbanAggregateFieldId));
+          if (!plannedViewDeletes.has(viewId) && !isCascaded) {
+            throw new Error(
+              'Application metadata audit detected unplanned view delete',
+            );
+          }
+          if (!isCascaded && uuid(beforeEntry.row.applicationId) !== applicationId) {
+            throw new Error(
+              'Application metadata audit cannot delete foreign view',
+            );
+          }
+          recordMutation('coreView', viewId, 'delete', beforeProj, null);
+          continue;
+        }
+        if (beforeEntry.row.deletedAt !== afterEntry.row.deletedAt) {
+          throw new Error(
+            'Application metadata audit detected unplanned view soft-delete mutation',
+          );
+        }
+        if (afterEntry.row.deletedAt !== null) continue;
+        const afterProj = projectCoreView(
+          afterEntry.row,
+          afterEntry.ownerApplicationUniversalIdentifier,
+        );
+        if (
+          beforeProj.applicationId !== afterProj.applicationId ||
+          beforeProj.objectMetadataId !== afterProj.objectMetadataId
+        ) {
+          throw new Error(
+            'Application metadata audit detected unplanned view ownership or object mutation',
+          );
+        }
+        const securityChanged =
+          beforeProj.visibility !== afterProj.visibility ||
+          beforeProj.createdByUserWorkspaceId !==
+            afterProj.createdByUserWorkspaceId ||
+          beforeProj.isActive !== afterProj.isActive;
+        if (securityChanged) {
           if (
             !plannedAuditedViewUpdates.has(viewId) ||
-            uuid(afterVw.applicationId) !== applicationId
+            uuid(afterEntry.row.applicationId) !== applicationId
           ) {
             throw new Error(
               'Application metadata audit detected unplanned view visibility or creator mutation',
@@ -4637,28 +4885,15 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           recordMutation('coreView', viewId, 'update', beforeProj, afterProj);
         }
       }
-      for (const [viewId, afterVw] of afterViews.entries()) {
-        if (!beforeViews.has(viewId)) {
-          const afterProj = projectCoreWorkflowOrView(afterVw);
-          if (
-            afterProj.visibility !== 'WORKSPACE' ||
-            afterProj.createdByUserWorkspaceId !== null
-          ) {
-            throw new Error(
-              'Application metadata audit cannot create view with non-workspace visibility or creator',
-            );
-          }
-        }
-      }
 
       expectedWorkflowsAndViewsSerialized = canonicalAuditJson({
         workflows: [...afterWorkflows.entries()].map(([id, row]) => [
           id,
           projectCoreWorkflowOrView(row),
         ]),
-        views: [...afterViews.entries()].map(([id, row]) => [
+        views: [...afterViewsWithOwner.entries()].map(([id, entry]) => [
           id,
-          projectCoreWorkflowOrView(row),
+          projectCoreView(entry.row, entry.ownerApplicationUniversalIdentifier),
         ]),
       });
     }
@@ -8857,23 +9092,18 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
               false,
             )
           : new Map<string, Record<string, unknown>>();
-        const postFlushViews = hasViewTable
-          ? await readTableSnapshot(
-              runner,
-              existingTables,
-              'view',
-              workspaceId,
-              false,
-            )
-          : new Map<string, Record<string, unknown>>();
+        const postFlushViewsWithOwner = await readViewSnapshotWithOwner(false);
         const postFlushSerialized = canonicalAuditJson({
           workflows: [...postFlushWorkflows.entries()].map(([id, row]) => [
             id,
             projectCoreWorkflowOrView(row),
           ]),
-          views: [...postFlushViews.entries()].map(([id, row]) => [
+          views: [...postFlushViewsWithOwner.entries()].map(([id, entry]) => [
             id,
-            projectCoreWorkflowOrView(row),
+            projectCoreView(
+              entry.row,
+              entry.ownerApplicationUniversalIdentifier,
+            ),
           ]),
         });
         if (postFlushSerialized !== expectedWorkflowsAndViewsSerialized) {
@@ -9226,6 +9456,7 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
     'logicFunction',
     'timelineActivityType',
     'indexMetadata',
+    'view',
     'commandMenuItem',
     'pageLayout',
     'pageLayoutTab',
@@ -9478,7 +9709,7 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
     }
     if (existingTables.has('view') && existingTables.has('fieldMetadata')) {
       const [depRow] = await runner.query(
-        `SELECT n.id FROM core."navigationMenuItem" n INNER JOIN core.view v ON v.id=n."viewId" INNER JOIN core."fieldMetadata" f ON (f.id=v."calendarFieldMetadataId" OR f.id=v."mainGroupByFieldMetadataId") WHERE n."workspaceId"=$1 AND v."workspaceId"=$1 AND f."workspaceId"=$1 AND f."applicationId"=$2 LIMIT 1`,
+        `SELECT n.id FROM core."navigationMenuItem" n INNER JOIN core.view v ON v.id=n."viewId" INNER JOIN core."fieldMetadata" f ON (f.id=v."calendarFieldMetadataId" OR f.id=v."mainGroupByFieldMetadataId" OR to_jsonb(v)->>'kanbanAggregateOperationFieldMetadataId'=f.id::text) WHERE n."workspaceId"=$1 AND v."workspaceId"=$1 AND f."workspaceId"=$1 AND f."applicationId"=$2 LIMIT 1`,
         [normalizedWorkspaceId, normalizedApplicationId],
       );
       if (depRow) {
@@ -9493,6 +9724,31 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
     ) {
       const [depRow] = await runner.query(
         `SELECT n.id FROM core."navigationMenuItem" n INNER JOIN core."pageLayout" pl ON pl.id=n."pageLayoutId" INNER JOIN core."objectMetadata" o ON o.id=pl."objectMetadataId" WHERE n."workspaceId"=$1 AND pl."workspaceId"=$1 AND o."workspaceId"=$1 AND o."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+    }
+  }
+
+  if (existingTables.has('view')) {
+    if (existingTables.has('objectMetadata')) {
+      const [depRow] = await runner.query(
+        `SELECT v.id FROM core.view v INNER JOIN core."objectMetadata" o ON o.id=v."objectMetadataId" WHERE v."workspaceId"=$1 AND o."workspaceId"=$1 AND o."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+    }
+    if (existingTables.has('fieldMetadata')) {
+      const [depRow] = await runner.query(
+        `SELECT v.id FROM core.view v INNER JOIN core."fieldMetadata" f ON (f.id=v."calendarFieldMetadataId" OR f.id=v."mainGroupByFieldMetadataId" OR to_jsonb(v)->>'kanbanAggregateOperationFieldMetadataId'=f.id::text) WHERE v."workspaceId"=$1 AND f."workspaceId"=$1 AND f."applicationId"=$2 LIMIT 1`,
         [normalizedWorkspaceId, normalizedApplicationId],
       );
       if (depRow) {
@@ -9605,6 +9861,7 @@ type ReconcilableEntity = {
   folderUniversalIdentifier?: string | null;
   calendarFieldMetadataUniversalIdentifier?: string | null;
   mainGroupByFieldMetadataUniversalIdentifier?: string | null;
+  kanbanAggregateOperationFieldMetadataUniversalIdentifier?: string | null;
   configuration?: unknown;
   universalConfiguration?: unknown;
   deletedAt?: string | Date | null;
@@ -10034,6 +10291,12 @@ export const reconcileApplicationRoleAndPermissionOperations = ({
         (isPresent(existingView.mainGroupByFieldMetadataUniversalIdentifier) &&
           deletedFieldUniversalIdentifiers.has(
             existingView.mainGroupByFieldMetadataUniversalIdentifier,
+          )) ||
+        (isPresent(
+          existingView.kanbanAggregateOperationFieldMetadataUniversalIdentifier,
+        ) &&
+          deletedFieldUniversalIdentifiers.has(
+            existingView.kanbanAggregateOperationFieldMetadataUniversalIdentifier,
           ))
       ) {
         deletedViewUniversalIdentifiers.add(existingView.universalIdentifier);

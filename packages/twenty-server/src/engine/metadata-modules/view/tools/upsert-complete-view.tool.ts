@@ -196,7 +196,15 @@ export class UpsertCompleteViewTool extends BaseTool<
 
   async execute({
     input,
-    context: { workspaceId, userWorkspaceId },
+    context: {
+      workspaceId,
+      userWorkspaceId,
+      application,
+      agentId,
+      authContext,
+      userId,
+      actorContext,
+    },
   }: ToolExecuteArgs<
     typeof upsertCompleteViewInputSchema
   >): Promise<ToolOutput> {
@@ -266,6 +274,21 @@ export class UpsertCompleteViewTool extends BaseTool<
         )
       : undefined;
 
+    const auditIdentity = authContext
+      ? { auth: authContext, ...(agentId ? { agentId } : {}) }
+      : userId || actorContext?.workspaceMemberId || application?.id || agentId
+        ? {
+            ...(userId ? { user: { id: userId } } : {}),
+            ...(actorContext?.workspaceMemberId
+              ? { workspaceMemberId: actorContext.workspaceMemberId }
+              : {}),
+            ...(application?.id
+              ? { application: { id: application.id } }
+              : {}),
+            ...(agentId ? { agentId } : {}),
+          }
+        : undefined;
+
     const view = await this.completeViewUpsertService.upsertCompleteView({
       workspaceId,
       userWorkspaceId,
@@ -284,6 +307,7 @@ export class UpsertCompleteViewTool extends BaseTool<
       fields,
       filters,
       sorts,
+      ...(auditIdentity ? { auditIdentity } : {}),
     });
 
     return {

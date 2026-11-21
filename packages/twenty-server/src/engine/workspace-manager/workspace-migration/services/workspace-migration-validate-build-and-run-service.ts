@@ -17,6 +17,7 @@ import {
   withApplicationMetadataAudit,
 } from 'src/engine/core-modules/crm-audit/application-metadata-audit';
 import { hasConflictingMetadataAuditScope } from 'src/engine/core-modules/crm-audit/role-update-audit';
+import { isAuditedCoreViewAction } from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
 import { isAuditedCustomIndexAction } from 'src/engine/core-modules/crm-audit/index-metadata-audit';
 import { LoggerService } from 'src/engine/core-modules/logger/logger.service';
 import { WORKSPACE_MIGRATION_ACTION_COUNT_BUCKET_BOUNDARIES } from 'src/engine/core-modules/metrics/constants/workspace-migration-action-count-bucket-boundaries.constant';
@@ -215,6 +216,11 @@ export class WorkspaceMigrationValidateBuildAndRunService {
               action.metadataName,
             )) ||
           isAuditedWorkflowOrViewUpdateAction(action as never) ||
+          isAuditedCoreViewAction(
+            action as never,
+            buildArgs.fromToAllFlatEntityMaps.flatViewMaps?.from
+              ?.byUniversalIdentifier as never,
+          ) ||
           isAuditedCustomIndexAction(
             action as never,
             buildArgs.fromToAllFlatEntityMaps.flatIndexMaps?.from

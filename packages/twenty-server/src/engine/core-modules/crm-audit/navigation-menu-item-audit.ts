@@ -3,6 +3,10 @@ import { randomUUID } from 'node:crypto';
 import { isUUID } from 'class-validator';
 import { type DataSource, type QueryRunner } from 'typeorm';
 
+import {
+  isAuditedCoreViewAction,
+  projectCoreView,
+} from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
 import { captureCurrentCrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
 import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
 import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
@@ -3337,12 +3341,17 @@ export const computeCascadeDeletedNavigationMenuItemIds = ({
       const mainGroupByFieldId = nullableUuid(
         viewRow.mainGroupByFieldMetadataId,
       );
+      const kanbanAggregateFieldId = nullableUuid(
+        viewRow.kanbanAggregateOperationFieldMetadataId,
+      );
       if (
         (objId !== null && plannedObjectDeletes.has(objId)) ||
         (calendarFieldId !== null &&
           plannedFieldDeletes.has(calendarFieldId)) ||
         (mainGroupByFieldId !== null &&
-          plannedFieldDeletes.has(mainGroupByFieldId))
+          plannedFieldDeletes.has(mainGroupByFieldId)) ||
+        (kanbanAggregateFieldId !== null &&
+          plannedFieldDeletes.has(kanbanAggregateFieldId))
       ) {
         effectiveDeletedViewIds.add(viewId);
       }
@@ -3821,6 +3830,10 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
     >();
     const plannedNavUpdates = new Map<string, Record<string, unknown>>();
     const plannedNavDeletes = new Set<string>();
+    const plannedViewCreatesByUniversalIdentifier = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
     const plannedViewDeletes = new Set<string>();
     const plannedPageLayoutCreatesByUniversalIdentifier = new Map<
       string,
@@ -4109,15 +4122,62 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           }
           plannedNavDeletes.add(targetId);
         }
-      } else if (action.metadataName === 'view' && action.type === 'delete') {
-        const universalId = uuid(action.universalIdentifier);
-        const mappedId = mappings.views?.[universalId]?.id;
-        if (!mappedId) {
+      } else if (action.metadataName === 'view') {
+        if (action.type === 'delete') {
+          const universalId = uuid(action.universalIdentifier);
+          const mappedId = mappings.views?.[universalId]?.id;
+          if (!mappedId) {
+            throw new Error(
+              'Navigation menu item cascade audit missing view mapping',
+            );
+          }
+          plannedViewDeletes.add(uuid(mappedId));
+        } else if (action.type === 'create') {
+          if (
+            request.mode !== 'cascade' ||
+            request.expectedCreatedObjectId === undefined
+          ) {
+            throw new Error(
+              'Navigation menu item cascade audit disallows view create without expectedCreatedObjectId',
+            );
+          }
+          if (!action.flatEntity) {
+            throw new Error('Core view create action requires flatEntity');
+          }
+          const universalId = uuid(action.flatEntity.universalIdentifier);
+          if (plannedViewCreatesByUniversalIdentifier.has(universalId)) {
+            throw new Error(
+              'Core view create audit duplicate universalIdentifier',
+            );
+          }
+          if (
+            action.flatEntity.applicationUniversalIdentifier !== undefined &&
+            uuid(action.flatEntity.applicationUniversalIdentifier) !==
+              applicationUniversalIdentifier
+          ) {
+            throw new Error('Core view create action application mismatch');
+          }
+          const explicitId =
+            action.id !== undefined
+              ? uuid(action.id)
+              : action.flatEntity.id !== undefined
+                ? uuid(action.flatEntity.id)
+                : undefined;
+          plannedViewCreatesByUniversalIdentifier.set(universalId, {
+            ...(explicitId !== undefined ? { id: explicitId } : {}),
+            flatEntity: action.flatEntity,
+          });
+        } else if (
+          action.type === 'update' &&
+          isAuditedCoreViewAction(
+            action as never,
+            mappings.views as never,
+          )
+        ) {
           throw new Error(
-            'Navigation menu item cascade audit missing view mapping',
+            'Navigation menu item cascade audit disallows security-sensitive view update',
           );
         }
-        plannedViewDeletes.add(uuid(mappedId));
       } else if (action.metadataName === 'pageLayout') {
         if (action.type === 'create') {
           if (!action.flatEntity) {
@@ -6654,23 +6714,57 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       }
     }
 
-    const beforeViews =
-      reg?.hasViewTable === true &&
-      (plannedViewDeletes.size > 0 ||
-        plannedObjectDeletes.size > 0 ||
-        plannedFieldDeletes.size > 0)
-        ? new Map<string, Record<string, unknown>>(
-            (
-              await runner.query(
-                `SELECT to_jsonb(v) AS row FROM core.view v WHERE v."workspaceId"=$1 ORDER BY v.id FOR UPDATE`,
-                [request.workspaceId],
-              )
-            ).map((entry: { row: Record<string, unknown> }) => [
-              uuid(entry.row.id),
-              entry.row,
-            ]),
+    const readViewSnapshotWithOwner = async (lock: boolean) =>
+      new Map<
+        string,
+        {
+          row: Record<string, unknown>;
+          ownerApplicationUniversalIdentifier: string | null;
+        }
+      >(
+        (
+          await runner.query(
+            `SELECT to_jsonb(v) AS row,
+                    to_jsonb(a)->>'universalIdentifier' AS "ownerApplicationUniversalIdentifier"
+               FROM core.view v
+               LEFT JOIN core.application a ON a.id = v."applicationId"
+              WHERE v."workspaceId"=$1
+              ORDER BY v.id${lock ? ' FOR UPDATE OF v' : ''}`,
+            [request.workspaceId],
           )
-        : new Map<string, Record<string, unknown>>();
+        ).map(
+          (entry: {
+            row: Record<string, unknown>;
+            ownerApplicationUniversalIdentifier: string | null;
+          }) => [uuid(entry.row.id), entry],
+        ),
+      );
+
+    const tracksViews =
+      reg?.hasViewTable === true &&
+      (plannedViewCreatesByUniversalIdentifier.size > 0 ||
+        plannedViewDeletes.size > 0 ||
+        plannedObjectDeletes.size > 0 ||
+        plannedFieldDeletes.size > 0 ||
+        request.expectedCreatedObjectId !== undefined ||
+        actions.some((action) => action.metadataName === 'view'));
+
+    const beforeViewsWithOwner = tracksViews
+      ? await readViewSnapshotWithOwner(true)
+      : new Map<
+          string,
+          {
+            row: Record<string, unknown>;
+            ownerApplicationUniversalIdentifier: string | null;
+          }
+        >();
+
+    const beforeViews = new Map<string, Record<string, unknown>>(
+      [...beforeViewsWithOwner.entries()].map(([id, entry]) => [
+        id,
+        entry.row,
+      ]),
+    );
 
     const expectedDeletedNavIds = computeCascadeDeletedNavigationMenuItemIds({
       beforeNavigationMenuItems: beforeNavItems,
@@ -10423,6 +10517,182 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       );
     }
 
+    let expectedViewsSerialized: string | undefined;
+    if (tracksViews) {
+      const afterViewsWithOwner = await readViewSnapshotWithOwner(false);
+      const expectedDeletedViewIds = new Set<string>(plannedViewDeletes);
+      if (plannedObjectDeletes.size > 0 || plannedFieldDeletes.size > 0) {
+        for (const [viewId, viewEntry] of beforeViewsWithOwner.entries()) {
+          const objId = nullableUuid(viewEntry.row.objectMetadataId);
+          const calendarFieldId = nullableUuid(
+            viewEntry.row.calendarFieldMetadataId,
+          );
+          const mainGroupByFieldId = nullableUuid(
+            viewEntry.row.mainGroupByFieldMetadataId,
+          );
+          const kanbanAggregateFieldId = nullableUuid(
+            viewEntry.row.kanbanAggregateOperationFieldMetadataId,
+          );
+          if (
+            (objId !== null && plannedObjectDeletes.has(objId)) ||
+            (calendarFieldId !== null &&
+              plannedFieldDeletes.has(calendarFieldId)) ||
+            (mainGroupByFieldId !== null &&
+              plannedFieldDeletes.has(mainGroupByFieldId)) ||
+            (kanbanAggregateFieldId !== null &&
+              plannedFieldDeletes.has(kanbanAggregateFieldId))
+          ) {
+            expectedDeletedViewIds.add(viewId);
+          }
+        }
+      }
+
+      const createdViewsByUniversalId = new Map<
+        string,
+        {
+          id: string;
+          row: Record<string, unknown>;
+          ownerApplicationUniversalIdentifier: string | null;
+        }
+      >();
+      for (const [viewId, afterEntry] of afterViewsWithOwner.entries()) {
+        if (uuid(afterEntry.row.workspaceId) !== request.workspaceId) {
+          throw new Error('Core view audit detected foreign workspace row');
+        }
+        if (!beforeViewsWithOwner.has(viewId)) {
+          const universalId = uuid(afterEntry.row.universalIdentifier);
+          if (createdViewsByUniversalId.has(universalId)) {
+            throw new Error(
+              'Core view audit detected duplicate created universalIdentifier',
+            );
+          }
+          createdViewsByUniversalId.set(universalId, {
+            id: viewId,
+            ...afterEntry,
+          });
+        }
+      }
+
+      if (
+        createdViewsByUniversalId.size !==
+        plannedViewCreatesByUniversalIdentifier.size
+      ) {
+        throw new Error('Core view audit created row count mismatch');
+      }
+
+      for (const [
+        universalId,
+        planned,
+      ] of plannedViewCreatesByUniversalIdentifier.entries()) {
+        const created = createdViewsByUniversalId.get(universalId);
+        if (!created) {
+          throw new Error('Core view create did not persist expected row');
+        }
+        if (planned.id !== undefined && created.id !== planned.id) {
+          throw new Error('Core view create persisted unexpected ID');
+        }
+        const afterProj = projectCoreView(
+          created.row,
+          created.ownerApplicationUniversalIdentifier,
+        );
+        if (afterProj.applicationId !== applicationId) {
+          throw new Error('Core view create persisted unexpected applicationId');
+        }
+        if (
+          request.expectedCreatedObjectId !== undefined &&
+          afterProj.objectMetadataId !== request.expectedCreatedObjectId
+        ) {
+          throw new Error(
+            'Core view create persisted unexpected objectMetadataId',
+          );
+        }
+        if (
+          afterProj.visibility !== 'WORKSPACE' ||
+          afterProj.createdByUserWorkspaceId !== null
+        ) {
+          throw new Error(
+            'Core view cascade create cannot set non-workspace visibility or creator',
+          );
+        }
+        audit.record({
+          resourceKind: 'coreView',
+          resourceId: created.id,
+          action: 'create',
+          before: null,
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'coreView',
+            resourceId: created.id,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        recordedMutations += 1;
+      }
+
+      for (const plannedDeleteId of plannedViewDeletes) {
+        if (!beforeViewsWithOwner.has(plannedDeleteId)) {
+          throw new Error('Core view delete target row missing before migration');
+        }
+        if (afterViewsWithOwner.has(plannedDeleteId)) {
+          throw new Error('Core view delete did not remove expected row');
+        }
+      }
+
+      for (const [viewId, beforeEntry] of beforeViewsWithOwner.entries()) {
+        const afterEntry = afterViewsWithOwner.get(viewId);
+        if (!afterEntry) {
+          if (!expectedDeletedViewIds.has(viewId)) {
+            throw new Error('Core view audit detected unplanned view deletion');
+          }
+          audit.record({
+            resourceKind: 'coreView',
+            resourceId: viewId,
+            action: 'delete',
+            before: projectCoreView(
+              beforeEntry.row,
+              beforeEntry.ownerApplicationUniversalIdentifier,
+            ),
+            after: null,
+            securityDescriptor: {
+              resourceKind: 'coreView',
+              resourceId: viewId,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedMutations += 1;
+          continue;
+        }
+        const beforeProj = projectCoreView(
+          beforeEntry.row,
+          beforeEntry.ownerApplicationUniversalIdentifier,
+        );
+        const afterProj = projectCoreView(
+          afterEntry.row,
+          afterEntry.ownerApplicationUniversalIdentifier,
+        );
+        if (
+          beforeEntry.row.deletedAt !== afterEntry.row.deletedAt ||
+          beforeProj.applicationId !== afterProj.applicationId ||
+          beforeProj.objectMetadataId !== afterProj.objectMetadataId ||
+          beforeProj.visibility !== afterProj.visibility ||
+          beforeProj.createdByUserWorkspaceId !==
+            afterProj.createdByUserWorkspaceId ||
+          beforeProj.isActive !== afterProj.isActive
+        ) {
+          throw new Error(
+            'Core view audit detected unplanned view security mutation',
+          );
+        }
+      }
+
+      expectedViewsSerialized = canonicalAuditJson(
+        [...afterViewsWithOwner.entries()].map(([id, entry]) => [
+          id,
+          projectCoreView(entry.row, entry.ownerApplicationUniversalIdentifier),
+        ]),
+      );
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized = touchesNavItems
         ? serializeNavSnapshot(afterNavItems)
@@ -10595,6 +10865,21 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           throw new Error(
             'Page layout widget state changed during audit flush',
           );
+        }
+      }
+      if (expectedViewsSerialized !== undefined) {
+        const postFlushViewsWithOwner = await readViewSnapshotWithOwner(false);
+        const postFlushViewsSerialized = canonicalAuditJson(
+          [...postFlushViewsWithOwner.entries()].map(([id, entry]) => [
+            id,
+            projectCoreView(
+              entry.row,
+              entry.ownerApplicationUniversalIdentifier,
+            ),
+          ]),
+        );
+        if (postFlushViewsSerialized !== expectedViewsSerialized) {
+          throw new Error('Core view state changed during audit flush');
         }
       }
     }

@@ -33,7 +33,15 @@ export class UpdateViewTool extends BaseTool<typeof updateViewInputSchema> {
 
   async execute({
     input,
-    context: { workspaceId, userWorkspaceId },
+    context: {
+      workspaceId,
+      userWorkspaceId,
+      application,
+      agentId,
+      authContext,
+      userId,
+      actorContext,
+    },
   }: ToolExecuteArgs<typeof updateViewInputSchema>): Promise<ToolOutput> {
     await this.viewToolAccessService.findViewEditableByUserOrThrow({
       viewId: input.id,
@@ -41,6 +49,21 @@ export class UpdateViewTool extends BaseTool<typeof updateViewInputSchema> {
       userWorkspaceId,
       operation: 'update',
     });
+
+    const auditIdentity = authContext
+      ? { auth: authContext, ...(agentId ? { agentId } : {}) }
+      : userId || actorContext?.workspaceMemberId || application?.id || agentId
+        ? {
+            ...(userId ? { user: { id: userId } } : {}),
+            ...(actorContext?.workspaceMemberId
+              ? { workspaceMemberId: actorContext.workspaceMemberId }
+              : {}),
+            ...(application?.id
+              ? { application: { id: application.id } }
+              : {}),
+            ...(agentId ? { agentId } : {}),
+          }
+        : undefined;
 
     const view = await this.viewService.updateOne({
       updateViewInput: {
@@ -50,6 +73,7 @@ export class UpdateViewTool extends BaseTool<typeof updateViewInputSchema> {
       },
       workspaceId,
       userWorkspaceId,
+      ...(auditIdentity ? { auditIdentity } : {}),
     });
 
     return {

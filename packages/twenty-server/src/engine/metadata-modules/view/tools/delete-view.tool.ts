@@ -31,7 +31,15 @@ export class DeleteViewTool extends BaseTool<typeof deleteViewInputSchema> {
 
   async execute({
     input,
-    context: { workspaceId, userWorkspaceId },
+    context: {
+      workspaceId,
+      userWorkspaceId,
+      application,
+      agentId,
+      authContext,
+      userId,
+      actorContext,
+    },
   }: ToolExecuteArgs<typeof deleteViewInputSchema>): Promise<ToolOutput> {
     await this.viewToolAccessService.findViewEditableByUserOrThrow({
       viewId: input.id,
@@ -40,9 +48,25 @@ export class DeleteViewTool extends BaseTool<typeof deleteViewInputSchema> {
       operation: 'delete',
     });
 
+    const auditIdentity = authContext
+      ? { auth: authContext, ...(agentId ? { agentId } : {}) }
+      : userId || actorContext?.workspaceMemberId || application?.id || agentId
+        ? {
+            ...(userId ? { user: { id: userId } } : {}),
+            ...(actorContext?.workspaceMemberId
+              ? { workspaceMemberId: actorContext.workspaceMemberId }
+              : {}),
+            ...(application?.id
+              ? { application: { id: application.id } }
+              : {}),
+            ...(agentId ? { agentId } : {}),
+          }
+        : undefined;
+
     const view = await this.viewService.deleteOne({
       deleteViewInput: { id: input.id },
       workspaceId,
+      ...(auditIdentity ? { userWorkspaceId, auditIdentity } : {}),
     });
 
     return {

@@ -1,0 +1,39 @@
+{
+  "log": "LOG-197",
+  "issue": "ROB-765",
+  "date": "2026-11-21",
+  "title": "Transactional audit of full coreView lifecycle (create, update/deactivate, delete, cascades, and stateful fail-closed barrier)",
+  "targetedPostgres": {
+    "suitesPassed": 5,
+    "suitesTotal": 5,
+    "testsPassed": 25,
+    "testsTotal": 25,
+    "newPostgresTests": 4,
+    "durationSeconds": 15.88
+  },
+  "fullRegression": {
+    "suitesPassed": 132,
+    "suitesTotal": 133,
+    "testsPassed": 3230,
+    "testsTotal": 3231,
+    "durationSeconds": 730.932,
+    "preExistingUnrelatedFailure": "test/fork-migration/crm-audit-signing-key.postgres-spec.ts (LOG-195 UUID ordering flake on rotateCurrent lines 388-389, left untouched per scope discipline)"
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.173
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 504,
+    "currentRootFiles": 504,
+    "baselineDiagnostics": 288,
+    "currentDiagnostics": 275,
+    "newDiagnostics": 0,
+    "changedFileDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 16
+}

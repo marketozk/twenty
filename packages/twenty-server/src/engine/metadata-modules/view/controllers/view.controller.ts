@@ -146,10 +146,15 @@ export class ViewController {
     @Body() input: CreateViewInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
     @RequestLocale() locale?: keyof typeof APP_LOCALES,
+    @Req() request?: AuthenticatedRequest,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
   ): Promise<ViewDTO> {
     const view = await this.viewService.createOne({
       createViewInput: input,
       workspaceId: workspace.id,
+      createdByUserWorkspaceId: userWorkspaceId,
+      auditIdentity: request as never,
     });
 
     const processedViews = await this.processViewsWithTemplates(
@@ -197,10 +202,13 @@ export class ViewController {
     @Param('id') id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Req() request?: AuthenticatedRequest,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
   ): Promise<{ success: boolean }> {
     const deletedView = await this.viewService.deleteOne({
       deleteViewInput: { id },
       workspaceId: workspace.id,
+      userWorkspaceId,
       auditIdentity: request,
     });
 

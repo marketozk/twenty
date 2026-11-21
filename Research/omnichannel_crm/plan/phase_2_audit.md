@@ -417,8 +417,18 @@ LOG196 закрывает транзакционный аудит пользов
 `runAuditedApplicationMetadataMigration`, проверка остатков в
 `assertNoRemainingApplicationRoleOrPermissionMetadata`, редактирование `name` и `indexWhereClause`
 и пост-flush проверка).
+LOG197 закрывает транзакционный аудит полного жизненного цикла представлений (`coreView` в
+`core.view` в `core-workflow-and-view-audit.ts`, `ViewResolver`, `ViewController`, `ViewService`,
+`CompleteViewUpsertService`, AI tools `CreateViewTool` / `UpdateViewTool` / `DeleteViewTool` /
+`UpsertCompleteViewTool`, `navigation-menu-item-audit.ts`, `application-metadata-audit.ts`,
+`WorkspaceMigrationRunnerService.executeRun` и `WorkspaceMigrationValidateBuildAndRunService`:
+создание `create`, мягкая деактивация overridden views через `shouldDeactivate`, жёсткое удаление с
+каскадом `navigationMenuItem:delete`, stateful fail-closed барьер `isAuditedCoreViewAction` с
+legacy/authored `overrides`, workspace-wide snapshot, проверка `deletedAt`/`applicationId`/
+`objectMetadataId`, каскады `kanbanAggregateOperationFieldMetadataId` и проверка остатков при
+удалении `core.application`).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log196/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log197/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

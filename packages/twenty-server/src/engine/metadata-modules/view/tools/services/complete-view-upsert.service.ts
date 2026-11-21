@@ -11,6 +11,14 @@ import { isDefined } from 'twenty-shared/utils';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
+import {
+  captureCoreViewCreateAudit,
+  captureCoreViewUpdateAudit,
+  resolveEffectiveViewIsActive,
+  resolveEffectiveViewVisibility,
+  withCoreViewAudit,
+  type CoreWorkflowAndViewAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { type AllFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/types/all-flat-entity-maps.type';
 import { type FlatEntityToCreateDeleteUpdate } from 'src/engine/metadata-modules/flat-entity/types/flat-entity-to-create-delete-update.type';
@@ -76,6 +84,7 @@ export class CompleteViewUpsertService {
     fields,
     filters,
     sorts,
+    auditIdentity,
   }: {
     workspaceId: string;
     userWorkspaceId?: string;
@@ -94,7 +103,26 @@ export class CompleteViewUpsertService {
     fields?: CompleteViewFieldSpec[];
     filters?: CompleteViewFilterSpec[];
     sorts?: CompleteViewSortSpec[];
+    auditIdentity?: CoreWorkflowAndViewAuditIdentity;
   }): Promise<ViewDTO> {
+    const isCreatingView = !isDefined(existingViewId);
+    const getCreateAudit = isCreatingView
+      ? captureCoreViewCreateAudit({
+          workspaceId,
+          userWorkspaceId,
+          auditIdentity,
+        })
+      : undefined;
+    const getUpdateAudit =
+      !isCreatingView && isDefined(existingViewId)
+        ? captureCoreViewUpdateAudit({
+            workspaceId,
+            viewId: existingViewId,
+            userWorkspaceId,
+            auditIdentity,
+          })
+        : undefined;
+
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         {
@@ -132,8 +160,6 @@ export class CompleteViewUpsertService {
           ],
         },
       );
-
-    const isCreatingView = !isDefined(existingViewId);
 
     const rootOperations = isDefined(existingViewId)
       ? this.buildUpdateViewRootOperationsOrThrow({
@@ -212,8 +238,8 @@ export class CompleteViewUpsertService {
           : {}),
       };
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+    const runMigration = () =>
+      this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
         {
           allFlatEntityOperationByMetadataName,
           workspaceId,
@@ -221,6 +247,43 @@ export class CompleteViewUpsertService {
           applicationUniversalIdentifier,
         },
       );
+
+    const existingFlatViewUid =
+      !isCreatingView && isDefined(existingViewId)
+        ? flatViewMaps.universalIdentifierById[existingViewId]
+        : undefined;
+    const existingFlatViewForUpdate = isDefined(existingFlatViewUid)
+      ? flatViewMaps.byUniversalIdentifier[existingFlatViewUid]
+      : undefined;
+    const updatedFlatView = rootOperations.view?.flatEntityToUpdate?.[0];
+    const requiresUpdateAudit =
+      !isCreatingView &&
+      isDefined(existingFlatViewForUpdate) &&
+      isDefined(updatedFlatView) &&
+      (resolveEffectiveViewVisibility(
+        updatedFlatView as unknown as Record<string, unknown>,
+        existingFlatViewForUpdate.applicationUniversalIdentifier,
+      ) !==
+        resolveEffectiveViewVisibility(
+          existingFlatViewForUpdate as unknown as Record<string, unknown>,
+          existingFlatViewForUpdate.applicationUniversalIdentifier,
+        ) ||
+        resolveEffectiveViewIsActive(
+          updatedFlatView as unknown as Record<string, unknown>,
+          existingFlatViewForUpdate.applicationUniversalIdentifier,
+        ) !==
+          resolveEffectiveViewIsActive(
+            existingFlatViewForUpdate as unknown as Record<string, unknown>,
+            existingFlatViewForUpdate.applicationUniversalIdentifier,
+          ) ||
+        updatedFlatView.createdByUserWorkspaceId !==
+          existingFlatViewForUpdate.createdByUserWorkspaceId);
+
+    const validateAndBuildResult = isCreatingView
+      ? await withCoreViewAudit(getCreateAudit!(viewId), runMigration)
+      : requiresUpdateAudit
+        ? await withCoreViewAudit(getUpdateAudit!(), runMigration)
+        : await runMigration();
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

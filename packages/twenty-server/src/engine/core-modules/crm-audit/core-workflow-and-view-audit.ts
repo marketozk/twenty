@@ -5,7 +5,10 @@ import { type DataSource, type QueryRunner } from 'typeorm';
 
 import { captureCurrentCrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
 import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
-import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
+import {
+  captureCrmAuditOperation,
+  CrmAuditTransactionContext,
+} from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import {
   membershipCleanupOperation,
@@ -22,10 +25,26 @@ import {
 } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
 
+export type CoreWorkflowAndViewRequestIdentity = {
+  workspaceId?: string;
+  workspace?: { id: string };
+  user?: { id?: string } | null;
+  userWorkspaceId?: string;
+  workspaceMemberId?: string;
+  apiKey?: { id: string } | null;
+  application?: { id: string } | null;
+  agentId?: string;
+  impersonationContext?: { impersonatorUserWorkspaceId?: string };
+  impersonatorUserWorkspaceId?: string;
+  correlationId?: string;
+  causationId?: string;
+};
+
 export type CoreWorkflowAndViewAuditIdentity =
   | RoleUpdateAuditIdentity
   | MembershipCleanupIdentity
-  | Parameters<typeof roleAuditIdentityFromRequest>[0];
+  | Parameters<typeof roleAuditIdentityFromRequest>[0]
+  | CoreWorkflowAndViewRequestIdentity;
 
 export type CoreWorkflowVisibilityAuditRequest = Readonly<{
   kind: 'coreWorkflowVisibility';
@@ -38,8 +57,8 @@ export type CoreWorkflowVisibilityAuditRequest = Readonly<{
   runByVersion?: string | null;
 }>;
 
-export type CoreViewUpdateAuditRequest = Readonly<{
-  kind: 'coreViewUpdate';
+export type CoreViewCreateAuditRequest = Readonly<{
+  kind: 'coreViewCreate';
   workspaceId: string;
   viewId: string;
   userWorkspaceId?: string;
@@ -47,9 +66,23 @@ export type CoreViewUpdateAuditRequest = Readonly<{
   impersonatorUserWorkspaceId?: string;
 }>;
 
+export type CoreViewUpdateAuditRequest = Readonly<{
+  kind: 'coreViewUpdate';
+  workspaceId: string;
+  viewId: string;
+  userWorkspaceId?: string;
+  expectDeactivate?: boolean;
+  operation: CrmAuditOperation;
+  impersonatorUserWorkspaceId?: string;
+}>;
+
+export type CoreViewAuditRequest =
+  | CoreViewCreateAuditRequest
+  | CoreViewUpdateAuditRequest;
+
 export type CoreWorkflowAndViewAuditRequest =
   | CoreWorkflowVisibilityAuditRequest
-  | CoreViewUpdateAuditRequest;
+  | CoreViewAuditRequest;
 
 export type CoreViewAuditMappings = {
   application: { id: string; universalIdentifier: string };
@@ -66,6 +99,31 @@ type ViewMigrationAction = {
 };
 
 const VALID_VISIBILITIES = new Set<string>(['WORKSPACE', 'UNLISTED']);
+
+const VIEW_OVERRIDE_PROPERTY_KEYS = new Set<string>([
+  'isActive',
+  'name',
+  'type',
+  'icon',
+  'position',
+  'isCompact',
+  'openRecordIn',
+  'kanbanAggregateOperation',
+  'kanbanAggregateOperationFieldMetadataId',
+  'kanbanAggregateOperationFieldMetadataUniversalIdentifier',
+  'anyFieldFilterValue',
+  'calendarLayout',
+  'calendarFieldMetadataId',
+  'calendarFieldMetadataUniversalIdentifier',
+  'calendarEndFieldMetadataId',
+  'calendarEndFieldMetadataUniversalIdentifier',
+  'visibility',
+  'mainGroupByFieldMetadataId',
+  'mainGroupByFieldMetadataUniversalIdentifier',
+  'shouldHideEmptyGroups',
+  'kanbanColumnWidth',
+  'groupLoadLimit',
+]);
 
 const storage = new AsyncLocalStorage<CoreWorkflowAndViewAuditRequest>();
 const active = new WeakSet<CoreWorkflowAndViewAuditRequest>();
@@ -97,6 +155,251 @@ export const assertWorkflowOrViewVisibility = (
   return value as 'WORKSPACE' | 'UNLISTED';
 };
 
+const readViewOverrideProperty = (
+  overrides: unknown,
+  property: 'isActive' | 'visibility',
+  ownerApplicationUniversalIdentifier?: string | null,
+): unknown => {
+  if (!overrides || typeof overrides !== 'object' || Array.isArray(overrides)) {
+    return undefined;
+  }
+
+  const record = overrides as Record<string, unknown>;
+  const keys = Object.keys(record);
+  if (keys.length === 0) {
+    return undefined;
+  }
+
+  if (keys.some((key) => VIEW_OVERRIDE_PROPERTY_KEYS.has(key))) {
+    return record[property];
+  }
+
+  const normalizedOwnerUid =
+    typeof ownerApplicationUniversalIdentifier === 'string' &&
+    isUUID(ownerApplicationUniversalIdentifier)
+      ? ownerApplicationUniversalIdentifier.toLowerCase()
+      : undefined;
+
+  const nonOwnerEntries: unknown[] = [];
+  let ownerEntry: unknown;
+  for (const [authorKey, entry] of Object.entries(record)) {
+    if (
+      normalizedOwnerUid !== undefined &&
+      authorKey.toLowerCase() === normalizedOwnerUid
+    ) {
+      ownerEntry = entry;
+    } else {
+      nonOwnerEntries.push(entry);
+    }
+  }
+
+  for (const entry of [...nonOwnerEntries, ownerEntry]) {
+    if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+      const candidate = (entry as Record<string, unknown>)[property];
+      if (candidate !== undefined) {
+        return candidate;
+      }
+    }
+  }
+
+  return undefined;
+};
+
+export const resolveEffectiveViewIsActive = (
+  row: Record<string, unknown>,
+  ownerApplicationUniversalIdentifier?: string | null,
+): boolean => {
+  const overrideValue = readViewOverrideProperty(
+    row.overrides !== undefined ? row.overrides : row.universalOverrides,
+    'isActive',
+    ownerApplicationUniversalIdentifier ??
+      (typeof row.applicationUniversalIdentifier === 'string'
+        ? row.applicationUniversalIdentifier
+        : undefined),
+  );
+  if (typeof overrideValue === 'boolean') {
+    return overrideValue;
+  }
+
+  return row.isActive === undefined || row.isActive === null
+    ? true
+    : Boolean(row.isActive);
+};
+
+export const resolveEffectiveViewVisibility = (
+  row: Record<string, unknown>,
+  ownerApplicationUniversalIdentifier?: string | null,
+): 'WORKSPACE' | 'UNLISTED' => {
+  const overrideValue = readViewOverrideProperty(
+    row.overrides !== undefined ? row.overrides : row.universalOverrides,
+    'visibility',
+    ownerApplicationUniversalIdentifier ??
+      (typeof row.applicationUniversalIdentifier === 'string'
+        ? row.applicationUniversalIdentifier
+        : undefined),
+  );
+  const raw = overrideValue !== undefined ? overrideValue : row.visibility;
+
+  return assertWorkflowOrViewVisibility(raw ?? 'WORKSPACE');
+};
+
+export const projectCoreView = (
+  row: Record<string, unknown>,
+  ownerApplicationUniversalIdentifier?: string | null,
+) => ({
+  applicationId: nullableUuid(row.applicationId),
+  objectMetadataId: uuid(row.objectMetadataId),
+  type:
+    row.type === undefined || row.type === null ? 'TABLE' : String(row.type),
+  key: row.key === undefined || row.key === null ? null : String(row.key),
+  isCustom: Boolean(row.isCustom ?? false),
+  isActive: resolveEffectiveViewIsActive(
+    row,
+    ownerApplicationUniversalIdentifier,
+  ),
+  isSystemSideEffect: Boolean(row.isSystemSideEffect ?? false),
+  createdByUserWorkspaceId: nullableUuid(row.createdByUserWorkspaceId),
+  visibility: resolveEffectiveViewVisibility(
+    row,
+    ownerApplicationUniversalIdentifier,
+  ),
+  name: typeof row.name === 'string' ? row.name : '',
+  icon:
+    row.icon === undefined || row.icon === null ? null : String(row.icon),
+  position:
+    row.position === undefined || row.position === null
+      ? 0
+      : Number(row.position),
+  anyFieldFilterValue:
+    row.anyFieldFilterValue === undefined || row.anyFieldFilterValue === null
+      ? null
+      : String(row.anyFieldFilterValue),
+  overrides:
+    row.overrides === undefined || row.overrides === null
+      ? null
+      : row.overrides,
+});
+
+const lookupExistingView = (
+  universalIdentifier: unknown,
+  flatViewsByUniversalIdentifier?: Record<
+    string,
+    Record<string, unknown> | undefined
+  >,
+): Record<string, unknown> | undefined => {
+  if (
+    typeof universalIdentifier !== 'string' ||
+    !flatViewsByUniversalIdentifier
+  ) {
+    return undefined;
+  }
+
+  const direct = flatViewsByUniversalIdentifier[universalIdentifier];
+  if (direct) {
+    return direct;
+  }
+
+  const lower = universalIdentifier.toLowerCase();
+  if (flatViewsByUniversalIdentifier[lower]) {
+    return flatViewsByUniversalIdentifier[lower];
+  }
+
+  for (const [key, value] of Object.entries(flatViewsByUniversalIdentifier)) {
+    if (key.toLowerCase() === lower) {
+      return value;
+    }
+  }
+
+  return undefined;
+};
+
+export const isAuditedCoreViewAction = (
+  action: {
+    type: string;
+    metadataName: string;
+    universalIdentifier?: string;
+    update?: Record<string, unknown>;
+  },
+  flatViewsByUniversalIdentifier?: Record<
+    string,
+    Record<string, unknown> | undefined
+  >,
+): boolean => {
+  if (action.metadataName !== 'view') {
+    return false;
+  }
+
+  if (action.type === 'create' || action.type === 'delete') {
+    return true;
+  }
+
+  if (action.type !== 'update' || !action.update) {
+    return false;
+  }
+
+  const update = action.update;
+  const touchesSecurityField =
+    'visibility' in update ||
+    'createdByUserWorkspaceId' in update ||
+    'isActive' in update ||
+    'overrides' in update ||
+    'universalOverrides' in update;
+
+  if (!touchesSecurityField) {
+    return false;
+  }
+
+  const existing = lookupExistingView(
+    action.universalIdentifier,
+    flatViewsByUniversalIdentifier,
+  );
+  if (!existing) {
+    return true;
+  }
+
+  const ownerUid =
+    typeof existing.applicationUniversalIdentifier === 'string'
+      ? existing.applicationUniversalIdentifier
+      : undefined;
+
+  const beforeCreatedBy = nullableUuid(existing.createdByUserWorkspaceId);
+  const afterCreatedBy =
+    'createdByUserWorkspaceId' in update &&
+    update.createdByUserWorkspaceId !== undefined
+      ? nullableUuid(update.createdByUserWorkspaceId)
+      : beforeCreatedBy;
+
+  const beforeVisibility = resolveEffectiveViewVisibility(existing, ownerUid);
+  const beforeIsActive = resolveEffectiveViewIsActive(existing, ownerUid);
+
+  const patched: Record<string, unknown> = {
+    ...existing,
+    ...('visibility' in update && update.visibility !== undefined
+      ? { visibility: update.visibility }
+      : {}),
+    ...('isActive' in update && update.isActive !== undefined
+      ? { isActive: update.isActive }
+      : {}),
+    ...('universalOverrides' in update
+      ? {
+          overrides: update.universalOverrides,
+          universalOverrides: update.universalOverrides,
+        }
+      : 'overrides' in update
+        ? { overrides: update.overrides }
+        : {}),
+  };
+
+  const afterVisibility = resolveEffectiveViewVisibility(patched, ownerUid);
+  const afterIsActive = resolveEffectiveViewIsActive(patched, ownerUid);
+
+  return (
+    beforeCreatedBy !== afterCreatedBy ||
+    beforeVisibility !== afterVisibility ||
+    beforeIsActive !== afterIsActive
+  );
+};
+
 export const getCoreWorkflowAndViewAudit = (workspaceId: string) => {
   const request = storage.getStore();
   if (!request) return undefined;
@@ -107,23 +410,28 @@ export const getCoreWorkflowAndViewAudit = (workspaceId: string) => {
   return request;
 };
 
-export const getCoreViewUpdateAudit = (
+export const getCoreViewAudit = (
   workspaceId: string,
-): CoreViewUpdateAuditRequest | undefined => {
+): CoreViewAuditRequest | undefined => {
   const request = getCoreWorkflowAndViewAudit(workspaceId);
   if (!request) return undefined;
-  if (request.kind !== 'coreViewUpdate') {
-    throw new Error('Core view update audit context mismatch');
+  if (request.kind !== 'coreViewCreate' && request.kind !== 'coreViewUpdate') {
+    throw new Error('Core view audit context mismatch');
   }
 
   return request;
 };
+
+export const getCoreViewUpdateAudit = (
+  workspaceId: string,
+): CoreViewAuditRequest | undefined => getCoreViewAudit(workspaceId);
 
 registerMetadataAuditScopeCheck(getCoreWorkflowAndViewAudit);
 
 const resolveCapturedOperation = (
   normalizedWorkspaceId: string,
   identity: CoreWorkflowAndViewAuditIdentity | undefined,
+  defaultSystemActorId?: string,
 ): {
   operation: CrmAuditOperation;
   impersonatorUserWorkspaceId?: string;
@@ -159,11 +467,36 @@ const resolveCapturedOperation = (
       return { operation };
     }
 
+    const requestIdentity =
+      identity && typeof identity === 'object' && !('auth' in identity)
+        ? {
+            ...(identity as CoreWorkflowAndViewRequestIdentity),
+            workspace:
+              (identity as CoreWorkflowAndViewRequestIdentity).workspace ?? {
+                id: normalizedWorkspaceId,
+              },
+            ...(typeof (identity as CoreWorkflowAndViewRequestIdentity)
+              .impersonatorUserWorkspaceId === 'string' &&
+            !(identity as CoreWorkflowAndViewRequestIdentity)
+              .impersonationContext
+              ? {
+                  impersonationContext: {
+                    impersonatorUserWorkspaceId: (
+                      identity as CoreWorkflowAndViewRequestIdentity
+                    ).impersonatorUserWorkspaceId,
+                  },
+                }
+              : {}),
+          }
+        : undefined;
+
     const roleIdentity =
       identity && typeof identity === 'object' && 'auth' in identity
         ? (identity as RoleUpdateAuditIdentity)
         : roleAuditIdentityFromRequest(
-            identity as Parameters<typeof roleAuditIdentityFromRequest>[0],
+            requestIdentity as Parameters<
+              typeof roleAuditIdentityFromRequest
+            >[0],
           );
     const capturedIdentity = captureRoleAuditIdentity(roleIdentity);
     const operation = captureRoleAuditOperation(
@@ -194,6 +527,16 @@ const resolveCapturedOperation = (
             ),
           }
         : {}),
+    };
+  }
+
+  if (defaultSystemActorId) {
+    return {
+      operation: captureCrmAuditOperation({
+        workspaceId: normalizedWorkspaceId,
+        operationId: randomUUID(),
+        actor: { kind: 'system', id: defaultSystemActorId },
+      }),
     };
   }
 
@@ -255,16 +598,66 @@ export const captureCoreWorkflowVisibilityAudit = ({
   }
 };
 
-export const captureCoreViewUpdateAudit = ({
+export const captureCoreViewCreateAudit = ({
   workspaceId,
-  viewId,
   userWorkspaceId,
   auditIdentity,
 }: {
   workspaceId: string;
-  viewId: string;
   userWorkspaceId?: string;
   auditIdentity?: CoreWorkflowAndViewAuditIdentity;
+}): ((viewId: string) => CoreViewCreateAuditRequest) => {
+  try {
+    const normalizedWorkspaceId = uuid(workspaceId);
+    const normalizedUserWorkspaceId =
+      userWorkspaceId === undefined ? undefined : uuid(userWorkspaceId);
+    if (
+      getCoreWorkflowAndViewAudit(normalizedWorkspaceId) ||
+      hasConflictingMetadataAuditScope(
+        normalizedWorkspaceId,
+        getCoreWorkflowAndViewAudit,
+      )
+    ) {
+      throw new Error('Nested core workflow/view audit is unsupported');
+    }
+
+    const { operation, impersonatorUserWorkspaceId } = resolveCapturedOperation(
+      normalizedWorkspaceId,
+      auditIdentity,
+    );
+
+    return (viewId: string) =>
+      Object.freeze({
+        kind: 'coreViewCreate' as const,
+        workspaceId: normalizedWorkspaceId,
+        viewId: uuid(viewId),
+        ...(normalizedUserWorkspaceId !== undefined
+          ? { userWorkspaceId: normalizedUserWorkspaceId }
+          : {}),
+        operation,
+        ...(impersonatorUserWorkspaceId ? { impersonatorUserWorkspaceId } : {}),
+      });
+  } catch (error) {
+    return () => {
+      throw error;
+    };
+  }
+};
+
+export const captureCoreViewUpdateAudit = ({
+  workspaceId,
+  viewId,
+  userWorkspaceId,
+  expectDeactivate,
+  auditIdentity,
+  defaultSystemActorId,
+}: {
+  workspaceId: string;
+  viewId: string;
+  userWorkspaceId?: string;
+  expectDeactivate?: boolean;
+  auditIdentity?: CoreWorkflowAndViewAuditIdentity;
+  defaultSystemActorId?: string;
 }): (() => CoreViewUpdateAuditRequest) => {
   try {
     const normalizedWorkspaceId = uuid(workspaceId);
@@ -284,6 +677,7 @@ export const captureCoreViewUpdateAudit = ({
     const { operation, impersonatorUserWorkspaceId } = resolveCapturedOperation(
       normalizedWorkspaceId,
       auditIdentity,
+      defaultSystemActorId,
     );
     const request: CoreViewUpdateAuditRequest = Object.freeze({
       kind: 'coreViewUpdate',
@@ -292,6 +686,7 @@ export const captureCoreViewUpdateAudit = ({
       ...(normalizedUserWorkspaceId !== undefined
         ? { userWorkspaceId: normalizedUserWorkspaceId }
         : {}),
+      ...(expectDeactivate ? { expectDeactivate: true } : {}),
       operation,
       ...(impersonatorUserWorkspaceId ? { impersonatorUserWorkspaceId } : {}),
     });
@@ -304,14 +699,14 @@ export const captureCoreViewUpdateAudit = ({
   }
 };
 
-export const withCoreViewUpdateAudit = async <TResult>(
-  request: CoreViewUpdateAuditRequest,
+export const withCoreViewAudit = async <TResult>(
+  request: CoreViewAuditRequest,
   work: () => Promise<TResult>,
 ): Promise<TResult> => {
   if (
     !request ||
     typeof request !== 'object' ||
-    request.kind !== 'coreViewUpdate' ||
+    (request.kind !== 'coreViewCreate' && request.kind !== 'coreViewUpdate') ||
     consumed.has(request) ||
     getCoreWorkflowAndViewAudit(request.workspaceId) ||
     hasConflictingMetadataAuditScope(
@@ -329,6 +724,8 @@ export const withCoreViewUpdateAudit = async <TResult>(
     active.delete(request);
   }
 };
+
+export const withCoreViewUpdateAudit = withCoreViewAudit;
 
 const verifyActiveWorkspaceAndMembership = async (
   runner: QueryRunner,
@@ -694,9 +1091,18 @@ export const runAuditedCoreWorkflowVisibilityUpdate = async (
   }
 };
 
-export const runAuditedCoreViewUpdate = async <TResult>(
+const ALLOWED_CORE_VIEW_CHILD_METADATA_NAMES = new Set<string>([
+  'viewGroup',
+  'viewField',
+  'viewFilter',
+  'viewSort',
+  'viewFilterGroup',
+  'viewFieldGroup',
+]);
+
+export const runAuditedCoreViewMutation = async <TResult>(
   dataSource: DataSource | undefined,
-  request: CoreViewUpdateAuditRequest,
+  request: CoreViewAuditRequest,
   actions: ViewMigrationAction[],
   mappings: CoreViewAuditMappings | undefined,
   work: (runner: QueryRunner) => Promise<TResult>,
@@ -704,7 +1110,7 @@ export const runAuditedCoreViewUpdate = async <TResult>(
   if (
     !request ||
     typeof request !== 'object' ||
-    request.kind !== 'coreViewUpdate' ||
+    (request.kind !== 'coreViewCreate' && request.kind !== 'coreViewUpdate') ||
     !active.has(request) ||
     consumed.has(request) ||
     hasConflictingMetadataAuditScope(
@@ -712,39 +1118,209 @@ export const runAuditedCoreViewUpdate = async <TResult>(
       getCoreWorkflowAndViewAudit,
     )
   ) {
-    throw new Error('Core view update audit scope is invalid or reused');
+    throw new Error('Core view audit scope is invalid or reused');
   }
   if (!dataSource) {
-    throw new Error('Core view update audit requires core DataSource');
+    throw new Error('Core view audit requires core DataSource');
   }
-  if (!mappings?.views) {
-    throw new Error('Core view update audit requires view mappings');
+  if (!mappings?.views || !mappings.application) {
+    throw new Error('Core view audit requires view and application mappings');
   }
 
+  const expectedApplicationId = uuid(mappings.application.id);
+  const expectedApplicationUniversalId = uuid(
+    mappings.application.universalIdentifier,
+  );
   const viewActions = actions.filter(
     (action) => action.metadataName === 'view',
   );
   for (const action of actions) {
     if (
       action.metadataName !== 'view' &&
-      !(
-        action.metadataName === 'viewGroup' &&
-        (action.type === 'create' || action.type === 'delete')
-      )
+      !ALLOWED_CORE_VIEW_CHILD_METADATA_NAMES.has(action.metadataName)
     ) {
       throw new Error(
-        `Core view update audit does not allow ${action.metadataName} ${action.type} action`,
+        `Core view audit does not allow ${action.metadataName} ${action.type} action`,
       );
     }
   }
+
+  if (request.kind === 'coreViewCreate') {
+    if (viewActions.length !== 1 || viewActions[0].type !== 'create') {
+      throw new Error(
+        'Core view create audit requires exactly one create action on view',
+      );
+    }
+    const plannedId = viewActions[0].id ?? viewActions[0].flatEntity?.id;
+    if (plannedId !== undefined && uuid(plannedId) !== request.viewId) {
+      throw new Error('Core view create audit resolved a different view ID');
+    }
+    if (
+      viewActions[0].flatEntity?.applicationUniversalIdentifier !== undefined &&
+      uuid(viewActions[0].flatEntity.applicationUniversalIdentifier) !==
+        expectedApplicationUniversalId
+    ) {
+      throw new Error('Core view create audit application mismatch');
+    }
+
+    consumed.add(request);
+
+    return runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+      await verifyActiveWorkspaceAndMembership(
+        runner,
+        request.workspaceId,
+        request.userWorkspaceId,
+        request.operation,
+        false,
+      );
+
+      const [appRow] = await runner.query(
+        `SELECT id, "workspaceId", "universalIdentifier", to_jsonb(a)->>'deletedAt' AS "deletedAt"
+           FROM core.application a
+          WHERE a.id=$1
+            FOR KEY SHARE`,
+        [expectedApplicationId],
+      );
+      if (
+        !appRow ||
+        appRow.deletedAt !== null ||
+        uuid(appRow.workspaceId) !== request.workspaceId ||
+        uuid(appRow.universalIdentifier) !== expectedApplicationUniversalId
+      ) {
+        throw new Error('Core view create audit application unavailable');
+      }
+
+      const readWorkspaceViews = (lock: boolean) =>
+        runner
+          .query(
+            `SELECT v.id,
+                    v."workspaceId",
+                    to_jsonb(v)->>'deletedAt' AS "deletedAt",
+                    to_jsonb(v) AS row,
+                    to_jsonb(a)->>'universalIdentifier' AS "ownerApplicationUniversalIdentifier"
+               FROM core.view v
+               LEFT JOIN core.application a ON a.id = v."applicationId"
+              WHERE v."workspaceId"=$1
+              ORDER BY v.id${lock ? ' FOR UPDATE OF v' : ''}`,
+            [request.workspaceId],
+          )
+          .then(
+            (
+              rows: Array<{
+                id: string;
+                workspaceId: string;
+                deletedAt: string | null;
+                row: Record<string, unknown>;
+                ownerApplicationUniversalIdentifier: string | null;
+              }>,
+            ) => new Map(rows.map((entry) => [uuid(entry.id), entry])),
+          );
+
+      const beforeViews = await readWorkspaceViews(true);
+      if (beforeViews.has(request.viewId)) {
+        throw new Error('Core view create target view ID already exists');
+      }
+
+      const result = await work(runner);
+
+      const afterViews = await readWorkspaceViews(false);
+      const afterView = afterViews.get(request.viewId);
+      if (
+        !afterView ||
+        afterView.deletedAt !== null ||
+        uuid(afterView.workspaceId) !== request.workspaceId
+      ) {
+        throw new Error('Core view create did not persist expected view');
+      }
+      if (afterViews.size !== beforeViews.size + 1) {
+        throw new Error(
+          'Core view create audit detected unexpected view row count change',
+        );
+      }
+      for (const [id, beforeEntry] of beforeViews.entries()) {
+        const currentEntry = afterViews.get(id);
+        if (
+          !currentEntry ||
+          canonicalAuditJson(currentEntry.row) !==
+            canonicalAuditJson(beforeEntry.row)
+        ) {
+          throw new Error(
+            'Core view create audit detected unplanned mutation of another view',
+          );
+        }
+      }
+
+      const afterProj = projectCoreView(
+        afterView.row,
+        afterView.ownerApplicationUniversalIdentifier,
+      );
+      if (afterProj.applicationId !== expectedApplicationId) {
+        throw new Error(
+          'Core view create persisted unexpected applicationId',
+        );
+      }
+      const expectedCreatedBy = request.userWorkspaceId ?? null;
+      if (afterProj.createdByUserWorkspaceId !== expectedCreatedBy) {
+        throw new Error(
+          'Core view create persisted unexpected createdByUserWorkspaceId',
+        );
+      }
+      if (
+        afterProj.visibility === 'UNLISTED' &&
+        afterProj.createdByUserWorkspaceId === null
+      ) {
+        throw new Error(
+          'Unlisted view create requires an authenticated creator userWorkspaceId',
+        );
+      }
+
+      const operation = await resolveRoleAuditInitiator(
+        runner,
+        request.operation,
+        request.impersonatorUserWorkspaceId,
+      );
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      audit.record({
+        action: 'create',
+        resourceKind: 'coreView',
+        resourceId: request.viewId,
+        before: null,
+        after: afterProj,
+        securityDescriptor: {
+          resourceKind: 'coreView',
+          resourceId: request.viewId,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+      await audit.flush();
+
+      const postFlushViews = await readWorkspaceViews(false);
+      const expectedSerialized = canonicalAuditJson(
+        [...afterViews.entries()].map(([id, entry]) => [id, entry.row]),
+      );
+      const postFlushSerialized = canonicalAuditJson(
+        [...postFlushViews.entries()].map(([id, entry]) => [id, entry.row]),
+      );
+      if (postFlushSerialized !== expectedSerialized) {
+        throw new Error('Core view state changed during audit flush');
+      }
+
+      return result;
+    });
+  }
+
   if (viewActions.some((action) => action.type !== 'update')) {
     throw new Error(
       'Core view update audit allows only update actions on view',
     );
   }
   for (const viewAction of viewActions) {
-    const mappedViewId =
-      mappings.views[uuid(viewAction.universalIdentifier)]?.id;
+    const mappedView = lookupExistingView(
+      viewAction.universalIdentifier,
+      mappings.views as Record<string, Record<string, unknown> | undefined>,
+    );
+    const mappedViewId = mappedView?.id;
     if (!mappedViewId || uuid(mappedViewId) !== request.viewId) {
       throw new Error('Core view update audit resolved a different view ID');
     }
@@ -762,21 +1338,34 @@ export const runAuditedCoreViewUpdate = async <TResult>(
       false,
     );
 
-    const readView = () =>
-      runner.query(
-        `SELECT v.id,
-                v."workspaceId",
-                to_jsonb(v)->>'createdByUserWorkspaceId' AS "createdByUserWorkspaceId",
-                to_jsonb(v)->>'visibility' AS "visibility",
-                to_jsonb(v)->>'deletedAt' AS "deletedAt",
-                to_jsonb(v) AS row
-           FROM core.view v
-          WHERE v.id=$1 AND v."workspaceId"=$2
-            FOR NO KEY UPDATE`,
-        [request.viewId, request.workspaceId],
-      );
+    const readWorkspaceViews = (lock: boolean) =>
+      runner
+        .query(
+          `SELECT v.id,
+                  v."workspaceId",
+                  to_jsonb(v)->>'deletedAt' AS "deletedAt",
+                  to_jsonb(v) AS row,
+                  to_jsonb(a)->>'universalIdentifier' AS "ownerApplicationUniversalIdentifier"
+             FROM core.view v
+             LEFT JOIN core.application a ON a.id = v."applicationId"
+            WHERE v."workspaceId"=$1
+            ORDER BY v.id${lock ? ' FOR UPDATE OF v' : ''}`,
+          [request.workspaceId],
+        )
+        .then(
+          (
+            rows: Array<{
+              id: string;
+              workspaceId: string;
+              deletedAt: string | null;
+              row: Record<string, unknown>;
+              ownerApplicationUniversalIdentifier: string | null;
+            }>,
+          ) => new Map(rows.map((entry) => [uuid(entry.id), entry])),
+        );
 
-    const [beforeView] = await readView();
+    const beforeViews = await readWorkspaceViews(true);
+    const beforeView = beforeViews.get(request.viewId);
     if (
       !beforeView ||
       beforeView.deletedAt !== null ||
@@ -785,45 +1374,50 @@ export const runAuditedCoreViewUpdate = async <TResult>(
       throw new Error('Core view update target view is unavailable');
     }
 
-    const beforeCreatedBy = nullableUuid(beforeView.createdByUserWorkspaceId);
-    const beforeVisibility = assertWorkflowOrViewVisibility(
-      beforeView.visibility,
+    const ownerAppUid: string | null =
+      beforeView.ownerApplicationUniversalIdentifier ?? null;
+    const beforeProj = projectCoreView(beforeView.row, ownerAppUid);
+    const beforeCreatedBy = beforeProj.createdByUserWorkspaceId;
+    const beforeVisibility = beforeProj.visibility;
+    const beforeIsActive = beforeProj.isActive;
+
+    const mergedUpdate: Record<string, unknown> = {};
+    for (const action of viewActions) {
+      if (action.update) {
+        Object.assign(mergedUpdate, action.update);
+      }
+    }
+
+    const expectedPatchedRow: Record<string, unknown> = {
+      ...beforeView.row,
+      ...('visibility' in mergedUpdate && mergedUpdate.visibility !== undefined
+        ? { visibility: mergedUpdate.visibility }
+        : {}),
+      ...('isActive' in mergedUpdate && mergedUpdate.isActive !== undefined
+        ? { isActive: mergedUpdate.isActive }
+        : {}),
+      ...('universalOverrides' in mergedUpdate
+        ? {
+            overrides: mergedUpdate.universalOverrides,
+            universalOverrides: mergedUpdate.universalOverrides,
+          }
+        : 'overrides' in mergedUpdate
+          ? { overrides: mergedUpdate.overrides }
+          : {}),
+    };
+
+    const expectedVisibility = resolveEffectiveViewVisibility(
+      expectedPatchedRow,
+      ownerAppUid,
     );
-
-    const expectedVisibility =
-      viewActions.length > 0 &&
-      viewActions.some(
-        (action) =>
-          action.update !== undefined &&
-          'visibility' in action.update &&
-          action.update.visibility !== undefined,
-      )
-        ? assertWorkflowOrViewVisibility(
-            viewActions.find(
-              (action) =>
-                action.update !== undefined &&
-                'visibility' in action.update &&
-                action.update.visibility !== undefined,
-            )!.update!.visibility,
-          )
-        : beforeVisibility;
-
+    const expectedIsActive = resolveEffectiveViewIsActive(
+      expectedPatchedRow,
+      ownerAppUid,
+    );
     const expectedCreatedBy =
-      viewActions.length > 0 &&
-      viewActions.some(
-        (action) =>
-          action.update !== undefined &&
-          'createdByUserWorkspaceId' in action.update &&
-          action.update.createdByUserWorkspaceId !== undefined,
-      )
-        ? nullableUuid(
-            viewActions.find(
-              (action) =>
-                action.update !== undefined &&
-                'createdByUserWorkspaceId' in action.update &&
-                action.update.createdByUserWorkspaceId !== undefined,
-            )!.update!.createdByUserWorkspaceId,
-          )
+      'createdByUserWorkspaceId' in mergedUpdate &&
+      mergedUpdate.createdByUserWorkspaceId !== undefined
+        ? nullableUuid(mergedUpdate.createdByUserWorkspaceId)
         : beforeCreatedBy;
 
     if (
@@ -855,7 +1449,8 @@ export const runAuditedCoreViewUpdate = async <TResult>(
 
     const result = await work(runner);
 
-    const [afterView] = await readView();
+    const afterViews = await readWorkspaceViews(false);
+    const afterView = afterViews.get(request.viewId);
     if (
       !afterView ||
       afterView.deletedAt !== null ||
@@ -863,11 +1458,32 @@ export const runAuditedCoreViewUpdate = async <TResult>(
     ) {
       throw new Error('Core view update removed or corrupted target view');
     }
+    if (afterViews.size !== beforeViews.size) {
+      throw new Error(
+        'Core view update audit detected unexpected view row count change',
+      );
+    }
+    for (const [id, beforeEntry] of beforeViews.entries()) {
+      if (id === request.viewId) continue;
+      const currentEntry = afterViews.get(id);
+      if (
+        !currentEntry ||
+        canonicalAuditJson(currentEntry.row) !==
+          canonicalAuditJson(beforeEntry.row)
+      ) {
+        throw new Error(
+          'Core view update audit detected unplanned mutation of another view',
+        );
+      }
+    }
 
-    const afterCreatedBy = nullableUuid(afterView.createdByUserWorkspaceId);
-    const afterVisibility = assertWorkflowOrViewVisibility(
-      afterView.visibility,
+    const afterProj = projectCoreView(
+      afterView.row,
+      afterView.ownerApplicationUniversalIdentifier,
     );
+    const afterCreatedBy = afterProj.createdByUserWorkspaceId;
+    const afterVisibility = afterProj.visibility;
+    const afterIsActive = afterProj.isActive;
 
     if (afterVisibility !== expectedVisibility) {
       throw new Error('Core view update did not persist expected visibility');
@@ -875,6 +1491,20 @@ export const runAuditedCoreViewUpdate = async <TResult>(
     if (afterCreatedBy !== expectedCreatedBy) {
       throw new Error(
         'Core view update did not persist expected createdByUserWorkspaceId',
+      );
+    }
+    if (afterIsActive !== expectedIsActive) {
+      throw new Error('Core view update did not persist expected isActive');
+    }
+    if (request.expectDeactivate && afterIsActive !== false) {
+      throw new Error('Core view deactivation did not set isActive to false');
+    }
+    if (
+      afterProj.applicationId !== beforeProj.applicationId ||
+      afterProj.objectMetadataId !== beforeProj.objectMetadataId
+    ) {
+      throw new Error(
+        'Core view update audit detected unplanned ownership or object change',
       );
     }
 
@@ -894,11 +1524,16 @@ export const runAuditedCoreViewUpdate = async <TResult>(
       }
     }
 
-    const changed =
+    const securityChanged =
       beforeCreatedBy !== afterCreatedBy ||
-      beforeVisibility !== afterVisibility;
+      beforeVisibility !== afterVisibility ||
+      beforeIsActive !== afterIsActive;
 
-    if (changed) {
+    if (
+      securityChanged ||
+      (request.expectDeactivate &&
+        canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj))
+    ) {
       const operation = await resolveRoleAuditInitiator(
         runner,
         request.operation,
@@ -909,14 +1544,8 @@ export const runAuditedCoreViewUpdate = async <TResult>(
         action: 'update',
         resourceKind: 'coreView',
         resourceId: request.viewId,
-        before: {
-          createdByUserWorkspaceId: beforeCreatedBy,
-          visibility: beforeVisibility,
-        },
-        after: {
-          createdByUserWorkspaceId: afterCreatedBy,
-          visibility: afterVisibility,
-        },
+        before: beforeProj,
+        after: afterProj,
         securityDescriptor: {
           resourceKind: 'coreView',
           resourceId: request.viewId,
@@ -925,18 +1554,14 @@ export const runAuditedCoreViewUpdate = async <TResult>(
       });
       await audit.flush();
 
-      const [postFlushView] = await readView();
-      if (
-        !postFlushView ||
-        postFlushView.deletedAt !== null ||
-        uuid(postFlushView.workspaceId) !== request.workspaceId ||
-        nullableUuid(postFlushView.createdByUserWorkspaceId) !==
-          afterCreatedBy ||
-        assertWorkflowOrViewVisibility(postFlushView.visibility) !==
-          afterVisibility ||
-        canonicalAuditJson(postFlushView.row) !==
-          canonicalAuditJson(afterView.row)
-      ) {
+      const postFlushViews = await readWorkspaceViews(false);
+      const expectedSerialized = canonicalAuditJson(
+        [...afterViews.entries()].map(([id, entry]) => [id, entry.row]),
+      );
+      const postFlushSerialized = canonicalAuditJson(
+        [...postFlushViews.entries()].map(([id, entry]) => [id, entry.row]),
+      );
+      if (postFlushSerialized !== expectedSerialized) {
         throw new Error('Core view state changed during audit flush');
       }
     }
@@ -944,3 +1569,5 @@ export const runAuditedCoreViewUpdate = async <TResult>(
     return result;
   });
 };
+
+export const runAuditedCoreViewUpdate = runAuditedCoreViewMutation;

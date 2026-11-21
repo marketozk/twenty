@@ -1,0 +1,22 @@
+{
+  "log": "LOG-197",
+  "verifiedFileCount": 16,
+  "files": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/application-metadata-audit.ts": "83ffe78bfcfd48b1fc909498476852dfe2f9db6343422b3ec0f22fb40075c224",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/core-workflow-and-view-audit.ts": "e5d3f456b7105c806c7f88d208109e11804559dbb2cd550be4a9d8b7626afa2d",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "1f688b67669fae4c19fd4fc1569830e0fe4174a473e0433d12b0c59038c912df",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/navigation-menu-item-audit.ts": "8f2c59927520ae5309c6515c63990cec708d471bab3880d070480997efd5a8b1",
+    "packages/twenty-server/src/engine/metadata-modules/view/controllers/view.controller.ts": "fd3ff0930ef2c31589a599ea9fd2522c06d7ef5e922546ccda7921e5f840cb4a",
+    "packages/twenty-server/src/engine/metadata-modules/view/resolvers/view.resolver.ts": "0372ee50d7f0f118f56ffbf03acdc2bd8515b7bca31cc1e48ae4f4b0270f9796",
+    "packages/twenty-server/src/engine/metadata-modules/view/services/view.service.ts": "1abe641c2d72c592b90dcdf432f1041af5f65a4a6fb120b7b6f117a3168c92aa",
+    "packages/twenty-server/src/engine/metadata-modules/view/tools/create-view.tool.ts": "3647fb5395e16b655c841cbd9e031f158af1ecdd0a23ea0d94474401dbc938ad",
+    "packages/twenty-server/src/engine/metadata-modules/view/tools/delete-view.tool.ts": "ad196ed04882ba3ae6265e4c6e0c7a4caa7891c13186edd9f9075eb94060f540",
+    "packages/twenty-server/src/engine/metadata-modules/view/tools/services/complete-view-upsert.service.ts": "c9e56b7ecde382e25cd62188fd528b007d61b1588672950f52770effd12c59d3",
+    "packages/twenty-server/src/engine/metadata-modules/view/tools/update-view.tool.ts": "9c00488c2de473318f82e60920dc82a22b23aff2da222699d25da01c096ce668",
+    "packages/twenty-server/src/engine/metadata-modules/view/tools/upsert-complete-view.tool.ts": "c74659a911bfb8ff85ebe2d4d478e5fc455a64e50de48e9509e89a7f5f686fff",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/services/workspace-migration-validate-build-and-run-service.ts": "1033ddea8edb938cffd9aaec4e9f70605e7ce53d460655c864d3ebc079118943",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts": "d2b2fe6918a623f33ba9050016a6df012dd5ab9979c193ac85f405eae23312b6",
+    "packages/twenty-server/test/fork-migration/crm-audit-core-view-lifecycle.postgres-spec.ts": "6d7d5415feb5c63ced499af02c589dbeb298cb6d8f0f438f0b529dfbad2fe30b",
+    "packages/twenty-server/test/fork-migration/crm-audit-navigation-menu-item.postgres-spec.ts": "065e67dea911261087238afb1ad4c7b0bb6b4cc40d85b06de0950a27578fe79c"
+  }
+}

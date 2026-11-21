@@ -190,6 +190,7 @@ export class ViewResolver {
     @AuthWorkspace() workspace: WorkspaceEntity,
     @AuthUserWorkspaceId({ allowUndefined: true })
     userWorkspaceId: string | undefined,
+    @Context() context?: { req?: CoreWorkflowAndViewAuditIdentity },
   ): Promise<ViewDTO> {
     const visibility = input.visibility ?? ViewVisibility.WORKSPACE;
 
@@ -199,6 +200,7 @@ export class ViewResolver {
       createViewInput: input,
       workspaceId: workspace.id,
       createdByUserWorkspaceId: userWorkspaceId,
+      auditIdentity: context?.req,
     });
   }
 
@@ -226,10 +228,13 @@ export class ViewResolver {
     @Args('id', { type: () => String }) id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Context() context?: { req?: CoreWorkflowAndViewAuditIdentity },
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
   ): Promise<boolean> {
     const deletedView = await this.viewService.deleteOne({
       deleteViewInput: { id },
       workspaceId: workspace.id,
+      userWorkspaceId,
       auditIdentity: context?.req,
     });
 
@@ -242,10 +247,13 @@ export class ViewResolver {
     @Args('id', { type: () => String }) id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Context() context?: { req?: CoreWorkflowAndViewAuditIdentity },
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId?: string,
   ): Promise<boolean> {
     const deletedView = await this.viewService.destroyOne({
       destroyViewInput: { id },
       workspaceId: workspace.id,
+      userWorkspaceId,
       auditIdentity: context?.req,
     });
 

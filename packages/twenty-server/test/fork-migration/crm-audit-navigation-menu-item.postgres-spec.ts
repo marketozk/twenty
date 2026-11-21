@@ -1011,6 +1011,34 @@ describe('CRM audit navigationMenuItem lifecycle and cascade deletions (PostgreS
             );
           } else if (
             action.metadataName === 'view' &&
+            action.type === 'create'
+          ) {
+            const fe = action.flatEntity;
+            const [objRow] = await queryRunner.query(
+              `SELECT id FROM core."objectMetadata" WHERE "workspaceId"=$1 AND "universalIdentifier"=$2 LIMIT 1`,
+              [workspaceId, fe.objectMetadataUniversalIdentifier],
+            );
+            await queryRunner.query(
+              `INSERT INTO core.view (id, "workspaceId", "applicationId", "universalIdentifier", "objectMetadataId", name, type, icon, position, visibility, "isCustom", "isActive", "isSystemSideEffect")
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+              [
+                action.id ?? fe.id ?? randomUUID(),
+                workspaceId,
+                flatApplication.id,
+                fe.universalIdentifier,
+                objRow?.id ?? fe.objectMetadataId,
+                fe.name ?? 'All Items',
+                fe.type ?? 'TABLE',
+                fe.icon ?? 'IconList',
+                fe.position ?? 0,
+                fe.visibility ?? 'WORKSPACE',
+                fe.isCustom ?? true,
+                fe.isActive ?? true,
+                fe.isSystemSideEffect ?? false,
+              ],
+            );
+          } else if (
+            action.metadataName === 'view' &&
             action.type === 'update'
           ) {
             const existing =

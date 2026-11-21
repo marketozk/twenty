@@ -115,7 +115,15 @@ export class CreateViewTool extends BaseTool<typeof createViewInputSchema> {
 
   async execute({
     input,
-    context: { workspaceId, userWorkspaceId },
+    context: {
+      workspaceId,
+      userWorkspaceId,
+      application,
+      agentId,
+      authContext,
+      userId,
+      actorContext,
+    },
   }: ToolExecuteArgs<typeof createViewInputSchema>): Promise<ToolOutput> {
     const objectMetadataId =
       await this.viewToolIdentifierService.resolveObjectMetadataIdOrThrow({
@@ -209,6 +217,21 @@ export class CreateViewTool extends BaseTool<typeof createViewInputSchema> {
         )
       : [];
 
+    const auditIdentity = authContext
+      ? { auth: authContext, ...(agentId ? { agentId } : {}) }
+      : userId || actorContext?.workspaceMemberId || application?.id || agentId
+        ? {
+            ...(userId ? { user: { id: userId } } : {}),
+            ...(actorContext?.workspaceMemberId
+              ? { workspaceMemberId: actorContext.workspaceMemberId }
+              : {}),
+            ...(application?.id
+              ? { application: { id: application.id } }
+              : {}),
+            ...(agentId ? { agentId } : {}),
+          }
+        : undefined;
+
     const view = await this.viewService.createOne({
       createViewInput: {
         name: input.name,
@@ -225,6 +248,7 @@ export class CreateViewTool extends BaseTool<typeof createViewInputSchema> {
       },
       workspaceId,
       createdByUserWorkspaceId: userWorkspaceId,
+      ...(auditIdentity ? { auditIdentity } : {}),
     });
 
     if (isNonEmptyArray(fieldMetadataIds)) {

@@ -18,8 +18,9 @@ import {
   type ApplicationMetadataAuditMappings,
 } from 'src/engine/core-modules/crm-audit/application-metadata-audit';
 import {
-  getCoreViewUpdateAudit,
-  runAuditedCoreViewUpdate,
+  getCoreViewAudit,
+  isAuditedCoreViewAction,
+  runAuditedCoreViewMutation,
 } from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
 import {
   getIndexMetadataAudit,
@@ -474,7 +475,7 @@ export class WorkspaceMigrationRunnerService {
     const permissionAudit = getRolePermissionAudit(workspaceId);
     const apiKeyCreateAudit = getApiKeyCreateAudit(workspaceId);
     const applicationMetadataAudit = getApplicationMetadataAudit(workspaceId);
-    const coreViewUpdateAudit = getCoreViewUpdateAudit(workspaceId);
+    const coreViewAudit = getCoreViewAudit(workspaceId);
     const navigationMenuItemAudit = getNavigationMenuItemAudit(workspaceId);
     const indexMetadataAudit = getIndexMetadataAudit(workspaceId);
     if (
@@ -484,7 +485,7 @@ export class WorkspaceMigrationRunnerService {
         permissionAudit,
         apiKeyCreateAudit,
         applicationMetadataAudit,
-        coreViewUpdateAudit,
+        coreViewAudit,
         navigationMenuItemAudit,
         indexMetadataAudit,
       ].filter(Boolean).length > 1
@@ -495,7 +496,7 @@ export class WorkspaceMigrationRunnerService {
       assignmentAudit ||
       permissionAudit ||
       apiKeyCreateAudit ||
-      coreViewUpdateAudit ||
+      coreViewAudit ||
       navigationMenuItemAudit ||
       indexMetadataAudit
     ) {
@@ -697,10 +698,10 @@ export class WorkspaceMigrationRunnerService {
                   mappings,
                   execute,
                 )
-              : coreViewUpdateAudit
-                ? await runAuditedCoreViewUpdate(
+              : coreViewAudit
+                ? await runAuditedCoreViewMutation(
                     this.coreDataSource,
-                    coreViewUpdateAudit,
+                    coreViewAudit,
                     actions as never,
                     mappings,
                     execute,
@@ -1049,6 +1050,10 @@ export class WorkspaceMigrationRunnerService {
               action.metadataName,
             )) ||
           isAuditedWorkflowOrViewUpdateAction(action as never) ||
+          isAuditedCoreViewAction(
+            action as never,
+            allFlatEntityMaps.flatViewMaps?.byUniversalIdentifier as never,
+          ) ||
           isAuditedCustomIndexAction(
             action as never,
             allFlatEntityMaps.flatIndexMaps?.byUniversalIdentifier,

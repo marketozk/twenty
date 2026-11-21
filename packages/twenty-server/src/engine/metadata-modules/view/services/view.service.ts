@@ -5,7 +5,11 @@ import { isDefined } from 'twenty-shared/utils';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
 import {
+  captureCoreViewCreateAudit,
   captureCoreViewUpdateAudit,
+  resolveEffectiveViewIsActive,
+  resolveEffectiveViewVisibility,
+  withCoreViewAudit,
   withCoreViewUpdateAudit,
   type CoreWorkflowAndViewAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
@@ -61,11 +65,19 @@ export class ViewService {
     createViewInput,
     workspaceId,
     createdByUserWorkspaceId,
+    auditIdentity,
   }: {
     createViewInput: CreateViewInput;
     workspaceId: string;
     createdByUserWorkspaceId?: string;
+    auditIdentity?: CoreWorkflowAndViewAuditIdentity;
   }): Promise<ViewDTO> {
+    const getCreateAudit = captureCoreViewCreateAudit({
+      workspaceId,
+      userWorkspaceId: createdByUserWorkspaceId,
+      auditIdentity,
+    });
+
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         {
@@ -93,28 +105,31 @@ export class ViewService {
         flatObjectMetadataMaps: existingFlatObjectMetadataMaps,
       });
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            view: {
-              flatEntityToCreate: [flatViewToCreate],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [],
-            },
+    const validateAndBuildResult = await withCoreViewAudit(
+      getCreateAudit(flatViewToCreate.id),
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              view: {
+                flatEntityToCreate: [flatViewToCreate],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [],
+              },
 
-            viewGroup: {
-              flatEntityToCreate: flatViewGroupsToCreate,
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [],
+              viewGroup: {
+                flatEntityToCreate: flatViewGroupsToCreate,
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [],
+              },
             },
+            workspaceId,
+            isSystemBuild: false,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          isSystemBuild: false,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -153,19 +168,15 @@ export class ViewService {
     const capturedUpdateViewInput: UpdateViewInput = { ...updateViewInput };
     const capturedWorkspaceId = workspaceId;
     const capturedUserWorkspaceId = userWorkspaceId;
-    const getAudit =
-      capturedUpdateViewInput.visibility !== undefined ||
-      auditIdentity !== undefined
-        ? captureCoreViewUpdateAudit({
-            workspaceId: capturedWorkspaceId,
-            viewId: capturedUpdateViewInput.id,
-            userWorkspaceId: capturedUserWorkspaceId,
-            auditIdentity,
-          })
-        : undefined;
+    const getAudit = captureCoreViewUpdateAudit({
+      workspaceId: capturedWorkspaceId,
+      viewId: capturedUpdateViewInput.id,
+      userWorkspaceId: capturedUserWorkspaceId,
+      auditIdentity,
+    });
     const prevalidatedAudit =
       capturedUpdateViewInput.visibility !== undefined
-        ? getAudit!()
+        ? getAudit()
         : undefined;
 
     const { workspaceCustomFlatApplication } =
@@ -210,7 +221,22 @@ export class ViewService {
     const requiresViewAudit =
       capturedUpdateViewInput.visibility !== undefined ||
       (isDefined(existingFlatView) &&
-        (flatViewToUpdate.visibility !== existingFlatView.visibility ||
+        (resolveEffectiveViewVisibility(
+          flatViewToUpdate as unknown as Record<string, unknown>,
+          existingFlatView.applicationUniversalIdentifier,
+        ) !==
+          resolveEffectiveViewVisibility(
+            existingFlatView as unknown as Record<string, unknown>,
+            existingFlatView.applicationUniversalIdentifier,
+          ) ||
+          resolveEffectiveViewIsActive(
+            flatViewToUpdate as unknown as Record<string, unknown>,
+            existingFlatView.applicationUniversalIdentifier,
+          ) !==
+            resolveEffectiveViewIsActive(
+              existingFlatView as unknown as Record<string, unknown>,
+              existingFlatView.applicationUniversalIdentifier,
+            ) ||
           flatViewToUpdate.createdByUserWorkspaceId !==
             existingFlatView.createdByUserWorkspaceId));
 
@@ -238,15 +264,7 @@ export class ViewService {
 
     const validateAndBuildResult = requiresViewAudit
       ? await withCoreViewUpdateAudit(
-          prevalidatedAudit ??
-            (getAudit
-              ? getAudit()
-              : captureCoreViewUpdateAudit({
-                  workspaceId: capturedWorkspaceId,
-                  viewId: capturedUpdateViewInput.id,
-                  userWorkspaceId: capturedUserWorkspaceId,
-                  auditIdentity,
-                })()),
+          prevalidatedAudit ?? getAudit(),
           runMigration,
         )
       : await runMigration();
@@ -277,15 +295,18 @@ export class ViewService {
   async deleteOne({
     deleteViewInput,
     workspaceId,
+    userWorkspaceId,
     auditIdentity,
   }: {
     deleteViewInput: DeleteViewInput;
     workspaceId: string;
+    userWorkspaceId?: string;
     auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<ViewDTO> {
     return this.destroyOne({
       destroyViewInput: deleteViewInput,
       workspaceId,
+      userWorkspaceId,
       auditIdentity,
     });
   }
@@ -293,16 +314,26 @@ export class ViewService {
   async destroyOne({
     destroyViewInput,
     workspaceId,
+    userWorkspaceId,
     auditIdentity,
   }: {
     destroyViewInput: DestroyViewInput;
     workspaceId: string;
+    userWorkspaceId?: string;
     auditIdentity?: NavigationMenuItemAuditIdentity;
   }): Promise<ViewDTO> {
     const getCascadeAudit = captureNavigationMenuItemAudit({
       workspaceId,
       mode: 'cascade',
       auditIdentity,
+      defaultSystemActorId: 'view:destroy',
+    });
+    const getDeactivateAudit = captureCoreViewUpdateAudit({
+      workspaceId,
+      viewId: destroyViewInput.id,
+      userWorkspaceId,
+      expectDeactivate: true,
+      auditIdentity: auditIdentity as CoreWorkflowAndViewAuditIdentity,
       defaultSystemActorId: 'view:destroy',
     });
 
@@ -375,7 +406,7 @@ export class ViewService {
       );
 
     const validateAndBuildResult = shouldDeactivate
-      ? await runMigration()
+      ? await withCoreViewAudit(getDeactivateAudit(), runMigration)
       : await withNavigationMenuItemAudit(
           getCascadeAudit({
             expectedParentViewDeleteIds: [existingFlatView.id],

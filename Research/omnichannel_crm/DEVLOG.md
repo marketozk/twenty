@@ -5586,3 +5586,18 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 25865438-21bd-4bce-98ce-2114b77c5cfa и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log196/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG197`).
+
+## LOG-197 - транзакционный аудит полного жизненного цикла представлений (`coreView` в `core.view`)
+
+21.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log197/design.md), [design-review.md](implementation/log197/design-review.md)) и реализован участок `LOG-197` (Linear `ROB-765`): транзакционный аудит создания, мягкой деактивации, жёсткого удаления и каскадов представлений `coreView` в `core.view`.
+
+В `crm-audit-transaction-context.ts` расширены `CATALOG.coreView` (`values`: `applicationId`, `objectMetadataId`, `type`, `key`, `isCustom`, `isActive`, `isSystemSideEffect`, `createdByUserWorkspaceId`, `visibility`; `redacted`: `name`, `icon`, `position`, `anyFieldFilterValue`, `overrides`) и `ADMINISTRATIVE_ACTIONS.coreView` (`['create', 'update', 'delete']`). В `core-workflow-and-view-audit.ts` реализованы `projectCoreView`, `resolveEffectiveViewIsActive`, `resolveEffectiveViewVisibility`, stateful fail-closed предикат `isAuditedCoreViewAction` (с учётом legacy и authored `overrides`/`universalOverrides` включая `*UniversalIdentifier` ключи), `captureCoreViewCreateAudit`, `runAuditedCoreViewMutation` (с workspace-wide блокировкой `core.view FOR UPDATE OF v`, блокировкой `core.application`, проверкой `createdByUserWorkspaceId` и пост-flush сверкой). Подключены `ViewResolver`, `ViewController`, `ViewService` (`createOne`, `updateOne`, `deleteOne`, `destroyOne` включая `shouldDeactivate === true`), `CompleteViewUpsertService`, AI tools (`CreateViewTool`, `UpdateViewTool`, `DeleteViewTool`, `UpsertCompleteViewTool`), `navigation-menu-item-audit.ts`, `application-metadata-audit.ts` (включая `plannedViewCreatesByUniversalId`, каскады `kanbanAggregateOperationFieldMetadataId` и `assertNoRemainingApplicationRoleOrPermissionMetadata`), `WorkspaceMigrationRunnerService.executeRun` и `WorkspaceMigrationValidateBuildAndRunService`.
+
+21.11.2026 проверки LOG197 завершены. 25 targeted/5 suites PASS (15.88s), 4 новых PostgreSQL случая (`crm-audit-core-view-lifecycle.postgres-spec.ts`). Полная регрессия: 3230/3231 tests и 132/133 suites PASS (730.932s); единственное падение - несвязанный с LOG197 pre-existing флейк порядка UUID в `crm-audit-signing-key.postgres-spec.ts:388-389` (LOG195, оставлен вне diff). 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 504/504 roots, baseline 288 / current 275 diagnostics, 0 новых/changed-file/changed-code. Совпали 16 local/remote source hashes.
+
+Независимое ревью кода выявило и помогло устранить `before: null`/`after: null` на `create`/`delete`, `operationId` в `defaultSystemActorId`, parser differential legacy `universalOverrides`, ребро Enterprise в `complete-view-upsert.service.ts`, условную передачу `auditIdentity` в AI view tools, workspace-wide snapshot в `runAuditedCoreViewMutation` и проверки `deletedAt`/`applicationId`/`objectMetadataId`.
+
+[Результаты](implementation/log197/results.json), [ревью](implementation/log197/review.md),
+[следующий участок](implementation/log197/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.
