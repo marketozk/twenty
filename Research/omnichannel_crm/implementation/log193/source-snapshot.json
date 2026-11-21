@@ -1,0 +1,15 @@
+{
+  "log": "LOG-193",
+  "verifiedFileCount": 9,
+  "files": {
+    "packages/twenty-server/src/engine/core-modules/auth/services/sign-in-up.service.ts": "810a34fccf0fc6acca77fbb84a3c58911485a3945936ceb993488acb43e325c7",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "17fd23076075ef8dad21b027df2de413dbcd29380d59ffa92b8c5811d5feed4f",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "29f2244f2403823f4744530c72dfcd9ffa5381a50be5cb578fad265916dd8250",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/workspace-domain-audit.ts": "e56efd1bfb7a854171cedaa07f55a83ed941233a9856fb22e79b0b7ff60b8abf",
+    "packages/twenty-server/src/engine/core-modules/user-workspace/user-workspace.service.ts": "1a9d737a35245d0fd0f153100ccb4fa2798566fe645629b502e7b97c617f2ef2",
+    "packages/twenty-server/src/engine/core-modules/workspace-invitation/services/workspace-invitation.service.ts": "70a0bd30e4ea8226bfa847e932c691ad55dccedb0d8414854e36aac8e8cda29c",
+    "packages/twenty-server/src/engine/core-modules/workspace-invitation/workspace-invitation.resolver.ts": "71652806856ee41967dd1373a88306e8ff212c24ff52fe7c76b12740029fff66",
+    "packages/twenty-server/test/fork-migration/crm-audit-core-user-and-workspace.postgres-spec.ts": "2c0cfa8b7a158e9b08378356587d78a4188baa03ee775f94066ee4252e8507df",
+    "packages/twenty-server/test/fork-migration/crm-audit-workspace-invitation.postgres-spec.ts": "407ed0d863884ff24c453eaf2ebd404673c98be0b3f27bfbd10b02e576692ffe"
+  }
+}

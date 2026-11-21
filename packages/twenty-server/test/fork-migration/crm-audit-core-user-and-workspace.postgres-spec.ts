@@ -418,6 +418,7 @@ const stepUp = jest.fn<Promise<void>, unknown[]>();
 const notifyAdmins = jest.fn<Promise<void>, unknown[]>();
 const emitAdminEvent = jest.fn<void, unknown[]>();
 const assignRoleMock = jest.fn<Promise<void>, unknown[]>();
+const invalidateInvitationMock = jest.fn<Promise<void>, unknown[]>();
 
 const userWorkspaceService = Object.create(
   UserWorkspaceService.prototype,
@@ -436,7 +437,9 @@ Object.assign(userWorkspaceService, {
   createWorkspaceMember: async () => {},
   workspaceCacheService: { invalidateAndRecompute: async () => {} },
   userRoleService: { assignRoleToManyUserWorkspace: assignRoleMock },
-  workspaceInvitationService: { invalidateWorkspaceInvitation: async () => {} },
+  workspaceInvitationService: {
+    invalidateWorkspaceInvitation: invalidateInvitationMock,
+  },
   onboardingService: { setOnboardingCreateProfilePending: async () => {} },
   getUserWorkspaceForUserOrThrow: async ({
     userId: uId,
@@ -591,6 +594,7 @@ beforeEach(async () => {
   notifyAdmins.mockReset().mockResolvedValue(undefined);
   emitAdminEvent.mockReset();
   assignRoleMock.mockReset().mockResolvedValue(undefined);
+  invalidateInvitationMock.mockReset().mockResolvedValue(undefined);
   hasSettingPermission.mockReset().mockResolvedValue(true);
   jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
   jest.spyOn(Logger.prototype, 'log').mockImplementation(() => {});
@@ -700,6 +704,14 @@ describe('LOG-173 coreUser and userWorkspace transactional audit', () => {
         auditIdentity: expect.objectContaining({
           correlationId: rows[0].correlationId,
         }),
+      }),
+    );
+    expect(invalidateInvitationMock).toHaveBeenCalledWith(
+      secondWorkspaceId,
+      userRow.email,
+      expect.objectContaining({
+        workspaceId: secondWorkspaceId,
+        correlationId: rows[0].correlationId,
       }),
     );
 

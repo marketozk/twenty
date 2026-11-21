@@ -1,5 +1,5 @@
 import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
-import { Args, Mutation, Query } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query } from '@nestjs/graphql';
 
 import { msg } from '@lingui/core/macro';
 import { PermissionFlagType } from 'twenty-shared/constants';
@@ -11,6 +11,7 @@ import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/re
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
 import { type AuthContextUser } from 'src/engine/core-modules/auth/types/auth-context.type';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
+import { type WorkspaceDomainAuditIdentity } from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { SendInvitationsDTO } from 'src/engine/core-modules/workspace-invitation/dtos/send-invitations.dto';
 import { WorkspaceInvitation } from 'src/engine/core-modules/workspace-invitation/dtos/workspace-invitation.dto';
 import { WorkspaceInvitationService } from 'src/engine/core-modules/workspace-invitation/services/workspace-invitation.service';
@@ -80,10 +81,12 @@ export class WorkspaceInvitationResolver {
   async deleteWorkspaceInvitation(
     @Args('appTokenId') appTokenId: string,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ) {
     return this.workspaceInvitationService.deleteWorkspaceInvitation(
       appTokenId,
       workspaceId,
+      context?.req,
     );
   }
 
@@ -105,6 +108,7 @@ export class WorkspaceInvitationResolver {
     @Args('appTokenId') appTokenId: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
     @AuthUser() user: AuthContextUser,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ) {
     const authContext = buildSystemAuthContext(workspace.id);
 
@@ -127,6 +131,7 @@ export class WorkspaceInvitationResolver {
       appTokenId,
       workspace,
       workspaceMember,
+      context?.req,
     );
   }
 
@@ -157,6 +162,7 @@ export class WorkspaceInvitationResolver {
     @AuthUserWorkspaceId() userWorkspaceId: string,
     @AuthApplication({ allowUndefined: true })
     application: FlatApplication | undefined,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ): Promise<SendInvitationsDTO> {
     if (isDefined(sendInviteLinkInput.roleId)) {
       const canAssignRoles =
@@ -201,6 +207,7 @@ export class WorkspaceInvitationResolver {
       workspace,
       sender: workspaceMember,
       roleId: sendInviteLinkInput.roleId ?? undefined,
+      auditIdentity: context?.req,
     });
   }
 }

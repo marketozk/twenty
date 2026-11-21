@@ -381,6 +381,20 @@ export class UserWorkspaceService {
     await this.workspaceInvitationService.invalidateWorkspaceInvitation(
       capturedWorkspaceId,
       capturedEmail,
+      {
+        workspaceId: capturedWorkspaceId,
+        actor: capturedAudit.actor,
+        ...(capturedAudit.initiator
+          ? { initiator: capturedAudit.initiator }
+          : {}),
+        ...(capturedAudit.impersonatorUserWorkspaceId
+          ? {
+              impersonatorUserWorkspaceId:
+                capturedAudit.impersonatorUserWorkspaceId,
+            }
+          : {}),
+        correlationId: sharedCorrelationId,
+      },
     );
 
     await this.onboardingService.setOnboardingCreateProfilePending({

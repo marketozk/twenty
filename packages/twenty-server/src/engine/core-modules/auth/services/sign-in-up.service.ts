@@ -242,6 +242,10 @@ export class SignInUpService {
         await this.workspaceInvitationService.invalidateWorkspaceInvitation(
           invitationValidation.workspace.id,
           email,
+          {
+            workspaceId: invitationValidation.workspace.id,
+            actor: { kind: 'coreUser', id: updatedUser.id },
+          },
         );
 
         await this.userService.markEmailAsVerified(updatedUser.id);

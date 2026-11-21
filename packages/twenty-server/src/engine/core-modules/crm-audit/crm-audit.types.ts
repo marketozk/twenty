@@ -23,6 +23,7 @@ export type CrmAuditResourceKind =
   | 'featureFlag'
   | 'approvedAccessDomain'
   | 'publicDomain'
+  | 'workspaceInvitation'
   | 'emailingDomain'
   | 'dpaAgreement'
   | 'unsubscribeTopic'

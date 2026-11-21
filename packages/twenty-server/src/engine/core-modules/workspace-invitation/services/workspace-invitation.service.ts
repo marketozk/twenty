@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Injectable, Optional } from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 
-import crypto from 'crypto';
+import crypto, { randomUUID } from 'crypto';
 
 import { msg } from '@lingui/core/macro';
 import { addMilliseconds } from 'date-fns';
@@ -10,10 +10,12 @@ import { SendInviteLinkEmail, renderEmail } from 'twenty-emails';
 import { AppPath, FileFolder } from 'twenty-shared/types';
 import { getAppPath, isDefined } from 'twenty-shared/utils';
 import {
+  type DataSource,
   In,
   IsNull,
   LessThanOrEqual,
   MoreThan,
+  type QueryRunner,
   Raw,
   Repository,
 } from 'typeorm';
@@ -27,6 +29,13 @@ import {
   AuthException,
   AuthExceptionCode,
 } from 'src/engine/core-modules/auth/auth.exception';
+import {
+  captureWorkspaceDomainAudit,
+  runAuditedWorkspaceInvitationCreate,
+  runAuditedWorkspaceInvitationDelete,
+  withWorkspaceDomainAudit,
+  type WorkspaceDomainAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { WorkspaceDomainsService } from 'src/engine/core-modules/domain/workspace-domains/services/workspace-domains.service';
 import { EmailService } from 'src/engine/core-modules/email/email.service';
 import { FileUrlService } from 'src/engine/core-modules/file/file-url/file-url.service';
@@ -61,7 +70,43 @@ export class WorkspaceInvitationService {
     private readonly i18nService: I18nService,
     private readonly throttlerService: ThrottlerService,
     private readonly fileUrlService: FileUrlService,
+    @Optional()
+    @InjectDataSource()
+    private readonly dataSource?: DataSource,
   ) {}
+
+  private resolveDataSource(): DataSource | undefined {
+    return (
+      this.dataSource ??
+      (this.appTokenRepository?.manager?.connection as
+        | DataSource
+        | undefined) ??
+      (this.userWorkspaceRepository?.manager?.connection as
+        | DataSource
+        | undefined)
+    );
+  }
+
+  private withSharedCorrelation(
+    auditIdentity: WorkspaceDomainAuditIdentity | undefined,
+    correlationId: string,
+  ): WorkspaceDomainAuditIdentity | undefined {
+    if (!auditIdentity || typeof auditIdentity !== 'object') {
+      return auditIdentity;
+    }
+    if ('auth' in auditIdentity) {
+      return {
+        ...auditIdentity,
+        correlationId:
+          typeof auditIdentity.correlationId === 'string' &&
+          auditIdentity.correlationId.length > 0
+            ? auditIdentity.correlationId
+            : correlationId,
+      };
+    }
+
+    return auditIdentity;
+  }
 
   async validatePersonalInvitation({
     workspacePersonalInviteToken,
@@ -173,87 +218,155 @@ export class WorkspaceInvitationService {
     workspace: WorkspaceEntity,
     roleId?: string,
     isOnboardingInvitation = false,
+    auditIdentity?: WorkspaceDomainAuditIdentity,
   ) {
-    const maybeWorkspaceInvitation = await this.getOneWorkspaceInvitation(
-      workspace.id,
-      email,
+    const auditRequest = captureWorkspaceDomainAudit({
+      workspaceId: workspace.id,
+      auditIdentity,
+    });
+
+    return runAuditedWorkspaceInvitationCreate(
+      this.resolveDataSource(),
+      auditRequest,
+      {
+        email,
+        work: async (runner) => {
+          const appTokenRepository =
+            runner.manager.getRepository(AppTokenEntity);
+          const userWorkspaceRepository =
+            runner.manager.getRepository(UserWorkspaceEntity);
+
+          const maybeWorkspaceInvitation = await appTokenRepository.findOne({
+            where: {
+              workspaceId: workspace.id,
+              type: In(INVITATION_APP_TOKEN_TYPES),
+              deletedAt: IsNull(),
+              expiresAt: MoreThan(new Date()),
+              context: Raw(
+                (alias) => `lower(${alias} ->> 'email') = lower(:email)`,
+                {
+                  email,
+                },
+              ),
+            },
+          });
+
+          if (maybeWorkspaceInvitation) {
+            throw new WorkspaceInvitationException(
+              `${email} already invited`,
+              WorkspaceInvitationExceptionCode.INVITATION_ALREADY_EXIST,
+            );
+          }
+
+          const isUserAlreadyInWorkspace = await userWorkspaceRepository.exists(
+            {
+              where: {
+                workspaceId: workspace.id,
+                user: {
+                  email,
+                },
+              },
+              relations: {
+                user: true,
+              },
+            },
+          );
+
+          if (isUserAlreadyInWorkspace) {
+            throw new WorkspaceInvitationException(
+              `${email} is already in the workspace`,
+              WorkspaceInvitationExceptionCode.USER_ALREADY_EXIST,
+            );
+          }
+
+          await appTokenRepository.delete({
+            workspaceId: workspace.id,
+            type: In(INVITATION_APP_TOKEN_TYPES),
+            expiresAt: LessThanOrEqual(new Date()),
+            context: Raw(
+              (alias) => `lower(${alias} ->> 'email') = lower(:email)`,
+              {
+                email,
+              },
+            ),
+          });
+
+          return this.generateInvitationToken(
+            workspace.id,
+            email,
+            roleId,
+            isOnboardingInvitation,
+            runner,
+          );
+        },
+        extractInvitationId: (created) => created.id,
+      },
     );
+  }
 
-    if (maybeWorkspaceInvitation) {
-      throw new WorkspaceInvitationException(
-        `${email} already invited`,
-        WorkspaceInvitationExceptionCode.INVITATION_ALREADY_EXIST,
-      );
-    }
+  async deleteWorkspaceInvitation(
+    appTokenId: string,
+    workspaceId: string,
+    auditIdentity?: WorkspaceDomainAuditIdentity,
+  ) {
+    const auditRequest = captureWorkspaceDomainAudit({
+      workspaceId,
+      auditIdentity,
+    });
 
-    const isUserAlreadyInWorkspace = await this.userWorkspaceRepository.exists({
-      where: {
-        workspaceId: workspace.id,
-        user: {
-          email,
+    return runAuditedWorkspaceInvitationDelete(
+      this.resolveDataSource(),
+      auditRequest,
+      {
+        target: { id: appTokenId },
+        work: async (runner, lockedRows) => {
+          if (lockedRows.length === 0) {
+            return 'error';
+          }
+
+          await runner.manager
+            .getRepository(AppTokenEntity)
+            .delete(lockedRows[0].id);
+
+          return 'success';
         },
       },
-      relations: {
-        user: true,
-      },
-    });
-
-    if (isUserAlreadyInWorkspace) {
-      throw new WorkspaceInvitationException(
-        `${email} is already in the workspace`,
-        WorkspaceInvitationExceptionCode.USER_ALREADY_EXIST,
-      );
-    }
-
-    await this.appTokenRepository.delete({
-      workspaceId: workspace.id,
-      type: In(INVITATION_APP_TOKEN_TYPES),
-      expiresAt: LessThanOrEqual(new Date()),
-      context: Raw((alias) => `lower(${alias} ->> 'email') = lower(:email)`, {
-        email,
-      }),
-    });
-
-    return this.generateInvitationToken(
-      workspace.id,
-      email,
-      roleId,
-      isOnboardingInvitation,
     );
   }
 
-  async deleteWorkspaceInvitation(appTokenId: string, workspaceId: string) {
-    const appToken = await this.appTokenRepository.findOne({
-      where: {
-        id: appTokenId,
-        workspaceId,
-        type: In(INVITATION_APP_TOKEN_TYPES),
-      },
+  async invalidateWorkspaceInvitation(
+    workspaceId: string,
+    email: string,
+    auditIdentity?: WorkspaceDomainAuditIdentity,
+  ) {
+    const auditRequest = captureWorkspaceDomainAudit({
+      workspaceId,
+      auditIdentity,
     });
 
-    if (!appToken) {
-      return 'error';
-    }
+    await runAuditedWorkspaceInvitationDelete(
+      this.resolveDataSource(),
+      auditRequest,
+      {
+        target: { email, activeOnly: true },
+        work: async (runner, lockedRows) => {
+          if (lockedRows.length === 0) {
+            return;
+          }
 
-    await this.appTokenRepository.delete(appToken.id);
-
-    return 'success';
-  }
-
-  async invalidateWorkspaceInvitation(workspaceId: string, email: string) {
-    const appToken = await this.getOneWorkspaceInvitation(workspaceId, email);
-
-    if (!isDefined(appToken)) {
-      return;
-    }
-
-    await this.appTokenRepository.delete(appToken.id);
+          await runner.manager
+            .getRepository(AppTokenEntity)
+            .delete({ id: In(lockedRows.map((row) => row.id)) });
+        },
+      },
+    );
   }
 
   async resendWorkspaceInvitation(
     appTokenId: string,
     workspace: WorkspaceEntity,
     sender: WorkspaceMemberWorkspaceEntity,
+    auditIdentity?: WorkspaceDomainAuditIdentity,
   ) {
     const appToken = await this.appTokenRepository.findOne({
       where: {
@@ -278,6 +391,7 @@ export class WorkspaceInvitationService {
       isOnboardingInviteRewardOverride:
         appToken.type === AppTokenType.OnboardingInvitationToken,
       appTokenIdToInvalidate: appToken.id,
+      auditIdentity,
     });
   }
 
@@ -288,6 +402,7 @@ export class WorkspaceInvitationService {
     roleId,
     isOnboardingInviteRewardOverride,
     appTokenIdToInvalidate,
+    auditIdentity,
   }: {
     emails: string[];
     workspace: WorkspaceEntity;
@@ -295,6 +410,7 @@ export class WorkspaceInvitationService {
     roleId?: string;
     isOnboardingInviteRewardOverride?: boolean;
     appTokenIdToInvalidate?: string;
+    auditIdentity?: WorkspaceDomainAuditIdentity;
   }): Promise<SendInvitationsDTO> {
     if (!workspace?.inviteHash) {
       return {
@@ -320,28 +436,81 @@ export class WorkspaceInvitationService {
 
     await this.throttleInvitationSending(workspace.id, emails);
 
-    if (isDefined(appTokenIdToInvalidate)) {
-      await this.appTokenRepository.delete(appTokenIdToInvalidate);
-    }
+    const sharedCorrelationId =
+      auditIdentity &&
+      typeof auditIdentity === 'object' &&
+      'correlationId' in auditIdentity &&
+      typeof auditIdentity.correlationId === 'string' &&
+      auditIdentity.correlationId.length > 0
+        ? auditIdentity.correlationId
+        : randomUUID();
+    const correlatedIdentity = this.withSharedCorrelation(
+      auditIdentity,
+      sharedCorrelationId,
+    );
 
-    const invitationResults = await Promise.allSettled(
-      emails.map(async (email) => {
-        const appToken = await this.createWorkspaceInvitation(
-          email,
-          workspace,
-          roleId,
-          isOnboardingInviteReward,
-        );
+    const invitationResults = await withWorkspaceDomainAudit(
+      {
+        workspaceId: workspace.id,
+        correlationId: sharedCorrelationId,
+      },
+      async () => {
+        if (isDefined(appTokenIdToInvalidate)) {
+          const invalidateRequest = captureWorkspaceDomainAudit({
+            workspaceId: workspace.id,
+            auditIdentity: correlatedIdentity,
+          });
 
-        if (!appToken.context?.email) {
-          throw new WorkspaceInvitationException(
-            'Invalid email',
-            WorkspaceInvitationExceptionCode.EMAIL_MISSING,
+          await runAuditedWorkspaceInvitationDelete(
+            this.resolveDataSource(),
+            invalidateRequest,
+            {
+              target: { id: appTokenIdToInvalidate },
+              work: async (runner, lockedRows) => {
+                if (lockedRows.length === 0) {
+                  return;
+                }
+
+                await runner.manager
+                  .getRepository(AppTokenEntity)
+                  .delete(lockedRows[0].id);
+              },
+            },
           );
         }
 
-        return { appToken, email: appToken.context.email };
-      }),
+        const settled: Array<
+          PromiseSettledResult<{ appToken: AppTokenEntity; email: string }>
+        > = [];
+
+        for (const email of emails) {
+          try {
+            const appToken = await this.createWorkspaceInvitation(
+              email,
+              workspace,
+              roleId,
+              isOnboardingInviteReward,
+              correlatedIdentity,
+            );
+
+            if (!appToken.context?.email) {
+              throw new WorkspaceInvitationException(
+                'Invalid email',
+                WorkspaceInvitationExceptionCode.EMAIL_MISSING,
+              );
+            }
+
+            settled.push({
+              status: 'fulfilled',
+              value: { appToken, email: appToken.context.email },
+            });
+          } catch (reason) {
+            settled.push({ status: 'rejected', reason });
+          }
+        }
+
+        return settled;
+      },
     );
 
     for (const invitation of invitationResults) {
@@ -452,6 +621,8 @@ export class WorkspaceInvitationService {
     email: string,
     roleId?: string,
     isOnboardingInvitation = false,
+    queryRunner?: QueryRunner,
+    auditIdentity?: WorkspaceDomainAuditIdentity,
   ) {
     const expiresIn = this.twentyConfigService.get(
       'INVITATION_TOKEN_EXPIRES_IN',
@@ -466,20 +637,42 @@ export class WorkspaceInvitationService {
 
     const expiresAt = addMilliseconds(new Date().getTime(), ms(expiresIn));
 
-    const invitationToken = this.appTokenRepository.create({
+    const saveToken = (runner: QueryRunner) => {
+      const repo = runner.manager.getRepository(AppTokenEntity);
+      const invitationToken = repo.create({
+        workspaceId,
+        expiresAt,
+        type: isOnboardingInvitation
+          ? AppTokenType.OnboardingInvitationToken
+          : AppTokenType.InvitationToken,
+        value: crypto.randomBytes(32).toString('hex'),
+        context: {
+          email,
+          ...(isDefined(roleId) ? { roleId } : {}),
+        },
+      });
+
+      return repo.save(invitationToken);
+    };
+
+    if (queryRunner) {
+      return saveToken(queryRunner);
+    }
+
+    const auditRequest = captureWorkspaceDomainAudit({
       workspaceId,
-      expiresAt,
-      type: isOnboardingInvitation
-        ? AppTokenType.OnboardingInvitationToken
-        : AppTokenType.InvitationToken,
-      value: crypto.randomBytes(32).toString('hex'),
-      context: {
-        email,
-        ...(isDefined(roleId) ? { roleId } : {}),
-      },
+      auditIdentity,
     });
 
-    return this.appTokenRepository.save(invitationToken);
+    return runAuditedWorkspaceInvitationCreate(
+      this.resolveDataSource(),
+      auditRequest,
+      {
+        email,
+        work: saveToken,
+        extractInvitationId: (created) => created.id,
+      },
+    );
   }
 
   private async throttleInvitationSending(

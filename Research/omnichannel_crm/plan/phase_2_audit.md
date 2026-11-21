@@ -386,8 +386,17 @@ LOG192 закрывает транзакционный аудит удалени
 (`ApplicationInstallResolver.uninstallApplication` ->
 `ApplicationUninstallRunnerService.uninstallApplication` ->
 `ApplicationSyncService.uninstallApplication`).
+LOG193 закрывает транзакционный аудит полного жизненного цикла приглашений рабочего пространства
+(`workspaceInvitation` в `core."appToken"` с типами `INVITATION_TOKEN` и
+`ONBOARDING_INVITATION_TOKEN` в `WorkspaceInvitationService`, `WorkspaceInvitationResolver`,
+`UserWorkspaceService.addUserToWorkspaceIfUserNotInWorkspace`,
+`SignInUpService.signInUpWithPersonalInvitation` и `workspace-domain-audit.ts`: атомарная замена
+просроченных приглашений в `createWorkspaceInvitation` под одним `operationId`, прямой вызов
+`generateInvitationToken`, `deleteWorkspaceInvitation`, `invalidateWorkspaceInvitation`,
+`resendWorkspaceInvitation` / `sendInvitations` с общим `correlationId` и защитой `workspaceId`,
+редактированием `email`, `value`, `expiresAt`, `deletedAt`, `revokedAt` и пост-flush проверкой).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log192/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log193/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

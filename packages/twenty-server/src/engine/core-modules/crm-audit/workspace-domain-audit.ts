@@ -5574,3 +5574,395 @@ export const runAuditedApplicationCreate = async <TResult>(
     }),
   );
 };
+
+const WORKSPACE_INVITATION_TOKEN_TYPES = [
+  'INVITATION_TOKEN',
+  'ONBOARDING_INVITATION_TOKEN',
+] as const;
+
+export type WorkspaceInvitationTokenType =
+  (typeof WORKSPACE_INVITATION_TOKEN_TYPES)[number];
+
+export type PersistedWorkspaceInvitationRow = Readonly<{
+  id: string;
+  workspaceId: string;
+  type: WorkspaceInvitationTokenType;
+  value: string | null;
+  expiresAt: string;
+  deletedAt: string | null;
+  revokedAt: string | null;
+  email: string | null;
+  roleId: string | null;
+}>;
+
+const isWorkspaceInvitationTokenType = (
+  value: unknown,
+): value is WorkspaceInvitationTokenType =>
+  value === 'INVITATION_TOKEN' || value === 'ONBOARDING_INVITATION_TOKEN';
+
+export const projectWorkspaceInvitation = (row: Record<string, unknown>) => {
+  if (!isWorkspaceInvitationTokenType(row.type)) {
+    throw new Error('Workspace invitation audit row type is invalid');
+  }
+
+  const context =
+    row.context &&
+    typeof row.context === 'object' &&
+    !Array.isArray(row.context)
+      ? (row.context as Record<string, unknown>)
+      : null;
+
+  const rawEmail = context?.email;
+  const rawRoleId = context?.roleId;
+
+  return {
+    type: row.type,
+    roleId:
+      rawRoleId === undefined || rawRoleId === null ? null : uuid(rawRoleId),
+    email:
+      typeof rawEmail === 'string' && rawEmail.length > 0
+        ? rawEmail.toLowerCase()
+        : null,
+    value:
+      row.value === undefined || row.value === null ? null : String(row.value),
+    expiresAt:
+      row.expiresAt === undefined || row.expiresAt === null
+        ? null
+        : String(row.expiresAt),
+    deletedAt:
+      row.deletedAt === undefined || row.deletedAt === null
+        ? null
+        : String(row.deletedAt),
+    revokedAt:
+      row.revokedAt === undefined || row.revokedAt === null
+        ? null
+        : String(row.revokedAt),
+  };
+};
+
+const toPersistedWorkspaceInvitationRow = (
+  row: Record<string, unknown>,
+): PersistedWorkspaceInvitationRow => {
+  const projected = projectWorkspaceInvitation(row);
+
+  return Object.freeze({
+    id: uuid(row.id),
+    workspaceId: uuid(row.workspaceId),
+    type: projected.type,
+    value: projected.value,
+    expiresAt: projected.expiresAt ?? '',
+    deletedAt: projected.deletedAt,
+    revokedAt: projected.revokedAt,
+    email: projected.email,
+    roleId: projected.roleId,
+  });
+};
+
+export const runAuditedWorkspaceInvitationCreate = async <TResult>(
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    email,
+    work,
+    extractInvitationId,
+  }: {
+    email: string;
+    work: (runner: QueryRunner) => Promise<TResult>;
+    extractInvitationId: (result: TResult) => string;
+  },
+): Promise<TResult> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error(
+      'Workspace invitation create audit requires core DataSource',
+    );
+  }
+
+  const normalizedEmail = email.toLowerCase();
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error(
+          'Workspace invitation create audit workspace unavailable',
+        );
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const readEmailInvitations = async (forUpdate: boolean) => {
+        const rows: Array<{ row: Record<string, unknown> }> =
+          await runner.query(
+            `SELECT to_jsonb(t) AS row
+               FROM core."appToken" t
+              WHERE t."workspaceId" = $1
+                AND t.type = ANY($2::text[])
+                AND lower(COALESCE(t.context->>'email', '')) = $3
+              ORDER BY t.id ASC${forUpdate ? ' FOR UPDATE' : ''}`,
+            [
+              request.workspaceId,
+              [...WORKSPACE_INVITATION_TOKEN_TYPES],
+              normalizedEmail,
+            ],
+          );
+
+        return new Map(rows.map(({ row }) => [uuid(row.id), row] as const));
+      };
+
+      const beforeRows = await readEmailInvitations(true);
+      const result = await work(runner);
+      const createdInvitationId = uuid(extractInvitationId(result));
+      const afterRows = await readEmailInvitations(true);
+
+      if (!afterRows.has(createdInvitationId)) {
+        throw new Error('Workspace invitation create did not persist row');
+      }
+
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      let recordedCreated = false;
+
+      for (const [id, beforeRow] of beforeRows.entries()) {
+        const afterRow = afterRows.get(id);
+        if (!afterRow) {
+          audit.record({
+            resourceKind: 'workspaceInvitation',
+            resourceId: id,
+            action: 'delete',
+            before: projectWorkspaceInvitation(beforeRow),
+            after: null,
+            securityDescriptor: {
+              resourceKind: 'workspaceInvitation',
+              resourceId: id,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+        } else if (
+          canonicalAuditJson(projectWorkspaceInvitation(beforeRow)) !==
+          canonicalAuditJson(projectWorkspaceInvitation(afterRow))
+        ) {
+          throw new Error(
+            'Unexpected workspace invitation update during create',
+          );
+        }
+      }
+
+      for (const [id, afterRow] of afterRows.entries()) {
+        if (!beforeRows.has(id)) {
+          audit.record({
+            resourceKind: 'workspaceInvitation',
+            resourceId: id,
+            action: 'create',
+            before: null,
+            after: projectWorkspaceInvitation(afterRow),
+            securityDescriptor: {
+              resourceKind: 'workspaceInvitation',
+              resourceId: id,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          if (id === createdInvitationId) {
+            recordedCreated = true;
+          }
+        }
+      }
+
+      if (!recordedCreated) {
+        throw new Error('Workspace invitation create did not persist new row');
+      }
+
+      const expectedSerialized = canonicalAuditJson(
+        [...afterRows.entries()].map(([id, row]) => ({
+          id,
+          ...projectWorkspaceInvitation(row),
+        })),
+      );
+      await audit.flush();
+
+      const postFlushRows = await readEmailInvitations(false);
+      const actualSerialized = canonicalAuditJson(
+        [...postFlushRows.entries()].map(([id, row]) => ({
+          id,
+          ...projectWorkspaceInvitation(row),
+        })),
+      );
+      if (actualSerialized !== expectedSerialized) {
+        throw new Error(
+          'Workspace invitation state changed during audit flush',
+        );
+      }
+
+      return result;
+    }),
+  );
+};
+
+export const runAuditedWorkspaceInvitationDelete = async <TResult>(
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    target,
+    work,
+  }: {
+    target: { id: string } | { email: string; activeOnly: true };
+    work: (
+      runner: QueryRunner,
+      lockedRows: PersistedWorkspaceInvitationRow[],
+    ) => Promise<TResult>;
+  },
+): Promise<TResult> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error(
+      'Workspace invitation delete audit requires core DataSource',
+    );
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error(
+          'Workspace invitation delete audit workspace unavailable',
+        );
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      let beforeEntries: Array<{ row: Record<string, unknown> }>;
+      if ('id' in target) {
+        const targetId = uuid(target.id);
+        beforeEntries = await runner.query(
+          `SELECT to_jsonb(t) AS row
+             FROM core."appToken" t
+            WHERE t.id = $1
+              AND t."workspaceId" = $2
+              AND t.type = ANY($3::text[])
+            ORDER BY t.id ASC
+            FOR UPDATE`,
+          [
+            targetId,
+            request.workspaceId,
+            [...WORKSPACE_INVITATION_TOKEN_TYPES],
+          ],
+        );
+      } else {
+        const normalizedEmail = target.email.toLowerCase();
+        beforeEntries = await runner.query(
+          `SELECT to_jsonb(t) AS row
+             FROM core."appToken" t
+            WHERE t."workspaceId" = $1
+              AND t.type = ANY($2::text[])
+              AND t."deletedAt" IS NULL
+              AND t."expiresAt" > NOW()
+              AND lower(COALESCE(t.context->>'email', '')) = $3
+            ORDER BY t.id ASC
+            FOR UPDATE`,
+          [
+            request.workspaceId,
+            [...WORKSPACE_INVITATION_TOKEN_TYPES],
+            normalizedEmail,
+          ],
+        );
+      }
+
+      const beforeMap = new Map(
+        beforeEntries.map(({ row }) => [uuid(row.id), row] as const),
+      );
+      const lockedRows = beforeEntries.map(({ row }) =>
+        toPersistedWorkspaceInvitationRow(row),
+      );
+
+      const result = await work(runner, lockedRows);
+
+      if (beforeMap.size === 0) {
+        return result;
+      }
+
+      const targetIds = [...beforeMap.keys()];
+      const readByIds = async (forUpdate: boolean) => {
+        const rows: Array<{ row: Record<string, unknown> }> =
+          await runner.query(
+            `SELECT to_jsonb(t) AS row
+               FROM core."appToken" t
+              WHERE t.id = ANY($1::uuid[])
+                AND t."workspaceId" = $2
+                AND t.type = ANY($3::text[])
+              ORDER BY t.id ASC${forUpdate ? ' FOR UPDATE' : ''}`,
+            [
+              targetIds,
+              request.workspaceId,
+              [...WORKSPACE_INVITATION_TOKEN_TYPES],
+            ],
+          );
+
+        return new Map(rows.map(({ row }) => [uuid(row.id), row] as const));
+      };
+
+      const afterMap = await readByIds(true);
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      const deletedIds: string[] = [];
+
+      for (const [id, beforeRow] of beforeMap.entries()) {
+        const afterRow = afterMap.get(id);
+        if (!afterRow) {
+          audit.record({
+            resourceKind: 'workspaceInvitation',
+            resourceId: id,
+            action: 'delete',
+            before: projectWorkspaceInvitation(beforeRow),
+            after: null,
+            securityDescriptor: {
+              resourceKind: 'workspaceInvitation',
+              resourceId: id,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          deletedIds.push(id);
+        } else if (
+          canonicalAuditJson(projectWorkspaceInvitation(beforeRow)) !==
+          canonicalAuditJson(projectWorkspaceInvitation(afterRow))
+        ) {
+          throw new Error(
+            'Unexpected workspace invitation update during delete',
+          );
+        }
+      }
+
+      if (deletedIds.length > 0) {
+        const expectedSerialized = canonicalAuditJson(
+          [...afterMap.entries()].map(([id, row]) => ({
+            id,
+            ...projectWorkspaceInvitation(row),
+          })),
+        );
+        await audit.flush();
+
+        const postFlushMap = await readByIds(false);
+        const actualSerialized = canonicalAuditJson(
+          [...postFlushMap.entries()].map(([id, row]) => ({
+            id,
+            ...projectWorkspaceInvitation(row),
+          })),
+        );
+        if (actualSerialized !== expectedSerialized) {
+          throw new Error(
+            'Workspace invitation state changed during audit flush',
+          );
+        }
+      }
+
+      return result;
+    }),
+  );
+};

@@ -1,0 +1,37 @@
+{
+  "log": "LOG-193",
+  "issue": "ROB-765",
+  "date": "2026-11-21",
+  "title": "Transactional audit of workspace invitation lifecycle (workspaceInvitation in core.appToken)",
+  "targetedPostgres": {
+    "suitesPassed": 3,
+    "suitesTotal": 3,
+    "testsPassed": 19,
+    "testsTotal": 19,
+    "newPostgresTests": 5,
+    "durationSeconds": 10.637
+  },
+  "fullRegression": {
+    "suitesPassed": 129,
+    "suitesTotal": 129,
+    "testsPassed": 3213,
+    "testsTotal": 3213,
+    "durationSeconds": 724.827
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.173
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 493,
+    "currentRootFiles": 493,
+    "baselineDiagnostics": 295,
+    "currentDiagnostics": 274,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 9
+}

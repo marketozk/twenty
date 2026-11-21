@@ -5503,3 +5503,18 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 5bccad70-7242-4f20-9bbc-4e8e3c8fca7d и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log192/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG193`).
+
+## LOG-193 - транзакционный аудит жизненного цикла приглашений рабочего пространства (`workspaceInvitation` в `core."appToken"`)
+
+21.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log193/design.md), [design-review.md](implementation/log193/design-review.md)) и реализован участок `LOG-193` (Linear `ROB-765`): транзакционный аудит полного жизненного цикла персональных и онбординг-приглашений рабочего пространства (`INVITATION_TOKEN`, `ONBOARDING_INVITATION_TOKEN` в `core."appToken"`).
+
+В `crm-audit.types.ts`, `crm-audit-transaction-context.ts` и `workspace-domain-audit.ts` добавлен вид ресурса `workspaceInvitation` (`values: ['type', 'roleId']`, `redacted: ['email', 'value', 'expiresAt', 'deletedAt', 'revokedAt']`, `ADMINISTRATIVE_ACTIONS: ['create', 'delete']`) и транзакционные раннеры `runAuditedWorkspaceInvitationCreate` и `runAuditedWorkspaceInvitationDelete` с блокировками `core.workspace` (`FOR NO KEY UPDATE`) и `core."appToken"` (`FOR UPDATE`), fail-closed проверкой актора и имперсонации, проверкой границ `workspaceId` и пост-flush сверкой состояния. В `WorkspaceInvitationService`, `WorkspaceInvitationResolver`, `UserWorkspaceService.addUserToWorkspaceIfUserNotInWorkspace` и `SignInUpService.signInUpWithPersonalInvitation` подключён аудит `createWorkspaceInvitation`, `generateInvitationToken`, `deleteWorkspaceInvitation`, `invalidateWorkspaceInvitation`, `resendWorkspaceInvitation` и `sendInvitations` с единым `operationId` при замене просроченных приглашений и общим `correlationId` при пересылке и приёме приглашения.
+
+21.11.2026 проверки LOG193 завершены. 3213 tests/129 suites PASS (724.827s). 19 targeted/3 suites PASS (10.637s), 5 новых PostgreSQL случаев. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 493/493 roots, baseline 295 / current 274 diagnostics, 0 новых/changed-code. Совпали 9 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту и атомарность жизненного цикла `workspaceInvitation`, устранение риска cross-workspace удаления `appTokenIdToInvalidate`, редактирование `email` и секретного токена `value`, проброс `auditIdentity` и имперсонации и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log193/results.json), [ревью](implementation/log193/review.md),
+[следующий участок](implementation/log193/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

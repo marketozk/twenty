@@ -99,6 +99,10 @@ const CATALOG: Record<
     values: ['applicationId', 'isValidated'],
     redacted: ['domain'],
   },
+  workspaceInvitation: {
+    values: ['type', 'roleId'],
+    redacted: ['email', 'value', 'expiresAt', 'deletedAt', 'revokedAt'],
+  },
   emailingDomain: {
     values: ['status', 'tenantStatus', 'unsubscribeHostnameStatus'],
     redacted: [
@@ -852,6 +856,7 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   featureFlag: ['create', 'update'],
   approvedAccessDomain: ['create', 'update', 'delete'],
   publicDomain: ['create', 'update', 'delete'],
+  workspaceInvitation: ['create', 'delete'],
   emailingDomain: ['create', 'update', 'delete'],
   dpaAgreement: ['create'],
   unsubscribeTopic: ['create', 'update', 'delete'],
