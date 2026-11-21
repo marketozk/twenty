@@ -1,15 +1,20 @@
 import { Injectable } from '@nestjs/common';
 
+import chunk from 'lodash.chunk';
+
 import { STANDARD_OBJECTS } from 'twenty-shared/metadata';
 import {
-  RecordSharePrincipalType,
-  RecordShareRowCause,
   WorkflowVisibility,
 } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 import { type FindOptionsWhere, In } from 'typeorm';
 
 import { CacheLockService } from 'src/engine/core-modules/cache-lock/cache-lock.service';
+import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
+import {
+  runAuditedWorkflowRunShareSync,
+  validateWorkflowRunShareSyncAuditInput,
+} from 'src/engine/core-modules/crm-audit/record-share-audit';
 import { RecordShareStorageService } from 'src/engine/core-modules/record-share/services/record-share-storage.service';
 import { WorkflowEntity } from 'src/engine/core-modules/workflow/entities/workflow.entity';
 import { buildWorkflowRunRecordShares } from 'src/engine/core-modules/workflow/utils/build-workflow-run-record-shares.util';
@@ -22,6 +27,7 @@ import { type WorkflowRunWorkspaceEntity } from 'src/modules/workflow/common/sta
 
 // Keeps each grant write well under Postgres' bind parameter limit.
 const WORKFLOW_RUN_BATCH_SIZE = 500;
+const DELETE_ID_CHUNK_SIZE = 1000;
 
 // A whole workflow's runs can take longer than the default lock lifetime.
 const CORE_WORKFLOW_LOCK_OPTIONS = { ttl: 30_000, maxRetries: 300 };
@@ -29,6 +35,11 @@ const CORE_WORKFLOW_LOCK_OPTIONS = { ttl: 30_000, maxRetries: 300 };
 type CoreWorkflowAccess = {
   isWorkspaceVisible: boolean;
   creatorWorkspaceMemberId: string | null;
+};
+
+type WorkflowRunShareAuditArgs = {
+  auditOperation?: CrmAuditOperation;
+  auditImpersonatorUserWorkspaceId?: string;
 };
 
 // runs carry their workflow's data, so their grants are derived from it and replaced wholesale to revoke what the old state granted
@@ -48,17 +59,31 @@ export class WorkflowRunRecordShareService {
     workspaceId,
     coreWorkflowId,
     updateAccess,
+    auditOperation,
+    auditImpersonatorUserWorkspaceId,
   }: {
     workspaceId: string;
     coreWorkflowId: string;
     updateAccess: () => Promise<TResult>;
-  }): Promise<TResult> {
+  } & WorkflowRunShareAuditArgs): Promise<TResult> {
+    const validatedAudit = validateWorkflowRunShareSyncAuditInput({
+      workspaceId,
+      auditOperation,
+      auditImpersonatorUserWorkspaceId,
+    });
+
     return this.withCoreWorkflowLock(
-      { workspaceId, coreWorkflowId },
+      { workspaceId: validatedAudit.workspaceId, coreWorkflowId },
       async () => {
         const result = await updateAccess();
 
-        await this.replaceSharesOfAllRuns({ workspaceId, coreWorkflowId });
+        await this.replaceSharesOfAllRuns({
+          workspaceId: validatedAudit.workspaceId,
+          coreWorkflowId,
+          auditOperation: validatedAudit.capturedOperation,
+          auditImpersonatorUserWorkspaceId:
+            validatedAudit.impersonatorUserWorkspaceId,
+        });
 
         return result;
       },
@@ -68,13 +93,29 @@ export class WorkflowRunRecordShareService {
   async syncRunsOfCoreWorkflows({
     workspaceId,
     coreWorkflowIds,
+    auditOperation,
+    auditImpersonatorUserWorkspaceId,
   }: {
     workspaceId: string;
     coreWorkflowIds: string[];
-  }): Promise<void> {
+  } & WorkflowRunShareAuditArgs): Promise<void> {
+    const validatedAudit = validateWorkflowRunShareSyncAuditInput({
+      workspaceId,
+      auditOperation,
+      auditImpersonatorUserWorkspaceId,
+    });
+
     for (const coreWorkflowId of new Set(coreWorkflowIds)) {
-      await this.withCoreWorkflowLock({ workspaceId, coreWorkflowId }, () =>
-        this.replaceSharesOfAllRuns({ workspaceId, coreWorkflowId }),
+      await this.withCoreWorkflowLock(
+        { workspaceId: validatedAudit.workspaceId, coreWorkflowId },
+        () =>
+          this.replaceSharesOfAllRuns({
+            workspaceId: validatedAudit.workspaceId,
+            coreWorkflowId,
+            auditOperation: validatedAudit.capturedOperation,
+            auditImpersonatorUserWorkspaceId:
+              validatedAudit.impersonatorUserWorkspaceId,
+          }),
       );
     }
   }
@@ -82,12 +123,23 @@ export class WorkflowRunRecordShareService {
   async syncRuns({
     workspaceId,
     workflowRunIds,
+    auditOperation,
+    auditImpersonatorUserWorkspaceId,
   }: {
     workspaceId: string;
     workflowRunIds: string[];
-  }): Promise<void> {
-    const runs = await this.findRuns({
+  } & WorkflowRunShareAuditArgs): Promise<void> {
+    const validatedAudit = validateWorkflowRunShareSyncAuditInput({
       workspaceId,
+      auditOperation,
+      auditImpersonatorUserWorkspaceId,
+    });
+    if (workflowRunIds.length === 0) {
+      return;
+    }
+
+    const runs = await this.findRuns({
+      workspaceId: validatedAudit.workspaceId,
       where: { id: In(workflowRunIds) },
     });
     const runIdsByCoreWorkflowId = new Map<string | null, string[]>();
@@ -102,20 +154,29 @@ export class WorkflowRunRecordShareService {
     for (const [coreWorkflowId, runIds] of runIdsByCoreWorkflowId) {
       if (!isDefined(coreWorkflowId)) {
         await this.replaceShares({
-          workspaceId,
+          workspaceId: validatedAudit.workspaceId,
           workflowRunIds: runIds,
           access: { isWorkspaceVisible: true, creatorWorkspaceMemberId: null },
+          auditOperation: validatedAudit.capturedOperation,
+          auditImpersonatorUserWorkspaceId:
+            validatedAudit.impersonatorUserWorkspaceId,
         });
         continue;
       }
 
       await this.withCoreWorkflowLock(
-        { workspaceId, coreWorkflowId },
+        { workspaceId: validatedAudit.workspaceId, coreWorkflowId },
         async () =>
           this.replaceShares({
-            workspaceId,
+            workspaceId: validatedAudit.workspaceId,
             workflowRunIds: runIds,
-            access: await this.resolveAccess({ workspaceId, coreWorkflowId }),
+            access: await this.resolveAccess({
+              workspaceId: validatedAudit.workspaceId,
+              coreWorkflowId,
+            }),
+            auditOperation: validatedAudit.capturedOperation,
+            auditImpersonatorUserWorkspaceId:
+              validatedAudit.impersonatorUserWorkspaceId,
           }),
       );
     }
@@ -140,10 +201,12 @@ export class WorkflowRunRecordShareService {
   private async replaceSharesOfAllRuns({
     workspaceId,
     coreWorkflowId,
+    auditOperation,
+    auditImpersonatorUserWorkspaceId,
   }: {
     workspaceId: string;
     coreWorkflowId: string;
-  }): Promise<void> {
+  } & WorkflowRunShareAuditArgs): Promise<void> {
     const runs = await this.findRuns({
       workspaceId,
       where: { coreWorkflowId },
@@ -153,6 +216,8 @@ export class WorkflowRunRecordShareService {
       workspaceId,
       workflowRunIds: runs.map(({ id }) => id),
       access: await this.resolveAccess({ workspaceId, coreWorkflowId }),
+      auditOperation,
+      auditImpersonatorUserWorkspaceId,
     });
   }
 
@@ -160,11 +225,20 @@ export class WorkflowRunRecordShareService {
     workspaceId,
     workflowRunIds,
     access,
+    auditOperation,
+    auditImpersonatorUserWorkspaceId,
   }: {
     workspaceId: string;
     workflowRunIds: string[];
     access: CoreWorkflowAccess;
-  }): Promise<void> {
+  } & WorkflowRunShareAuditArgs): Promise<void> {
+    const normalizedRunIds = [
+      ...new Set(workflowRunIds.map((id) => id.toLowerCase())),
+    ].sort();
+    if (normalizedRunIds.length === 0) {
+      return;
+    }
+
     const { flatObjectMetadataMaps } =
       await this.workspaceCacheService.getOrRecompute(workspaceId, [
         'flatObjectMetadataMaps',
@@ -172,52 +246,70 @@ export class WorkflowRunRecordShareService {
     const objectMetadataId =
       flatObjectMetadataMaps.byUniversalIdentifier[
         STANDARD_OBJECTS.workflowRun.universalIdentifier
-      ]?.id;
+      ]?.id?.toLowerCase();
 
     if (!isDefined(objectMetadataId)) {
       return;
     }
 
+    const normalizedAccess: CoreWorkflowAccess = {
+      isWorkspaceVisible: access.isWorkspaceVisible,
+      creatorWorkspaceMemberId: isDefined(access.creatorWorkspaceMemberId)
+        ? access.creatorWorkspaceMemberId.toLowerCase()
+        : null,
+    };
+
     for (
       let offset = 0;
-      offset < workflowRunIds.length;
+      offset < normalizedRunIds.length;
       offset += WORKFLOW_RUN_BATCH_SIZE
     ) {
-      const batch = workflowRunIds.slice(
+      const batch = normalizedRunIds.slice(
         offset,
         offset + WORKFLOW_RUN_BATCH_SIZE,
       );
-      const recordScope = { objectMetadataId, recordId: In(batch) };
+      const desiredShares = buildWorkflowRunRecordShares({
+        objectMetadataId,
+        workflowRunIds: batch,
+        ...normalizedAccess,
+      });
 
       await this.workspaceOrmManager.executeInWorkspaceContext(
         () =>
           this.workspaceOrmManager.runInWorkspaceTransaction(
             async (transactionScope) => {
-              await this.recordShareStorageService.deleteMatching({
+              await runAuditedWorkflowRunShareSync({
+                scope: transactionScope,
                 workspaceId,
-                transactionScope,
-                criteria: [
-                  // grants written on the run's own behalf: those derived here, and the APPLICATION creator-role
-                  // grant, which would otherwise let that role read a private workflow's runs
-                  { ...recordScope, sourceId: In(batch) },
-                  { ...recordScope, rowCause: RecordShareRowCause.APPLICATION },
-                  // a grant to everyone means workspace-visible, which only the core workflow decides
-                  {
-                    ...recordScope,
-                    principalType: RecordSharePrincipalType.EVERYONE,
-                  },
-                ],
-              });
-              await this.recordShareStorageService.insertMany({
-                workspaceId,
-                transactionScope,
-                recordShares: buildWorkflowRunRecordShares({
-                  objectMetadataId,
-                  workflowRunIds: batch,
-                  ...access,
-                }),
+                objectMetadataId,
+                workflowRunIds: batch,
+                desiredShares,
+                auditOperation,
+                auditImpersonatorUserWorkspaceId,
+                execute: async ({ idsToDelete, sharesToInsert }) => {
+                  for (const idChunk of chunk(
+                    idsToDelete,
+                    DELETE_ID_CHUNK_SIZE,
+                  )) {
+                    await this.recordShareStorageService.deleteMatching({
+                      workspaceId,
+                      transactionScope,
+                      criteria: [{ id: In(idChunk) }],
+                    });
+                  }
+                  if (sharesToInsert.length > 0) {
+                    await this.recordShareStorageService.insertMany({
+                      workspaceId,
+                      transactionScope,
+                      recordShares: sharesToInsert as Parameters<
+                        RecordShareStorageService['insertMany']
+                      >[0]['recordShares'],
+                    });
+                  }
+                },
               });
             },
+            { commitOutcome: 'strict' },
           ),
         buildSystemAuthContext(workspaceId),
       );

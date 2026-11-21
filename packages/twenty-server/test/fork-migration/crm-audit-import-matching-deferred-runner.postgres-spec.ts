@@ -619,10 +619,16 @@ it('executes pending message and calendar import matching intents alongside sync
   await runner.runPendingActions(f.workspaceId);
 
   expect(await intents()).toHaveLength(0);
-  expect(syncWorkflowShares).toHaveBeenCalledWith({
-    workspaceId: f.workspaceId,
-    coreWorkflowIds: [workflowId],
-  });
+  expect(syncWorkflowShares).toHaveBeenCalledWith(
+    expect.objectContaining({
+      workspaceId: f.workspaceId,
+      coreWorkflowIds: [workflowId],
+      auditOperation: expect.objectContaining({
+        workspaceId: f.workspaceId,
+        actor: { kind: 'system', id: 'sync_workflow_run_shares' },
+      }),
+    }),
+  );
   const [matchedMsgParticipant] = await f.owner.query(
     `SELECT * FROM ${table('messageParticipant')}`,
   );

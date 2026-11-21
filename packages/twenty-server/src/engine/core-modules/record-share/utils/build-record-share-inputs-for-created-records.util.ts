@@ -95,7 +95,9 @@ const buildCreatorRows = ({
   if (
     !isDefined(creatorRoleId) ||
     shareWithPrincipals.some(
-      (shareWithPrincipal) => shareWithPrincipal.principalId === creatorRoleId,
+      (shareWithPrincipal) =>
+        shareWithPrincipal.principalId.toLowerCase() ===
+        creatorRoleId.toLowerCase(),
     )
   ) {
     return [];
@@ -134,7 +136,9 @@ export const buildRecordShareInputsForCreatedRecords = ({
   const shareWithPrincipals = shareWithEntries
     .map(resolveShareWithPrincipalOrThrow)
     .map((shareWithPrincipal) =>
-      shareWithPrincipal.principalId === creatorRoleId
+      isDefined(creatorRoleId) &&
+      shareWithPrincipal.principalId.toLowerCase() ===
+        creatorRoleId.toLowerCase()
         ? { ...shareWithPrincipal, accessLevel: RecordShareAccessLevel.FULL }
         : shareWithPrincipal,
     );

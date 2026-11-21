@@ -1,0 +1,40 @@
+{
+  "log": "LOG-200",
+  "issue": "ROB-765",
+  "date": "2026-11-22",
+  "title": "Transactional audit of remaining WorkspaceTransactionScope recordShare writers (ShareWithService and WorkflowRunRecordShareService)",
+  "targetedPostgres": {
+    "suitesPassed": 6,
+    "suitesTotal": 6,
+    "testsPassed": 166,
+    "testsTotal": 166,
+    "newPostgresTests": 4,
+    "durationSeconds": 31.274
+  },
+  "fullRegression": {
+    "suitesPassed": 135,
+    "suitesTotal": 136,
+    "testsPassed": 3242,
+    "testsTotal": 3243,
+    "durationSeconds": 733.021,
+    "preExistingUnrelatedFailure": "test/fork-migration/crm-audit-signing-key.postgres-spec.ts (LOG-195 UUID ordering flake on rotateCurrent line 391, left untouched per scope discipline)"
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.167
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 509,
+    "currentRootFiles": 509,
+    "baselineDiagnostics": 283,
+    "currentDiagnostics": 275,
+    "newDiagnostics": 0,
+    "changedFileDiagnostics": 2,
+    "baselineOnlyUnchangedMethodDiagnostics": 2,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 17
+}

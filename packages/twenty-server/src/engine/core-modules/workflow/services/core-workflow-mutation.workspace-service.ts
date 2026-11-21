@@ -810,6 +810,13 @@ export class CoreWorkflowMutationWorkspaceService {
       await this.workflowRunRecordShareService.updateAccessThenSyncRuns({
         workspaceId: capturedWorkspaceId,
         coreWorkflowId: capturedCoreWorkflowId,
+        auditOperation: auditRequest.operation,
+        ...(auditRequest.impersonatorUserWorkspaceId
+          ? {
+              auditImpersonatorUserWorkspaceId:
+                auditRequest.impersonatorUserWorkspaceId,
+            }
+          : {}),
         updateAccess: async () => {
           const outcome = await runAuditedCoreWorkflowVisibilityUpdate(
             dataSource,
@@ -887,6 +894,13 @@ export class CoreWorkflowMutationWorkspaceService {
           await this.workflowRunRecordShareService.syncRunsOfCoreWorkflows({
             workspaceId: capturedWorkspaceId,
             coreWorkflowIds: [capturedCoreWorkflowId],
+            auditOperation: auditRequest.operation,
+            ...(auditRequest.impersonatorUserWorkspaceId
+              ? {
+                  auditImpersonatorUserWorkspaceId:
+                    auditRequest.impersonatorUserWorkspaceId,
+                }
+              : {}),
           });
         } catch (syncError) {
           this.logger.error(

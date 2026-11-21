@@ -169,7 +169,16 @@ export const assertNativeCrmAuditWriteSupported = (
   kind: string,
   data: Record<string, unknown> = {},
 ): void => {
-  if (!getNativeCrmAuditContext(executor)) return;
+  if (
+    !getNativeCrmAuditContext(
+      executor,
+      metadata.nameSingular === shape.nameSingular &&
+        shape.tableName === 'recordShare'
+        ? metadata.nameSingular
+        : undefined,
+    )
+  )
+    return;
   if (
     !['create', 'update', 'soft-delete', 'restore', 'delete'].includes(kind) ||
     !isNativeCrmAuditMetadata(metadata, workspaceId) ||

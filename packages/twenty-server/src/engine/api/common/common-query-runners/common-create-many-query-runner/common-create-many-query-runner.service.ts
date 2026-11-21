@@ -43,6 +43,7 @@ import { assertIsValidUuid } from 'src/engine/api/graphql/workspace-query-runner
 import { getAllSelectableColumnNames } from 'src/engine/api/utils/get-all-selectable-column-names.util';
 import { WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
 import { isNativeCrmAuditMetadata } from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
+import { runInStandaloneShareWithScope } from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
 import { RecordPositionService } from 'src/engine/core-modules/record-position/services/record-position.service';
 import { type FlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/types/flat-entity-maps.type';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
@@ -176,14 +177,17 @@ export class CommonCreateManyQueryRunnerService extends CommonBaseQueryRunnerSer
     ) {
       return this.workspaceOrmManager.runInWorkspaceTransaction(
         (transactionScope) =>
-          this.run(args, {
-            ...queryRunnerContext,
-            transactionScope,
-            repository: transactionScope.getRepository(
-              queryRunnerContext.flatObjectMetadata.nameSingular,
-              queryRunnerContext.rolePermissionConfig,
-            ),
-          }),
+          runInStandaloneShareWithScope(transactionScope, () =>
+            this.run(args, {
+              ...queryRunnerContext,
+              transactionScope,
+              repository: transactionScope.getRepository(
+                queryRunnerContext.flatObjectMetadata.nameSingular,
+                queryRunnerContext.rolePermissionConfig,
+              ),
+            }),
+          ),
+        { commitOutcome: 'strict' },
       );
     }
 

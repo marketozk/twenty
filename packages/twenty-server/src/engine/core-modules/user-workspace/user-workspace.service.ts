@@ -571,6 +571,14 @@ export class UserWorkspaceService {
       await this.workflowRunRecordShareService.syncRunsOfCoreWorkflows({
         workspaceId,
         coreWorkflowIds: createdCoreWorkflowIds,
+        auditOperation: auditOperation ?? {
+          workspaceId,
+          operationId: randomUUID(),
+          actor: {
+            kind: 'system',
+            id: 'membership_cleanup_workflow_run_share_sync',
+          },
+        },
       });
     } finally {
       // An unknown COMMIT can still have revoked access; never restore stale caches.

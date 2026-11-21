@@ -450,8 +450,23 @@ LOG199 закрывает транзакционный аудит управле
 перенос владения `OWNER`/`MANUAL` грантами при удалении участника в
 `{ commitOutcome: 'strict', nativeOwnershipLock: 'exclusive' }` с 3/4-кортежными инвариантами и
 offboarding `SAVEPOINT record_share_transfer_audit`).
+LOG200 закрывает транзакционный аудит оставшихся `WorkspaceTransactionScope`-писателей
+`recordShare`: `ShareWithService.insertRecordSharesForCreatedRecords`
+(`CommonCreateManyQueryRunnerService`, `CommonBaseQueryRunnerService`,
+`native-crm-audit-transaction.ts`, `native-crm-audit-record.ts`, `workspace-repository.ts`,
+`record-share-audit.ts`, `build-record-share-inputs-for-created-records.util.ts` и
+`validate-share-with-arg-or-throw.util.ts`: Branch A внутри `withNativeCrmAuditTransaction` с
+общим `operationId`, `runDelegatedRecordShareWrite`, `SET LOCAL lock_timeout = '8s'`,
+`FOR KEY SHARE`, error latching и `postFlushChecks`; Branch B в самостоятельной строгой
+транзакции с `runInStandaloneShareWithScope`, общим `correlationId` на `scope`, сверкой ALS
+`actor`/`initiator`/impersonation и регистронезависимой дедупликацией `principalId`/`creatorRoleId`)
+и `WorkflowRunRecordShareService` (`CoreWorkflowMutationWorkspaceService`, `UserWorkspaceService` и
+`SyncWorkflowRunSharesDeferredActionHandlerService`: `{ commitOutcome: 'strict' }` с
+`FOR KEY SHARE`, diff-preserving sync с сохранением неуправляемых `MANUAL`-грантов, `0` записей при
+идемпотентном no-op, разрешением `auditImpersonatorUserWorkspaceId` и проверкой
+`!queryRunner.isTransactionActive` с актором `system:sync_workflow_run_shares`).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log199/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log200/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

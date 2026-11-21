@@ -1,0 +1,25 @@
+{
+  "log": "LOG-200",
+  "stand": "twenty-rob764-a3b77e6f5b034898",
+  "verifiedCount": 17,
+  "allMatched": true,
+  "files": {
+    "packages/twenty-server/src/engine/api/common/common-query-runners/common-base-query-runner.service.ts": "ef54750e27ef37cb09947ea43b39c2a76dd1ba307fe4d6c2dded2a61d4ce7843",
+    "packages/twenty-server/src/engine/api/common/common-query-runners/common-create-many-query-runner/common-create-many-query-runner.service.ts": "99b2d93395cd2b236a7130bb5a9096f3c8a98c7e289ca362d0b10297c73a701f",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-record.ts": "7bbb5ee45fa7e3817a55add51860e08800ea72652d02ae00a8cb6ade5cc41468",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-transaction.ts": "7508a17494e70d6723386e78b7ece142f2094062f4779ca59f1b5867f0dba56e",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/record-share-audit.ts": "d04c5012f62f5b81b237c8dae8e6b03794f14778155f383642dcb216dafbc6f6",
+    "packages/twenty-server/src/engine/core-modules/record-share/services/share-with.service.ts": "ed87a632971f547652d5badb1f22f0ef5161d014d6f119262602ed9bf26e255f",
+    "packages/twenty-server/src/engine/core-modules/record-share/utils/build-record-share-inputs-for-created-records.util.ts": "e7682b167a91f90ce4e4e831aac6ec5d58a5e81f8b17fda2003f6da00b8ac337",
+    "packages/twenty-server/src/engine/core-modules/record-share/utils/validate-share-with-arg-or-throw.util.ts": "95d27a4d668c28c6b762c8e78d3b88976012a3b9d447d99de912cbe945ec4b0c",
+    "packages/twenty-server/src/engine/core-modules/user-workspace/user-workspace.service.ts": "59f8888cc71eba683b5448f379e16ec192ea05f71fefbe9125a576a1ca43839c",
+    "packages/twenty-server/src/engine/core-modules/workflow/services/core-workflow-mutation.workspace-service.ts": "6d5f82f4609b3f125dc8c9fe11d6a249375b1e22b01d1302f11959164f423dda",
+    "packages/twenty-server/src/engine/core-modules/workflow/services/workflow-run-record-share.service.ts": "c9c9a57eae2815a75b6a69127e816cb7e7367138aec91daf14df8bae379a0eab",
+    "packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts": "b1afd1199a37f1009dc5466a80b81df527d372d1da94ce3083d4ba18f89bf6d1",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/deferred-action-handlers/services/sync-workflow-run-shares-deferred-action-handler.service.ts": "6cdca2c75a767072e13b48e42e2846ac021f1bfb4cae686b2927e7995995bfcc",
+    "packages/twenty-server/test/fork-migration/crm-audit-core-workflow-and-view.postgres-spec.ts": "dc792363a46c9c6f951bbd5fc1ca36988c44ad710208fa2595eb35c42db682c9",
+    "packages/twenty-server/test/fork-migration/crm-audit-import-matching-deferred-runner.postgres-spec.ts": "89956cd5df67125766028ac41804ab7336d37dcbee12575c35aaab8de06f4c5b",
+    "packages/twenty-server/test/fork-migration/crm-audit-membership-cleanup.postgres-spec.ts": "ff3f427df61228d5f474196802001f7cce4e9a6254ea6bb2bfa9786865379465",
+    "packages/twenty-server/test/fork-migration/crm-audit-record-share-writers.postgres-spec.ts": "8ff792405e4a5bc30ddc9ee08df63c744e5a16e3f87698cbada8f98c8e944332"
+  }
+}

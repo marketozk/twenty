@@ -552,10 +552,13 @@ it('actual service persists before queue and immediate share reconciliation, inv
     userWorkspaceId: membershipId,
   });
   expect(queue.add).toHaveBeenCalledTimes(1);
-  expect(sync).toHaveBeenCalledWith({
-    workspaceId,
-    coreWorkflowIds: [workflowId],
-  });
+  expect(sync).toHaveBeenCalledWith(
+    expect.objectContaining({
+      workspaceId,
+      coreWorkflowIds: [workflowId],
+      auditOperation: expect.objectContaining({ workspaceId }),
+    }),
+  );
   expect(invalidate).toHaveBeenCalledWith('userWorkspaceEntity', membershipId);
   expect(invalidateAndRecompute).toHaveBeenCalledWith(workspaceId, [
     'flatRoleTargetMaps',
@@ -695,10 +698,16 @@ it('actual module providers inject the existing share service and the registry d
       queryRunner,
       payload: { version: 1, coreWorkflowId: workflowId },
     });
-    expect(sync).toHaveBeenCalledWith({
-      workspaceId,
-      coreWorkflowIds: [workflowId],
-    });
+    expect(sync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId,
+        coreWorkflowIds: [workflowId],
+        auditOperation: expect.objectContaining({
+          workspaceId,
+          actor: { kind: 'system', id: 'sync_workflow_run_shares' },
+        }),
+      }),
+    );
   } finally {
     await queryRunner.release();
     await app.close();
@@ -755,10 +764,16 @@ it('worker failure keeps intent pending and a replay calls current-state share s
   ]);
   await database.query('UPDATE core.workflow SET visibility=$1', ['WORKSPACE']);
   await runner.runPendingActions(workspaceId);
-  expect(sync).toHaveBeenLastCalledWith({
-    workspaceId,
-    coreWorkflowIds: [workflowId],
-  });
+  expect(sync).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      workspaceId,
+      coreWorkflowIds: [workflowId],
+      auditOperation: expect.objectContaining({
+        workspaceId,
+        actor: { kind: 'system', id: 'sync_workflow_run_shares' },
+      }),
+    }),
+  );
   expect(await deferredRows()).toEqual([]);
 });
 it('exhausted retries remain FAILED and the existing manual retry recovers them', async () => {

@@ -905,7 +905,7 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       const inputs = Array.isArray(entityOrEntities)
         ? entityOrEntities
         : [entityOrEntities];
-      const entities = getNativeCrmAuditContext(this.options.executor)
+      const entities = getNativeCrmAuditContext(this.options.executor, this.options.flatObjectMetadata.nameSingular)
         ? inputs.map(captureNativeCrmAuditWriteData)
         : inputs;
 
@@ -987,7 +987,7 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       const inputs = Array.isArray(entityOrEntities)
         ? entityOrEntities
         : [entityOrEntities];
-      const entities = getNativeCrmAuditContext(this.options.executor)
+      const entities = getNativeCrmAuditContext(this.options.executor, this.options.flatObjectMetadata.nameSingular)
         ? inputs.map(captureNativeCrmAuditWriteData)
         : inputs;
 
@@ -1099,7 +1099,7 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     raw: ObjectRecord[];
   }> {
     return runNativeCrmAuditWrite(this.options.executor, async () => {
-      const nativeAudit = getNativeCrmAuditContext(this.options.executor);
+      const nativeAudit = getNativeCrmAuditContext(this.options.executor, this.options.flatObjectMetadata.nameSingular);
       if (this.isOmniNativeRepository || nativeAudit)
         args = {
           ...args,
@@ -1255,7 +1255,7 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
 
     await this.assertRecordStockAvailable(recordsToInsert.length);
 
-    const nativeAudit = getNativeCrmAuditContext(this.options.executor);
+    const nativeAudit = getNativeCrmAuditContext(this.options.executor, this.options.flatObjectMetadata.nameSingular);
     const sql = buildInsertStatement({
       tableShape: this.options.tableShape,
       columnNames,
@@ -1322,18 +1322,18 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     return runNativeCrmAuditWrite(this.options.executor, async () => {
       if (
         this.isOmniNativeRepository ||
-        getNativeCrmAuditContext(this.options.executor)
+        getNativeCrmAuditContext(this.options.executor, this.options.flatObjectMetadata.nameSingular)
       )
         args = {
           ...args,
           inputs: args.inputs.map((input) => ({
             id: input.id,
-            data: getNativeCrmAuditContext(this.options.executor)
+            data: getNativeCrmAuditContext(this.options.executor, this.options.flatObjectMetadata.nameSingular)
               ? captureNativeCrmAuditWriteData(input.data)
               : { ...input.data },
           })),
         };
-      if (getNativeCrmAuditContext(this.options.executor)) {
+      if (getNativeCrmAuditContext(this.options.executor, this.options.flatObjectMetadata.nameSingular)) {
         for (const input of args.inputs)
           assertNativeCrmAuditWriteSupported(
             this.options.executor,
@@ -1377,7 +1377,7 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       writableRecordIds.has(input.id),
     );
 
-    const nativeAudit = getNativeCrmAuditContext(this.options.executor);
+    const nativeAudit = getNativeCrmAuditContext(this.options.executor, this.options.flatObjectMetadata.nameSingular);
     let nativeAuditBefore: ObjectRecord[] = [];
     if (this.requiresOmniOwnershipCheck || nativeAudit) {
       const locked = await this.lockNativeWriteRows(
@@ -1905,13 +1905,13 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     return runNativeCrmAuditWrite(this.options.executor, async () => {
       if (
         this.isOmniNativeRepository ||
-        getNativeCrmAuditContext(this.options.executor)
+        getNativeCrmAuditContext(this.options.executor, this.options.flatObjectMetadata.nameSingular)
       )
         args = {
           ...args,
           columnsToReturn: [...args.columnsToReturn],
           data: args.data
-            ? getNativeCrmAuditContext(this.options.executor)
+            ? getNativeCrmAuditContext(this.options.executor, this.options.flatObjectMetadata.nameSingular)
               ? captureNativeCrmAuditWriteData(args.data)
               : { ...args.data }
             : undefined,
@@ -1983,7 +1983,7 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       this.applyRowLevelPermissionPredicates(selectQueryBuilder, kind);
     }
 
-    const nativeAudit = getNativeCrmAuditContext(this.options.executor);
+    const nativeAudit = getNativeCrmAuditContext(this.options.executor, this.options.flatObjectMetadata.nameSingular);
     let nativeAuditBefore: ObjectRecord[] = [];
     let nativeDeleteEffects:
       | ((deletedIds: string[]) => Promise<void>)
@@ -2386,7 +2386,7 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       mutationQueryBuilder.set(setColumns ?? {});
     }
 
-    if (getNativeCrmAuditContext(this.options.executor))
+    if (getNativeCrmAuditContext(this.options.executor, this.options.flatObjectMetadata.nameSingular))
       await mutationQueryBuilder.assertNoReferentialUpdateEffects();
 
     return mutationQueryBuilder.returning(columnsToReturn).execute();

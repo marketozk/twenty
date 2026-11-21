@@ -1180,10 +1180,13 @@ describe('coreWorkflow and coreView ownership and visibility CRM audit', () => {
       }),
     ).rejects.toBeInstanceOf(NativeTransactionOutcomeUnknownError);
 
-    expect(syncRunsOfCoreWorkflows).toHaveBeenCalledWith({
-      workspaceId,
-      coreWorkflowIds: [workflowId],
-    });
+    expect(syncRunsOfCoreWorkflows).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId,
+        coreWorkflowIds: [workflowId],
+        auditOperation: expect.objectContaining({ workspaceId }),
+      }),
+    );
     expect(invalidateFlatEntityMaps).toHaveBeenCalledWith({
       workspaceId,
       flatMapsKeys: ['flatWorkflowMaps'],

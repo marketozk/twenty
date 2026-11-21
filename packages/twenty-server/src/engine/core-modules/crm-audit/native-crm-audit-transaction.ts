@@ -21,15 +21,109 @@ type NativeCrmAuditAuth = { workspace: { id: string } } & (
 
 const contexts = new WeakMap<
   object,
-  { audit: CrmAuditTransactionContext; failure?: unknown }
+  {
+    audit: CrmAuditTransactionContext;
+    postFlushChecks: Array<() => Promise<void>>;
+    failure?: unknown;
+  }
 >();
 const scopes = new WeakMap<
   object,
   { executor: object; operation: CrmAuditOperation }
 >();
+const standaloneShareWithScopes = new WeakSet<object>();
+const delegatedRecordShareExecutors = new WeakSet<object>();
+
+export const isDelegatedRecordShareAuditWrite = (
+  executor: object,
+  objectMetadataNameSingular?: string,
+): boolean =>
+  objectMetadataNameSingular === 'recordShare' &&
+  delegatedRecordShareExecutors.has(executor);
+
+export const isStandaloneShareWithScope = (scope: object): boolean =>
+  standaloneShareWithScopes.has(scope);
+
+export const runInStandaloneShareWithScope = async <TData>(
+  scope: object,
+  work: () => Promise<TData>,
+): Promise<TData> => {
+  if (scopes.has(scope) || standaloneShareWithScopes.has(scope)) {
+    throw new Error('Standalone shareWith audit scope conflict');
+  }
+  standaloneShareWithScopes.add(scope);
+  try {
+    return await work();
+  } finally {
+    standaloneShareWithScopes.delete(scope);
+  }
+};
 
 export const isRegisteredNativeCrmAuditScope = (scope: object): boolean =>
   scopes.has(scope);
+
+export const runInNativeCrmAuditScopeIfPresent = async <TData>(
+  scope: Parameters<typeof createCrmAuditWorkspaceExecutor>[0],
+  auth: NativeCrmAuditAuth,
+  work: (context: {
+    operation: CrmAuditOperation;
+    record: (mutation: Parameters<CrmAuditTransactionContext['record']>[0]) => void;
+    registerPostFlushCheck: (check: () => Promise<void>) => void;
+    runDelegatedRecordShareWrite: <TWrite>(
+      execute: () => Promise<TWrite>,
+    ) => Promise<TWrite>;
+  }) => Promise<TData>,
+): Promise<{ handled: false } | { handled: true; value: TData }> => {
+  const binding = scopes.get(scope);
+  if (!binding) {
+    return { handled: false };
+  }
+  const ctx = contexts.get(binding.executor);
+  if (!ctx) {
+    throw new Error('Native audit scope missing active transaction context');
+  }
+  const value = await runNativeCrmAuditWrite(binding.executor, async () => {
+    createCrmAuditWorkspaceExecutor(scope);
+    const expected = captureNativeCrmAuditOperation(scope.workspaceId, auth, {
+      operationId: binding.operation.operationId,
+      ...(auth.type === 'system'
+        ? { systemActorId: binding.operation.actor.id }
+        : {}),
+    });
+    if (
+      expected.workspaceId !== binding.operation.workspaceId ||
+      expected.actor.kind !== binding.operation.actor.kind ||
+      expected.actor.id !== binding.operation.actor.id
+    ) {
+      throw new Error(
+        'Public CRM mutation scope has a different workspace or actor',
+      );
+    }
+
+    return work({
+      operation: binding.operation,
+      record: (mutation) => ctx.audit.record(mutation),
+      registerPostFlushCheck: (check) => {
+        ctx.postFlushChecks.push(check);
+      },
+      runDelegatedRecordShareWrite: async <TWrite>(
+        execute: () => Promise<TWrite>,
+      ): Promise<TWrite> => {
+        if (delegatedRecordShareExecutors.has(binding.executor)) {
+          throw new Error('Nested delegated recordShare write is unsupported');
+        }
+        delegatedRecordShareExecutors.add(binding.executor);
+        try {
+          return await execute();
+        } finally {
+          delegatedRecordShareExecutors.delete(binding.executor);
+        }
+      },
+    });
+  });
+
+  return { handled: true, value };
+};
 
 export const runInExistingNativeCrmAuditScope = async <TData>(
   scope: Parameters<typeof createCrmAuditWorkspaceExecutor>[0],
@@ -58,8 +152,13 @@ export const runInExistingNativeCrmAuditScope = async <TData>(
     return work();
   });
 };
-export const getNativeCrmAuditContext = (executor: object) =>
-  contexts.get(executor)?.audit;
+export const getNativeCrmAuditContext = (
+  executor: object,
+  objectMetadataNameSingular?: string,
+) =>
+  isDelegatedRecordShareAuditWrite(executor, objectMetadataNameSingular)
+    ? undefined
+    : contexts.get(executor)?.audit;
 
 export const runNativeCrmAuditWrite = async <T>(
   executor: object,
@@ -151,7 +250,11 @@ export const withNativeCrmAuditTransaction = async <T>(
   operation: CrmAuditOperation,
   work: () => Promise<T>,
 ): Promise<T> => {
-  if (contexts.has(executor) || scopes.has(scope))
+  if (
+    contexts.has(executor) ||
+    scopes.has(scope) ||
+    standaloneShareWithScopes.has(scope)
+  )
     throw new Error('Native audit owner already exists');
   operation = {
     ...operation,
@@ -172,8 +275,13 @@ export const withNativeCrmAuditTransaction = async <T>(
   if (previous.length)
     throw new Error('Native audit operation was already committed');
   const audit = new CrmAuditTransactionContext(auditExecutor, operation);
-  const binding: { audit: CrmAuditTransactionContext; failure?: unknown } = {
+  const binding: {
+    audit: CrmAuditTransactionContext;
+    postFlushChecks: Array<() => Promise<void>>;
+    failure?: unknown;
+  } = {
     audit,
+    postFlushChecks: [],
   };
   contexts.set(executor, binding);
   scopes.set(scope, { executor, operation });
@@ -181,6 +289,9 @@ export const withNativeCrmAuditTransaction = async <T>(
     const result = await work();
     if (binding.failure !== undefined) throw binding.failure;
     await audit.flush();
+    for (const postFlushCheck of binding.postFlushChecks) {
+      await postFlushCheck();
+    }
     return result;
   } finally {
     scopes.delete(scope);

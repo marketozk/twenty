@@ -18,6 +18,7 @@ import {
   type CrmAuditOperation,
   type CrmAuditPrincipal,
 } from 'src/engine/core-modules/crm-audit/crm-audit.types';
+import { runInNativeCrmAuditScopeIfPresent } from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
 
 export type RecordShareAuditWorkspaceScope = Parameters<
   typeof createCrmAuditWorkspaceExecutor
@@ -1101,5 +1102,907 @@ export const runAuditedRecordShareTransfer = async ({
     new Logger('RecordShareTransfer').error(
       'RECORD_SHARE_TRANSFER_AUDIT_UNAVAILABLE',
     );
+  }
+};
+
+export type RecordShareDesiredInput = {
+  objectMetadataId: string;
+  recordId: string;
+  principalId: string;
+  principalType: string;
+  accessLevel: string;
+  rowCause: string;
+  sourceId: string;
+};
+
+export type ShareWithAuditAuthContext = {
+  type: string;
+  workspace: { id: string };
+  user?: { id?: string } | null;
+  userWorkspaceId?: string;
+  workspaceMemberId?: string;
+  apiKey?: { id?: string } | null;
+  application?: { id?: string } | null;
+  viaApplication?: { id?: string } | null;
+  actingAgent?: { id?: string } | null;
+  agentId?: string;
+};
+
+const standaloneShareWithCorrelationIds = new WeakMap<object, string>();
+
+const verifyWorkspaceKeyShare = async (
+  executor: CrmAuditTransactionExecutor,
+  workspaceId: string,
+): Promise<void> => {
+  const rows = (await executor.query(
+    `SELECT id, to_jsonb(w)->>'deletedAt' AS "deletedAt"
+       FROM core.workspace w
+      WHERE w.id = $1
+        FOR KEY SHARE`,
+    [workspaceId],
+  )) as Array<{ id: string; deletedAt: string | null }>;
+
+  if (rows.length !== 1 || rows[0].deletedAt !== null) {
+    throw new Error('Record share audit workspace unavailable');
+  }
+};
+
+const readRecordShareSnapshotForRecords = async (
+  executor: CrmAuditTransactionExecutor,
+  workspaceId: string,
+  objectMetadataId: string,
+  recordIds: readonly string[],
+  lock: boolean,
+): Promise<Map<string, Record<string, unknown>>> => {
+  const rows = (await executor.query(
+    `SELECT id, "recordId", "objectMetadataId", "principalId",
+            "principalType", "accessLevel", "rowCause", "sourceId", "deletedAt"
+       FROM ${recordShareTable(workspaceId)}
+      WHERE "objectMetadataId" = $1
+        AND "recordId" = ANY($2::uuid[])
+      ORDER BY id${lock ? ' FOR UPDATE' : ''}`,
+    [objectMetadataId, recordIds],
+  )) as Array<Record<string, unknown>>;
+
+  const recordIdSet = new Set(recordIds);
+  const map = new Map<string, Record<string, unknown>>();
+  for (const row of rows) {
+    assertRecordShareRowInvariants(row, objectMetadataId);
+    if (!recordIdSet.has(uuid(row.recordId))) {
+      throw new Error('Record share audit row recordId out of scope');
+    }
+    map.set(uuid(row.id), row);
+  }
+
+  return map;
+};
+
+const uniqueShareKey = (proj: RecordShareRowProjection): string =>
+  `${proj.objectMetadataId}:${proj.recordId}:${proj.principalId}:${proj.rowCause}:${proj.sourceId}`;
+
+const fullShareTupleKey = (proj: RecordShareRowProjection): string =>
+  `${proj.objectMetadataId}:${proj.recordId}:${proj.principalId}:${proj.principalType}:${proj.accessLevel}:${proj.rowCause}:${proj.sourceId}`;
+
+const normalizeDesiredRecordShares = (
+  desiredShares: readonly RecordShareDesiredInput[],
+  expectedObjectMetadataId: string,
+  allowedRecordIds: ReadonlySet<string>,
+): Map<string, RecordShareRowProjection> => {
+  const byUniqueKey = new Map<string, RecordShareRowProjection>();
+  for (const share of desiredShares) {
+    const objectMetadataId = uuid(share.objectMetadataId);
+    const recordId = uuid(share.recordId);
+    const principalId = uuid(share.principalId);
+    const sourceId = uuid(share.sourceId);
+    if (objectMetadataId !== expectedObjectMetadataId) {
+      throw new Error('Record share desired row objectMetadataId mismatch');
+    }
+    if (!allowedRecordIds.has(recordId)) {
+      throw new Error('Record share desired row recordId out of scope');
+    }
+    if (!VALID_PRINCIPAL_TYPES.has(share.principalType)) {
+      throw new Error('Record share desired row principalType is invalid');
+    }
+    if (!VALID_ACCESS_LEVELS.has(share.accessLevel)) {
+      throw new Error('Record share desired row accessLevel is invalid');
+    }
+    if (!VALID_ROW_CAUSES.has(share.rowCause)) {
+      throw new Error('Record share desired row rowCause is invalid');
+    }
+    const proj: RecordShareRowProjection = {
+      objectMetadataId,
+      recordId,
+      principalId,
+      principalType: share.principalType,
+      accessLevel: share.accessLevel,
+      rowCause: share.rowCause,
+      sourceId,
+    };
+    const key = uniqueShareKey(proj);
+    const existing = byUniqueKey.get(key);
+    if (existing) {
+      if (
+        existing.accessLevel !== proj.accessLevel ||
+        existing.principalType !== proj.principalType
+      ) {
+        throw new Error('Record share desired rows have conflicting grants');
+      }
+      continue;
+    }
+    byUniqueKey.set(key, proj);
+  }
+
+  return byUniqueKey;
+};
+
+const resolveShareWithStandaloneOperation = (
+  normalizedWorkspaceId: string,
+  authContext: ShareWithAuditAuthContext,
+  scope: object,
+): { operation: CrmAuditOperation; impersonatorUserWorkspaceId?: string } => {
+  if (!authContext || typeof authContext !== 'object') {
+    throw new Error('Record share create audit requires authContext');
+  }
+  if (uuid(authContext.workspace?.id) !== normalizedWorkspaceId) {
+    throw new Error('Record share create audit workspace mismatch');
+  }
+
+  let fallbackCorrelationId = standaloneShareWithCorrelationIds.get(scope);
+  if (!fallbackCorrelationId) {
+    fallbackCorrelationId = randomUUID();
+    standaloneShareWithCorrelationIds.set(scope, fallbackCorrelationId);
+  }
+
+  if (authContext.type === 'user') {
+    const capture = captureRecordShareAudit({
+      workspaceId: normalizedWorkspaceId,
+      authContext,
+    });
+    const op = capture.operation.correlationId
+      ? capture.operation
+      : captureCrmAuditOperation({
+          ...capture.operation,
+          correlationId: fallbackCorrelationId,
+        });
+
+    return {
+      operation: op,
+      ...(capture.impersonatorUserWorkspaceId
+        ? { impersonatorUserWorkspaceId: capture.impersonatorUserWorkspaceId }
+        : {}),
+    };
+  }
+
+  const ambient = captureCurrentCrmAuditOperation(normalizedWorkspaceId);
+  const correlationId =
+    ambient?.operation.correlationId ?? fallbackCorrelationId;
+  const causationId = ambient?.operation.causationId;
+
+  let actor: CrmAuditPrincipal;
+  let initiator: CrmAuditPrincipal | undefined;
+
+  if (authContext.type === 'application') {
+    const appId = uuid(authContext.application?.id);
+    const actingAgentId =
+      authContext.actingAgent !== undefined && authContext.actingAgent !== null
+        ? uuid(authContext.actingAgent.id)
+        : undefined;
+    if (ambient) {
+      if (ambient.impersonatorUserWorkspaceId) {
+        throw new Error(
+          'Record share audit impersonation cannot combine with application',
+        );
+      }
+      const a = ambient.operation.actor;
+      const ambInit = ambient.operation.initiator;
+      if (actingAgentId !== undefined) {
+        const validAgentAmbient =
+          a.kind === 'agent' &&
+          a.id === actingAgentId &&
+          (ambInit === undefined ||
+            (ambInit.kind === 'application' && ambInit.id === appId));
+        const validAppAmbient =
+          a.kind === 'application' && a.id === appId && ambInit === undefined;
+        if (!validAgentAmbient && !validAppAmbient) {
+          throw new Error('Record share audit ambient agent conflict');
+        }
+      } else if (
+        a.kind !== 'application' ||
+        a.id !== appId ||
+        ambInit !== undefined
+      ) {
+        throw new Error('Record share audit ambient application conflict');
+      }
+    }
+    if (actingAgentId) {
+      actor = { kind: 'agent', id: actingAgentId };
+      initiator = { kind: 'application', id: appId };
+    } else {
+      actor = { kind: 'application', id: appId };
+    }
+  } else if (authContext.type === 'apiKey') {
+    const apiKeyId = uuid(authContext.apiKey?.id);
+    if (ambient) {
+      if (
+        ambient.impersonatorUserWorkspaceId ||
+        ambient.operation.initiator !== undefined ||
+        ambient.operation.actor.kind !== 'apiKey' ||
+        ambient.operation.actor.id !== apiKeyId
+      ) {
+        throw new Error('Record share audit ambient apiKey conflict');
+      }
+    }
+    actor = { kind: 'apiKey', id: apiKeyId };
+  } else if (authContext.type === 'system') {
+    actor = { kind: 'system', id: 'share_with_create' };
+  } else {
+    throw new Error(
+      `Record share create audit unsupported authContext type ${authContext.type}`,
+    );
+  }
+
+  return {
+    operation: captureCrmAuditOperation({
+      workspaceId: normalizedWorkspaceId,
+      operationId: randomUUID(),
+      actor,
+      ...(initiator ? { initiator } : {}),
+      correlationId,
+      ...(causationId ? { causationId } : {}),
+    }),
+  };
+};
+
+const toNativeAuthPort = (
+  normalizedWorkspaceId: string,
+  authContext: ShareWithAuditAuthContext,
+): Parameters<typeof runInNativeCrmAuditScopeIfPresent>[1] => {
+  if (!authContext || uuid(authContext.workspace?.id) !== normalizedWorkspaceId) {
+    throw new Error('Record share create audit workspace mismatch');
+  }
+  switch (authContext.type) {
+    case 'user':
+      return {
+        type: 'user',
+        workspace: { id: normalizedWorkspaceId },
+        workspaceMemberId: uuid(authContext.workspaceMemberId),
+      };
+    case 'application':
+      return {
+        type: 'application',
+        workspace: { id: normalizedWorkspaceId },
+        application: { id: uuid(authContext.application?.id) },
+        ...(authContext.actingAgent !== undefined &&
+        authContext.actingAgent !== null
+          ? { actingAgent: { id: uuid(authContext.actingAgent.id) } }
+          : {}),
+      };
+    case 'apiKey':
+      return {
+        type: 'apiKey',
+        workspace: { id: normalizedWorkspaceId },
+        apiKey: { id: uuid(authContext.apiKey?.id) },
+      };
+    case 'system':
+      return {
+        type: 'system',
+        workspace: { id: normalizedWorkspaceId },
+      };
+    default:
+      throw new Error(
+        `Record share create audit unsupported authContext type ${authContext.type}`,
+      );
+  }
+};
+
+export const runAuditedShareWithInsert = async ({
+  scope,
+  workspaceId,
+  objectMetadataId,
+  recordIds,
+  authContext,
+  desiredShares,
+  execute,
+}: {
+  scope: RecordShareAuditWorkspaceScope;
+  workspaceId: string;
+  objectMetadataId: string;
+  recordIds: readonly string[];
+  authContext: ShareWithAuditAuthContext;
+  desiredShares: readonly RecordShareDesiredInput[];
+  execute: () => Promise<void>;
+}): Promise<void> => {
+  const normalizedWorkspaceId = uuid(workspaceId);
+  const normalizedObjectMetadataId = uuid(objectMetadataId);
+  const executor = createCrmAuditWorkspaceExecutor(scope);
+  if (uuid(scope.workspaceId) !== normalizedWorkspaceId) {
+    throw new Error('Record share create audit transaction workspace mismatch');
+  }
+
+  const normalizedRecordIds = [...new Set(recordIds.map((id) => uuid(id)))].sort();
+  const recordIdSet = new Set(normalizedRecordIds);
+  const expectedByUniqueKey = normalizeDesiredRecordShares(
+    desiredShares,
+    normalizedObjectMetadataId,
+    recordIdSet,
+  );
+  const nativeAuth = toNativeAuthPort(normalizedWorkspaceId, authContext);
+
+  if (normalizedRecordIds.length === 0) {
+    if (authContext.type === 'user') {
+      captureRecordShareAudit({ workspaceId: normalizedWorkspaceId, authContext });
+    }
+
+    return;
+  }
+
+  const runCoreDiffAndVerify = async (
+    recordMutation: (mutation: {
+      resourceKind: 'recordShare';
+      resourceId: string;
+      action: 'create' | 'delete';
+      before: RecordShareRowProjection | null;
+      after: RecordShareRowProjection | null;
+      securityDescriptor: {
+        resourceKind: 'recordShare';
+        resourceId: string;
+        metadataAccess: 'currentWorkspaceAdministration';
+      };
+    }) => void,
+    runExecute: () => Promise<void> = execute,
+  ): Promise<{ recordedMutations: number; expectedSerialized: string }> => {
+    const before = await readRecordShareSnapshotForRecords(
+      executor,
+      normalizedWorkspaceId,
+      normalizedObjectMetadataId,
+      normalizedRecordIds,
+      true,
+    );
+
+    await runExecute();
+
+    const after = await readRecordShareSnapshotForRecords(
+      executor,
+      normalizedWorkspaceId,
+      normalizedObjectMetadataId,
+      normalizedRecordIds,
+      false,
+    );
+
+    let recordedMutations = 0;
+    for (const [id, beforeRow] of before.entries()) {
+      if (after.has(id)) {
+        throw new Error(
+          'Record share create audit detected surviving pre-existing share row',
+        );
+      }
+      recordMutation({
+        resourceKind: 'recordShare',
+        resourceId: id,
+        action: 'delete',
+        before: projectRecordShare(beforeRow),
+        after: null,
+        securityDescriptor: {
+          resourceKind: 'recordShare',
+          resourceId: id,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+      recordedMutations += 1;
+    }
+
+    const observedByUniqueKey = new Map<string, RecordShareRowProjection>();
+    for (const [id, afterRow] of after.entries()) {
+      const afterProj = projectRecordShare(afterRow);
+      const key = uniqueShareKey(afterProj);
+      const expected = expectedByUniqueKey.get(key);
+      if (
+        !expected ||
+        observedByUniqueKey.has(key) ||
+        fullShareTupleKey(expected) !== fullShareTupleKey(afterProj)
+      ) {
+        throw new Error(
+          'Record share create audit detected unexpected persisted share row',
+        );
+      }
+      observedByUniqueKey.set(key, afterProj);
+      recordMutation({
+        resourceKind: 'recordShare',
+        resourceId: id,
+        action: 'create',
+        before: null,
+        after: afterProj,
+        securityDescriptor: {
+          resourceKind: 'recordShare',
+          resourceId: id,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+      recordedMutations += 1;
+    }
+
+    if (observedByUniqueKey.size !== expectedByUniqueKey.size) {
+      throw new Error(
+        'Record share create audit did not persist all expected share rows',
+      );
+    }
+
+    return {
+      recordedMutations,
+      expectedSerialized: serializeSnapshot(after),
+    };
+  };
+
+  const nativeResult = await runInNativeCrmAuditScopeIfPresent(
+    scope,
+    nativeAuth,
+    async ({
+      operation,
+      record,
+      registerPostFlushCheck,
+      runDelegatedRecordShareWrite,
+    }) => {
+      if (authContext.type === 'user') {
+        const userCapture = captureRecordShareAudit({
+          workspaceId: normalizedWorkspaceId,
+          authContext,
+        });
+        if (
+          userCapture.impersonatorUserWorkspaceId !== undefined ||
+          userCapture.operation.actor.kind !== operation.actor.kind ||
+          userCapture.operation.actor.id !== operation.actor.id ||
+          canonicalAuditJson(userCapture.operation.initiator ?? null) !==
+            canonicalAuditJson(operation.initiator ?? null)
+        ) {
+          throw new Error(
+            'Record share create audit conflicts with native audit scope attribution',
+          );
+        }
+      } else if (
+        authContext.type === 'application' ||
+        authContext.type === 'apiKey'
+      ) {
+        const checked = resolveShareWithStandaloneOperation(
+          normalizedWorkspaceId,
+          authContext,
+          scope,
+        );
+        const initiatorMatches =
+          checked.operation.actor.kind === 'agent'
+            ? operation.initiator === undefined ||
+              canonicalAuditJson(checked.operation.initiator ?? null) ===
+                canonicalAuditJson(operation.initiator)
+            : operation.initiator === undefined;
+        if (
+          checked.impersonatorUserWorkspaceId !== undefined ||
+          checked.operation.actor.kind !== operation.actor.kind ||
+          checked.operation.actor.id !== operation.actor.id ||
+          !initiatorMatches
+        ) {
+          throw new Error(
+            'Record share create audit conflicts with native audit scope attribution',
+          );
+        }
+      }
+
+      await executor.query("SET LOCAL lock_timeout = '8s'");
+      await verifyWorkspaceKeyShare(executor, normalizedWorkspaceId);
+      const { recordedMutations, expectedSerialized } =
+        await runCoreDiffAndVerify(record, () =>
+          runDelegatedRecordShareWrite(execute),
+        );
+
+      if (recordedMutations > 0) {
+        registerPostFlushCheck(async () => {
+          await executor.query('SET CONSTRAINTS ALL IMMEDIATE');
+          await verifyWorkspaceActive(executor, normalizedWorkspaceId, false);
+          const postFlush = await readRecordShareSnapshotForRecords(
+            executor,
+            normalizedWorkspaceId,
+            normalizedObjectMetadataId,
+            normalizedRecordIds,
+            false,
+          );
+          if (serializeSnapshot(postFlush) !== expectedSerialized) {
+            throw new Error(
+              'Record share create audit detected post-flush row drift',
+            );
+          }
+        });
+      }
+    },
+  );
+
+  if (nativeResult.handled) {
+    return;
+  }
+
+  const standalone = resolveShareWithStandaloneOperation(
+    normalizedWorkspaceId,
+    authContext,
+    scope,
+  );
+  await executor.query("SET LOCAL lock_timeout = '8s'");
+  await verifyWorkspaceKeyShare(executor, normalizedWorkspaceId);
+
+  let operation = standalone.operation;
+  if (standalone.impersonatorUserWorkspaceId) {
+    const rows = (await executor.query(
+      `SELECT "userId"
+         FROM core."userWorkspace"
+        WHERE id = $1 AND "deletedAt" IS NULL`,
+      [standalone.impersonatorUserWorkspaceId],
+    )) as Array<{ userId: string }>;
+    if (rows.length !== 1) {
+      throw new Error('Record share audit impersonation initiator unavailable');
+    }
+    const resolvedInitiatorId = uuid(rows[0].userId);
+    if (
+      operation.initiator &&
+      (operation.initiator.kind !== 'coreUser' ||
+        operation.initiator.id !== resolvedInitiatorId)
+    ) {
+      throw new Error('Record share audit impersonation context conflict');
+    }
+    operation = captureCrmAuditOperation({
+      ...operation,
+      initiator: { kind: 'coreUser', id: resolvedInitiatorId },
+    });
+  }
+
+  const audit = new CrmAuditTransactionContext(executor, operation);
+  const { recordedMutations, expectedSerialized } = await runCoreDiffAndVerify(
+    (mutation) => audit.record(mutation),
+  );
+
+  if (recordedMutations > 0) {
+    await audit.flush();
+    await executor.query('SET CONSTRAINTS ALL IMMEDIATE');
+    await verifyWorkspaceActive(executor, normalizedWorkspaceId, false);
+    const postFlush = await readRecordShareSnapshotForRecords(
+      executor,
+      normalizedWorkspaceId,
+      normalizedObjectMetadataId,
+      normalizedRecordIds,
+      false,
+    );
+    if (serializeSnapshot(postFlush) !== expectedSerialized) {
+      throw new Error(
+        'Record share create audit detected post-flush row drift',
+      );
+    }
+  }
+};
+
+export const validateWorkflowRunShareSyncAuditInput = ({
+  workspaceId,
+  auditOperation,
+  auditImpersonatorUserWorkspaceId,
+}: {
+  workspaceId: string;
+  auditOperation?: CrmAuditOperation;
+  auditImpersonatorUserWorkspaceId?: string;
+}): {
+  workspaceId: string;
+  capturedOperation?: CrmAuditOperation;
+  impersonatorUserWorkspaceId?: string;
+} => {
+  const normalizedWorkspaceId = uuid(workspaceId);
+  const normalizedImpersonator =
+    auditImpersonatorUserWorkspaceId !== undefined
+      ? uuid(auditImpersonatorUserWorkspaceId)
+      : undefined;
+
+  let capturedOperation: CrmAuditOperation | undefined;
+  if (auditOperation !== undefined) {
+    capturedOperation = captureCrmAuditOperation({
+      ...auditOperation,
+      operationId: randomUUID(),
+    });
+    if (capturedOperation.workspaceId !== normalizedWorkspaceId) {
+      throw new Error('Workflow run share sync audit workspace mismatch');
+    }
+    if (
+      normalizedImpersonator !== undefined &&
+      capturedOperation.actor.kind !== 'coreUser' &&
+      capturedOperation.actor.kind !== 'workspaceMember'
+    ) {
+      throw new Error(
+        'Workflow run share sync impersonator requires user actor',
+      );
+    }
+  } else if (normalizedImpersonator !== undefined) {
+    throw new Error(
+      'Workflow run share sync impersonator requires explicit auditOperation',
+    );
+  }
+
+  return {
+    workspaceId: normalizedWorkspaceId,
+    ...(capturedOperation ? { capturedOperation } : {}),
+    ...(normalizedImpersonator
+      ? { impersonatorUserWorkspaceId: normalizedImpersonator }
+      : {}),
+  };
+};
+
+export const runAuditedWorkflowRunShareSync = async ({
+  scope,
+  workspaceId,
+  objectMetadataId,
+  workflowRunIds,
+  desiredShares,
+  auditOperation,
+  auditImpersonatorUserWorkspaceId,
+  execute,
+}: {
+  scope: RecordShareAuditWorkspaceScope;
+  workspaceId: string;
+  objectMetadataId: string;
+  workflowRunIds: readonly string[];
+  desiredShares: readonly RecordShareDesiredInput[];
+  auditOperation?: CrmAuditOperation;
+  auditImpersonatorUserWorkspaceId?: string;
+  execute: (plan: {
+    idsToDelete: string[];
+    sharesToInsert: RecordShareDesiredInput[];
+  }) => Promise<void>;
+}): Promise<void> => {
+  const validated = validateWorkflowRunShareSyncAuditInput({
+    workspaceId,
+    auditOperation,
+    auditImpersonatorUserWorkspaceId,
+  });
+  const normalizedObjectMetadataId = uuid(objectMetadataId);
+  const normalizedRunIds = [...new Set(workflowRunIds.map((id) => uuid(id)))].sort();
+  const executor = createCrmAuditWorkspaceExecutor(scope);
+  if (uuid(scope.workspaceId) !== validated.workspaceId) {
+    throw new Error('Workflow run share sync transaction workspace mismatch');
+  }
+  if (normalizedRunIds.length === 0) {
+    return;
+  }
+
+  const runIdSet = new Set(normalizedRunIds);
+  const expectedByUniqueKey = normalizeDesiredRecordShares(
+    desiredShares,
+    normalizedObjectMetadataId,
+    runIdSet,
+  );
+  const expectedByFullTuple = new Map<string, RecordShareRowProjection>();
+  for (const proj of expectedByUniqueKey.values()) {
+    expectedByFullTuple.set(fullShareTupleKey(proj), proj);
+  }
+
+  const isManagedWorkflowRunShare = (proj: RecordShareRowProjection): boolean =>
+    runIdSet.has(proj.sourceId) ||
+    proj.rowCause === 'APPLICATION' ||
+    proj.principalType === 'EVERYONE';
+
+  for (const proj of expectedByUniqueKey.values()) {
+    if (!isManagedWorkflowRunShare(proj)) {
+      throw new Error(
+        'Workflow run share sync desired shares include unmanaged grant',
+      );
+    }
+  }
+
+  let baseOperation: CrmAuditOperation;
+  let impersonatorUserWorkspaceId = validated.impersonatorUserWorkspaceId;
+  if (validated.capturedOperation) {
+    baseOperation = captureCrmAuditOperation({
+      ...validated.capturedOperation,
+      operationId: randomUUID(),
+    });
+  } else {
+    const ambient = captureCurrentCrmAuditOperation(validated.workspaceId);
+    if (ambient) {
+      baseOperation = captureCrmAuditOperation({
+        ...ambient.operation,
+        operationId: randomUUID(),
+      });
+      impersonatorUserWorkspaceId =
+        ambient.impersonatorUserWorkspaceId !== undefined
+          ? uuid(ambient.impersonatorUserWorkspaceId)
+          : undefined;
+    } else {
+      baseOperation = captureCrmAuditOperation({
+        workspaceId: validated.workspaceId,
+        operationId: randomUUID(),
+        actor: { kind: 'system', id: 'workflow_run_share_sync' },
+      });
+    }
+  }
+
+  await executor.query("SET LOCAL lock_timeout = '8s'");
+  await verifyWorkspaceKeyShare(executor, validated.workspaceId);
+
+  let operation = baseOperation;
+  if (impersonatorUserWorkspaceId) {
+    const rows = (await executor.query(
+      `SELECT "userId"
+         FROM core."userWorkspace"
+        WHERE id = $1 AND "deletedAt" IS NULL`,
+      [impersonatorUserWorkspaceId],
+    )) as Array<{ userId: string }>;
+    if (rows.length !== 1) {
+      throw new Error(
+        'Workflow run share sync audit impersonation initiator unavailable',
+      );
+    }
+    const resolvedInitiatorId = uuid(rows[0].userId);
+    if (
+      operation.initiator &&
+      (operation.initiator.kind !== 'coreUser' ||
+        operation.initiator.id !== resolvedInitiatorId)
+    ) {
+      throw new Error(
+        'Workflow run share sync audit impersonation context conflict',
+      );
+    }
+    operation = captureCrmAuditOperation({
+      ...operation,
+      initiator: { kind: 'coreUser', id: resolvedInitiatorId },
+    });
+  }
+
+  const before = await readRecordShareSnapshotForRecords(
+    executor,
+    validated.workspaceId,
+    normalizedObjectMetadataId,
+    normalizedRunIds,
+    true,
+  );
+
+  const preservedUnmanaged = new Map<string, RecordShareRowProjection>();
+  const keptManagedFullTuples = new Set<string>();
+  const idsToDelete: string[] = [];
+
+  for (const [id, beforeRow] of before.entries()) {
+    const proj = projectRecordShare(beforeRow);
+    if (!isManagedWorkflowRunShare(proj)) {
+      preservedUnmanaged.set(id, proj);
+      continue;
+    }
+    const fullTuple = fullShareTupleKey(proj);
+    if (
+      expectedByFullTuple.has(fullTuple) &&
+      !keptManagedFullTuples.has(fullTuple)
+    ) {
+      keptManagedFullTuples.add(fullTuple);
+    } else {
+      idsToDelete.push(id);
+    }
+  }
+
+  const sharesToInsert: RecordShareDesiredInput[] = [];
+  for (const [fullTuple, proj] of expectedByFullTuple.entries()) {
+    if (!keptManagedFullTuples.has(fullTuple)) {
+      sharesToInsert.push(proj);
+    }
+  }
+
+  if (idsToDelete.length === 0 && sharesToInsert.length === 0) {
+    return;
+  }
+
+  await execute({ idsToDelete, sharesToInsert });
+
+  const after = await readRecordShareSnapshotForRecords(
+    executor,
+    validated.workspaceId,
+    normalizedObjectMetadataId,
+    normalizedRunIds,
+    false,
+  );
+
+  const audit = new CrmAuditTransactionContext(executor, operation);
+  let recordedMutations = 0;
+
+  const observedUnmanaged = new Map<string, RecordShareRowProjection>();
+  const observedManagedFullTuples = new Set<string>();
+  let observedManagedCount = 0;
+
+  for (const [id, beforeRow] of before.entries()) {
+    const beforeProj = projectRecordShare(beforeRow);
+    const afterRow = after.get(id);
+    if (!afterRow) {
+      if (preservedUnmanaged.has(id)) {
+        throw new Error(
+          'Workflow run share sync deleted unmanaged recordShare row',
+        );
+      }
+      audit.record({
+        resourceKind: 'recordShare',
+        resourceId: id,
+        action: 'delete',
+        before: beforeProj,
+        after: null,
+        securityDescriptor: {
+          resourceKind: 'recordShare',
+          resourceId: id,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+      recordedMutations += 1;
+      continue;
+    }
+
+    const afterProj = projectRecordShare(afterRow);
+    if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+      throw new Error(
+        'Workflow run share sync performed unauthorized in-place update',
+      );
+    }
+  }
+
+  for (const [id, afterRow] of after.entries()) {
+    const afterProj = projectRecordShare(afterRow);
+    if (!isManagedWorkflowRunShare(afterProj)) {
+      observedUnmanaged.set(id, afterProj);
+      if (!before.has(id)) {
+        throw new Error(
+          'Workflow run share sync created unmanaged recordShare row',
+        );
+      }
+      continue;
+    }
+
+    observedManagedCount += 1;
+    const fullTuple = fullShareTupleKey(afterProj);
+    if (
+      !expectedByFullTuple.has(fullTuple) ||
+      observedManagedFullTuples.has(fullTuple)
+    ) {
+      throw new Error(
+        'Workflow run share sync persisted unexpected or duplicate managed share row',
+      );
+    }
+    observedManagedFullTuples.add(fullTuple);
+
+    if (!before.has(id)) {
+      audit.record({
+        resourceKind: 'recordShare',
+        resourceId: id,
+        action: 'create',
+        before: null,
+        after: afterProj,
+        securityDescriptor: {
+          resourceKind: 'recordShare',
+          resourceId: id,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+      recordedMutations += 1;
+    }
+  }
+
+  if (
+    observedUnmanaged.size !== preservedUnmanaged.size ||
+    observedManagedCount !== expectedByFullTuple.size ||
+    observedManagedFullTuples.size !== expectedByFullTuple.size
+  ) {
+    throw new Error(
+      'Workflow run share sync final state does not match expected grants',
+    );
+  }
+
+  if (recordedMutations > 0) {
+    const expectedSerialized = serializeSnapshot(after);
+    await audit.flush();
+    await executor.query('SET CONSTRAINTS ALL IMMEDIATE');
+    await verifyWorkspaceActive(executor, validated.workspaceId, false);
+    const postFlush = await readRecordShareSnapshotForRecords(
+      executor,
+      validated.workspaceId,
+      normalizedObjectMetadataId,
+      normalizedRunIds,
+      false,
+    );
+    if (serializeSnapshot(postFlush) !== expectedSerialized) {
+      throw new Error(
+        'Workflow run share sync audit detected post-flush row drift',
+      );
+    }
   }
 };

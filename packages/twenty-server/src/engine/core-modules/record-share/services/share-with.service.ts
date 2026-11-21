@@ -5,6 +5,7 @@ import { Injectable } from '@nestjs/common';
 import { isNonEmptyArray } from 'twenty-shared/utils';
 
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
+import { runAuditedShareWithInsert } from 'src/engine/core-modules/crm-audit/record-share-audit';
 import { RecordSharingMode } from 'src/engine/core-modules/record-share/enums/record-sharing-mode.enum';
 import { RecordSharePrincipalService } from 'src/engine/core-modules/record-share/services/record-share-principal.service';
 import { RecordShareStorageService } from 'src/engine/core-modules/record-share/services/record-share-storage.service';
@@ -73,36 +74,49 @@ export class ShareWithService {
     transactionScope: WorkspaceTransactionScope;
   }): Promise<void> {
     const workspaceId = authContext.workspace.id;
+    const recordShares = buildRecordShareInputsForCreatedRecords({
+      recordIds,
+      objectMetadataId: flatObjectMetadata.id,
+      authContext,
+      apiKeyRoleMap,
+      shareWith,
+      isOpenByDefault:
+        objectSharing.sharingMode === RecordSharingMode.OPEN_BY_DEFAULT,
+    });
 
-    // A hard-destroyed record leaves its rows behind, and a client may reuse its id
-    await this.recordShareStorageService.deleteByRecordIds({
+    await runAuditedShareWithInsert({
+      scope: transactionScope,
       workspaceId,
       objectMetadataId: flatObjectMetadata.id,
       recordIds,
-      transactionScope,
-    });
+      authContext,
+      desiredShares: recordShares,
+      execute: async () => {
+        // A hard-destroyed record leaves its rows behind, and a client may reuse its id
+        await this.recordShareStorageService.deleteByRecordIds({
+          workspaceId,
+          objectMetadataId: flatObjectMetadata.id,
+          recordIds,
+          transactionScope,
+        });
 
-    await this.recordShareStorageService.insertMany({
-      workspaceId,
-      recordShares: buildRecordShareInputsForCreatedRecords({
-        recordIds,
-        objectMetadataId: flatObjectMetadata.id,
-        authContext,
-        apiKeyRoleMap,
-        shareWith,
-        isOpenByDefault:
-          objectSharing.sharingMode === RecordSharingMode.OPEN_BY_DEFAULT,
-      }),
-      transactionScope,
-    });
+        await this.recordShareStorageService.insertMany({
+          workspaceId,
+          recordShares,
+          transactionScope,
+        });
 
-    await this.recordSharePrincipalService.assertPrincipalsReachRecordsOrThrow({
-      workspaceId,
-      transactionScope,
-      flatObjectMetadata,
-      canShareBeyondRole: objectSharing.canShareBeyondRole,
-      principals: shareWith.map(resolveShareWithPrincipalOrThrow),
-      recordIds,
+        await this.recordSharePrincipalService.assertPrincipalsReachRecordsOrThrow(
+          {
+            workspaceId,
+            transactionScope,
+            flatObjectMetadata,
+            canShareBeyondRole: objectSharing.canShareBeyondRole,
+            principals: shareWith.map(resolveShareWithPrincipalOrThrow),
+            recordIds,
+          },
+        );
+      },
     });
   }
 }

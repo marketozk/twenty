@@ -54,8 +54,9 @@ import {
   isNativeCrmAuditObject,
 } from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
 import {
-  runInExistingNativeCrmAuditScope,
   isRegisteredNativeCrmAuditScope,
+  isStandaloneShareWithScope,
+  runInExistingNativeCrmAuditScope,
 } from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
 import { ApplicationRepeatedEventRecorderService } from 'src/engine/core-modules/event-logs/emit/application-repeated-event-recorder.service';
 import { MetricsService } from 'src/engine/core-modules/metrics/metrics.service';
@@ -331,7 +332,8 @@ export abstract class CommonBaseQueryRunnerService<
           queryRunnerContext.authContext.workspace.id,
         ) &&
           (queryRunnerContext.transactionScope
-            ? queryRunnerContext.transactionScope.transactionLifecycle
+            ? !isStandaloneShareWithScope(queryRunnerContext.transactionScope) &&
+              queryRunnerContext.transactionScope.transactionLifecycle
                 ?.commitOutcome === 'strict'
             : canAuditCreate())));
     const auditedMutation =

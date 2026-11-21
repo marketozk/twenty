@@ -29,9 +29,8 @@ export const validateShareWithArgOrThrow = ({
     );
   }
 
-  const principalIds = (shareWith ?? []).map(
-    (shareWithEntry) =>
-      resolveShareWithPrincipalOrThrow(shareWithEntry).principalId,
+  const principalIds = (shareWith ?? []).map((shareWithEntry) =>
+    resolveShareWithPrincipalOrThrow(shareWithEntry).principalId.toLowerCase(),
   );
 
   if (new Set(principalIds).size !== principalIds.length) {
