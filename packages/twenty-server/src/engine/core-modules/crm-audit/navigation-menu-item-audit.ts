@@ -24,6 +24,14 @@ import {
   type RoleUpdateAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/role-update-audit';
 import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
+import {
+  assertValidationRuleRowInvariants,
+  assertValidationRuleSideEffectUpdateInvariants,
+  doesValidationRuleReferenceAnyField,
+  lookupValidationRuleMapping,
+  projectValidationRule,
+  scalarValidationRuleWithoutTimestamps,
+} from 'src/engine/core-modules/crm-audit/validation-rule-audit';
 
 export type NavigationMenuItemAuditIdentity =
   | RoleUpdateAuditIdentity
@@ -122,6 +130,7 @@ export type NavigationMenuItemAuditMappings = {
   logicFunctions?: Record<string, { id: string } | undefined>;
   timelineActivityTypes?: Record<string, { id: string } | undefined>;
   commandMenuItems?: Record<string, { id: string } | undefined>;
+  validationRules?: Record<string, { id: string } | undefined>;
   workflows?: Record<string, { id: string } | undefined>;
   workflowVersions?: Record<string, { id: string } | undefined>;
   roles?: Record<string, { id: string } | undefined>;
@@ -168,6 +177,7 @@ const CASCADE_ALLOWED_METADATA_NAMES = new Set<string>([
   'agentChatChannelRole',
   'searchFieldMetadata',
   'commandMenuItem',
+  'validationRule',
 ]);
 
 const storage = new AsyncLocalStorage<NavigationMenuItemAuditRequest>();
@@ -3440,7 +3450,8 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         to_regclass('core."logicFunction"') IS NOT NULL AS "hasLogicFunctionTable",
         to_regclass('core."workflowVersion"') IS NOT NULL AS "hasWorkflowVersionTable",
         to_regclass('core."timelineActivityType"') IS NOT NULL AS "hasTimelineActivityTypeTable",
-        to_regclass('core."commandMenuItem"') IS NOT NULL AS "hasCommandMenuItemTable"`,
+        to_regclass('core."commandMenuItem"') IS NOT NULL AS "hasCommandMenuItemTable",
+        to_regclass('core."validationRule"') IS NOT NULL AS "hasValidationRuleTable"`,
     );
     if (
       request.mode !== 'webhook' &&
@@ -3664,6 +3675,43 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       assertCommandMenuItemRowInvariants(row, request.workspaceId);
     }
 
+    const requiresValidationRuleTable = actions.some(
+      (action) => action.metadataName === 'validationRule',
+    );
+    if (requiresValidationRuleTable && reg?.hasValidationRuleTable !== true) {
+      throw new Error(
+        'Validation rule audit table core.validationRule unavailable',
+      );
+    }
+    const readValidationRuleSnapshot = async (lock: boolean) =>
+      new Map<string, Record<string, unknown>>(
+        (
+          await runner.query(
+            `SELECT to_jsonb(vr) AS row
+               FROM core."validationRule" vr
+              WHERE vr."workspaceId"=$1
+              ORDER BY vr.id${lock ? ' FOR UPDATE' : ''}`,
+            [request.workspaceId],
+          )
+        ).map((entry: { row: Record<string, unknown> }) => [
+          uuid(entry.row.id),
+          entry.row,
+        ]),
+      );
+    const touchesValidationRules =
+      requiresValidationRuleTable ||
+      (reg?.hasValidationRuleTable === true &&
+        request.mode === 'cascade' &&
+        (request.expectedUpdatedFieldCount !== undefined ||
+          request.expectedUpdatedObjectIds !== undefined));
+    const beforeValidationRules =
+      touchesValidationRules && reg?.hasValidationRuleTable === true
+        ? await readValidationRuleSnapshot(true)
+        : new Map<string, Record<string, unknown>>();
+    for (const row of beforeValidationRules.values()) {
+      assertValidationRuleRowInvariants(row, request.workspaceId);
+    }
+
     const requiresPageLayoutTable =
       request.expectedPageLayoutCreateIds !== undefined ||
       request.expectedPageLayoutUpdateIds !== undefined ||
@@ -3835,6 +3883,7 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       { id?: string; flatEntity: Record<string, unknown> }
     >();
     const plannedViewDeletes = new Set<string>();
+    const plannedValidationRuleUpdates = new Set<string>();
     const plannedPageLayoutCreatesByUniversalIdentifier = new Map<
       string,
       { id?: string; flatEntity: Record<string, unknown> }
@@ -3930,6 +3979,8 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
     const plannedObjectUpdates = new Set<string>();
     const plannedObjectDeletes = new Set<string>();
     const plannedFieldDeletes = new Set<string>();
+    const plannedUpdatedFieldIds = new Set<string>();
+    const plannedUpdatedFieldUniversalIds = new Set<string>();
     let plannedFieldCreateCount = 0;
     let plannedFieldUpdateCount = 0;
 
@@ -4178,6 +4229,37 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
             'Navigation menu item cascade audit disallows security-sensitive view update',
           );
         }
+      } else if (action.metadataName === 'validationRule') {
+        if (
+          request.mode !== 'cascade' ||
+          (request.expectedUpdatedFieldCount === undefined &&
+            request.expectedUpdatedObjectIds === undefined)
+        ) {
+          throw new Error(
+            'Validation rule cascade update is only allowed during field or object update',
+          );
+        }
+        if (action.type !== 'update') {
+          throw new Error(
+            'Navigation menu item cascade audit allows only update actions on validationRule',
+          );
+        }
+        const mapped = lookupValidationRuleMapping(
+          action.universalIdentifier,
+          mappings.validationRules,
+        );
+        if (!mapped?.id) {
+          throw new Error(
+            'Navigation menu item cascade audit missing validationRule mapping',
+          );
+        }
+        const targetId = uuid(mapped.id);
+        if (plannedValidationRuleUpdates.has(targetId)) {
+          throw new Error(
+            'Navigation menu item cascade audit duplicate validationRule update ID',
+          );
+        }
+        plannedValidationRuleUpdates.add(targetId);
       } else if (action.metadataName === 'pageLayout') {
         if (action.type === 'create') {
           if (!action.flatEntity) {
@@ -4532,6 +4614,16 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           plannedFieldCreateCount += 1;
         } else if (action.type === 'update') {
           plannedFieldUpdateCount += 1;
+          if (action.universalIdentifier !== undefined) {
+            const universalId = uuid(action.universalIdentifier);
+            plannedUpdatedFieldUniversalIds.add(universalId);
+            const mappedField =
+              mappings.fieldMetadatas?.[action.universalIdentifier] ??
+              mappings.fieldMetadatas?.[universalId];
+            if (mappedField?.id) {
+              plannedUpdatedFieldIds.add(uuid(mappedField.id));
+            }
+          }
         } else if (action.type === 'delete') {
           const universalId = uuid(action.universalIdentifier);
           const mappedId = mappings.fieldMetadatas?.[universalId]?.id;
@@ -6257,6 +6349,12 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       );
     }
 
+    if (plannedValidationRuleUpdates.size > 0 && plannedFieldUpdateCount === 0) {
+      throw new Error(
+        'Validation rule cascade update requires fieldMetadata update in the same migration',
+      );
+    }
+
     if (request.expectedPageLayoutCreateIds !== undefined) {
       const actualPageLayoutCreateIds = [
         ...plannedPageLayoutCreatesByUniversalIdentifier.values(),
@@ -6853,6 +6951,65 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
           throw new Error(
             'User-level navigation menu item can only be deleted by its owner',
           );
+        }
+      }
+    }
+
+    const verifiedValidationRuleAppIds = new Set<string>([applicationId]);
+    if (plannedValidationRuleUpdates.size > 0) {
+      const foreignValidationRuleAppIds = new Set<string>();
+      for (const ruleId of plannedValidationRuleUpdates) {
+        const beforeRow = beforeValidationRules.get(ruleId);
+        if (!beforeRow) {
+          throw new Error(
+            'Navigation menu item cascade audit missing validationRule before migration',
+          );
+        }
+        if (
+          !doesValidationRuleReferenceAnyField(
+            beforeRow,
+            plannedUpdatedFieldIds,
+            plannedUpdatedFieldUniversalIds,
+          )
+        ) {
+          throw new Error(
+            'Navigation menu item cascade audit cannot update unrelated validationRule',
+          );
+        }
+        const ruleAppId = uuid(beforeRow.applicationId);
+        if (ruleAppId !== applicationId) {
+          foreignValidationRuleAppIds.add(ruleAppId);
+        }
+      }
+      if (foreignValidationRuleAppIds.size > 0) {
+        const sortedForeignAppIds = [...foreignValidationRuleAppIds].sort();
+        const lockedAppRows = (await runner.query(
+          `SELECT id, "workspaceId", to_jsonb(a)->>'deletedAt' AS "deletedAt"
+             FROM core.application a
+            WHERE a.id = ANY($1::uuid[])
+            ORDER BY a.id
+              FOR NO KEY UPDATE`,
+          [sortedForeignAppIds],
+        )) as Array<{
+          id: string;
+          workspaceId: string;
+          deletedAt: string | null;
+        }>;
+        if (lockedAppRows.length !== sortedForeignAppIds.length) {
+          throw new Error(
+            'Validation rule cascade update target application unavailable',
+          );
+        }
+        for (const ruleAppRow of lockedAppRows) {
+          if (
+            ruleAppRow.deletedAt !== null ||
+            uuid(ruleAppRow.workspaceId) !== request.workspaceId
+          ) {
+            throw new Error(
+              'Validation rule cascade update target application unavailable',
+            );
+          }
+          verifiedValidationRuleAppIds.add(uuid(ruleAppRow.id));
         }
       }
     }
@@ -10693,6 +10850,74 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
       );
     }
 
+    let expectedValidationRulesSerialized: string | undefined;
+    if (touchesValidationRules && reg?.hasValidationRuleTable === true) {
+      const afterValidationRules = await readValidationRuleSnapshot(false);
+      for (const row of afterValidationRules.values()) {
+        assertValidationRuleRowInvariants(row, request.workspaceId);
+      }
+      if (afterValidationRules.size !== beforeValidationRules.size) {
+        throw new Error(
+          'Navigation menu item cascade audit detected unexpected validationRule create or delete',
+        );
+      }
+      for (const [ruleId, beforeRow] of beforeValidationRules.entries()) {
+        const afterRow = afterValidationRules.get(ruleId);
+        if (!afterRow) {
+          throw new Error(
+            'Navigation menu item cascade audit detected unplanned validationRule deletion',
+          );
+        }
+        if (
+          canonicalAuditJson(scalarValidationRuleWithoutTimestamps(beforeRow)) !==
+          canonicalAuditJson(scalarValidationRuleWithoutTimestamps(afterRow))
+        ) {
+          if (!plannedValidationRuleUpdates.has(ruleId)) {
+            throw new Error(
+              'Navigation menu item cascade audit detected unplanned validationRule mutation',
+            );
+          }
+          const ruleAppId = uuid(beforeRow.applicationId);
+          if (!verifiedValidationRuleAppIds.has(ruleAppId)) {
+            throw new Error(
+              'Validation rule cascade update target application unavailable',
+            );
+          }
+          assertValidationRuleSideEffectUpdateInvariants(
+            beforeRow,
+            afterRow,
+            true,
+            plannedFieldDeletes,
+          );
+          const beforeProj = projectValidationRule(beforeRow);
+          const afterProj = projectValidationRule(afterRow);
+          if (
+            canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)
+          ) {
+            audit.record({
+              resourceKind: 'validationRule',
+              resourceId: ruleId,
+              action: 'update',
+              before: beforeProj,
+              after: afterProj,
+              securityDescriptor: {
+                resourceKind: 'validationRule',
+                resourceId: ruleId,
+                metadataAccess: 'currentWorkspaceAdministration',
+              },
+            });
+            recordedMutations += 1;
+          }
+        }
+      }
+      expectedValidationRulesSerialized = canonicalAuditJson(
+        [...afterValidationRules.entries()].map(([id, row]) => [
+          id,
+          scalarValidationRuleWithoutTimestamps(row),
+        ]),
+      );
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized = touchesNavItems
         ? serializeNavSnapshot(afterNavItems)
@@ -10880,6 +11105,21 @@ export const runAuditedNavigationMenuItemMigration = async <TResult>(
         );
         if (postFlushViewsSerialized !== expectedViewsSerialized) {
           throw new Error('Core view state changed during audit flush');
+        }
+      }
+      if (expectedValidationRulesSerialized !== undefined) {
+        const postFlushValidationRules = await readValidationRuleSnapshot(false);
+        const postFlushValidationRulesSerialized = canonicalAuditJson(
+          [...postFlushValidationRules.entries()].map(([id, row]) => [
+            id,
+            scalarValidationRuleWithoutTimestamps(row),
+          ]),
+        );
+        if (
+          postFlushValidationRulesSerialized !==
+          expectedValidationRulesSerialized
+        ) {
+          throw new Error('Validation rule state changed during audit flush');
         }
       }
     }

@@ -7,6 +7,12 @@ import { isDefined } from 'twenty-shared/utils';
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
 import { BillingEntitlementKey } from 'src/engine/core-modules/billing/enums/billing-entitlement-key.enum';
 import { BillingSubscriptionService } from 'src/engine/core-modules/billing/services/billing-subscription.service';
+import {
+  captureValidationRuleAudit,
+  withValidationRuleAudit,
+  type ValidationRuleAuditIdentity,
+  type ValidationRuleAuditRequest,
+} from 'src/engine/core-modules/crm-audit/validation-rule-audit';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
 import { findFlatEntityByIdInFlatEntityMapsOrThrow } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps-or-throw.util';
@@ -76,25 +82,30 @@ export class ValidationRuleService {
     workspaceId,
     operation,
     errorMessage,
+    auditRequest,
   }: {
     workspaceId: string;
     operation: ValidationRuleOperation;
     errorMessage: string;
+    auditRequest: ValidationRuleAuditRequest;
   }): Promise<void> {
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
         { workspaceId },
       );
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: { validationRule: operation },
-          workspaceId,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+    const validateAndBuildResult = await withValidationRuleAudit(
+      auditRequest,
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: { validationRule: operation },
+            workspaceId,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
+          },
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -197,10 +208,19 @@ export class ValidationRuleService {
   async create({
     input,
     workspaceId,
+    auditIdentity,
   }: {
     input: CreateValidationRuleInput;
     workspaceId: string;
+    auditIdentity?: ValidationRuleAuditIdentity;
   }): Promise<ValidationRuleDTO> {
+    const getAudit = captureValidationRuleAudit({
+      workspaceId,
+      expectedAction: 'create',
+      expectedObjectMetadataId: input.objectMetadataId,
+      auditIdentity,
+    });
+
     await this.assertHasValidationRulesEntitlement(workspaceId);
 
     const { flatObjectMetadataMaps, flatFieldMetadataMaps } =
@@ -238,6 +258,7 @@ export class ValidationRuleService {
       },
       errorMessage:
         'Multiple validation errors occurred while creating validation rule',
+      auditRequest: getAudit(flatValidationRuleToCreate.id),
     });
 
     return this.findDtoByIdOrThrow({
@@ -249,10 +270,19 @@ export class ValidationRuleService {
   async update({
     input,
     workspaceId,
+    auditIdentity,
   }: {
     input: UpdateValidationRuleInput;
     workspaceId: string;
+    auditIdentity?: ValidationRuleAuditIdentity;
   }): Promise<ValidationRuleDTO> {
+    const getAudit = captureValidationRuleAudit({
+      workspaceId,
+      expectedAction: 'update',
+      expectedId: input.id,
+      auditIdentity,
+    });
+
     await this.assertHasValidationRulesEntitlement(workspaceId);
 
     const {
@@ -291,6 +321,7 @@ export class ValidationRuleService {
       },
       errorMessage:
         'Multiple validation errors occurred while updating validation rule',
+      auditRequest: getAudit(),
     });
 
     return this.findDtoByIdOrThrow({ id: input.id, workspaceId });
@@ -299,10 +330,19 @@ export class ValidationRuleService {
   async delete({
     id,
     workspaceId,
+    auditIdentity,
   }: {
     id: string;
     workspaceId: string;
+    auditIdentity?: ValidationRuleAuditIdentity;
   }): Promise<ValidationRuleDTO> {
+    const getAudit = captureValidationRuleAudit({
+      workspaceId,
+      expectedAction: 'delete',
+      expectedId: id,
+      auditIdentity,
+    });
+
     await this.assertHasValidationRulesEntitlement(workspaceId);
 
     const { existingFlatValidationRule } =
@@ -317,6 +357,7 @@ export class ValidationRuleService {
       },
       errorMessage:
         'Multiple validation errors occurred while deleting validation rule',
+      auditRequest: getAudit(),
     });
 
     return fromFlatValidationRuleToValidationRuleDto(

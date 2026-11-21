@@ -43,6 +43,7 @@ export type CrmAuditResourceKind =
   | 'logicFunction'
   | 'timelineActivityType'
   | 'indexMetadata'
+  | 'validationRule'
   | 'commandMenuItem'
   | 'pageLayout'
   | 'pageLayoutTab'

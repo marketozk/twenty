@@ -8,6 +8,8 @@ import {
 import { FeatureFlagKey } from 'twenty-shared/types';
 import { z } from 'zod';
 
+import { captureCurrentCrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
+import { type ValidationRuleAuditIdentity } from 'src/engine/core-modules/crm-audit/validation-rule-audit';
 import { DefineTool } from 'src/engine/core-modules/tool-provider/decorators/define-tool.decorator';
 import { BaseTool } from 'src/engine/core-modules/tool-provider/interfaces/base-tool.interface';
 import { type ToolExecuteArgs } from 'src/engine/core-modules/tool-provider/types/tool-execute-args.type';
@@ -56,10 +58,50 @@ export class CreateValidationRuleTool extends BaseTool<
 
   async execute({
     input: { objectName, ...input },
-    context: { workspaceId },
+    context: {
+      workspaceId,
+      application,
+      agentId,
+      authContext,
+      userId,
+      actorContext,
+    },
   }: ToolExecuteArgs<typeof createValidationRuleInputSchema>): Promise<
     ToolOutput<ValidationRuleDTO>
   > {
+    const ambientOperation =
+      !authContext &&
+      !userId &&
+      !actorContext?.workspaceMemberId &&
+      !application?.id &&
+      !agentId
+        ? captureCurrentCrmAuditOperation(workspaceId)
+        : undefined;
+    const auditIdentity: ValidationRuleAuditIdentity | undefined = authContext
+      ? { auth: authContext, ...(agentId ? { agentId } : {}) }
+      : userId || actorContext?.workspaceMemberId || application?.id || agentId
+        ? {
+            ...(userId ? { user: { id: userId } } : {}),
+            ...(actorContext?.workspaceMemberId
+              ? { workspaceMemberId: actorContext.workspaceMemberId }
+              : {}),
+            ...(application?.id
+              ? { application: { id: application.id } }
+              : {}),
+            ...(agentId ? { agentId } : {}),
+          }
+        : ambientOperation
+          ? {
+              operation: ambientOperation.operation,
+              ...(ambientOperation.impersonatorUserWorkspaceId
+                ? {
+                    impersonatorUserWorkspaceId:
+                      ambientOperation.impersonatorUserWorkspaceId,
+                  }
+                : {}),
+            }
+          : undefined;
+
     const validationRule = await this.validationRuleService.create({
       input: {
         ...input,
@@ -70,6 +112,7 @@ export class CreateValidationRuleTool extends BaseTool<
           }),
       },
       workspaceId,
+      ...(auditIdentity ? { auditIdentity } : {}),
     });
 
     return {

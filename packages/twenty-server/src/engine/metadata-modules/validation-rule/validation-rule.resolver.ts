@@ -6,7 +6,7 @@ import {
   UseInterceptors,
   UsePipes,
 } from '@nestjs/common';
-import { Args, Mutation, Query } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query } from '@nestjs/graphql';
 
 import { PermissionFlagType } from 'twenty-shared/constants';
 import { FeatureFlagKey } from 'twenty-shared/types';
@@ -14,6 +14,7 @@ import { FeatureFlagKey } from 'twenty-shared/types';
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
+import { type ValidationRuleAuditIdentity } from 'src/engine/core-modules/crm-audit/validation-rule-audit';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
@@ -75,10 +76,12 @@ export class ValidationRuleResolver {
   async createValidationRule(
     @Args('input') input: CreateValidationRuleInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Context() context?: { req?: ValidationRuleAuditIdentity },
   ): Promise<ValidationRuleDTO> {
     return await this.validationRuleService.create({
       input,
       workspaceId: workspace.id,
+      auditIdentity: context?.req,
     });
   }
 
@@ -90,10 +93,12 @@ export class ValidationRuleResolver {
   async updateValidationRule(
     @Args('input') input: UpdateValidationRuleInput,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Context() context?: { req?: ValidationRuleAuditIdentity },
   ): Promise<ValidationRuleDTO> {
     return await this.validationRuleService.update({
       input,
       workspaceId: workspace.id,
+      auditIdentity: context?.req,
     });
   }
 
@@ -105,10 +110,12 @@ export class ValidationRuleResolver {
   async deleteValidationRule(
     @Args('id', { type: () => UUIDScalarType }) id: string,
     @AuthWorkspace() workspace: WorkspaceEntity,
+    @Context() context?: { req?: ValidationRuleAuditIdentity },
   ): Promise<ValidationRuleDTO> {
     return await this.validationRuleService.delete({
       id,
       workspaceId: workspace.id,
+      auditIdentity: context?.req,
     });
   }
 }

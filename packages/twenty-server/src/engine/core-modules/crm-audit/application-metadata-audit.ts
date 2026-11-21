@@ -32,6 +32,14 @@ import {
 } from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
 import { projectIndexMetadata } from 'src/engine/core-modules/crm-audit/index-metadata-audit';
 import {
+  assertValidationRuleRowInvariants,
+  assertValidationRuleSideEffectUpdateInvariants,
+  doesValidationRuleReferenceAnyField,
+  lookupValidationRuleMapping,
+  projectValidationRule,
+  scalarValidationRuleWithoutTimestamps,
+} from 'src/engine/core-modules/crm-audit/validation-rule-audit';
+import {
   assertAgentChatChannelRoleRowInvariants,
   assertAgentChatChannelRowInvariants,
   assertCommandMenuItemRowInvariants,
@@ -136,6 +144,7 @@ export type ApplicationMetadataAuditMappings = {
   workflowVersions?: Record<string, { id: string } | undefined>;
   timelineActivityTypes?: Record<string, { id: string } | undefined>;
   commandMenuItems?: Record<string, { id: string } | undefined>;
+  validationRules?: Record<string, { id: string } | undefined>;
 };
 
 type MigrationAction = {
@@ -178,6 +187,7 @@ export const AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES = new Set<string>([
   'settingsMenuItem',
   'logicFunction',
   'timelineActivityType',
+  'validationRule',
   'commandMenuItem',
   'pageLayout',
   'pageLayoutTab',
@@ -875,7 +885,8 @@ const readExistingTables = async (
       to_regclass('core."workflowVersion"') IS NOT NULL AS "workflowVersion",
       to_regclass('core."timelineActivityType"') IS NOT NULL AS "timelineActivityType",
       to_regclass('core."commandMenuItem"') IS NOT NULL AS "commandMenuItem",
-      to_regclass('core."indexMetadata"') IS NOT NULL AS "indexMetadata"`,
+      to_regclass('core."indexMetadata"') IS NOT NULL AS "indexMetadata",
+      to_regclass('core."validationRule"') IS NOT NULL AS "validationRule"`,
   );
   const existing = new Set<string>();
   for (const [key, present] of Object.entries(reg ?? {})) {
@@ -1169,6 +1180,136 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
         )
       : undefined;
 
+    const requiresValidationRuleTable = actions.some(
+      (action) => action.metadataName === 'validationRule',
+    );
+    if (requiresValidationRuleTable && !existingTables.has('validationRule')) {
+      throw new Error(
+        'Application metadata audit table validationRule is unavailable',
+      );
+    }
+    const beforeValidationRules = existingTables.has('validationRule')
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'validationRule',
+          workspaceId,
+          true,
+        )
+      : undefined;
+    if (beforeValidationRules !== undefined) {
+      for (const row of beforeValidationRules.values()) {
+        assertValidationRuleRowInvariants(row, workspaceId);
+      }
+    }
+    const plannedValidationRuleCreatesByUniversalId = new Map<
+      string,
+      { id?: string; flatEntity: Record<string, unknown> }
+    >();
+    const plannedValidationRuleUpdates = new Set<string>();
+    const plannedValidationRuleDeletes = new Set<string>();
+    for (const action of actions) {
+      if (action.metadataName !== 'validationRule') continue;
+      if (action.type === 'create') {
+        if (mode !== 'manifest') {
+          throw new Error(
+            'Application metadata objectDelete/fieldDelete cannot create validationRule',
+          );
+        }
+        if (!action.flatEntity) {
+          throw new Error(
+            'Application metadata audit validationRule create action requires flatEntity',
+          );
+        }
+        const universalId = uuid(action.flatEntity.universalIdentifier);
+        if (plannedValidationRuleCreatesByUniversalId.has(universalId)) {
+          throw new Error(
+            'Application metadata audit duplicate validationRule create universalIdentifier',
+          );
+        }
+        if (
+          action.flatEntity.applicationUniversalIdentifier !== undefined &&
+          uuid(action.flatEntity.applicationUniversalIdentifier) !==
+            applicationUniversalIdentifier
+        ) {
+          throw new Error(
+            'Application metadata audit validationRule create application mismatch',
+          );
+        }
+        const explicitId =
+          action.id !== undefined
+            ? uuid(action.id)
+            : action.flatEntity.id !== undefined
+              ? uuid(action.flatEntity.id)
+              : undefined;
+        if (
+          explicitId !== undefined &&
+          beforeValidationRules?.has(explicitId)
+        ) {
+          throw new Error(
+            'Application metadata audit validationRule create target ID already exists',
+          );
+        }
+        plannedValidationRuleCreatesByUniversalId.set(universalId, {
+          ...(explicitId !== undefined ? { id: explicitId } : {}),
+          flatEntity: action.flatEntity,
+        });
+      } else if (action.type === 'update') {
+        const mapped = lookupValidationRuleMapping(
+          action.universalIdentifier,
+          mappings.validationRules,
+        );
+        if (!mapped?.id) {
+          throw new Error(
+            'Application metadata audit missing validationRule update mapping',
+          );
+        }
+        const targetId = uuid(mapped.id);
+        if (plannedValidationRuleUpdates.has(targetId)) {
+          throw new Error(
+            'Application metadata audit duplicate validationRule update ID',
+          );
+        }
+        if (plannedValidationRuleDeletes.has(targetId)) {
+          throw new Error(
+            'Application metadata audit conflicting validationRule update and delete ID',
+          );
+        }
+        plannedValidationRuleUpdates.add(targetId);
+      } else if (action.type === 'delete') {
+        if (mode === 'fieldDelete') {
+          throw new Error(
+            'Application metadata fieldDelete cannot delete validationRule',
+          );
+        }
+        const mapped = lookupValidationRuleMapping(
+          action.universalIdentifier,
+          mappings.validationRules,
+        );
+        if (!mapped?.id) {
+          throw new Error(
+            'Application metadata audit missing validationRule delete mapping',
+          );
+        }
+        const targetId = uuid(mapped.id);
+        if (plannedValidationRuleDeletes.has(targetId)) {
+          throw new Error(
+            'Application metadata audit duplicate validationRule delete ID',
+          );
+        }
+        if (plannedValidationRuleUpdates.has(targetId)) {
+          throw new Error(
+            'Application metadata audit conflicting validationRule update and delete ID',
+          );
+        }
+        plannedValidationRuleDeletes.add(targetId);
+      } else {
+        throw new Error(
+          `Application metadata audit unsupported validationRule action ${action.type}`,
+        );
+      }
+    }
+
     const beforeObjects =
       mode === 'objectDelete' || mode === 'fieldDelete'
         ? await readTableSnapshot(
@@ -1179,8 +1320,19 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
             true,
           )
         : new Map<string, Record<string, unknown>>();
+    const needsBeforeFieldsForValidationRules =
+      beforeValidationRules !== undefined &&
+      actions.some(
+        (action) =>
+          (action.metadataName === 'objectMetadata' &&
+            action.type === 'delete') ||
+          (action.metadataName === 'fieldMetadata' &&
+            (action.type === 'update' || action.type === 'delete')),
+      );
     const beforeFields =
-      mode === 'objectDelete' || mode === 'fieldDelete'
+      mode === 'objectDelete' ||
+      mode === 'fieldDelete' ||
+      needsBeforeFieldsForValidationRules
         ? await readTableSnapshot(
             runner,
             existingTables,
@@ -9037,6 +9189,277 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       );
     }
 
+    let expectedValidationRulesSerialized: string | undefined;
+    if (beforeValidationRules !== undefined) {
+      const afterValidationRules = await readTableSnapshot(
+        runner,
+        existingTables,
+        'validationRule',
+        workspaceId,
+        true,
+      );
+      for (const row of afterValidationRules.values()) {
+        assertValidationRuleRowInvariants(row, workspaceId);
+      }
+
+      const plannedUpdatedFieldIds = new Set<string>();
+      const plannedUpdatedFieldUniversalIds = new Set<string>();
+      const deletedFieldIds = new Set<string>(plannedFieldDeletes);
+      const deletedFieldUniversalIds = new Set<string>();
+
+      for (const action of actions) {
+        if (
+          action.metadataName === 'fieldMetadata' &&
+          action.type === 'update' &&
+          action.universalIdentifier !== undefined
+        ) {
+          const universalId = uuid(action.universalIdentifier);
+          plannedUpdatedFieldUniversalIds.add(universalId);
+          const mappedField =
+            mappings.fieldMetadatas?.[action.universalIdentifier] ??
+            mappings.fieldMetadatas?.[universalId];
+          if (mappedField?.id) {
+            plannedUpdatedFieldIds.add(uuid(mappedField.id));
+          }
+        } else if (
+          action.metadataName === 'fieldMetadata' &&
+          action.type === 'delete' &&
+          action.universalIdentifier !== undefined
+        ) {
+          deletedFieldUniversalIds.add(uuid(action.universalIdentifier));
+        }
+      }
+      for (const [fieldId, fieldRow] of beforeFields.entries()) {
+        const fieldObjectId = nullableUuid(fieldRow.objectMetadataId);
+        if (
+          plannedFieldDeletes.has(fieldId) ||
+          (fieldObjectId !== null && plannedObjectDeletes.has(fieldObjectId))
+        ) {
+          deletedFieldIds.add(fieldId);
+          if (typeof fieldRow.universalIdentifier === 'string') {
+            deletedFieldUniversalIds.add(uuid(fieldRow.universalIdentifier));
+          }
+        }
+      }
+      const affectedFieldIds = new Set<string>([
+        ...plannedUpdatedFieldIds,
+        ...deletedFieldIds,
+      ]);
+      const affectedFieldUniversalIds = new Set<string>([
+        ...plannedUpdatedFieldUniversalIds,
+        ...deletedFieldUniversalIds,
+      ]);
+      const hasFieldUpdateInBatch =
+        plannedUpdatedFieldIds.size > 0 ||
+        plannedUpdatedFieldUniversalIds.size > 0;
+      const hasFieldDeleteInBatch =
+        deletedFieldIds.size > 0 || deletedFieldUniversalIds.size > 0;
+
+      const createdRulesByUniversalId = new Map<
+        string,
+        { id: string; row: Record<string, unknown> }
+      >();
+      for (const [id, afterRow] of afterValidationRules.entries()) {
+        if (!beforeValidationRules.has(id)) {
+          const universalId = uuid(afterRow.universalIdentifier);
+          if (createdRulesByUniversalId.has(universalId)) {
+            throw new Error(
+              'Application metadata audit detected duplicate created validationRule universalIdentifier',
+            );
+          }
+          createdRulesByUniversalId.set(universalId, { id, row: afterRow });
+        }
+      }
+
+      if (
+        createdRulesByUniversalId.size !==
+        plannedValidationRuleCreatesByUniversalId.size
+      ) {
+        throw new Error(
+          'Application metadata audit detected unplanned validationRule create',
+        );
+      }
+
+      for (const [
+        universalId,
+        planned,
+      ] of plannedValidationRuleCreatesByUniversalId.entries()) {
+        const created = createdRulesByUniversalId.get(universalId);
+        if (!created) {
+          throw new Error(
+            'Application metadata validationRule create did not persist expected row',
+          );
+        }
+        if (planned.id !== undefined && created.id !== planned.id) {
+          throw new Error(
+            'Application metadata validationRule create persisted unexpected ID',
+          );
+        }
+        const afterProj = projectValidationRule(created.row);
+        if (afterProj.applicationId !== applicationId) {
+          throw new Error(
+            'Application metadata validationRule create persisted unexpected applicationId',
+          );
+        }
+        recordMutation('validationRule', created.id, 'create', null, afterProj);
+      }
+
+      for (const plannedDeleteId of plannedValidationRuleDeletes) {
+        if (!beforeValidationRules.has(plannedDeleteId)) {
+          throw new Error(
+            'Application metadata validationRule delete target row missing before migration',
+          );
+        }
+        if (afterValidationRules.has(plannedDeleteId)) {
+          throw new Error(
+            'Application metadata validationRule delete did not remove expected row',
+          );
+        }
+      }
+
+      for (const [ruleId, beforeRow] of beforeValidationRules.entries()) {
+        const beforeProj = projectValidationRule(beforeRow);
+        const afterRow = afterValidationRules.get(ruleId);
+        if (!afterRow) {
+          const isObjectCascade = plannedObjectDeletes.has(
+            beforeProj.objectMetadataId,
+          );
+          if (!plannedValidationRuleDeletes.has(ruleId) && !isObjectCascade) {
+            throw new Error(
+              'Application metadata audit detected unplanned validationRule delete',
+            );
+          }
+          if (mode === 'objectDelete' && !isObjectCascade) {
+            throw new Error(
+              'Application metadata objectDelete cannot delete unrelated validationRule',
+            );
+          }
+          if (!isObjectCascade && beforeProj.applicationId !== applicationId) {
+            throw new Error(
+              'Application metadata audit cannot delete foreign validationRule without object cascade',
+            );
+          }
+          recordMutation('validationRule', ruleId, 'delete', beforeProj, null);
+          continue;
+        }
+
+        const rowChanged =
+          canonicalAuditJson(scalarValidationRuleWithoutTimestamps(beforeRow)) !==
+          canonicalAuditJson(scalarValidationRuleWithoutTimestamps(afterRow));
+        if (!rowChanged) {
+          continue;
+        }
+
+        const afterProj = projectValidationRule(afterRow);
+        if (!plannedValidationRuleUpdates.has(ruleId)) {
+          const prevErrorFieldId = beforeProj.errorFieldMetadataId;
+          const prevErrorFieldRow =
+            prevErrorFieldId !== null
+              ? beforeFields.get(prevErrorFieldId)
+              : undefined;
+          const prevErrorFieldObjectId = prevErrorFieldRow
+            ? nullableUuid(prevErrorFieldRow.objectMetadataId)
+            : null;
+          const isErrorFieldFkSetNull =
+            prevErrorFieldId !== null &&
+            afterProj.errorFieldMetadataId === null &&
+            (plannedFieldDeletes.has(prevErrorFieldId) ||
+              (prevErrorFieldObjectId !== null &&
+                plannedObjectDeletes.has(prevErrorFieldObjectId)));
+          const expectedFkRow = {
+            ...scalarValidationRuleWithoutTimestamps(beforeRow),
+            errorFieldMetadataId: null,
+          };
+          if (
+            !isErrorFieldFkSetNull ||
+            canonicalAuditJson(
+              scalarValidationRuleWithoutTimestamps(afterRow),
+            ) !== canonicalAuditJson(expectedFkRow)
+          ) {
+            throw new Error(
+              'Application metadata audit detected unplanned validationRule mutation',
+            );
+          }
+        } else {
+          if (mode === 'objectDelete' || mode === 'fieldDelete') {
+            if (
+              !doesValidationRuleReferenceAnyField(
+                beforeRow,
+                deletedFieldIds,
+                deletedFieldUniversalIds,
+              )
+            ) {
+              throw new Error(
+                'Application metadata audit cannot update unrelated validationRule',
+              );
+            }
+            assertValidationRuleSideEffectUpdateInvariants(
+              beforeRow,
+              afterRow,
+              false,
+              deletedFieldIds,
+            );
+          } else if (beforeProj.applicationId !== applicationId) {
+            if (!hasFieldUpdateInBatch && !hasFieldDeleteInBatch) {
+              throw new Error(
+                'Application metadata audit cannot update foreign validationRule without field change',
+              );
+            }
+            if (
+              !doesValidationRuleReferenceAnyField(
+                beforeRow,
+                affectedFieldIds,
+                affectedFieldUniversalIds,
+              )
+            ) {
+              throw new Error(
+                'Application metadata audit cannot update unrelated foreign validationRule',
+              );
+            }
+            const allowExpressionAndBindingsChange =
+              hasFieldUpdateInBatch &&
+              doesValidationRuleReferenceAnyField(
+                beforeRow,
+                plannedUpdatedFieldIds,
+                plannedUpdatedFieldUniversalIds,
+              );
+            assertValidationRuleSideEffectUpdateInvariants(
+              beforeRow,
+              afterRow,
+              allowExpressionAndBindingsChange,
+              deletedFieldIds,
+            );
+          } else if (
+            afterProj.applicationId !== beforeProj.applicationId ||
+            afterProj.objectMetadataId !== beforeProj.objectMetadataId ||
+            uuid(afterRow.universalIdentifier) !==
+              uuid(beforeRow.universalIdentifier)
+          ) {
+            throw new Error(
+              'Application metadata validationRule update mutated immutable fields',
+            );
+          }
+        }
+
+        if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+          recordMutation(
+            'validationRule',
+            ruleId,
+            'update',
+            beforeProj,
+            afterProj,
+          );
+        }
+      }
+
+      expectedValidationRulesSerialized = canonicalAuditJson(
+        [...afterValidationRules.entries()].map(([id, row]) => [
+          id,
+          scalarValidationRuleWithoutTimestamps(row),
+        ]),
+      );
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized = serializeFullSnapshot(after);
       await audit.flush();
@@ -9411,6 +9834,26 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           );
         }
       }
+      if (expectedValidationRulesSerialized !== undefined) {
+        const postFlushValidationRules = await readTableSnapshot(
+          runner,
+          existingTables,
+          'validationRule',
+          workspaceId,
+          false,
+        );
+        const postFlushSerialized = canonicalAuditJson(
+          [...postFlushValidationRules.entries()].map(([id, row]) => [
+            id,
+            scalarValidationRuleWithoutTimestamps(row),
+          ]),
+        );
+        if (postFlushSerialized !== expectedValidationRulesSerialized) {
+          throw new Error(
+            'Application metadata state changed during audit flush',
+          );
+        }
+      }
     }
 
     return result;
@@ -9456,6 +9899,7 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
     'logicFunction',
     'timelineActivityType',
     'indexMetadata',
+    'validationRule',
     'view',
     'commandMenuItem',
     'pageLayout',
@@ -9734,6 +10178,42 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
     }
   }
 
+  if (existingTables.has('validationRule')) {
+    if (existingTables.has('objectMetadata')) {
+      const [depRow] = await runner.query(
+        `SELECT vr.id FROM core."validationRule" vr INNER JOIN core."objectMetadata" o ON o.id=vr."objectMetadataId" WHERE vr."workspaceId"=$1 AND o."workspaceId"=$1 AND o."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+    }
+    if (existingTables.has('fieldMetadata')) {
+      const [depRow] = await runner.query(
+        `SELECT vr.id FROM core."validationRule" vr INNER JOIN core."fieldMetadata" f ON f.id=vr."errorFieldMetadataId" WHERE vr."workspaceId"=$1 AND f."workspaceId"=$1 AND f."applicationId"=$2 LIMIT 1`,
+        [normalizedWorkspaceId, normalizedApplicationId],
+      );
+      if (depRow) {
+        throw new Error(
+          'Application delete requires prior audited removal of role and permission metadata',
+        );
+      }
+      if (existingTables.has('objectMetadata')) {
+        const [depObjFieldRow] = await runner.query(
+          `SELECT vr.id FROM core."validationRule" vr INNER JOIN core."fieldMetadata" f ON f.id=vr."errorFieldMetadataId" INNER JOIN core."objectMetadata" o ON o.id=f."objectMetadataId" WHERE vr."workspaceId"=$1 AND f."workspaceId"=$1 AND o."workspaceId"=$1 AND o."applicationId"=$2 LIMIT 1`,
+          [normalizedWorkspaceId, normalizedApplicationId],
+        );
+        if (depObjFieldRow) {
+          throw new Error(
+            'Application delete requires prior audited removal of role and permission metadata',
+          );
+        }
+      }
+    }
+  }
+
   if (existingTables.has('view')) {
     if (existingTables.has('objectMetadata')) {
       const [depRow] = await runner.query(
@@ -9942,6 +10422,9 @@ export const reconcileApplicationRoleAndPermissionOperations = ({
       byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
     };
     flatNavigationMenuItemMaps?: {
+      byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
+    };
+    flatValidationRuleMaps?: {
       byUniversalIdentifier: Partial<Record<string, ReconcilableEntity>>;
     };
     flatSettingsMenuItemMaps?: {
@@ -10556,6 +11039,24 @@ export const reconcileApplicationRoleAndPermissionOperations = ({
         const bucket = ensureOperationBucket(record, 'pageLayoutWidget');
         bucket.flatEntityToDelete[existingWidget.universalIdentifier] =
           existingWidget;
+      }
+    }
+  }
+
+  if (existingAllFlatEntityMaps.flatValidationRuleMaps) {
+    for (const existingRule of Object.values(
+      existingAllFlatEntityMaps.flatValidationRuleMaps.byUniversalIdentifier,
+    )) {
+      if (!isPresent(existingRule)) continue;
+      if (
+        isPresent(existingRule.objectMetadataUniversalIdentifier) &&
+        deletedObjectUniversalIdentifiers.has(
+          existingRule.objectMetadataUniversalIdentifier,
+        )
+      ) {
+        const bucket = ensureOperationBucket(record, 'validationRule');
+        bucket.flatEntityToDelete[existingRule.universalIdentifier] =
+          existingRule;
       }
     }
   }

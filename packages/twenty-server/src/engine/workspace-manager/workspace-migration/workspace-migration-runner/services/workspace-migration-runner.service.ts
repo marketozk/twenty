@@ -28,6 +28,10 @@ import {
   runAuditedIndexMetadataMigration,
 } from 'src/engine/core-modules/crm-audit/index-metadata-audit';
 import {
+  getValidationRuleAudit,
+  runAuditedValidationRuleMigration,
+} from 'src/engine/core-modules/crm-audit/validation-rule-audit';
+import {
   getNavigationMenuItemAudit,
   runAuditedNavigationMenuItemMigration,
 } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
@@ -360,6 +364,7 @@ export class WorkspaceMigrationRunnerService {
             'pageLayoutWidget',
             'navigationMenuItem',
             'commandMenuItem',
+            'validationRule',
           ] as const)
         : hasNavCascadeParentDeleteAction
           ? (['navigationMenuItem', 'commandMenuItem'] as const)
@@ -478,6 +483,7 @@ export class WorkspaceMigrationRunnerService {
     const coreViewAudit = getCoreViewAudit(workspaceId);
     const navigationMenuItemAudit = getNavigationMenuItemAudit(workspaceId);
     const indexMetadataAudit = getIndexMetadataAudit(workspaceId);
+    const validationRuleAudit = getValidationRuleAudit(workspaceId);
     if (
       [
         roleAudit,
@@ -488,6 +494,7 @@ export class WorkspaceMigrationRunnerService {
         coreViewAudit,
         navigationMenuItemAudit,
         indexMetadataAudit,
+        validationRuleAudit,
       ].filter(Boolean).length > 1
     )
       throw new Error('Conflicting metadata audit owners');
@@ -498,7 +505,8 @@ export class WorkspaceMigrationRunnerService {
       apiKeyCreateAudit ||
       coreViewAudit ||
       navigationMenuItemAudit ||
-      indexMetadataAudit
+      indexMetadataAudit ||
+      validationRuleAudit
     ) {
       const hasSchemaMetadataChangedForAudit =
         isSchemaAffectingWorkspaceMigration(actions);
@@ -578,6 +586,9 @@ export class WorkspaceMigrationRunnerService {
             allFlatEntityMaps.flatCommandMenuItemMaps?.byUniversalIdentifier ??
             {},
           indexes: allFlatEntityMaps.flatIndexMaps?.byUniversalIdentifier ?? {},
+          validationRules:
+            allFlatEntityMaps.flatValidationRuleMaps?.byUniversalIdentifier ??
+            {},
         };
         const searchFieldMetadatasByTsVectorFieldIdAccessor =
           createSearchFieldMetadatasByTsVectorFieldIdAccessor(
@@ -722,7 +733,15 @@ export class WorkspaceMigrationRunnerService {
                         mappings,
                         execute,
                       )
-                    : await runAuditedApiKeyCreate(
+                    : validationRuleAudit
+                      ? await runAuditedValidationRuleMigration(
+                          this.coreDataSource,
+                          validationRuleAudit,
+                          actions as never,
+                          mappings,
+                          execute,
+                        )
+                      : await runAuditedApiKeyCreate(
                         this.coreDataSource,
                         apiKeyCreateAudit!,
                         actions,
@@ -884,6 +903,8 @@ export class WorkspaceMigrationRunnerService {
         commandMenuItems:
           allFlatEntityMaps.flatCommandMenuItemMaps?.byUniversalIdentifier ??
           {},
+        validationRules:
+          allFlatEntityMaps.flatValidationRuleMaps?.byUniversalIdentifier ?? {},
       };
       const allMetadataEvents: MetadataEvent[] = [];
       const allDeferredActions: DeferredWorkspaceMigrationAction[] = [];

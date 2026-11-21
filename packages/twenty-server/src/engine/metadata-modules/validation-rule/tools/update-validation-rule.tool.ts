@@ -8,6 +8,7 @@ import {
 import { FeatureFlagKey } from 'twenty-shared/types';
 import { z } from 'zod';
 
+import { type ValidationRuleAuditIdentity } from 'src/engine/core-modules/crm-audit/validation-rule-audit';
 import { DefineTool } from 'src/engine/core-modules/tool-provider/decorators/define-tool.decorator';
 import { BaseTool } from 'src/engine/core-modules/tool-provider/interfaces/base-tool.interface';
 import { type ToolExecuteArgs } from 'src/engine/core-modules/tool-provider/types/tool-execute-args.type';
@@ -57,13 +58,36 @@ export class UpdateValidationRuleTool extends BaseTool<
 
   async execute({
     input: { id, ...update },
-    context: { workspaceId },
+    context: {
+      workspaceId,
+      application,
+      agentId,
+      authContext,
+      userId,
+      actorContext,
+    },
   }: ToolExecuteArgs<typeof updateValidationRuleInputSchema>): Promise<
     ToolOutput<ValidationRuleDTO>
   > {
+    const auditIdentity: ValidationRuleAuditIdentity | undefined = authContext
+      ? { auth: authContext, ...(agentId ? { agentId } : {}) }
+      : userId || actorContext?.workspaceMemberId || application?.id || agentId
+        ? {
+            ...(userId ? { user: { id: userId } } : {}),
+            ...(actorContext?.workspaceMemberId
+              ? { workspaceMemberId: actorContext.workspaceMemberId }
+              : {}),
+            ...(application?.id
+              ? { application: { id: application.id } }
+              : {}),
+            ...(agentId ? { agentId } : {}),
+          }
+        : undefined;
+
     const validationRule = await this.validationRuleService.update({
       input: { id, update },
       workspaceId,
+      ...(auditIdentity ? { auditIdentity } : {}),
     });
 
     return {

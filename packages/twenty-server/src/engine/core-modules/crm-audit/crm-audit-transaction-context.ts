@@ -318,6 +318,22 @@ const CATALOG: Record<
     ],
     redacted: ['name', 'indexWhereClause'],
   },
+  validationRule: {
+    values: [
+      'applicationId',
+      'objectMetadataId',
+      'errorFieldMetadataId',
+      'isActive',
+    ],
+    redacted: [
+      'name',
+      'description',
+      'icon',
+      'expression',
+      'bindings',
+      'message',
+    ],
+  },
   commandMenuItem: {
     values: [
       'applicationId',
@@ -917,6 +933,7 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   logicFunction: ['create', 'update', 'delete'],
   timelineActivityType: ['create', 'update', 'delete'],
   indexMetadata: ['create', 'update', 'delete'],
+  validationRule: ['create', 'update', 'delete'],
   commandMenuItem: ['create', 'update', 'delete'],
   pageLayout: ['create', 'update', 'delete'],
   pageLayoutTab: ['create', 'update', 'delete'],
