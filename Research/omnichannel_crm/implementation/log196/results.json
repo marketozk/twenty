@@ -1,0 +1,37 @@
+{
+  "log": "LOG-196",
+  "issue": "ROB-765",
+  "date": "2026-11-21",
+  "title": "Transactional audit of custom metadata indexes (indexMetadata in core.indexMetadata)",
+  "targetedPostgres": {
+    "suitesPassed": 4,
+    "suitesTotal": 4,
+    "testsPassed": 19,
+    "testsTotal": 19,
+    "newPostgresTests": 4,
+    "durationSeconds": 15.26
+  },
+  "fullRegression": {
+    "suitesPassed": 132,
+    "suitesTotal": 132,
+    "testsPassed": 3227,
+    "testsTotal": 3227,
+    "durationSeconds": 726.536
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.173
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 497,
+    "currentRootFiles": 497,
+    "baselineDiagnostics": 285,
+    "currentDiagnostics": 275,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 9
+}

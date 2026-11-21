@@ -17,6 +17,7 @@ import {
   withApplicationMetadataAudit,
 } from 'src/engine/core-modules/crm-audit/application-metadata-audit';
 import { hasConflictingMetadataAuditScope } from 'src/engine/core-modules/crm-audit/role-update-audit';
+import { isAuditedCustomIndexAction } from 'src/engine/core-modules/crm-audit/index-metadata-audit';
 import { LoggerService } from 'src/engine/core-modules/logger/logger.service';
 import { WORKSPACE_MIGRATION_ACTION_COUNT_BUCKET_BOUNDARIES } from 'src/engine/core-modules/metrics/constants/workspace-migration-action-count-bucket-boundaries.constant';
 import { WORKSPACE_MIGRATION_DURATION_MS_BUCKET_BOUNDARIES } from 'src/engine/core-modules/metrics/constants/workspace-migration-duration-ms-bucket-boundaries.constant';
@@ -213,7 +214,12 @@ export class WorkspaceMigrationValidateBuildAndRunService {
             AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES.has(
               action.metadataName,
             )) ||
-          isAuditedWorkflowOrViewUpdateAction(action as never),
+          isAuditedWorkflowOrViewUpdateAction(action as never) ||
+          isAuditedCustomIndexAction(
+            action as never,
+            buildArgs.fromToAllFlatEntityMaps.flatIndexMaps?.from
+              ?.byUniversalIdentifier,
+          ),
       );
     const runMigration = () =>
       this.workspaceMigrationRunnerService.run({

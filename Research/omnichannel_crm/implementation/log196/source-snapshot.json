@@ -1,0 +1,15 @@
+{
+  "log": "LOG-196",
+  "verifiedFileCount": 9,
+  "files": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/application-metadata-audit.ts": "1165e05630ec735ea0cf2c9f3883c7930607fa9f200f67017b4f704e61694eea",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "5a3f7402156b67129d91b676cf77ffe611a279312d062a76800918c3c9f4891b",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "2e101c1b02bcf218f59d24ae344e0a4da31e13c086a99c6922427a265cab449e",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/index-metadata-audit.ts": "1fe2b9f5e585719af2067c3394709f570d49dbbdd0a0b2a04fdf27f6b719b8cb",
+    "packages/twenty-server/src/engine/metadata-modules/index-metadata/index-metadata.resolver.ts": "e0ac5d6152ea22c1aae1e8d88e8d279fb275307ef5e79c2f59aacf5ea6d0cea3",
+    "packages/twenty-server/src/engine/metadata-modules/index-metadata/services/index-metadata.service.ts": "6dfb3242eb8aad6e38f421cae97c74dbe1efb95c6ae560141628f30733fc0daa",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/services/workspace-migration-validate-build-and-run-service.ts": "de2076d3c4f6c9a95dca40ba9404568b9f2970dc90bb681ce5b82aad26f70eab",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts": "15f4fdd8a291610bd1e9f8b5c8619747d65583184485b6745950c45fb3bf4440",
+    "packages/twenty-server/test/fork-migration/crm-audit-index-metadata.postgres-spec.ts": "bde430e24b42caac10944e4047c03f68d42aff4fca107560ac07672f38e1aa36"
+  }
+}

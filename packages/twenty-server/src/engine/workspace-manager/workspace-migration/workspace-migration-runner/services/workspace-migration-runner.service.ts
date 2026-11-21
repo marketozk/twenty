@@ -22,6 +22,11 @@ import {
   runAuditedCoreViewUpdate,
 } from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
 import {
+  getIndexMetadataAudit,
+  isAuditedCustomIndexAction,
+  runAuditedIndexMetadataMigration,
+} from 'src/engine/core-modules/crm-audit/index-metadata-audit';
+import {
   getNavigationMenuItemAudit,
   runAuditedNavigationMenuItemMigration,
 } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
@@ -471,6 +476,7 @@ export class WorkspaceMigrationRunnerService {
     const applicationMetadataAudit = getApplicationMetadataAudit(workspaceId);
     const coreViewUpdateAudit = getCoreViewUpdateAudit(workspaceId);
     const navigationMenuItemAudit = getNavigationMenuItemAudit(workspaceId);
+    const indexMetadataAudit = getIndexMetadataAudit(workspaceId);
     if (
       [
         roleAudit,
@@ -480,6 +486,7 @@ export class WorkspaceMigrationRunnerService {
         applicationMetadataAudit,
         coreViewUpdateAudit,
         navigationMenuItemAudit,
+        indexMetadataAudit,
       ].filter(Boolean).length > 1
     )
       throw new Error('Conflicting metadata audit owners');
@@ -489,7 +496,8 @@ export class WorkspaceMigrationRunnerService {
       permissionAudit ||
       apiKeyCreateAudit ||
       coreViewUpdateAudit ||
-      navigationMenuItemAudit
+      navigationMenuItemAudit ||
+      indexMetadataAudit
     ) {
       const hasSchemaMetadataChangedForAudit =
         isSchemaAffectingWorkspaceMigration(actions);
@@ -568,6 +576,7 @@ export class WorkspaceMigrationRunnerService {
           commandMenuItems:
             allFlatEntityMaps.flatCommandMenuItemMaps?.byUniversalIdentifier ??
             {},
+          indexes: allFlatEntityMaps.flatIndexMaps?.byUniversalIdentifier ?? {},
         };
         const searchFieldMetadatasByTsVectorFieldIdAccessor =
           createSearchFieldMetadatasByTsVectorFieldIdAccessor(
@@ -625,7 +634,11 @@ export class WorkspaceMigrationRunnerService {
                   },
                 },
               );
-            if (executed.deferredActions.length && !navigationMenuItemAudit)
+            if (
+              executed.deferredActions.length &&
+              !navigationMenuItemAudit &&
+              !indexMetadataAudit
+            )
               throw new Error(
                 'Audited role mutation cannot dispatch deferred actions',
               );
@@ -639,7 +652,10 @@ export class WorkspaceMigrationRunnerService {
             metadataEvents.push(...executed.metadataEvents);
             allDeferredActions.push(...executed.deferredActions);
           }
-          if (navigationMenuItemAudit && shouldPersistDeferredActions) {
+          if (
+            (navigationMenuItemAudit || indexMetadataAudit) &&
+            shouldPersistDeferredActions
+          ) {
             await this.deferredWorkspaceMigrationActionRunnerService.persist({
               deferredActions: allDeferredActions,
               workspaceId,
@@ -650,9 +666,10 @@ export class WorkspaceMigrationRunnerService {
           return {
             allFlatEntityMaps,
             metadataEvents,
-            hasSchemaMetadataChanged: navigationMenuItemAudit
-              ? hasSchemaMetadataChangedForAudit
-              : false,
+            hasSchemaMetadataChanged:
+              navigationMenuItemAudit || indexMetadataAudit
+                ? hasSchemaMetadataChangedForAudit
+                : false,
             allDeferredActions,
           };
         };
@@ -696,14 +713,25 @@ export class WorkspaceMigrationRunnerService {
                       mappings,
                       execute,
                     )
-                  : await runAuditedApiKeyCreate(
-                      this.coreDataSource,
-                      apiKeyCreateAudit!,
-                      actions,
-                      mappings,
-                      execute,
-                    );
-        if (navigationMenuItemAudit && outcome.allDeferredActions.length > 0) {
+                  : indexMetadataAudit
+                    ? await runAuditedIndexMetadataMigration(
+                        this.coreDataSource,
+                        indexMetadataAudit,
+                        actions as never,
+                        mappings,
+                        execute,
+                      )
+                    : await runAuditedApiKeyCreate(
+                        this.coreDataSource,
+                        apiKeyCreateAudit!,
+                        actions,
+                        mappings,
+                        execute,
+                      );
+        if (
+          (navigationMenuItemAudit || indexMetadataAudit) &&
+          outcome.allDeferredActions.length > 0
+        ) {
           await this.deferredWorkspaceMigrationActionRunnerService.dispatchAfterCommit(
             {
               deferredActions: outcome.allDeferredActions,
@@ -720,7 +748,7 @@ export class WorkspaceMigrationRunnerService {
           hasSchemaMetadataChanged: outcome.hasSchemaMetadataChanged,
         };
       } catch (error) {
-        if (!navigationMenuItemAudit) {
+        if (!navigationMenuItemAudit && !indexMetadataAudit) {
           throw error;
         }
         const mayHaveCommitted =
@@ -1020,7 +1048,11 @@ export class WorkspaceMigrationRunnerService {
             AUDITED_ROLE_AND_PERMISSION_CASCADE_DELETE_METADATA_NAMES.has(
               action.metadataName,
             )) ||
-          isAuditedWorkflowOrViewUpdateAction(action as never),
+          isAuditedWorkflowOrViewUpdateAction(action as never) ||
+          isAuditedCustomIndexAction(
+            action as never,
+            allFlatEntityMaps.flatIndexMaps?.byUniversalIdentifier,
+          ),
       )
     ) {
       throw new Error(

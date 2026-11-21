@@ -5566,3 +5566,18 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 7de05f8d-13fa-4d8b-99b1-216d04116b21 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log195/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG196`).
+
+## LOG-196 - транзакционный аудит пользовательских индексов метаданных (`indexMetadata` в `core."indexMetadata"`)
+
+21.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log196/design.md), [design-review.md](implementation/log196/design-review.md)) и реализован участок `LOG-196` (Linear `ROB-765`): транзакционный аудит жизненного цикла пользовательских индексов метаданных в `core."indexMetadata"`.
+
+В `crm-audit.types.ts` и `crm-audit-transaction-context.ts` добавлен ресурс `indexMetadata` (`values: ['applicationId', 'objectMetadataId', 'indexType', 'isCustom', 'isUnique', 'isSystemSideEffect']`, `redacted: ['name', 'indexWhereClause']`, `ADMINISTRATIVE_ACTIONS: ['create', 'update', 'delete']`). Создан модульный раннер `index-metadata-audit.ts`, подключённый к `IndexMetadataResolver`, `IndexMetadataService`, `WorkspaceMigrationRunnerService.executeRun` (с сохранением отложенного `buildIndex`, `dispatchAfterCommit` после `COMMIT`, `executeActionRollbackHandler` при откате и fail-closed барьером `isAuditedCustomIndexAction` на неаудируемые пользовательские индексы), `WorkspaceMigrationValidateBuildAndRunService` и `application-metadata-audit.ts` (аудит `create`/`update`/`delete`, пост-flush сверка и проверка остатков в `assertNoRemainingApplicationRoleOrPermissionMetadata`).
+
+21.11.2026 проверки LOG196 завершены. 3227 tests/132 suites PASS (726.536s). 19 targeted/4 suites PASS (15.26s), 4 новых PostgreSQL случая. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 497/497 roots, baseline 285 / current 275 diagnostics, 0 новых/changed-code. Совпали 9 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту и атомарность жизненного цикла `indexMetadata`, корректную работу отложенного `buildIndex` и rollback, точность fail-closed барьера без поломки системных side-effect индексов, редактирование `name` и `indexWhereClause` и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log196/results.json), [ревью](implementation/log196/review.md),
+[следующий участок](implementation/log196/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

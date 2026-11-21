@@ -307,6 +307,17 @@ const CATALOG: Record<
       'overrides',
     ],
   },
+  indexMetadata: {
+    values: [
+      'applicationId',
+      'objectMetadataId',
+      'indexType',
+      'isCustom',
+      'isUnique',
+      'isSystemSideEffect',
+    ],
+    redacted: ['name', 'indexWhereClause'],
+  },
   commandMenuItem: {
     values: [
       'applicationId',
@@ -895,6 +906,7 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   settingsMenuItem: ['create', 'update', 'delete'],
   logicFunction: ['create', 'update', 'delete'],
   timelineActivityType: ['create', 'update', 'delete'],
+  indexMetadata: ['create', 'update', 'delete'],
   commandMenuItem: ['create', 'update', 'delete'],
   pageLayout: ['create', 'update', 'delete'],
   pageLayoutTab: ['create', 'update', 'delete'],

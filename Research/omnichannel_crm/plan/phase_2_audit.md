@@ -408,8 +408,17 @@ LOG195 закрывает транзакционный аудит управле
 `operationId` с явным или системным актором, первичная генерация `generateAndPersistCurrent`,
 редактирование `publicKey`, `privateKey`, `revokedAt`, пост-коммитная инвалидация кэша и
 пост-flush проверка).
+LOG196 закрывает транзакционный аудит пользовательских индексов метаданных (`indexMetadata` в
+`core."indexMetadata"` в `index-metadata-audit.ts`, `IndexMetadataResolver`,
+`IndexMetadataService`, `WorkspaceMigrationRunnerService.executeRun`,
+`WorkspaceMigrationValidateBuildAndRunService` и `application-metadata-audit.ts`: `createOneIndex`
+/ `deleteOneIndex` с имперсонацией и пост-коммитным `buildIndex`, fail-closed барьер
+`isAuditedCustomIndexAction`, сверка `create`/`update`/`delete` в
+`runAuditedApplicationMetadataMigration`, проверка остатков в
+`assertNoRemainingApplicationRoleOrPermissionMetadata`, редактирование `name` и `indexWhereClause`
+и пост-flush проверка).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log195/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log196/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

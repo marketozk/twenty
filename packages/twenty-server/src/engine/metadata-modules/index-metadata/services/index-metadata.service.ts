@@ -7,6 +7,11 @@ import { isDefined } from 'twenty-shared/utils';
 import { v4 } from 'uuid';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
+import {
+  captureIndexMetadataAudit,
+  withIndexMetadataAudit,
+  type IndexMetadataAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/index-metadata-audit';
 import { isCompositeFieldMetadataType } from 'src/engine/metadata-modules/field-metadata/utils/is-composite-field-metadata-type.util';
 import { isMorphOrRelationFlatFieldMetadata } from 'src/engine/metadata-modules/flat-field-metadata/utils/is-morph-or-relation-flat-field-metadata.util';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
@@ -36,10 +41,18 @@ export class IndexMetadataService {
   async createOne({
     createIndexInput,
     workspaceId,
+    auditIdentity,
   }: {
     createIndexInput: CreateIndexInput;
     workspaceId: string;
+    auditIdentity?: IndexMetadataAuditIdentity;
   }): Promise<FlatIndexMetadata> {
+    const capturedAudit = captureIndexMetadataAudit({
+      workspaceId,
+      expectedAction: 'create',
+      expectedObjectMetadataId: createIndexInput.objectMetadataId,
+      auditIdentity,
+    });
     const { fields: fieldInputs } = createIndexInput;
 
     if (fieldInputs.length === 0) {
@@ -260,21 +273,24 @@ export class IndexMetadataService {
       },
     );
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            index: {
-              flatEntityToCreate: [universalFlatIndexMetadata],
-              flatEntityToDelete: [],
-              flatEntityToUpdate: [],
+    const validateAndBuildResult = await withIndexMetadataAudit(
+      capturedAudit,
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              index: {
+                flatEntityToCreate: [universalFlatIndexMetadata],
+                flatEntityToDelete: [],
+                flatEntityToUpdate: [],
+              },
             },
+            workspaceId,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(
@@ -309,10 +325,18 @@ export class IndexMetadataService {
   async deleteOne({
     id,
     workspaceId,
+    auditIdentity,
   }: {
     id: string;
     workspaceId: string;
+    auditIdentity?: IndexMetadataAuditIdentity;
   }): Promise<FlatIndexMetadata> {
+    const capturedAudit = captureIndexMetadataAudit({
+      workspaceId,
+      expectedAction: 'delete',
+      expectedDeleteId: id,
+      auditIdentity,
+    });
     const { flatIndexMaps: existingFlatIndexMaps } =
       await this.flatEntityMapsCacheService.getOrRecomputeManyOrAllFlatEntityMaps(
         {
@@ -355,21 +379,24 @@ export class IndexMetadataService {
         { workspaceId },
       );
 
-    const validateAndBuildResult =
-      await this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
-        {
-          allFlatEntityOperationByMetadataName: {
-            index: {
-              flatEntityToCreate: [],
-              flatEntityToDelete: [flatIndexToDelete],
-              flatEntityToUpdate: [],
+    const validateAndBuildResult = await withIndexMetadataAudit(
+      capturedAudit,
+      () =>
+        this.workspaceMigrationValidateBuildAndRunService.validateBuildAndRunWorkspaceMigration(
+          {
+            allFlatEntityOperationByMetadataName: {
+              index: {
+                flatEntityToCreate: [],
+                flatEntityToDelete: [flatIndexToDelete],
+                flatEntityToUpdate: [],
+              },
             },
+            workspaceId,
+            applicationUniversalIdentifier:
+              workspaceCustomFlatApplication.universalIdentifier,
           },
-          workspaceId,
-          applicationUniversalIdentifier:
-            workspaceCustomFlatApplication.universalIdentifier,
-        },
-      );
+        ),
+    );
 
     if (validateAndBuildResult.status === 'fail') {
       throw new WorkspaceMigrationBuilderException(

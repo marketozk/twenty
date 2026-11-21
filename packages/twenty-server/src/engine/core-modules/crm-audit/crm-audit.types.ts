@@ -42,6 +42,7 @@ export type CrmAuditResourceKind =
   | 'settingsMenuItem'
   | 'logicFunction'
   | 'timelineActivityType'
+  | 'indexMetadata'
   | 'commandMenuItem'
   | 'pageLayout'
   | 'pageLayoutTab'

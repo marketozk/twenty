@@ -28,6 +28,7 @@ import {
   assertWorkflowOrViewVisibility,
   persistWorkflowRunShareReconciliationIntent,
 } from 'src/engine/core-modules/crm-audit/core-workflow-and-view-audit';
+import { projectIndexMetadata } from 'src/engine/core-modules/crm-audit/index-metadata-audit';
 import {
   assertAgentChatChannelRoleRowInvariants,
   assertAgentChatChannelRowInvariants,
@@ -871,7 +872,8 @@ const readExistingTables = async (
       to_regclass('core."logicFunction"') IS NOT NULL AS "logicFunction",
       to_regclass('core."workflowVersion"') IS NOT NULL AS "workflowVersion",
       to_regclass('core."timelineActivityType"') IS NOT NULL AS "timelineActivityType",
-      to_regclass('core."commandMenuItem"') IS NOT NULL AS "commandMenuItem"`,
+      to_regclass('core."commandMenuItem"') IS NOT NULL AS "commandMenuItem",
+      to_regclass('core."indexMetadata"') IS NOT NULL AS "indexMetadata"`,
   );
   const existing = new Set<string>();
   for (const [key, present] of Object.entries(reg ?? {})) {
@@ -1154,6 +1156,16 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       workspaceId,
       true,
     );
+
+    const beforeIndexMetadatas = existingTables.has('indexMetadata')
+      ? await readTableSnapshot(
+          runner,
+          existingTables,
+          'indexMetadata',
+          workspaceId,
+          true,
+        )
+      : undefined;
 
     const beforeObjects =
       mode === 'objectDelete' || mode === 'fieldDelete'
@@ -8718,6 +8730,78 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
       );
     }
 
+    let expectedIndexMetadatasSerialized: string | undefined;
+    if (beforeIndexMetadatas !== undefined) {
+      const afterIndexMetadatas = await readTableSnapshot(
+        runner,
+        existingTables,
+        'indexMetadata',
+        workspaceId,
+        true,
+      );
+      for (const [id, afterRow] of afterIndexMetadatas.entries()) {
+        const beforeRow = beforeIndexMetadatas.get(id);
+        if (!beforeRow) {
+          audit.record({
+            resourceKind: 'indexMetadata',
+            resourceId: id,
+            action: 'create',
+            before: null,
+            after: projectIndexMetadata(afterRow),
+            securityDescriptor: {
+              resourceKind: 'indexMetadata',
+              resourceId: id,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedMutations += 1;
+        } else {
+          const beforeProj = projectIndexMetadata(beforeRow);
+          const afterProj = projectIndexMetadata(afterRow);
+          if (
+            canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)
+          ) {
+            audit.record({
+              resourceKind: 'indexMetadata',
+              resourceId: id,
+              action: 'update',
+              before: beforeProj,
+              after: afterProj,
+              securityDescriptor: {
+                resourceKind: 'indexMetadata',
+                resourceId: id,
+                metadataAccess: 'currentWorkspaceAdministration',
+              },
+            });
+            recordedMutations += 1;
+          }
+        }
+      }
+      for (const [id, beforeRow] of beforeIndexMetadatas.entries()) {
+        if (!afterIndexMetadatas.has(id)) {
+          audit.record({
+            resourceKind: 'indexMetadata',
+            resourceId: id,
+            action: 'delete',
+            before: projectIndexMetadata(beforeRow),
+            after: null,
+            securityDescriptor: {
+              resourceKind: 'indexMetadata',
+              resourceId: id,
+              metadataAccess: 'currentWorkspaceAdministration',
+            },
+          });
+          recordedMutations += 1;
+        }
+      }
+      expectedIndexMetadatasSerialized = canonicalAuditJson(
+        [...afterIndexMetadatas.entries()].map(([id, row]) => [
+          id,
+          scalarWithoutTimestamps(row),
+        ]),
+      );
+    }
+
     if (recordedMutations > 0) {
       const expectedSerialized = serializeFullSnapshot(after);
       await audit.flush();
@@ -9077,6 +9161,26 @@ export const runAuditedApplicationMetadataMigration = async <TResult>(
           );
         }
       }
+      if (expectedIndexMetadatasSerialized !== undefined) {
+        const postFlushIndexMetadatas = await readTableSnapshot(
+          runner,
+          existingTables,
+          'indexMetadata',
+          workspaceId,
+          false,
+        );
+        const postFlushSerialized = canonicalAuditJson(
+          [...postFlushIndexMetadatas.entries()].map(([id, row]) => [
+            id,
+            scalarWithoutTimestamps(row),
+          ]),
+        );
+        if (postFlushSerialized !== expectedIndexMetadatasSerialized) {
+          throw new Error(
+            'Application metadata state changed during audit flush',
+          );
+        }
+      }
     }
 
     return result;
@@ -9121,6 +9225,7 @@ export const assertNoRemainingApplicationRoleOrPermissionMetadata = async (
     'settingsMenuItem',
     'logicFunction',
     'timelineActivityType',
+    'indexMetadata',
     'commandMenuItem',
     'pageLayout',
     'pageLayoutTab',

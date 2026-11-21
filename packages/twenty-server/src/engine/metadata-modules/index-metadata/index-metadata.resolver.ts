@@ -21,6 +21,7 @@ import { indexMetadataGraphqlApiExceptionHandler } from 'src/engine/metadata-mod
 import { objectMetadataGraphqlApiExceptionHandler } from 'src/engine/metadata-modules/object-metadata/utils/object-metadata-graphql-api-exception-handler.util';
 import { PermissionsGraphqlApiExceptionFilter } from 'src/engine/metadata-modules/permissions/utils/permissions-graphql-api-exception.filter';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
+import { type IndexMetadataAuditIdentity } from 'src/engine/core-modules/crm-audit/index-metadata-audit';
 
 @UseGuards(
   AuthPrincipalGuard({
@@ -72,16 +73,20 @@ export class IndexMetadataResolver {
   async createOneIndex(
     @Args('input') input: CreateOneIndexInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context() context?: { req?: IndexMetadataAuditIdentity },
   ): Promise<IndexMetadataDTO> {
     try {
       const flatIndexMetadata = await this.indexMetadataService.createOne({
         createIndexInput: input.index,
         workspaceId,
+        auditIdentity: context?.req,
       });
 
       return fromFlatIndexMetadataToIndexMetadataDto(flatIndexMetadata);
     } catch (error) {
-      return indexMetadataGraphqlApiExceptionHandler(error);
+      return indexMetadataGraphqlApiExceptionHandler(
+        error instanceof Error ? error : new Error(String(error)),
+      );
     }
   }
 
@@ -90,16 +95,20 @@ export class IndexMetadataResolver {
   async deleteOneIndex(
     @Args('input') input: DeleteOneIndexInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context() context?: { req?: IndexMetadataAuditIdentity },
   ): Promise<IndexMetadataDTO> {
     try {
       const flatIndexMetadata = await this.indexMetadataService.deleteOne({
         id: input.id,
         workspaceId,
+        auditIdentity: context?.req,
       });
 
       return fromFlatIndexMetadataToIndexMetadataDto(flatIndexMetadata);
     } catch (error) {
-      return indexMetadataGraphqlApiExceptionHandler(error);
+      return indexMetadataGraphqlApiExceptionHandler(
+        error instanceof Error ? error : new Error(String(error)),
+      );
     }
   }
 }
