@@ -1,0 +1,21 @@
+{
+  "log": "LOG-201",
+  "stand": "twenty-rob764-0ebc86ebcb444b93",
+  "verifiedCount": 13,
+  "allMatched": true,
+  "files": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/navigation-menu-item-audit.ts": "1637665d4cf078bf226ecbffb93b9c9f2c342ec1c97be748374ee48f52ab39a1",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/record-share-audit.ts": "84418c805d9b353640319953e265e8f783f85961d0e95d58110217c5bced3a29",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-agent-execution/services/agent-run.service.ts": "d56fae7c1e80035adebaec54e27e189e487f8c540f967fe586a37090bf4d6c0b",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-chat/jobs/rewrite-agent-chat-channel-grants.job.ts": "996b7e34942cf1b3b8247a82b418ede1f316be8916b68d5141ce6480c7620ea6",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-chat/query-hooks/__tests__/agent-chat-thread-create.post-query.hook.spec.ts": "cd0e5a86402d914c5780a2f4ffe6d808061b862c9e447fc7ae3eb1140b735db2",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-chat/services/agent-chat-channel-grant.service.ts": "bec042b6ffeb9216d4ede33c246e1943541a010597f01528746ba0c5f593c386",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-chat/services/agent-chat-channel.service.ts": "d7c21b126ca4be5ef4eb004de382a8c1e0c3836a2d125f81ef3188d4b5c5f7f7",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-chat/services/agent-chat-sharing.service.ts": "2b776b0c4901c9e705825123282f8841cb08822d0bf9788ae6826ee723f5aa47",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-chat/services/agent-chat-thread-participant.service.ts": "c024aac91a8f876edbef3f2726350f19ed5889b12cb0d03721e148516a268fb7",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-chat/services/agent-chat-thread.service.ts": "3d87e3d4f09ed29b2227a365c8ecd9f0fc7353c3ddf10cad7a3227c03b463a56",
+    "packages/twenty-server/src/engine/metadata-modules/ai/ai-chat/services/agent-inbox.service.ts": "d53feac45c4e7188ed8acbc7a3b93f274f802c2c9ab04bbf8c7516acf8287724",
+    "packages/twenty-server/test/fork-migration/crm-audit-agent-chat-channel.postgres-spec.ts": "6bffd451534889693947aee0b7d16ff8563962e70170012e7d29056b2ccf0515",
+    "packages/twenty-server/test/fork-migration/crm-audit-agent-chat-record-share.postgres-spec.ts": "a812c74bd299e4566283c517e0046bcb46568ef4ea34f0ee6dcfd98f03aa92d2"
+  }
+}

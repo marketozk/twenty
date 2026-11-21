@@ -6,8 +6,13 @@ import { PostgresAdvisoryLockService } from 'src/database/typeorm/postgres-advis
 import { CoreAuditPostCommitError } from 'src/engine/core-modules/crm-audit/core-audit-post-commit.error';
 import {
   captureNavigationMenuItemAudit,
+  peekNavigationMenuItemAuditAttribution,
   type NavigationMenuItemAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
+import {
+  runAuditedAgentChatRecordShareTransaction,
+  type AgentChatRecordShareAuditInput,
+} from 'src/engine/core-modules/crm-audit/record-share-audit';
 import { AgentChatChannelMetadataService } from 'src/engine/metadata-modules/agent-chat-channel/services/agent-chat-channel-metadata.service';
 import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { type FlatAgentChatChannelWithRoleIds } from 'src/engine/metadata-modules/agent-chat-channel/types/flat-agent-chat-channel-with-role-ids.type';
@@ -139,6 +144,47 @@ export class AgentChatChannelService {
       authUserWorkspaceId,
       defaultSystemActorId: 'agent-chat-channel:update',
     });
+    const shareAuditAttribution =
+      peekNavigationMenuItemAuditAttribution(capturedAudit);
+    const shareAuditInput: AgentChatRecordShareAuditInput =
+      shareAuditAttribution
+        ? shareAuditAttribution.pendingUserWorkspaceActor
+          ? {
+              pendingUserWorkspaceActor: true,
+              ...(shareAuditAttribution.pendingCorrelationId
+                ? {
+                    pendingCorrelationId:
+                      shareAuditAttribution.pendingCorrelationId,
+                  }
+                : {}),
+              ...(shareAuditAttribution.authUserWorkspaceId
+                ? {
+                    authUserWorkspaceId:
+                      shareAuditAttribution.authUserWorkspaceId,
+                  }
+                : {}),
+              ...(shareAuditAttribution.pendingAgentId
+                ? { pendingAgentId: shareAuditAttribution.pendingAgentId }
+                : {}),
+              ...(shareAuditAttribution.impersonatorUserWorkspaceId
+                ? {
+                    auditImpersonatorUserWorkspaceId:
+                      shareAuditAttribution.impersonatorUserWorkspaceId,
+                  }
+                : {}),
+            }
+          : {
+              ...(shareAuditAttribution.operation
+                ? { auditOperation: shareAuditAttribution.operation }
+                : {}),
+              ...(shareAuditAttribution.impersonatorUserWorkspaceId
+                ? {
+                    auditImpersonatorUserWorkspaceId:
+                      shareAuditAttribution.impersonatorUserWorkspaceId,
+                  }
+                : {}),
+            }
+        : {};
 
     let channel: FlatAgentChatChannelWithRoleIds;
 
@@ -171,7 +217,7 @@ export class AgentChatChannelService {
 
     if (isDefined(roleIds)) {
       await this.channelGrantService
-        .rewriteChannelGrants({ workspaceId, channelId })
+        .rewriteChannelGrants({ workspaceId, channelId, ...shareAuditInput })
         .catch(async (error: unknown) => {
           await this.channelGrantService.enqueueChannelGrantsRewrite({
             workspaceId,
@@ -218,6 +264,47 @@ export class AgentChatChannelService {
       authUserWorkspaceId,
       defaultSystemActorId: 'agent-chat-channel:delete',
     });
+    const shareAuditAttribution =
+      peekNavigationMenuItemAuditAttribution(capturedAudit);
+    const shareAuditInput: AgentChatRecordShareAuditInput =
+      shareAuditAttribution
+        ? shareAuditAttribution.pendingUserWorkspaceActor
+          ? {
+              pendingUserWorkspaceActor: true,
+              ...(shareAuditAttribution.pendingCorrelationId
+                ? {
+                    pendingCorrelationId:
+                      shareAuditAttribution.pendingCorrelationId,
+                  }
+                : {}),
+              ...(shareAuditAttribution.authUserWorkspaceId
+                ? {
+                    authUserWorkspaceId:
+                      shareAuditAttribution.authUserWorkspaceId,
+                  }
+                : {}),
+              ...(shareAuditAttribution.pendingAgentId
+                ? { pendingAgentId: shareAuditAttribution.pendingAgentId }
+                : {}),
+              ...(shareAuditAttribution.impersonatorUserWorkspaceId
+                ? {
+                    auditImpersonatorUserWorkspaceId:
+                      shareAuditAttribution.impersonatorUserWorkspaceId,
+                  }
+                : {}),
+            }
+          : {
+              ...(shareAuditAttribution.operation
+                ? { auditOperation: shareAuditAttribution.operation }
+                : {}),
+              ...(shareAuditAttribution.impersonatorUserWorkspaceId
+                ? {
+                    auditImpersonatorUserWorkspaceId:
+                      shareAuditAttribution.impersonatorUserWorkspaceId,
+                  }
+                : {}),
+            }
+        : {};
 
     const channel = await this.channelMetadataService.findChannelOrThrow({
       workspaceId,
@@ -254,6 +341,7 @@ export class AgentChatChannelService {
           workspaceId,
           channelId,
           destinationChannelId,
+          auditInput: shareAuditInput,
         });
 
         await this.threadRecordEventService.emitThreadsUpdated({
@@ -302,76 +390,83 @@ export class AgentChatChannelService {
     workspaceId,
     channelId,
     destinationChannelId,
+    auditInput,
   }: {
     workspaceId: string;
     channelId: string;
     destinationChannelId: string | null;
+    auditInput?: AgentChatRecordShareAuditInput;
   }): Promise<
     {
       before: AgentChatThreadWorkspaceEntity;
       after: AgentChatThreadWorkspaceEntity;
     }[]
   > {
-    return this.threadRepository.query(
-      workspaceId,
-      async ({ manager, table }) => {
-        await assertAgentChatChannelExists({ manager, workspaceId, channelId });
+    return this.threadRepository.query(workspaceId, ({ manager, table }) =>
+      runAuditedAgentChatRecordShareTransaction({
+        manager,
+        workspaceId,
+        auditInput,
+        fallbackActor: { kind: 'system', id: 'agent-chat-channel:delete' },
+        work: async () => {
+          await assertAgentChatChannelExists({ manager, workspaceId, channelId });
 
-        const threadsBefore = await manager.query<
-          AgentChatThreadWorkspaceEntity[]
-        >(
-          `SELECT * FROM ${table('agentChatThread')}
-           WHERE "channelId" = $1 FOR NO KEY UPDATE`,
-          [channelId],
-        );
-
-        if (threadsBefore.length === 0) {
-          return [];
-        }
-
-        if (!isDefined(destinationChannelId)) {
-          throw new AiException(
-            'The channel still has chats',
-            AiExceptionCode.CHAT_CHANNEL_NOT_EMPTY,
+          const threadsBefore = await manager.query<
+            AgentChatThreadWorkspaceEntity[]
+          >(
+            `SELECT * FROM ${table('agentChatThread')}
+             WHERE "channelId" = $1 ORDER BY id FOR NO KEY UPDATE`,
+            [channelId],
           );
-        }
 
-        await lockAgentChatChannelForThreadWriteOrThrow({
-          manager,
-          workspaceId,
-          channelId: destinationChannelId,
-        });
+          if (threadsBefore.length === 0) {
+            return [];
+          }
 
-        const threadsAfter = await manager.query<
-          AgentChatThreadWorkspaceEntity[]
-        >(
-          `WITH moved_thread AS (
-             UPDATE ${table('agentChatThread')}
-             SET "channelId" = $2, "updatedAt" = now()
-             WHERE id = ANY($1::uuid[])
-             RETURNING *
-           )
-           SELECT * FROM moved_thread`,
-          [threadsBefore.map(({ id }) => id), destinationChannelId],
-        );
+          if (!isDefined(destinationChannelId)) {
+            throw new AiException(
+              'The channel still has chats',
+              AiExceptionCode.CHAT_CHANNEL_NOT_EMPTY,
+            );
+          }
 
-        await this.channelGrantService.rewriteThreadGrantsInTransaction({
-          manager,
-          workspaceId,
-          threadIds: threadsAfter.map(({ id }) => id),
-          affectedChannelIds: [channelId, destinationChannelId],
-        });
+          await lockAgentChatChannelForThreadWriteOrThrow({
+            manager,
+            workspaceId,
+            channelId: destinationChannelId,
+          });
 
-        const threadBeforeById = new Map(
-          threadsBefore.map((thread) => [thread.id, thread]),
-        );
+          const threadsAfter = await manager.query<
+            AgentChatThreadWorkspaceEntity[]
+          >(
+            `WITH moved_thread AS (
+               UPDATE ${table('agentChatThread')}
+               SET "channelId" = $2, "updatedAt" = now()
+               WHERE id = ANY($1::uuid[])
+               RETURNING *
+             )
+             SELECT * FROM moved_thread`,
+            [threadsBefore.map(({ id }) => id), destinationChannelId],
+          );
 
-        return threadsAfter.flatMap((after) => {
-          const before = threadBeforeById.get(after.id);
+          await this.channelGrantService.rewriteThreadGrantsInTransaction({
+            manager,
+            workspaceId,
+            threadIds: threadsAfter.map(({ id }) => id),
+            affectedChannelIds: [channelId, destinationChannelId],
+          });
 
-          return isDefined(before) ? [{ before, after }] : [];
-        });
-      },
+          const threadBeforeById = new Map(
+            threadsBefore.map((thread) => [thread.id, thread]),
+          );
+
+          return threadsAfter.flatMap((after) => {
+            const before = threadBeforeById.get(after.id);
+
+            return isDefined(before) ? [{ before, after }] : [];
+          });
+        },
+      }),
     );
   }
 }

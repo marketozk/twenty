@@ -34,6 +34,8 @@ import {
   type ApplicationWorkspaceAuthContext,
   type UserWorkspaceAuthContext,
 } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
+import { captureCurrentCrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
+import { type AgentChatRecordShareAuditInput } from 'src/engine/core-modules/crm-audit/record-share-audit';
 import { buildApiKeyAuthContext } from 'src/engine/core-modules/auth/utils/build-api-key-auth-context.util';
 import { UsageOperationType } from 'src/engine/core-modules/usage/enums/usage-operation-type.enum';
 import { type FlatWorkspace } from 'src/engine/core-modules/workspace/types/flat-workspace.type';
@@ -276,6 +278,7 @@ export class AgentRunService implements AgentRunCallerHandler, OnModuleInit {
         threadId,
         authContext: executionContext.authContext,
         title,
+        callerApplication,
       });
     }
 
@@ -327,6 +330,7 @@ export class AgentRunService implements AgentRunCallerHandler, OnModuleInit {
     threadId,
     authContext,
     title,
+    callerApplication,
   }: {
     threadId: string;
     authContext: Pick<
@@ -334,13 +338,37 @@ export class AgentRunService implements AgentRunCallerHandler, OnModuleInit {
       'workspace' | 'workspaceMemberId'
     >;
     title: string;
+    callerApplication?: Pick<FlatApplication, 'id'> | null;
   }): Promise<void> {
+    let auditContext: AgentChatRecordShareAuditInput | undefined;
+    if (isDefined(callerApplication)) {
+      const ambient = captureCurrentCrmAuditOperation(authContext.workspace.id);
+      auditContext = ambient
+        ? {
+            auditOperation: ambient.operation,
+            ...(ambient.impersonatorUserWorkspaceId
+              ? {
+                  auditImpersonatorUserWorkspaceId:
+                    ambient.impersonatorUserWorkspaceId,
+                }
+              : {}),
+          }
+        : {
+            auditOperation: {
+              workspaceId: authContext.workspace.id,
+              operationId: randomUUID(),
+              actor: { kind: 'application', id: callerApplication.id },
+            },
+          };
+    }
+
     try {
       await this.agentChatThreadService.claimThreadForRun({
         threadId,
         workspaceId: authContext.workspace.id,
         workspaceMemberId: authContext.workspaceMemberId,
         title,
+        ...(isDefined(auditContext) ? { auditContext } : {}),
       });
     } catch (error) {
       this.logger.warn(

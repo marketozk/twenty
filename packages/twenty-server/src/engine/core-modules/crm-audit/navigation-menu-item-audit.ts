@@ -67,6 +67,7 @@ export type NavigationMenuItemAuditRequest = Readonly<{
   operation?: CrmAuditOperation;
   pendingAgentId?: string;
   pendingUserWorkspaceActor?: boolean;
+  pendingCorrelationId?: string;
   impersonatorUserWorkspaceId?: string;
   authUserWorkspaceId?: string;
   expectedCreatedIds?: readonly string[];
@@ -2172,10 +2173,16 @@ const resolveCapturedOperation = ({
     const capturedIdentity = captureRoleAuditIdentity(
       toRoleUpdateAuditIdentity(normalizedWorkspaceId, mergedIdentity),
     );
-    const operation = captureRoleAuditOperation(
+    const baseRoleOperation = captureRoleAuditOperation(
       normalizedWorkspaceId,
       capturedIdentity,
     );
+    const operation = baseRoleOperation.correlationId
+      ? baseRoleOperation
+      : Object.freeze({
+          ...baseRoleOperation,
+          correlationId: randomUUID(),
+        });
 
     return {
       operation,
@@ -2274,6 +2281,32 @@ export type NavigationMenuItemAuditExpectedScope = {
   expectedPageLayoutWidgetUpdateIds?: readonly string[];
   expectedPageLayoutWidgetDeleteIds?: readonly string[];
 };
+
+export type NavigationMenuItemAuditAttributionSnapshot = {
+  readonly workspaceId: string;
+  readonly operation?: CrmAuditOperation;
+  readonly pendingAgentId?: string;
+  readonly pendingUserWorkspaceActor?: true;
+  readonly pendingCorrelationId?: string;
+  readonly impersonatorUserWorkspaceId?: string;
+  readonly authUserWorkspaceId?: string;
+};
+
+const capturedNavigationMenuItemAuditAttributions = new WeakMap<
+  object,
+  NavigationMenuItemAuditAttributionSnapshot
+>();
+
+export const peekNavigationMenuItemAuditAttribution = (
+  capturedAudit:
+    | ((
+        overrides?: NavigationMenuItemAuditExpectedScope,
+      ) => NavigationMenuItemAuditRequest)
+    | undefined,
+): NavigationMenuItemAuditAttributionSnapshot | undefined =>
+  capturedAudit
+    ? capturedNavigationMenuItemAuditAttributions.get(capturedAudit)
+    : undefined;
 
 export const captureNavigationMenuItemAudit = ({
   workspaceId,
@@ -2473,8 +2506,13 @@ export const captureNavigationMenuItemAudit = ({
   );
   const baseCreatedFieldCount = expectedCreatedFieldCount;
   const baseUpdatedFieldCount = expectedUpdatedFieldCount;
+  const pendingCorrelationId = pendingUserWorkspaceActor
+    ? randomUUID()
+    : undefined;
 
-  return (overrides) => {
+  const factory = (
+    overrides?: NavigationMenuItemAuditExpectedScope,
+  ): NavigationMenuItemAuditRequest => {
     const resolvedCreatedIds =
       normalizeIds(overrides?.expectedCreatedIds) ?? baseCreatedIds;
     const resolvedUpdatedIds =
@@ -2597,6 +2635,7 @@ export const captureNavigationMenuItemAudit = ({
       ...(operation !== undefined ? { operation } : {}),
       ...(pendingAgentId !== undefined ? { pendingAgentId } : {}),
       ...(pendingUserWorkspaceActor ? { pendingUserWorkspaceActor: true } : {}),
+      ...(pendingCorrelationId !== undefined ? { pendingCorrelationId } : {}),
       ...(impersonatorUserWorkspaceId ? { impersonatorUserWorkspaceId } : {}),
       ...(resolvedAuthUserWorkspaceId !== undefined
         ? { authUserWorkspaceId: resolvedAuthUserWorkspaceId }
@@ -2759,6 +2798,23 @@ export const captureNavigationMenuItemAudit = ({
         : {}),
     });
   };
+
+  capturedNavigationMenuItemAuditAttributions.set(
+    factory,
+    Object.freeze({
+      workspaceId: normalizedWorkspaceId,
+      ...(operation !== undefined ? { operation } : {}),
+      ...(pendingAgentId !== undefined ? { pendingAgentId } : {}),
+      ...(pendingUserWorkspaceActor ? { pendingUserWorkspaceActor: true } : {}),
+      ...(pendingCorrelationId !== undefined ? { pendingCorrelationId } : {}),
+      ...(impersonatorUserWorkspaceId ? { impersonatorUserWorkspaceId } : {}),
+      ...(resolvedAuthUserWorkspaceId !== undefined
+        ? { authUserWorkspaceId: resolvedAuthUserWorkspaceId }
+        : {}),
+    }),
+  );
+
+  return factory;
 };
 
 const verifyActorAndUserWorkspace = async ({
@@ -2795,6 +2851,8 @@ const verifyActorAndUserWorkspace = async ({
     const membershipUserId = uuid(membership.userId);
 
     if (request.pendingUserWorkspaceActor) {
+      const resolvedCorrelationId =
+        request.pendingCorrelationId ?? randomUUID();
       baseOperation = Object.freeze(
         request.pendingAgentId !== undefined
           ? {
@@ -2802,13 +2860,13 @@ const verifyActorAndUserWorkspace = async ({
               operationId: randomUUID(),
               actor: { kind: 'agent' as const, id: request.pendingAgentId },
               initiator: { kind: 'coreUser' as const, id: membershipUserId },
-              correlationId: randomUUID(),
+              correlationId: resolvedCorrelationId,
             }
           : {
               workspaceId: request.workspaceId,
               operationId: randomUUID(),
               actor: { kind: 'coreUser' as const, id: membershipUserId },
-              correlationId: randomUUID(),
+              correlationId: resolvedCorrelationId,
             },
       );
     } else {

@@ -6,6 +6,10 @@ import { In, IsNull } from 'typeorm';
 import { DatabaseEventAction } from 'src/engine/api/graphql/graphql-query-runner/enums/database-event-action';
 import { isUserAuthContext } from 'src/engine/core-modules/auth/guards/is-user-auth-context.guard';
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
+import {
+  runAuditedAgentChatRecordShareTransaction,
+  type AgentChatRecordShareAuditInput,
+} from 'src/engine/core-modules/crm-audit/record-share-audit';
 import { AGENT_CHAT_THREAD_ACTIVITY_COLUMNS } from 'src/engine/metadata-modules/ai/ai-chat/constants/agent-chat-thread-activity-columns.constant';
 import { AgentChatChannelAccessService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-channel-access.service';
 import { AgentChatChannelGrantService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-channel-grant.service';
@@ -80,6 +84,7 @@ export class AgentChatThreadService {
     title?: string;
     isSubscribed?: boolean;
     channelId?: string;
+    auditContext?: AgentChatRecordShareAuditInput;
   }): Promise<boolean> {
     if (
       await this.threadRepository.existsBy(args.workspaceId, { id: threadId })
@@ -103,7 +108,10 @@ export class AgentChatThreadService {
   async claimThreadForRun({
     title,
     ...args
-  }: AgentChatThreadAccessArgs & { title: string }): Promise<void> {
+  }: AgentChatThreadAccessArgs & {
+    title: string;
+    auditContext?: AgentChatRecordShareAuditInput;
+  }): Promise<void> {
     const threadBefore = await this.findThread(args);
 
     if (isDefined(threadBefore)) {
@@ -138,7 +146,9 @@ export class AgentChatThreadService {
     args,
     threadBefore,
   }: {
-    args: AgentChatThreadAccessArgs;
+    args: AgentChatThreadAccessArgs & {
+      auditContext?: AgentChatRecordShareAuditInput;
+    };
     threadBefore: AgentChatThreadWorkspaceEntity;
   }): Promise<void> {
     if (!isDefined(threadBefore.workspaceMemberId)) {
@@ -232,12 +242,19 @@ export class AgentChatThreadService {
     const setUpThreads = await this.threadRepository.query(
       workspaceId,
       (context) =>
-        this.sharingService.setUpCreatedThreadsInboxState({
-          ...context,
+        runAuditedAgentChatRecordShareTransaction({
+          manager: context.manager,
           workspaceId,
-          workspaceMemberId,
-          threadIds: assignedThreadIds,
-          participantObjectMetadataId,
+          fallbackActor: { kind: 'workspaceMember', id: workspaceMemberId },
+          expectedWorkspaceMemberId: workspaceMemberId,
+          work: () =>
+            this.sharingService.setUpCreatedThreadsInboxState({
+              ...context,
+              workspaceId,
+              workspaceMemberId,
+              threadIds: assignedThreadIds,
+              participantObjectMetadataId,
+            }),
         }),
     );
 
@@ -325,9 +342,11 @@ export class AgentChatThreadService {
   // it unread in their inbox even if they had read or archived it
   async addParticipants({
     participantWorkspaceMemberIds,
+    auditContext,
     ...args
   }: AgentChatThreadAccessArgs & {
     participantWorkspaceMemberIds: string[];
+    auditContext?: AgentChatRecordShareAuditInput;
   }): Promise<string[]> {
     const thread = await this.getWritableThread(args);
     const candidateMemberIds = [
@@ -367,6 +386,7 @@ export class AgentChatThreadService {
         workspaceId: args.workspaceId,
         threadId: args.threadId,
         workspaceMemberId: participantMemberId,
+        auditContext,
       });
     }
 
@@ -475,50 +495,60 @@ export class AgentChatThreadService {
     // Owner re-checked in the UPDATE: removing a member clears it on their channel chats
     const movedThreadIds = await this.threadRepository.query(
       args.workspaceId,
-      async ({ manager, table }) => {
-        if (isDefined(channelId)) {
-          await lockAgentChatChannelForThreadWriteOrThrow({
-            manager,
-            workspaceId: args.workspaceId,
-            channelId,
-          });
-        }
-
-        const [lockedThread] = await manager.query<
-          { channelId: string | null }[]
-        >(
-          `SELECT "channelId" FROM ${table('agentChatThread')} WHERE id = $1 FOR NO KEY UPDATE`,
-          [args.threadId],
-        );
-
-        if (!isDefined(lockedThread)) {
-          return throwAgentChatThreadNotFound();
-        }
-
-        const movedThreads = await manager.query<{ id: string }[]>(
-          `WITH moved_thread AS (
-             UPDATE ${table('agentChatThread')}
-             SET "channelId" = $2::uuid,
-               "channelArchivedAt" = NULL,
-               "channelSnoozedUntil" = NULL,
-               "updatedAt" = now()
-             WHERE id = $1
-               AND ($2::uuid IS NOT NULL OR "workspaceMemberId" IS NOT NULL)
-             RETURNING id
-           )
-           SELECT id FROM moved_thread`,
-          [args.threadId, channelId],
-        );
-
-        await this.channelGrantService.rewriteThreadGrantsInTransaction({
+      ({ manager, table }) =>
+        runAuditedAgentChatRecordShareTransaction({
           manager,
           workspaceId: args.workspaceId,
-          threadIds: movedThreads.map(({ id }) => id),
-          affectedChannelIds: [lockedThread.channelId, channelId],
-        });
+          fallbackActor: {
+            kind: 'workspaceMember',
+            id: args.workspaceMemberId,
+          },
+          expectedWorkspaceMemberId: args.workspaceMemberId,
+          work: async () => {
+            if (isDefined(channelId)) {
+              await lockAgentChatChannelForThreadWriteOrThrow({
+                manager,
+                workspaceId: args.workspaceId,
+                channelId,
+              });
+            }
 
-        return movedThreads;
-      },
+            const [lockedThread] = await manager.query<
+              { channelId: string | null }[]
+            >(
+              `SELECT "channelId" FROM ${table('agentChatThread')} WHERE id = $1 FOR NO KEY UPDATE`,
+              [args.threadId],
+            );
+
+            if (!isDefined(lockedThread)) {
+              return throwAgentChatThreadNotFound();
+            }
+
+            const movedThreads = await manager.query<{ id: string }[]>(
+              `WITH moved_thread AS (
+                 UPDATE ${table('agentChatThread')}
+                 SET "channelId" = $2::uuid,
+                   "channelArchivedAt" = NULL,
+                   "channelSnoozedUntil" = NULL,
+                   "updatedAt" = now()
+                 WHERE id = $1
+                   AND ($2::uuid IS NOT NULL OR "workspaceMemberId" IS NOT NULL)
+                 RETURNING id
+               )
+               SELECT id FROM moved_thread`,
+              [args.threadId, channelId],
+            );
+
+            await this.channelGrantService.rewriteThreadGrantsInTransaction({
+              manager,
+              workspaceId: args.workspaceId,
+              threadIds: movedThreads.map(({ id }) => id),
+              affectedChannelIds: [lockedThread.channelId, channelId],
+            });
+
+            return movedThreads;
+          },
+        }),
     );
 
     if (movedThreadIds.length === 0) {

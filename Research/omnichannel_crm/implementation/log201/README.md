@@ -1,0 +1,25 @@
+# LOG-201: транзакционный аудит SQL CTE-писателей `recordShare` для чатов ИИ (`AgentChatSharingService`, `AgentChatThreadParticipantService`, `AgentChatChannelGrantService`)
+
+## Объём изменений
+- `packages/twenty-server/src/engine/core-modules/crm-audit/navigation-menu-item-audit.ts`: добавлен non-consuming `peekNavigationMenuItemAuditAttribution` и единый `pendingCorrelationId` / гарантированный `correlationId` для ветки `captureRoleAuditOperation`, связывающий аудит метаданных `agentChatChannel` с последующими мутациями `recordShare`.
+- `packages/twenty-server/src/engine/core-modules/crm-audit/record-share-audit.ts` (0 Enterprise-рёбер, 0 импортов `twenty-shared/*`): добавлены `createCrmAuditEntityManagerExecutor` (fail-closed проверка активного `manager.queryRunner`), `validateAgentChatRecordShareAuditInput` (строгая проверка `pendingUserWorkspaceActor`/`pendingAgentId`/`authUserWorkspaceId`/impersonator), `runAuditedAgentChatRecordShareTransaction` (`SET LOCAL lock_timeout = '8s'`, `FOR KEY SHARE` на `core.workspace`, транзакционная проверка `expectedWorkspaceMemberId` по `workspaceMember` для ALS `coreUser`, резолв `pendingUserWorkspaceActor`/`pendingAgentId`/`impersonatorUserWorkspaceId`, кумулятивная карта `expectedRows`, error latching и pre-flush/post-flush сверка всех отслеживаемых `records`/`channel`/`participants` скоупов) и 5 элементарных хелперов (`requireActiveAgentChatShareAudit`, `auditAgentChatRecordShareCleanup`, `auditAgentChatThreadOwnerGrantBackfill`, `auditAgentChatParticipantOwnerShareWrite` с `pg_advisory_xact_lock` и `ORDER BY rs.id FOR UPDATE OF rs`, `auditAgentChatChannelGrantRewrite` с проверкой `ROLE`/`READ_WRITE` на всех `RULE`-строках `after`).
+- `packages/twenty-server/src/engine/metadata-modules/ai/ai-chat/services/agent-chat-sharing.service.ts`: подключён однотранзакционный аудит в `createThread` (очистка orphan-шар + `OWNER`-грант треда + `RULE`-гранты канала + `OWNER`-грант участника под одним `operationId`), `claimUnownedThreadForRun` (с порядком блокировок `advisory(participant) -> agentChatThread -> recordShare`) и `setUpCreatedThreadsInboxState` (fail-closed при вызове вне аудит-транзакции).
+- `packages/twenty-server/src/engine/metadata-modules/ai/ai-chat/services/agent-chat-thread-participant.service.ts`: подключён транзакционный аудит `recordMemberActivity` (с `FOR NO KEY UPDATE` на `agentChatThread` до `recordShare`) и `write` (`updateInboxState`, `markAsMentioned`, `markAsAssigned`, `endSnooze` с корректным разделением self-acting `expectedWorkspaceMemberId`, делегированного ALS/контекста и системного актора `agent_chat_thread_snooze_end`).
+- `packages/twenty-server/src/engine/metadata-modules/ai/ai-chat/services/agent-chat-channel-grant.service.ts` и `jobs/rewrite-agent-chat-channel-grants.job.ts`: подключён аудит `rewriteThreadGrantsInTransaction`, `rewriteChannelGrants` и `rewriteAllChannelGrants` (единый `correlationId` на все каналы, системный актор `rewrite_agent_chat_channel_grants_job` для фоновой джобы).
+- `packages/twenty-server/src/engine/metadata-modules/ai/ai-chat/services/agent-chat-channel.service.ts`, `agent-chat-thread.service.ts`, `agent-inbox.service.ts` и `packages/twenty-server/src/engine/metadata-modules/ai/ai-agent-execution/services/agent-run.service.ts`: проброшена атрибуция с общим `correlationId` из `AgentChatChannelService.updateChannel`/`deleteChannel` (`moveChannelThreads` с `ORDER BY id FOR NO KEY UPDATE`), `AgentChatThreadService` (`assignCreatedThreadsToCreator`, `moveToChannel`, `claimThreadForRun`, `addParticipants`), `AgentInboxService.openThread` (валидация `sender.type === 'application'` против ALS без подмены на пассивного получателя) и `AgentRunService.claimThreadForMember`.
+- `packages/twenty-server/test/fork-migration/crm-audit-agent-chat-record-share.postgres-spec.ts` (новый), `crm-audit-agent-chat-channel.postgres-spec.ts` и `src/engine/metadata-modules/ai/ai-chat/query-hooks/__tests__/agent-chat-thread-create.post-query.hook.spec.ts`: 4 реальных PostgreSQL-сценария жизненного цикла, атрибуции, инвариантов, mid-transaction drift и триггерного rollback, плюс проверка общего `correlationId` и обновление фикстур unit-теста.
+
+## Инвентаризация и известные ограничения
+- Все продакшен-писатели `recordShare` в `twenty-server` покрыты (`LOG-199`, `LOG-200`, `LOG-201`). Оставшиеся обращения к `"recordShare"` в репозитории - неиспользуемый метод `RecordShareStorageService.deleteBySourceId` (0 callers), dev-only сидеры (`dev-seeder.workspace-service.ts`, `seed-agent-chat-thread-inbox-state.util.ts`) и неизменяемые `upgrade-version-command/2-40..2-46`.
+- `AgentHistoryWorkspaceStorageService.run` использует TypeORM `dataSource.transaction`, поэтому потеря ACK на `COMMIT` не классифицируется как `NativeTransactionOutcomeUnknownError`.
+
+## Артефакты
+- [design.md](design.md)
+- [design-review.md](design-review.md)
+- [test-research.md](test-research.md)
+- [review.md](review.md)
+- [results.json](results.json)
+- [source-snapshot.json](source-snapshot.json)
+- [typecheck-differential.json](typecheck-differential.json)
+- [regression.log](regression.log)
+- [next-boundary.md](next-boundary.md)

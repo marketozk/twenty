@@ -3,6 +3,11 @@ import { Injectable } from '@nestjs/common';
 import { isDefined } from 'twenty-shared/utils';
 import { type EntityManager } from 'typeorm';
 
+import {
+  auditAgentChatParticipantOwnerShareWrite,
+  runAuditedAgentChatRecordShareTransaction,
+  type AgentChatRecordShareAuditInput,
+} from 'src/engine/core-modules/crm-audit/record-share-audit';
 import { InjectMessageQueue } from 'src/engine/core-modules/message-queue/decorators/message-queue.decorator';
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
 import { MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
@@ -201,6 +206,10 @@ export class AgentChatThreadParticipantService {
       action === AgentChatInboxAction.UNSUBSCRIBE
         ? assertIsNotAssignee
         : writeThread,
+      {
+        fallbackActor: { kind: 'workspaceMember', id: workspaceMemberId },
+        expectedWorkspaceMemberId: workspaceMemberId,
+      },
     );
   }
 
@@ -209,8 +218,11 @@ export class AgentChatThreadParticipantService {
   // member who had unsubscribed
   async markAsMentioned({
     threadId,
+    auditContext,
     ...args
-  }: AgentChatThreadAccessArgs): Promise<void> {
+  }: AgentChatThreadAccessArgs & {
+    auditContext?: AgentChatRecordShareAuditInput;
+  }): Promise<void> {
     await this.write(
       { ...args, threadIds: [threadId] },
       ({ participantTable }) =>
@@ -224,6 +236,15 @@ export class AgentChatThreadParticipantService {
            "lastMentionedAt" = EXCLUDED."lastMentionedAt",
            "updatedAt" = now()
          RETURNING *`,
+      [],
+      undefined,
+      {
+        auditInput: auditContext,
+        fallbackActor: {
+          kind: 'system',
+          id: 'agent_chat_thread_participant_sync',
+        },
+      },
     );
   }
 
@@ -255,6 +276,12 @@ export class AgentChatThreadParticipantService {
          RETURNING *`,
       [isSelfAssigned],
       writeAssignment,
+      {
+        fallbackActor: {
+          kind: 'system',
+          id: 'agent_chat_thread_participant_sync',
+        },
+      },
     );
   }
 
@@ -308,6 +335,13 @@ export class AgentChatThreadParticipantService {
            AND "snoozedUntil" = $3 AND "archivedAt" IS NOT NULL
          RETURNING *`,
       [snoozedUntil],
+      undefined,
+      {
+        fallbackActor: {
+          kind: 'system',
+          id: 'agent_chat_thread_snooze_end',
+        },
+      },
     );
   }
 
@@ -354,52 +388,78 @@ export class AgentChatThreadParticipantService {
 
     const { rows, before, after } = await this.threadRepository.query(
       workspaceId,
-      async ({ manager, table }) => {
-        const before = await this.findOne({
+      ({ manager, table }) =>
+        runAuditedAgentChatRecordShareTransaction({
           manager,
           workspaceId,
-          workspaceMemberId,
-          threadId,
-          lock: true,
-        });
+          fallbackActor: { kind: 'workspaceMember', id: workspaceMemberId },
+          expectedWorkspaceMemberId: workspaceMemberId,
+          work: async () => {
+            const before = await this.findOne({
+              manager,
+              workspaceId,
+              workspaceMemberId,
+              threadId,
+              lock: true,
+            });
 
-        const rows = await manager.query<AgentChatThreadActivity[]>(
-          `WITH thread AS (
-             UPDATE ${table('agentChatThread')}
-             SET "updatedAt" = now(),
-               ${buildAgentChatThreadActivitySetClause({ textParameter: '$3', senderWorkspaceMemberIdParameter: '$2::uuid' })},
-               "writerWorkspaceMemberIds" = CASE
-                 WHEN $2::uuid::text = ANY(COALESCE("writerWorkspaceMemberIds", '{}')) THEN "writerWorkspaceMemberIds"
-                 ELSE array_append(COALESCE("writerWorkspaceMemberIds", '{}'), $2::uuid::text)
-               END
-             WHERE id = $1
-             RETURNING id, ${AGENT_CHAT_THREAD_ACTIVITY_COLUMNS}
-           ), participant AS (
-             INSERT INTO ${participantTable} AS participant ("threadId", "workspaceMemberId", "lastReadAt")
-             SELECT thread.id, $2, thread."lastActivityAt" FROM thread
-             ON CONFLICT ("threadId", "workspaceMemberId") DO UPDATE SET
-               "lastReadAt" = GREATEST(participant."lastReadAt", EXCLUDED."lastReadAt"),
-               "archivedAt" = NULL,
-               "snoozedUntil" = NULL,
-               "isSubscribed" = true,
-               "updatedAt" = now()
-             RETURNING id, "workspaceMemberId"
-           ), owner_share AS (
-             ${buildAgentChatThreadParticipantOwnerShareInsert({ workspaceId, participantSource: 'participant', objectMetadataIdParameter: '$4' })}
-           )
-           SELECT ${AGENT_CHAT_THREAD_ACTIVITY_COLUMNS} FROM thread`,
-          [threadId, workspaceMemberId, text, participantObjectMetadataId],
-        );
+            // Keep agentChatThread -> recordShare lock ordering aligned with other writers.
+            await manager.query(
+              `SELECT id FROM ${table('agentChatThread')} WHERE id = $1 FOR NO KEY UPDATE`,
+              [threadId],
+            );
 
-        const after = await this.findOne({
-          manager,
-          workspaceId,
-          workspaceMemberId,
-          threadId,
-        });
+            const rows = await auditAgentChatParticipantOwnerShareWrite({
+              manager,
+              workspaceId,
+              participantObjectMetadataId,
+              threadIds: [threadId],
+              workspaceMemberId,
+              execute: () =>
+                manager.query<AgentChatThreadActivity[]>(
+                  `WITH thread AS (
+                     UPDATE ${table('agentChatThread')}
+                     SET "updatedAt" = now(),
+                       ${buildAgentChatThreadActivitySetClause({ textParameter: '$3', senderWorkspaceMemberIdParameter: '$2::uuid' })},
+                       "writerWorkspaceMemberIds" = CASE
+                         WHEN $2::uuid::text = ANY(COALESCE("writerWorkspaceMemberIds", '{}')) THEN "writerWorkspaceMemberIds"
+                         ELSE array_append(COALESCE("writerWorkspaceMemberIds", '{}'), $2::uuid::text)
+                       END
+                     WHERE id = $1
+                     RETURNING id, ${AGENT_CHAT_THREAD_ACTIVITY_COLUMNS}
+                   ), participant AS (
+                     INSERT INTO ${participantTable} AS participant ("threadId", "workspaceMemberId", "lastReadAt")
+                     SELECT thread.id, $2, thread."lastActivityAt" FROM thread
+                     ON CONFLICT ("threadId", "workspaceMemberId") DO UPDATE SET
+                       "lastReadAt" = GREATEST(participant."lastReadAt", EXCLUDED."lastReadAt"),
+                       "archivedAt" = NULL,
+                       "snoozedUntil" = NULL,
+                       "isSubscribed" = true,
+                       "updatedAt" = now()
+                     RETURNING id, "workspaceMemberId"
+                   ), owner_share AS (
+                     ${buildAgentChatThreadParticipantOwnerShareInsert({ workspaceId, participantSource: 'participant', objectMetadataIdParameter: '$4' })}
+                   )
+                   SELECT ${AGENT_CHAT_THREAD_ACTIVITY_COLUMNS} FROM thread`,
+                  [
+                    threadId,
+                    workspaceMemberId,
+                    text,
+                    participantObjectMetadataId,
+                  ],
+                ),
+            });
 
-        return { rows, before, after };
-      },
+            const after = await this.findOne({
+              manager,
+              workspaceId,
+              workspaceMemberId,
+              threadId,
+            });
+
+            return { rows, before, after };
+          },
+        }),
     );
 
     if (rows.length !== 1) {
@@ -594,58 +654,88 @@ export class AgentChatThreadParticipantService {
     buildQuery: BuildParticipantWriteQuery,
     extraParameters: unknown[] = [],
     writeThread?: AgentChatThreadWriteStep,
+    auditOptions: {
+      auditInput?: AgentChatRecordShareAuditInput;
+      fallbackActor:
+        | { kind: 'workspaceMember'; id: string }
+        | { kind: 'system'; id: string };
+      expectedWorkspaceMemberId?: string;
+    } = {
+      fallbackActor: {
+        kind: 'system',
+        id: 'agent_chat_thread_participant_sync',
+      },
+    },
   ): Promise<AgentChatThreadParticipantRow[]> {
     const objectMetadataId =
       await this.sharingService.getParticipantObjectMetadataId(workspaceId);
 
     const writes = await this.threadRepository.query(
       workspaceId,
-      async ({ manager, table }) => {
-        const parameterCount = extraParameters.length + 3;
-        const query = `WITH written_participant AS (
-             ${buildQuery({
-               participantTable:
-                 getAgentChatThreadParticipantTable(workspaceId),
-               threadTable: table('agentChatThread'),
-             })}
-           ), owner_share AS (
-             ${buildAgentChatThreadParticipantOwnerShareInsert({
-               workspaceId,
-               participantSource: 'written_participant',
-               objectMetadataIdParameter: `$${parameterCount}`,
-             })}
-           )
-           SELECT ${PARTICIPANT_COLUMNS} FROM written_participant`;
-        const writes: {
-          before: AgentChatThreadParticipantRow | null;
-          after: AgentChatThreadParticipantRow;
-        }[] = [];
+      ({ manager, table }) =>
+        runAuditedAgentChatRecordShareTransaction({
+          manager,
+          workspaceId,
+          auditInput: auditOptions.auditInput,
+          fallbackActor: auditOptions.fallbackActor,
+          expectedWorkspaceMemberId: auditOptions.expectedWorkspaceMemberId,
+          work: async () => {
+            const parameterCount = extraParameters.length + 3;
+            const query = `WITH written_participant AS (
+                 ${buildQuery({
+                   participantTable:
+                     getAgentChatThreadParticipantTable(workspaceId),
+                   threadTable: table('agentChatThread'),
+                 })}
+               ), owner_share AS (
+                 ${buildAgentChatThreadParticipantOwnerShareInsert({
+                   workspaceId,
+                   participantSource: 'written_participant',
+                   objectMetadataIdParameter: `$${parameterCount}`,
+                 })}
+               )
+               SELECT ${PARTICIPANT_COLUMNS} FROM written_participant`;
+            const writes: {
+              before: AgentChatThreadParticipantRow | null;
+              after: AgentChatThreadParticipantRow;
+            }[] = [];
 
-        for (const threadId of threadIds) {
-          const before = await this.findOne({
-            manager,
-            workspaceId,
-            workspaceMemberId,
-            threadId,
-            lock: true,
-          });
+            for (const threadId of threadIds) {
+              const before = await this.findOne({
+                manager,
+                workspaceId,
+                workspaceMemberId,
+                threadId,
+                lock: true,
+              });
 
-          await writeThread?.({ manager, table, threadId });
+              await writeThread?.({ manager, table, threadId });
 
-          const [after] = await manager.query<AgentChatThreadParticipantRow[]>(
-            query,
-            [threadId, workspaceMemberId, ...extraParameters, objectMetadataId],
-          );
+              const [after] = await auditAgentChatParticipantOwnerShareWrite({
+                manager,
+                workspaceId,
+                participantObjectMetadataId: objectMetadataId,
+                threadIds: [threadId],
+                workspaceMemberId,
+                execute: () =>
+                  manager.query<AgentChatThreadParticipantRow[]>(query, [
+                    threadId,
+                    workspaceMemberId,
+                    ...extraParameters,
+                    objectMetadataId,
+                  ]),
+              });
 
-          if (isDefined(after)) {
-            writes.push({ before, after });
-          } else if (isEveryRowRequired) {
-            throwAgentChatThreadNotFound();
-          }
-        }
+              if (isDefined(after)) {
+                writes.push({ before, after });
+              } else if (isEveryRowRequired) {
+                throwAgentChatThreadNotFound();
+              }
+            }
 
-        return writes;
-      },
+            return writes;
+          },
+        }),
     );
 
     for (const { before, after } of writes) {

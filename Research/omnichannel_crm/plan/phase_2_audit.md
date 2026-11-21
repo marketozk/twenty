@@ -465,8 +465,21 @@ LOG200 закрывает транзакционный аудит оставши
 `FOR KEY SHARE`, diff-preserving sync с сохранением неуправляемых `MANUAL`-грантов, `0` записей при
 идемпотентном no-op, разрешением `auditImpersonatorUserWorkspaceId` и проверкой
 `!queryRunner.isTransactionActive` с актором `system:sync_workflow_run_shares`).
+LOG201 закрывает транзакционный аудит всех оставшихся продакшен SQL CTE-писателей `recordShare`
+для чатов ИИ (`AgentChatSharingService`, `AgentChatThreadService`,
+`AgentChatThreadParticipantService`, `AgentChatChannelService`, `AgentChatChannelGrantService`,
+`AgentInboxService`, `AgentRunService`, `RewriteAgentChatChannelGrantsJob`,
+`navigation-menu-item-audit.ts` и `record-share-audit.ts`: `createCrmAuditEntityManagerExecutor`,
+`runAuditedAgentChatRecordShareTransaction` с `SET LOCAL lock_timeout = '8s'`, `FOR KEY SHARE`,
+транзакционной проверкой ALS `coreUser` по `workspaceMember`, резолвом
+`pendingUserWorkspaceActor`/`pendingAgentId`/`impersonatorUserWorkspaceId`, кумулятивной картой
+`expectedRows`, error latching и pre-flush/post-flush сверкой `records`/`channel`/`participants`
+скоупов; 5 элементарных хелперов с `pg_advisory_xact_lock`, `ORDER BY id FOR UPDATE` и проверкой
+`ROLE`/`READ_WRITE` на всех `RULE`-строках; общим `correlationId` с метаданными канала через
+`peekNavigationMenuItemAuditAttribution` и делегированной атрибуцией в `AgentInboxService` и
+`AgentRunService`). Все продакшен-писатели `recordShare` покрыты.
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log200/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log201/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

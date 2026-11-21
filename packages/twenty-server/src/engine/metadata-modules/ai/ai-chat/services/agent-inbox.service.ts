@@ -1,9 +1,12 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 
 import { type ExtendedUIMessagePart } from 'twenty-shared/ai';
 import { type SendInboxMessageInput } from 'twenty-shared/application';
 import { isDefined } from 'twenty-shared/utils';
 
+import { captureCurrentCrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
+import { type AgentChatRecordShareAuditInput } from 'src/engine/core-modules/crm-audit/record-share-audit';
 import { AgentMessageRole } from 'src/engine/metadata-modules/ai/ai-history/enums/agent-message-role.enum';
 import { AgentChatSharingService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-sharing.service';
 import { AgentChatThreadService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-thread.service';
@@ -238,6 +241,93 @@ export class AgentInboxService {
       );
     }
 
+    const ambient = captureCurrentCrmAuditOperation(workspaceId);
+    const correlationId = ambient?.operation.correlationId ?? randomUUID();
+    let inboxAuditContext: AgentChatRecordShareAuditInput;
+
+    if (sender.type === 'application') {
+      const senderAppId = sender.application.id.toLowerCase();
+      if (ambient) {
+        if (ambient.impersonatorUserWorkspaceId) {
+          throw new Error(
+            'Agent inbox application sender cannot combine with impersonation',
+          );
+        }
+        const ambientActor = ambient.operation.actor;
+        if (ambientActor.kind === 'application') {
+          if (ambientActor.id !== senderAppId) {
+            throw new Error('Agent inbox ambient application conflict');
+          }
+          inboxAuditContext = {
+            auditOperation: {
+              ...ambient.operation,
+              correlationId,
+            },
+          };
+        } else if (
+          ambientActor.kind === 'coreUser' ||
+          ambientActor.kind === 'workspaceMember'
+        ) {
+          inboxAuditContext = {
+            auditOperation: {
+              workspaceId,
+              operationId: randomUUID(),
+              actor: { kind: 'application', id: senderAppId },
+              initiator: ambientActor,
+              correlationId,
+              ...(ambient.operation.causationId
+                ? { causationId: ambient.operation.causationId }
+                : {}),
+            },
+          };
+        } else if (
+          ambientActor.kind === 'agent' &&
+          ambient.operation.initiator?.kind === 'application' &&
+          ambient.operation.initiator.id === senderAppId
+        ) {
+          inboxAuditContext = {
+            auditOperation: {
+              ...ambient.operation,
+              correlationId,
+            },
+          };
+        } else {
+          throw new Error('Agent inbox ambient principal conflict');
+        }
+      } else {
+        inboxAuditContext = {
+          auditOperation: {
+            workspaceId,
+            operationId: randomUUID(),
+            actor: { kind: 'application', id: senderAppId },
+            correlationId,
+          },
+        };
+      }
+    } else {
+      inboxAuditContext = ambient
+        ? {
+            auditOperation: {
+              ...ambient.operation,
+              correlationId,
+            },
+            ...(ambient.impersonatorUserWorkspaceId
+              ? {
+                  auditImpersonatorUserWorkspaceId:
+                    ambient.impersonatorUserWorkspaceId,
+                }
+              : {}),
+          }
+        : {
+            auditOperation: {
+              workspaceId,
+              operationId: randomUUID(),
+              actor: { kind: 'system', id: 'agent_inbox_workflow' },
+              correlationId,
+            },
+          };
+    }
+
     const openedThread = isDefined(existingThread)
       ? { thread: existingThread, isCreated: false }
       : await this.createThread({
@@ -246,6 +336,7 @@ export class AgentInboxService {
           ownerWorkspaceMemberId: workspaceMemberIds[0],
           title,
           isArchived: isArchivedOnCreate,
+          auditContext: inboxAuditContext,
         });
 
     if (!isDefined(openedThread.thread.deletedAt)) {
@@ -253,6 +344,7 @@ export class AgentInboxService {
         workspaceId,
         thread: openedThread.thread,
         workspaceMemberIds,
+        auditContext: inboxAuditContext,
       });
     }
 
@@ -265,12 +357,14 @@ export class AgentInboxService {
     ownerWorkspaceMemberId,
     title,
     isArchived,
+    auditContext,
   }: {
     workspaceId: string;
     threadId: string;
     ownerWorkspaceMemberId: string | undefined;
     title: string;
     isArchived: boolean;
+    auditContext: AgentChatRecordShareAuditInput;
   }): Promise<{ thread: AgentChatThreadWorkspaceEntity; isCreated: boolean }> {
     try {
       const thread = isDefined(ownerWorkspaceMemberId)
@@ -280,6 +374,7 @@ export class AgentInboxService {
             id: threadId,
             title,
             isArchived,
+            auditContext,
           })
         : await this.createUnaddressedThread({ workspaceId, threadId, title });
 
@@ -304,10 +399,12 @@ export class AgentInboxService {
     workspaceId,
     thread,
     workspaceMemberIds,
+    auditContext,
   }: {
     workspaceId: string;
     thread: AgentChatThreadWorkspaceEntity;
     workspaceMemberIds: string[];
+    auditContext: AgentChatRecordShareAuditInput;
   }): Promise<void> {
     const newWorkspaceMemberIds = findNewWorkspaceMemberIds(
       thread,
@@ -328,6 +425,7 @@ export class AgentInboxService {
         threadId: thread.id,
         workspaceMemberId: thread.workspaceMemberId,
         participantWorkspaceMemberIds: newWorkspaceMemberIds,
+        auditContext,
       });
 
     if (participantWorkspaceMemberIds.length !== newWorkspaceMemberIds.length) {

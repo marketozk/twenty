@@ -13,6 +13,14 @@ import { RecordShareAccessLevel } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 
 import { type UserWorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
+import {
+  auditAgentChatParticipantOwnerShareWrite,
+  auditAgentChatRecordShareCleanup,
+  auditAgentChatThreadOwnerGrantBackfill,
+  requireActiveAgentChatShareAudit,
+  runAuditedAgentChatRecordShareTransaction,
+  type AgentChatRecordShareAuditInput,
+} from 'src/engine/core-modules/crm-audit/record-share-audit';
 import { buildRecordShareLockKey } from 'src/engine/core-modules/record-share/utils/build-record-share-lock-key.util';
 import { RecordShareException } from 'src/engine/core-modules/record-share/record-share.exception';
 import { RecordShareStorageService } from 'src/engine/core-modules/record-share/services/record-share-storage.service';
@@ -219,6 +227,7 @@ export class AgentChatSharingService {
     isSubscribed?: boolean;
     // checked by the caller, as the member must be able to reach it
     channelId?: string;
+    auditContext?: AgentChatRecordShareAuditInput;
   }): Promise<AgentChatThreadWorkspaceEntity> {
     const authContext = await this.getAuthContext(args);
     const objectMetadata = await this.getThreadObjectMetadata(args.workspaceId);
@@ -230,70 +239,111 @@ export class AgentChatSharingService {
       updatedColumns: isDefined(args.title) ? ['title'] : [],
     });
 
+    const isDelegatedAudit = isDefined(args.auditContext);
+    if (
+      isDelegatedAudit &&
+      !isDefined(args.auditContext?.auditOperation) &&
+      args.auditContext?.pendingUserWorkspaceActor !== true
+    ) {
+      throw new Error(
+        'Agent chat delegated auditContext requires auditOperation or pendingUserWorkspaceActor',
+      );
+    }
+
     return this.threadRepository.query(
       args.workspaceId,
-      async ({ manager, table }) => {
-        if (isDefined(args.channelId)) {
-          await lockAgentChatChannelForThreadWriteOrThrow({
-            manager,
-            workspaceId: args.workspaceId,
-            channelId: args.channelId,
-          });
-        }
-        await acquireAgentChatChannelGrantLocksForThreadWriteOrThrow({
+      ({ manager, table }) =>
+        runAuditedAgentChatRecordShareTransaction({
           manager,
           workspaceId: args.workspaceId,
-          channelIds: [args.channelId],
-        });
-        const records = await manager.query<AgentChatThreadWorkspaceEntity[]>(
-          `INSERT INTO ${table('agentChatThread')} (id, title, "workspaceMemberId"${isDefined(args.channelId) ? ', "channelId"' : ''})
-           VALUES ($1, $2, $3${isDefined(args.channelId) ? ', $4' : ''}) RETURNING *`,
-          [
-            args.id ?? randomUUID(),
-            args.title ?? null,
-            authContext.workspaceMemberId,
-            ...(isDefined(args.channelId) ? [args.channelId] : []),
-          ],
-        );
-        const record = records[0];
-        await this.recordShareStorageService.deleteByRecordIdsInTransaction({
-          workspaceId: args.workspaceId,
-          objectMetadataId: objectMetadata.id,
-          recordIds: [record.id],
-          manager,
-        });
-        const ownerGrantCount = await backfillWorkspaceChatThreadOwnerGrants({
-          manager,
-          workspaceId: args.workspaceId,
-          threadTableExpression: table('agentChatThread'),
-          recordIds: [record.id],
-        });
-        if (ownerGrantCount !== 1) {
-          throw new AiException(
-            'Thread owner is no longer a workspace member',
-            AiExceptionCode.THREAD_NOT_FOUND,
-          );
-        }
-        if (isDefined(args.channelId)) {
-          await this.channelGrantService.rewriteThreadGrantsInTransaction({
-            manager,
-            workspaceId: args.workspaceId,
-            threadIds: [record.id],
-            affectedChannelIds: [args.channelId],
-          });
-        }
-        const [setUpRecord] = await this.setUpCreatedThreadsInboxState({
-          manager,
-          table,
-          workspaceId: args.workspaceId,
-          workspaceMemberId: authContext.workspaceMemberId,
-          threadIds: [record.id],
-          participantObjectMetadataId,
-          isArchived: args.isArchived,
-          isSubscribed: args.isSubscribed,
-        });
-        return setUpRecord ?? record;
-      },
+          auditInput: args.auditContext,
+          fallbackActor: isDelegatedAudit
+            ? { kind: 'system', id: 'agent_chat_thread_create' }
+            : { kind: 'workspaceMember', id: authContext.workspaceMemberId },
+          expectedWorkspaceMemberId: isDelegatedAudit
+            ? undefined
+            : authContext.workspaceMemberId,
+          work: async () => {
+            if (isDefined(args.channelId)) {
+              await lockAgentChatChannelForThreadWriteOrThrow({
+                manager,
+                workspaceId: args.workspaceId,
+                channelId: args.channelId,
+              });
+            }
+            await acquireAgentChatChannelGrantLocksForThreadWriteOrThrow({
+              manager,
+              workspaceId: args.workspaceId,
+              channelIds: [args.channelId],
+            });
+            const records = await manager.query<
+              AgentChatThreadWorkspaceEntity[]
+            >(
+              `INSERT INTO ${table('agentChatThread')} (id, title, "workspaceMemberId"${isDefined(args.channelId) ? ', "channelId"' : ''})
+               VALUES ($1, $2, $3${isDefined(args.channelId) ? ', $4' : ''}) RETURNING *`,
+              [
+                args.id ?? randomUUID(),
+                args.title ?? null,
+                authContext.workspaceMemberId,
+                ...(isDefined(args.channelId) ? [args.channelId] : []),
+              ],
+            );
+            const record = records[0];
+            await auditAgentChatRecordShareCleanup({
+              manager,
+              workspaceId: args.workspaceId,
+              objectMetadataId: objectMetadata.id,
+              recordIds: [record.id],
+              execute: () =>
+                this.recordShareStorageService.deleteByRecordIdsInTransaction({
+                  workspaceId: args.workspaceId,
+                  objectMetadataId: objectMetadata.id,
+                  recordIds: [record.id],
+                  manager,
+                }),
+            });
+            const ownerGrantCount =
+              await auditAgentChatThreadOwnerGrantBackfill({
+                manager,
+                workspaceId: args.workspaceId,
+                objectMetadataId: objectMetadata.id,
+                recordIds: [record.id],
+                expectedOwnerWorkspaceMemberId: authContext.workspaceMemberId,
+                execute: () =>
+                  backfillWorkspaceChatThreadOwnerGrants({
+                    manager,
+                    workspaceId: args.workspaceId,
+                    threadTableExpression: table('agentChatThread'),
+                    recordIds: [record.id],
+                  }),
+              });
+            if (ownerGrantCount !== 1) {
+              throw new AiException(
+                'Thread owner is no longer a workspace member',
+                AiExceptionCode.THREAD_NOT_FOUND,
+              );
+            }
+            if (isDefined(args.channelId)) {
+              await this.channelGrantService.rewriteThreadGrantsInTransaction({
+                manager,
+                workspaceId: args.workspaceId,
+                threadIds: [record.id],
+                affectedChannelIds: [args.channelId],
+              });
+            }
+            const [setUpRecord] = await this.setUpCreatedThreadsInboxState({
+              manager,
+              table,
+              workspaceId: args.workspaceId,
+              workspaceMemberId: authContext.workspaceMemberId,
+              threadIds: [record.id],
+              participantObjectMetadataId,
+              isArchived: args.isArchived,
+              isSubscribed: args.isSubscribed,
+            });
+            return setUpRecord ?? record;
+          },
+        }),
     );
   }
 
@@ -318,7 +368,9 @@ export class AgentChatSharingService {
   }
 
   async claimUnownedThreadForRun(
-    args: AgentChatThreadAccessArgs,
+    args: AgentChatThreadAccessArgs & {
+      auditContext?: AgentChatRecordShareAuditInput;
+    },
   ): Promise<AgentChatThreadWorkspaceEntity | null> {
     const authContext = await this.getAuthContext(args);
 
@@ -327,71 +379,125 @@ export class AgentChatSharingService {
       updatedColumns: [],
     });
 
+    const objectMetadata = await this.getThreadObjectMetadata(args.workspaceId);
     const participantObjectMetadataId =
       await this.getParticipantObjectMetadataId(args.workspaceId);
+    const isDelegatedAudit = isDefined(args.auditContext);
+    if (
+      isDelegatedAudit &&
+      !isDefined(args.auditContext?.auditOperation) &&
+      args.auditContext?.pendingUserWorkspaceActor !== true
+    ) {
+      throw new Error(
+        'Agent chat delegated auditContext requires auditOperation or pendingUserWorkspaceActor',
+      );
+    }
 
     return this.threadRepository.query(
       args.workspaceId,
-      async ({ manager, table }) => {
-        const [thread] = await manager.query<AgentChatThreadWorkspaceEntity[]>(
-          `WITH claimed_thread AS (
-             UPDATE ${table('agentChatThread')}
-             SET "workspaceMemberId" = $2,
-                 "lastActivityAt" = COALESCE("lastActivityAt", clock_timestamp())
-             WHERE id = $1
-               AND "workspaceMemberId" IS NULL
-               AND NOT EXISTS (
-                 SELECT 1 FROM ${table('agentMessage')}
-                 WHERE "threadId" = $1
-                   AND role = $3
-                   AND "senderWorkspaceMemberId" IS DISTINCT FROM $2
-               )
-             RETURNING *
-           )
-           SELECT * FROM claimed_thread`,
-          [args.threadId, authContext.workspaceMemberId, AgentMessageRole.USER],
-        );
-
-        if (!isDefined(thread)) {
-          return null;
-        }
-
-        const ownerGrantCount = await backfillWorkspaceChatThreadOwnerGrants({
+      ({ manager, table }) =>
+        runAuditedAgentChatRecordShareTransaction({
           manager,
           workspaceId: args.workspaceId,
-          threadTableExpression: table('agentChatThread'),
-          recordIds: [thread.id],
-        });
+          auditInput: args.auditContext,
+          fallbackActor: isDelegatedAudit
+            ? { kind: 'system', id: 'agent_chat_thread_claim' }
+            : { kind: 'workspaceMember', id: authContext.workspaceMemberId },
+          expectedWorkspaceMemberId: isDelegatedAudit
+            ? undefined
+            : authContext.workspaceMemberId,
+          work: async () => {
+            // Keep advisory(participant) -> agentChatThread -> recordShare lock order aligned with AgentChatThreadParticipantService.
+            await manager.query(
+              'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+              [
+                `agent-chat-thread-participant:${args.workspaceId.toLowerCase()}:${args.threadId.toLowerCase()}:${authContext.workspaceMemberId.toLowerCase()}`,
+              ],
+            );
 
-        if (ownerGrantCount !== 1) {
-          throw new AiException(
-            'Thread owner is no longer a workspace member',
-            AiExceptionCode.THREAD_NOT_FOUND,
-          );
-        }
-        await manager.query(
-          `WITH participant AS (
-             INSERT INTO ${getAgentChatThreadParticipantTable(args.workspaceId)} ("threadId", "workspaceMemberId", "lastReadAt", "isSubscribed")
-             VALUES ($1, $2, clock_timestamp(), false)
-             ON CONFLICT ("threadId", "workspaceMemberId") DO NOTHING
-             RETURNING id, "workspaceMemberId"
-           ), owner_share AS (
-             ${buildAgentChatThreadParticipantOwnerShareInsert({
-               workspaceId: args.workspaceId,
-               participantSource: 'participant',
-               objectMetadataIdParameter: '$3',
-             })}
-           )
-           SELECT * FROM participant`,
-          [
-            thread.id,
-            authContext.workspaceMemberId,
-            participantObjectMetadataId,
-          ],
-        );
+            const [thread] = await manager.query<
+              AgentChatThreadWorkspaceEntity[]
+            >(
+              `WITH claimed_thread AS (
+                 UPDATE ${table('agentChatThread')}
+                 SET "workspaceMemberId" = $2,
+                     "lastActivityAt" = COALESCE("lastActivityAt", clock_timestamp())
+                 WHERE id = $1
+                   AND "workspaceMemberId" IS NULL
+                   AND NOT EXISTS (
+                     SELECT 1 FROM ${table('agentMessage')}
+                     WHERE "threadId" = $1
+                       AND role = $3
+                       AND "senderWorkspaceMemberId" IS DISTINCT FROM $2
+                   )
+                 RETURNING *
+               )
+               SELECT * FROM claimed_thread`,
+              [
+                args.threadId,
+                authContext.workspaceMemberId,
+                AgentMessageRole.USER,
+              ],
+            );
 
-        return thread;
-      },
+            if (!isDefined(thread)) {
+              return null;
+            }
+
+            const ownerGrantCount =
+              await auditAgentChatThreadOwnerGrantBackfill({
+                manager,
+                workspaceId: args.workspaceId,
+                objectMetadataId: objectMetadata.id,
+                recordIds: [thread.id],
+                expectedOwnerWorkspaceMemberId: authContext.workspaceMemberId,
+                execute: () =>
+                  backfillWorkspaceChatThreadOwnerGrants({
+                    manager,
+                    workspaceId: args.workspaceId,
+                    threadTableExpression: table('agentChatThread'),
+                    recordIds: [thread.id],
+                  }),
+              });
+
+            if (ownerGrantCount !== 1) {
+              throw new AiException(
+                'Thread owner is no longer a workspace member',
+                AiExceptionCode.THREAD_NOT_FOUND,
+              );
+            }
+            await auditAgentChatParticipantOwnerShareWrite({
+              manager,
+              workspaceId: args.workspaceId,
+              participantObjectMetadataId,
+              threadIds: [thread.id],
+              workspaceMemberId: authContext.workspaceMemberId,
+              execute: () =>
+                manager.query(
+                  `WITH participant AS (
+                     INSERT INTO ${getAgentChatThreadParticipantTable(args.workspaceId)} ("threadId", "workspaceMemberId", "lastReadAt", "isSubscribed")
+                     VALUES ($1, $2, clock_timestamp(), false)
+                     ON CONFLICT ("threadId", "workspaceMemberId") DO NOTHING
+                     RETURNING id, "workspaceMemberId"
+                   ), owner_share AS (
+                     ${buildAgentChatThreadParticipantOwnerShareInsert({
+                       workspaceId: args.workspaceId,
+                       participantSource: 'participant',
+                       objectMetadataIdParameter: '$3',
+                     })}
+                   )
+                   SELECT * FROM participant`,
+                  [
+                    thread.id,
+                    authContext.workspaceMemberId,
+                    participantObjectMetadataId,
+                  ],
+                ),
+            });
+
+            return thread;
+          },
+        }),
     );
   }
 
@@ -415,34 +521,47 @@ export class AgentChatSharingService {
     isArchived?: boolean;
     isSubscribed?: boolean;
   }): Promise<AgentChatThreadWorkspaceEntity[]> {
-    return manager.query<AgentChatThreadWorkspaceEntity[]>(
-      `WITH thread AS (
-         UPDATE ${table('agentChatThread')}
-         SET "lastActivityAt" = clock_timestamp()
-         WHERE id = ANY($1::uuid[]) AND "lastActivityAt" IS NULL
-         RETURNING *
-       ), participant AS (
-         INSERT INTO ${getAgentChatThreadParticipantTable(workspaceId)} ("threadId", "workspaceMemberId", "lastReadAt", "archivedAt", "isSubscribed")
-         SELECT thread.id, $2, thread."lastActivityAt", CASE WHEN $4::boolean THEN clock_timestamp() END, $5::boolean
-         FROM thread
-         ON CONFLICT ("threadId", "workspaceMemberId") DO NOTHING
-         RETURNING id, "workspaceMemberId"
-       ), owner_share AS (
-         ${buildAgentChatThreadParticipantOwnerShareInsert({
-           workspaceId,
-           participantSource: 'participant',
-           objectMetadataIdParameter: '$3',
-         })}
-       )
-       SELECT * FROM thread`,
-      [
-        threadIds,
-        workspaceMemberId,
-        participantObjectMetadataId,
-        isArchived,
-        isSubscribed,
-      ],
-    );
+    requireActiveAgentChatShareAudit(manager, workspaceId);
+    if (threadIds.length === 0) {
+      return [];
+    }
+
+    return auditAgentChatParticipantOwnerShareWrite({
+      manager,
+      workspaceId,
+      participantObjectMetadataId,
+      threadIds,
+      workspaceMemberId,
+      execute: () =>
+        manager.query<AgentChatThreadWorkspaceEntity[]>(
+          `WITH thread AS (
+             UPDATE ${table('agentChatThread')}
+             SET "lastActivityAt" = clock_timestamp()
+             WHERE id = ANY($1::uuid[]) AND "lastActivityAt" IS NULL
+             RETURNING *
+           ), participant AS (
+             INSERT INTO ${getAgentChatThreadParticipantTable(workspaceId)} ("threadId", "workspaceMemberId", "lastReadAt", "archivedAt", "isSubscribed")
+             SELECT thread.id, $2, thread."lastActivityAt", CASE WHEN $4::boolean THEN clock_timestamp() END, $5::boolean
+             FROM thread
+             ON CONFLICT ("threadId", "workspaceMemberId") DO NOTHING
+             RETURNING id, "workspaceMemberId"
+           ), owner_share AS (
+             ${buildAgentChatThreadParticipantOwnerShareInsert({
+               workspaceId,
+               participantSource: 'participant',
+               objectMetadataIdParameter: '$3',
+             })}
+           )
+           SELECT * FROM thread`,
+          [
+            threadIds,
+            workspaceMemberId,
+            participantObjectMetadataId,
+            isArchived,
+            isSubscribed,
+          ],
+        ),
+    });
   }
 
   async restoreThreadWithAccess(

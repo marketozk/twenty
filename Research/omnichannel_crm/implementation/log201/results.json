@@ -1,0 +1,44 @@
+{
+  "log": "LOG-201",
+  "issue": "ROB-765",
+  "date": "2026-11-22",
+  "title": "Transactional audit of agent-chat SQL CTE recordShare writers (AgentChatSharingService, AgentChatThreadParticipantService, AgentChatChannelGrantService, AgentInboxService, AgentRunService, RewriteAgentChatChannelGrantsJob)",
+  "targetedPostgres": {
+    "suitesPassed": 4,
+    "suitesTotal": 4,
+    "testsPassed": 16,
+    "testsTotal": 16,
+    "newPostgresTests": 4,
+    "durationSeconds": 9.46
+  },
+  "targetedUnit": {
+    "suite": "src/engine/metadata-modules/ai/ai-chat/utils/__tests__/acquire-agent-chat-channel-grant-locks-for-thread-write-or-throw.util.spec.ts",
+    "testsPassed": 4,
+    "testsTotal": 4
+  },
+  "fullRegression": {
+    "suitesPassed": 137,
+    "suitesTotal": 137,
+    "testsPassed": 3247,
+    "testsTotal": 3247,
+    "durationSeconds": 735.157
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.168
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 509,
+    "currentRootFiles": 509,
+    "baselineDiagnostics": 279,
+    "currentDiagnostics": 275,
+    "newDiagnostics": 0,
+    "changedFileDiagnostics": 0,
+    "baselineOnlyUnchangedMethodDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 13
+}

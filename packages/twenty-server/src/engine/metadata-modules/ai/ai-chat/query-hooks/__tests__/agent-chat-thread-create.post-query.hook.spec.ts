@@ -5,9 +5,17 @@ import { AgentChatSharingService } from 'src/engine/metadata-modules/ai/ai-chat/
 import { AgentChatThreadService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-thread.service';
 
 const WORKSPACE_ID = '20202020-1111-4111-8111-111111111111';
-const CREATOR_ID = 'creator-member-id';
-const CREATOR_USER_WORKSPACE_ID = 'creator-user-workspace-id';
-const PARTICIPANT_OBJECT_METADATA_ID = 'participant-object-metadata-id';
+const CREATOR_ID = '20202020-2222-4222-8222-222222222222';
+const OTHER_MEMBER_ID = '20202020-2222-4222-8222-222222222223';
+const CREATOR_USER_WORKSPACE_ID = '20202020-3333-4333-8333-333333333333';
+const THREAD_OBJECT_METADATA_ID = '20202020-4444-4444-8444-444444444444';
+const PARTICIPANT_OBJECT_METADATA_ID = '20202020-5555-4555-8555-555555555555';
+const NEW_THREAD_ID = '20202020-6666-4666-8666-666666666661';
+const FIRST_THREAD_ID = '20202020-6666-4666-8666-666666666662';
+const SECOND_THREAD_ID = '20202020-6666-4666-8666-666666666663';
+const UPSERTED_THREAD_ID = '20202020-6666-4666-8666-666666666664';
+const CHAT_THREAD_ID = '20202020-6666-4666-8666-666666666665';
+const OWNER_GRANT_ID = '20202020-7777-4777-8777-777777777771';
 const LAST_ACTIVITY_AT = '2026-10-07T10:00:00.000Z';
 
 const creatorAuthContext = {
@@ -53,8 +61,24 @@ const buildStorage = (threads: Thread[]) => {
     return setUpThreads.map((thread) => ({ ...thread }));
   };
 
+  const recordShares: Array<Record<string, unknown>> = [];
+
   const manager = {
-    query: jest.fn(async (sql: string, parameters: unknown[]) => {
+    queryRunner: { isTransactionActive: true, isReleased: false },
+    query: jest.fn(async (sql: string, parameters: unknown[] = []) => {
+      if (
+        sql.startsWith('SET LOCAL') ||
+        sql.startsWith('SET CONSTRAINTS') ||
+        sql.includes('pg_advisory_xact_lock') ||
+        sql.includes('crm_audit."crmAuditEntry"')
+      ) {
+        return [];
+      }
+
+      if (sql.includes('FROM core.workspace')) {
+        return [{ id: WORKSPACE_ID, deletedAt: null }];
+      }
+
       if (sql.startsWith('INSERT INTO "agentChatThread"')) {
         const [id, , workspaceMemberId] = parameters as string[];
         const thread = { id, workspaceMemberId, lastActivityAt: null };
@@ -64,12 +88,42 @@ const buildStorage = (threads: Thread[]) => {
         return [thread];
       }
 
+      if (sql.includes('SELECT rs.id') && sql.includes('"recordShare"')) {
+        return [];
+      }
+
+      if (sql.includes('SELECT id, "recordId"') && sql.includes('"recordShare"')) {
+        const [objectMetadataId, recordIds] = parameters as [string, string[]];
+        return recordShares.filter(
+          (row) =>
+            row.objectMetadataId === objectMetadataId &&
+            recordIds.includes(row.recordId as string),
+        );
+      }
+
       if (sql.includes('"agentChatThreadParticipant"')) {
         return setUpInboxState(sql, parameters);
       }
 
-      if (sql.includes('"recordShare"')) {
-        return [{ id: 'owner-grant-id' }];
+      if (sql.includes('INSERT INTO') && sql.includes('"recordShare"')) {
+        const [, , recordIds] = parameters as [string, string, string[]];
+        const inserted: Array<{ id: string }> = [];
+        for (const recordId of recordIds) {
+          recordShares.push({
+            id: OWNER_GRANT_ID,
+            objectMetadataId: THREAD_OBJECT_METADATA_ID,
+            recordId,
+            principalId: CREATOR_ID,
+            principalType: 'WORKSPACE_MEMBER',
+            accessLevel: 'FULL',
+            rowCause: 'OWNER',
+            sourceId: recordId,
+            deletedAt: null,
+          });
+          inserted.push({ id: OWNER_GRANT_ID });
+        }
+
+        return inserted;
       }
 
       throw new Error(`Unexpected query: ${sql}`);
@@ -163,7 +217,7 @@ const buildContext = ({
       },
       'getThreadObjectMetadata',
     )
-    .mockResolvedValue({ id: 'thread-object-metadata-id' });
+    .mockResolvedValue({ id: THREAD_OBJECT_METADATA_ID });
 
   const participantService = {
     emitParticipantCreated: jest.fn(async ({ threadId }) => {
@@ -201,42 +255,42 @@ describe('agentChatThread record API creation', () => {
   it('gives the creator a read participant row and sorts the thread by its creation', async () => {
     const context = buildContext({
       threads: [
-        { id: 'new-thread', workspaceMemberId: null, lastActivityAt: null },
+        { id: NEW_THREAD_ID, workspaceMemberId: null, lastActivityAt: null },
       ],
     });
 
     await context.createOneHook.execute(creatorAuthContext, 'agentChatThread', [
-      { id: 'new-thread' },
+      { id: NEW_THREAD_ID },
     ]);
 
     expect(context.threads).toEqual([
       {
-        id: 'new-thread',
+        id: NEW_THREAD_ID,
         workspaceMemberId: CREATOR_ID,
         lastActivityAt: LAST_ACTIVITY_AT,
       },
     ]);
     expect(context.participants).toEqual([
       {
-        threadId: 'new-thread',
+        threadId: NEW_THREAD_ID,
         workspaceMemberId: CREATOR_ID,
         lastReadAt: LAST_ACTIVITY_AT,
       },
     ]);
     expect(context.events).toEqual([
-      'participant created new-thread',
-      'thread updated new-thread',
+      `participant created ${NEW_THREAD_ID}`,
+      `thread updated ${NEW_THREAD_ID}`,
     ]);
   });
 
   it('sets up every created thread, and leaves alone those another member owns', async () => {
     const context = buildContext({
       threads: [
-        { id: 'first-thread', workspaceMemberId: null, lastActivityAt: null },
-        { id: 'second-thread', workspaceMemberId: null, lastActivityAt: null },
+        { id: FIRST_THREAD_ID, workspaceMemberId: null, lastActivityAt: null },
+        { id: SECOND_THREAD_ID, workspaceMemberId: null, lastActivityAt: null },
         {
-          id: 'upserted-thread',
-          workspaceMemberId: 'other-member-id',
+          id: UPSERTED_THREAD_ID,
+          workspaceMemberId: OTHER_MEMBER_ID,
           lastActivityAt: null,
         },
       ],
@@ -246,27 +300,27 @@ describe('agentChatThread record API creation', () => {
       creatorAuthContext,
       'agentChatThread',
       [
-        { id: 'first-thread' },
-        { id: 'second-thread' },
-        { id: 'upserted-thread' },
+        { id: FIRST_THREAD_ID },
+        { id: SECOND_THREAD_ID },
+        { id: UPSERTED_THREAD_ID },
       ],
     );
 
     expect(context.participants).toEqual([
       {
-        threadId: 'first-thread',
+        threadId: FIRST_THREAD_ID,
         workspaceMemberId: CREATOR_ID,
         lastReadAt: LAST_ACTIVITY_AT,
       },
       {
-        threadId: 'second-thread',
+        threadId: SECOND_THREAD_ID,
         workspaceMemberId: CREATOR_ID,
         lastReadAt: LAST_ACTIVITY_AT,
       },
     ]);
     expect(context.threads[2]).toEqual({
-      id: 'upserted-thread',
-      workspaceMemberId: 'other-member-id',
+      id: UPSERTED_THREAD_ID,
+      workspaceMemberId: OTHER_MEMBER_ID,
       lastActivityAt: null,
     });
   });
@@ -277,20 +331,20 @@ describe('agentChatThread record API creation', () => {
     const thread = await context.threadService.createThread({
       workspaceId: WORKSPACE_ID,
       workspaceMemberId: CREATOR_ID,
-      id: 'chat-thread',
+      id: CHAT_THREAD_ID,
     });
 
     expect(thread.lastActivityAt).toBe(LAST_ACTIVITY_AT);
     expect(context.participants).toEqual([
       {
-        threadId: 'chat-thread',
+        threadId: CHAT_THREAD_ID,
         workspaceMemberId: CREATOR_ID,
         lastReadAt: LAST_ACTIVITY_AT,
       },
     ]);
     expect(context.events).toEqual([
-      'participant created chat-thread',
-      'thread created chat-thread',
+      `participant created ${CHAT_THREAD_ID}`,
+      `thread created ${CHAT_THREAD_ID}`,
     ]);
   });
 });

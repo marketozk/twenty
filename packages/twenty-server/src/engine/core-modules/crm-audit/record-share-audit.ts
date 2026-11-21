@@ -2006,3 +2006,1260 @@ export const runAuditedWorkflowRunShareSync = async ({
     }
   }
 };
+
+export type RecordShareAuditEntityManager = {
+  query: (sql: string, parameters?: unknown[]) => Promise<unknown>;
+  queryRunner?: {
+    readonly isTransactionActive: boolean;
+    readonly isReleased: boolean;
+  };
+};
+
+export type AgentChatRecordShareAuditInput = {
+  auditOperation?: CrmAuditOperation;
+  auditImpersonatorUserWorkspaceId?: string;
+  pendingUserWorkspaceActor?: boolean;
+  pendingCorrelationId?: string;
+  authUserWorkspaceId?: string;
+  pendingAgentId?: string;
+};
+
+type ActiveAgentChatShareAudit = {
+  readonly workspaceId: string;
+  readonly executor: CrmAuditTransactionExecutor;
+  readonly audit: CrmAuditTransactionContext;
+  readonly expectedRows: Map<string, RecordShareRowProjection>;
+  readonly trackedRecordScopes: Map<string, Set<string>>;
+  readonly trackedChannelScopes: Map<string, Set<string>>;
+  readonly trackedParticipantScopes: Map<
+    string,
+    {
+      participantObjectMetadataId: string;
+      workspaceMemberId: string;
+      threadIds: Set<string>;
+    }
+  >;
+  recordedMutations: number;
+  failure?: unknown;
+};
+
+const activeAgentChatShareAudits = new WeakMap<
+  object,
+  ActiveAgentChatShareAudit
+>();
+
+const workspaceTable = (workspaceId: string, tableName: string): string =>
+  `${quoteIdent(workspaceSchemaName(workspaceId))}.${quoteIdent(tableName)}`;
+
+export const createCrmAuditEntityManagerExecutor = (
+  manager: RecordShareAuditEntityManager,
+  workspaceId: string,
+): CrmAuditTransactionExecutor => {
+  const normalizedWorkspaceId = uuid(workspaceId);
+  const runner = manager?.queryRunner;
+
+  const assertActive = () => {
+    if (!runner || !runner.isTransactionActive || runner.isReleased) {
+      throw new Error(
+        'Record share audit requires an active EntityManager transaction',
+      );
+    }
+  };
+
+  assertActive();
+
+  return Object.freeze({
+    workspaceId: normalizedWorkspaceId,
+    get isTransactionActive() {
+      return Boolean(runner?.isTransactionActive);
+    },
+    get isReleased() {
+      return Boolean(runner?.isReleased);
+    },
+    query: async (sql: string, parameters?: unknown[]) => {
+      assertActive();
+
+      return (await manager.query(sql, parameters)) as unknown[];
+    },
+  });
+};
+
+export const validateAgentChatRecordShareAuditInput = ({
+  workspaceId,
+  auditOperation,
+  auditImpersonatorUserWorkspaceId,
+  pendingUserWorkspaceActor,
+  pendingCorrelationId,
+  authUserWorkspaceId,
+  pendingAgentId,
+}: {
+  workspaceId: string;
+} & AgentChatRecordShareAuditInput): {
+  workspaceId: string;
+  capturedOperation?: CrmAuditOperation;
+  impersonatorUserWorkspaceId?: string;
+  pendingUserWorkspaceActor?: true;
+  pendingCorrelationId?: string;
+  authUserWorkspaceId?: string;
+  pendingAgentId?: string;
+} => {
+  const normalizedWorkspaceId = uuid(workspaceId);
+  const normalizedImpersonator =
+    auditImpersonatorUserWorkspaceId !== undefined
+      ? uuid(auditImpersonatorUserWorkspaceId)
+      : undefined;
+  const normalizedAuthUserWorkspaceId =
+    authUserWorkspaceId !== undefined ? uuid(authUserWorkspaceId) : undefined;
+  const normalizedPendingAgentId =
+    pendingAgentId !== undefined ? uuid(pendingAgentId) : undefined;
+  const normalizedPendingCorrelationId =
+    pendingCorrelationId !== undefined ? uuid(pendingCorrelationId) : undefined;
+
+  let capturedOperation: CrmAuditOperation | undefined;
+  if (auditOperation !== undefined) {
+    if (
+      pendingUserWorkspaceActor ||
+      normalizedPendingAgentId !== undefined ||
+      normalizedPendingCorrelationId !== undefined ||
+      normalizedAuthUserWorkspaceId !== undefined
+    ) {
+      throw new Error(
+        'Agent chat record share audit cannot combine pending actor fields with explicit auditOperation',
+      );
+    }
+    capturedOperation = captureCrmAuditOperation({
+      ...auditOperation,
+      operationId: randomUUID(),
+    });
+    if (capturedOperation.workspaceId !== normalizedWorkspaceId) {
+      throw new Error('Agent chat record share audit workspace mismatch');
+    }
+    if (
+      normalizedImpersonator !== undefined &&
+      capturedOperation.actor.kind !== 'coreUser' &&
+      capturedOperation.actor.kind !== 'workspaceMember'
+    ) {
+      throw new Error(
+        'Agent chat record share audit impersonator requires user actor',
+      );
+    }
+  } else if (pendingUserWorkspaceActor) {
+    if (!normalizedAuthUserWorkspaceId) {
+      throw new Error(
+        'Agent chat record share audit pendingUserWorkspaceActor requires authUserWorkspaceId',
+      );
+    }
+    if (normalizedImpersonator !== undefined && normalizedPendingAgentId) {
+      throw new Error(
+        'Agent chat record share audit impersonator cannot combine with pendingAgentId',
+      );
+    }
+  } else {
+    if (
+      normalizedPendingAgentId !== undefined ||
+      normalizedPendingCorrelationId !== undefined ||
+      normalizedAuthUserWorkspaceId !== undefined
+    ) {
+      throw new Error(
+        'Agent chat record share audit pending actor fields require pendingUserWorkspaceActor',
+      );
+    }
+    if (normalizedImpersonator !== undefined) {
+      throw new Error(
+        'Agent chat record share audit impersonator requires explicit auditOperation',
+      );
+    }
+  }
+
+  return {
+    workspaceId: normalizedWorkspaceId,
+    ...(capturedOperation ? { capturedOperation } : {}),
+    ...(normalizedImpersonator
+      ? { impersonatorUserWorkspaceId: normalizedImpersonator }
+      : {}),
+    ...(pendingUserWorkspaceActor ? { pendingUserWorkspaceActor: true } : {}),
+    ...(normalizedPendingCorrelationId
+      ? { pendingCorrelationId: normalizedPendingCorrelationId }
+      : {}),
+    ...(normalizedAuthUserWorkspaceId
+      ? { authUserWorkspaceId: normalizedAuthUserWorkspaceId }
+      : {}),
+    ...(normalizedPendingAgentId
+      ? { pendingAgentId: normalizedPendingAgentId }
+      : {}),
+  };
+};
+
+const verifyExpectedWorkspaceMemberInTransaction = async ({
+  executor,
+  workspaceId,
+  operation,
+  expectedWorkspaceMemberId,
+}: {
+  executor: CrmAuditTransactionExecutor;
+  workspaceId: string;
+  operation: CrmAuditOperation;
+  expectedWorkspaceMemberId: string;
+}): Promise<void> => {
+  const normalizedMemberId = uuid(expectedWorkspaceMemberId);
+  const userPrincipal =
+    operation.actor.kind === 'coreUser' ||
+    operation.actor.kind === 'workspaceMember'
+      ? operation.actor
+      : operation.actor.kind === 'application' ||
+          operation.actor.kind === 'agent'
+        ? operation.initiator?.kind === 'coreUser' ||
+          operation.initiator?.kind === 'workspaceMember'
+          ? operation.initiator
+          : undefined
+        : undefined;
+
+  if (!userPrincipal) {
+    throw new Error(
+      'Agent chat record share audit requires matching user principal',
+    );
+  }
+
+  if (userPrincipal.kind === 'workspaceMember') {
+    if (userPrincipal.id !== normalizedMemberId) {
+      throw new Error(
+        'Agent chat record share audit workspaceMember principal mismatch',
+      );
+    }
+
+    return;
+  }
+
+  const rows = (await executor.query(
+    `SELECT "userId", to_jsonb(m)->>'deletedAt' AS "deletedAt"
+       FROM ${workspaceTable(workspaceId, 'workspaceMember')} m
+      WHERE m.id = $1
+        FOR SHARE`,
+    [normalizedMemberId],
+  )) as Array<{ userId: string | null; deletedAt: string | null }>;
+
+  if (
+    rows.length !== 1 ||
+    rows[0].deletedAt !== null ||
+    typeof rows[0].userId !== 'string' ||
+    uuid(rows[0].userId) !== userPrincipal.id
+  ) {
+    throw new Error(
+      'Agent chat record share audit coreUser principal does not match workspaceMember',
+    );
+  }
+};
+
+const readRecordShareSnapshotForChannel = async (
+  executor: CrmAuditTransactionExecutor,
+  workspaceId: string,
+  threadObjectMetadataId: string,
+  channelId: string,
+  lock: boolean,
+): Promise<Map<string, Record<string, unknown>>> => {
+  const rows = (await executor.query(
+    `SELECT id, "recordId", "objectMetadataId", "principalId",
+            "principalType", "accessLevel", "rowCause", "sourceId", "deletedAt"
+       FROM ${recordShareTable(workspaceId)}
+      WHERE "objectMetadataId" = $1
+        AND "rowCause" = 'RULE'
+        AND "sourceId" = $2
+      ORDER BY id${lock ? ' FOR UPDATE' : ''}`,
+    [threadObjectMetadataId, channelId],
+  )) as Array<Record<string, unknown>>;
+
+  const map = new Map<string, Record<string, unknown>>();
+  for (const row of rows) {
+    assertRecordShareRowInvariants(row, threadObjectMetadataId);
+    if (row.rowCause !== 'RULE' || uuid(row.sourceId) !== channelId) {
+      throw new Error(
+        'Record share channel snapshot returned out-of-scope row',
+      );
+    }
+    map.set(uuid(row.id), row);
+  }
+
+  return map;
+};
+
+const readParticipantRecordShareSnapshot = async (
+  executor: CrmAuditTransactionExecutor,
+  workspaceId: string,
+  participantObjectMetadataId: string,
+  threadIds: readonly string[],
+  workspaceMemberId: string,
+  lock: boolean,
+): Promise<Map<string, Record<string, unknown>>> => {
+  const rows = (await executor.query(
+    `SELECT rs.id, rs."recordId", rs."objectMetadataId", rs."principalId",
+            rs."principalType", rs."accessLevel", rs."rowCause", rs."sourceId",
+            rs."deletedAt"
+       FROM ${recordShareTable(workspaceId)} rs
+       JOIN ${workspaceTable(workspaceId, 'agentChatThreadParticipant')} p
+         ON p.id = rs."recordId"
+      WHERE rs."objectMetadataId" = $1
+        AND p."threadId" = ANY($2::uuid[])
+        AND p."workspaceMemberId" = $3
+      ORDER BY rs.id${lock ? ' FOR UPDATE OF rs' : ''}`,
+    [participantObjectMetadataId, threadIds, workspaceMemberId],
+  )) as Array<Record<string, unknown>>;
+
+  const map = new Map<string, Record<string, unknown>>();
+  for (const row of rows) {
+    assertRecordShareRowInvariants(row, participantObjectMetadataId);
+    map.set(uuid(row.id), row);
+  }
+
+  return map;
+};
+
+const readAllTrackedAgentChatSnapshots = async (
+  session: ActiveAgentChatShareAudit,
+): Promise<Map<string, RecordShareRowProjection>> => {
+  const observed = new Map<string, RecordShareRowProjection>();
+
+  for (const [objectMetadataId, recordIdSet] of [
+    ...session.trackedRecordScopes.entries(),
+  ].sort(([a], [b]) => a.localeCompare(b))) {
+    const recordIds = [...recordIdSet].sort();
+    if (recordIds.length === 0) {
+      continue;
+    }
+    const snap = await readRecordShareSnapshotForRecords(
+      session.executor,
+      session.workspaceId,
+      objectMetadataId,
+      recordIds,
+      false,
+    );
+    for (const [id, row] of snap.entries()) {
+      observed.set(id, projectRecordShare(row));
+    }
+  }
+
+  for (const [threadObjectMetadataId, channelIdSet] of [
+    ...session.trackedChannelScopes.entries(),
+  ].sort(([a], [b]) => a.localeCompare(b))) {
+    for (const channelId of [...channelIdSet].sort()) {
+      const snap = await readRecordShareSnapshotForChannel(
+        session.executor,
+        session.workspaceId,
+        threadObjectMetadataId,
+        channelId,
+        false,
+      );
+      for (const [id, row] of snap.entries()) {
+        observed.set(id, projectRecordShare(row));
+      }
+    }
+  }
+
+  for (const [, scope] of [...session.trackedParticipantScopes.entries()].sort(
+    ([a], [b]) => a.localeCompare(b),
+  )) {
+    const threadIds = [...scope.threadIds].sort();
+    if (threadIds.length === 0) {
+      continue;
+    }
+    const snap = await readParticipantRecordShareSnapshot(
+      session.executor,
+      session.workspaceId,
+      scope.participantObjectMetadataId,
+      threadIds,
+      scope.workspaceMemberId,
+      false,
+    );
+    for (const [id, row] of snap.entries()) {
+      observed.set(id, projectRecordShare(row));
+    }
+  }
+
+  return observed;
+};
+
+const serializeProjectionMap = (
+  rows: ReadonlyMap<string, RecordShareRowProjection>,
+): string =>
+  canonicalAuditJson(
+    [...rows.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([id, proj]) => ({ id, ...proj })),
+  );
+
+const trackRecordScope = (
+  session: ActiveAgentChatShareAudit,
+  objectMetadataId: string,
+  recordIds: readonly string[],
+): void => {
+  let set = session.trackedRecordScopes.get(objectMetadataId);
+  if (!set) {
+    set = new Set<string>();
+    session.trackedRecordScopes.set(objectMetadataId, set);
+  }
+  for (const recordId of recordIds) {
+    set.add(recordId);
+  }
+};
+
+const trackChannelScope = (
+  session: ActiveAgentChatShareAudit,
+  threadObjectMetadataId: string,
+  channelId: string,
+): void => {
+  let set = session.trackedChannelScopes.get(threadObjectMetadataId);
+  if (!set) {
+    set = new Set<string>();
+    session.trackedChannelScopes.set(threadObjectMetadataId, set);
+  }
+  set.add(channelId);
+};
+
+const trackParticipantScope = (
+  session: ActiveAgentChatShareAudit,
+  participantObjectMetadataId: string,
+  workspaceMemberId: string,
+  threadIds: readonly string[],
+): void => {
+  const key = `${participantObjectMetadataId}:${workspaceMemberId}`;
+  let entry = session.trackedParticipantScopes.get(key);
+  if (!entry) {
+    entry = {
+      participantObjectMetadataId,
+      workspaceMemberId,
+      threadIds: new Set<string>(),
+    };
+    session.trackedParticipantScopes.set(key, entry);
+  }
+  for (const threadId of threadIds) {
+    entry.threadIds.add(threadId);
+  }
+};
+
+type AgentChatReconcileScope =
+  | {
+      kind: 'records';
+      objectMetadataId: string;
+      recordIds: ReadonlySet<string>;
+    }
+  | {
+      kind: 'channel';
+      threadObjectMetadataId: string;
+      channelId: string;
+    }
+  | {
+      kind: 'participants';
+      participantObjectMetadataId: string;
+      workspaceMemberId: string;
+      threadIds: readonly string[];
+    };
+
+const isProjectionAlreadyTracked = (
+  session: ActiveAgentChatShareAudit,
+  proj: RecordShareRowProjection,
+): boolean => {
+  if (session.trackedRecordScopes.get(proj.objectMetadataId)?.has(proj.recordId)) {
+    return true;
+  }
+  if (
+    proj.rowCause === 'RULE' &&
+    session.trackedChannelScopes.get(proj.objectMetadataId)?.has(proj.sourceId)
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
+const isProjectionInScope = (
+  proj: RecordShareRowProjection,
+  scope: AgentChatReconcileScope,
+): boolean => {
+  if (scope.kind === 'records') {
+    return (
+      proj.objectMetadataId === scope.objectMetadataId &&
+      scope.recordIds.has(proj.recordId)
+    );
+  }
+  if (scope.kind === 'channel') {
+    return (
+      proj.objectMetadataId === scope.threadObjectMetadataId &&
+      proj.rowCause === 'RULE' &&
+      proj.sourceId === scope.channelId
+    );
+  }
+
+  return false;
+};
+
+const reconcileBeforeWithExpectedRows = (
+  session: ActiveAgentChatShareAudit,
+  before: ReadonlyMap<string, Record<string, unknown>>,
+  scope: AgentChatReconcileScope,
+): void => {
+  const participantScopePreviouslyTracked =
+    scope.kind === 'participants' &&
+    scope.threadIds.every((threadId) =>
+      session.trackedParticipantScopes
+        .get(`${scope.participantObjectMetadataId}:${scope.workspaceMemberId}`)
+        ?.threadIds.has(threadId),
+    );
+
+  for (const [id, row] of before.entries()) {
+    const proj = projectRecordShare(row);
+    const prevExpected = session.expectedRows.get(id);
+    if (prevExpected !== undefined) {
+      if (canonicalAuditJson(prevExpected) !== canonicalAuditJson(proj)) {
+        throw new Error(
+          'Agent chat record share audit detected unaudited mid-transaction row drift',
+        );
+      }
+      continue;
+    }
+    if (
+      isProjectionAlreadyTracked(session, proj) ||
+      participantScopePreviouslyTracked
+    ) {
+      throw new Error(
+        'Agent chat record share audit detected unaudited mid-transaction row drift',
+      );
+    }
+    session.expectedRows.set(id, proj);
+  }
+
+  for (const [id, expectedProj] of session.expectedRows.entries()) {
+    if (isProjectionInScope(expectedProj, scope) && !before.has(id)) {
+      throw new Error(
+        'Agent chat record share audit detected unaudited mid-transaction row drift',
+      );
+    }
+  }
+};
+
+export const requireActiveAgentChatShareAudit = (
+  manager: RecordShareAuditEntityManager,
+  workspaceId: string,
+): ActiveAgentChatShareAudit => {
+  const normalizedWorkspaceId = uuid(workspaceId);
+  const session = activeAgentChatShareAudits.get(manager);
+  if (!session) {
+    throw new Error(
+      'Agent chat record share write requires an active audited transaction',
+    );
+  }
+  if (session.workspaceId !== normalizedWorkspaceId) {
+    throw new Error(
+      'Agent chat record share active audit transaction workspace mismatch',
+    );
+  }
+  if (session.failure !== undefined) {
+    throw session.failure;
+  }
+
+  return session;
+};
+
+const runLatchedAgentChatStep = async <TResult>(
+  session: ActiveAgentChatShareAudit,
+  step: () => Promise<TResult>,
+): Promise<TResult> => {
+  if (session.failure !== undefined) {
+    throw session.failure;
+  }
+  try {
+    return await step();
+  } catch (error) {
+    if (session.failure === undefined) {
+      session.failure =
+        error ?? new Error('Agent chat record share audit step failed');
+    }
+    throw error;
+  }
+};
+
+export const runAuditedAgentChatRecordShareTransaction = async <TResult>({
+  manager,
+  workspaceId,
+  auditInput,
+  fallbackActor,
+  expectedWorkspaceMemberId,
+  work,
+}: {
+  manager: RecordShareAuditEntityManager;
+  workspaceId: string;
+  auditInput?: AgentChatRecordShareAuditInput;
+  fallbackActor: CrmAuditPrincipal;
+  expectedWorkspaceMemberId?: string;
+  work: () => Promise<TResult>;
+}): Promise<TResult> => {
+  if (activeAgentChatShareAudits.has(manager)) {
+    throw new Error(
+      'Nested agent chat record share audit transaction is unsupported',
+    );
+  }
+
+  const validated = validateAgentChatRecordShareAuditInput({
+    workspaceId,
+    ...auditInput,
+  });
+  const executor = createCrmAuditEntityManagerExecutor(
+    manager,
+    validated.workspaceId,
+  );
+
+  await executor.query("SET LOCAL lock_timeout = '8s'");
+  await verifyWorkspaceKeyShare(executor, validated.workspaceId);
+
+  let baseOperation: CrmAuditOperation | undefined = validated.capturedOperation;
+  let impersonatorUserWorkspaceId = validated.impersonatorUserWorkspaceId;
+
+  if (validated.pendingUserWorkspaceActor) {
+    const rows = (await executor.query(
+      `SELECT "userId", to_jsonb(uw)->>'deletedAt' AS "deletedAt"
+         FROM core."userWorkspace" uw
+        WHERE uw.id = $1 AND uw."workspaceId" = $2
+          FOR SHARE`,
+      [validated.authUserWorkspaceId, validated.workspaceId],
+    )) as Array<{ userId: string | null; deletedAt: string | null }>;
+    if (
+      rows.length !== 1 ||
+      rows[0].deletedAt !== null ||
+      typeof rows[0].userId !== 'string'
+    ) {
+      throw new Error(
+        'Agent chat record share audit userWorkspace actor unavailable',
+      );
+    }
+    const resolvedUserId = uuid(rows[0].userId);
+    const correlationId = validated.pendingCorrelationId ?? randomUUID();
+    baseOperation = captureCrmAuditOperation(
+      validated.pendingAgentId !== undefined
+        ? {
+            workspaceId: validated.workspaceId,
+            operationId: randomUUID(),
+            actor: { kind: 'agent', id: validated.pendingAgentId },
+            initiator: { kind: 'coreUser', id: resolvedUserId },
+            correlationId,
+          }
+        : {
+            workspaceId: validated.workspaceId,
+            operationId: randomUUID(),
+            actor: { kind: 'coreUser', id: resolvedUserId },
+            correlationId,
+          },
+    );
+  } else if (!baseOperation) {
+    const ambient = captureCurrentCrmAuditOperation(validated.workspaceId);
+    if (ambient) {
+      baseOperation = captureCrmAuditOperation({
+        ...ambient.operation,
+        operationId: randomUUID(),
+      });
+      impersonatorUserWorkspaceId =
+        ambient.impersonatorUserWorkspaceId !== undefined
+          ? uuid(ambient.impersonatorUserWorkspaceId)
+          : undefined;
+    } else {
+      baseOperation = captureCrmAuditOperation({
+        workspaceId: validated.workspaceId,
+        operationId: randomUUID(),
+        actor: fallbackActor,
+      });
+    }
+  }
+
+  let operation = baseOperation;
+  if (impersonatorUserWorkspaceId !== undefined) {
+    if (
+      operation.actor.kind !== 'coreUser' &&
+      operation.actor.kind !== 'workspaceMember'
+    ) {
+      throw new Error(
+        'Agent chat record share audit impersonator requires user actor',
+      );
+    }
+    const rows = (await executor.query(
+      `SELECT "userId"
+         FROM core."userWorkspace"
+        WHERE id = $1 AND "deletedAt" IS NULL`,
+      [impersonatorUserWorkspaceId],
+    )) as Array<{ userId: string }>;
+    if (rows.length !== 1) {
+      throw new Error(
+        'Agent chat record share audit impersonation initiator unavailable',
+      );
+    }
+    const resolvedInitiatorId = uuid(rows[0].userId);
+    if (
+      operation.initiator &&
+      (operation.initiator.kind !== 'coreUser' ||
+        operation.initiator.id !== resolvedInitiatorId)
+    ) {
+      throw new Error(
+        'Agent chat record share audit impersonation context conflict',
+      );
+    }
+    operation = captureCrmAuditOperation({
+      ...operation,
+      initiator: { kind: 'coreUser', id: resolvedInitiatorId },
+    });
+  }
+
+  if (expectedWorkspaceMemberId !== undefined) {
+    await verifyExpectedWorkspaceMemberInTransaction({
+      executor,
+      workspaceId: validated.workspaceId,
+      operation,
+      expectedWorkspaceMemberId,
+    });
+  }
+
+  const session: ActiveAgentChatShareAudit = {
+    workspaceId: validated.workspaceId,
+    executor,
+    audit: new CrmAuditTransactionContext(executor, operation),
+    expectedRows: new Map(),
+    trackedRecordScopes: new Map(),
+    trackedChannelScopes: new Map(),
+    trackedParticipantScopes: new Map(),
+    recordedMutations: 0,
+  };
+
+  activeAgentChatShareAudits.set(manager, session);
+  try {
+    const result = await work();
+    if (session.failure !== undefined) {
+      throw session.failure;
+    }
+
+    const hasTrackedScopes =
+      session.trackedRecordScopes.size > 0 ||
+      session.trackedChannelScopes.size > 0 ||
+      session.trackedParticipantScopes.size > 0;
+    const expectedSerialized = serializeProjectionMap(session.expectedRows);
+
+    if (hasTrackedScopes) {
+      const preFlush = await readAllTrackedAgentChatSnapshots(session);
+      if (serializeProjectionMap(preFlush) !== expectedSerialized) {
+        throw new Error(
+          'Agent chat record share audit detected unaudited pre-flush row drift',
+        );
+      }
+    }
+
+    if (session.recordedMutations > 0) {
+      await session.executor.query("SET LOCAL lock_timeout = '8s'");
+      await session.audit.flush();
+      await session.executor.query('SET CONSTRAINTS ALL IMMEDIATE');
+      await verifyWorkspaceActive(session.executor, session.workspaceId, false);
+      const postFlush = await readAllTrackedAgentChatSnapshots(session);
+      if (serializeProjectionMap(postFlush) !== expectedSerialized) {
+        throw new Error(
+          'Agent chat record share audit detected post-flush row drift',
+        );
+      }
+    }
+
+    return result;
+  } finally {
+    activeAgentChatShareAudits.delete(manager);
+  }
+};
+
+export const auditAgentChatRecordShareCleanup = async ({
+  manager,
+  workspaceId,
+  objectMetadataId,
+  recordIds,
+  execute,
+}: {
+  manager: RecordShareAuditEntityManager;
+  workspaceId: string;
+  objectMetadataId: string;
+  recordIds: readonly string[];
+  execute: () => Promise<void>;
+}): Promise<void> => {
+  const session = requireActiveAgentChatShareAudit(manager, workspaceId);
+
+  return runLatchedAgentChatStep(session, async () => {
+    const normalizedObjectMetadataId = uuid(objectMetadataId);
+    const normalizedRecordIds = [
+      ...new Set(recordIds.map((id) => uuid(id))),
+    ].sort();
+    if (normalizedRecordIds.length === 0) {
+      return;
+    }
+
+    await session.executor.query("SET LOCAL lock_timeout = '8s'");
+    const before = await readRecordShareSnapshotForRecords(
+      session.executor,
+      session.workspaceId,
+      normalizedObjectMetadataId,
+      normalizedRecordIds,
+      true,
+    );
+    reconcileBeforeWithExpectedRows(session, before, {
+      kind: 'records',
+      objectMetadataId: normalizedObjectMetadataId,
+      recordIds: new Set(normalizedRecordIds),
+    });
+    trackRecordScope(session, normalizedObjectMetadataId, normalizedRecordIds);
+
+    await execute();
+
+    const after = await readRecordShareSnapshotForRecords(
+      session.executor,
+      session.workspaceId,
+      normalizedObjectMetadataId,
+      normalizedRecordIds,
+      false,
+    );
+    if (after.size !== 0) {
+      throw new Error(
+        'Agent chat record share cleanup left surviving recordShare rows',
+      );
+    }
+
+    for (const [id, beforeRow] of before.entries()) {
+      const beforeProj = projectRecordShare(beforeRow);
+      session.audit.record({
+        resourceKind: 'recordShare',
+        resourceId: id,
+        action: 'delete',
+        before: beforeProj,
+        after: null,
+        securityDescriptor: {
+          resourceKind: 'recordShare',
+          resourceId: id,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+      session.expectedRows.delete(id);
+      session.recordedMutations += 1;
+    }
+  });
+};
+
+export const auditAgentChatThreadOwnerGrantBackfill = async ({
+  manager,
+  workspaceId,
+  objectMetadataId,
+  recordIds,
+  expectedOwnerWorkspaceMemberId,
+  execute,
+}: {
+  manager: RecordShareAuditEntityManager;
+  workspaceId: string;
+  objectMetadataId: string;
+  recordIds: readonly string[];
+  expectedOwnerWorkspaceMemberId: string;
+  execute: () => Promise<number>;
+}): Promise<number> => {
+  const session = requireActiveAgentChatShareAudit(manager, workspaceId);
+
+  return runLatchedAgentChatStep(session, async () => {
+    const normalizedObjectMetadataId = uuid(objectMetadataId);
+    const normalizedOwnerId = uuid(expectedOwnerWorkspaceMemberId);
+    const normalizedRecordIds = [
+      ...new Set(recordIds.map((id) => uuid(id))),
+    ].sort();
+    if (normalizedRecordIds.length === 0) {
+      throw new Error(
+        'Agent chat thread owner grant audit requires non-empty recordIds',
+      );
+    }
+
+    await session.executor.query("SET LOCAL lock_timeout = '8s'");
+    const before = await readRecordShareSnapshotForRecords(
+      session.executor,
+      session.workspaceId,
+      normalizedObjectMetadataId,
+      normalizedRecordIds,
+      true,
+    );
+    reconcileBeforeWithExpectedRows(session, before, {
+      kind: 'records',
+      objectMetadataId: normalizedObjectMetadataId,
+      recordIds: new Set(normalizedRecordIds),
+    });
+    trackRecordScope(session, normalizedObjectMetadataId, normalizedRecordIds);
+
+    const insertedCount = await execute();
+
+    const after = await readRecordShareSnapshotForRecords(
+      session.executor,
+      session.workspaceId,
+      normalizedObjectMetadataId,
+      normalizedRecordIds,
+      false,
+    );
+
+    for (const [id, beforeRow] of before.entries()) {
+      const afterRow = after.get(id);
+      if (!afterRow) {
+        throw new Error(
+          'Agent chat thread owner grant backfill deleted existing recordShare row',
+        );
+      }
+      if (
+        canonicalAuditJson(projectRecordShare(beforeRow)) !==
+        canonicalAuditJson(projectRecordShare(afterRow))
+      ) {
+        throw new Error(
+          'Agent chat thread owner grant backfill modified existing recordShare row',
+        );
+      }
+    }
+
+    let createdCount = 0;
+    for (const [id, afterRow] of after.entries()) {
+      if (before.has(id)) {
+        continue;
+      }
+      const afterProj = projectRecordShare(afterRow);
+      if (
+        afterProj.rowCause !== 'OWNER' ||
+        afterProj.principalType !== 'WORKSPACE_MEMBER' ||
+        afterProj.accessLevel !== 'FULL' ||
+        afterProj.principalId !== normalizedOwnerId ||
+        afterProj.sourceId !== afterProj.recordId
+      ) {
+        throw new Error(
+          'Agent chat thread owner grant backfill created unexpected recordShare row',
+        );
+      }
+      session.audit.record({
+        resourceKind: 'recordShare',
+        resourceId: id,
+        action: 'create',
+        before: null,
+        after: afterProj,
+        securityDescriptor: {
+          resourceKind: 'recordShare',
+          resourceId: id,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+      session.expectedRows.set(id, afterProj);
+      session.recordedMutations += 1;
+      createdCount += 1;
+    }
+
+    if (createdCount !== insertedCount) {
+      throw new Error(
+        'Agent chat thread owner grant backfill count mismatch with persisted rows',
+      );
+    }
+
+    return insertedCount;
+  });
+};
+
+export const auditAgentChatParticipantOwnerShareWrite = async <TResult>({
+  manager,
+  workspaceId,
+  participantObjectMetadataId,
+  threadIds,
+  workspaceMemberId,
+  execute,
+}: {
+  manager: RecordShareAuditEntityManager;
+  workspaceId: string;
+  participantObjectMetadataId: string;
+  threadIds: readonly string[];
+  workspaceMemberId: string;
+  execute: () => Promise<TResult>;
+}): Promise<TResult> => {
+  const session = requireActiveAgentChatShareAudit(manager, workspaceId);
+
+  return runLatchedAgentChatStep(session, async () => {
+    const normalizedObjectMetadataId = uuid(participantObjectMetadataId);
+    const normalizedMemberId = uuid(workspaceMemberId);
+    const normalizedThreadIds = [
+      ...new Set(threadIds.map((id) => uuid(id))),
+    ].sort();
+    if (normalizedThreadIds.length === 0) {
+      throw new Error(
+        'Agent chat participant share audit requires non-empty threadIds',
+      );
+    }
+
+    await session.executor.query("SET LOCAL lock_timeout = '8s'");
+    for (const threadId of normalizedThreadIds) {
+      await session.executor.query(
+        'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+        [
+          `agent-chat-thread-participant:${session.workspaceId}:${threadId}:${normalizedMemberId}`,
+        ],
+      );
+    }
+
+    const before = await readParticipantRecordShareSnapshot(
+      session.executor,
+      session.workspaceId,
+      normalizedObjectMetadataId,
+      normalizedThreadIds,
+      normalizedMemberId,
+      true,
+    );
+    reconcileBeforeWithExpectedRows(session, before, {
+      kind: 'participants',
+      participantObjectMetadataId: normalizedObjectMetadataId,
+      workspaceMemberId: normalizedMemberId,
+      threadIds: normalizedThreadIds,
+    });
+    trackParticipantScope(
+      session,
+      normalizedObjectMetadataId,
+      normalizedMemberId,
+      normalizedThreadIds,
+    );
+
+    const result = await execute();
+
+    const after = await readParticipantRecordShareSnapshot(
+      session.executor,
+      session.workspaceId,
+      normalizedObjectMetadataId,
+      normalizedThreadIds,
+      normalizedMemberId,
+      false,
+    );
+
+    const trackedIds = new Set<string>();
+    for (const [id, beforeRow] of before.entries()) {
+      const beforeProj = projectRecordShare(beforeRow);
+      trackedIds.add(beforeProj.recordId);
+      const afterRow = after.get(id);
+      if (!afterRow) {
+        throw new Error(
+          'Agent chat participant share write deleted existing recordShare row',
+        );
+      }
+      if (
+        canonicalAuditJson(beforeProj) !==
+        canonicalAuditJson(projectRecordShare(afterRow))
+      ) {
+        throw new Error(
+          'Agent chat participant share write modified existing recordShare row',
+        );
+      }
+    }
+
+    for (const [id, afterRow] of after.entries()) {
+      const afterProj = projectRecordShare(afterRow);
+      trackedIds.add(afterProj.recordId);
+      if (before.has(id)) {
+        continue;
+      }
+      if (
+        afterProj.rowCause !== 'OWNER' ||
+        afterProj.principalType !== 'WORKSPACE_MEMBER' ||
+        afterProj.accessLevel !== 'FULL' ||
+        afterProj.principalId !== normalizedMemberId ||
+        afterProj.sourceId !== afterProj.recordId
+      ) {
+        throw new Error(
+          'Agent chat participant share write created unexpected recordShare row',
+        );
+      }
+      session.audit.record({
+        resourceKind: 'recordShare',
+        resourceId: id,
+        action: 'create',
+        before: null,
+        after: afterProj,
+        securityDescriptor: {
+          resourceKind: 'recordShare',
+          resourceId: id,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+      session.expectedRows.set(id, afterProj);
+      session.recordedMutations += 1;
+    }
+
+    if (trackedIds.size > 0) {
+      trackRecordScope(session, normalizedObjectMetadataId, [...trackedIds]);
+    }
+
+    return result;
+  });
+};
+
+export const auditAgentChatChannelGrantRewrite = async ({
+  manager,
+  workspaceId,
+  threadObjectUniversalIdentifier,
+  scope,
+  execute,
+}: {
+  manager: RecordShareAuditEntityManager;
+  workspaceId: string;
+  threadObjectUniversalIdentifier: string;
+  scope: { threadIds: readonly string[] } | { channelId: string };
+  execute: () => Promise<void>;
+}): Promise<void> => {
+  const session = requireActiveAgentChatShareAudit(manager, workspaceId);
+
+  return runLatchedAgentChatStep(session, async () => {
+    const normalizedUniversalId = uuid(threadObjectUniversalIdentifier);
+    const isThreadScope = 'threadIds' in scope;
+    const normalizedThreadIds = isThreadScope
+      ? [...new Set(scope.threadIds.map((id) => uuid(id)))].sort()
+      : [];
+    const normalizedChannelId = isThreadScope
+      ? undefined
+      : uuid(scope.channelId);
+
+    if (isThreadScope && normalizedThreadIds.length === 0) {
+      return;
+    }
+
+    await session.executor.query("SET LOCAL lock_timeout = '8s'");
+    const objectRows = (await session.executor.query(
+      `SELECT id
+         FROM core."objectMetadata"
+        WHERE "workspaceId" = $1
+          AND "universalIdentifier" = $2`,
+      [session.workspaceId, normalizedUniversalId],
+    )) as Array<{ id: string }>;
+    if (objectRows.length === 0) {
+      return;
+    }
+    if (objectRows.length !== 1) {
+      throw new Error(
+        'Agent chat channel grant rewrite observed ambiguous thread objectMetadata',
+      );
+    }
+    const threadObjectMetadataId = uuid(objectRows[0].id);
+
+    const before = isThreadScope
+      ? await readRecordShareSnapshotForRecords(
+          session.executor,
+          session.workspaceId,
+          threadObjectMetadataId,
+          normalizedThreadIds,
+          true,
+        )
+      : await readRecordShareSnapshotForChannel(
+          session.executor,
+          session.workspaceId,
+          threadObjectMetadataId,
+          normalizedChannelId!,
+          true,
+        );
+    reconcileBeforeWithExpectedRows(
+      session,
+      before,
+      isThreadScope
+        ? {
+            kind: 'records',
+            objectMetadataId: threadObjectMetadataId,
+            recordIds: new Set(normalizedThreadIds),
+          }
+        : {
+            kind: 'channel',
+            threadObjectMetadataId,
+            channelId: normalizedChannelId!,
+          },
+    );
+
+    if (isThreadScope) {
+      trackRecordScope(session, threadObjectMetadataId, normalizedThreadIds);
+    } else {
+      trackChannelScope(session, threadObjectMetadataId, normalizedChannelId!);
+    }
+
+    await execute();
+
+    const after = isThreadScope
+      ? await readRecordShareSnapshotForRecords(
+          session.executor,
+          session.workspaceId,
+          threadObjectMetadataId,
+          normalizedThreadIds,
+          false,
+        )
+      : await readRecordShareSnapshotForChannel(
+          session.executor,
+          session.workspaceId,
+          threadObjectMetadataId,
+          normalizedChannelId!,
+          false,
+        );
+
+    for (const [id, beforeRow] of before.entries()) {
+      const beforeProj = projectRecordShare(beforeRow);
+      const afterRow = after.get(id);
+      if (!afterRow) {
+        if (
+          beforeProj.rowCause !== 'RULE' ||
+          (!isThreadScope && beforeProj.sourceId !== normalizedChannelId)
+        ) {
+          throw new Error(
+            'Agent chat channel grant rewrite deleted non-RULE or out-of-scope recordShare row',
+          );
+        }
+        session.audit.record({
+          resourceKind: 'recordShare',
+          resourceId: id,
+          action: 'delete',
+          before: beforeProj,
+          after: null,
+          securityDescriptor: {
+            resourceKind: 'recordShare',
+            resourceId: id,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        session.expectedRows.delete(id);
+        session.recordedMutations += 1;
+        continue;
+      }
+
+      const afterProj = projectRecordShare(afterRow);
+      if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+        throw new Error(
+          'Agent chat channel grant rewrite performed unauthorized in-place update',
+        );
+      }
+    }
+
+    for (const [id, afterRow] of after.entries()) {
+      const afterProj = projectRecordShare(afterRow);
+      if (afterProj.rowCause === 'RULE') {
+        if (
+          afterProj.principalType !== 'ROLE' ||
+          afterProj.accessLevel !== 'READ_WRITE' ||
+          (!isThreadScope && afterProj.sourceId !== normalizedChannelId)
+        ) {
+          throw new Error(
+            'Agent chat channel grant rewrite observed invalid RULE recordShare row',
+          );
+        }
+      }
+      if (before.has(id)) {
+        continue;
+      }
+      if (afterProj.rowCause !== 'RULE') {
+        throw new Error(
+          'Agent chat channel grant rewrite created non-RULE recordShare row',
+        );
+      }
+      session.audit.record({
+        resourceKind: 'recordShare',
+        resourceId: id,
+        action: 'create',
+        before: null,
+        after: afterProj,
+        securityDescriptor: {
+          resourceKind: 'recordShare',
+          resourceId: id,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+      session.expectedRows.set(id, afterProj);
+      session.recordedMutations += 1;
+    }
+  });
+};

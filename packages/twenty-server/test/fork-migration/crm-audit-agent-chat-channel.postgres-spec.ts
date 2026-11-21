@@ -1363,10 +1363,24 @@ describe('CRM audit agentChatChannel and agentChatChannelRole lifecycle and casc
     );
     expect(updated.name).toBe('Enterprise Support');
     expect(updated.roleIds).toEqual([salesRoleId]);
-    expect(rewriteChannelGrantsMock).toHaveBeenCalledWith({
-      workspaceId,
-      channelId: created.id,
-    });
+    const [latestChannelUpdateAudit] = await ownerDataSource.query(
+      `SELECT "correlationId" FROM crm_audit."crmAuditEntry"
+        WHERE "workspaceId"=$1 AND "resourceKind"='agentChatChannel' AND action='update'
+        ORDER BY "createdAt" DESC, id DESC LIMIT 1`,
+      [workspaceId],
+    );
+    expect(latestChannelUpdateAudit?.correlationId).toBeTruthy();
+    expect(rewriteChannelGrantsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId,
+        channelId: created.id,
+        auditOperation: expect.objectContaining({
+          workspaceId,
+          actor: { kind: 'workspaceMember', id: ownerWorkspaceMemberId },
+          correlationId: latestChannelUpdateAudit.correlationId,
+        }),
+      }),
+    );
 
     const [replacementRoleLink] = await ownerDataSource.query(
       `SELECT id FROM core."agentChatChannelRole" WHERE "channelId"=$1 AND "roleId"=$2`,

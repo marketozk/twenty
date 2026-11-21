@@ -1,9 +1,18 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 
 import { STANDARD_OBJECTS } from 'twenty-shared/metadata';
 import { isNonEmptyArray } from 'twenty-shared/utils';
 import { type EntityManager } from 'typeorm';
 
+import { captureCurrentCrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
+import {
+  auditAgentChatChannelGrantRewrite,
+  requireActiveAgentChatShareAudit,
+  runAuditedAgentChatRecordShareTransaction,
+  validateAgentChatRecordShareAuditInput,
+  type AgentChatRecordShareAuditInput,
+} from 'src/engine/core-modules/crm-audit/record-share-audit';
 import { InjectMessageQueue } from 'src/engine/core-modules/message-queue/decorators/message-queue.decorator';
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
 import { MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
@@ -54,6 +63,8 @@ export class AgentChatChannelGrantService {
     threadIds: string[];
     affectedChannelIds: (string | null | undefined)[];
   }): Promise<void> {
+    requireActiveAgentChatShareAudit(manager, workspaceId);
+
     if (!isNonEmptyArray(threadIds)) {
       return;
     }
@@ -74,31 +85,141 @@ export class AgentChatChannelGrantService {
   async rewriteChannelGrants({
     workspaceId,
     channelId,
+    auditOperation,
+    auditImpersonatorUserWorkspaceId,
+    pendingUserWorkspaceActor,
+    pendingCorrelationId,
+    authUserWorkspaceId,
+    pendingAgentId,
   }: {
     workspaceId: string;
     channelId: string;
-  }): Promise<void> {
-    await this.threadRepository.query(workspaceId, async ({ manager }) => {
-      await acquireAgentChatChannelGrantLocks({
-        manager,
-        workspaceId,
-        channelIds: [channelId],
-        mode: 'exclusive',
-      });
-
-      await this.replaceGrantsInTransaction({
-        manager,
-        workspaceId,
-        scope: { channelId },
-      });
+  } & AgentChatRecordShareAuditInput): Promise<void> {
+    const auditInput: AgentChatRecordShareAuditInput = {
+      auditOperation,
+      auditImpersonatorUserWorkspaceId,
+      pendingUserWorkspaceActor,
+      pendingCorrelationId,
+      authUserWorkspaceId,
+      pendingAgentId,
+    };
+    validateAgentChatRecordShareAuditInput({
+      workspaceId,
+      ...auditInput,
     });
+
+    await this.threadRepository.query(workspaceId, ({ manager }) =>
+      runAuditedAgentChatRecordShareTransaction({
+        manager,
+        workspaceId,
+        auditInput,
+        fallbackActor: {
+          kind: 'system',
+          id: 'agent_chat_channel_grant_rewrite',
+        },
+        work: async () => {
+          await acquireAgentChatChannelGrantLocks({
+            manager,
+            workspaceId,
+            channelIds: [channelId],
+            mode: 'exclusive',
+          });
+
+          await this.replaceGrantsInTransaction({
+            manager,
+            workspaceId,
+            scope: { channelId },
+          });
+        },
+      }),
+    );
   }
 
   async rewriteAllChannelGrants({
     workspaceId,
+    auditOperation,
+    auditImpersonatorUserWorkspaceId,
+    pendingUserWorkspaceActor,
+    pendingCorrelationId,
+    authUserWorkspaceId,
+    pendingAgentId,
   }: {
     workspaceId: string;
-  }): Promise<void> {
+  } & AgentChatRecordShareAuditInput): Promise<void> {
+    const validated = validateAgentChatRecordShareAuditInput({
+      workspaceId,
+      auditOperation,
+      auditImpersonatorUserWorkspaceId,
+      pendingUserWorkspaceActor,
+      pendingCorrelationId,
+      authUserWorkspaceId,
+      pendingAgentId,
+    });
+
+    const sharedCorrelationId =
+      validated.capturedOperation?.correlationId ??
+      validated.pendingCorrelationId ??
+      randomUUID();
+
+    let perChannelAuditInput: AgentChatRecordShareAuditInput;
+    if (validated.capturedOperation) {
+      perChannelAuditInput = {
+        auditOperation: {
+          ...validated.capturedOperation,
+          correlationId: sharedCorrelationId,
+        },
+        ...(validated.impersonatorUserWorkspaceId
+          ? {
+              auditImpersonatorUserWorkspaceId:
+                validated.impersonatorUserWorkspaceId,
+            }
+          : {}),
+      };
+    } else if (validated.pendingUserWorkspaceActor) {
+      perChannelAuditInput = {
+        pendingUserWorkspaceActor: true,
+        pendingCorrelationId: sharedCorrelationId,
+        authUserWorkspaceId: validated.authUserWorkspaceId,
+        ...(validated.pendingAgentId
+          ? { pendingAgentId: validated.pendingAgentId }
+          : {}),
+        ...(validated.impersonatorUserWorkspaceId
+          ? {
+              auditImpersonatorUserWorkspaceId:
+                validated.impersonatorUserWorkspaceId,
+            }
+          : {}),
+      };
+    } else {
+      const ambient = captureCurrentCrmAuditOperation(validated.workspaceId);
+      if (ambient) {
+        perChannelAuditInput = {
+          auditOperation: {
+            ...ambient.operation,
+            correlationId: ambient.operation.correlationId ?? sharedCorrelationId,
+          },
+          ...(ambient.impersonatorUserWorkspaceId
+            ? {
+                auditImpersonatorUserWorkspaceId:
+                  ambient.impersonatorUserWorkspaceId,
+              }
+            : {}),
+        };
+      } else {
+        perChannelAuditInput = {
+          auditOperation: {
+            workspaceId: validated.workspaceId,
+            operationId: randomUUID(),
+            actor: {
+              kind: 'system',
+              id: 'agent_chat_channel_grant_rewrite',
+            },
+            correlationId: sharedCorrelationId,
+          },
+        };
+      }
+    }
+
     const channels = await this.threadRepository.query(
       workspaceId,
       ({ manager }) =>
@@ -109,7 +230,11 @@ export class AgentChatChannelGrantService {
     );
 
     for (const { id: channelId } of channels) {
-      await this.rewriteChannelGrants({ workspaceId, channelId });
+      await this.rewriteChannelGrants({
+        workspaceId,
+        channelId,
+        ...perChannelAuditInput,
+      });
     }
   }
 
@@ -122,58 +247,67 @@ export class AgentChatChannelGrantService {
     workspaceId: string;
     scope: AgentChatChannelGrantScope;
   }): Promise<void> {
-    const schema = escapeIdentifier(getWorkspaceSchemaName(workspaceId));
-    const isThreadScope = 'threadIds' in scope;
-    const threadScopeCondition = isThreadScope
-      ? 'thread.id = ANY($3::uuid[])'
-      : 'thread."channelId" = $3::uuid';
-    const recordShareScopeCondition = isThreadScope
-      ? 'record_share."recordId" = ANY($3::uuid[])'
-      : 'record_share."sourceId" = $3::uuid';
-    const channelAccessQuery = buildAgentChatChannelAccessQuery({
-      workspaceIdParameter: '$1',
-    });
-    const parameters = [
+    await auditAgentChatChannelGrantRewrite({
+      manager,
       workspaceId,
-      STANDARD_OBJECTS.agentChatThread.universalIdentifier,
-      isThreadScope ? scope.threadIds : scope.channelId,
-    ];
+      threadObjectUniversalIdentifier:
+        STANDARD_OBJECTS.agentChatThread.universalIdentifier,
+      scope,
+      execute: async () => {
+        const schema = escapeIdentifier(getWorkspaceSchemaName(workspaceId));
+        const isThreadScope = 'threadIds' in scope;
+        const threadScopeCondition = isThreadScope
+          ? 'thread.id = ANY($3::uuid[])'
+          : 'thread."channelId" = $3::uuid';
+        const recordShareScopeCondition = isThreadScope
+          ? 'record_share."recordId" = ANY($3::uuid[])'
+          : 'record_share."sourceId" = $3::uuid';
+        const channelAccessQuery = buildAgentChatChannelAccessQuery({
+          workspaceIdParameter: '$1',
+        });
+        const parameters = [
+          workspaceId,
+          STANDARD_OBJECTS.agentChatThread.universalIdentifier,
+          isThreadScope ? scope.threadIds : scope.channelId,
+        ];
 
-    await manager.query(
-      `DELETE FROM ${schema}."recordShare" record_share
-       USING core."objectMetadata" thread_object
-       WHERE thread_object."workspaceId" = $1
-         AND thread_object."universalIdentifier" = $2
-         AND record_share."objectMetadataId" = thread_object.id
-         AND record_share."rowCause" = 'RULE'
-         AND ${recordShareScopeCondition}
-         AND NOT EXISTS (
-           SELECT 1
+        await manager.query(
+          `DELETE FROM ${schema}."recordShare" record_share
+           USING core."objectMetadata" thread_object
+           WHERE thread_object."workspaceId" = $1
+             AND thread_object."universalIdentifier" = $2
+             AND record_share."objectMetadataId" = thread_object.id
+             AND record_share."rowCause" = 'RULE'
+             AND ${recordShareScopeCondition}
+             AND NOT EXISTS (
+               SELECT 1
+               FROM ${schema}."agentChatThread" thread
+               JOIN (${channelAccessQuery}) channel_access
+                 ON channel_access.channel_id = thread."channelId"
+               WHERE ${threadScopeCondition}
+                 AND thread.id = record_share."recordId"
+                 AND thread."channelId" = record_share."sourceId"
+                 AND channel_access.role_id = record_share."principalId"
+                 AND record_share."deletedAt" IS NULL
+             )`,
+          parameters,
+        );
+
+        await manager.query(
+          `INSERT INTO ${schema}."recordShare"
+             ("objectMetadataId", "recordId", "principalId", "principalType", "accessLevel", "rowCause", "sourceId")
+           SELECT thread_object.id, thread.id, channel_access.role_id, 'ROLE', 'READ_WRITE', 'RULE', thread."channelId"
            FROM ${schema}."agentChatThread" thread
            JOIN (${channelAccessQuery}) channel_access
              ON channel_access.channel_id = thread."channelId"
+           JOIN core."objectMetadata" thread_object
+             ON thread_object."workspaceId" = $1
+             AND thread_object."universalIdentifier" = $2
            WHERE ${threadScopeCondition}
-             AND thread.id = record_share."recordId"
-             AND thread."channelId" = record_share."sourceId"
-             AND channel_access.role_id = record_share."principalId"
-             AND record_share."deletedAt" IS NULL
-         )`,
-      parameters,
-    );
-
-    await manager.query(
-      `INSERT INTO ${schema}."recordShare"
-         ("objectMetadataId", "recordId", "principalId", "principalType", "accessLevel", "rowCause", "sourceId")
-       SELECT thread_object.id, thread.id, channel_access.role_id, 'ROLE', 'READ_WRITE', 'RULE', thread."channelId"
-       FROM ${schema}."agentChatThread" thread
-       JOIN (${channelAccessQuery}) channel_access
-         ON channel_access.channel_id = thread."channelId"
-       JOIN core."objectMetadata" thread_object
-         ON thread_object."workspaceId" = $1
-         AND thread_object."universalIdentifier" = $2
-       WHERE ${threadScopeCondition}
-       ON CONFLICT DO NOTHING`,
-      parameters,
-    );
+           ON CONFLICT DO NOTHING`,
+          parameters,
+        );
+      },
+    });
   }
 }

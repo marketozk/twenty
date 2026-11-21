@@ -1,0 +1,29 @@
+# LOG-201 Code Review
+
+Date: 2026-11-22
+Scope: Independent review of `LOG-201` (transactional audit of agent-chat SQL CTE `recordShare` writers across `AgentChatSharingService`, `AgentChatThreadService`, `AgentChatThreadParticipantService`, `AgentChatChannelService`, `AgentChatChannelGrantService`, `AgentInboxService`, `AgentRunService`, and `RewriteAgentChatChannelGrantsJob`)
+Verdict: **PASS** (after fixing 2 Blockers, 5 Majors, and 2 Minors)
+
+## Summary of Independent Findings and Resolutions
+
+| ID | Severity | Finding | Resolution |
+| --- | --- | --- | --- |
+| B-1 | Blocker | `reconcileBeforeWithExpectedRows` silently added any unseen row in `before` to `session.expectedRows`, allowing an unaudited mid-transaction INSERT into an already-tracked scope to pass undetected, and did not immediately catch mid-transaction DELETE before step 2 `execute()`. | Passed explicit `currentScope` (`records`, `channel`, or `participants`) to `reconcileBeforeWithExpectedRows`; immediately fails closed when an unseen row belongs to an already-tracked scope (`trackedRecordScopes`, `trackedChannelScopes`, or `trackedParticipantScopes`) or when any `expectedRows` entry in `currentScope` is missing from `before`. |
+| B-2 | Blocker | `AgentRunService.claimThreadForMember` called `AgentChatThreadService.claimThreadForRun` without `auditContext` when invoked by `callerApplication` with `runAsWorkspaceMemberId`, causing `verifyExpectedWorkspaceMemberInTransaction` to reject application ALS and silently fail inside `try/catch`. | Propagated optional `auditContext?: AgentChatRecordShareAuditInput` through `AgentChatThreadService.claimThreadForRun`, `createThreadIfMissing`, and `claimExistingThread`; built delegated `auditContext` from ambient ALS or `callerApplication` in `AgentRunService.claimThreadForMember`. |
+| M-3 | Major | AB-BA lock order inversion between `AgentChatSharingService.claimUnownedThreadForRun` (`agentChatThread` UPDATE before participant advisory lock) and `AgentChatThreadParticipantService` (participant advisory lock before `agentChatThread` lock). | Acquired `pg_advisory_xact_lock(hashtextextended('agent-chat-thread-participant:...', 0))` in `claimUnownedThreadForRun` before `UPDATE agentChatThread`. |
+| M-4 | Major | `auditAgentChatParticipantOwnerShareWrite` executed `execute()` unaudited when `threadIds` was empty. | Failed closed on empty `threadIds` in `auditAgentChatParticipantOwnerShareWrite`, and added early return `if (threadIds.length === 0) return [];` after `requireActiveAgentChatShareAudit` in `setUpCreatedThreadsInboxState`. |
+| M-5 | Major | `validateAgentChatRecordShareAuditInput` silently ignored `pendingAgentId`/`pendingCorrelationId`/`authUserWorkspaceId` without `pendingUserWorkspaceActor: true`; `AgentChatSharingService` treated empty `auditContext: {}` as delegated. | Rejected pending actor fields whenever `pendingUserWorkspaceActor !== true`; passed pending fields in `AgentChatChannelService` only when `pendingUserWorkspaceActor` is true; rejected empty `auditContext: {}` in `createThread` and `claimUnownedThreadForRun`. |
+| M-6 | Major | `AgentInboxService.openThread` did not check ambient ALS compatibility for `sender.type === 'application'` and did not pass `inboxAuditContext` (with shared `correlationId`) into `addParticipants` -> `markAsMentioned`. | Enforced ambient ALS validation for `sender.type === 'application'` (rejecting impersonation and cross-app conflict, preserving `actor: application` + `initiator: coreUser` under user ALS), generated one shared `correlationId`, and propagated `auditContext` through `addParticipants` -> `AgentChatThreadService.addParticipants` -> `AgentChatThreadParticipantService.markAsMentioned`. |
+| M-7 | Major | `captureNavigationMenuItemAudit` role-audit branch left `operation.correlationId` undefined when caller did not set one, leaving `correlationId = NULL` across `AgentChatChannelService.updateChannel`/`deleteChannel` and `recordShare` rewrites. | Guaranteed `correlationId: baseRoleOperation.correlationId ?? randomUUID()` in `navigation-menu-item-audit.ts`, linking channel metadata and `recordShare` audit entries under one non-null `correlationId`. |
+| m-8 | Minor | Test coverage gaps: `markAsAssigned`, mid-transaction unaudited INSERT drift, delegated `claimThreadForRun`, empty `auditContext: {}` / invalid pending fields, and shared `correlationId` in `crm-audit-agent-chat-channel.postgres-spec.ts`. | Added all of the above assertions to `crm-audit-agent-chat-record-share.postgres-spec.ts` and `crm-audit-agent-chat-channel.postgres-spec.ts`. |
+| m-9 | Minor | Defense-in-depth checks: `readRecordShareSnapshotForChannel` row scope check, `objectRows.length !== 1` check in `auditAgentChatChannelGrantRewrite`, and tracking participant scopes even when `before` and `after` are empty. | Added all three checks plus `trackedParticipantScopes` in `record-share-audit.ts`. |
+
+## Post-Fix Verification
+
+- Enterprise dependency guard (`check_enterprise_dependencies.py --verify-baseline`): `pass` (`0` violations across `34807` code files / `21464` runtime files / `137724` edges).
+- Fork migration source guard (`check_fork_migration_sources.py` locally and on Schrodinger): `Verified 10 fork migration source(s)`.
+- Python guard unit tests (`scripts/omnichannel/test_*.py`): `33/33` PASS (`0.168s`).
+- Targeted PostgreSQL suites (4 suites): `4/4` suites, `16/16` tests PASS (`9.46s`).
+- Unit test (`acquire-agent-chat-channel-grant-locks-for-thread-write-or-throw.util.spec.ts`): `4/4` tests PASS.
+- Differential TypeScript typecheck: `pass-no-new-diagnostics` (`509/509` root files, baseline `279`, current `275`, `0` new, `0` changed-file, `0` changed-code diagnostics).
+- Full PostgreSQL regression suite and SHA-256 snapshot verification: recorded in `results.json`, `source-snapshot.json`, and `regression.log`.

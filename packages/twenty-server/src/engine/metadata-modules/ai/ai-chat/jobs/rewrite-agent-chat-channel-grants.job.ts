@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { isDefined } from 'twenty-shared/utils';
 
 import { Process } from 'src/engine/core-modules/message-queue/decorators/process.decorator';
@@ -18,15 +19,29 @@ export class RewriteAgentChatChannelGrantsJob {
     workspaceId,
     channelId,
   }: RewriteAgentChatChannelGrantsJobData): Promise<void> {
+    const auditOperation = {
+      workspaceId,
+      operationId: randomUUID(),
+      actor: {
+        kind: 'system' as const,
+        id: 'rewrite_agent_chat_channel_grants_job',
+      },
+      correlationId: randomUUID(),
+    };
+
     if (isDefined(channelId)) {
       await this.channelGrantService.rewriteChannelGrants({
         workspaceId,
         channelId,
+        auditOperation,
       });
 
       return;
     }
 
-    await this.channelGrantService.rewriteAllChannelGrants({ workspaceId });
+    await this.channelGrantService.rewriteAllChannelGrants({
+      workspaceId,
+      auditOperation,
+    });
   }
 }
