@@ -1,5 +1,5 @@
 import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
-import { Args, Mutation, Query } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query } from '@nestjs/graphql';
 
 import { PermissionFlagType } from 'twenty-shared/constants';
 
@@ -24,6 +24,7 @@ import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorat
 import { SettingsPermissionGuard } from 'src/engine/guards/settings-permission.guard';
 import { AuthPrincipalGuard } from 'src/engine/guards/auth-principal.guard';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
+import { type WorkspaceDomainAuditIdentity } from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 
 @MetadataResolver(() => UsageLimitDTO)
 @UseFilters(
@@ -93,11 +94,13 @@ export class UsageLimitResolver {
   async createUsageLimit(
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Args('input') input: CreateUsageLimitInput,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ): Promise<UsageLimitDTO> {
     const usageLimit = await this.usageLimitService.create({
       workspaceId: workspace.id,
       input,
       isOperator: false,
+      auditIdentity: context?.req,
     });
 
     return fromUsageLimitEntityToDto(usageLimit);
@@ -107,11 +110,13 @@ export class UsageLimitResolver {
   async updateUsageLimit(
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Args('input') input: UpdateUsageLimitInput,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ): Promise<UsageLimitDTO> {
     const usageLimit = await this.usageLimitService.update({
       workspaceId: workspace.id,
       input,
       isOperator: false,
+      auditIdentity: context?.req,
     });
 
     return fromUsageLimitEntityToDto(usageLimit);
@@ -121,11 +126,13 @@ export class UsageLimitResolver {
   async deleteUsageLimit(
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Args('usageLimitId', { type: () => UUIDScalarType }) usageLimitId: string,
+    @Context() context?: { req?: WorkspaceDomainAuditIdentity },
   ): Promise<boolean> {
     return this.usageLimitService.delete({
       workspaceId: workspace.id,
       usageLimitId,
       isOperator: false,
+      auditIdentity: context?.req,
     });
   }
 }

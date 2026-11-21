@@ -395,8 +395,14 @@ LOG193 закрывает транзакционный аудит полного
 `generateInvitationToken`, `deleteWorkspaceInvitation`, `invalidateWorkspaceInvitation`,
 `resendWorkspaceInvitation` / `sendInvitations` с общим `correlationId` и защитой `workspaceId`,
 редактированием `email`, `value`, `expiresAt`, `deletedAt`, `revokedAt` и пост-flush проверкой).
+LOG194 закрывает транзакционный аудит полного жизненного цикла лимитов использования рабочего
+пространства (`usageLimit` в `core."usageLimit"` в `UsageLimitService`, `UsageLimitResolver`,
+`AdminPanelUsageLimitResolver` и `workspace-domain-audit.ts`: `create`, `update`, `delete` под
+блокировками БД, каноническая строковая проекция `bigint` для `limitValue`/`burstValue`,
+пост-коммитная инвалидация кэша `usageLimits` и сброс счётчиков `dropCounter`, кросс-workspace
+управление оператора с имперсонацией и пост-flush проверка).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log193/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log194/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

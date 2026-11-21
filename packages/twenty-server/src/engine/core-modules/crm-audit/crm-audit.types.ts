@@ -24,6 +24,7 @@ export type CrmAuditResourceKind =
   | 'approvedAccessDomain'
   | 'publicDomain'
   | 'workspaceInvitation'
+  | 'usageLimit'
   | 'emailingDomain'
   | 'dpaAgreement'
   | 'unsubscribeTopic'

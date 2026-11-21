@@ -1,0 +1,13 @@
+{
+  "log": "LOG-194",
+  "verifiedFileCount": 7,
+  "files": {
+    "packages/twenty-server/src/engine/core-modules/admin-panel/admin-panel-usage-limit.resolver.ts": "b41c8af57b8a0695c8b21bc61d329fab6ae04d40c2325aec15ac79471e69fe3a",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "1d20d309b5e18644ffc4c59dd125760f6854df1f0e2a76d1f1a58f5d8e5870da",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "4a240c80d13c62a0eab2239e21a0d8335089207748cb57b53fd518cb0dbcb2ac",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/workspace-domain-audit.ts": "294eab5dafb76dd797ac4fdff783b49f61e1dec5f6dac41b901a4679f765680f",
+    "packages/twenty-server/src/engine/core-modules/usage-limit/services/usage-limit.service.ts": "335c4a9af56ff06318c4f8174d9c7fa6fa1a68e6e0586247aba570208c94c93b",
+    "packages/twenty-server/src/engine/core-modules/usage-limit/usage-limit.resolver.ts": "8dbf85ecafc975b2f281fdd2d9ea5603fb9bba4e12ad2dcde35632e4188bad5e",
+    "packages/twenty-server/test/fork-migration/crm-audit-usage-limit.postgres-spec.ts": "61466710db30bb41e0715986451aa4181b473ff7a6335091e45b3224bb2151de"
+  }
+}

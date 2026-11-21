@@ -103,6 +103,22 @@ const CATALOG: Record<
     values: ['type', 'roleId'],
     redacted: ['email', 'value', 'expiresAt', 'deletedAt', 'revokedAt'],
   },
+  usageLimit: {
+    values: [
+      'resourceType',
+      'operationType',
+      'spenderType',
+      'spenderId',
+      'limitKind',
+      'periodCount',
+      'periodUnit',
+      'unit',
+      'limitValue',
+      'burstValue',
+      'isInstanceOverride',
+    ],
+    redacted: [],
+  },
   emailingDomain: {
     values: ['status', 'tenantStatus', 'unsubscribeHostnameStatus'],
     redacted: [
@@ -857,6 +873,7 @@ const ADMINISTRATIVE_ACTIONS: Partial<
   approvedAccessDomain: ['create', 'update', 'delete'],
   publicDomain: ['create', 'update', 'delete'],
   workspaceInvitation: ['create', 'delete'],
+  usageLimit: ['create', 'update', 'delete'],
   emailingDomain: ['create', 'update', 'delete'],
   dpaAgreement: ['create'],
   unsubscribeTopic: ['create', 'update', 'delete'],

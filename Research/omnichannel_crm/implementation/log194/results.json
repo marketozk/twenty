@@ -1,0 +1,37 @@
+{
+  "log": "LOG-194",
+  "issue": "ROB-765",
+  "date": "2026-11-21",
+  "title": "Transactional audit of workspace usage limit lifecycle (usageLimit in core.usageLimit)",
+  "targetedPostgres": {
+    "suitesPassed": 2,
+    "suitesTotal": 2,
+    "testsPassed": 16,
+    "testsTotal": 16,
+    "newPostgresTests": 5,
+    "durationSeconds": 8.699
+  },
+  "fullRegression": {
+    "suitesPassed": 130,
+    "suitesTotal": 130,
+    "testsPassed": 3218,
+    "testsTotal": 3218,
+    "durationSeconds": 727.444
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.15
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 493,
+    "currentRootFiles": 493,
+    "baselineDiagnostics": 295,
+    "currentDiagnostics": 275,
+    "newDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 7
+}

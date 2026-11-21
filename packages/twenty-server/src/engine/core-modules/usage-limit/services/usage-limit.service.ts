@@ -1,10 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
 import { isNonEmptyString } from '@sniptt/guards';
 import isEqual from 'lodash.isequal';
 import { isDefined } from 'twenty-shared/utils';
+import { type DataSource, type Repository } from 'typeorm';
 
 import { ApiKeyEntity } from 'src/engine/core-modules/api-key/api-key.entity';
 import { ApplicationEntity } from 'src/engine/core-modules/application/application.entity';
+import {
+  captureWorkspaceDomainAudit,
+  runAuditedUsageLimitCreate,
+  runAuditedUsageLimitDelete,
+  runAuditedUsageLimitUpdate,
+  type WorkspaceDomainAuditIdentity,
+} from 'src/engine/core-modules/crm-audit/workspace-domain-audit';
 import { type CreateUsageLimitInput } from 'src/engine/core-modules/usage-limit/dtos/create-usage-limit.input';
 import { type UpdateUsageLimitInput } from 'src/engine/core-modules/usage-limit/dtos/update-usage-limit.input';
 import {
@@ -54,7 +63,21 @@ export class UsageLimitService {
     private readonly usageLimitStockService: UsageLimitStockService,
     private readonly usageLimitEntitlementService: UsageLimitEntitlementService,
     private readonly usagePeriodService: UsagePeriodService,
+    @Optional()
+    @InjectDataSource()
+    private readonly dataSource?: DataSource,
   ) {}
+
+  private resolveDataSource(): DataSource | undefined {
+    return (
+      this.dataSource ??
+      (
+        this.usageLimitRepository as unknown as {
+          repository?: { manager?: { connection?: DataSource } };
+        }
+      )?.repository?.manager?.connection
+    );
+  }
 
   async findAll(workspaceId: string): Promise<UsageLimitEntity[]> {
     return this.usageLimitRepository.find(workspaceId);
@@ -64,10 +87,12 @@ export class UsageLimitService {
     workspaceId,
     input,
     isOperator,
+    auditIdentity,
   }: {
     workspaceId: string;
     input: CreateUsageLimitInput;
     isOperator: boolean;
+    auditIdentity?: WorkspaceDomainAuditIdentity;
   }): Promise<UsageLimitEntity> {
     await this.validateInput({ workspaceId, input, isOperator });
 
@@ -75,24 +100,37 @@ export class UsageLimitService {
 
     assertUsageLimitDefaultOverrideIsAllowed({ scope, isOperator });
 
-    await this.assertScopeIsFree({ workspaceId, scope });
-
-    await this.usageLimitRepository.insert(workspaceId, {
+    const auditRequest = captureWorkspaceDomainAudit({
       workspaceId,
-      ...scope,
-      limitValue: input.limitValue,
-      burstValue: input.burstValue ?? null,
-      isInstanceOverride: isOperator,
+      auditIdentity,
     });
+
+    const usageLimit = await runAuditedUsageLimitCreate(
+      this.resolveDataSource(),
+      auditRequest,
+      {
+        work: async (runner) => {
+          const repo = runner.manager.getRepository(UsageLimitEntity);
+
+          await this.assertScopeIsFreeInRunner({ repo, workspaceId, scope });
+
+          await repo.insert({
+            workspaceId,
+            ...scope,
+            limitValue: input.limitValue,
+            burstValue: input.burstValue ?? null,
+            isInstanceOverride: isOperator,
+          });
+
+          return repo.findOneOrFail({ where: { workspaceId, ...scope } });
+        },
+        extractUsageLimitId: (created) => created.id,
+      },
+    );
 
     await this.workspaceCacheService.invalidateAndRecompute(workspaceId, [
       'usageLimits',
     ]);
-
-    const usageLimit = await this.usageLimitRepository.findOneOrFail(
-      workspaceId,
-      { where: scope },
-    );
 
     await this.dropCounter(usageLimit);
 
@@ -103,73 +141,111 @@ export class UsageLimitService {
     workspaceId,
     input,
     isOperator,
+    auditIdentity,
   }: {
     workspaceId: string;
     input: UpdateUsageLimitInput;
     isOperator: boolean;
+    auditIdentity?: WorkspaceDomainAuditIdentity;
   }): Promise<UsageLimitEntity> {
-    const usageLimit = await this.usageLimitRepository.findOne(workspaceId, {
-      where: { id: input.id },
-    });
-
-    if (!isDefined(usageLimit)) {
-      throw new UsageLimitException(
-        `No usage limit ${input.id} in this workspace`,
-        UsageLimitExceptionCode.LIMIT_INVALID,
-      );
-    }
-
-    const authorizedScope = buildUsageLimitScope(usageLimit);
-
-    assertUsageLimitInstanceOverrideIsAllowed({ usageLimit, isOperator });
-
-    assertUsageLimitDefaultOverrideIsAllowed({
-      scope: authorizedScope,
-      isOperator,
-    });
-
-    await this.validateInput({ workspaceId, input: input.payload, isOperator });
-
-    const scope = buildUsageLimitScope(input.payload);
-
-    assertUsageLimitDefaultOverrideIsAllowed({ scope, isOperator });
-
-    await this.assertScopeIsFree({
+    const auditRequest = captureWorkspaceDomainAudit({
       workspaceId,
-      scope,
-      allowedUsageLimitId: usageLimit.id,
+      auditIdentity,
     });
 
-    const { affected } = await this.usageLimitRepository.update(
-      workspaceId,
-      {
-        id: usageLimit.id,
-        ...authorizedScope,
-        isInstanceOverride: usageLimit.isInstanceOverride,
-      },
-      {
-        ...scope,
-        limitValue: input.payload.limitValue,
-        burstValue: input.payload.burstValue ?? null,
-        isInstanceOverride: isOperator,
-      },
-    );
+    const { usageLimit, updatedUsageLimit, authorizedScope, scope } =
+      await runAuditedUsageLimitUpdate(this.resolveDataSource(), auditRequest, {
+        usageLimitId: input.id,
+        work: async (runner, beforeRow) => {
+          if (!beforeRow) {
+            throw new UsageLimitException(
+              `No usage limit ${input.id} in this workspace`,
+              UsageLimitExceptionCode.LIMIT_INVALID,
+            );
+          }
 
-    if (!isDefined(affected) || affected === 0) {
-      throw new UsageLimitException(
-        `Usage limit ${input.id} changed while this request was being authorized`,
-        UsageLimitExceptionCode.LIMIT_CONFLICT,
-      );
-    }
+          const repo = runner.manager.getRepository(UsageLimitEntity);
+          const lockedLimit = await repo.findOne({
+            where: { id: input.id, workspaceId },
+          });
+
+          if (!isDefined(lockedLimit)) {
+            throw new UsageLimitException(
+              `No usage limit ${input.id} in this workspace`,
+              UsageLimitExceptionCode.LIMIT_INVALID,
+            );
+          }
+
+          const currentScope = buildUsageLimitScope(lockedLimit);
+
+          assertUsageLimitInstanceOverrideIsAllowed({
+            usageLimit: lockedLimit,
+            isOperator,
+          });
+
+          assertUsageLimitDefaultOverrideIsAllowed({
+            scope: currentScope,
+            isOperator,
+          });
+
+          await this.validateInput({
+            workspaceId,
+            input: input.payload,
+            isOperator,
+          });
+
+          const nextScope = buildUsageLimitScope(input.payload);
+
+          assertUsageLimitDefaultOverrideIsAllowed({
+            scope: nextScope,
+            isOperator,
+          });
+
+          await this.assertScopeIsFreeInRunner({
+            repo,
+            workspaceId,
+            scope: nextScope,
+            allowedUsageLimitId: lockedLimit.id,
+          });
+
+          const { affected } = await repo.update(
+            {
+              id: lockedLimit.id,
+              workspaceId,
+              ...currentScope,
+              isInstanceOverride: lockedLimit.isInstanceOverride,
+            },
+            {
+              ...nextScope,
+              limitValue: input.payload.limitValue,
+              burstValue: input.payload.burstValue ?? null,
+              isInstanceOverride: isOperator,
+            },
+          );
+
+          if (!isDefined(affected) || affected === 0) {
+            throw new UsageLimitException(
+              `Usage limit ${input.id} changed while this request was being authorized`,
+              UsageLimitExceptionCode.LIMIT_CONFLICT,
+            );
+          }
+
+          const nextLimit = await repo.findOneOrFail({
+            where: { id: lockedLimit.id, workspaceId },
+          });
+
+          return {
+            usageLimit: lockedLimit,
+            updatedUsageLimit: nextLimit,
+            authorizedScope: currentScope,
+            scope: nextScope,
+          };
+        },
+      });
 
     await this.workspaceCacheService.invalidateAndRecompute(workspaceId, [
       'usageLimits',
     ]);
-
-    const updatedUsageLimit = await this.usageLimitRepository.findOneOrFail(
-      workspaceId,
-      { where: { id: usageLimit.id } },
-    );
 
     if (
       usageLimit.isInstanceOverride !== isOperator ||
@@ -182,19 +258,20 @@ export class UsageLimitService {
     return updatedUsageLimit;
   }
 
-  private async assertScopeIsFree({
+  private async assertScopeIsFreeInRunner({
+    repo,
     workspaceId,
     scope,
     allowedUsageLimitId,
   }: {
+    repo: Repository<UsageLimitEntity>;
     workspaceId: string;
     scope: UsageLimitScope;
     allowedUsageLimitId?: string;
   }): Promise<void> {
-    const usageLimitHoldingScope = await this.usageLimitRepository.findOne(
-      workspaceId,
-      { where: scope },
-    );
+    const usageLimitHoldingScope = await repo.findOne({
+      where: { workspaceId, ...scope },
+    });
 
     if (
       isDefined(usageLimitHoldingScope) &&
@@ -255,44 +332,72 @@ export class UsageLimitService {
     workspaceId,
     usageLimitId,
     isOperator,
+    auditIdentity,
   }: {
     workspaceId: string;
     usageLimitId: string;
     isOperator: boolean;
+    auditIdentity?: WorkspaceDomainAuditIdentity;
   }): Promise<boolean> {
-    const usageLimit = await this.usageLimitRepository.findOne(workspaceId, {
-      where: { id: usageLimitId },
+    const auditRequest = captureWorkspaceDomainAudit({
+      workspaceId,
+      auditIdentity,
     });
 
-    if (!isDefined(usageLimit)) {
+    const deletedUsageLimit = await runAuditedUsageLimitDelete(
+      this.resolveDataSource(),
+      auditRequest,
+      {
+        usageLimitId,
+        work: async (runner, beforeRow) => {
+          if (!beforeRow) {
+            return null;
+          }
+
+          const repo = runner.manager.getRepository(UsageLimitEntity);
+          const usageLimit = await repo.findOne({
+            where: { id: usageLimitId, workspaceId },
+          });
+
+          if (!isDefined(usageLimit)) {
+            return null;
+          }
+
+          assertUsageLimitInstanceOverrideIsAllowed({ usageLimit, isOperator });
+
+          assertUsageLimitDefaultOverrideIsAllowed({
+            scope: buildUsageLimitScope(usageLimit),
+            isOperator,
+          });
+
+          const { affected } = await repo.delete({
+            id: usageLimitId,
+            workspaceId,
+            ...buildUsageLimitScope(usageLimit),
+            isInstanceOverride: usageLimit.isInstanceOverride,
+          });
+
+          if (!isDefined(affected) || affected === 0) {
+            throw new UsageLimitException(
+              `Usage limit ${usageLimitId} changed while this request was being authorized`,
+              UsageLimitExceptionCode.LIMIT_CONFLICT,
+            );
+          }
+
+          return usageLimit;
+        },
+      },
+    );
+
+    if (!isDefined(deletedUsageLimit)) {
       return false;
-    }
-
-    assertUsageLimitInstanceOverrideIsAllowed({ usageLimit, isOperator });
-
-    assertUsageLimitDefaultOverrideIsAllowed({
-      scope: buildUsageLimitScope(usageLimit),
-      isOperator,
-    });
-
-    const { affected } = await this.usageLimitRepository.delete(workspaceId, {
-      id: usageLimitId,
-      ...buildUsageLimitScope(usageLimit),
-      isInstanceOverride: usageLimit.isInstanceOverride,
-    });
-
-    if (!isDefined(affected) || affected === 0) {
-      throw new UsageLimitException(
-        `Usage limit ${usageLimitId} changed while this request was being authorized`,
-        UsageLimitExceptionCode.LIMIT_CONFLICT,
-      );
     }
 
     await this.workspaceCacheService.invalidateAndRecompute(workspaceId, [
       'usageLimits',
     ]);
 
-    await this.dropCounter(usageLimit);
+    await this.dropCounter(deletedUsageLimit);
 
     return true;
   }

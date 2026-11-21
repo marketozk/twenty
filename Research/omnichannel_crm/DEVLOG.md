@@ -5524,3 +5524,18 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 e68e78b6-dd94-4f78-9bfa-f6f315e77999 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log193/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG194`).
+
+## LOG-194 - транзакционный аудит жизненного цикла лимитов использования рабочего пространства (`usageLimit` в `core."usageLimit"`)
+
+21.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log194/design.md), [design-review.md](implementation/log194/design-review.md)) и реализован участок `LOG-194` (Linear `ROB-765`): транзакционный аудит полного жизненного цикла лимитов использования рабочего пространства в `core."usageLimit"`.
+
+В `crm-audit.types.ts`, `crm-audit-transaction-context.ts` и `workspace-domain-audit.ts` добавлен вид ресурса `usageLimit` (`values: ['resourceType', 'operationType', 'spenderType', 'spenderId', 'limitKind', 'periodCount', 'periodUnit', 'unit', 'limitValue', 'burstValue', 'isInstanceOverride']`, `redacted: []`, `ADMINISTRATIVE_ACTIONS: ['create', 'update', 'delete']`) и транзакционные раннеры `runAuditedUsageLimitCreate`, `runAuditedUsageLimitUpdate`, `runAuditedUsageLimitDelete` с канонической строковой проекцией `bigint` (`limitValue`, `burstValue`), блокировками `core.workspace` (`FOR NO KEY UPDATE`) и `core."usageLimit"` (`FOR UPDATE`), fail-closed проверкой актора/имперсонации и пост-flush сверкой. В `UsageLimitService`, `UsageLimitResolver` и `AdminPanelUsageLimitResolver` подключён транзакционный аудит всех операций `create`, `update`, `delete` с переносом `workspaceCacheService.invalidateAndRecompute` и `dropCounter` строго после `COMMIT` и пробросом `auditIdentity` (включая кросс-workspace администрирование оператора).
+
+21.11.2026 проверки LOG194 завершены. 3218 tests/130 suites PASS (727.444s). 16 targeted/2 suites PASS (8.699s), 5 новых PostgreSQL случаев. 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 493/493 roots, baseline 295 / current 275 diagnostics, 0 новых/changed-code. Совпали 7 local/remote source hashes.
+
+Независимое ревью кода подтвердило полноту и атомарность жизненного цикла `usageLimit`, точную проекцию `bigint`, пост-коммитную инвалидацию кэша и счётчиков, проброс `auditIdentity` и имперсонации при кросс-workspace администрировании и чистоту границы Enterprise (`0` нарушений).
+
+[Результаты](implementation/log194/results.json), [ревью](implementation/log194/review.md),
+[следующий участок](implementation/log194/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+Публикация и сверка Linear фиксируются после push.

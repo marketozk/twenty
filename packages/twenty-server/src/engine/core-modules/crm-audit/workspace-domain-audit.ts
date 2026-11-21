@@ -5966,3 +5966,298 @@ export const runAuditedWorkspaceInvitationDelete = async <TResult>(
     }),
   );
 };
+
+const normalizeBigintString = (value: unknown): string => {
+  if (typeof value === 'bigint') {
+    return value.toString();
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.trunc(value).toString();
+  }
+  if (typeof value === 'string' && /^-?\d+$/.test(value.trim())) {
+    return BigInt(value.trim()).toString();
+  }
+  throw new Error('Usage limit audit bigint value is invalid');
+};
+
+export const projectUsageLimit = (row: Record<string, unknown>) => {
+  const periodCount = Number(row.periodCount);
+  if (!Number.isInteger(periodCount)) {
+    throw new Error('Usage limit audit periodCount is invalid');
+  }
+
+  return {
+    resourceType: String(row.resourceType),
+    operationType: String(row.operationType),
+    spenderType: String(row.spenderType),
+    spenderId:
+      row.spenderId === undefined || row.spenderId === null
+        ? ''
+        : String(row.spenderId),
+    limitKind: String(row.limitKind),
+    periodCount,
+    periodUnit: String(row.periodUnit),
+    unit: String(row.unit),
+    limitValue: normalizeBigintString(row.limitValue),
+    burstValue:
+      row.burstValue === undefined || row.burstValue === null
+        ? null
+        : normalizeBigintString(row.burstValue),
+    isInstanceOverride: Boolean(row.isInstanceOverride),
+  };
+};
+
+export const runAuditedUsageLimitCreate = async <TResult>(
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    work,
+    extractUsageLimitId,
+  }: {
+    work: (runner: QueryRunner) => Promise<TResult>;
+    extractUsageLimitId: (result: TResult) => string;
+  },
+): Promise<TResult> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Usage limit create audit requires core DataSource');
+  }
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('Usage limit create audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+      const result = await work(runner);
+      const usageLimitId = uuid(extractUsageLimitId(result));
+
+      const [entry] = await runner.query(
+        `SELECT to_jsonb(ul) AS row FROM core."usageLimit" ul WHERE ul.id=$1 AND ul."workspaceId"=$2 FOR UPDATE`,
+        [usageLimitId, request.workspaceId],
+      );
+      if (!entry?.row) {
+        throw new Error('Usage limit create did not persist row');
+      }
+      const afterProj = projectUsageLimit(entry.row as Record<string, unknown>);
+
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      audit.record({
+        resourceKind: 'usageLimit',
+        resourceId: usageLimitId,
+        action: 'create',
+        before: null,
+        after: afterProj,
+        securityDescriptor: {
+          resourceKind: 'usageLimit',
+          resourceId: usageLimitId,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+      await audit.flush();
+
+      const [postFlush] = await runner.query(
+        `SELECT to_jsonb(ul) AS row FROM core."usageLimit" ul WHERE ul.id=$1 AND ul."workspaceId"=$2`,
+        [usageLimitId, request.workspaceId],
+      );
+      if (
+        !postFlush?.row ||
+        canonicalAuditJson(
+          projectUsageLimit(postFlush.row as Record<string, unknown>),
+        ) !== canonicalAuditJson(afterProj)
+      ) {
+        throw new Error('Usage limit state changed during audit flush');
+      }
+
+      return result;
+    }),
+  );
+};
+
+export const runAuditedUsageLimitUpdate = async <TResult>(
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    usageLimitId,
+    work,
+  }: {
+    usageLimitId: string;
+    work: (
+      runner: QueryRunner,
+      beforeRow: Record<string, unknown> | null,
+    ) => Promise<TResult>;
+  },
+): Promise<TResult> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Usage limit update audit requires core DataSource');
+  }
+
+  const normalizedUsageLimitId = uuid(usageLimitId);
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('Usage limit update audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const [beforeEntry] = await runner.query(
+        `SELECT to_jsonb(ul) AS row FROM core."usageLimit" ul WHERE ul.id=$1 AND ul."workspaceId"=$2 FOR UPDATE`,
+        [normalizedUsageLimitId, request.workspaceId],
+      );
+      const beforeRow =
+        (beforeEntry?.row as Record<string, unknown> | undefined) ?? null;
+
+      const result = await work(runner, beforeRow);
+
+      if (!beforeRow) {
+        return result;
+      }
+
+      const [afterEntry] = await runner.query(
+        `SELECT to_jsonb(ul) AS row FROM core."usageLimit" ul WHERE ul.id=$1 AND ul."workspaceId"=$2 FOR UPDATE`,
+        [normalizedUsageLimitId, request.workspaceId],
+      );
+      if (!afterEntry?.row) {
+        throw new Error('Usage limit disappeared during audited update');
+      }
+
+      const beforeProj = projectUsageLimit(beforeRow);
+      const afterProj = projectUsageLimit(
+        afterEntry.row as Record<string, unknown>,
+      );
+
+      if (canonicalAuditJson(beforeProj) !== canonicalAuditJson(afterProj)) {
+        const audit = new CrmAuditTransactionContext(runner, operation);
+        audit.record({
+          resourceKind: 'usageLimit',
+          resourceId: normalizedUsageLimitId,
+          action: 'update',
+          before: beforeProj,
+          after: afterProj,
+          securityDescriptor: {
+            resourceKind: 'usageLimit',
+            resourceId: normalizedUsageLimitId,
+            metadataAccess: 'currentWorkspaceAdministration',
+          },
+        });
+        await audit.flush();
+
+        const [postFlush] = await runner.query(
+          `SELECT to_jsonb(ul) AS row FROM core."usageLimit" ul WHERE ul.id=$1 AND ul."workspaceId"=$2`,
+          [normalizedUsageLimitId, request.workspaceId],
+        );
+        if (
+          !postFlush?.row ||
+          canonicalAuditJson(
+            projectUsageLimit(postFlush.row as Record<string, unknown>),
+          ) !== canonicalAuditJson(afterProj)
+        ) {
+          throw new Error('Usage limit state changed during audit flush');
+        }
+      }
+
+      return result;
+    }),
+  );
+};
+
+export const runAuditedUsageLimitDelete = async <TResult>(
+  dataSource: DataSource | undefined,
+  request: WorkspaceDomainAuditRequest,
+  {
+    usageLimitId,
+    work,
+  }: {
+    usageLimitId: string;
+    work: (
+      runner: QueryRunner,
+      beforeRow: Record<string, unknown> | null,
+    ) => Promise<TResult>;
+  },
+): Promise<TResult> => {
+  if (!dataSource) {
+    consumeWorkspaceDomainAuditRequest(request);
+    throw new Error('Usage limit delete audit requires core DataSource');
+  }
+
+  const normalizedUsageLimitId = uuid(usageLimitId);
+
+  return withExclusiveAuditScope(request, () =>
+    runInCoreAuditTransaction(dataSource, async (runner) => {
+      await runner.query("SET LOCAL lock_timeout = '8s'");
+
+      const [workspace] = await runner.query(
+        `SELECT id,to_jsonb(w)->>'deletedAt' AS "deletedAt" FROM core.workspace w WHERE w.id=$1 FOR NO KEY UPDATE`,
+        [request.workspaceId],
+      );
+      if (!workspace || workspace.deletedAt !== null) {
+        throw new Error('Usage limit delete audit workspace unavailable');
+      }
+
+      const operation = await resolveWorkspaceDomainOperation(runner, request);
+
+      const [beforeEntry] = await runner.query(
+        `SELECT to_jsonb(ul) AS row FROM core."usageLimit" ul WHERE ul.id=$1 AND ul."workspaceId"=$2 FOR UPDATE`,
+        [normalizedUsageLimitId, request.workspaceId],
+      );
+      const beforeRow =
+        (beforeEntry?.row as Record<string, unknown> | undefined) ?? null;
+
+      const result = await work(runner, beforeRow);
+
+      if (!beforeRow) {
+        return result;
+      }
+
+      const [afterEntry] = await runner.query(
+        `SELECT to_jsonb(ul) AS row FROM core."usageLimit" ul WHERE ul.id=$1 AND ul."workspaceId"=$2 FOR UPDATE`,
+        [normalizedUsageLimitId, request.workspaceId],
+      );
+      if (afterEntry?.row) {
+        throw new Error('Usage limit still exists after audited delete');
+      }
+
+      const beforeProj = projectUsageLimit(beforeRow);
+      const audit = new CrmAuditTransactionContext(runner, operation);
+      audit.record({
+        resourceKind: 'usageLimit',
+        resourceId: normalizedUsageLimitId,
+        action: 'delete',
+        before: beforeProj,
+        after: null,
+        securityDescriptor: {
+          resourceKind: 'usageLimit',
+          resourceId: normalizedUsageLimitId,
+          metadataAccess: 'currentWorkspaceAdministration',
+        },
+      });
+      await audit.flush();
+
+      const [postFlush] = await runner.query(
+        `SELECT id FROM core."usageLimit" ul WHERE ul.id=$1 AND ul."workspaceId"=$2`,
+        [normalizedUsageLimitId, request.workspaceId],
+      );
+      if (postFlush) {
+        throw new Error('Usage limit state changed during audit flush');
+      }
+
+      return result;
+    }),
+  );
+};
