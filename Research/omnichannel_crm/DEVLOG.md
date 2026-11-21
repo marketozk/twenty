@@ -5606,3 +5606,17 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 33bc6a1f-97e9-445f-901b-0e06ff5a6534 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log197/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG198`).
+
+## LOG-198 - транзакционный аудит правил валидации метаданных (`validationRule` в `core."validationRule"`)
+
+21.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log198/design.md), [design-review.md](implementation/log198/design-review.md)) и реализован участок `LOG-198` (Linear `ROB-765`): транзакционный аудит жизненного цикла, cross-app side-effects, FK-каскадов и fail-closed барьера правил валидации `validationRule` в `core."validationRule"`.
+
+В `crm-audit.types.ts` и `crm-audit-transaction-context.ts` добавлен ресурс `validationRule` (`values`: `applicationId`, `objectMetadataId`, `errorFieldMetadataId`, `isActive`; `redacted`: `name`, `description`, `icon`, `expression`, `bindings`, `message`) и `ADMINISTRATIVE_ACTIONS.validationRule` (`['create', 'update', 'delete']`). В новом модуле `validation-rule-audit.ts` без импортов Enterprise реализованы `assertValidationRuleRowInvariants`, `projectValidationRule`, `doesValidationRuleReferenceAnyField`, `assertValidationRuleSideEffectUpdateInvariants`, `captureValidationRuleAudit` (с одноразовой фабрикой и строгой проверкой принципалов/имперсонации) и `runAuditedValidationRuleMigration` (workspace-wide блокировка `core."validationRule" FOR UPDATE`, блокировки `core.workspace`/`core.application` и пост-flush сверка). Подключены `ValidationRuleResolver`, `ValidationRuleService`, `CreateValidationRuleTool`, `UpdateValidationRuleTool` (с сохранением маркеров `/* @license Enterprise */`), `navigation-menu-item-audit.ts` (`cascade` при `fieldMetadata:update`), `application-metadata-audit.ts` (`AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES`, `manifest`, `fieldDelete`, `objectDelete`, неявные FK `ON DELETE CASCADE` / `ON DELETE SET NULL`, 1-hop и 2-hop проверка остатков при удалении приложения, каскадный reconciler `flatValidationRuleMaps`) и `WorkspaceMigrationRunnerService.executeRun` (включая `permissionCascadeMetadataNames`).
+
+21.11.2026 проверки LOG198 завершены. 24 targeted/5 suites PASS (16.97s), 4 новых PostgreSQL случая (`crm-audit-validation-rule.postgres-spec.ts`). Полная регрессия: 4969/4969 tests и 194/194 suites PASS (1462.441s). 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types baseline 499 / current 501 roots, baseline 275 / current 275 diagnostics, 0 новых/changed-file/changed-code. Совпали 11 local/remote source hashes.
+
+Независимое ревью кода не выявило блокеров; все 5 Major и 4 Minor замечаний исправлены (запрет голого `agentId`, конфликтных принципалов и повторного вызова фабрики захвата, проверка привязки side-effect `validationRule:update` к обновлённым/удалённым полям через `doesValidationRuleReferenceAnyField`, сохранение `impersonatorUserWorkspaceId` из `ambientOperation` в `CreateValidationRuleTool`, добавление `'validationRule'` в `permissionCascadeMetadataNames`, детерминированная предблокировка сторонних `core.application` и усиление инвариантов строк).
+
+[Результаты](implementation/log198/results.json), [ревью](implementation/log198/review.md),
+[следующий участок](implementation/log198/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.

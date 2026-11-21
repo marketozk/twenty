@@ -1,0 +1,38 @@
+{
+  "log": "LOG-198",
+  "issue": "ROB-765",
+  "date": "2026-11-21",
+  "title": "Transactional audit of validationRule metadata lifecycle, cross-app side-effects, FK cascades, and fail-closed migration barrier",
+  "targetedPostgres": {
+    "suitesPassed": 5,
+    "suitesTotal": 5,
+    "testsPassed": 24,
+    "testsTotal": 24,
+    "newPostgresTests": 4,
+    "durationSeconds": 16.97
+  },
+  "fullRegression": {
+    "suitesPassed": 194,
+    "suitesTotal": 194,
+    "testsPassed": 4969,
+    "testsTotal": 4969,
+    "durationSeconds": 1462.441
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.173
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 499,
+    "currentRootFiles": 501,
+    "baselineDiagnostics": 275,
+    "currentDiagnostics": 275,
+    "newDiagnostics": 0,
+    "changedFileDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 11
+}

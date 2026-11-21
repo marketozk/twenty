@@ -1,0 +1,16 @@
+{
+  "verified": 11,
+  "hashes": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/application-metadata-audit.ts": "08c09e7802127d8b92b7d24bef4d2caefdf43c74cfc4ff573fc652ef1df18f52",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "697eb71931f11f02d3c099d3e51348923a85c8c74147fe2a7dfe03d08fc18bdd",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit.types.ts": "6ea13b2e7fbb26670e4c74b653be5e943afc1ea89a8539a055d86ea280de2e7f",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/navigation-menu-item-audit.ts": "bf93e7771e61c4dde8de3c2a1a9754a9dfd7f87f5e77cdd5d66d428897834f94",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/validation-rule-audit.ts": "985853251ac3f5b7d5e03725a60cef355d26863930b004f84c8cc965c88314fa",
+    "packages/twenty-server/src/engine/metadata-modules/validation-rule/tools/create-validation-rule.tool.ts": "eee1c263165755eacb621c88e2dcb876c534c2ce937e7c48335a98cb53cccd5e",
+    "packages/twenty-server/src/engine/metadata-modules/validation-rule/tools/update-validation-rule.tool.ts": "77c55f6cbb60514dd9840f02e38fdb1deb5df4da184c013f992d8cd70e58cc86",
+    "packages/twenty-server/src/engine/metadata-modules/validation-rule/validation-rule.resolver.ts": "6a4fcc88d9a39f1bf4f9bff00205c5ddcd423bbac3c8f2e8605e6b661551abf8",
+    "packages/twenty-server/src/engine/metadata-modules/validation-rule/validation-rule.service.ts": "4f5b790d5e179dcde4e364f250b14307c9483d1a2cb9d23af2fdb31757dffbb0",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/services/workspace-migration-runner.service.ts": "c700f5ae261982e1dce287984a327a98253ab1f8a3d5ecf9f5c24667185781b6",
+    "packages/twenty-server/test/fork-migration/crm-audit-validation-rule.postgres-spec.ts": "af32078e29d0c27e5ebc6734abf6c77fc9f469e18043a13ef000506229ea3f31"
+  }
+}

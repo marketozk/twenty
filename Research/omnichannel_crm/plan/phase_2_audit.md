@@ -427,8 +427,19 @@ LOG197 закрывает транзакционный аудит полного
 legacy/authored `overrides`, workspace-wide snapshot, проверка `deletedAt`/`applicationId`/
 `objectMetadataId`, каскады `kanbanAggregateOperationFieldMetadataId` и проверка остатков при
 удалении `core.application`).
+LOG198 закрывает транзакционный аудит правил валидации метаданных (`validationRule` в
+`core."validationRule"` в `validation-rule-audit.ts`, `ValidationRuleResolver`,
+`ValidationRuleService`, `CreateValidationRuleTool`, `UpdateValidationRuleTool`,
+`navigation-menu-item-audit.ts`, `application-metadata-audit.ts` и
+`WorkspaceMigrationRunnerService.executeRun`: `create`/`update`/`delete` с имперсонацией,
+агентской атрибуцией, одноразовой фабрикой захвата и редактированием
+`name`/`description`/`icon`/`expression`/`bindings`/`message`; fail-closed барьер в
+`AUDITED_ROLE_AND_PERMISSION_METADATA_NAMES`; cross-app side-effect `validationRule:update` с
+проверкой привязки к обновлённым/удалённым полям и детерминированной предблокировкой сторонних
+`core.application`; неявные FK-каскады `ON DELETE CASCADE` и `ON DELETE SET NULL`; 1-hop и
+2-hop проверка остатков при удалении приложения и каскадный reconciler `flatValidationRuleMaps`).
 Оставшиеся native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log197/next-boundary.md).
+Далее - [следующая граница ROB765](../implementation/log198/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.
