@@ -8,6 +8,7 @@ import {
 import { CommonApiContextBuilderService } from 'src/engine/core-modules/record-crud/services/common-api-context-builder.service';
 import { type DeleteManyRecordsParams } from 'src/engine/core-modules/record-crud/types/delete-many-records-params.type';
 import { type ToolOutput } from 'src/engine/core-modules/tool/types/tool-output.type';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { isDefined } from 'twenty-shared/utils';
 import { canObjectBeManagedByAutomation } from 'twenty-shared/workflow';
 
@@ -69,6 +70,10 @@ export class DeleteManyRecordsService {
         result: deletedRecords.map((record) => ({ id: record.id })),
       };
     } catch (error) {
+      if (error instanceof NativeTransactionOutcomeUnknownError) {
+        throw error;
+      }
+
       if (error instanceof RecordCrudException) {
         return {
           success: false,

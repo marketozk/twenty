@@ -1,5 +1,5 @@
 import {
-  captureNativeCrmAuditOperation,
+  captureNativeCrmAuditBinding,
   withNativeCrmAuditTransaction,
 } from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
 import { Logger } from '@nestjs/common';
@@ -85,19 +85,19 @@ export class WorkspaceDataSource {
     work: (transactionScope: WorkspaceTransactionScope) => Promise<T>,
     options: WorkspaceTransactionOptions = {},
   ): Promise<T> {
-    const nativeAuditOperation =
+    const nativeAuditBinding =
       options.nativeAudit === undefined
         ? undefined
-        : captureNativeCrmAuditOperation(
+        : captureNativeCrmAuditBinding(
             this.internalContext.workspaceId,
             this.authContext,
             options.nativeAudit,
           );
-    if (nativeAuditOperation && options.commitOutcome === 'legacy')
+    if (nativeAuditBinding && options.commitOutcome === 'legacy')
       throw new Error('Native audit requires strict transaction ownership');
     options = {
       ...options,
-      ...(nativeAuditOperation ? { commitOutcome: 'strict' as const } : {}),
+      ...(nativeAuditBinding ? { commitOutcome: 'strict' as const } : {}),
     };
     const afterCommitCallbacks: Array<() => void | Promise<void>> = [];
     let transactionLifecycle: WorkspaceTransactionLifecycle | undefined;
@@ -205,12 +205,18 @@ export class WorkspaceDataSource {
               })),
           }),
         });
-        return nativeAuditOperation
+        return nativeAuditBinding
           ? withNativeCrmAuditTransaction(
               executor,
               scope,
-              nativeAuditOperation,
+              nativeAuditBinding.operation,
               () => work(scope),
+              {
+                impersonatorUserWorkspaceId:
+                  nativeAuditBinding.impersonatorUserWorkspaceId,
+                ambientCorrelationId: nativeAuditBinding.ambientCorrelationId,
+                ambientCausationId: nativeAuditBinding.ambientCausationId,
+              },
             )
           : work(scope);
       },

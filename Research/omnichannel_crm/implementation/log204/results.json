@@ -1,0 +1,42 @@
+{
+  "log": "LOG-204",
+  "issue": "ROB-765",
+  "date": "2026-11-22",
+  "title": "ALS attribution propagation for public native CRM mutations and record-crud NativeTransactionOutcomeUnknownError propagation",
+  "targetedPostgres": {
+    "suitesPassed": 7,
+    "suitesTotal": 7,
+    "testsPassed": 226,
+    "testsTotal": 226,
+    "newPostgresTests": 3,
+    "durationSeconds": 36.375,
+    "postFinalTestTypeFixSpecDurationSeconds": 11.467
+  },
+  "fullRegression": {
+    "suitesPassed": 140,
+    "suitesTotal": 140,
+    "testsPassed": 3258,
+    "testsTotal": 3258,
+    "durationSeconds": 757.408
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "enterpriseEdges": 137821,
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.172
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 509,
+    "currentRootFiles": 510,
+    "baselineDiagnostics": 275,
+    "currentDiagnostics": 275,
+    "newDiagnostics": 0,
+    "changedFileDiagnostics": 1,
+    "changedFilePreExistingNote": "Pre-existing upstream TS2769 in upsert-many-records.service.ts:71 on untouched upsertedRecords.filter(isFreshlyCreatedRecord) line (present in baseline at line 70; baselineDiagnostics 275 == currentDiagnostics 275, newDiagnostics 0)",
+    "baselineOnlyUnchangedMethodDiagnostics": 0,
+    "changedCodeDiagnostics": 1
+  },
+  "uploadedSourceHashesVerified": 13
+}

@@ -1306,12 +1306,21 @@ const resolveShareWithStandaloneOperation = (
         if (!validAgentAmbient && !validAppAmbient) {
           throw new Error('Record share audit ambient agent conflict');
         }
-      } else if (
-        a.kind !== 'application' ||
-        a.id !== appId ||
-        ambInit !== undefined
-      ) {
-        throw new Error('Record share audit ambient application conflict');
+      } else {
+        const narrowedAgentId =
+          authContext.agentId !== undefined
+            ? uuid(authContext.agentId)
+            : undefined;
+        const validAppAmbient =
+          a.kind === 'application' && a.id === appId && ambInit === undefined;
+        const validNarrowedAgentAmbient =
+          a.kind === 'agent' &&
+          ambInit?.kind === 'application' &&
+          ambInit.id === appId &&
+          (narrowedAgentId === undefined || a.id === narrowedAgentId);
+        if (!validAppAmbient && !validNarrowedAgentAmbient) {
+          throw new Error('Record share audit ambient application conflict');
+        }
       }
     }
     if (actingAgentId) {
@@ -1366,6 +1375,18 @@ const toNativeAuthPort = (
         type: 'user',
         workspace: { id: normalizedWorkspaceId },
         workspaceMemberId: uuid(authContext.workspaceMemberId),
+        ...(authContext.user?.id !== undefined
+          ? { user: { id: uuid(authContext.user.id) } }
+          : {}),
+        ...(authContext.application?.id !== undefined
+          ? { application: { id: uuid(authContext.application.id) } }
+          : {}),
+        ...(authContext.viaApplication?.id !== undefined
+          ? { viaApplication: { id: uuid(authContext.viaApplication.id) } }
+          : {}),
+        ...(authContext.agentId !== undefined
+          ? { agentId: uuid(authContext.agentId) }
+          : {}),
       };
     case 'application':
       return {
@@ -1375,6 +1396,9 @@ const toNativeAuthPort = (
         ...(authContext.actingAgent !== undefined &&
         authContext.actingAgent !== null
           ? { actingAgent: { id: uuid(authContext.actingAgent.id) } }
+          : {}),
+        ...(authContext.agentId !== undefined
+          ? { agentId: uuid(authContext.agentId) }
           : {}),
       };
     case 'apiKey':
@@ -1538,6 +1562,7 @@ export const runAuditedShareWithInsert = async ({
     nativeAuth,
     async ({
       operation,
+      impersonatorUserWorkspaceId: scopeImpersonator,
       record,
       registerPostFlushCheck,
       runDelegatedRecordShareWrite,
@@ -1547,12 +1572,17 @@ export const runAuditedShareWithInsert = async ({
           workspaceId: normalizedWorkspaceId,
           authContext,
         });
+        const impersonationMatches =
+          userCapture.impersonatorUserWorkspaceId !== undefined
+            ? userCapture.impersonatorUserWorkspaceId === scopeImpersonator &&
+              operation.initiator?.kind === 'coreUser'
+            : scopeImpersonator === undefined &&
+              canonicalAuditJson(userCapture.operation.initiator ?? null) ===
+                canonicalAuditJson(operation.initiator ?? null);
         if (
-          userCapture.impersonatorUserWorkspaceId !== undefined ||
           userCapture.operation.actor.kind !== operation.actor.kind ||
           userCapture.operation.actor.id !== operation.actor.id ||
-          canonicalAuditJson(userCapture.operation.initiator ?? null) !==
-            canonicalAuditJson(operation.initiator ?? null)
+          !impersonationMatches
         ) {
           throw new Error(
             'Record share create audit conflicts with native audit scope attribution',

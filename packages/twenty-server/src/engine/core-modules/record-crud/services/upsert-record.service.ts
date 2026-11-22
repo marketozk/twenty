@@ -11,6 +11,7 @@ import { CommonApiContextBuilderService } from 'src/engine/core-modules/record-c
 import { type UpsertRecordParams } from 'src/engine/core-modules/record-crud/types/upsert-record-params.type';
 import { removeUndefinedFromRecord } from 'src/engine/core-modules/record-crud/utils/remove-undefined-from-record.util';
 import { type ToolOutput } from 'src/engine/core-modules/tool/types/tool-output.type';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 
 @Injectable()
 export class UpsertRecordService {
@@ -64,6 +65,10 @@ export class UpsertRecordService {
         result: upsertedRecord,
       };
     } catch (error) {
+      if (error instanceof NativeTransactionOutcomeUnknownError) {
+        throw error;
+      }
+
       if (error instanceof RecordCrudException) {
         return {
           success: false,

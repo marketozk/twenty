@@ -11,6 +11,7 @@ export type MembershipCleanupIdentity = Readonly<{
   actor: Readonly<CrmAuditPrincipal>;
   initiator?: Readonly<CrmAuditPrincipal>;
   correlationId: string;
+  causationId?: string;
 }>;
 
 export type MembershipCleanupAuthentication = {
@@ -24,6 +25,13 @@ export type MembershipCleanupAuthentication = {
 const uuid = (value: string): string => {
   if (!isUUID(value)) throw new Error('Membership audit identity is invalid');
   return value.toLowerCase();
+};
+
+const optionalIdentifier = (value: string | undefined): string | undefined => {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string' || !value.length || value.length > 256)
+    throw new Error('Membership audit causationId is invalid');
+  return value;
 };
 
 const principal = (value: CrmAuditPrincipal): Readonly<CrmAuditPrincipal> => {
@@ -61,11 +69,13 @@ export const copyMembershipCleanupIdentity = (
   const actor = principal(identity.actor);
   if (scope === undefined && actor.kind !== 'coreUser')
     throw new Error('Unscoped membership audit requires a core user');
+  const causationId = optionalIdentifier(identity.causationId);
   return Object.freeze({
     ...(scope ? { workspaceId: scope } : {}),
     actor,
     ...(identity.initiator ? { initiator: principal(identity.initiator) } : {}),
     correlationId: uuid(identity.correlationId),
+    ...(causationId !== undefined ? { causationId } : {}),
   });
 };
 
@@ -130,6 +140,9 @@ export const membershipCleanupOperation = (
     actor: captured.actor,
     initiator: captured.initiator,
     correlationId: captured.correlationId,
+    ...(captured.causationId !== undefined
+      ? { causationId: captured.causationId }
+      : {}),
   };
 };
 

@@ -13,6 +13,7 @@ import { type CreateRecordParams } from 'src/engine/core-modules/record-crud/typ
 import { getRecordDisplayName } from 'src/engine/core-modules/record-crud/utils/get-record-display-name.util';
 import { removeUndefinedFromRecord } from 'src/engine/core-modules/record-crud/utils/remove-undefined-from-record.util';
 import { type ToolOutput } from 'src/engine/core-modules/tool/types/tool-output.type';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 
 @Injectable()
 export class CreateRecordService {
@@ -94,6 +95,10 @@ export class CreateRecordService {
         ],
       };
     } catch (error) {
+      if (error instanceof NativeTransactionOutcomeUnknownError) {
+        throw error;
+      }
+
       if (error instanceof RecordCrudException) {
         return {
           success: false,

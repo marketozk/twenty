@@ -498,10 +498,9 @@ LOG203 закрывает транзакционный аудит публичн
 условия `[joinColumnName]`/`deletedAt IS NULL`, проверка кардинальности всех мутаций и
 усиленный `validate()` без новых Enterprise-рёбер). Все публичные мутирующие CRM query runners
 подключены к нативному транзакционному аудиту.
-Проброс ALS-атрибуции в `CommonBaseQueryRunnerService`, проброс
-`NativeTransactionOutcomeUnknownError` в оставшихся сервисах `record-crud`, оставшиеся
-native/core writers и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log203/next-boundary.md).
+LOG204 закрывает сквозной проброс ALS-атрибуции для всех публичных нативных CRM-мутаций и проброс `NativeTransactionOutcomeUnknownError` во всех 7 оставшихся мутирующих сервисах `record-crud` (`membership-cleanup-identity.ts`, `crm-audit-attribution-context.ts`, `native-crm-audit-transaction.ts`, `workspace-data-source.ts`, `record-share-audit.ts`, `CreateRecordService`, `CreateManyRecordsService`, `UpdateRecordService`, `UpdateManyRecordsService`, `DeleteManyRecordsService`, `UpsertRecordService`, `UpsertManyRecordsService`): сохранена чистая функция `captureNativeCrmAuditOperation` (изоляция `role-update-audit.ts`), добавлены `captureNativeCrmAuditBinding`, `captureCurrentCrmAuditTrace` для системных вызовов под неаутентифицированными и workspace-less запросами, `causationId` в `MembershipCleanupIdentity`, разрешение активного `impersonatorUserWorkspaceId` через `core."userWorkspace"` (включая кросс-workspace серверную имперсонацию) до `pg_advisory_xact_lock`, защита от nested scope poisoning при дрейфе `impersonator`/`initiator`/`correlationId`/`causationId` (с сохранением явного override в том же ALS), проброс атрибуции в Branch A `ShareWithService` и отказ от маскирования потерянного `COMMIT` ACK во всех 8 мутирующих `record-crud` сервисах.
+Оставшиеся native/core/metadata writers (включая физическое удаление файлов и оставшиеся session lifecycle пути), post-rollback denied/failed audit и durable cache открыты.
+Далее - [следующая граница ROB765](../implementation/log204/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.

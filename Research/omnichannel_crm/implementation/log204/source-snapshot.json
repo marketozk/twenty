@@ -1,0 +1,18 @@
+{
+  "verified": 13,
+  "files": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-attribution-context.ts": "cc4c2139eb5d41c6ef5c57a219c8f174427bcc68215d24c812646136756fb498",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/membership-cleanup-identity.ts": "7ced5420e0507b36531267f70a88b1dfb626037e6ea61b4fb8ccc5c42cd8dc61",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-transaction.ts": "ce343d439bd3d066cc95ba74cc1c6557fb78fc7363515b61605bda004a00401a",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/record-share-audit.ts": "d985ba9210d6f2b4a602cd62372aff95afd6afcf8d0c862ad9be68816b9fdcbc",
+    "packages/twenty-server/src/engine/core-modules/record-crud/services/create-many-records.service.ts": "ac9d3d4f9bd4111ebdf00f2d2fb7c73f22ed2155459825924f4fd9c22e604e6a",
+    "packages/twenty-server/src/engine/core-modules/record-crud/services/create-record.service.ts": "d84fe2511ed22960caee333623427b5114529f9e76645d2521538f030a1a5770",
+    "packages/twenty-server/src/engine/core-modules/record-crud/services/delete-many-records.service.ts": "3b479601b1284091770cd3a3d7702bcae97680682061f6237cdb0933b464f9a4",
+    "packages/twenty-server/src/engine/core-modules/record-crud/services/update-many-records.service.ts": "0114d7798b0bc8519295199dcfbddfc59ff33a3739bb2f48cdd5b02155801b23",
+    "packages/twenty-server/src/engine/core-modules/record-crud/services/update-record.service.ts": "5e42cf8a1ad355408997c7f30a98e8a47cc34ca83745a4ace9f8881a82f3d805",
+    "packages/twenty-server/src/engine/core-modules/record-crud/services/upsert-many-records.service.ts": "8f5528f1c9eba6eaba011c0b8cea4dcad48c6894c020516689cb26936ac8addb",
+    "packages/twenty-server/src/engine/core-modules/record-crud/services/upsert-record.service.ts": "51c84ae85533d2b852c413206dcf33bf113cac2e08ae7bdc0062d5490a0e35ab",
+    "packages/twenty-server/src/engine/twenty-orm/datasource/workspace-data-source.ts": "115c734231d459f183464f476e262ee097d07337c51f8ec4c6ec318b861d5cf5",
+    "packages/twenty-server/test/fork-migration/crm-audit-public-attribution-and-crud.postgres-spec.ts": "a1ac96f88fbe191a0963c8bbb49d71c772547375bef407b29d6217c9f355641c"
+  }
+}

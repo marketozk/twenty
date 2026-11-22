@@ -13,6 +13,7 @@ import { getRecordDisplayName } from 'src/engine/core-modules/record-crud/utils/
 import { isFreshlyCreatedRecord } from 'src/engine/core-modules/record-crud/utils/is-freshly-created-record.util';
 import { removeUndefinedFromRecord } from 'src/engine/core-modules/record-crud/utils/remove-undefined-from-record.util';
 import { type ToolOutput } from 'src/engine/core-modules/tool/types/tool-output.type';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 import { canObjectBeManagedByAutomation } from 'twenty-shared/workflow';
 
 @Injectable()
@@ -97,6 +98,10 @@ export class UpsertManyRecordsService {
         })),
       };
     } catch (error) {
+      if (error instanceof NativeTransactionOutcomeUnknownError) {
+        throw error;
+      }
+
       if (error instanceof RecordCrudException) {
         return {
           success: false,

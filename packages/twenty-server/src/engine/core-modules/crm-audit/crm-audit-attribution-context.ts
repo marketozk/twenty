@@ -186,6 +186,29 @@ export const captureCurrentCrmAuditOperation = (
   });
 };
 
+export const captureCurrentCrmAuditTrace = (
+  workspaceId: string,
+): Readonly<{ correlationId: string; causationId?: string }> | undefined => {
+  const snapshot = storage.getStore();
+  if (!snapshot) return undefined;
+  const scope = workspaceId.toLowerCase();
+  if (snapshot.kind === 'resolved') {
+    if (snapshot.workspaceId !== scope)
+      throw new Error('CRM audit context workspace mismatch');
+    if (!snapshot.identity) return undefined;
+    return Object.freeze({
+      correlationId: snapshot.identity.correlationId,
+      ...(snapshot.identity.causationId !== undefined
+        ? { causationId: snapshot.identity.causationId }
+        : {}),
+    });
+  }
+  const snapshotWorkspace = snapshot.authentication.workspaceId?.toLowerCase();
+  if (snapshotWorkspace !== undefined && snapshotWorkspace !== scope)
+    throw new Error('CRM audit context workspace mismatch');
+  return Object.freeze({ correlationId: snapshot.correlationId });
+};
+
 export const peekCurrentCrmAuditWorkspaceId = (): string | undefined => {
   const snapshot = storage.getStore();
   if (!snapshot) return undefined;
