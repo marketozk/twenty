@@ -26,15 +26,24 @@ export class FilesFieldDeletionJob {
       return;
     }
 
+    const failures: unknown[] = [];
+
     for (const fileId of fileIds) {
       try {
         await this.filesFieldService.deleteFilesFieldFile({
           fileId,
           workspaceId,
         });
-      } catch {
-        this.logger.log(`Failed to delete file ${fileId}`);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to delete file ${fileId}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        failures.push(error);
       }
+    }
+
+    if (failures.length > 0) {
+      throw failures[0];
     }
   }
 }

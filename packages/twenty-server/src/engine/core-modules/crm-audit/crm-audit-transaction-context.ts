@@ -995,12 +995,12 @@ const descriptor = (
   }
   let deletedRecord: CrmAuditSecurityDescriptor['deletedRecord'];
   if (
-    (nativeRecord && mutation.action === 'delete') ||
+    ((nativeRecord || nativeFile) && mutation.action === 'delete') ||
     source.deletedRecord !== undefined
   ) {
     const candidate = source.deletedRecord;
     if (
-      !nativeRecord ||
+      (!nativeRecord && !nativeFile) ||
       mutation.action !== 'delete' ||
       !candidate ||
       Object.keys(candidate).join(',') !== 'access' ||
@@ -1071,9 +1071,13 @@ const descriptor = (
   let fileParent: CrmAuditSecurityDescriptor['fileParent'];
   if (nativeFile || source.fileParent !== undefined) {
     const parent = source.fileParent;
+    const hasSnapshots = 'before' in mutation || 'after' in mutation;
     if (
       !nativeFile ||
-      mutation.action !== 'update' ||
+      !['update', 'delete'].includes(mutation.action) ||
+      (mutation.action === 'delete' &&
+        hasSnapshots &&
+        (mutation.before === null || mutation.after !== null)) ||
       !parent ||
       Object.keys(parent).sort().join(',') !==
         'fieldMetadataId,objectMetadataId,recordId' ||

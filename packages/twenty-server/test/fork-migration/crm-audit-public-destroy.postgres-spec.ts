@@ -334,6 +334,23 @@ const harness = (
 
 beforeAll(async () => {
   await f.initialize();
+  await f.owner.query(
+    `CREATE TABLE IF NOT EXISTS core.file (
+       id uuid PRIMARY KEY,
+       "workspaceId" uuid,
+       "applicationId" uuid,
+       path text NOT NULL,
+       size bigint NOT NULL DEFAULT 0,
+       settings jsonb,
+       status text NOT NULL DEFAULT 'UPLOADED',
+       "deletedAt" timestamptz,
+       "updatedAt" timestamptz NOT NULL DEFAULT now()
+     )`,
+  );
+  await f.owner.query(
+    `GRANT USAGE ON SCHEMA core TO "${f.roleName}";
+     GRANT SELECT, UPDATE ON core.file TO "${f.roleName}";`,
+  );
   base = await f.withContext(async () => getWorkspaceContext());
 });
 
@@ -663,7 +680,9 @@ describe('Public physical deletion CRM audit (LOG-202)', () => {
         { id: secondId, selectedFields: { id: true } },
         hFail.queryContext('company'),
       ),
-    ).rejects.toThrow('excludes linked files');
+    ).rejects.toThrow(
+      'Native file is missing, deleted or outside this workspace',
+    );
     expect(await audit()).toHaveLength(0);
     expect(
       ((await f.read('company')) as Array<{ id: string }>).some(
@@ -684,7 +703,9 @@ describe('Public physical deletion CRM audit (LOG-202)', () => {
         { id: secondId, selectedFields: { id: true } },
         hFail.queryContext('company'),
       ),
-    ).rejects.toThrow('excludes linked files');
+    ).rejects.toThrow(
+      'Native file is missing, deleted or outside this workspace',
+    );
     expect(await audit()).toHaveLength(0);
     expect(hFail.hooks.executePostQueryHooks).not.toHaveBeenCalled();
     expect(

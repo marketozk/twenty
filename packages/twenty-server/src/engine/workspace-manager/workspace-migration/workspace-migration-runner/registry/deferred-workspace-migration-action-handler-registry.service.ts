@@ -1,4 +1,5 @@
 import { Injectable, type OnModuleInit } from '@nestjs/common';
+import { DeleteFilesFieldFilesDeferredActionHandlerService } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-runner/deferred-action-handlers/services/delete-files-field-files-deferred-action-handler.service';
 import {
   ReconcileCalendarImportMatchingDeferredActionHandlerService,
   ReconcileMessageImportMatchingDeferredActionHandlerService,
@@ -41,7 +42,8 @@ export class DeferredWorkspaceMigrationActionHandlerRegistryService
             metatype ===
               ReconcileMessageImportMatchingDeferredActionHandlerService ||
             metatype ===
-              ReconcileCalendarImportMatchingDeferredActionHandlerService,
+              ReconcileCalendarImportMatchingDeferredActionHandlerService ||
+            metatype === DeleteFilesFieldFilesDeferredActionHandlerService,
         ),
     );
     providers.forEach(({ instance, metatype }) => {

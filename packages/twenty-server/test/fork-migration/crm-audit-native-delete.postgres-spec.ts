@@ -61,7 +61,26 @@ const audit = () =>
   f.owner.query<CrmAuditEntryPayload[]>(
     'SELECT * FROM crm_audit."crmAuditEntry" ORDER BY id',
   );
-beforeAll(() => f.initialize());
+beforeAll(async () => {
+  await f.initialize();
+  await f.owner.query(
+    `CREATE TABLE IF NOT EXISTS core.file (
+       id uuid PRIMARY KEY,
+       "workspaceId" uuid,
+       "applicationId" uuid,
+       path text NOT NULL,
+       size bigint NOT NULL DEFAULT 0,
+       settings jsonb,
+       status text NOT NULL DEFAULT 'UPLOADED',
+       "deletedAt" timestamptz,
+       "updatedAt" timestamptz NOT NULL DEFAULT now()
+     )`,
+  );
+  await f.owner.query(
+    `GRANT USAGE ON SCHEMA core TO "${f.roleName}";
+     GRANT SELECT, UPDATE ON core.file TO "${f.roleName}";`,
+  );
+});
 beforeEach(async () => {
   await f.owner.query(`DROP TABLE IF EXISTS "${f.schemaName}".delete_child`);
   await f.owner.query(
@@ -225,14 +244,14 @@ it.each([[null], [[]]])('permits empty FILES %j', async (files) => {
   await run((scope) => repo(scope).delete(id));
   expect(await audit()).toHaveLength(1);
 });
-it('refuses nonempty FILES before deletion', async () => {
+it('refuses missing linked FILES before deletion', async () => {
   await f.owner.query(
     `UPDATE "${f.schemaName}".company SET documents=$1::jsonb WHERE id=$2`,
     [JSON.stringify([{ fileId: randomUUID(), label: 'private file' }]), id],
   );
   const before = await f.read('company');
   await expect(run((scope) => repo(scope).delete(id))).rejects.toThrow(
-    'excludes linked files',
+    'Native file is missing, deleted or outside this workspace',
   );
   expect(await f.read('company')).toEqual(before);
   expect(await audit()).toEqual([]);

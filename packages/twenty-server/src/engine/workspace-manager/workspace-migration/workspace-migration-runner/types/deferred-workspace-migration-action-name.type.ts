@@ -5,4 +5,5 @@ export type DeferredWorkspaceMigrationActionName =
   | 'delete_workflowRuns'
   | 'sync_workflowRunShares'
   | 'reconcile_messageImportMatching'
-  | 'reconcile_calendarImportMatching';
+  | 'reconcile_calendarImportMatching'
+  | 'delete_filesFieldFiles';

@@ -117,7 +117,26 @@ const setDeleteAction = async (
     `ALTER TABLE "${f.schemaName}"."${table}" ADD CONSTRAINT "direct_${column}" FOREIGN KEY ("${column}") REFERENCES "${f.schemaName}".company(id) ON DELETE ${action}`,
   );
 };
-beforeAll(() => f.initialize());
+beforeAll(async () => {
+  await f.initialize();
+  await f.owner.query(
+    `CREATE TABLE IF NOT EXISTS core.file (
+       id uuid PRIMARY KEY,
+       "workspaceId" uuid,
+       "applicationId" uuid,
+       path text NOT NULL,
+       size bigint NOT NULL DEFAULT 0,
+       settings jsonb,
+       status text NOT NULL DEFAULT 'UPLOADED',
+       "deletedAt" timestamptz,
+       "updatedAt" timestamptz NOT NULL DEFAULT now()
+     )`,
+  );
+  await f.owner.query(
+    `GRANT USAGE ON SCHEMA core TO "${f.roleName}";
+     GRANT SELECT, UPDATE ON core.file TO "${f.roleName}";`,
+  );
+});
 beforeEach(async () => {
   await f.owner.query(
     `DROP TABLE IF EXISTS "${f.schemaName}".unsupported_child`,
@@ -278,7 +297,7 @@ it('refuses conflicting CASCADE and SET NULL constraints on one column', async (
   expect(await audits()).toEqual([]);
 });
 
-it('refuses CASCADE into a child with nonempty FILES', async () => {
+it('refuses CASCADE into a child with missing linked FILES', async () => {
   await setDeleteAction('person', 'companyId', 'CASCADE');
   await f.owner.query(
     `UPDATE "${f.schemaName}".person SET documents=$1::jsonb WHERE id=$2`,
@@ -286,7 +305,7 @@ it('refuses CASCADE into a child with nonempty FILES', async () => {
   );
   const before = await snapshot();
   await expect(run((scope) => repo(scope).delete(parentId))).rejects.toThrow(
-    'excludes linked files',
+    'Native file is missing, deleted or outside this workspace',
   );
   expect(await snapshot()).toEqual(before);
   expect(await audits()).toEqual([]);

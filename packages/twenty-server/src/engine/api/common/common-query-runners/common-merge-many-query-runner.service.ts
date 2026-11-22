@@ -111,6 +111,14 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
         true,
       );
 
+      this.assertMergeFilesSupported({
+        flatObjectMetadata,
+        flatFieldMetadataMaps,
+        priorityRecord,
+        mergedData,
+        recordsToMerge,
+      });
+
       return this.createDryRunResponse(priorityRecord, mergedData);
     }
 
@@ -183,9 +191,27 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
         false,
       );
 
+      this.assertMergeFilesSupported({
+        flatObjectMetadata,
+        flatFieldMetadataMaps,
+        priorityRecord,
+        mergedData,
+        recordsToMerge,
+      });
+
       const idsToDelete = normalizedArgs.ids.filter(
         (id) => id !== priorityRecord.id,
       );
+
+      await this.assertNoSharedFilesAcrossLockedRows({
+        transactionScope,
+        schemaName,
+        tableName,
+        flatObjectMetadata,
+        flatFieldMetadataMaps,
+        priorityRecordId: priorityRecord.id,
+        idsToDelete,
+      });
 
       const updatedRecord = await this.executeMergeWithinScope({
         args: normalizedArgs,
@@ -820,6 +846,188 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
     }
 
     return updatedRecords[0];
+  }
+
+  private extractNormalizedFileIds(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value
+      .filter(
+        (item): item is { fileId: string } =>
+          isDefined(item) &&
+          typeof item === 'object' &&
+          typeof (item as { fileId?: unknown }).fileId === 'string',
+      )
+      .map((item) => item.fileId.toLowerCase());
+  }
+
+  private assertMergeFilesSupported({
+    flatObjectMetadata,
+    flatFieldMetadataMaps,
+    priorityRecord,
+    mergedData,
+    recordsToMerge,
+  }: {
+    flatObjectMetadata: CommonExtendedQueryRunnerContext['flatObjectMetadata'];
+    flatFieldMetadataMaps: CommonExtendedQueryRunnerContext['flatFieldMetadataMaps'];
+    priorityRecord: ObjectRecord;
+    mergedData: Partial<ObjectRecord>;
+    recordsToMerge: ObjectRecord[];
+  }): void {
+    const priorityAllFileIds = new Set<string>();
+    const filesFieldNames: string[] = [];
+
+    for (const fieldId of flatObjectMetadata.fieldIds) {
+      const fieldMetadata = findFlatEntityByIdInFlatEntityMaps({
+        flatEntityId: fieldId,
+        flatEntityMaps: flatFieldMetadataMaps,
+      });
+      if (fieldMetadata?.type !== FieldMetadataType.FILES) {
+        continue;
+      }
+      filesFieldNames.push(fieldMetadata.name);
+      const priorityIds = this.extractNormalizedFileIds(
+        priorityRecord[fieldMetadata.name],
+      );
+      const priorityFieldSet = new Set(priorityIds);
+      for (const fileId of priorityIds) {
+        priorityAllFileIds.add(fileId);
+      }
+
+      const mergedValue = mergedData[fieldMetadata.name];
+      if (!Array.isArray(mergedValue) || mergedValue.length === 0) {
+        continue;
+      }
+      const introducesDuplicateFile = mergedValue.some((item) => {
+        const candidateId =
+          isDefined(item) &&
+          typeof item === 'object' &&
+          typeof (item as { fileId?: unknown }).fileId === 'string'
+            ? (item as { fileId: string }).fileId.toLowerCase()
+            : undefined;
+
+        return !isDefined(candidateId) || !priorityFieldSet.has(candidateId);
+      });
+      if (introducesDuplicateFile) {
+        throw new CommonQueryRunnerException(
+          'Merging files from duplicate records onto a priority record without files is not supported',
+          CommonQueryRunnerExceptionCode.BAD_REQUEST,
+          {
+            userFriendlyMessage: msg`Merging files from duplicate records onto a priority record without files is not supported.`,
+          },
+        );
+      }
+    }
+
+    if (priorityAllFileIds.size === 0) {
+      return;
+    }
+
+    for (const record of recordsToMerge) {
+      if (record.id === priorityRecord.id) {
+        continue;
+      }
+      for (const fieldName of filesFieldNames) {
+        if (
+          this.extractNormalizedFileIds(record[fieldName]).some((fileId) =>
+            priorityAllFileIds.has(fileId),
+          )
+        ) {
+          throw new CommonQueryRunnerException(
+            'Merging records that share the same file is not supported',
+            CommonQueryRunnerExceptionCode.BAD_REQUEST,
+            {
+              userFriendlyMessage: msg`Merging records that share the same file is not supported.`,
+            },
+          );
+        }
+      }
+    }
+  }
+
+  private async assertNoSharedFilesAcrossLockedRows({
+    transactionScope,
+    schemaName,
+    tableName,
+    flatObjectMetadata,
+    flatFieldMetadataMaps,
+    priorityRecordId,
+    idsToDelete,
+  }: {
+    transactionScope: WorkspaceTransactionScope;
+    schemaName: string;
+    tableName: string;
+    flatObjectMetadata: CommonExtendedQueryRunnerContext['flatObjectMetadata'];
+    flatFieldMetadataMaps: CommonExtendedQueryRunnerContext['flatFieldMetadataMaps'];
+    priorityRecordId: string;
+    idsToDelete: string[];
+  }): Promise<void> {
+    const filesFieldNames: string[] = [];
+    for (const fieldId of flatObjectMetadata.fieldIds) {
+      const fieldMetadata = findFlatEntityByIdInFlatEntityMaps({
+        flatEntityId: fieldId,
+        flatEntityMaps: flatFieldMetadataMaps,
+      });
+      if (fieldMetadata?.type === FieldMetadataType.FILES) {
+        filesFieldNames.push(fieldMetadata.name);
+      }
+    }
+    if (filesFieldNames.length === 0 || idsToDelete.length === 0) {
+      return;
+    }
+
+    // Read raw FILES columns bypassing restrictedFields so shared fileIds on hidden fields are never hard-deleted.
+    const columnSelect = filesFieldNames
+      .map((name) => quoteIdentifier(name))
+      .join(', ');
+    const rows = (await transactionScope.executeRawQuery(
+      `SELECT id, ${columnSelect} FROM ${quoteIdentifier(schemaName)}.${quoteIdentifier(tableName)} WHERE id = ANY($1::uuid[])`,
+      [[priorityRecordId, ...idsToDelete]],
+    )) as Array<Record<string, unknown>>;
+
+    const priorityRow = rows.find(
+      (row) => String(row.id).toLowerCase() === priorityRecordId.toLowerCase(),
+    );
+    if (!priorityRow) {
+      return;
+    }
+
+    const priorityFileIds = new Set<string>();
+    for (const fieldName of filesFieldNames) {
+      const raw = priorityRow[fieldName];
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      for (const fileId of this.extractNormalizedFileIds(parsed)) {
+        priorityFileIds.add(fileId);
+      }
+    }
+    if (priorityFileIds.size === 0) {
+      return;
+    }
+
+    for (const row of rows) {
+      if (String(row.id).toLowerCase() === priorityRecordId.toLowerCase()) {
+        continue;
+      }
+      for (const fieldName of filesFieldNames) {
+        const raw = row[fieldName];
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (
+          this.extractNormalizedFileIds(parsed).some((fileId) =>
+            priorityFileIds.has(fileId),
+          )
+        ) {
+          throw new CommonQueryRunnerException(
+            'Merging records that share the same file is not supported',
+            CommonQueryRunnerExceptionCode.BAD_REQUEST,
+            {
+              userFriendlyMessage: msg`Merging records that share the same file is not supported.`,
+            },
+          );
+        }
+      }
+    }
   }
 
   private async processNestedRelations({

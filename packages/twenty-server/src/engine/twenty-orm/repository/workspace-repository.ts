@@ -4,7 +4,6 @@ import {
 } from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
 import {
   assertNativeCrmAuditWriteSupported,
-  assertNativeCrmDeleteFilesEmpty,
   captureNativeCrmAuditWriteData,
   isNativeCrmAuditMetadata,
   readNativeCrmAuditRows,
@@ -41,7 +40,10 @@ import {
   PermissionsExceptionMessage,
 } from 'src/engine/metadata-modules/permissions/permissions.exception';
 import { FilesFieldSync } from 'src/engine/twenty-orm/field-operations/files-field-sync/files-field-sync';
-import { createNativeCrmAuditFilesStore } from 'src/engine/core-modules/crm-audit/native-crm-audit-files';
+import {
+  createNativeCrmAuditFilesStore,
+  prepareNativeCrmDeleteFiles,
+} from 'src/engine/core-modules/crm-audit/native-crm-audit-files';
 import {
   type OperationType,
   validateOperationIsPermittedOrThrow,
@@ -1986,7 +1988,10 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     const nativeAudit = getNativeCrmAuditContext(this.options.executor, this.options.flatObjectMetadata.nameSingular);
     let nativeAuditBefore: ObjectRecord[] = [];
     let nativeDeleteEffects:
-      | ((deletedIds: string[]) => Promise<void>)
+      | Awaited<ReturnType<typeof prepareNativeCrmDeleteEffects>>
+      | undefined;
+    let nativeDeleteFiles:
+      | Awaited<ReturnType<typeof prepareNativeCrmDeleteFiles>>
       | undefined;
     if (this.requiresOmniOwnershipCheck || kind === 'delete' || nativeAudit) {
       const candidates = await this.buildEventSnapshotQueryBuilder(
@@ -2033,10 +2038,6 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
           await verifyOmniDetachedParent(query, grant);
         }
         if (nativeAudit) {
-          assertNativeCrmDeleteFilesEmpty(
-            this.options.tableShape,
-            nativeAuditBefore,
-          );
           nativeDeleteEffects = await prepareNativeCrmDeleteEffects(
             this.options.executor,
             this.options.tableShape,
@@ -2089,6 +2090,14 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
               if (protectedChildIds.size)
                 throw new Error('OMNI_PARENT_DELETE_REQUIRES_DOMAIN_COMMAND');
             },
+          );
+          nativeDeleteFiles = await prepareNativeCrmDeleteFiles(
+            this.options.executor,
+            this.options.internalContext.workspaceId,
+            [
+              { shape: this.options.tableShape, before: nativeAuditBefore },
+              ...nativeDeleteEffects.cascadeTargets,
+            ],
           );
         }
       }
@@ -2250,26 +2259,37 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
           )
         : recordsAfterWrite;
 
-    await nativeDeleteEffects?.(
-      mutationResult.generatedMaps.map((row) => row.id),
-    );
-    if (kind === 'delete')
+    const actualMutationIds = mutationResult.generatedMaps.map((row) => row.id);
+    const deletedChildIdsByObject =
+      await nativeDeleteEffects?.apply(actualMutationIds);
+    if (kind === 'delete') {
       await recordNativeCrmDeletes(
         this.options.executor,
         this.options.tableShape,
         nativeAuditBefore,
-        mutationResult.generatedMaps.map((row) => row.id),
+        actualMutationIds,
       );
-    else
+      if (nativeDeleteFiles) {
+        const deletedIdsByObject = new Map<string, string[]>([
+          [this.options.tableShape.objectMetadataId, actualMutationIds],
+        ]);
+        if (deletedChildIdsByObject) {
+          for (const [objectId, ids] of deletedChildIdsByObject) {
+            const existing = deletedIdsByObject.get(objectId) ?? [];
+            existing.push(...ids);
+            deletedIdsByObject.set(objectId, existing);
+          }
+        }
+        await nativeDeleteFiles.apply(deletedIdsByObject);
+      }
+    } else
       await recordNativeCrmUpdates(
         this.options.executor,
         this.options.tableShape,
         nativeAuditBefore,
-        mutationResult.generatedMaps.map((row) => row.id),
+        actualMutationIds,
         new Set(
-          data?.updatedAt === undefined
-            ? []
-            : mutationResult.generatedMaps.map((row) => row.id),
+          data?.updatedAt === undefined ? [] : actualMutationIds,
         ),
         kind === 'soft-delete' || kind === 'restore' ? kind : undefined,
       );

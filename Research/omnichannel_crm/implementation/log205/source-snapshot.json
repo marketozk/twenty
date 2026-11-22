@@ -1,0 +1,25 @@
+{
+  "verified": 20,
+  "files": {
+    "packages/twenty-server/src/engine/api/common/common-query-runners/common-merge-many-query-runner.service.ts": "26809fc60584947fd6629406088f22b38f7bb8c188a1ff28193b8bf1c53d9b9d",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-transaction-context.ts": "e2eae525b28f46bee822069d7c1c60b8b3e6733e413376d4ffea3637383a007d",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/files-field-hard-delete-audit.ts": "719d4a17db65c5a77729a4841122131243713a3763db050ecbf72af0b9f2bd25",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-delete-effects.ts": "88f1a8cc245c50b0f1dc4734c34cc38d60ac23f162146d923a1c940634324e23",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-files.ts": "b4e4c58a4004a4da770cb755696cd89b7ae4ba19a1e043d33fc399368932f59b",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-transaction.ts": "c2d9d7e4f72d0e051c90927415f292b1e39298c46efa214593b42781e6209f11",
+    "packages/twenty-server/src/engine/core-modules/file/files-field/files-field.module.ts": "e6f1f9f5739c668b814ee6a9a22c6b0218e0727558c2cf66af6b5079bbd4407b",
+    "packages/twenty-server/src/engine/core-modules/file/files-field/jobs/files-field-deletion.job.ts": "614e042ce1bf0b1a1a3a253b270edae6c51270f3a1c7de528f9e02d6edf6b7f9",
+    "packages/twenty-server/src/engine/core-modules/file/files-field/listeners/files-field-deletion.listener.ts": "5204eb80716eef7bfeef3e3cc3aa6276c9f3223c3dc32ad62b7c2e1ea389aacb",
+    "packages/twenty-server/src/engine/core-modules/file/files-field/services/files-field.service.ts": "789f9f9b9ceb707871ff386f5c8fd8deb544bf6c706feb9b7d8babc66a9be299",
+    "packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts": "145c34b3a6190b6142bf0df7ebc9266f695f2c94b8e0f0c9186bc1cf03bb24eb",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/deferred-action-handlers/services/delete-files-field-files-deferred-action-handler.service.ts": "9c443584ba8940d19454f177b9ad7f372eae6c7f5109077c3b5d2c8afe4b53bc",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/registry/deferred-workspace-migration-action-handler-registry.service.ts": "be7c41f2a0f2228b16e66ade1ea00eb782d835d5434863488591c52b60a5f687",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/types/deferred-workspace-migration-action-name.type.ts": "77813f83854174b6b6b13cb125a4a8dd6e325f762169bca2992c1ec583dd951e",
+    "packages/twenty-server/src/engine/workspace-manager/workspace-migration/workspace-migration-runner/types/deferred-workspace-migration-action.type.ts": "ed2a8c325bc5af346b39d1479835513f0dc092df8e0331a30d43493ea486a156",
+    "packages/twenty-server/test/fork-migration/crm-audit-delete-set-null.postgres-spec.ts": "4668b91b4dbb936de1b7d72ae27f582c0710f13ea4f4b7d5d632e9834fe0be40",
+    "packages/twenty-server/test/fork-migration/crm-audit-file-hard-delete.postgres-spec.ts": "8fea7c8778821f75f261e19cfb6c3e3de6f94055f45593238e2a9ee7dd438783",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-delete.postgres-spec.ts": "b3c79a64d766c9a61bc4ff05a342121088e2bd859b02802c8bce18d7bbac2841",
+    "packages/twenty-server/test/fork-migration/crm-audit-public-destroy.postgres-spec.ts": "0952e682e139cb26224c620983c4bb1a4c89795e4aa10faa2a143ba55a9347c3",
+    "packages/twenty-server/test/fork-migration/crm-audit-public-merge.postgres-spec.ts": "c6f42df46fdb7f785b9667d06c90c214ba9266a6caead75d1a64e2a22bfd30fe"
+  }
+}

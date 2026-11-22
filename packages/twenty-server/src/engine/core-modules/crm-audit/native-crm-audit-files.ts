@@ -1,6 +1,13 @@
+import { randomUUID } from 'node:crypto';
+import { TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER } from 'twenty-shared/application-runtime';
+
 import { type FileSettings } from 'src/engine/core-modules/file/types/file-settings.type';
 import { type FileStatus } from 'src/engine/core-modules/file/types/file-status.type';
-import { getNativeCrmAuditContext } from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
+import { FILES_FIELD_HARD_DELETE_INTENT_NAME } from 'src/engine/core-modules/crm-audit/files-field-hard-delete-audit';
+import {
+  getNativeCrmAuditContext,
+  getNativeCrmAuditOperation,
+} from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
 
 type Executor = {
   execute: (statement: {
@@ -231,6 +238,267 @@ export const createNativeCrmAuditFilesStore = (
             },
           },
         });
+      }
+    },
+  };
+};
+
+type DeleteFileRow = FileRow & { applicationId: string | null };
+
+type DeleteFileOwner = {
+  objectMetadataId: string;
+  recordId: string;
+  fieldMetadataId: string;
+};
+
+type DeleteFilesTarget = {
+  shape: {
+    objectMetadataId: string;
+    columnShapeByColumnName: Record<
+      string,
+      { columnName: string; fieldMetadataId: string; fieldMetadataType: string }
+    >;
+  };
+  before: Record<string, unknown>[];
+};
+
+const UUID_PATTERN =
+  /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const FILES_FIELD_PATH_PREFIX = 'files-field/';
+
+export const prepareNativeCrmDeleteFiles = async (
+  executor: Executor,
+  workspaceId: string,
+  targets: readonly DeleteFilesTarget[],
+): Promise<{
+  apply: (
+    deletedIdsByObjectMetadataId: ReadonlyMap<string, readonly string[]>,
+  ) => Promise<void>;
+}> => {
+  const audit = getNativeCrmAuditContext(executor);
+  if (!audit) return { apply: async () => undefined };
+
+  const owners = new Map<string, DeleteFileOwner>();
+  for (const target of targets) {
+    const filesColumns = Object.values(
+      target.shape.columnShapeByColumnName,
+    ).filter((column) => column.fieldMetadataType === 'FILES');
+    if (filesColumns.length === 0) continue;
+
+    for (const row of target.before) {
+      const recordId =
+        typeof row.id === 'string' && UUID_PATTERN.test(row.id)
+          ? row.id.toLowerCase()
+          : undefined;
+      if (!recordId) throw new Error('Native file delete owner is missing');
+
+      for (const column of filesColumns) {
+        const raw = row[column.columnName];
+        if (raw === undefined) {
+          throw new Error('Native file delete column is missing');
+        }
+        if (raw === null || raw === 'null') continue;
+        let parsed: unknown;
+        try {
+          parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        } catch {
+          throw new Error('Native file delete payload is malformed');
+        }
+        if (parsed === null) continue;
+        if (!Array.isArray(parsed)) {
+          throw new Error('Native file delete payload is malformed');
+        }
+        for (const item of parsed) {
+          if (
+            !item ||
+            typeof item !== 'object' ||
+            Array.isArray(item) ||
+            typeof (item as { fileId?: unknown }).fileId !== 'string' ||
+            !UUID_PATTERN.test((item as { fileId: string }).fileId)
+          ) {
+            throw new Error('Native file delete entry is invalid');
+          }
+          const fileId = (item as { fileId: string }).fileId.toLowerCase();
+          if (owners.has(fileId)) {
+            throw new Error('Native file must have one unambiguous owner');
+          }
+          owners.set(fileId, {
+            objectMetadataId: target.shape.objectMetadataId.toLowerCase(),
+            recordId,
+            fieldMetadataId: column.fieldMetadataId.toLowerCase(),
+          });
+        }
+      }
+    }
+  }
+
+  if (owners.size === 0) {
+    return { apply: async () => undefined };
+  }
+
+  const columns = `id, path, "applicationId", settings, status,
+    settings::text AS "settingsSnapshot",
+    to_jsonb("deletedAt")::text AS "deletedAtSnapshot",
+    to_jsonb(file)::text AS "rowSnapshot"`;
+  const lockedRows = (await executor.execute({
+    text: `SELECT ${columns} FROM core.file
+      WHERE "workspaceId"=$1 AND id=ANY($2::uuid[]) AND "deletedAt" IS NULL
+      ORDER BY id FOR UPDATE`,
+    values: [workspaceId, [...owners.keys()].sort()],
+  })) as DeleteFileRow[];
+
+  if (lockedRows.length !== owners.size) {
+    throw new Error(
+      'Native file is missing, deleted or outside this workspace',
+    );
+  }
+
+  for (const row of lockedRows) {
+    if (
+      row.status !== 'UPLOADED' ||
+      typeof row.path !== 'string' ||
+      !row.path.startsWith(FILES_FIELD_PATH_PREFIX) ||
+      row.path.length <= FILES_FIELD_PATH_PREFIX.length ||
+      row.settings?.isTemporaryFile !== false ||
+      row.settings?.toDelete !== false ||
+      typeof row.applicationId !== 'string' ||
+      !UUID_PATTERN.test(row.applicationId)
+    ) {
+      throw new Error('Native file is not eligible for audited deletion');
+    }
+  }
+
+  const beforeById = new Map(lockedRows.map((row) => [row.id.toLowerCase(), row]));
+  const snapshot = (row: DeleteFileRow) => ({
+    settings: row.settingsSnapshot,
+    deletedAt: row.deletedAtSnapshot,
+  });
+  let applied = false;
+
+  return {
+    apply: async (deletedIdsByObjectMetadataId) => {
+      if (applied) {
+        throw new Error('Native file delete plan must be applied once');
+      }
+      applied = true;
+
+      const deletedSets = new Map<string, Set<string>>();
+      for (const [objectId, ids] of deletedIdsByObjectMetadataId) {
+        deletedSets.set(
+          objectId.toLowerCase(),
+          new Set(ids.map((id) => id.toLowerCase())),
+        );
+      }
+
+      const deletedOwners = new Map<string, DeleteFileOwner>();
+      for (const [fileId, owner] of owners) {
+        if (deletedSets.get(owner.objectMetadataId)?.has(owner.recordId)) {
+          deletedOwners.set(fileId, owner);
+        }
+      }
+
+      for (const fileId of [...deletedOwners.keys()].sort()) {
+        const updated = (await executor.execute({
+          text: `UPDATE core.file
+            SET "deletedAt"=CURRENT_TIMESTAMP,
+                settings='{"isTemporaryFile":false,"toDelete":true}'::jsonb,
+                "updatedAt"=CURRENT_TIMESTAMP
+            WHERE "workspaceId"=$1 AND id=$2 AND "deletedAt" IS NULL
+            RETURNING ${columns}`,
+          values: [workspaceId, fileId],
+        })) as DeleteFileRow[];
+        if (updated.length !== 1) {
+          throw new Error('Native file delete lost its locked row');
+        }
+      }
+
+      const actualRows = (await executor.execute({
+        text: `SELECT ${columns} FROM core.file WHERE "workspaceId"=$1 AND id=ANY($2::uuid[])`,
+        values: [workspaceId, [...owners.keys()].sort()],
+      })) as DeleteFileRow[];
+      if (actualRows.length !== owners.size) {
+        throw new Error('Native file lost its workspace scope');
+      }
+
+      const actualById = new Map(
+        actualRows.map((row) => [row.id.toLowerCase(), row]),
+      );
+      for (const [fileId] of owners) {
+        const row = actualById.get(fileId);
+        const beforeRow = beforeById.get(fileId);
+        if (!row || !beforeRow) {
+          throw new Error('Native file changed its identity');
+        }
+        if (!deletedOwners.has(fileId)) {
+          if (row.rowSnapshot !== beforeRow.rowSnapshot) {
+            throw new Error('Native skipped delete changed a planned File');
+          }
+          continue;
+        }
+        if (
+          row.deletedAtSnapshot === null ||
+          row.settings?.isTemporaryFile !== false ||
+          row.settings?.toDelete !== true
+        ) {
+          throw new Error('Native file delete state does not match its plan');
+        }
+        const owner = deletedOwners.get(fileId)!;
+        audit.record({
+          resourceKind: 'crmFile',
+          resourceId: fileId,
+          action: 'update',
+          before: snapshot(beforeRow),
+          after: snapshot(row),
+          securityDescriptor: {
+            resourceKind: 'crmFile',
+            resourceId: fileId,
+            fileParent: {
+              objectMetadataId: owner.objectMetadataId,
+              recordId: owner.recordId,
+              fieldMetadataId: owner.fieldMetadataId,
+            },
+          },
+        });
+      }
+
+      if (deletedOwners.size === 0) return;
+
+      const operation = getNativeCrmAuditOperation(executor);
+      if (!operation) {
+        throw new Error('Native file delete requires an active audit operation');
+      }
+      const sortedFiles = [...deletedOwners.entries()]
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([fileId, owner]) => ({
+          fileId,
+          objectMetadataId: owner.objectMetadataId,
+          recordId: owner.recordId,
+          fieldMetadataId: owner.fieldMetadataId,
+        }));
+      const intentPayload = {
+        version: 1,
+        nextFileIndex: 0,
+        sourceOperationId: operation.operationId,
+        ...(operation.correlationId !== undefined
+          ? { correlationId: operation.correlationId }
+          : {}),
+        files: sortedFiles,
+      };
+      const inserted = await executor.execute({
+        text: `INSERT INTO core."deferredWorkspaceMigrationAction"
+          (id, "workspaceId", "applicationUniversalIdentifier", name, payload, position, "runByVersion", status, attempts)
+          VALUES ($1, $2, $3, $4, $5::jsonb, 0, NULL, 'PENDING', 0)
+          RETURNING id`,
+        values: [
+          randomUUID(),
+          workspaceId,
+          TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER,
+          FILES_FIELD_HARD_DELETE_INTENT_NAME,
+          JSON.stringify(intentPayload),
+        ],
+      });
+      if (inserted.length !== 1) {
+        throw new Error('Native file delete failed to persist cleanup intent');
       }
     },
   };

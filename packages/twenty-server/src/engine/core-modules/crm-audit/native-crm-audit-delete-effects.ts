@@ -1,6 +1,5 @@
 import {
   assertNativeCrmAuditWriteSupported,
-  assertNativeCrmDeleteFilesEmpty,
   readNativeCrmAuditRows,
   recordNativeCrmDeletes,
   recordNativeCrmUpdates,
@@ -39,7 +38,13 @@ export const prepareNativeCrmDeleteEffects = async (
     shape: NativeCrmAuditTableShape,
     ids: string[],
   ) => Promise<void>,
-): Promise<(deletedIds: string[]) => Promise<void>> => {
+): Promise<{
+  cascadeTargets: Array<{
+    shape: NativeCrmAuditTableShape;
+    before: Awaited<ReturnType<typeof readNativeCrmAuditRows>>;
+  }>;
+  apply: (deletedIds: string[]) => Promise<Map<string, string[]>>;
+}> => {
   const groups = new Map<
     string,
     ChildTable & { ids: Set<string>; actions: Map<string, 'n' | 'c'> }
@@ -120,6 +125,10 @@ export const prepareNativeCrmDeleteEffects = async (
     actions: ReadonlyMap<string, 'n' | 'c'>;
     before: Awaited<ReturnType<typeof readNativeCrmAuditRows>>;
   }[] = [];
+  const cascadeTargets: Array<{
+    shape: NativeCrmAuditTableShape;
+    before: Awaited<ReturnType<typeof readNativeCrmAuditRows>>;
+  }> = [];
   const capturedParentIds = new Set(parentIds);
   for (const [table, group] of [...groups].sort(([a], [b]) =>
     a.localeCompare(b),
@@ -142,7 +151,6 @@ export const prepareNativeCrmDeleteEffects = async (
     );
     if (cascadeBefore.length) {
       const cascadeIds = cascadeBefore.map((row) => row.id);
-      assertNativeCrmDeleteFilesEmpty(group.shape, cascadeBefore);
       await assertChildDeletionAllowed(group.shape, cascadeIds);
       if (
         await hasReferencingRecords(
@@ -155,6 +163,7 @@ export const prepareNativeCrmDeleteEffects = async (
         throw new Error(
           'Native delete excludes transitive foreign-key effects',
         );
+      cascadeTargets.push({ shape: group.shape, before: cascadeBefore });
     }
     for (const [column, action] of group.actions) {
       if (action !== 'n') continue;
@@ -176,60 +185,79 @@ export const prepareNativeCrmDeleteEffects = async (
     }
     plans.push({ ...group, before });
   }
-  return async (deletedIds) => {
-    const deleted = new Set(deletedIds);
-    for (const plan of plans) {
-      const after = await readNativeCrmAuditRows(
-        executor,
-        plan.shape,
-        plan.before.map((row) => row.id),
-      );
-      const changedIds: string[] = [];
-      const deletedChildIds: string[] = [];
-      for (const before of plan.before) {
-        const current = after.find((row) => row.id === before.id);
-        const shouldDelete = [...plan.actions].some(
-          ([column, action]) =>
-            action === 'c' && deleted.has(JSON.parse(String(before[column]))),
+  return {
+    cascadeTargets,
+    apply: async (deletedIds) => {
+      const deleted = new Set(deletedIds);
+      const deletedChildIdsByObjectMetadataId = new Map<string, string[]>();
+      for (const plan of plans) {
+        const after = await readNativeCrmAuditRows(
+          executor,
+          plan.shape,
+          plan.before.map((row) => row.id),
         );
-        if (shouldDelete) {
-          if (current) throw new Error('Native delete CASCADE child remains');
-          deletedChildIds.push(before.id);
-          continue;
+        const changedIds: string[] = [];
+        const deletedChildIds: string[] = [];
+        for (const before of plan.before) {
+          const current = after.find((row) => row.id === before.id);
+          const shouldDelete = [...plan.actions].some(
+            ([column, action]) =>
+              action === 'c' && deleted.has(JSON.parse(String(before[column]))),
+          );
+          if (shouldDelete) {
+            if (current) throw new Error('Native delete CASCADE child remains');
+            deletedChildIds.push(before.id);
+            continue;
+          }
+          if (!current)
+            throw new Error('Native delete SET NULL child vanished');
+          const changedColumns = new Set(
+            [...plan.actions]
+              .filter(([column, action]) => {
+                const previous = JSON.parse(String(before[column]));
+                return (
+                  action === 'n' &&
+                  typeof previous === 'string' &&
+                  capturedParentIds.has(previous) &&
+                  deleted.has(previous)
+                );
+              })
+              .map(([column]) => column),
+          );
+          for (const column of Object.keys(before)) {
+            const expected = changedColumns.has(column)
+              ? 'null'
+              : before[column];
+            if (current[column] !== expected)
+              throw new Error('Native delete SET NULL postcondition failed');
+          }
+          if (changedColumns.size) changedIds.push(before.id);
         }
-        if (!current) throw new Error('Native delete SET NULL child vanished');
-        const changedColumns = new Set(
-          [...plan.actions]
-            .filter(([column, action]) => {
-              const previous = JSON.parse(String(before[column]));
-              return (
-                action === 'n' &&
-                typeof previous === 'string' &&
-                capturedParentIds.has(previous) &&
-                deleted.has(previous)
-              );
-            })
-            .map(([column]) => column),
+        await recordNativeCrmUpdates(
+          executor,
+          plan.shape,
+          plan.before,
+          changedIds,
         );
-        for (const column of Object.keys(before)) {
-          const expected = changedColumns.has(column) ? 'null' : before[column];
-          if (current[column] !== expected)
-            throw new Error('Native delete SET NULL postcondition failed');
+        await recordNativeCrmDeletes(
+          executor,
+          plan.shape,
+          plan.before,
+          deletedChildIds,
+        );
+        if (deletedChildIds.length > 0) {
+          const existing =
+            deletedChildIdsByObjectMetadataId.get(
+              plan.shape.objectMetadataId,
+            ) ?? [];
+          existing.push(...deletedChildIds);
+          deletedChildIdsByObjectMetadataId.set(
+            plan.shape.objectMetadataId,
+            existing,
+          );
         }
-        if (changedColumns.size) changedIds.push(before.id);
       }
-      await recordNativeCrmUpdates(
-        executor,
-        plan.shape,
-        plan.before,
-        changedIds,
-      );
-      await recordNativeCrmDeletes(
-        executor,
-        plan.shape,
-        plan.before,
-        deletedChildIds,
-      );
-    }
+      return deletedChildIdsByObjectMetadataId;
+    },
   };
 };

@@ -48,6 +48,7 @@ const contexts = new WeakMap<
   object,
   {
     audit: CrmAuditTransactionContext;
+    operation: CrmAuditOperation;
     postFlushChecks: Array<() => Promise<void>>;
     failure?: unknown;
   }
@@ -235,6 +236,10 @@ export const getNativeCrmAuditContext = (
   isDelegatedRecordShareAuditWrite(executor, objectMetadataNameSingular)
     ? undefined
     : contexts.get(executor)?.audit;
+
+export const getNativeCrmAuditOperation = (
+  executor: object,
+): CrmAuditOperation | undefined => contexts.get(executor)?.operation;
 
 export const runNativeCrmAuditWrite = async <T>(
   executor: object,
@@ -637,10 +642,12 @@ export const withNativeCrmAuditTransaction = async <T>(
   const audit = new CrmAuditTransactionContext(auditExecutor, operation);
   const binding: {
     audit: CrmAuditTransactionContext;
+    operation: CrmAuditOperation;
     postFlushChecks: Array<() => Promise<void>>;
     failure?: unknown;
   } = {
     audit,
+    operation,
     postFlushChecks: [],
   };
   contexts.set(executor, binding);

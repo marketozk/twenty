@@ -1,0 +1,40 @@
+{
+  "log": "LOG-205",
+  "issue": "ROB-765",
+  "date": "2026-11-22",
+  "title": "Transactional audit and durable hard-delete owner for covered CRM FILES (delete_filesFieldFiles)",
+  "targetedPostgres": {
+    "suitesPassed": 7,
+    "suitesTotal": 7,
+    "testsPassed": 156,
+    "testsTotal": 156,
+    "newPostgresTests": 3,
+    "durationSeconds": 52.486
+  },
+  "fullRegression": {
+    "suitesPassed": 140,
+    "suitesTotal": 141,
+    "testsPassed": 3260,
+    "testsTotal": 3261,
+    "durationSeconds": 753.342,
+    "preExistingUnrelatedFailure": "crm-audit-signing-key.postgres-spec.ts:391 (LOG-195 known UUID tie-break ordering flake within single-transaction rotateCurrent; untouched by LOG-205)"
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "enterpriseEdges": 137869,
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 515,
+    "currentRootFiles": 515,
+    "baselineDiagnostics": 283,
+    "currentDiagnostics": 277,
+    "newDiagnostics": 0,
+    "changedFileDiagnostics": 0,
+    "baselineOnlyUnchangedMethodDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 20
+}

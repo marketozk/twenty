@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
 
 import { extname } from 'path';
 
@@ -6,10 +7,12 @@ import { msg } from '@lingui/core/macro';
 import { isNonEmptyString } from '@sniptt/guards';
 import { FileFolder } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
+import { type DataSource, Like } from 'typeorm';
 
 import { v4 } from 'uuid';
 
 import { ApplicationEntity } from 'src/engine/core-modules/application/application.entity';
+import { reconcileFilesFieldHardDeleteIntentsWithAudit } from 'src/engine/core-modules/crm-audit/files-field-hard-delete-audit';
 import { FileStorageService } from 'src/engine/core-modules/file-storage/services/file-storage.service';
 import { FileWithSignedUrlDTO } from 'src/engine/core-modules/file/dtos/file-with-sign-url.dto';
 import { FileEntity } from 'src/engine/core-modules/file/entities/file.entity';
@@ -36,6 +39,9 @@ export class FilesFieldService {
     @InjectWorkspaceScopedRepository(FileEntity)
     private readonly fileRepository: WorkspaceScopedRepository<FileEntity>,
     private readonly fileUrlService: FileUrlService,
+    @Optional()
+    @InjectDataSource()
+    private readonly coreDataSource?: DataSource,
   ) {}
 
   async uploadFile({
@@ -202,6 +208,18 @@ export class FilesFieldService {
     workspaceId: string;
   }): Promise<void> {
     try {
+      // Skip already-deleted or audit-retired rows so batch retries stay idempotent.
+      const activeFile = await this.fileRepository.findOne(workspaceId, {
+        where: {
+          id: fileId,
+          path: Like(`${FileFolder.FilesField}/%`),
+        },
+      });
+
+      if (!isDefined(activeFile)) {
+        return;
+      }
+
       await this.fileStorageService.deleteByFileId({
         fileId,
         workspaceId,
@@ -209,12 +227,47 @@ export class FilesFieldService {
       });
     } catch (error) {
       throw new FilesFieldException(
-        `Failed to delete file ${fileId}: ${error.message}`,
+        `Failed to delete file ${fileId}: ${error instanceof Error ? error.message : String(error)}`,
         FilesFieldExceptionCode.FILE_DELETION_FAILED,
         {
           userFriendlyMessage: msg`Failed to delete file ${fileId}`,
         },
       );
     }
+  }
+
+  async reconcileFilesFieldHardDeleteIntentsWithAudit({
+    workspaceId,
+    intentId,
+  }: {
+    workspaceId: string;
+    intentId?: string;
+  }): Promise<{
+    processedIntents: number;
+    completedIntents: number;
+    deletedFiles: number;
+  }> {
+    if (!isDefined(this.coreDataSource)) {
+      throw new Error('Core DataSource is required for audited file deletion');
+    }
+
+    return reconcileFilesFieldHardDeleteIntentsWithAudit({
+      coreDataSource: this.coreDataSource,
+      workspaceId,
+      intentId,
+      deleteFileObject: ({
+        workspaceId: targetWorkspaceId,
+        applicationUniversalIdentifier,
+        resourcePath,
+      }) =>
+        this.fileStorageService.deleteFileObject({
+          workspaceId: targetWorkspaceId,
+          applicationUniversalIdentifier,
+          fileFolder: FileFolder.FilesField,
+          resourcePath,
+        }),
+      releaseStorageStock: (params) =>
+        this.fileStorageService.releaseStorageStock(params),
+    });
   }
 }

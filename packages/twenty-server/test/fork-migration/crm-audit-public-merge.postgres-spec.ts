@@ -1095,7 +1095,7 @@ describe('Public CRM record merge audit (LOG-203)', () => {
     expect(await audit()).toHaveLength(0);
     await f.owner.query(`DROP TABLE "${f.schemaName}".delete_child`);
 
-    // 5. Non-empty FILES on duplicate refuses before DELETE; non-empty FILES on priorityRecord alone succeeds
+    // 5. Non-empty FILES on duplicate when priority has no FILES refuses deterministically before DELETE; non-empty FILES on priorityRecord alone succeeds
     await f.owner.query(
       `UPDATE "${f.schemaName}".company SET documents = $2::jsonb WHERE id = $1`,
       [cB, JSON.stringify([{ fileId: randomUUID(), label: 'dup.pdf' }])],
@@ -1105,7 +1105,9 @@ describe('Public CRM record merge audit (LOG-203)', () => {
         { ids: [cA, cB], conflictPriorityIndex: 0, selectedFields: { id: true } },
         hFail.queryContext('company'),
       ),
-    ).rejects.toThrow('excludes linked files');
+    ).rejects.toThrow(
+      'Merging files from duplicate records onto a priority record without files is not supported',
+    );
     expect(await audit()).toHaveLength(0);
     await f.owner.query(
       `UPDATE "${f.schemaName}".company SET documents = NULL WHERE id = $1`,
