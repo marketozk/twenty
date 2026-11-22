@@ -5741,3 +5741,9 @@ f143456f-8756-4fc0-808c-9a32f9306ad3 и все 11 состояний задач 
 [Результаты](implementation/log204/results.json), [ревью](implementation/log204/review.md),
 [следующий участок](implementation/log204/next-boundary.md). ROB765 остаётся
 In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+
+22.11.2026 LOG204 опубликован. Code 8eaffb12d0d6773388696eb44fc8e6b89d8e7f1d
+отправлен в GitHub, ref подтверждён через API. Описание ROB765, комментарий
+650a146d-47a0-406e-bbf8-0bfd95f1c61a и все 11 состояний задач прочитаны обратно
+и совпали. [Публикация](implementation/log204/publication.json).
+Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG205`).
