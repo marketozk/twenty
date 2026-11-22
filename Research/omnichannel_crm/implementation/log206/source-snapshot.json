@@ -1,0 +1,15 @@
+{
+  "log": "LOG-206",
+  "date": "2026-11-22",
+  "verifiedRemoteMatch": true,
+  "files": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-files.ts": "64474a463776a6e52cac28c75d49810a45489d3d69a6b6f7278e99776604645c",
+    "packages/twenty-server/src/engine/core-modules/file/files-field/listeners/files-field-deletion.listener.ts": "eb49508d8ad147cc5e8d9fb6553f1dca711f6128433b1b61becce2bc4af98622",
+    "packages/twenty-server/src/engine/trash-cleanup/services/trash-cleanup.service.ts": "a4bccdf0f6439412aee6b65cf6f467b17462273fef4a9c68e1e7ddb179c43008",
+    "packages/twenty-server/src/engine/twenty-orm/field-operations/files-field-sync/files-field-sync.ts": "aa551ffe1a963346ad6be572da268ebf08164568c53bb9de0deafa9d34c39dc8",
+    "packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts": "9aed3bfa4ce3c302872dd01c8bc108658ad4fef3630c38a0313fa7e33a7f0e02",
+    "packages/twenty-server/test/fork-migration/crm-audit-native-files.postgres-spec.ts": "f7c9a64ed89304c854cf19817abf983e2d15b7be82788fa3b9cf49a42449d9bf",
+    "packages/twenty-server/test/fork-migration/crm-audit-trash-and-file-remove.postgres-spec.ts": "5fba57136e981d069df0cc896dacf9ac967c8d9277b99264e5df0530fba66fec",
+    "packages/twenty-server/test/fork-migration/omni-parent-lifecycle.postgres-spec.ts": "eb224596e1dd0f3256c8c47a92fd4d88dba8061e6d1127e727ed449f2fc700c1"
+  }
+}

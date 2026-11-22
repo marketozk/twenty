@@ -91,10 +91,15 @@ const trash = (names: string[]) =>
         flatObjectMetadataMaps: {
           byUniversalIdentifier: Object.fromEntries(
             await Promise.all(
-              names.map(async (name) => [
-                name,
-                { nameSingular: name, id: await objectId(name) },
-              ]),
+              names.map(async (name) => {
+                const id = await objectId(name);
+                const metadata = await fixture.withContext(async () => {
+                  const maps = getWorkspaceContext().flatObjectMetadataMaps;
+                  const uid = maps.universalIdentifierById[id];
+                  return uid ? maps.byUniversalIdentifier[uid] : undefined;
+                });
+                return [name, metadata ?? { nameSingular: name, id }];
+              }),
             ),
           ),
         },

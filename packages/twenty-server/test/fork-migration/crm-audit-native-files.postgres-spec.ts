@@ -18,11 +18,13 @@ jest.mock(
 const f = createOmniNativeMessageFixture({
   additionalTables: ['company', 'opportunity', 'customCase'],
   configureMetadata: addCustomCrmMetadata,
-  coreSchema: 'audit',
+  coreSchema: 'fork',
 });
 const recordId = randomUUID(),
   secondId = randomUUID(),
   fileId = randomUUID(),
+  appId = randomUUID(),
+  foreignAppId = randomUUID(),
   foreignWorkspace = randomUUID();
 const fields: Record<
   string,
@@ -55,10 +57,31 @@ const audits = () =>
 const files = (): Promise<
   {
     id: string;
-    settings: { isTemporaryFile: boolean };
+    settings: { isTemporaryFile: boolean; toDelete?: boolean };
     [key: string]: unknown;
   }[]
 > => f.owner.query('SELECT * FROM core.file ORDER BY id');
+const deferredIntents = () =>
+  f.owner.query<
+    Array<{
+      id: string;
+      workspaceId: string;
+      name: string;
+      status: string;
+      payload: {
+        version: number;
+        nextFileIndex: number;
+        sourceOperationId: string;
+        correlationId?: string;
+        files: Array<{
+          fileId: string;
+          objectMetadataId: string;
+          recordId: string;
+          fieldMetadataId: string;
+        }>;
+      };
+    }>
+  >('SELECT * FROM core."deferredWorkspaceMigrationAction" ORDER BY id');
 const readCompanies = async (): Promise<
   { id: string; documents: ReturnType<typeof payload> | null }[]
 > => f.read('company');
@@ -68,13 +91,22 @@ const seed = async (
   overrides: Record<string, unknown> = {},
   object = 'company',
 ) => {
+  const targetWorkspaceId =
+    (overrides.workspaceId as string | undefined) ?? f.workspaceId;
+  const targetAppId =
+    'applicationId' in overrides
+      ? overrides.applicationId
+      : targetWorkspaceId === foreignWorkspace
+        ? foreignAppId
+        : appId;
   await f.owner.query(
-    `INSERT INTO core.file(id,"workspaceId",path,size,settings,status) VALUES ($1,$2,$3,12,$4,$5)`,
+    `INSERT INTO core.file(id,"workspaceId","applicationId",path,size,settings,status) VALUES ($1,$2,$3,$4,12,$5,$6)`,
     [
       fileId,
-      overrides.workspaceId ?? f.workspaceId,
+      targetWorkspaceId,
+      targetAppId,
       overrides.path ??
-        'secret/' + fields[object].universalIdentifier + '/private.pdf',
+        'files-field/' + fields[object].universalIdentifier + '/private.pdf',
       overrides.settings ?? { isTemporaryFile: true, toDelete: true },
       overrides.status ?? 'UPLOADED',
     ],
@@ -124,13 +156,20 @@ beforeAll(async () => {
     }
   });
   await f.initialize();
-  await f.owner.query(`INSERT INTO core.workspace(id) VALUES ($1),($2)`, [
-    f.workspaceId,
-    foreignWorkspace,
-  ]);
-  await f.owner.query('CREATE TABLE core.application(id uuid PRIMARY KEY)');
   await f.owner.query(
-    'CREATE TABLE core."applicationRegistration"(id uuid PRIMARY KEY)',
+    `INSERT INTO core.workspace(id, "deletedAt") VALUES ($1, NULL),($2, NULL)
+     ON CONFLICT (id) DO UPDATE SET "deletedAt" = NULL`,
+    [f.workspaceId, foreignWorkspace],
+  );
+  await f.owner.query(
+    'CREATE TABLE IF NOT EXISTS core.application(id uuid PRIMARY KEY)',
+  );
+  await f.owner.query(
+    'CREATE TABLE IF NOT EXISTS core."applicationRegistration"(id uuid PRIMARY KEY)',
+  );
+  await f.owner.query(
+    `INSERT INTO core.application(id) VALUES ($1),($2) ON CONFLICT (id) DO NOTHING`,
+    [appId, foreignAppId],
   );
   await f.owner.query(
     `CREATE TYPE core.file_status_enum AS ENUM ('PENDING','UPLOADED')`,
@@ -170,7 +209,13 @@ beforeEach(async () => {
   );
   await f.owner.query('DROP FUNCTION IF EXISTS core.skip_company_update()');
   await f.reset();
+  await f.owner.query(
+    `INSERT INTO core.workspace(id, "deletedAt") VALUES ($1, NULL),($2, NULL)
+     ON CONFLICT (id) DO UPDATE SET "deletedAt" = NULL`,
+    [f.workspaceId, foreignWorkspace],
+  );
   await f.owner.query('TRUNCATE core.file');
+  await f.owner.query('DELETE FROM core."deferredWorkspaceMigrationAction"');
   await f.owner.query(
     `INSERT INTO "${f.schemaName}".company(id,name) VALUES($1,'one'),($2,'two')`,
     [recordId, secondId],
@@ -240,18 +285,47 @@ it('renames only the native label without changing the core File or creating a f
   ).toHaveLength(1);
   expect((await record()).documents![0].label).toBe('changed label');
 });
-it('removes a file with both native and core audit and preserves the parent descriptor', async () => {
+it('removes a file with both native and core audit, sets toDelete, persists durable intent, and preserves the parent descriptor', async () => {
   await seed();
   await attach();
   await run((scope) => repo(scope).update(recordId, { documents: [] }));
-  expect((await files())[0].deletedAt).toBeInstanceOf(Date);
+  const retired = (await files())[0];
+  expect(retired.deletedAt).toBeInstanceOf(Date);
+  expect(retired.settings).toEqual({
+    isTemporaryFile: false,
+    toDelete: true,
+  });
   expect((await record()).documents).toEqual([]);
   const rows = (await audits()).filter((row) => row.resourceKind === 'crmFile');
   expect(rows).toHaveLength(2);
-  expect(
-    rows.find((row) => row.redactedDiff.changedFields.includes('deletedAt'))!
-      .securityDescriptor.fileParent!.recordId,
-  ).toBe(recordId);
+  const removeAudit = rows.find((row) =>
+    row.redactedDiff.changedFields.includes('deletedAt'),
+  )!;
+  expect(removeAudit.redactedDiff.changedFields).toEqual(
+    expect.arrayContaining(['deletedAt', 'settings']),
+  );
+  expect(removeAudit.securityDescriptor.fileParent!.recordId).toBe(recordId);
+  const intents = await deferredIntents();
+  expect(intents).toHaveLength(1);
+  expect(intents[0]).toMatchObject({
+    workspaceId: f.workspaceId,
+    name: 'delete_filesFieldFiles',
+    status: 'PENDING',
+    payload: {
+      version: 1,
+      nextFileIndex: 0,
+      sourceOperationId: removeAudit.operationId,
+      files: [
+        {
+          fileId,
+          objectMetadataId: fields.company.objectMetadataId,
+          recordId,
+          fieldMetadataId: fields.company.id,
+        },
+      ],
+    },
+  });
+  expect(JSON.stringify(intents)).not.toContain('private');
 });
 it.each([false, true])(
   'uses authoritative batch record IDs for retained/removed files; spoof=%s',
@@ -651,8 +725,10 @@ it.each([false, true])(
     const nextFileId = randomUUID(),
       id = randomUUID();
     await f.owner.query(
-      'INSERT INTO core.file(id,"workspaceId",path,size,settings,status) SELECT $1,"workspaceId",path,size,settings,status FROM core.file WHERE id=$2',
-      [nextFileId, fileId],
+      `INSERT INTO core.file(id,"workspaceId","applicationId",path,size,settings,status)
+       SELECT $1,"workspaceId","applicationId",regexp_replace(path, '\\.pdf$', '-' || $3 || '.pdf'),size,settings,status
+       FROM core.file WHERE id=$2`,
+      [nextFileId, fileId, nextFileId],
     );
     const before = (await files()).find((file) => file.id === fileId);
     const rows = [
@@ -901,8 +977,10 @@ it.each([false, true])(
     const id = randomUUID(),
       nextFileId = randomUUID();
     await f.owner.query(
-      'INSERT INTO core.file(id,"workspaceId",path,size,settings,status) SELECT $1,"workspaceId",path,size,settings,status FROM core.file WHERE id=$2',
-      [nextFileId, fileId],
+      `INSERT INTO core.file(id,"workspaceId","applicationId",path,size,settings,status)
+       SELECT $1,"workspaceId","applicationId",regexp_replace(path, '\\.pdf$', '-' || $3 || '.pdf'),size,settings,status
+       FROM core.file WHERE id=$2`,
+      [nextFileId, fileId, nextFileId],
     );
     await f.owner.query(
       `CREATE FUNCTION core.change_created_file_parent() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.id='${id}' THEN UPDATE core.file SET size=999 WHERE id='${fileId}'; RETURN NULL; END IF; RETURN NEW; END $$`,
@@ -953,4 +1031,25 @@ it('preserves core File state across soft-delete and restore of its parent', asy
   expect(await files()).toEqual(before);
   expect((await record()).documents).toHaveLength(1);
   expect(await audits()).toHaveLength(4);
+});
+
+it('rejects a core.file BEFORE UPDATE trigger that suppresses toDelete on toRemove', async () => {
+  await seed();
+  await attach();
+  await f.owner.query(
+    `CREATE FUNCTION core.fail_file_update() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.settings = OLD.settings; RETURN NEW; END $$`,
+  );
+  await f.owner.query(
+    'CREATE TRIGGER fail_file_update BEFORE UPDATE ON core.file FOR EACH ROW EXECUTE FUNCTION core.fail_file_update()',
+  );
+  await expect(
+    run((scope) => repo(scope).update(recordId, { documents: [] })),
+  ).rejects.toThrow('Native file state does not match the captured plan');
+  expect((await files())[0].deletedAt).toBeNull();
+  expect((await files())[0].settings).toEqual({
+    isTemporaryFile: false,
+    toDelete: false,
+  });
+  expect((await record()).documents).toHaveLength(1);
+  expect(await deferredIntents()).toHaveLength(0);
 });

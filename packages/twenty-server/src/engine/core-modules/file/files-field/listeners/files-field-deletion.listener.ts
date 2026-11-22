@@ -1,7 +1,10 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 
-import { type ObjectRecordDestroyEvent } from 'twenty-shared/database-events';
+import {
+  type ObjectRecordDestroyEvent,
+  type ObjectRecordUpdateEvent,
+} from 'twenty-shared/database-events';
 import { FieldMetadataType } from 'twenty-shared/types';
 import { isDefined, isValidUuid } from 'twenty-shared/utils';
 import { type DataSource } from 'typeorm';
@@ -144,7 +147,7 @@ export class FilesFieldDeletionListener {
       const legacyFileIds: string[] = [];
 
       if (fileIds.size > 0) {
-        // Distinguish audited deletes (row already soft-retired with toDelete:true) from un-audited deletes (e.g. TrashCleanupService).
+        // Distinguish audited deletes (row already soft-retired with toDelete:true) from un-audited deletes.
         const rows = (await this.coreDataSource.query(
           `SELECT id, "deletedAt", settings FROM core.file WHERE "workspaceId" = $1 AND id = ANY($2::uuid[])`,
           [workspaceId, Array.from(fileIds)],
@@ -208,5 +211,168 @@ export class FilesFieldDeletionListener {
         },
       );
     }
+  }
+
+  @OnDatabaseBatchEvent('*', DatabaseEventAction.UPDATED)
+  async handleUpdatedEvent(
+    payload: WorkspaceEventBatch<ObjectRecordUpdateEvent>,
+  ) {
+    if (
+      !isDefined(this.coreDataSource) ||
+      !isDefined(this.workspaceQueueService) ||
+      !isDefined(payload.events) ||
+      payload.events.length === 0
+    ) {
+      return;
+    }
+
+    const workspaceId = payload.workspaceId;
+    const objectMetadata = payload.objectMetadata;
+
+    const { flatObjectMetadataMaps, flatFieldMetadataMaps } =
+      await this.workspaceManyOrAllFlatEntityMapsCacheService.getOrRecomputeManyOrAllFlatEntityMaps(
+        {
+          workspaceId,
+          flatMapsKeys: ['flatObjectMetadataMaps', 'flatFieldMetadataMaps'],
+        },
+      );
+
+    const { idByNameSingular } = buildObjectIdByNameMaps(
+      flatObjectMetadataMaps,
+    );
+
+    const objectId = idByNameSingular[objectMetadata.nameSingular];
+
+    if (!isDefined(objectId)) {
+      return;
+    }
+
+    const flatObjectMetadata = findFlatEntityByIdInFlatEntityMaps({
+      flatEntityId: objectId,
+      flatEntityMaps: flatObjectMetadataMaps,
+    });
+
+    if (
+      !isDefined(flatObjectMetadata) ||
+      !isNativeCrmAuditMetadata(flatObjectMetadata, workspaceId)
+    ) {
+      return;
+    }
+
+    const objectFields = getFlatFieldsFromFlatObjectMetadata(
+      flatObjectMetadata,
+      flatFieldMetadataMaps,
+    );
+
+    const filesFieldNames = new Set(
+      objectFields
+        .filter((field) => field.type === FieldMetadataType.FILES)
+        .map((field) => field.name),
+    );
+
+    if (filesFieldNames.size === 0) {
+      return;
+    }
+
+    if (!this.hasPotentialFilesFieldRemoval(payload.events, filesFieldNames)) {
+      return;
+    }
+
+    const pendingIntent = (await this.coreDataSource.query(
+      `SELECT 1 FROM core."deferredWorkspaceMigrationAction"
+       WHERE "workspaceId" = $1 AND name = $2 AND status = 'PENDING'
+       LIMIT 1`,
+      [workspaceId, FILES_FIELD_HARD_DELETE_INTENT_NAME],
+    )) as unknown[];
+
+    if (pendingIntent.length > 0) {
+      await enqueueDeferredWorkspaceMigrationActions(
+        this.workspaceQueueService,
+        workspaceId,
+        (message) => this.logger.error(message),
+      );
+    }
+  }
+
+  private hasPotentialFilesFieldRemoval(
+    events: readonly ObjectRecordUpdateEvent[],
+    filesFieldNames: ReadonlySet<string>,
+  ): boolean {
+    for (const event of events) {
+      const updatedFields = event.properties?.updatedFields;
+      let candidateFields: string[];
+
+      if (Array.isArray(updatedFields)) {
+        candidateFields = updatedFields.filter((fieldName) =>
+          filesFieldNames.has(fieldName),
+        );
+        if (candidateFields.length === 0) {
+          continue;
+        }
+      } else {
+        candidateFields = Array.from(filesFieldNames);
+      }
+
+      const recordBefore = event.properties?.before as
+        | Record<string, unknown>
+        | null
+        | undefined;
+      const recordAfter = event.properties?.after as
+        | Record<string, unknown>
+        | null
+        | undefined;
+
+      if (!isDefined(recordBefore) || typeof recordBefore !== 'object') {
+        return true;
+      }
+
+      for (const fieldName of candidateFields) {
+        const beforeValue = recordBefore[fieldName];
+        if (beforeValue === null) {
+          continue;
+        }
+        if (!Array.isArray(beforeValue)) {
+          return true;
+        }
+        if (beforeValue.length === 0) {
+          continue;
+        }
+
+        const afterValue =
+          isDefined(recordAfter) && typeof recordAfter === 'object'
+            ? recordAfter[fieldName]
+            : undefined;
+        if (!Array.isArray(afterValue)) {
+          return true;
+        }
+
+        const afterIds = new Set<string>();
+        for (const item of afterValue as Array<Partial<FileItem> | null>) {
+          const candidateId =
+            isDefined(item) && typeof item === 'object'
+              ? item.fileId
+              : undefined;
+          if (typeof candidateId === 'string' && isValidUuid(candidateId)) {
+            afterIds.add(candidateId.toLowerCase());
+          }
+        }
+
+        for (const item of beforeValue as Array<Partial<FileItem> | null>) {
+          const candidateId =
+            isDefined(item) && typeof item === 'object'
+              ? item.fileId
+              : undefined;
+          if (
+            typeof candidateId !== 'string' ||
+            !isValidUuid(candidateId) ||
+            !afterIds.has(candidateId.toLowerCase())
+          ) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
   }
 }

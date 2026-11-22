@@ -357,29 +357,32 @@ export class FilesFieldSync {
     newFiles: FileItem[],
   ): FilesFieldDiff {
     const existingFileMap = new Map(
-      existingFiles.map((file) => [file.fileId, file]),
+      existingFiles.map((file) => [file.fileId.toLowerCase(), file]),
     );
-    const newFileMap = new Map(newFiles.map((file) => [file.fileId, file]));
+    const newFileMap = new Map(
+      newFiles.map((file) => [file.fileId.toLowerCase(), file]),
+    );
 
     const toAdd: FileItem[] = [];
     const toUpdate: FileItem[] = [];
     const toRemove: FileItem[] = [];
 
     for (const newFile of newFiles) {
-      const existingFile = existingFileMap.get(newFile.fileId);
+      const existingFile = existingFileMap.get(newFile.fileId.toLowerCase());
 
       if (!isDefined(existingFile)) {
         toAdd.push(newFile);
       } else {
         toUpdate.push({
           ...existingFile,
+          fileId: newFile.fileId,
           label: newFile.label,
         });
       }
     }
 
     for (const existingFile of existingFiles) {
-      if (!newFileMap.has(existingFile.fileId)) {
+      if (!newFileMap.has(existingFile.fileId.toLowerCase())) {
         toRemove.push(existingFile);
       }
     }
@@ -472,30 +475,33 @@ export class FilesFieldSync {
           fieldNameToUniversalIdentifier.get(fieldName);
 
         diff.toAdd.forEach((file) => {
-          allFileIds.toAdd.add(file.fileId);
-          allFileIdsToFetch.add(file.fileId);
+          const normalizedId = file.fileId.toLowerCase();
+          allFileIds.toAdd.add(normalizedId);
+          allFileIdsToFetch.add(normalizedId);
           if (isDefined(fieldUniversalIdentifier)) {
             fileIdToFieldUniversalIdentifier.set(
-              file.fileId,
+              normalizedId,
               fieldUniversalIdentifier,
             );
           }
         });
         diff.toUpdate.forEach((file) => {
-          allFileIds.toUpdate.add(file.fileId);
-          allFileIdsToFetch.add(file.fileId);
+          const normalizedId = file.fileId.toLowerCase();
+          allFileIds.toUpdate.add(normalizedId);
+          allFileIdsToFetch.add(normalizedId);
           if (isDefined(fieldUniversalIdentifier)) {
             fileIdToFieldUniversalIdentifier.set(
-              file.fileId,
+              normalizedId,
               fieldUniversalIdentifier,
             );
           }
         });
         diff.toRemove.forEach((file) => {
-          allFileIds.toRemove.add(file.fileId);
+          const normalizedId = file.fileId.toLowerCase();
+          allFileIds.toRemove.add(normalizedId);
           if (store && isDefined(fieldUniversalIdentifier))
             fileIdToFieldUniversalIdentifier.set(
-              file.fileId,
+              normalizedId,
               fieldUniversalIdentifier,
             );
         });
@@ -520,28 +526,30 @@ export class FilesFieldSync {
         });
 
     const existingFileMap = new Map(
-      existingFiles.map((file) => [file.id, file]),
+      existingFiles.map((file) => [file.id.toLowerCase(), file]),
     );
 
     for (const entityDiffs of Object.values(filesFieldDiffByEntityIndex)) {
       for (const diff of Object.values(entityDiffs)) {
         if (store) {
           for (const file of diff.toRemove) {
-            const fileEntity = existingFileMap.get(file.fileId);
+            const normalizedId = file.fileId.toLowerCase();
+            const fileEntity = existingFileMap.get(normalizedId);
             if (!fileEntity || fileEntity.settings?.isTemporaryFile)
               throw new TwentyOrmException(
                 'Attached file is missing or temporary',
                 TwentyOrmExceptionCode.INVALID_INPUT,
               );
             this.validateFileFieldUniversalIdentifier(
-              file.fileId,
+              normalizedId,
               fileEntity,
               fileIdToFieldUniversalIdentifier,
             );
           }
         }
         for (const file of diff.toAdd) {
-          const fileEntity = existingFileMap.get(file.fileId);
+          const normalizedId = file.fileId.toLowerCase();
+          const fileEntity = existingFileMap.get(normalizedId);
 
           if (!fileEntity) {
             throw new TwentyOrmException(
@@ -551,7 +559,7 @@ export class FilesFieldSync {
           }
 
           this.validateFileFieldUniversalIdentifier(
-            file.fileId,
+            normalizedId,
             fileEntity,
             fileIdToFieldUniversalIdentifier,
           );
@@ -587,7 +595,8 @@ export class FilesFieldSync {
         }
 
         for (const file of diff.toUpdate) {
-          const fileEntity = existingFileMap.get(file.fileId);
+          const normalizedId = file.fileId.toLowerCase();
+          const fileEntity = existingFileMap.get(normalizedId);
 
           if (!fileEntity) {
             throw new TwentyOrmException(
@@ -597,7 +606,7 @@ export class FilesFieldSync {
           }
 
           this.validateFileFieldUniversalIdentifier(
-            file.fileId,
+            normalizedId,
             fileEntity,
             fileIdToFieldUniversalIdentifier,
           );
@@ -668,14 +677,17 @@ export class FilesFieldSync {
         const entityAny = entity as Record<string, unknown>;
         const currentFiles = (entityAny[fieldName] ?? []) as FileItem[];
 
-        const toAddMap = new Map(diff.toAdd.map((file) => [file.fileId, file]));
+        const toAddMap = new Map(
+          diff.toAdd.map((file) => [file.fileId.toLowerCase(), file]),
+        );
         const toUpdateMap = new Map(
-          diff.toUpdate.map((file) => [file.fileId, file]),
+          diff.toUpdate.map((file) => [file.fileId.toLowerCase(), file]),
         );
 
         const updatedFiles = currentFiles.map((file) => {
+          const normalizedId = file.fileId.toLowerCase();
           const enrichedFile =
-            toAddMap.get(file.fileId) || toUpdateMap.get(file.fileId);
+            toAddMap.get(normalizedId) || toUpdateMap.get(normalizedId);
 
           return enrichedFile || file;
         });

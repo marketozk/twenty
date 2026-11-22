@@ -1,0 +1,78 @@
+{
+  "log": "LOG-206",
+  "date": "2026-11-22",
+  "issue": "ROB-765",
+  "scope": "Audited TrashCleanupService for covered CRM objects with poison-pill isolation and durable delete_filesFieldFiles hard-delete on UPDATE toRemove",
+  "targetedPostgresTests": {
+    "status": "pass",
+    "suitesPassed": 7,
+    "suitesTotal": 7,
+    "testsPassed": 277,
+    "testsTotal": 277,
+    "durationSeconds": 49.582,
+    "suites": [
+      "test/fork-migration/crm-audit-trash-and-file-remove.postgres-spec.ts",
+      "test/fork-migration/crm-audit-native-files.postgres-spec.ts",
+      "test/fork-migration/crm-audit-file-hard-delete.postgres-spec.ts",
+      "test/fork-migration/omni-parent-lifecycle.postgres-spec.ts",
+      "test/fork-migration/crm-audit-native-delete.postgres-spec.ts",
+      "test/fork-migration/crm-audit-native-create.postgres-spec.ts",
+      "test/fork-migration/crm-audit-public-update.postgres-spec.ts"
+    ]
+  },
+  "fullPostgresRegression": {
+    "status": "pass",
+    "suitesPassed": 143,
+    "suitesTotal": 143,
+    "testsPassed": 3295,
+    "testsTotal": 3295,
+    "durationSeconds": 782.647
+  },
+  "guards": {
+    "enterpriseDependencies": {
+      "status": "pass",
+      "violations": 0,
+      "codeFiles": 34814,
+      "runtimeFiles": 21466,
+      "edges": 137889
+    },
+    "forkMigrationSources": {
+      "status": "pass",
+      "verifiedSources": 10
+    },
+    "pythonUnitTests": {
+      "status": "pass",
+      "passed": 33,
+      "total": 33
+    }
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 508,
+    "currentRootFiles": 509,
+    "baselineDiagnostics": 274,
+    "currentDiagnostics": 274,
+    "newDiagnostics": 0,
+    "changedFileDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "reviews": {
+    "designReview": {
+      "blockersFound": 1,
+      "majorsFound": 2,
+      "minorsFound": 4,
+      "allResolved": true
+    },
+    "codeReview": {
+      "blockersFound": 0,
+      "majorsFound": 2,
+      "minorsFound": 4,
+      "allResolved": true
+    }
+  },
+  "sourceSnapshotVerified": {
+    "matched": 8,
+    "total": 8
+  },
+  "standCleanedUp": true
+}
