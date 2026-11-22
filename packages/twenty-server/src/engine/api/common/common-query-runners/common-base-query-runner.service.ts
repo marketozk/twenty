@@ -36,6 +36,7 @@ import {
   CommonInput,
   CommonQueryArgs,
   CommonQueryNames,
+  type MergeManyQueryArgs,
 } from 'src/engine/api/common/types/common-query-args.type';
 import {
   CommonQueryExecutionResult,
@@ -301,12 +302,22 @@ export abstract class CommonBaseQueryRunnerService<
     queryRunnerContext: CommonBaseQueryRunnerContext,
     commonQueryParser: GraphqlQueryParser,
   ): Promise<Output> {
+    const isMerge = this.operationName === CommonQueryNames.MERGE_MANY;
+    const isMergeDryRun =
+      isMerge &&
+      Boolean((processedArgs as unknown as MergeManyQueryArgs).dryRun);
+    const effectiveArgs = isMerge
+      ? ({
+          ...processedArgs,
+          dryRun: isMergeDryRun,
+        } as unknown as CommonExtendedInput<Args>)
+      : processedArgs;
     const prepareAndRun = async (context: CommonBaseQueryRunnerContext) => {
       const extendedQueryRunnerContext =
         await this.prepareExtendedQueryRunnerContextWithGlobalDatasource(
           context,
         );
-      const results = await this.run(processedArgs, {
+      const results = await this.run(effectiveArgs, {
         ...extendedQueryRunnerContext,
         commonQueryParser,
       });
@@ -336,8 +347,18 @@ export abstract class CommonBaseQueryRunnerService<
               queryRunnerContext.transactionScope.transactionLifecycle
                 ?.commitOutcome === 'strict'
             : canAuditCreate())));
+    const isCoveredObject =
+      isNativeCrmAuditObject(
+        queryRunnerContext.flatObjectMetadata.nameSingular,
+        queryRunnerContext.flatObjectMetadata.universalIdentifier,
+      ) ||
+      isNativeCrmAuditMetadata(
+        queryRunnerContext.flatObjectMetadata,
+        queryRunnerContext.authContext.workspace.id,
+      );
     const auditedMutation =
       createCandidate ||
+      (isMerge && !isMergeDryRun && (inheritedNativeScope || isCoveredObject)) ||
       ([
         CommonQueryNames.UPDATE_ONE,
         CommonQueryNames.UPDATE_MANY,
@@ -348,14 +369,7 @@ export abstract class CommonBaseQueryRunnerService<
         CommonQueryNames.RESTORE_ONE,
         CommonQueryNames.RESTORE_MANY,
       ].includes(this.operationName) &&
-        (isNativeCrmAuditObject(
-          queryRunnerContext.flatObjectMetadata.nameSingular,
-          queryRunnerContext.flatObjectMetadata.universalIdentifier,
-        ) ||
-          isNativeCrmAuditMetadata(
-            queryRunnerContext.flatObjectMetadata,
-            queryRunnerContext.authContext.workspace.id,
-          )));
+        isCoveredObject);
     const auth = getWorkspaceContext().authContext;
     const { results, extendedQueryRunnerContext } = auditedMutation
       ? queryRunnerContext.transactionScope
@@ -366,6 +380,10 @@ export abstract class CommonBaseQueryRunnerService<
               if (isCreate && !canAuditCreate())
                 throw new Error(
                   'Nested public CREATE exceeds native audit coverage',
+                );
+              if (isMerge && !isMergeDryRun && !isCoveredObject)
+                throw new Error(
+                  'Native audit coverage excludes this object or mutation',
                 );
               return prepareAndRun(queryRunnerContext);
             },
@@ -389,7 +407,9 @@ export abstract class CommonBaseQueryRunnerService<
                                 this.operationName ===
                                   CommonQueryNames.DESTROY_MANY
                               ? 'crm-api-destroy'
-                              : 'crm-api-lifecycle',
+                              : isMerge
+                                ? 'crm-api-merge'
+                                : 'crm-api-lifecycle',
                     }
                   : {}),
               },

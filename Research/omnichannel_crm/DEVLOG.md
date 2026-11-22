@@ -5707,3 +5707,17 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 568b4e4d-1ffb-4d50-a335-b58f3743bde1 и все 11 состояний задач прочитаны обратно
 и совпали. [Публикация](implementation/log202/publication.json).
 Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG203`).
+
+## LOG-203 - транзакционный аудит публичного слияния CRM-записей (`MERGE_MANY`)
+
+22.11.2026 спроектирован, прошёл независимое ревью дизайна ([design.md](implementation/log203/design.md), [design-review.md](implementation/log203/design-review.md)) и реализован участок `LOG-203` (Linear `ROB-765`): транзакционный аудит публичного слияния CRM-записей через `CommonMergeManyQueryRunnerService` и `CommonBaseQueryRunnerService`.
+
+В `common-base-query-runner.service.ts` для `CommonQueryNames.MERGE_MANY` добавлен однократный снимок `isMergeDryRun` (передаваемый копией `effectiveArgs` в `run()`, закрывает обход аудита через мутабельный геттер/хук), включён не-`dryRun` `MERGE_MANY` в `auditedMutation` с `withNativeCrmAuditTransaction` / `runInExistingNativeCrmAuditScope` и `systemActorId: 'crm-api-merge'`, а непокрытый не-`dryRun` `MERGE_MANY` внутри доказанного внешнего scope немедленно отклоняется и отравляет внешний scope до дочерних миграций. В `common-merge-many-query-runner.service.ts` устранена вложенная транзакция при наличии `transactionScope`, добавлены defense-in-depth проверка `isRegisteredNativeCrmAuditScope`, предпроверка прав `delete`/`update` и `select`-RLS видимости до канонической блокировки `ORDER BY id FOR UPDATE` (на схеме `transactionScope.workspaceId` с `TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER` из `twenty-shared/application-runtime`, `0` новых Enterprise-рёбер), нормализация uppercase UUID, передача транзакционного `repository` в `processNestedRelations`, фильтрация неактивных/remote потомков, детерминированная сортировка, сверка скрытых `select`-RLS живых потомков (`SELECT COUNT(*)::int`) для дубликатов и приоритетной записи, санитизация самоссылающихся связей, условия `[joinColumnName]`/`deletedAt IS NULL` и строгие проверки кардинальности всех мутаций, а также усиленный `validate()` (включая защиту REST-входа).
+
+22.11.2026 проверки LOG203 завершены. 186 targeted/5 suites PASS (38.812s), 4 новых PostgreSQL случая (`crm-audit-public-merge.postgres-spec.ts`) и 4 смежных набора (`crm-audit-public-destroy`, `crm-audit-public-update`, `crm-audit-native-delete`, `crm-audit-delete-set-null`). Полная регрессия: 3255/3255 tests и 139/139 suites PASS (748.448s). 33 guard tests PASS, 10 migration checksums неизменны, 0 нарушений границы Enterprise. Types 504 roots (baseline 503 / 275, current 504 / 275), 0 новых/changed-file/changed-code. Совпали 3 local/remote source hashes.
+
+Независимое ревью дизайна выявило 2 Blocker, 5 Major и 4 Minor, независимое ревью кода выявило 0 Blocker, 5 Major и 2 Minor - все замечания исправлены и повторно проверены (проверка прав и `select`-RLS до `FOR UPDATE`, устранение самоссылающихся циклов и ложных мутаций на `idsToDelete`, немедленное отравление внешнего audit scope для непокрытого merge, defense-in-depth `isRegisteredNativeCrmAuditScope` в `run()`, фильтры `[joinColumnName]`/`deletedAt IS NULL` при миграции потомков под `READ COMMITTED`, схема из `transactionScope.workspaceId` и расширение интеграционных тестов).
+
+[Результаты](implementation/log203/results.json), [ревью](implementation/log203/review.md),
+[следующий участок](implementation/log203/next-boundary.md). ROB765 остаётся
+In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.

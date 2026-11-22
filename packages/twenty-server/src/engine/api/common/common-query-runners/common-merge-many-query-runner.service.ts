@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { msg } from '@lingui/core/macro';
 import chunk from 'lodash.chunk';
+import { TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER } from 'twenty-shared/application-runtime';
 import {
   MUTATION_MAX_MERGE_RECORDS,
   QUERY_MAX_RECORDS,
@@ -13,8 +14,8 @@ import {
   ObjectRecord,
   RelationType,
 } from 'twenty-shared/types';
-import { isDefined } from 'twenty-shared/utils';
-import { FindOptionsRelations, In, ObjectLiteral } from 'typeorm';
+import { isDefined, isValidUuid, uuidToBase36 } from 'twenty-shared/utils';
+import { FindOptionsRelations, In, IsNull, ObjectLiteral } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 
 import { CommonBaseQueryRunnerService } from 'src/engine/api/common/common-query-runners/common-base-query-runner.service';
@@ -38,6 +39,11 @@ import { buildColumnsToReturn } from 'src/engine/api/graphql/graphql-query-runne
 import { hasRecordFieldValue } from 'src/engine/api/graphql/graphql-query-runner/utils/has-record-field-value.util';
 import { mergeFieldValues } from 'src/engine/api/graphql/graphql-query-runner/utils/merge-field-values.util';
 import { WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
+import {
+  isNativeCrmAuditMetadata,
+  isNativeCrmAuditObject,
+} from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
+import { isRegisteredNativeCrmAuditScope } from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
 import { MetricsKeys } from 'src/engine/core-modules/metrics/types/metrics-keys.type';
 import { computeMorphOrRelationFieldJoinColumnName } from 'src/engine/metadata-modules/field-metadata/utils/compute-morph-or-relation-field-join-column-name.util';
 import { FlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/types/flat-entity-maps.type';
@@ -51,6 +57,22 @@ import { assertMutationNotOnRemoteObject } from 'src/engine/metadata-modules/obj
 import { type RolePermissionConfig } from 'src/engine/twenty-orm/types/role-permission-config.type';
 import { type WorkspaceTransactionScope } from 'src/engine/twenty-orm/types/workspace-transaction-scope.type';
 import { resolveEffectiveFlatEntityProperty } from 'src/engine/metadata-modules/overrides/utils/resolve-effective-flat-entity-property.util';
+import { computeTableName } from 'src/engine/utils/compute-table-name.util';
+
+const quoteIdentifier = (value: string): string =>
+  `"${value.replaceAll('"', '""')}"`;
+
+const getTargetTableName = (
+  objectMetadata: Pick<
+    FlatObjectMetadata,
+    'nameSingular' | 'applicationUniversalIdentifier'
+  >,
+): string =>
+  computeTableName(
+    objectMetadata.nameSingular,
+    objectMetadata.applicationUniversalIdentifier !==
+      TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER,
+  );
 
 @Injectable()
 export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerService<
@@ -64,47 +86,153 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
     queryRunnerContext: CommonExtendedQueryRunnerContext,
   ): Promise<ObjectRecord> {
     const { flatFieldMetadataMaps, flatObjectMetadata } = queryRunnerContext;
+    const normalizedArgs: CommonExtendedInput<MergeManyQueryArgs> = {
+      ...args,
+      ids: args.ids.map((id) => id.toLowerCase()),
+    };
 
-    const recordsToMerge = await this.fetchRecordsToMerge(
-      queryRunnerContext,
-      args,
-    );
+    if (normalizedArgs.dryRun) {
+      const recordsToMerge = await this.fetchRecordsToMerge(
+        queryRunnerContext,
+        normalizedArgs,
+      );
 
-    const priorityRecord = this.validateAndGetPriorityRecord(
-      recordsToMerge,
-      args.ids,
-      args.conflictPriorityIndex,
-    );
+      const priorityRecord = this.validateAndGetPriorityRecord(
+        recordsToMerge,
+        normalizedArgs.ids,
+        normalizedArgs.conflictPriorityIndex,
+      );
 
-    const mergedData = this.performDeepMerge(
-      recordsToMerge,
-      priorityRecord.id,
-      flatObjectMetadata,
-      flatFieldMetadataMaps,
-      args.dryRun ?? false,
-    );
+      const mergedData = this.performDeepMerge(
+        recordsToMerge,
+        priorityRecord.id,
+        flatObjectMetadata,
+        flatFieldMetadataMaps,
+        true,
+      );
 
-    if (args.dryRun) {
       return this.createDryRunResponse(priorityRecord, mergedData);
     }
 
-    const idsToDelete = args.ids.filter((id) => id !== priorityRecord.id);
+    const runMerge = async (
+      transactionScope: WorkspaceTransactionScope,
+    ): Promise<ObjectRecord> => {
+      const objectRepository = transactionScope.getRepository<ObjectRecord>(
+        flatObjectMetadata.nameSingular,
+        queryRunnerContext.rolePermissionConfig,
+      );
 
-    const updatedRecord = await this.executeMergeWithinTransaction({
-      args,
-      queryRunnerContext,
-      idsToDelete,
-      priorityRecordId: priorityRecord.id,
-      mergedData,
-    });
+      // Verify object permissions and select-RLS visibility before acquiring FOR UPDATE row locks.
+      objectRepository.validateWriteIsPermitted({
+        operationType: 'delete',
+        columnsToReturn: ['id'],
+        updatedColumns: [],
+      });
+      objectRepository.validateWriteIsPermitted({
+        operationType: 'update',
+        columnsToReturn: ['id'],
+        updatedColumns: [],
+      });
 
-    await this.processNestedRelations({
-      args,
-      queryRunnerContext,
-      updatedRecords: [updatedRecord],
-    });
+      const visibleRecords = await objectRepository
+        .createQueryBuilder(flatObjectMetadata.nameSingular)
+        .select(['id'])
+        .where({ id: In(normalizedArgs.ids) })
+        .getMany<ObjectRecord>({ noFormatting: true });
 
-    return updatedRecord;
+      if (visibleRecords.length !== normalizedArgs.ids.length) {
+        throw new CommonQueryRunnerException(
+          'One or more records not found',
+          CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND,
+          { userFriendlyMessage: msg`One or more records were not found.` },
+        );
+      }
+
+      const schemaName = `workspace_${uuidToBase36(transactionScope.workspaceId)}`;
+      const tableName = getTargetTableName(flatObjectMetadata);
+
+      // Lock parent rows in canonical id order before reading or migrating children
+      // to prevent READ COMMITTED TOCTOU and child->parent lock-order inversions.
+      await transactionScope.executeRawQuery(
+        `SELECT id FROM ${quoteIdentifier(schemaName)}.${quoteIdentifier(tableName)} WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE`,
+        [normalizedArgs.ids],
+      );
+
+      const scopedContext: CommonExtendedQueryRunnerContext = {
+        ...queryRunnerContext,
+        transactionScope,
+        repository: objectRepository,
+      };
+
+      const recordsToMerge = await this.fetchRecordsToMerge(
+        scopedContext,
+        normalizedArgs,
+      );
+
+      const priorityRecord = this.validateAndGetPriorityRecord(
+        recordsToMerge,
+        normalizedArgs.ids,
+        normalizedArgs.conflictPriorityIndex,
+      );
+
+      const mergedData = this.performDeepMerge(
+        recordsToMerge,
+        priorityRecord.id,
+        flatObjectMetadata,
+        flatFieldMetadataMaps,
+        false,
+      );
+
+      const idsToDelete = normalizedArgs.ids.filter(
+        (id) => id !== priorityRecord.id,
+      );
+
+      const updatedRecord = await this.executeMergeWithinScope({
+        args: normalizedArgs,
+        queryRunnerContext: scopedContext,
+        transactionScope,
+        objectRepository,
+        schemaName,
+        idsToDelete,
+        priorityRecordId: priorityRecord.id,
+        mergedData,
+      });
+
+      await this.processNestedRelations({
+        args: normalizedArgs,
+        queryRunnerContext: scopedContext,
+        updatedRecords: [updatedRecord],
+      });
+
+      return updatedRecord;
+    };
+
+    const isCoveredObject =
+      isNativeCrmAuditObject(
+        flatObjectMetadata.nameSingular,
+        flatObjectMetadata.universalIdentifier,
+      ) ||
+      isNativeCrmAuditMetadata(
+        flatObjectMetadata,
+        queryRunnerContext.authContext.workspace.id,
+      );
+
+    if (isDefined(queryRunnerContext.transactionScope)) {
+      if (
+        isCoveredObject &&
+        !isRegisteredNativeCrmAuditScope(queryRunnerContext.transactionScope)
+      ) {
+        throw new Error('Public CRM merge requires a proven native audit scope');
+      }
+
+      return runMerge(queryRunnerContext.transactionScope);
+    }
+
+    if (isCoveredObject) {
+      throw new Error('Public CRM merge requires a proven native audit scope');
+    }
+
+    return this.workspaceOrmManager.runInWorkspaceTransaction(runMerge);
   }
 
   private async fetchRecordsToMerge(
@@ -158,6 +286,7 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
         limit: QUERY_MAX_RECORDS_FROM_RELATION,
         authContext: context.authContext,
         rolePermissionConfig: context.rolePermissionConfig,
+        repository: context.repository,
         selectedFields: args.selectedFieldsResult.select,
         ...this.getNestedRelationsReadPathOptions(),
       });
@@ -334,7 +463,15 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
         flatEntityMaps: flatObjectMetadataMaps,
       });
 
-      if (!objMetadata) {
+      if (
+        !objMetadata ||
+        objMetadata.isRemote ||
+        !resolveEffectiveFlatEntityProperty({
+          metadataName: 'objectMetadata',
+          flatEntity: objMetadata,
+          property: 'isActive',
+        })
+      ) {
         continue;
       }
 
@@ -346,11 +483,18 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
       });
     }
 
-    return relationFields;
+    return relationFields.sort(
+      (a, b) =>
+        a.objectMetadata.nameSingular.localeCompare(
+          b.objectMetadata.nameSingular,
+        ) || a.joinColumnName.localeCompare(b.joinColumnName),
+    );
   }
 
   private async mergeRelatedRecordsIntoPriorityRecord({
     transactionScope,
+    schemaName,
+    targetObjectMetadataId,
     relationField,
     flatFieldMetadataMaps,
     flatIndexMaps,
@@ -359,6 +503,8 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
     priorityRecordId,
   }: {
     transactionScope: WorkspaceTransactionScope;
+    schemaName: string;
+    targetObjectMetadataId: string;
     relationField: {
       objectMetadata: FlatObjectMetadata;
       joinColumnName: string;
@@ -371,6 +517,8 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
   }): Promise<void> {
     const { joinColumnName } = relationField;
     const alias = relationField.objectMetadata.nameSingular;
+    const isSelfRelation =
+      relationField.objectMetadata.id === targetObjectMetadataId;
 
     const relatedRepository = transactionScope.getRepository(
       alias,
@@ -393,7 +541,77 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
       .where({ [joinColumnName]: In(idsToDelete) })
       .getMany<ObjectRecord>({ noFormatting: true });
 
+    relatedRecordsOfRecordsToDelete.sort((a, b) => a.id.localeCompare(b.id));
+
+    const relatedTableName = getTargetTableName(relationField.objectMetadata);
+    const hasDeletedAtColumn = isDefined(
+      buildFieldMapsFromFlatObjectMetadata(
+        flatFieldMetadataMaps,
+        relationField.objectMetadata,
+      ).fieldIdByName['deletedAt'],
+    );
+    const activeFilterSql = hasDeletedAtColumn
+      ? ' AND "deletedAt" IS NULL'
+      : '';
+    const [actualDeleteCountRow] = await transactionScope.executeRawQuery(
+      `SELECT COUNT(*)::int AS count FROM ${quoteIdentifier(schemaName)}.${quoteIdentifier(relatedTableName)} WHERE ${quoteIdentifier(joinColumnName)} = ANY($1::uuid[])${activeFilterSql}`,
+      [idsToDelete],
+    );
+
+    // Fail closed if select-RLS hid live child rows so DELETE cannot silently SET NULL or CASCADE them.
+    if (
+      Number(actualDeleteCountRow?.count ?? 0) >
+      relatedRecordsOfRecordsToDelete.length
+    ) {
+      throw new CommonQueryRunnerException(
+        'Cannot merge records with inaccessible related records',
+        CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND,
+        { userFriendlyMessage: STANDARD_ERROR_MESSAGE },
+      );
+    }
+
     if (relatedRecordsOfRecordsToDelete.length === 0) {
+      return;
+    }
+
+    const idsToDeleteSet = new Set(idsToDelete);
+    const priorityPointsToDeleted =
+      isSelfRelation &&
+      relatedRecordsOfRecordsToDelete.some(
+        (record) => record.id === priorityRecordId,
+      );
+    const externalRelatedRecords = isSelfRelation
+      ? relatedRecordsOfRecordsToDelete.filter(
+          (record) =>
+            record.id !== priorityRecordId && !idsToDeleteSet.has(record.id),
+        )
+      : relatedRecordsOfRecordsToDelete;
+
+    if (priorityPointsToDeleted) {
+      const cleared = await relatedRepository.runMutation({
+        selectQueryBuilder: relatedRepository
+          .createQueryBuilder(alias)
+          .where({
+            id: priorityRecordId,
+            [joinColumnName]: In(idsToDelete),
+            ...(hasDeletedAtColumn ? { deletedAt: IsNull() } : {}),
+          }),
+        rowLevelPermissionsApplied: false,
+        kind: 'update',
+        columnsToReturn: ['id'],
+        data: { [joinColumnName]: null },
+      });
+
+      if (cleared.length !== 1) {
+        throw new CommonQueryRunnerException(
+          'One or more related records could not be migrated during merge',
+          CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND,
+          { userFriendlyMessage: STANDARD_ERROR_MESSAGE },
+        );
+      }
+    }
+
+    if (externalRelatedRecords.length === 0) {
       return;
     }
 
@@ -406,46 +624,94 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
             .where({ [joinColumnName]: priorityRecordId })
             .getMany<ObjectRecord>({ noFormatting: true });
 
+    if (duplicateKeyColumnGroups.length > 0) {
+      const [actualPriorityCountRow] = await transactionScope.executeRawQuery(
+        `SELECT COUNT(*)::int AS count FROM ${quoteIdentifier(schemaName)}.${quoteIdentifier(relatedTableName)} WHERE ${quoteIdentifier(joinColumnName)} = $1${activeFilterSql}`,
+        [priorityRecordId],
+      );
+
+      if (
+        Number(actualPriorityCountRow?.count ?? 0) >
+        relatedRecordsOfPriorityRecord.length
+      ) {
+        throw new CommonQueryRunnerException(
+          'Cannot merge records with inaccessible related records',
+          CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND,
+          { userFriendlyMessage: STANDARD_ERROR_MESSAGE },
+        );
+      }
+    }
+
     const { idsToMigrate, idsToSoftDelete } =
       splitRelatedRecordIdsToMigrateAndSoftDelete({
-        relatedRecordsOfRecordsToDelete,
+        relatedRecordsOfRecordsToDelete: externalRelatedRecords,
         relatedRecordsOfPriorityRecord,
         duplicateKeyColumnGroups,
       });
 
     for (const idsChunk of chunk(idsToSoftDelete, QUERY_MAX_RECORDS)) {
-      await relatedRepository.runMutation({
+      const softDeleted = await relatedRepository.runMutation({
         selectQueryBuilder: relatedRepository
           .createQueryBuilder(alias)
-          .where({ id: In(idsChunk) }),
+          .where({
+            id: In(idsChunk),
+            [joinColumnName]: In(idsToDelete),
+            ...(hasDeletedAtColumn ? { deletedAt: IsNull() } : {}),
+          }),
         rowLevelPermissionsApplied: false,
         kind: 'soft-delete',
         columnsToReturn: ['id'],
       });
+
+      if (softDeleted.length !== idsChunk.length) {
+        throw new CommonQueryRunnerException(
+          'One or more related records could not be soft-deleted during merge',
+          CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND,
+          { userFriendlyMessage: STANDARD_ERROR_MESSAGE },
+        );
+      }
     }
 
     for (const idsChunk of chunk(idsToMigrate, QUERY_MAX_RECORDS)) {
-      await relatedRepository.runMutation({
+      const migrated = await relatedRepository.runMutation({
         selectQueryBuilder: relatedRepository
           .createQueryBuilder(alias)
-          .where({ id: In(idsChunk) }),
+          .where({
+            id: In(idsChunk),
+            [joinColumnName]: In(idsToDelete),
+            ...(hasDeletedAtColumn ? { deletedAt: IsNull() } : {}),
+          }),
         rowLevelPermissionsApplied: false,
         kind: 'update',
         columnsToReturn: ['id'],
         data: { [joinColumnName]: priorityRecordId },
       });
+
+      if (migrated.length !== idsChunk.length) {
+        throw new CommonQueryRunnerException(
+          'One or more related records could not be migrated during merge',
+          CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND,
+          { userFriendlyMessage: STANDARD_ERROR_MESSAGE },
+        );
+      }
     }
   }
 
-  private async executeMergeWithinTransaction({
+  private async executeMergeWithinScope({
     args,
     queryRunnerContext,
+    transactionScope,
+    objectRepository,
+    schemaName,
     idsToDelete,
     priorityRecordId,
     mergedData,
   }: {
     args: CommonExtendedInput<MergeManyQueryArgs>;
     queryRunnerContext: CommonExtendedQueryRunnerContext;
+    transactionScope: WorkspaceTransactionScope;
+    objectRepository: CommonExtendedQueryRunnerContext['repository'];
+    schemaName: string;
     idsToDelete: string[];
     priorityRecordId: string;
     mergedData: Partial<ObjectRecord>;
@@ -482,63 +748,78 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
       attributes: { operation: this.operationName },
     });
 
-    return this.workspaceOrmManager.runInWorkspaceTransaction(
-      async (transactionScope) => {
-        for (const relationField of this.getRelationFieldsPointingToCurrentObject(
-          queryRunnerContext,
-        )) {
-          await this.mergeRelatedRecordsIntoPriorityRecord({
-            transactionScope,
-            relationField,
-            flatFieldMetadataMaps,
-            flatIndexMaps,
-            rolePermissionConfig,
-            idsToDelete,
-            priorityRecordId,
-          });
-        }
+    const relationFields =
+      this.getRelationFieldsPointingToCurrentObject(queryRunnerContext);
+    const allMergedIds = new Set([priorityRecordId, ...idsToDelete]);
 
-        const objectRepository = transactionScope.getRepository(
-          alias,
-          rolePermissionConfig,
-        );
+    for (const relationField of relationFields) {
+      await this.mergeRelatedRecordsIntoPriorityRecord({
+        transactionScope,
+        schemaName,
+        targetObjectMetadataId: flatObjectMetadata.id,
+        relationField,
+        flatFieldMetadataMaps,
+        flatIndexMaps,
+        rolePermissionConfig,
+        idsToDelete,
+        priorityRecordId,
+      });
 
-        await objectRepository.runMutation({
-          selectQueryBuilder: objectRepository
-            .createQueryBuilder(alias)
-            .where({ id: In(idsToDelete) }),
-          rowLevelPermissionsApplied: false,
-          kind: 'delete',
-          columnsToReturn,
-        });
+      if (
+        relationField.objectMetadata.id === flatObjectMetadata.id &&
+        typeof mergedData[relationField.joinColumnName] === 'string' &&
+        allMergedIds.has(
+          (mergedData[relationField.joinColumnName] as string).toLowerCase(),
+        )
+      ) {
+        mergedData[relationField.joinColumnName] = null;
+      }
+    }
 
-        const [resolvedMergedData] = await this.resolveNestedRelations({
-          records: [mergedData],
-          queryRunnerContext,
-          writeRepository: objectRepository,
-        });
+    const deletedRecords = await objectRepository.runMutation({
+      selectQueryBuilder: objectRepository
+        .createQueryBuilder(alias)
+        .where({ id: In(idsToDelete) }),
+      rowLevelPermissionsApplied: false,
+      kind: 'delete',
+      columnsToReturn,
+    });
 
-        const updatedRecords = await objectRepository.runMutation({
-          selectQueryBuilder: objectRepository
-            .createQueryBuilder(alias)
-            .where({ id: priorityRecordId }),
-          rowLevelPermissionsApplied: false,
-          kind: 'update',
-          columnsToReturn,
-          data: resolvedMergedData,
-        });
+    if (deletedRecords.length !== idsToDelete.length) {
+      throw new CommonQueryRunnerException(
+        'One or more records could not be deleted during merge',
+        CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND,
+        {
+          userFriendlyMessage: msg`One or more records could not be deleted during merge.`,
+        },
+      );
+    }
 
-        if (!isDefined(updatedRecords[0])) {
-          throw new CommonQueryRunnerException(
-            'Failed to update record',
-            CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND,
-            { userFriendlyMessage: STANDARD_ERROR_MESSAGE },
-          );
-        }
+    const [resolvedMergedData] = await this.resolveNestedRelations({
+      records: [mergedData],
+      queryRunnerContext,
+      writeRepository: objectRepository,
+    });
 
-        return updatedRecords[0];
-      },
-    );
+    const updatedRecords = await objectRepository.runMutation({
+      selectQueryBuilder: objectRepository
+        .createQueryBuilder(alias)
+        .where({ id: priorityRecordId }),
+      rowLevelPermissionsApplied: false,
+      kind: 'update',
+      columnsToReturn,
+      data: resolvedMergedData,
+    });
+
+    if (!isDefined(updatedRecords[0])) {
+      throw new CommonQueryRunnerException(
+        'Failed to update record',
+        CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND,
+        { userFriendlyMessage: STANDARD_ERROR_MESSAGE },
+      );
+    }
+
+    return updatedRecords[0];
   }
 
   private async processNestedRelations({
@@ -571,6 +852,7 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
         limit: QUERY_MAX_RECORDS_FROM_RELATION,
         authContext,
         rolePermissionConfig,
+        repository: queryRunnerContext.repository,
         selectedFields: args.selectedFieldsResult.select,
         ...this.getNestedRelationsReadPathOptions(),
       });
@@ -610,9 +892,9 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
       );
     }
 
-    const { ids, conflictPriorityIndex } = args;
+    const { ids, conflictPriorityIndex, dryRun } = args;
 
-    if (!ids || ids.length < 2) {
+    if (!Array.isArray(ids) || ids.length < 2) {
       throw new CommonQueryRunnerException(
         'At least 2 record IDs are required for merge',
         CommonQueryRunnerExceptionCode.INVALID_QUERY_INPUT,
@@ -632,9 +914,39 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
       );
     }
 
-    if (conflictPriorityIndex < 0 || conflictPriorityIndex >= ids.length) {
+    for (const id of ids) {
+      if (typeof id !== 'string' || !isValidUuid(id)) {
+        throw new CommonQueryRunnerException(
+          `Value "${String(id)}" is not a valid UUID`,
+          CommonQueryRunnerExceptionCode.INVALID_QUERY_INPUT,
+          { userFriendlyMessage: msg`Invalid UUID format.` },
+        );
+      }
+    }
+
+    if (new Set(ids.map((id) => id.toLowerCase())).size !== ids.length) {
+      throw new CommonQueryRunnerException(
+        'Duplicate record IDs are not allowed for merge',
+        CommonQueryRunnerExceptionCode.INVALID_QUERY_INPUT,
+        { userFriendlyMessage: STANDARD_ERROR_MESSAGE },
+      );
+    }
+
+    if (
+      !Number.isInteger(conflictPriorityIndex) ||
+      conflictPriorityIndex < 0 ||
+      conflictPriorityIndex >= ids.length
+    ) {
       throw new CommonQueryRunnerException(
         `Invalid conflict priority '${conflictPriorityIndex}'. Valid options for ${ids.length} records: 0-${ids.length - 1}`,
+        CommonQueryRunnerExceptionCode.INVALID_QUERY_INPUT,
+        { userFriendlyMessage: STANDARD_ERROR_MESSAGE },
+      );
+    }
+
+    if (isDefined(dryRun) && typeof dryRun !== 'boolean') {
+      throw new CommonQueryRunnerException(
+        'Invalid argument: "dryRun" must be a boolean',
         CommonQueryRunnerExceptionCode.INVALID_QUERY_INPUT,
         { userFriendlyMessage: STANDARD_ERROR_MESSAGE },
       );

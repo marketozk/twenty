@@ -1,0 +1,39 @@
+{
+  "log": "LOG-203",
+  "issue": "ROB-765",
+  "date": "2026-11-22",
+  "title": "Transactional audit of public CRM record merge (CommonMergeManyQueryRunnerService, CommonBaseQueryRunnerService)",
+  "targetedPostgres": {
+    "suitesPassed": 5,
+    "suitesTotal": 5,
+    "testsPassed": 186,
+    "testsTotal": 186,
+    "newPostgresTests": 4,
+    "durationSeconds": 38.812
+  },
+  "fullRegression": {
+    "suitesPassed": 139,
+    "suitesTotal": 139,
+    "testsPassed": 3255,
+    "testsTotal": 3255,
+    "durationSeconds": 748.448
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.159
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 503,
+    "currentRootFiles": 504,
+    "baselineDiagnostics": 275,
+    "currentDiagnostics": 275,
+    "newDiagnostics": 0,
+    "changedFileDiagnostics": 0,
+    "baselineOnlyUnchangedMethodDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 3
+}

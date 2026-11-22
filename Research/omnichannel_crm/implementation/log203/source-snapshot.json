@@ -1,0 +1,18 @@
+{
+  "stand": "twenty-rob764-54871e4da4c04dfd",
+  "verified": 3,
+  "files": [
+    {
+      "path": "packages/twenty-server/src/engine/api/common/common-query-runners/common-base-query-runner.service.ts",
+      "sha256": "46a6eed5ce81eebf76c7e80b17b0e9a317dd021f1b1fef9c55519d3d132776f6"
+    },
+    {
+      "path": "packages/twenty-server/src/engine/api/common/common-query-runners/common-merge-many-query-runner.service.ts",
+      "sha256": "a0542815021285709b74631f534c1da5aa30ba2968496d644ef465850b9e528b"
+    },
+    {
+      "path": "packages/twenty-server/test/fork-migration/crm-audit-public-merge.postgres-spec.ts",
+      "sha256": "32ff448b2f7e1e7310d01476f34a88fecc24ea4f3b6fbe8914a3eac9881e24d2"
+    }
+  ]
+}

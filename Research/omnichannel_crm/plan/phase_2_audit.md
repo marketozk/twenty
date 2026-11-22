@@ -486,8 +486,22 @@ LOG202 закрывает транзакционный аудит публичн
 `repository: queryRunnerContext.repository` в `processNestedRelations`, усиление
 `CommonDestroyOneQueryRunnerService.validate` без новых Enterprise-рёбер и проброс
 `NativeTransactionOutcomeUnknownError` в `DeleteRecordService.execute`).
-Оставшиеся native/core writers, `CommonMergeManyQueryRunnerService` и durable cache открыты.
-Далее - [следующая граница ROB765](../implementation/log202/next-boundary.md).
+LOG203 закрывает транзакционный аудит публичного слияния CRM-записей
+(`CommonMergeManyQueryRunnerService` и `CommonBaseQueryRunnerService`: однократный снимок
+`isMergeDryRun`, включение не-`dryRun` `MERGE_MANY` в `auditedMutation` с
+`withNativeCrmAuditTransaction` / `runInExistingNativeCrmAuditScope`,
+`systemActorId: 'crm-api-merge'` и немедленным fail-closed отравлением для непокрытого
+объекта внутри доказанного внешнего scope; проверка прав `delete`/`update` и `select`-RLS
+до канонической блокировки `ORDER BY id FOR UPDATE`, defense-in-depth
+`isRegisteredNativeCrmAuditScope`, нормализация uppercase UUID, передача `repository` в
+`processNestedRelations`, сверка скрытых `select`-RLS живых потомков, санитизация самоссылок,
+условия `[joinColumnName]`/`deletedAt IS NULL`, проверка кардинальности всех мутаций и
+усиленный `validate()` без новых Enterprise-рёбер). Все публичные мутирующие CRM query runners
+подключены к нативному транзакционному аудиту.
+Проброс ALS-атрибуции в `CommonBaseQueryRunnerService`, проброс
+`NativeTransactionOutcomeUnknownError` в оставшихся сервисах `record-crud`, оставшиеся
+native/core writers и durable cache открыты.
+Далее - [следующая граница ROB765](../implementation/log203/next-boundary.md).
 Этот результат не закрывает весь аудит, HTTP/JWT приёмку или выкат.
 Просмотр/экспорт остаётся ROB767 после собственных прав ROB766; AI/workflow/connector
 дополняют события в ROB768/769. GitHub Actions не используется.
