@@ -343,6 +343,8 @@ export abstract class CommonBaseQueryRunnerService<
         CommonQueryNames.UPDATE_MANY,
         CommonQueryNames.DELETE_ONE,
         CommonQueryNames.DELETE_MANY,
+        CommonQueryNames.DESTROY_ONE,
+        CommonQueryNames.DESTROY_MANY,
         CommonQueryNames.RESTORE_ONE,
         CommonQueryNames.RESTORE_MANY,
       ].includes(this.operationName) &&
@@ -382,7 +384,12 @@ export abstract class CommonBaseQueryRunnerService<
                           ? 'crm-api-update'
                           : isCreate
                             ? 'crm-api-create'
-                            : 'crm-api-lifecycle',
+                            : this.operationName ===
+                                  CommonQueryNames.DESTROY_ONE ||
+                                this.operationName ===
+                                  CommonQueryNames.DESTROY_MANY
+                              ? 'crm-api-destroy'
+                              : 'crm-api-lifecycle',
                     }
                   : {}),
               },

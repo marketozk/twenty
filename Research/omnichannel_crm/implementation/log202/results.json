@@ -1,0 +1,46 @@
+{
+  "log": "LOG-202",
+  "issue": "ROB-765",
+  "date": "2026-11-22",
+  "title": "Transactional audit of public physical CRM record deletion (CommonDestroyOneQueryRunnerService, CommonDestroyManyQueryRunnerService, CommonBaseQueryRunnerService, DeleteRecordService)",
+  "targetedPostgres": {
+    "suitesPassed": 5,
+    "suitesTotal": 5,
+    "testsPassed": 210,
+    "testsTotal": 210,
+    "newPostgresTests": 4,
+    "durationSeconds": 45.662
+  },
+  "fullRegression": {
+    "suitesPassed": 137,
+    "suitesTotal": 138,
+    "testsPassed": 3250,
+    "testsTotal": 3251,
+    "durationSeconds": 745.113,
+    "unrelatedPreExistingFailures": [
+      {
+        "suite": "test/fork-migration/crm-audit-signing-key.postgres-spec.ts",
+        "line": 391,
+        "reason": "Known pre-existing UUID tie-break flake from LOG-195 (same flake documented in LOG-200; untouched in LOG-202)"
+      }
+    ]
+  },
+  "guards": {
+    "enterpriseDependencyCheck": "pass",
+    "forkMigrationSourcesVerified": 10,
+    "pythonUnitTestsPassed": 33,
+    "durationSeconds": 0.149
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 505,
+    "currentRootFiles": 505,
+    "baselineDiagnostics": 276,
+    "currentDiagnostics": 275,
+    "newDiagnostics": 0,
+    "changedFileDiagnostics": 0,
+    "baselineOnlyUnchangedMethodDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "uploadedSourceHashesVerified": 5
+}

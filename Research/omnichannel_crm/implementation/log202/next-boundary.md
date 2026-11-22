@@ -1,0 +1,4 @@
+# Следующий участок после LOG202
+
+После подключения публичного физического удаления CRM-записей (`LOG202`: `CommonDestroyOneQueryRunnerService`, `CommonDestroyManyQueryRunnerService`, `CommonBaseQueryRunnerService`, `DeleteRecordService`) последним открытым публичным CRM mutation runner в `common-query-runners` остаётся:
+- `LOG203`: транзакционный аудит публичного слияния CRM-записей (`CommonMergeManyQueryRunnerService` и связанные переносы отношений/обновления приоритетной записи/удаления дублей в `CommonBaseQueryRunnerService`, с fail-closed проверкой непокрытых связей/файлов и единым `operationId`), а также сопутствующие общие границы публичного CRM-слоя (проброс ALS `impersonator`/`viaApplication`/`correlationId` в `CommonBaseQueryRunnerService` и проброс `NativeTransactionOutcomeUnknownError` в оставшихся сервисах `record-crud`).

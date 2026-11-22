@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { msg } from '@lingui/core/macro';
 import { type ObjectRecord } from 'twenty-shared/types';
-import { isDefined } from 'twenty-shared/utils';
+import { isDefined, isValidUuid } from 'twenty-shared/utils';
 
 import { WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
 import { CommonBaseQueryRunnerService } from 'src/engine/api/common/common-query-runners/common-base-query-runner.service';
@@ -87,13 +87,29 @@ export class CommonDestroyOneQueryRunnerService extends CommonBaseQueryRunnerSer
 
   async validate(
     args: CommonInput<DestroyOneQueryArgs>,
-    _queryRunnerContext: CommonBaseQueryRunnerContext,
+    queryRunnerContext: CommonBaseQueryRunnerContext,
   ): Promise<void> {
+    if (queryRunnerContext.flatObjectMetadata.isRemote) {
+      throw new CommonQueryRunnerException(
+        'Remote objects are read-only',
+        CommonQueryRunnerExceptionCode.INVALID_QUERY_INPUT,
+        { userFriendlyMessage: msg`Remote objects are read-only.` },
+      );
+    }
+
     if (!isDefined(args.id)) {
       throw new CommonQueryRunnerException(
         'Missing id',
         CommonQueryRunnerExceptionCode.INVALID_QUERY_INPUT,
         { userFriendlyMessage: STANDARD_ERROR_MESSAGE },
+      );
+    }
+
+    if (!isValidUuid(args.id)) {
+      throw new CommonQueryRunnerException(
+        `Value "${args.id}" is not a valid UUID`,
+        CommonQueryRunnerExceptionCode.INVALID_QUERY_INPUT,
+        { userFriendlyMessage: msg`Invalid UUID format.` },
       );
     }
   }

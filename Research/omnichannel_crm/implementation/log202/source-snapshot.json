@@ -1,0 +1,26 @@
+{
+  "stand": "twenty-rob764-fa23a3ac4fa244bf",
+  "verified": 5,
+  "files": [
+    {
+      "path": "packages/twenty-server/src/engine/api/common/common-query-runners/common-base-query-runner.service.ts",
+      "sha256": "fc07194b9cd33e47576de433623d386821c7559b81cf856af3b9175f079f2271"
+    },
+    {
+      "path": "packages/twenty-server/src/engine/api/common/common-query-runners/common-destroy-many-query-runner.service.ts",
+      "sha256": "074e04c99d0de0b7aa102ae6daa7284ca037f0eb72961a65100f30fa24cdacd7"
+    },
+    {
+      "path": "packages/twenty-server/src/engine/api/common/common-query-runners/common-destroy-one-query-runner.service.ts",
+      "sha256": "3b68161e9335bce4379eee150904a3b382891c4ccff0e1fd23d754eb097ce9ed"
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/record-crud/services/delete-record.service.ts",
+      "sha256": "f849ee7d1d282d0c06e749d57b80a7b462c782f684fe7dcc0f8eeb05cf80ae52"
+    },
+    {
+      "path": "packages/twenty-server/test/fork-migration/crm-audit-public-destroy.postgres-spec.ts",
+      "sha256": "a0618cb4d8daf7db7c6040b6d10e3747c431ef6e3cbc82d6e6ff1084ed1ce32c"
+    }
+  ]
+}

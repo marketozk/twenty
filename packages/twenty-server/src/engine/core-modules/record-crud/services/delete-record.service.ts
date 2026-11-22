@@ -12,6 +12,7 @@ import {
 import { CommonApiContextBuilderService } from 'src/engine/core-modules/record-crud/services/common-api-context-builder.service';
 import { type DeleteRecordParams } from 'src/engine/core-modules/record-crud/types/delete-record-params.type';
 import { type ToolOutput } from 'src/engine/core-modules/tool/types/tool-output.type';
+import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/error-handling/native-transaction-outcome-unknown.error';
 
 @Injectable()
 export class DeleteRecordService {
@@ -97,6 +98,10 @@ export class DeleteRecordService {
         };
       }
     } catch (error) {
+      if (error instanceof NativeTransactionOutcomeUnknownError) {
+        throw error;
+      }
+
       if (error instanceof RecordCrudException) {
         return {
           success: false,
