@@ -5761,3 +5761,9 @@ In Progress. Выкат и общая HTTP/JWT приёмка ожидают с�
 [Результаты](implementation/log205/results.json), [ревью](implementation/log205/review.md),
 [следующий участок](implementation/log205/next-boundary.md). ROB765 остаётся
 In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+
+22.11.2026 LOG205 опубликован. Code 6c3e7a3b8ca363d23000677ebb906f8f8dc1078e
+отправлен в GitHub, ref подтверждён через API. Описание ROB765, комментарий
+c9c65e68-e5c9-45fe-9d61-8ed1a2cf940b и все 11 состояний задач прочитаны обратно
+и совпали. [Публикация](implementation/log205/publication.json).
+Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG206`).
