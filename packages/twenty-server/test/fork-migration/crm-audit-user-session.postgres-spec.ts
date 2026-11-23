@@ -19,17 +19,25 @@ import { NativeTransactionOutcomeUnknownError } from 'src/engine/twenty-orm/erro
 // Only unrelated dependency graphs are replaced. The session entity, service,
 // repository, transaction owner and audit writer execute against PostgreSQL.
 jest.mock('src/engine/core-modules/user/user.entity', () => {
-  const { Entity, PrimaryColumn } = require('typeorm');
+  const { Entity, PrimaryColumn, Column } = require('typeorm');
   class UserEntity {}
   Entity({ schema: 'core', name: 'user' })(UserEntity);
   PrimaryColumn({ type: 'uuid' })(UserEntity.prototype, 'id');
+  Column({ type: 'timestamptz', nullable: true })(
+    UserEntity.prototype,
+    'deletedAt',
+  );
   return { UserEntity };
 });
 jest.mock('src/engine/core-modules/workspace/workspace.entity', () => {
-  const { Entity, PrimaryColumn } = require('typeorm');
+  const { Entity, PrimaryColumn, Column } = require('typeorm');
   class WorkspaceEntity {}
   Entity({ schema: 'core', name: 'workspace' })(WorkspaceEntity);
   PrimaryColumn({ type: 'uuid' })(WorkspaceEntity.prototype, 'id');
+  Column({ type: 'timestamptz', nullable: true })(
+    WorkspaceEntity.prototype,
+    'deletedAt',
+  );
   return { WorkspaceEntity };
 });
 jest.mock(
@@ -191,7 +199,7 @@ beforeAll(async () => {
     GRANT USAGE ON SCHEMA core, crm_audit TO "${role}";
     GRANT SELECT ON ALL TABLES IN SCHEMA core TO "${role}";
     GRANT INSERT, UPDATE ON core."userSession" TO "${role}";
-    GRANT UPDATE ON core."userWorkspace" TO "${role}";
+    GRANT UPDATE ON core."user", core.workspace, core."userWorkspace" TO "${role}";
     GRANT SELECT, INSERT ON crm_audit."crmAuditEntry" TO "${role}"`);
   await runtime.initialize();
 });
@@ -202,11 +210,11 @@ beforeEach(async () => {
     DROP TRIGGER IF EXISTS change_session_scope ON core."userSession";
     DROP FUNCTION IF EXISTS core.change_session_scope();
     TRUNCATE core."userSession", core."userWorkspace", core."user", core.workspace, crm_audit."crmAuditEntry" CASCADE`);
-  await owner.query('INSERT INTO core.workspace VALUES ($1),($2)', [
+  await owner.query('INSERT INTO core.workspace (id) VALUES ($1),($2)', [
     workspaceId,
     otherWorkspaceId,
   ]);
-  await owner.query('INSERT INTO core."user" VALUES ($1),($2)', [
+  await owner.query('INSERT INTO core."user" (id) VALUES ($1),($2)', [
     userId,
     initiatingUserId,
   ]);

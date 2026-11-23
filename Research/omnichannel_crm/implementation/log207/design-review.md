@@ -1,0 +1,20 @@
+# LOG-207 Independent Design Review
+
+## Verdict
+Первичный вердикт независимого адверсариального ревью дизайна: `NEEDS_REVISION` (`3` Blocker, `6` Major, `6` Minor).
+Все 15 находок разобраны и закрыты в обновлённых `design.md` и `test-research.md` до начала реализации.
+
+## Findings and Resolutions
+
+| ID | Severity | Finding | Resolution in Design |
+|---|---|---|---|
+| B1 | Blocker | Отсутствие `GRANT UPDATE` на `core."user"` / `core.workspace` / `core."userWorkspace"` в трёх существующих PG-тестах (`crm-audit-password-update`, `crm-audit-refresh-logout`, `crm-audit-user-session`), т.к. `FOR SHARE`/`FOR KEY SHARE` в PostgreSQL требует `UPDATE`. | Добавлено обновление грантов во всех трёх существующих PG-тестах и в новом тесте; `crm-audit-password-update.postgres-spec.ts` внесён в §3 `design.md`. |
+| B2 | Blocker | Порядок `assertActiveSubject` и `FOR UPDATE` на `core."appToken"` в `rotateRefreshToken` либо ломал `crm-audit-refresh-logout` (`variant === 'user' | 'workspace'`), либо создавал deadlock с `ON DELETE CASCADE`. | В `rotateRefreshToken` `lockAndCheckActiveSubject` выполняется до `AT FOR UPDATE` в порядке `W -> U -> UW`, но ошибка субъекта сохраняется и выбрасывается только после проверки `before` (`revoked`/replay всегда первыми). |
+| B3 | Blocker | Обход проверки в `revokeSessionByToken` для `stopImpersonation`, если предъявлена обычная (не-имперсонационная) сессия, плюс опциональность `impersonationContext.impersonatorUserWorkspaceId`. | В `stopImpersonation` добавлена явная проверка `isNonEmptyString(impersonationContext.impersonatorUserWorkspaceId)`; в `revokeSessionByToken`/`revokeSessionsWithAudit` при `ImpersonationEnded` безусловно требуются `row.isImpersonating === true`, совпадение `impersonatorUserWorkspaceId`, `expectedWorkspaceId` и `expectedImpersonatedUserWorkspaceId`. |
+| M1 | Major | Отсутствие фильтра `expiresAt` в `revokeRefreshTokenFamilyOnReuse` могло блокировать и аудировать сотни исторических истёкших токенов. | Добавлен фильтр `("revokedAt" IS NULL OR "expiresAt" > $3 OR id = $4)` + проверка `T0` в новом PG-тесте. |
+| M2 | Major | `verifyRefreshToken` не проверял `isUUID(jti/sub)`, `token.type`, `token.userId === sub` и `assertOwnTransaction`, а `userRepository.findOneBy` скрывал replay деактивированного пользователя. | Добавлены строгие проверки токена, `assertOwnTransaction()` в `revokeRefreshTokenFamilyOnReuse`, и replay detection выполняется до `userRepository.findOneBy`. |
+| M3 | Major | Не описана группировка `CrmAuditTransactionContext` по `workspaceId` и регистронезависимость `familyId`. | Добавлена `Map<string, CrmAuditTransactionContext>` по `row.workspaceId`, поиск `LOWER(context->>'familyId') = $2`, нормализация и fail-closed валидация `familyId`. |
+| M4 | Major | Обратный порядок блокировок `U -> W -> UW` и контенция `FOR SHARE` на `core.workspace` с 70+ `FOR NO KEY UPDATE`. | Выровнен порядок `W -> U -> UW -> AT`; на `core.workspace` используется `FOR KEY SHARE` (совместим с `FOR NO KEY UPDATE`, сериализуется с `admitOmniWorkspaceDeletion` `FOR UPDATE` и `DELETE`). |
+| M5 | Major | Валидация `correlationId`/`lockUserId`/impersonation UUID должна идти до транзакции и `SAVEPOINT`; `impersonatorUserWorkspaceId` в `RefreshTokenService` должен блокироваться `FOR SHARE`; проверка `row.userId === lockedUserId`. | Все 4 усиления внесены в §1 `design.md`. |
+| M6 | Major | Тест конкурентной деактивации использовал `acquireUserAuthenticationLock` вместо реальных строковых `FOR UPDATE` блокировок из `deactivateCoreUserWithAudit` / `deleteUserWorkspaceTransaction` / `admitOmniWorkspaceDeletion`. | В `test-research.md` добавлен тест сериализации через реальные row-level `FOR UPDATE` без `acquireUserAuthenticationLock`. |
+| m1-m6 | Minor | Граница `UserSession`/family revoke и `signOut`, `Logger` в `RefreshTokenService`, `isUUID(candidate.userId)` в `saveWorkspaceAgnosticSession`, сохранение fallback `UserSignOut`, 1-минутное переходное окно legacy grace, проверка `core."user".disabled`. | Все 6 замечаний учтены в `design.md` (включая `COALESCE((to_jsonb(u)->>'disabled')::boolean, false) = false`). |

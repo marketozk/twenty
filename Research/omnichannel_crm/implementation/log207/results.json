@@ -1,0 +1,78 @@
+{
+  "log": "LOG-207",
+  "date": "2026-11-23",
+  "issue": "ROB-765",
+  "scope": "Session lifecycle hardening: refresh token family revoke, active subject/membership/impersonator fencing, fail-closed stopImpersonation attribution, lockUserId fix, and shared correlationId",
+  "targetedPostgresTests": {
+    "status": "pass",
+    "suitesPassed": 6,
+    "suitesTotal": 6,
+    "testsPassed": 139,
+    "testsTotal": 139,
+    "durationSeconds": 15.525,
+    "suites": [
+      "test/fork-migration/crm-audit-session-lifecycle-hardening.postgres-spec.ts",
+      "test/fork-migration/crm-audit-refresh-logout.postgres-spec.ts",
+      "test/fork-migration/crm-audit-user-session.postgres-spec.ts",
+      "test/fork-migration/crm-audit-password-update.postgres-spec.ts",
+      "test/fork-migration/crm-audit-two-factor-authentication.postgres-spec.ts",
+      "test/fork-migration/crm-audit-membership-auth.postgres-spec.ts"
+    ]
+  },
+  "fullPostgresRegression": {
+    "status": "pass-with-known-unrelated-flake",
+    "suitesPassed": 143,
+    "suitesTotal": 144,
+    "testsPassed": 3301,
+    "testsTotal": 3302,
+    "durationSeconds": 777.914,
+    "knownUnrelatedFlake": "test/fork-migration/crm-audit-signing-key.postgres-spec.ts:391 (pre-existing LOG-195 UUID ordering flake, untouched)"
+  },
+  "guards": {
+    "enterpriseDependencies": {
+      "status": "pass",
+      "violations": 0,
+      "codeFiles": 34815,
+      "runtimeFiles": 21466,
+      "edges": 137905
+    },
+    "forkMigrationSources": {
+      "status": "pass",
+      "verifiedSources": 10
+    },
+    "pythonUnitTests": {
+      "status": "pass",
+      "passed": 33,
+      "total": 33
+    }
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 511,
+    "currentRootFiles": 512,
+    "baselineDiagnostics": 274,
+    "currentDiagnostics": 274,
+    "newDiagnostics": 0,
+    "changedFileDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "reviews": {
+    "designReview": {
+      "blockersFound": 3,
+      "majorsFound": 6,
+      "minorsFound": 6,
+      "allResolved": true
+    },
+    "codeReview": {
+      "blockersFound": 2,
+      "majorsFound": 4,
+      "minorsFound": 3,
+      "allResolved": true
+    }
+  },
+  "sourceSnapshotVerified": {
+    "matched": 10,
+    "total": 10
+  },
+  "standCleanedUp": true
+}

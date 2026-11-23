@@ -26,14 +26,20 @@ describe('isRevokedRefreshTokenStillRenewable', () => {
     ).toBe(false);
   });
 
-  it('rejects a token revoked for a security reason even inside the reuse grace period', () => {
-    expect(
-      isRevokedRefreshTokenStillRenewable({
-        revokedAt: new Date(now.getTime() - 10 * 1000),
-        revokedReason: UserSessionRevokedReason.TwoFactorAuthenticationReset,
-        reuseGracePeriod: '1m',
-        now,
-      }),
-    ).toBe(false);
-  });
+  it.each([
+    UserSessionRevokedReason.TwoFactorAuthenticationReset,
+    UserSessionRevokedReason.RefreshTokenReuseDetected,
+  ])(
+    'rejects a token revoked for security reason %s even inside the reuse grace period',
+    (revokedReason) => {
+      expect(
+        isRevokedRefreshTokenStillRenewable({
+          revokedAt: new Date(now.getTime() - 10 * 1000),
+          revokedReason,
+          reuseGracePeriod: '1m',
+          now,
+        }),
+      ).toBe(false);
+    },
+  );
 });

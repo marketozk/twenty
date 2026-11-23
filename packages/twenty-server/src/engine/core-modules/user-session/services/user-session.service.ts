@@ -51,6 +51,27 @@ const USER_SESSION_MAX_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
 
 const IMPERSONATION_SESSION_LIFETIME = '1d';
 
+const validateOptionalCorrelationId = (
+  correlationId: string | undefined,
+): string | undefined => {
+  if (correlationId === undefined) return undefined;
+  if (
+    typeof correlationId !== 'string' ||
+    correlationId.length === 0 ||
+    correlationId.length > 256
+  ) {
+    throw new Error('Session audit correlationId is invalid');
+  }
+  return correlationId;
+};
+
+type RevokeSessionByTokenOptions = {
+  initiatorMembershipId?: string;
+  correlationId?: string;
+  expectedWorkspaceId?: string;
+  expectedImpersonatedUserWorkspaceId?: string;
+};
+
 const buildInvalidSessionException = () =>
   new AuthException(
     'Session is invalid or has expired.',
@@ -150,8 +171,12 @@ export class UserSessionService {
         }
       }
 
+      const correlationId = randomUUID();
+
       // Create the replacement first so a failed insert leaves the browser its working credential.
-      const { sessionToken, session } = await this.createSession(sessionInput);
+      const { sessionToken, session } = await this.createSession(sessionInput, {
+        correlationId,
+      });
 
       this.userSessionCookieService.attachSessionTokenToResponse(
         response,
@@ -178,6 +203,7 @@ export class UserSessionService {
           presentedSessionToken,
           UserSessionRevokedReason.Superseded,
           session.userId,
+          { correlationId },
         );
       } catch (error) {
         // The handoff already succeeded; a cleanup failure must not turn it into another logout.
@@ -284,11 +310,15 @@ export class UserSessionService {
     return undefined;
   }
 
-  async createSession(input: CreateUserSessionInput): Promise<{
+  async createSession(
+    input: CreateUserSessionInput,
+    options?: { correlationId?: string },
+  ): Promise<{
     sessionToken: string;
     session: UserSessionEntity;
   }> {
     input = { ...input };
+    const correlationId = validateOptionalCorrelationId(options?.correlationId);
     if (isDefined(input.workspaceId) && !isDefined(input.userWorkspaceId)) {
       throw new AuthException(
         'Cannot create a workspace session without a user workspace',
@@ -345,7 +375,11 @@ export class UserSessionService {
       lastActiveAt: now,
     });
     const session = isDefined(candidate.workspaceId)
-      ? await this.saveAuditedWorkspaceSession(candidate, input.origin)
+      ? await this.saveAuditedWorkspaceSession(
+          candidate,
+          input.origin,
+          correlationId,
+        )
       : await this.saveWorkspaceAgnosticSession(candidate);
 
     if (input.origin === 'sign_in' && isDefined(session.workspaceId)) {
@@ -367,17 +401,31 @@ export class UserSessionService {
     if (!connection) {
       return await this.userSessionRepository.save(candidate);
     }
-    if (typeof candidate.userId === 'string') {
-      candidate.userId = candidate.userId.toLowerCase();
+    if (typeof candidate.userId !== 'string' || !isUUID(candidate.userId)) {
+      throw new Error('Session userId is invalid');
     }
+    candidate.userId = candidate.userId.toLowerCase();
 
     return await runInCoreAuditTransaction(connection, async (runner) => {
       await runner.query("SET LOCAL lock_timeout = '8s'");
       await acquireUserAuthenticationLock({
         entityManager: runner.manager,
-        userId: candidate.userId.toLowerCase(),
+        userId: candidate.userId,
         mode: 'shared',
       });
+      const activeUsers: { id: string }[] = await runner.query(
+        `SELECT u.id FROM core."user" u
+         WHERE u.id = $1 AND u."deletedAt" IS NULL
+           AND COALESCE((to_jsonb(u)->>'disabled')::boolean, false) = false
+         FOR SHARE`,
+        [candidate.userId],
+      );
+      if (activeUsers.length !== 1) {
+        throw new AuthException(
+          'User not found',
+          AuthExceptionCode.FORBIDDEN_EXCEPTION,
+        );
+      }
 
       return await runner.manager
         .getRepository(UserSessionEntity)
@@ -388,6 +436,7 @@ export class UserSessionService {
   private async saveAuditedWorkspaceSession(
     candidate: UserSessionEntity,
     origin: UserSessionCreationOrigin,
+    correlationId?: string,
   ): Promise<UserSessionEntity> {
     // The injected repository is unscoped. An unknown enclosing transaction must
     // not be silently replaced by an independently committed session.
@@ -395,6 +444,21 @@ export class UserSessionService {
       throw new Error(
         'Session audit requires ownership of the core transaction',
       );
+    if (
+      typeof candidate.userId !== 'string' ||
+      !isUUID(candidate.userId) ||
+      typeof candidate.workspaceId !== 'string' ||
+      !isUUID(candidate.workspaceId) ||
+      typeof candidate.userWorkspaceId !== 'string' ||
+      !isUUID(candidate.userWorkspaceId) ||
+      (candidate.isImpersonating &&
+        (typeof candidate.impersonatorUserWorkspaceId !== 'string' ||
+          !isUUID(candidate.impersonatorUserWorkspaceId) ||
+          typeof candidate.impersonatedUserWorkspaceId !== 'string' ||
+          !isUUID(candidate.impersonatedUserWorkspaceId)))
+    ) {
+      throw new Error('Session scope identifiers are invalid');
+    }
     for (const field of [
       'userId',
       'workspaceId',
@@ -415,6 +479,30 @@ export class UserSessionService {
           userId: candidate.userId.toLowerCase(),
           mode: 'shared',
         });
+        // Canonical lock order: W (FOR KEY SHARE) -> U (FOR SHARE) -> UW (ORDER BY id FOR SHARE).
+        const activeWorkspaces: { id: string }[] = await runner.query(
+          'SELECT id FROM core.workspace WHERE id = $1 AND "deletedAt" IS NULL FOR KEY SHARE',
+          [candidate.workspaceId],
+        );
+        if (activeWorkspaces.length !== 1) {
+          throw new AuthException(
+            'Workspace not found',
+            AuthExceptionCode.FORBIDDEN_EXCEPTION,
+          );
+        }
+        const activeUsers: { id: string }[] = await runner.query(
+          `SELECT u.id FROM core."user" u
+           WHERE u.id = $1 AND u."deletedAt" IS NULL
+             AND COALESCE((to_jsonb(u)->>'disabled')::boolean, false) = false
+           FOR SHARE`,
+          [candidate.userId],
+        );
+        if (activeUsers.length !== 1) {
+          throw new AuthException(
+            'User not found',
+            AuthExceptionCode.FORBIDDEN_EXCEPTION,
+          );
+        }
         const membershipIds = [candidate.userWorkspaceId!];
         if (candidate.isImpersonating) {
           if (
@@ -429,9 +517,15 @@ export class UserSessionService {
           id: string;
           userId: string;
           workspaceId: string;
+          userActive: boolean;
         }[] = await runner.query(
-          `SELECT id, "userId", "workspaceId" FROM core."userWorkspace"
-             WHERE id = ANY($1::uuid[]) AND "deletedAt" IS NULL ORDER BY id FOR SHARE`,
+          `SELECT uw.id, uw."userId", uw."workspaceId",
+             (u.id IS NOT NULL AND u."deletedAt" IS NULL
+               AND COALESCE((to_jsonb(u)->>'disabled')::boolean, false) = false) AS "userActive"
+           FROM core."userWorkspace" uw
+           LEFT JOIN core."user" u ON u.id = uw."userId"
+           WHERE uw.id = ANY($1::uuid[]) AND uw."deletedAt" IS NULL
+           ORDER BY uw.id FOR SHARE OF uw`,
           [membershipIds],
         );
         const target = memberships.find(
@@ -451,11 +545,12 @@ export class UserSessionService {
                 row.id === candidate.impersonatorUserWorkspaceId?.toLowerCase(),
             )
           : undefined;
-        if (candidate.isImpersonating && !initiator)
+        if (candidate.isImpersonating && (!initiator || !initiator.userActive))
           throw new Error('Session impersonation initiator is unavailable');
         const audit = new CrmAuditTransactionContext(runner, {
           workspaceId: target.workspaceId,
           operationId,
+          ...(correlationId ? { correlationId } : {}),
           actor: { kind: 'coreUser', id: target.userId },
           ...(initiator
             ? { initiator: { kind: 'coreUser' as const, id: initiator.userId } }
@@ -645,23 +740,83 @@ export class UserSessionService {
     sessionToken: string,
     reason: UserSessionRevokedReason,
     actingUserId?: string,
+    options?: RevokeSessionByTokenOptions,
   ): Promise<boolean> {
+    const correlationId = validateOptionalCorrelationId(options?.correlationId);
     const session = await this.findSessionByToken(sessionToken);
 
     if (!isDefined(session)) {
       return false;
     }
 
+    const initiatorMembershipId =
+      options?.initiatorMembershipId ??
+      (actingUserId === undefined &&
+      session.isImpersonating &&
+      reason === UserSessionRevokedReason.UserSignOut
+        ? (session.impersonatorUserWorkspaceId ?? undefined)
+        : undefined);
+
+    if (reason === UserSessionRevokedReason.ImpersonationEnded) {
+      this.assertImpersonationEndedTarget(session, {
+        initiatorMembershipId,
+        expectedWorkspaceId: options?.expectedWorkspaceId,
+        expectedImpersonatedUserWorkspaceId:
+          options?.expectedImpersonatedUserWorkspaceId,
+      });
+    }
+
     return await this.revokeSessionEntity(
       session,
       reason,
       actingUserId ?? session.userId,
-      actingUserId === undefined &&
-        session.isImpersonating &&
-        reason === UserSessionRevokedReason.UserSignOut
-        ? (session.impersonatorUserWorkspaceId ?? undefined)
-        : undefined,
+      initiatorMembershipId,
+      {
+        correlationId,
+        expectedWorkspaceId: options?.expectedWorkspaceId,
+        expectedImpersonatedUserWorkspaceId:
+          options?.expectedImpersonatedUserWorkspaceId,
+      },
     );
+  }
+
+  private assertImpersonationEndedTarget(
+    session: Pick<
+      UserSessionEntity,
+      | 'isImpersonating'
+      | 'impersonatorUserWorkspaceId'
+      | 'impersonatedUserWorkspaceId'
+      | 'workspaceId'
+    >,
+    expected: {
+      initiatorMembershipId?: string;
+      expectedWorkspaceId?: string;
+      expectedImpersonatedUserWorkspaceId?: string;
+    },
+  ): void {
+    if (
+      !session.isImpersonating ||
+      !isNonEmptyString(expected.initiatorMembershipId) ||
+      !isUUID(expected.initiatorMembershipId) ||
+      !isNonEmptyString(session.impersonatorUserWorkspaceId) ||
+      session.impersonatorUserWorkspaceId.toLowerCase() !==
+        expected.initiatorMembershipId.toLowerCase() ||
+      (expected.expectedWorkspaceId !== undefined &&
+        (!isNonEmptyString(expected.expectedWorkspaceId) ||
+          !isUUID(expected.expectedWorkspaceId) ||
+          session.workspaceId?.toLowerCase() !==
+            expected.expectedWorkspaceId.toLowerCase())) ||
+      (expected.expectedImpersonatedUserWorkspaceId !== undefined &&
+        (!isNonEmptyString(expected.expectedImpersonatedUserWorkspaceId) ||
+          !isUUID(expected.expectedImpersonatedUserWorkspaceId) ||
+          session.impersonatedUserWorkspaceId?.toLowerCase() !==
+            expected.expectedImpersonatedUserWorkspaceId.toLowerCase()))
+    ) {
+      throw new AuthException(
+        'Session does not match active impersonation',
+        AuthExceptionCode.FORBIDDEN_EXCEPTION,
+      );
+    }
   }
 
   async revokeSessionByIdForUserWorkspace({
@@ -730,23 +885,28 @@ export class UserSessionService {
     sessionToken?: string;
     refreshToken?: string;
   }): Promise<void> {
+    const correlationId = randomUUID();
     try {
       if (isNonEmptyString(sessionToken)) {
         await this.revokeSessionByToken(
           sessionToken,
           UserSessionRevokedReason.UserSignOut,
+          undefined,
+          { correlationId },
         );
       }
     } finally {
       if (isNonEmptyString(refreshToken)) {
-        await this.revokePresentedRefreshToken(refreshToken);
+        await this.revokePresentedRefreshToken(refreshToken, correlationId);
       }
     }
   }
 
   private async revokePresentedRefreshToken(
     refreshToken: string,
+    correlationId?: string,
   ): Promise<void> {
+    correlationId = validateOptionalCorrelationId(correlationId);
     let payload: RefreshTokenJwtPayload | undefined;
 
     try {
@@ -866,6 +1026,7 @@ export class UserSessionService {
               const audit = new CrmAuditTransactionContext(runner, {
                 workspaceId: before.workspaceId,
                 operationId,
+                ...(correlationId ? { correlationId } : {}),
                 actor: { kind: 'coreUser', id: userId },
                 ...(initiator ? { initiator } : {}),
               });
@@ -913,12 +1074,22 @@ export class UserSessionService {
     reason: UserSessionRevokedReason,
     actingUserId = session.userId,
     initiatorMembershipId?: string,
+    options?: {
+      correlationId?: string;
+      expectedWorkspaceId?: string;
+      expectedImpersonatedUserWorkspaceId?: string;
+    },
   ): Promise<boolean> {
     const revoked = await this.revokeSessionsWithAudit({
       sessionId: session.id,
+      lockUserId: session.userId,
       reason,
       actingUserId,
       initiatorMembershipId,
+      correlationId: options?.correlationId,
+      expectedWorkspaceId: options?.expectedWorkspaceId,
+      expectedImpersonatedUserWorkspaceId:
+        options?.expectedImpersonatedUserWorkspaceId,
     });
     return revoked.length === 1;
   }
@@ -926,13 +1097,18 @@ export class UserSessionService {
   private async revokeSessionsWithAudit(input: {
     sessionId?: string;
     userId?: string;
+    lockUserId?: string;
     workspaceId?: string;
     exceptSessionId?: string;
     actingUserId: string;
     initiatorMembershipId?: string;
+    correlationId?: string;
+    expectedWorkspaceId?: string;
+    expectedImpersonatedUserWorkspaceId?: string;
     reason: UserSessionRevokedReason;
   }): Promise<UserSessionEntity[]> {
     input = { ...input };
+    const correlationId = validateOptionalCorrelationId(input.correlationId);
     if (this.userSessionRepository.manager.queryRunner)
       throw new Error(
         'Session revocation requires ownership of the core transaction',
@@ -943,6 +1119,15 @@ export class UserSessionService {
     ) {
       throw new Error('Session revocation initiator is invalid');
     }
+    if (!isNonEmptyString(input.actingUserId) || !isUUID(input.actingUserId)) {
+      throw new Error('Session revocation actor is invalid');
+    }
+    const rawLockUserId =
+      input.lockUserId ?? input.userId ?? input.actingUserId;
+    if (!isNonEmptyString(rawLockUserId) || !isUUID(rawLockUserId)) {
+      throw new Error('Session revocation lock user is invalid');
+    }
+    const lockedUserId = rawLockUserId.toLowerCase();
     const operationId = randomUUID();
     const cacheKeys: string[] = [];
     let auditLost = false;
@@ -952,13 +1137,11 @@ export class UserSessionService {
         this.userSessionRepository.manager.connection,
         async (runner) => {
           await runner.query("SET LOCAL lock_timeout = '8s'");
-          if (isUUID(input.userId ?? input.actingUserId)) {
-            await acquireUserAuthenticationLock({
-              entityManager: runner.manager,
-              userId: (input.userId ?? input.actingUserId).toLowerCase(),
-              mode: 'exclusive',
-            });
-          }
+          await acquireUserAuthenticationLock({
+            entityManager: runner.manager,
+            userId: lockedUserId,
+            mode: 'exclusive',
+          });
           const repository = runner.manager.getRepository(UserSessionEntity);
           const query = repository
             .createQueryBuilder('session')
@@ -984,6 +1167,19 @@ export class UserSessionService {
           if (!isDefined(input.sessionId) && !isDefined(input.userId))
             throw new Error('Session revocation requires a bounded target');
           const before = await query.getMany();
+          if (before.some((row) => row.userId.toLowerCase() !== lockedUserId)) {
+            throw new Error('Session revocation owner does not match lock');
+          }
+          if (input.reason === UserSessionRevokedReason.ImpersonationEnded) {
+            for (const row of before) {
+              this.assertImpersonationEndedTarget(row, {
+                initiatorMembershipId: input.initiatorMembershipId,
+                expectedWorkspaceId: input.expectedWorkspaceId,
+                expectedImpersonatedUserWorkspaceId:
+                  input.expectedImpersonatedUserWorkspaceId,
+              });
+            }
+          }
           cacheKeys.push(...before.map((row) => row.tokenHash));
           if (!before.length) return [];
           const revokedAt = new Date();
@@ -1061,6 +1257,7 @@ export class UserSessionService {
                 context = new CrmAuditTransactionContext(runner, {
                   workspaceId: row.workspaceId,
                   operationId,
+                  ...(correlationId ? { correlationId } : {}),
                   actor: { kind: 'coreUser', id: input.actingUserId },
                   ...(initiator ? { initiator } : {}),
                 });

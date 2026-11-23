@@ -541,7 +541,7 @@ beforeAll(async () => {
     CREATE ROLE "${role}" LOGIN PASSWORD 'isolated-password-audit-fixture' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
     GRANT USAGE ON SCHEMA core, crm_audit TO "${role}";
     GRANT SELECT ON ALL TABLES IN SCHEMA core TO "${role}";
-    GRANT INSERT, UPDATE ON core."appToken", core."userSession", core."user", core."userWorkspace" TO "${role}";
+    GRANT INSERT, UPDATE ON core."appToken", core."userSession", core."user", core."userWorkspace", core.workspace TO "${role}";
     GRANT SELECT, INSERT ON crm_audit."crmAuditEntry" TO "${role}";
   `);
   await runtime.initialize();

@@ -5,4 +5,5 @@ export enum UserSessionRevokedReason {
   PasswordChanged = 'PASSWORD_CHANGED',
   ImpersonationEnded = 'IMPERSONATION_ENDED',
   TwoFactorAuthenticationReset = 'TWO_FACTOR_AUTHENTICATION_RESET',
+  RefreshTokenReuseDetected = 'REFRESH_TOKEN_REUSE_DETECTED',
 }

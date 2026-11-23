@@ -21,17 +21,25 @@ import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/cr
 import { type CrmAuditMutation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 
 jest.mock('src/engine/core-modules/user/user.entity', () => {
-  const { Entity, PrimaryColumn } = require('typeorm');
+  const { Entity, PrimaryColumn, Column } = require('typeorm');
   class UserEntity {}
   Entity({ schema: 'core', name: 'user' })(UserEntity);
   PrimaryColumn({ type: 'uuid' })(UserEntity.prototype, 'id');
+  Column({ type: 'timestamptz', nullable: true })(
+    UserEntity.prototype,
+    'deletedAt',
+  );
   return { UserEntity };
 });
 jest.mock('src/engine/core-modules/workspace/workspace.entity', () => {
-  const { Entity, PrimaryColumn } = require('typeorm');
+  const { Entity, PrimaryColumn, Column } = require('typeorm');
   class WorkspaceEntity {}
   Entity({ schema: 'core', name: 'workspace' })(WorkspaceEntity);
   PrimaryColumn({ type: 'uuid' })(WorkspaceEntity.prototype, 'id');
+  Column({ type: 'timestamptz', nullable: true })(
+    WorkspaceEntity.prototype,
+    'deletedAt',
+  );
   return { WorkspaceEntity };
 });
 jest.mock(
@@ -197,6 +205,7 @@ beforeAll(async () => {
   );
   await owner.query(`CREATE ROLE "${role}" LOGIN PASSWORD 'isolated-refresh-fixture' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
     GRANT USAGE ON SCHEMA core,crm_audit TO "${role}"; GRANT SELECT ON ALL TABLES IN SCHEMA core TO "${role}";
+    GRANT UPDATE ON core."user",core.workspace,core."userWorkspace" TO "${role}";
     GRANT INSERT,UPDATE ON core."appToken",core."userSession" TO "${role}"; GRANT SELECT,INSERT ON crm_audit."crmAuditEntry" TO "${role}"`);
   await runtime.initialize();
 });
@@ -206,11 +215,15 @@ beforeEach(async () => {
   await owner.query(`DROP TRIGGER IF EXISTS fail_refresh_audit ON crm_audit."crmAuditEntry"; DROP FUNCTION IF EXISTS crm_audit.fail_refresh_audit();
     DROP TRIGGER IF EXISTS rewrite_refresh ON core."appToken"; DROP FUNCTION IF EXISTS core.rewrite_refresh();
     TRUNCATE core."appToken",core."userSession",core."userWorkspace",core."user",core.workspace,crm_audit."crmAuditEntry" CASCADE`);
-  await owner.query('INSERT INTO core."user" VALUES($1),($2)', [
+  await owner.query('INSERT INTO core."user"(id) VALUES($1),($2)', [
     userId,
     otherUserId,
   ]);
-  await owner.query('INSERT INTO core.workspace VALUES($1)', [workspaceId]);
+  await owner.query('INSERT INTO core.workspace(id) VALUES($1)', [workspaceId]);
+  await owner.query(
+    'INSERT INTO core."userWorkspace"(id,"userId","workspaceId") VALUES($1,$2,$3)',
+    [randomUUID(), userId, workspaceId],
+  );
 });
 afterAll(async () => {
   jest.restoreAllMocks();

@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { isUUID } from 'class-validator';
 
+import { isNonEmptyString } from '@sniptt/guards';
 import { type Request } from 'express';
 import { isDefined } from 'twenty-shared/utils';
 import { Repository } from 'typeorm';
@@ -107,7 +109,13 @@ export class ImpersonationService {
     workspaceId: string;
     request: Request;
   }): Promise<{ canRestoreImpersonatorSession: boolean }> {
-    if (!isDefined(impersonationContext)) {
+    if (
+      !isDefined(impersonationContext) ||
+      !isNonEmptyString(impersonationContext.impersonatorUserWorkspaceId) ||
+      !isUUID(impersonationContext.impersonatorUserWorkspaceId) ||
+      !isNonEmptyString(impersonationContext.impersonatedUserWorkspaceId) ||
+      !isUUID(impersonationContext.impersonatedUserWorkspaceId)
+    ) {
       throw new AuthException(
         'Not currently impersonating',
         AuthExceptionCode.FORBIDDEN_EXCEPTION,
@@ -134,7 +142,13 @@ export class ImpersonationService {
       await this.userSessionService.revokeSessionByToken(
         presentedSessionToken,
         UserSessionRevokedReason.ImpersonationEnded,
-        impersonatorUserWorkspace.user.id,
+        undefined,
+        {
+          initiatorMembershipId: impersonatorUserWorkspace.id,
+          expectedWorkspaceId: workspaceId,
+          expectedImpersonatedUserWorkspaceId:
+            impersonationContext.impersonatedUserWorkspaceId,
+        },
       );
     }
 

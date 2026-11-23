@@ -1,0 +1,17 @@
+{
+  "log": "LOG-207",
+  "date": "2026-11-23",
+  "verifiedRemoteMatch": true,
+  "files": {
+    "packages/twenty-server/src/engine/core-modules/app-token/app-token.entity.ts": "2d4217bfeb46b1efed3a4e51a6fa94ac29c1f94332e777908ef781c86c24e185",
+    "packages/twenty-server/src/engine/core-modules/auth/token/services/refresh-token.service.ts": "2d81ca2caa11a2e68b66dc28e1d33fcde2ded0c2a02544bb29f2282e2f29af97",
+    "packages/twenty-server/src/engine/core-modules/auth/utils/__tests__/is-revoked-refresh-token-still-renewable.util.spec.ts": "f3892005ec4cf8274576b7e2980c30c6fff122b73c7937024403805e3a23f9cc",
+    "packages/twenty-server/src/engine/core-modules/impersonation/services/impersonation.service.ts": "e28f076f7f0f5f3bda28b657909bef69b184692dba40ca970d58201b77eed843",
+    "packages/twenty-server/src/engine/core-modules/user-session/services/user-session.service.ts": "3d03ba60b7f45c35697e886f533253126911fd4a982a05871fe12fa0b4c81b22",
+    "packages/twenty-server/src/engine/core-modules/user-session/types/user-session-revoked-reason.type.ts": "c44edbf9965f1b5339bfa212551ac3482a57d58829ecf701fe1770e765f10195",
+    "packages/twenty-server/test/fork-migration/crm-audit-password-update.postgres-spec.ts": "f31c63807acdc3ef666968e7c4957a828246dcc94ee54913b486d11937dac7a9",
+    "packages/twenty-server/test/fork-migration/crm-audit-refresh-logout.postgres-spec.ts": "c2594efde43e640e946d57ceb079fd3a7fef7b9d4c0360d420dd15f353bd5c9c",
+    "packages/twenty-server/test/fork-migration/crm-audit-session-lifecycle-hardening.postgres-spec.ts": "bba7eb42f70120630c3f475bfbfc4ef4c824eb8d5bbdd07ddfbe2c59c142ad61",
+    "packages/twenty-server/test/fork-migration/crm-audit-user-session.postgres-spec.ts": "afed3632d99bdf14df759213f46447c321e1f844a80254ceec6ec5d1ae429954"
+  }
+}

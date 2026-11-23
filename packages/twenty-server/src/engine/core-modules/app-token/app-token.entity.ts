@@ -111,6 +111,7 @@ export class AppTokenEntity {
     scope?: string;
     authProvider?: AuthProviderEnum;
     revokedReason?: UserSessionRevokedReason;
+    familyId?: string;
     issuedByUserId?: string;
   } | null;
 }
