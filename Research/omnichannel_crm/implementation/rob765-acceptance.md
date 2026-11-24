@@ -1,6 +1,6 @@
 # ROB-765 - приёмка собственного объёма этапа 2a (сбор аудита действий)
 
-25.11.2026: собственные критерии `ROB-765` (сбор и достоверность аудита действий, защищённый административный health-эндпоинт и внешний alert sink) прошли сборку реального серверного образа `marketozk/twenty:log214-server` (`sha256:337f98be0ed94b08b6556dab64568a4126fe97dbe43c569826f97b171c99110b`) и сквозную HTTP/JWT/GraphQL приёмку на изолированном стенде PG 17 + Redis ([LOG-214](log214/README.md)). Живой выкат на демо не выполнялся; статус в Linear переводится в `Done` после подтверждения владельца.
+25.11.2026: собственные критерии `ROB-765` (сбор и достоверность аудита действий, защищённый административный health-эндпоинт и внешний alert sink) прошли сборку реального серверного образа `marketozk/twenty:log214-server` (`sha256:337f98be0ed94b08b6556dab64568a4126fe97dbe43c569826f97b171c99110b`) и сквозную HTTP/JWT/GraphQL приёмку на изолированном стенде PG 17 + Redis ([LOG-214](log214/README.md)). По решению владельца собран полный образ `marketozk/twenty:log214` (`sha256:0d1b73bc678d8e05b3c75e6b6797b2cedbd8dd70ac3ae2acd9cc74f32bbf2132`), выполнен живой выкат на `/opt/twenty-demo` (Schrodinger), `ROB-765` переведена в `Done`, `ROB-766` переведена в `In Progress`.
 
 | Критерий этапа 2a | Подтверждённое доказательство | Граница следующих задач |
 |---|---|---|
@@ -14,4 +14,5 @@
 ## Проверка границ
 - Сквозная приёмка поймала и исправила 2 реальных production-бага (`GLOBAL_OBJECT_CONTEXT` в `navigation-menu-item-audit.ts` и `workspace_<base36>` в `navigation-menu-item-audit.ts`, `core-workflow-and-view-audit.ts`, `two-factor-authentication-audit.ts`).
 - Подробные доказательства: [LOG-214 README](log214/README.md), [LOG-214 results.json](log214/results.json), [LOG-214 review.md](log214/review.md).
-- Временный стенд `log214` на Schrodinger полностью удалён (`STAND_CLEAN`); живой демо-контейнер не менялся.
+- Временный стенд `log214` на Schrodinger полностью удалён (`STAND_CLEAN`).
+- Живой выкат на `/opt/twenty-demo` выполнен на `marketozk/twenty:log214` (`sha256:0d1b73bc678d8e05b3c75e6b6797b2cedbd8dd70ac3ae2acd9cc74f32bbf2132`): бэкап БД (`twenty-pre-log214.20261124T233309Z.dump`) и конфигов сохранён в `/opt/twenty-demo/backups/`, применены `10/10` форк-миграций (`core."forkMigrationLedger"` = 10 `completed`), создана отдельная append-only роль `twenty_runtime`, `twenty-demo-server-1` (`healthy`, `restarts=0`, `GET /healthz` 200, фронтенд 200 `<title>Twenty</title>`, `/admin-panel` закрыт авторизацией) и `twenty-demo-worker-1` (`running`, `restarts=0`, обрабатывает `cron-queue`) запущены и проверены, рабочее пространство `twenty` (`ACTIVE`) сохранено.

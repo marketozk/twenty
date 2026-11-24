@@ -26,15 +26,13 @@ Project ID: `91430f52-9c1d-4c25-b2d3-bf251ca39f4f`. Команда: RobotRTS (`R
 
 ## Текущее состояние
 
-ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.
-Актуальные проверки и ближайшая работа — в [STATUS](STATUS.md);
-критерии аудита — в [rob765-progress](implementation/rob765-progress.md).
-Описание ROB765 синхронизируется с [планом этапа](plan/phase_2_audit.md);
+ROB762/763/764/765/772 - Done; ROB766 - In Progress; ROB767-771 - Backlog.
+Актуальные проверки и ближайшая работа - в [STATUS](STATUS.md);
+критерии аудита - в [rob765-progress](implementation/rob765-progress.md).
+Описание ROB765 закрыто по [приёмке LOG214](implementation/rob765-acceptance.md);
 подробный отчёт о каждой публикации сохраняется в комментарии задачи и DEVLOG.
 
-Последняя подтверждённая сверка - [LOG214 publication](implementation/log214/publication.json).
-Описание, комментарий и все 11 статусов прочитаны обратно. Commit/push подтверждены GitHub API.
-LOG214 опубликован (собран кандидат `marketozk/twenty:log214-server`, пройдена сквозная HTTP/JWT/GraphQL приёмка). Описание и отчёт Linear прочитаны обратно после push.
-Следующая работа - решение владельца о закрытии ROB765 и переходе к ROB766 (или живом выкате). ROB765 остаётся In Progress.
+Последняя подтверждённая сверка - [LOG214 publication](implementation/log214/publication.json) + живой выкат `marketozk/twenty:log214` на `/opt/twenty-demo` и перевод статусов `ROB-765 -> Done`, `ROB-766 -> In Progress`.
+Следующая работа - реализация этапа 3 `ROB-766` (собственные права доступа и переходы сделок по [plan/phase_3_access.md](plan/phase_3_access.md)).
 История прежних R13–R16/LOG-публикаций сохраняется в [DEVLOG](DEVLOG.md) и каталогах evidence.
 GitHub Actions не используется.
