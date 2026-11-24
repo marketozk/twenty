@@ -32,9 +32,9 @@ ROB762/763/764/772 — Done; ROB765 — In Progress; ROB766–771 — Backlog.
 Описание ROB765 синхронизируется с [планом этапа](plan/phase_2_audit.md);
 подробный отчёт о каждой публикации сохраняется в комментарии задачи и DEVLOG.
 
-Последняя подтверждённая сверка - [LOG213 publication](implementation/log213/publication.json).
+Последняя подтверждённая сверка - [LOG214 publication](implementation/log214/publication.json).
 Описание, комментарий и все 11 статусов прочитаны обратно. Commit/push подтверждены GitHub API.
-LOG213 опубликован. Описание и отчёт Linear прочитаны обратно после push.
-Следующая работа - сборка нового изолированного серверного кандидата (LOG089-LOG213) и сквозная HTTP/JWT приёмка ROB765. ROB765 остаётся In Progress.
+LOG214 опубликован (собран кандидат `marketozk/twenty:log214-server`, пройдена сквозная HTTP/JWT/GraphQL приёмка). Описание и отчёт Linear прочитаны обратно после push.
+Следующая работа - решение владельца о закрытии ROB765 и переходе к ROB766 (или живом выкате). ROB765 остаётся In Progress.
 История прежних R13–R16/LOG-публикаций сохраняется в [DEVLOG](DEVLOG.md) и каталогах evidence.
 GitHub Actions не используется.
