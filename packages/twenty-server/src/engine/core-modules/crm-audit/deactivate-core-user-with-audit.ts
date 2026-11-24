@@ -3,9 +3,11 @@ import { isUUID } from 'class-validator';
 import { type DataSource, type EntityTarget } from 'typeorm';
 
 import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
+import { reportCrmAuditUnavailable } from 'src/engine/core-modules/crm-audit/crm-audit-health';
 import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
+import { isTransactionUnsafeToRetry } from 'src/engine/twenty-orm/error-handling/is-transaction-outcome-unknown';
 
 export const deactivateCoreUserWithAudit = async ({
   dataSource,
@@ -40,9 +42,11 @@ export const deactivateCoreUserWithAudit = async ({
   )
     throw new Error('Duplicate core user audit workspace');
   let auditUnavailable = false;
+  let committed = false;
+  let uncertainOutcome = false;
   const logger = new Logger('CoreUserDeactivation');
   try {
-    return await runInCoreAuditTransaction(dataSource, async (runner) => {
+    const outcome = await runInCoreAuditTransaction(dataSource, async (runner) => {
       const contexts = operations.map(
         (operation) => new CrmAuditTransactionContext(runner, operation),
       );
@@ -131,9 +135,17 @@ export const deactivateCoreUserWithAudit = async ({
       await verify();
       return 'deleted';
     });
+    committed = true;
+    return outcome;
+  } catch (error) {
+    uncertainOutcome = isTransactionUnsafeToRetry(error);
+    throw error;
   } finally {
-    if (auditUnavailable)
-      logger.error('CORE_USER_DEACTIVATION_AUDIT_UNAVAILABLE');
+    if (auditUnavailable && (committed || uncertainOutcome))
+      reportCrmAuditUnavailable({
+        code: 'CORE_USER_DEACTIVATION_AUDIT_UNAVAILABLE',
+        loggerContext: 'CoreUserDeactivationAudit',
+      });
     try {
       await invalidate();
     } catch {

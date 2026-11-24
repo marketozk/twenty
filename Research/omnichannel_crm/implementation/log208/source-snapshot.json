@@ -1,0 +1,23 @@
+{
+  "log": "LOG-208",
+  "verified": 17,
+  "hashes": {
+    "packages/twenty-server/src/engine/api/common/common-query-runners/common-base-query-runner.service.ts": "f553810e2381b65886ecd8a79601fbb970cb28db1e0ecb06d9257e2cb7ae2ff6",
+    "packages/twenty-server/src/engine/core-modules/auth/token/services/refresh-token.service.ts": "01080b9540ca26baa9aeda142b1fb9c8556773b83a28fbad5db46f6c4cd04445",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-health.ts": "294b775697104d18a6cc28135ae5f3b3c16c1d4e9355f6ab55f74d1a258a0a7a",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/deactivate-core-user-with-audit.ts": "ef3ec920e7816688633830a5c5a7992abca7572c6db15844c6f052a2f9d72bf9",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/delete-native-workspace-member-with-audit.ts": "f8068167d628000e61e8c51003fd5b11bcb9e8411a0c316f31801f458ac550e8",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/post-rollback-crm-audit-attempt.ts": "69474890af509fab70ef9f40a83ae1ef4ec7b1a8e04ee3ebf9bc720e99a74ddd",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/record-share-audit.ts": "a5a5a4fca0d0d2aca3e2657d830e2e92defa4202c7879fcac7e2591efdaad989",
+    "packages/twenty-server/src/engine/core-modules/crm-audit/transfer-connected-accounts-with-audit.ts": "9e025ffe3d980d6eeef8339c34506ced3d4e53043fc6fe04c34a7a030e8f1925",
+    "packages/twenty-server/src/engine/core-modules/user-session/services/user-session.service.ts": "a3f1d711dcb71f7eb4892198340fedf071a8b41ad61c3c4b933c4a8341a81b81",
+    "packages/twenty-server/src/engine/core-modules/user-workspace/delete-user-workspace-transaction.ts": "7271bf561fbe1f3abdc0385d9d93078933dc4b9e3e75a0aa5b90fe4da76716dc",
+    "packages/twenty-server/src/engine/twenty-orm/datasource/workspace-data-source.ts": "51f85d1e55e0cd738836a7a2d300f50b88f05360597efc2032f4fd0838ba8ddb",
+    "packages/twenty-server/src/engine/twenty-orm/types/workspace-transaction-lifecycle.type.ts": "f5c3faf2cf149996bab1c32b38b7d2939635fe08861d385693b35aef1def1874",
+    "packages/twenty-server/test/fork-migration/crm-audit-file-hard-delete.postgres-spec.ts": "2032cbef2a9d45311958b29aa607520aa104cbd5e4c20e0359f390dc13dcd4fd",
+    "packages/twenty-server/test/fork-migration/crm-audit-post-rollback-and-health.postgres-spec.ts": "829211573baa9fa376c83d935ace45c07c9ca76c66ae6ace86b64583abad7d0b",
+    "packages/twenty-server/test/fork-migration/crm-audit-public-destroy.postgres-spec.ts": "d8e6d882f053da5aefa66e22fa8fae601ed481674cdaf30800f48b2a9e4ac38f",
+    "packages/twenty-server/test/fork-migration/crm-audit-public-merge.postgres-spec.ts": "c7e6daccaccafb8d2cf537e12384fdacfa2574c5007f323aa05cb9acb85fc18f",
+    "packages/twenty-server/test/fork-migration/crm-audit-public-update.postgres-spec.ts": "92598f09c8b885bd6f9cb3be6c44051d6fa339fab3dc742c4798202dc1f109ae"
+  }
+}

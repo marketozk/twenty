@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { Logger } from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import {
   STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS,
   TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER,
 } from 'twenty-shared/application-runtime';
 import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
+import { reportCrmAuditUnavailable } from 'src/engine/core-modules/crm-audit/crm-audit-health';
 import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
 import { createCrmAuditWorkspaceExecutor } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-executor';
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
@@ -329,9 +329,22 @@ export const deleteNativeWorkspaceMemberWithAudit = async ({
       unavailable = true;
     }
   }
-  if (unavailable)
-    new Logger('NativeMemberCleanup').error(
-      'NATIVE_MEMBER_DELETION_AUDIT_UNAVAILABLE',
-    );
+  if (unavailable) {
+    const emitUnavailable = () =>
+      reportCrmAuditUnavailable({
+        code: 'NATIVE_MEMBER_DELETION_AUDIT_UNAVAILABLE',
+        loggerContext: 'NativeMemberCleanup',
+        workspaceId: scope.workspaceId,
+      });
+    const afterCommit = (
+      scope as { afterCommit?: (callback: () => void) => void }
+    ).afterCommit;
+
+    if (typeof afterCommit === 'function') {
+      afterCommit(emitUnavailable);
+    } else {
+      emitUnavailable();
+    }
+  }
   return true;
 };

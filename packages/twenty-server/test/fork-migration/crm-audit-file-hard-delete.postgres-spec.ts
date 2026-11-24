@@ -186,6 +186,10 @@ const audit = () =>
   f.owner.query<CrmAuditEntryPayload[]>(
     'SELECT * FROM crm_audit."crmAuditEntry" ORDER BY id',
   );
+const successAudit = async () =>
+  (await audit()).filter((entry) => entry.outcome === 'success');
+const failedAudit = async () =>
+  (await audit()).filter((entry) => entry.outcome !== 'success');
 
 const readFiles = () =>
   f.owner.query<
@@ -695,7 +699,18 @@ describe('LOG-205 File hard-delete transactional audit and durable cleanup owner
     ).rejects.toThrow(
       'Merging records that share the same file is not supported',
     );
-    expect(await audit()).toHaveLength(0);
+    expect(await successAudit()).toHaveLength(0);
+    expect(await failedAudit()).toEqual([
+      expect.objectContaining({
+        outcome: 'failed',
+        reasonCode: 'crm.mutation.audit_coverage_rejected',
+      }),
+      expect.objectContaining({
+        outcome: 'failed',
+        reasonCode: 'crm.mutation.audit_coverage_rejected',
+      }),
+    ]);
+    await f.owner.query('DELETE FROM crm_audit."crmAuditEntry"');
     expect(await readIntents()).toHaveLength(0);
 
     await f.owner.query(
@@ -806,7 +821,14 @@ describe('LOG-205 File hard-delete transactional audit and durable cleanup owner
         ),
       ).rejects.toThrow(invalidCase.expectedError);
       expect(await f.read('company')).toEqual(companiesBefore);
-      expect(await audit()).toHaveLength(0);
+      expect(await successAudit()).toHaveLength(0);
+      expect(await failedAudit()).toEqual([
+        expect.objectContaining({
+          outcome: 'failed',
+          reasonCode: 'crm.mutation.audit_coverage_rejected',
+        }),
+      ]);
+      await f.owner.query('DELETE FROM crm_audit."crmAuditEntry"');
       expect(await readIntents()).toHaveLength(0);
     }
 
@@ -826,7 +848,14 @@ describe('LOG-205 File hard-delete transactional audit and durable cleanup owner
         h.queryContext('company'),
       ),
     ).rejects.toThrow('Native file must have one unambiguous owner');
-    expect(await audit()).toHaveLength(0);
+    expect(await successAudit()).toHaveLength(0);
+    expect(await failedAudit()).toEqual([
+      expect.objectContaining({
+        outcome: 'failed',
+        reasonCode: 'crm.mutation.audit_coverage_rejected',
+      }),
+    ]);
+    await f.owner.query('DELETE FROM crm_audit."crmAuditEntry"');
     expect(await readIntents()).toHaveLength(0);
 
     // 2. BEFORE DELETE trigger skipping parent leaves its core.file untouched and creates no intent.

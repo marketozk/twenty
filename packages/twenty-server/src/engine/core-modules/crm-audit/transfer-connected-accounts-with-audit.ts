@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { Logger } from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import { type DataSource, type QueryRunner } from 'typeorm';
+import { reportCrmAuditUnavailable } from 'src/engine/core-modules/crm-audit/crm-audit-health';
 import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
 import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
+import { isTransactionUnsafeToRetry } from 'src/engine/twenty-orm/error-handling/is-transaction-outcome-unknown';
 import { lockOmniNativeOwnership } from 'src/modules/omnichannel/services/lock-omni-native-ownership';
 import { lockOmniMetadataAccounts } from 'src/modules/omnichannel/services/omni-metadata-transaction';
 import { hasReferencingRecords } from 'src/engine/twenty-orm/utils/has-referencing-records';
@@ -102,7 +103,11 @@ const mutateConnectedAccountsWithAudit = async <T>({
     throw new Error('Connected account transfer audit workspace mismatch');
   // Transfer can discover no accounts; there is no mutation result in that mode.
   if (!ids.length) return undefined as T;
-  return runInCoreAuditTransaction(dataSource, async (runner) => {
+  let unavailable = false;
+  let committed = false;
+  let uncertainOutcome = false;
+  try {
+    const output = await runInCoreAuditTransaction(dataSource, async (runner) => {
     const rawSnapshots = new WeakMap<Row, string>();
     const stableSnapshots = new WeakMap<Row, string>();
     const decode = ({
@@ -274,7 +279,7 @@ const mutateConnectedAccountsWithAudit = async <T>({
             webhookSubscriptionStatus: row.webhookSubscriptionStatus,
           };
     await verify();
-    let unavailable = !audit;
+    unavailable = !audit;
     if (audit) {
       await runner.query('SAVEPOINT connected_account_transfer_audit');
       try {
@@ -311,12 +316,22 @@ const mutateConnectedAccountsWithAudit = async <T>({
       await runner.query('RELEASE SAVEPOINT connected_account_transfer_audit');
     }
     await verify();
-    if (unavailable)
-      new Logger('ConnectedAccountTransfer').error(
-        boundary.kind === 'transfer'
-          ? 'CONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE'
-          : 'CONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE',
-      );
     return result;
   });
+    committed = true;
+    return output;
+  } catch (error) {
+    uncertainOutcome = isTransactionUnsafeToRetry(error);
+    throw error;
+  } finally {
+    if (unavailable && (committed || uncertainOutcome))
+      reportCrmAuditUnavailable({
+        code:
+          boundary.kind === 'transfer'
+            ? 'CONNECTED_ACCOUNT_TRANSFER_AUDIT_UNAVAILABLE'
+            : 'CONNECTED_ACCOUNT_DISCONNECT_AUDIT_UNAVAILABLE',
+        loggerContext: 'ConnectedAccountTransfer',
+        workspaceId,
+      });
+  }
 };

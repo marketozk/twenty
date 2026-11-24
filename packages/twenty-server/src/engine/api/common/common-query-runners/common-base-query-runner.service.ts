@@ -55,10 +55,15 @@ import {
   isNativeCrmAuditObject,
 } from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
 import {
+  captureNativeCrmAuditBinding,
   isRegisteredNativeCrmAuditScope,
   isStandaloneShareWithScope,
   runInExistingNativeCrmAuditScope,
 } from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
+import {
+  recordPostRollbackNativeCrmAuditAttempt,
+  resolveNativeCrmAttemptTarget,
+} from 'src/engine/core-modules/crm-audit/post-rollback-crm-audit-attempt';
 import { ApplicationRepeatedEventRecorderService } from 'src/engine/core-modules/event-logs/emit/application-repeated-event-recorder.service';
 import { MetricsService } from 'src/engine/core-modules/metrics/metrics.service';
 import { MetricsKeys } from 'src/engine/core-modules/metrics/types/metrics-keys.type';
@@ -371,6 +376,59 @@ export abstract class CommonBaseQueryRunnerService<
       ].includes(this.operationName) &&
         isCoveredObject);
     const auth = getWorkspaceContext().authContext;
+    const executeRootAuditedMutation = async () => {
+      const nativeAuditOptions = {
+        operationId: randomUUID(),
+        ...(auth.type === 'system'
+          ? {
+              systemActorId:
+                this.operationName === CommonQueryNames.UPDATE_ONE ||
+                this.operationName === CommonQueryNames.UPDATE_MANY
+                  ? 'crm-api-update'
+                  : isCreate
+                    ? 'crm-api-create'
+                    : this.operationName === CommonQueryNames.DESTROY_ONE ||
+                        this.operationName === CommonQueryNames.DESTROY_MANY
+                      ? 'crm-api-destroy'
+                      : isMerge
+                        ? 'crm-api-merge'
+                        : 'crm-api-lifecycle',
+            }
+          : {}),
+      };
+      const binding = captureNativeCrmAuditBinding(
+        queryRunnerContext.authContext.workspace.id,
+        auth,
+        nativeAuditOptions,
+      );
+
+      try {
+        return await this.workspaceOrmManager.runInWorkspaceTransaction(
+          (transactionScope) =>
+            prepareAndRun({ ...queryRunnerContext, transactionScope }),
+          { nativeAudit: nativeAuditOptions },
+        );
+      } catch (error) {
+        const target = resolveNativeCrmAttemptTarget({
+          operationName: this.operationName,
+          args: effectiveArgs as unknown as Record<string, unknown>,
+          objectMetadataId: queryRunnerContext.flatObjectMetadata.id,
+        });
+
+        await recordPostRollbackNativeCrmAuditAttempt({
+          runInAuditTransaction: (work, options) =>
+            this.workspaceOrmManager.runInWorkspaceTransaction(work, options),
+          binding,
+          action: target.action,
+          resourceId: target.resourceId,
+          objectMetadataId: target.objectMetadataId,
+          error,
+        });
+
+        throw error;
+      }
+    };
+
     const { results, extendedQueryRunnerContext } = auditedMutation
       ? queryRunnerContext.transactionScope
         ? await runInExistingNativeCrmAuditScope(
@@ -388,33 +446,7 @@ export abstract class CommonBaseQueryRunnerService<
               return prepareAndRun(queryRunnerContext);
             },
           )
-        : await this.workspaceOrmManager.runInWorkspaceTransaction(
-            (transactionScope) =>
-              prepareAndRun({ ...queryRunnerContext, transactionScope }),
-            {
-              nativeAudit: {
-                operationId: randomUUID(),
-                ...(auth.type === 'system'
-                  ? {
-                      systemActorId:
-                        this.operationName === CommonQueryNames.UPDATE_ONE ||
-                        this.operationName === CommonQueryNames.UPDATE_MANY
-                          ? 'crm-api-update'
-                          : isCreate
-                            ? 'crm-api-create'
-                            : this.operationName ===
-                                  CommonQueryNames.DESTROY_ONE ||
-                                this.operationName ===
-                                  CommonQueryNames.DESTROY_MANY
-                              ? 'crm-api-destroy'
-                              : isMerge
-                                ? 'crm-api-merge'
-                                : 'crm-api-lifecycle',
-                    }
-                  : {}),
-              },
-            },
-          )
+        : await executeRootAuditedMutation()
       : await prepareAndRun(queryRunnerContext);
 
     // Root public hooks keep their awaited post-commit contract; inherited scopes defer them.

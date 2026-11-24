@@ -1,0 +1,84 @@
+{
+  "log": "LOG-208",
+  "date": "2026-11-24",
+  "issue": "ROB-765",
+  "scope": "General post-rollback denied/failed CRM audit writer, centralized audit health/alerting module, nativeOwnershipLock='none' audit-only transactions, and commit-guarded wiring of all 8 *_AUDIT_UNAVAILABLE sites",
+  "targetedPostgresTests": {
+    "status": "pass",
+    "suitesPassed": 13,
+    "suitesTotal": 13,
+    "testsPassed": 419,
+    "testsTotal": 419,
+    "durationSeconds": 77.453,
+    "suites": [
+      "test/fork-migration/crm-audit-post-rollback-and-health.postgres-spec.ts",
+      "test/fork-migration/crm-audit-public-update.postgres-spec.ts",
+      "test/fork-migration/crm-audit-public-destroy.postgres-spec.ts",
+      "test/fork-migration/crm-audit-public-merge.postgres-spec.ts",
+      "test/fork-migration/crm-audit-public-attribution-and-crud.postgres-spec.ts",
+      "test/fork-migration/crm-audit-file-hard-delete.postgres-spec.ts",
+      "test/fork-migration/crm-audit-core-user-deactivation.postgres-spec.ts",
+      "test/fork-migration/crm-audit-native-member.postgres-spec.ts",
+      "test/fork-migration/omni-metadata-transaction.postgres-spec.ts",
+      "test/fork-migration/crm-audit-membership-owner.postgres-spec.ts",
+      "test/fork-migration/crm-audit-refresh-logout.postgres-spec.ts",
+      "test/fork-migration/crm-audit-user-session.postgres-spec.ts",
+      "test/fork-migration/crm-audit-session-lifecycle-hardening.postgres-spec.ts"
+    ]
+  },
+  "fullPostgresRegression": {
+    "status": "pass",
+    "suitesPassed": 145,
+    "suitesTotal": 145,
+    "testsPassed": 3310,
+    "testsTotal": 3310,
+    "durationSeconds": 781.21
+  },
+  "guards": {
+    "enterpriseDependencies": {
+      "status": "pass",
+      "violations": 0,
+      "codeFiles": 34818,
+      "runtimeFiles": 21468,
+      "edges": 137961
+    },
+    "forkMigrationSources": {
+      "status": "pass",
+      "verifiedSources": 10
+    },
+    "pythonUnitTests": {
+      "status": "pass",
+      "passed": 33,
+      "total": 33
+    }
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 511,
+    "currentRootFiles": 514,
+    "baselineDiagnostics": 274,
+    "currentDiagnostics": 274,
+    "newDiagnostics": 0,
+    "changedFileDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "reviews": {
+    "designReview": {
+      "blockersFound": 4,
+      "majorsFound": 3,
+      "minorsFound": 4,
+      "allResolved": true
+    },
+    "codeReview": {
+      "blockersFound": 0,
+      "majorsFound": 4,
+      "minorsFound": 4,
+      "allResolved": true
+    }
+  },
+  "sourceSnapshotVerified": {
+    "matched": 17,
+    "total": 17
+  },
+  "standCleanedUp": true
+}

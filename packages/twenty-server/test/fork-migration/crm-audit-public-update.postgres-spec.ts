@@ -100,6 +100,10 @@ const audit = () =>
   f.owner.query<CrmAuditEntryPayload[]>(
     'SELECT * FROM crm_audit."crmAuditEntry" ORDER BY "createdAt",id',
   );
+const successAudit = async () =>
+  (await audit()).filter((entry) => entry.outcome === 'success');
+const failedAudit = async () =>
+  (await audit()).filter((entry) => entry.outcome !== 'success');
 
 const harness = (
   kind: 'system' | 'user' | 'apiKey' | 'application' = 'system',
@@ -517,7 +521,14 @@ it('denies an actor lacking update permission without changing data or success a
   expect(
     (await f.read('company')).find((row: ObjectRecord) => row.id === id).name,
   ).toBe('original');
-  expect(await audit()).toHaveLength(0);
+  expect(await successAudit()).toHaveLength(0);
+  expect(await failedAudit()).toEqual([
+    expect.objectContaining({
+      outcome: 'denied',
+      reasonCode: 'crm.mutation.permission_denied',
+      resourceId: id,
+    }),
+  ]);
 });
 
 it('rolls the public mutation back if the append-only audit writer fails', async () => {
@@ -847,7 +858,14 @@ it('keeps missing single records and empty batches free of success audit', async
       )
     ).results,
   ).toEqual([]);
-  expect(await audit()).toHaveLength(0);
+  expect(await successAudit()).toHaveLength(0);
+  expect(await failedAudit()).toEqual([
+    expect.objectContaining({
+      outcome: 'failed',
+      reasonCode: 'crm.mutation.record_not_found',
+      resourceId: missingId,
+    }),
+  ]);
 });
 
 it('enforces existing field update restrictions inside the automatic owner', async () => {
@@ -871,7 +889,14 @@ it('enforces existing field update restrictions inside the automatic owner', asy
   expect(
     (await f.read('company')).find((row: ObjectRecord) => row.id === id).name,
   ).toBe('original');
-  expect(await audit()).toHaveLength(0);
+  expect(await successAudit()).toHaveLength(0);
+  expect(await failedAudit()).toEqual([
+    expect.objectContaining({
+      outcome: 'denied',
+      reasonCode: 'crm.mutation.permission_denied',
+      resourceId: id,
+    }),
+  ]);
 });
 
 it('resolves public connect and disconnect with the scoped nested relation writer', async () => {
@@ -973,7 +998,14 @@ it.each(['deleteOne', 'restoreOne'] as const)(
       ),
     ).rejects.toThrow();
     expect(await f.read('company')).toEqual(before);
-    expect(await audit()).toHaveLength(0);
+    expect(await successAudit()).toHaveLength(0);
+    expect(await failedAudit()).toEqual([
+      expect.objectContaining({
+        outcome: 'denied',
+        reasonCode: 'crm.mutation.permission_denied',
+        resourceId: id,
+      }),
+    ]);
   },
 );
 
@@ -1313,7 +1345,8 @@ it('rejects two different unique matches before any public upsert writes', async
       [id],
     ),
   ).toEqual([{ name: 'original' }]);
-  expect(await audit()).toHaveLength(0);
+  expect(await successAudit()).toHaveLength(0);
+  expect(await failedAudit()).toHaveLength(1);
 });
 
 it.each(['success', 'audit', 'insert'] as const)(
@@ -1392,7 +1425,8 @@ it.each(['success', 'audit', 'insert'] as const)(
           row.settings.isTemporaryFile === !ok,
       ),
     ).toBe(true);
-    expect(await audit()).toHaveLength(ok ? 4 : 0);
+    expect(await successAudit()).toHaveLength(ok ? 4 : 0);
+    expect(await failedAudit()).toHaveLength(outcome === 'insert' ? 1 : 0);
     expect(JSON.stringify(await audit())).not.toContain('private-first');
   },
 );
@@ -1430,7 +1464,13 @@ it('does not grant update permission through public upsert', async () => {
       [created],
     ),
   ).toHaveLength(0);
-  expect(await audit()).toHaveLength(0);
+  expect(await successAudit()).toHaveLength(0);
+  expect(await failedAudit()).toEqual([
+    expect.objectContaining({
+      outcome: 'denied',
+      reasonCode: 'crm.mutation.permission_denied',
+    }),
+  ]);
 });
 
 it('aggregates repeated flat upsert updates to the same authoritative ID', async () => {
@@ -1490,7 +1530,8 @@ it('rejects repeated authoritative upsert IDs with FILES before partial commit',
       [id],
     ),
   ).toEqual([{ name: 'original' }]);
-  expect(await audit()).toHaveLength(0);
+  expect(await successAudit()).toHaveLength(0);
+  expect(await failedAudit()).toHaveLength(1);
 });
 
 it('preserves a single commit and no retry after public upsert loses COMMIT ACK', async () => {
@@ -1572,7 +1613,13 @@ it('rolls back a preceding upsert update when inserted field permission is denie
       [id],
     ),
   ).toEqual([{ name: 'original' }]);
-  expect(await audit()).toHaveLength(0);
+  expect(await successAudit()).toHaveLength(0);
+  expect(await failedAudit()).toEqual([
+    expect.objectContaining({
+      outcome: 'denied',
+      reasonCode: 'crm.mutation.permission_denied',
+    }),
+  ]);
 });
 
 it('retains public empty FILES normalization in repeated upsert inputs', async () => {
@@ -1704,7 +1751,8 @@ it('rolls back the loser of concurrent public upserts of an absent unique key', 
       [[first, second]],
     ),
   ).toHaveLength(1);
-  expect(await audit()).toHaveLength(1);
+  expect(await successAudit()).toHaveLength(1);
+  expect(await failedAudit()).toHaveLength(1);
   expect(h.hooks.executePostQueryHooks).toHaveBeenCalledTimes(1);
 });
 
@@ -1981,6 +2029,7 @@ const nestedPublicInput = () => ({
 });
 const expectNoNestedPublicRows = async (
   data: ReturnType<typeof nestedPublicInput>,
+  expectedFailedAttempts = 1,
 ) => {
   expect(
     await f.owner.query(
@@ -1994,7 +2043,8 @@ const expectNoNestedPublicRows = async (
       [data.case.create.id],
     ),
   ).toHaveLength(0);
-  expect(await audit()).toHaveLength(0);
+  expect(await successAudit()).toHaveLength(0);
+  expect(await failedAudit()).toHaveLength(expectedFailedAttempts);
 };
 it('audits nested public upsert with created children and updated parent', async () => {
   const h = harness(),
@@ -2038,7 +2088,7 @@ it.each(['audit', 'permission', 'file'] as const)(
         ),
       ),
     ).rejects.toThrow();
-    await expectNoNestedPublicRows(data);
+    await expectNoNestedPublicRows(data, reason === 'audit' ? 0 : 1);
     expect(h.hooks.executePostQueryHooks).not.toHaveBeenCalled();
   },
 );
@@ -2214,7 +2264,7 @@ it('rejects a copied native scope before covered nested CREATE', async () => {
       ),
     ),
   ).rejects.toThrow('proven native audit scope');
-  await expectNoNestedPublicRows(data);
+  await expectNoNestedPublicRows(data, 0);
 });
 it('does not retry a nested graph after a lost actual COMMIT acknowledgement', async () => {
   const h = harness(),
@@ -2524,7 +2574,13 @@ it.each(['many', 'deleteOne', 'restoreOne'] as const)(
         `SELECT * FROM "${f.schemaName}"."_customCase" ORDER BY id`,
       ),
     ).toEqual(before);
-    expect(await audit()).toHaveLength(0);
+    expect(await successAudit()).toHaveLength(0);
+    expect(await failedAudit()).toEqual([
+      expect.objectContaining({
+        outcome: 'denied',
+        reasonCode: 'crm.mutation.permission_denied',
+      }),
+    ]);
   },
 );
 it('refuses unproven inherited scope for custom public update', async () => {

@@ -1,8 +1,9 @@
-import { Logger } from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import { type DataSource, type EntityTarget, type QueryRunner } from 'typeorm';
 
+import { reportCrmAuditUnavailable } from 'src/engine/core-modules/crm-audit/crm-audit-health';
 import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
+import { isTransactionUnsafeToRetry } from 'src/engine/twenty-orm/error-handling/is-transaction-outcome-unknown';
 import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
 import { type CrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit.types';
 import { captureMembershipCleanupAudit } from 'src/engine/core-modules/crm-audit/membership-cleanup-audit';
@@ -57,9 +58,11 @@ export const deleteUserWorkspaceTransaction = async ({
   if (operation && operation.workspaceId.toLowerCase() !== workspaceId)
     throw new Error('Membership audit workspace mismatch');
   let auditUnavailable = false;
+  let committed = false;
+  let uncertainOutcome = false;
 
   try {
-    return await runInCoreAuditTransaction(dataSource, async (queryRunner) => {
+    const coreWorkflowIds = await runInCoreAuditTransaction(dataSource, async (queryRunner) => {
       const context = operation
         ? new CrmAuditTransactionContext(queryRunner, operation)
         : undefined;
@@ -218,10 +221,18 @@ export const deleteUserWorkspaceTransaction = async ({
       await finishAudit(verifyCleanup);
       return coreWorkflowIds;
     });
+    committed = true;
+    return coreWorkflowIds;
+  } catch (error) {
+    uncertainOutcome = isTransactionUnsafeToRetry(error);
+    throw error;
   } finally {
-    if (auditUnavailable)
-      new Logger('MembershipCleanupAudit').error(
-        `MEMBERSHIP_CLEANUP_AUDIT_UNAVAILABLE operationId=${operation?.operationId}`,
-      );
+    if (auditUnavailable && (committed || uncertainOutcome))
+      reportCrmAuditUnavailable({
+        code: 'MEMBERSHIP_CLEANUP_AUDIT_UNAVAILABLE',
+        loggerContext: 'MembershipCleanupAudit',
+        workspaceId,
+        operationId: operation?.operationId,
+      });
   }
 };

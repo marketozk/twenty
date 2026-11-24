@@ -1,11 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-import { Logger } from '@nestjs/common';
-
 import { isUUID } from 'class-validator';
 
 import { captureCurrentCrmAuditOperation } from 'src/engine/core-modules/crm-audit/crm-audit-attribution-context';
 import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
+import { reportCrmAuditUnavailable } from 'src/engine/core-modules/crm-audit/crm-audit-health';
 import {
   captureCrmAuditOperation,
   CrmAuditTransactionContext,
@@ -1099,9 +1098,21 @@ export const runAuditedRecordShareTransfer = async ({
   await verifyState();
 
   if (unavailable) {
-    new Logger('RecordShareTransfer').error(
-      'RECORD_SHARE_TRANSFER_AUDIT_UNAVAILABLE',
-    );
+    const emitUnavailable = () =>
+      reportCrmAuditUnavailable({
+        code: 'RECORD_SHARE_TRANSFER_AUDIT_UNAVAILABLE',
+        loggerContext: 'RecordShareTransfer',
+        workspaceId: validated.workspaceId,
+      });
+    const afterCommit = (
+      scope as { afterCommit?: (callback: () => void) => void }
+    ).afterCommit;
+
+    if (typeof afterCommit === 'function') {
+      afterCommit(emitUnavailable);
+    } else {
+      emitUnavailable();
+    }
   }
 };
 

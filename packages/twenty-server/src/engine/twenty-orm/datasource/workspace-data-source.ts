@@ -95,6 +95,15 @@ export class WorkspaceDataSource {
           );
     if (nativeAuditBinding && options.commitOutcome === 'legacy')
       throw new Error('Native audit requires strict transaction ownership');
+    if (nativeAuditBinding && options.nativeOwnershipLock === 'none')
+      throw new Error('Native audit requires a workspace ownership lock');
+    if (
+      options.nativeOwnershipLock === 'none' &&
+      options.commitOutcome !== 'strict'
+    )
+      throw new Error(
+        'Audit-only transaction requires strict transaction ownership',
+      );
     options = {
       ...options,
       ...(nativeAuditBinding ? { commitOutcome: 'strict' as const } : {}),
@@ -113,6 +122,11 @@ export class WorkspaceDataSource {
     const afterCommit: WorkspaceTransactionScope['afterCommit'] = (
       callback,
     ) => {
+      if (options.nativeOwnershipLock === 'none') {
+        throw new Error(
+          'After-commit callbacks are disabled without an ownership lock',
+        );
+      }
       assertActive();
       afterCommitCallbacks.push(callback);
     };
@@ -145,16 +159,19 @@ export class WorkspaceDataSource {
       async (executor, lifecycle) => {
         transactionLifecycle = lifecycle;
         const nativeOwnershipLock = options.nativeOwnershipLock ?? 'shared';
-        // First lock, including multi-object merge transactions. Acquiring this in
-        // a later native kernel would invert Person -> fence / fence -> Person.
-        await lockOmniNativeOwnership(
-          {
-            executeRawQuery: (sql, parameters = []) =>
-              executor.execute({ text: sql, values: parameters }),
-          },
-          this.internalContext.workspaceId,
-          nativeOwnershipLock,
-        );
+
+        if (nativeOwnershipLock !== 'none') {
+          // First lock, including multi-object merge transactions. Acquiring this in
+          // a later native kernel would invert Person -> fence / fence -> Person.
+          await lockOmniNativeOwnership(
+            {
+              executeRawQuery: (sql, parameters = []) =>
+                executor.execute({ text: sql, values: parameters }),
+            },
+            this.internalContext.workspaceId,
+            nativeOwnershipLock,
+          );
+        }
 
         const scope: WorkspaceTransactionScope = {
           workspaceId: this.internalContext.workspaceId,
@@ -164,6 +181,11 @@ export class WorkspaceDataSource {
             rolePermissionConfig?: RolePermissionConfig,
             repositoryOptions?: { shouldSkipEventEmission?: boolean },
           ) => {
+            if (nativeOwnershipLock === 'none') {
+              throw new Error(
+                'Workspace repositories are disabled without an ownership lock',
+              );
+            }
             assertActive();
 
             return this.buildRepository<T>({
@@ -180,31 +202,34 @@ export class WorkspaceDataSource {
             executor.execute({ text: sql, values: parameters }),
           afterCommit,
         };
-        registerOmniWorkspaceTransaction(scope, {
-          workspaceId: this.internalContext.workspaceId,
-          executor,
-          lifecycle,
-          nativeOwnershipLock,
-          nativeCleanupMetadata: () => ({
-            authType: this.authContext.type,
-            authWorkspaceId: this.authContext.workspace.id,
-            memberObjectId:
-              this.internalContext.objectIdByNameSingular.workspaceMember,
-            objects: Object.values(
-              this.internalContext.flatObjectMetadataMaps.byUniversalIdentifier,
-            )
-              .filter(isDefined)
-              .filter(
-                (metadata) =>
-                  metadata.workspaceId === this.internalContext.workspaceId &&
-                  !metadata.isRemote,
+        if (nativeOwnershipLock !== 'none') {
+          registerOmniWorkspaceTransaction(scope, {
+            workspaceId: this.internalContext.workspaceId,
+            executor,
+            lifecycle,
+            nativeOwnershipLock,
+            nativeCleanupMetadata: () => ({
+              authType: this.authContext.type,
+              authWorkspaceId: this.authContext.workspace.id,
+              memberObjectId:
+                this.internalContext.objectIdByNameSingular.workspaceMember,
+              objects: Object.values(
+                this.internalContext.flatObjectMetadataMaps
+                  .byUniversalIdentifier,
               )
-              .map((metadata) => ({
-                metadata: { ...metadata },
-                shape: this.getTableShape(metadata.id),
-              })),
-          }),
-        });
+                .filter(isDefined)
+                .filter(
+                  (metadata) =>
+                    metadata.workspaceId === this.internalContext.workspaceId &&
+                    !metadata.isRemote,
+                )
+                .map((metadata) => ({
+                  metadata: { ...metadata },
+                  shape: this.getTableShape(metadata.id),
+                })),
+            }),
+          });
+        }
         return nativeAuditBinding
           ? withNativeCrmAuditTransaction(
               executor,

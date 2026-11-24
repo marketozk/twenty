@@ -236,6 +236,16 @@ const audit = () =>
   f.owner.query<CrmAuditEntryPayload[]>(
     'SELECT * FROM crm_audit."crmAuditEntry" ORDER BY "createdAt",id',
   );
+const expectPostRollbackAttempts = async (
+  expected: Array<{ outcome: 'denied' | 'failed'; reasonCode?: string }>,
+) => {
+  const rows = await audit();
+  expect(rows.filter((entry) => entry.outcome === 'success')).toHaveLength(0);
+  expect(rows.filter((entry) => entry.outcome !== 'success')).toEqual(
+    expected.map((item) => expect.objectContaining(item)),
+  );
+  await f.owner.query('DELETE FROM crm_audit."crmAuditEntry"');
+};
 
 const setDeleteAction = async (
   table: string,
@@ -812,7 +822,10 @@ describe('Public CRM record merge audit (LOG-203)', () => {
     ).rejects.toMatchObject({
       code: CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND,
     });
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'failed', reasonCode: 'crm.mutation.record_not_found' },
+      { outcome: 'failed', reasonCode: 'crm.mutation.record_not_found' },
+    ]);
   });
 
   it('audits child migration, unique-index child soft-delete, soft-deleted FK SET NULL, and transactional nested reads under one operationId; enforces select-RLS hidden child refusal, uncovered/FILES/omni fail-closed, and trigger skips', async () => {
@@ -1009,7 +1022,9 @@ describe('Public CRM record merge audit (LOG-203)', () => {
       code: CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND,
       message: 'Cannot merge records with inaccessible related records',
     });
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'failed', reasonCode: 'crm.mutation.record_not_found' },
+    ]);
     expect(
       ((await f.read('_customCase')) as Array<{ id: string }>).some(
         (row) => row.id === hiddenCaseId,
@@ -1041,7 +1056,9 @@ describe('Public CRM record merge audit (LOG-203)', () => {
       code: CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND,
       message: 'Cannot merge records with inaccessible related records',
     });
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'failed', reasonCode: 'crm.mutation.record_not_found' },
+    ]);
     await f.owner.query(
       `DELETE FROM "${f.schemaName}"."_customCase" WHERE id IN ($1, $2)`,
       [hiddenPriorityCaseId, visibleDupCaseId],
@@ -1060,7 +1077,9 @@ describe('Public CRM record merge audit (LOG-203)', () => {
         hFail.queryContext('company'),
       ),
     ).rejects.toThrow('Native audit coverage excludes this object or mutation');
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'failed', reasonCode: 'crm.mutation.audit_coverage_rejected' },
+    ]);
     expect(
       ((await f.read('company')) as Array<{ id: string }>).some(
         (row) => row.id === cB,
@@ -1092,7 +1111,9 @@ describe('Public CRM record merge audit (LOG-203)', () => {
         hFail.queryContext('company'),
       ),
     ).rejects.toThrow('excludes referenced');
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'failed', reasonCode: 'crm.mutation.audit_coverage_rejected' },
+    ]);
     await f.owner.query(`DROP TABLE "${f.schemaName}".delete_child`);
 
     // 5. Non-empty FILES on duplicate when priority has no FILES refuses deterministically before DELETE; non-empty FILES on priorityRecord alone succeeds
@@ -1108,7 +1129,9 @@ describe('Public CRM record merge audit (LOG-203)', () => {
     ).rejects.toThrow(
       'Merging files from duplicate records onto a priority record without files is not supported',
     );
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'failed', reasonCode: 'crm.mutation.audit_coverage_rejected' },
+    ]);
     await f.owner.query(
       `UPDATE "${f.schemaName}".company SET documents = NULL WHERE id = $1`,
       [cB],
@@ -1180,7 +1203,12 @@ describe('Public CRM record merge audit (LOG-203)', () => {
         hFail.queryContext('person'),
       ),
     ).rejects.toThrow('OMNI_PARENT_DELETE_REQUIRES_DOMAIN_COMMAND');
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      {
+        outcome: 'denied',
+        reasonCode: 'crm.mutation.domain_command_required',
+      },
+    ]);
     await f.owner.query(
       'DELETE FROM core."omniExternalIdentity" WHERE "workspaceId" = $1',
       [f.workspaceId],
@@ -1212,7 +1240,9 @@ describe('Public CRM record merge audit (LOG-203)', () => {
     ).rejects.toMatchObject({
       code: CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND,
     });
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'failed', reasonCode: 'crm.mutation.record_not_found' },
+    ]);
     // Child migration must have been rolled back!
     expect(
       (
@@ -1239,7 +1269,9 @@ describe('Public CRM record merge audit (LOG-203)', () => {
     ).rejects.toMatchObject({
       code: CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND,
     });
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'failed', reasonCode: 'crm.mutation.record_not_found' },
+    ]);
     expect(
       ((await f.read('company')) as Array<{ id: string }>).some(
         (row) => row.id === cB,
@@ -1272,7 +1304,9 @@ describe('Public CRM record merge audit (LOG-203)', () => {
     ).rejects.toMatchObject({
       code: CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND,
     });
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'failed', reasonCode: 'crm.mutation.record_not_found' },
+    ]);
     expect(
       ((await f.read('company')) as Array<{ id: string }>).some(
         (row) => row.id === cB,
@@ -1295,7 +1329,9 @@ describe('Public CRM record merge audit (LOG-203)', () => {
         hNoRead.queryContext('company'),
       ),
     ).rejects.toBeInstanceOf(PermissionsException);
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'denied', reasonCode: 'crm.mutation.permission_denied' },
+    ]);
 
     const hNoDestroy = harness('apiKey', { canDestroy: false, canUpdate: true });
     await expect(
@@ -1304,7 +1340,9 @@ describe('Public CRM record merge audit (LOG-203)', () => {
         hNoDestroy.queryContext('company'),
       ),
     ).rejects.toBeInstanceOf(PermissionsException);
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'denied', reasonCode: 'crm.mutation.permission_denied' },
+    ]);
     expect(await f.read('company')).toEqual(companiesBefore);
     expect(
       (
@@ -1321,7 +1359,9 @@ describe('Public CRM record merge audit (LOG-203)', () => {
     ).rejects.toMatchObject({
       code: PermissionsExceptionCode.PERMISSION_DENIED,
     });
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'denied', reasonCode: 'crm.mutation.permission_denied' },
+    ]);
     expect(await f.read('company')).toEqual(companiesBefore);
 
     // Parent select-RLS hiding one of the merged companies fails with RECORD_NOT_FOUND before FOR UPDATE
@@ -1366,7 +1406,9 @@ describe('Public CRM record merge audit (LOG-203)', () => {
     ).rejects.toMatchObject({
       code: CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND,
     });
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'failed', reasonCode: 'crm.mutation.record_not_found' },
+    ]);
 
     // 2. Outer proven withNativeCrmAuditTransaction: sees uncommitted outer update, aggregates priorityCompany updates into 1 entry, runs real visibility handler on nested people, defers post-query hooks
     await f.owner.query(

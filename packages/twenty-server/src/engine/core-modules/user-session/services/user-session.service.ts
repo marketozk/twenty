@@ -3,8 +3,10 @@ import { isUUID } from 'class-validator';
 
 import { Injectable, Logger } from '@nestjs/common';
 
+import { reportCrmAuditUnavailable } from 'src/engine/core-modules/crm-audit/crm-audit-health';
 import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
 import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
+import { isTransactionUnsafeToRetry } from 'src/engine/twenty-orm/error-handling/is-transaction-outcome-unknown';
 import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
 import { acquireUserAuthenticationLock } from 'src/engine/core-modules/auth/utils/acquire-user-authentication-lock.util';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -942,6 +944,8 @@ export class UserSessionService {
     const initiatorMembershipId = payload.impersonatorUserWorkspaceId;
     const operationId = randomUUID();
     let auditLost = false;
+    let committed = false;
+    let uncertainOutcome = false;
     try {
       await runInCoreAuditTransaction(
         this.appTokenRepository.manager.connection,
@@ -1061,11 +1065,17 @@ export class UserSessionService {
           await validate();
         },
       );
+      committed = true;
+    } catch (error) {
+      uncertainOutcome = isTransactionUnsafeToRetry(error);
+      throw error;
     } finally {
-      if (auditLost)
-        this.logger.error(
-          `REFRESH_REVOCATION_AUDIT_UNAVAILABLE operationId=${operationId}`,
-        );
+      if (auditLost && (committed || uncertainOutcome))
+        reportCrmAuditUnavailable({
+          code: 'REFRESH_REVOCATION_AUDIT_UNAVAILABLE',
+          loggerContext: UserSessionService.name,
+          operationId,
+        });
     }
   }
 
@@ -1131,6 +1141,8 @@ export class UserSessionService {
     const operationId = randomUUID();
     const cacheKeys: string[] = [];
     let auditLost = false;
+    let committed = false;
+    let uncertainOutcome = false;
     let revoked: UserSessionEntity[];
     try {
       revoked = await runInCoreAuditTransaction(
@@ -1295,11 +1307,17 @@ export class UserSessionService {
           return await readAndValidate();
         },
       );
+      committed = true;
+    } catch (error) {
+      uncertainOutcome = isTransactionUnsafeToRetry(error);
+      throw error;
     } finally {
-      if (auditLost)
-        this.logger.error(
-          `SESSION_REVOCATION_AUDIT_UNAVAILABLE operationId=${operationId}`,
-        );
+      if (auditLost && (committed || uncertainOutcome))
+        reportCrmAuditUnavailable({
+          code: 'SESSION_REVOCATION_AUDIT_UNAVAILABLE',
+          loggerContext: UserSessionService.name,
+          operationId,
+        });
       if (cacheKeys.length) {
         try {
           await this.cacheStorageService.mdel(cacheKeys);

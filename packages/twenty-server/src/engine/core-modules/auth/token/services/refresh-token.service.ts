@@ -6,9 +6,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { addMilliseconds } from 'date-fns';
 import ms from 'ms';
 import { type QueryRunner, Repository } from 'typeorm';
+import { reportCrmAuditUnavailable } from 'src/engine/core-modules/crm-audit/crm-audit-health';
 import { CrmAuditTransactionContext } from 'src/engine/core-modules/crm-audit/crm-audit-transaction-context';
 import { canonicalAuditJson } from 'src/engine/core-modules/crm-audit/crm-audit-canonical-json';
 import { runInCoreAuditTransaction } from 'src/engine/core-modules/crm-audit/run-in-core-audit-transaction';
+import { isTransactionUnsafeToRetry } from 'src/engine/twenty-orm/error-handling/is-transaction-outcome-unknown';
 import { acquireUserAuthenticationLock } from 'src/engine/core-modules/auth/utils/acquire-user-authentication-lock.util';
 
 import {
@@ -375,6 +377,8 @@ export class RefreshTokenService {
     this.assertOwnTransaction();
     const operationId = randomUUID();
     let auditLost = false;
+    let committed = false;
+    let uncertainOutcome = false;
     try {
       await runInCoreAuditTransaction(
         this.appTokenRepository.manager.connection,
@@ -497,11 +501,17 @@ export class RefreshTokenService {
           await validateAll();
         },
       );
+      committed = true;
+    } catch (error) {
+      uncertainOutcome = isTransactionUnsafeToRetry(error);
+      throw error;
     } finally {
-      if (auditLost)
-        this.logger.error(
-          `REFRESH_FAMILY_REVOCATION_AUDIT_UNAVAILABLE operationId=${operationId}`,
-        );
+      if (auditLost && (committed || uncertainOutcome))
+        reportCrmAuditUnavailable({
+          code: 'REFRESH_FAMILY_REVOCATION_AUDIT_UNAVAILABLE',
+          loggerContext: RefreshTokenService.name,
+          operationId,
+        });
     }
   }
 

@@ -140,6 +140,16 @@ const audit = () =>
   f.owner.query<CrmAuditEntryPayload[]>(
     'SELECT * FROM crm_audit."crmAuditEntry" ORDER BY "createdAt",id',
   );
+const expectPostRollbackAttempts = async (
+  expected: Array<{ outcome: 'denied' | 'failed'; reasonCode?: string }>,
+) => {
+  const rows = await audit();
+  expect(rows.filter((entry) => entry.outcome === 'success')).toHaveLength(0);
+  expect(rows.filter((entry) => entry.outcome !== 'success')).toEqual(
+    expected.map((item) => expect.objectContaining(item)),
+  );
+  await f.owner.query('DELETE FROM crm_audit."crmAuditEntry"');
+};
 
 const setDeleteAction = async (
   table: string,
@@ -528,7 +538,9 @@ describe('Public physical deletion CRM audit (LOG-202)', () => {
     ).rejects.toMatchObject({
       code: CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND,
     });
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'failed', reasonCode: 'crm.mutation.record_not_found' },
+    ]);
     expect(hUnmatched.hooks.executePostQueryHooks).not.toHaveBeenCalled();
     expect(
       f.recordStock.releaseRecordStock.mock.calls.filter(
@@ -606,7 +618,9 @@ describe('Public physical deletion CRM audit (LOG-202)', () => {
         hUnmatched.queryContext('company'),
       ),
     ).rejects.toThrow();
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'failed', reasonCode: 'crm.mutation.invalid_input' },
+    ]);
   });
 
   it('audits direct FK SET NULL and CASCADE effects under one operationId, enforces fail-closed FILES/uncovered FK/omni-protected parent, and respects BEFORE DELETE trigger skips', async () => {
@@ -683,7 +697,9 @@ describe('Public physical deletion CRM audit (LOG-202)', () => {
     ).rejects.toThrow(
       'Native file is missing, deleted or outside this workspace',
     );
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'failed', reasonCode: 'crm.mutation.audit_coverage_rejected' },
+    ]);
     expect(
       ((await f.read('company')) as Array<{ id: string }>).some(
         (row) => row.id === secondId,
@@ -706,7 +722,9 @@ describe('Public physical deletion CRM audit (LOG-202)', () => {
     ).rejects.toThrow(
       'Native file is missing, deleted or outside this workspace',
     );
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'failed', reasonCode: 'crm.mutation.audit_coverage_rejected' },
+    ]);
     expect(hFail.hooks.executePostQueryHooks).not.toHaveBeenCalled();
     expect(
       ((await f.read('company')) as Array<{ id: string }>).some(
@@ -755,7 +773,12 @@ describe('Public physical deletion CRM audit (LOG-202)', () => {
         hFail.queryContext('person'),
       ),
     ).rejects.toThrow('OMNI_PARENT_DELETE_REQUIRES_DOMAIN_COMMAND');
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      {
+        outcome: 'denied',
+        reasonCode: 'crm.mutation.domain_command_required',
+      },
+    ]);
     expect(hFail.hooks.executePostQueryHooks).not.toHaveBeenCalled();
     expect(
       ((await f.read('person')) as Array<{ id: string }>).some(
@@ -793,7 +816,12 @@ describe('Public physical deletion CRM audit (LOG-202)', () => {
           hFail.queryContext('company'),
         ),
       ).rejects.toThrow('excludes referenced');
-      expect(await audit()).toHaveLength(0);
+      await expectPostRollbackAttempts([
+        {
+          outcome: 'failed',
+          reasonCode: 'crm.mutation.audit_coverage_rejected',
+        },
+      ]);
       expect(
         ((await f.read('company')) as Array<{ id: string }>).some(
           (row) => row.id === secondId,
@@ -829,7 +857,9 @@ describe('Public physical deletion CRM audit (LOG-202)', () => {
     ).rejects.toMatchObject({
       code: CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND,
     });
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'failed', reasonCode: 'crm.mutation.record_not_found' },
+    ]);
     expect(f.eventEmitter).not.toHaveBeenCalled();
 
     const { results: partialDestroyed } = await hFail.destroyMany.execute(
@@ -897,7 +927,9 @@ describe('Public physical deletion CRM audit (LOG-202)', () => {
     ).rejects.toMatchObject({
       code: CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND,
     });
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'failed', reasonCode: 'crm.mutation.record_not_found' },
+    ]);
 
     const { results: rlsDestroyed } = await hRls.destroyMany.execute(
       {
@@ -1134,7 +1166,10 @@ describe('Public physical deletion CRM audit (LOG-202)', () => {
       ),
     ).rejects.toBeInstanceOf(PermissionsException);
     expect(await f.read('company')).toEqual(before);
-    expect(await audit()).toHaveLength(0);
+    await expectPostRollbackAttempts([
+      { outcome: 'denied', reasonCode: 'crm.mutation.permission_denied' },
+      { outcome: 'denied', reasonCode: 'crm.mutation.permission_denied' },
+    ]);
     expect(hDenied.hooks.executePostQueryHooks).not.toHaveBeenCalled();
 
     // 2. Real audit INSERT failure rolls back physical deletion, events, stock release, and post-query hooks

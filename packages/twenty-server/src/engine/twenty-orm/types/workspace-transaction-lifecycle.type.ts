@@ -11,7 +11,7 @@ export type WorkspaceTransactionOptions = {
   nativeAudit?: NativeCrmAuditOptions;
   commitOutcome?: 'strict' | 'legacy';
   // Coordination only; this does not grant native domain write authority.
-  nativeOwnershipLock?: 'shared' | 'exclusive';
+  nativeOwnershipLock?: 'shared' | 'exclusive' | 'none';
 };
 
 export type WorkspaceTransactionLifecycle = {
