@@ -1,0 +1,17 @@
+# ROB-765 - приёмка собственного объёма этапа 2a (сбор аудита действий)
+
+25.11.2026: собственные критерии `ROB-765` (сбор и достоверность аудита действий, защищённый административный health-эндпоинт и внешний alert sink) прошли сборку реального серверного образа `marketozk/twenty:log214-server` (`sha256:337f98be0ed94b08b6556dab64568a4126fe97dbe43c569826f97b171c99110b`) и сквозную HTTP/JWT/GraphQL приёмку на изолированном стенде PG 17 + Redis ([LOG-214](log214/README.md)). Живой выкат на демо не выполнялся; статус в Linear переводится в `Done` после подтверждения владельца.
+
+| Критерий этапа 2a | Подтверждённое доказательство | Граница следующих задач |
+|---|---|---|
+| Единый workspace executor и flush до COMMIT | `LOG089`-`LOG214`; все покрытые native/core/metadata writers, вкл. `1 704` аудит-записи при живом `workspace:seed:dev --light` под ограниченной append-only ролью `runtime_log214` | Новые таблицы/модули следующих фаз (`ROB-766`/`768`/`769`) подключают свои writers |
+| Автор из серверной аутентификации и ALS-атрибуция | `LOG089`, `LOG124`-`125`, `LOG204`, `LOG211`, `LOG214`: подтверждено на живом HTTP `/graphql` и `/metadata` (`actor`, `initiator`, имперсонация, запрет подмены клиентом) | Публичная собственная ACL - `ROB-766` |
+| Native CRM CRUD, DESTROY, MERGE, FILES и TrashCleanup | `LOG094`-`108`, `LOG202`-`206`, `LOG209`-`211`, `LOG214`: все пользовательские стандартные объекты вне `workflow` (`company`, `person`, `opportunity`, `note`, `task`, `dashboard`), 10 дочерних FK-таблиц, `delete_filesFieldFiles`, подтверждено по живому HTTP `/graphql` | `workflow`/`workflowVersion`/`workflowRun` - `ROB-769` |
+| Session / Refresh / Password / 2FA / Role / Workspace / App metadata | `LOG099`-`100`, `LOG109`-`121`, `LOG156`-`201`, `LOG207`, `LOG213`, `LOG214`: подтверждено live HTTP login, `renewToken` + family revoke на `signOut({ refreshToken })`, серверная имперсонация, 19 видов ресурсов при bootstrap | `UserSessionEntity.familyId` (требует миграции), stateless application JWT, retention `UserSessionCleanupCronJob` |
+| Post-rollback denied/failed audit, health и alert sink | `LOG208`, `LOG212`, `LOG214`: подтверждён live HTTP post-rollback `failed` audit (`crm.mutation.record_not_found`), защищённый `/admin-panel` `crmAuditHealth` (отказ анонимному и non-admin, `OK` для full admin), внешний alert sink (Sentry + SSRF-safe HMAC webhook), `GET /healthz` 200 zero-IO | Просмотр и экспорт журнала для пользователей - `ROB-767` (после `ROB-766`) |
+| Индекс поиска операций, миграции и стартовые гейты | `LOG090`, `LOG214`: `10/10` форк-миграций + идемпотентный повтор, `upgrade:status --strict` PASS, owner-role и missing-ledger заблокированы до `exec`, `33/33` Linux Python тестов, чистый stop/restart/stop `server` и `worker` (27 очередей BullMQ, exit 0, 0 OOM) | Живой выкат и переключение демо требуют отдельного разрешения владельца |
+
+## Проверка границ
+- Сквозная приёмка поймала и исправила 2 реальных production-бага (`GLOBAL_OBJECT_CONTEXT` в `navigation-menu-item-audit.ts` и `workspace_<base36>` в `navigation-menu-item-audit.ts`, `core-workflow-and-view-audit.ts`, `two-factor-authentication-audit.ts`).
+- Подробные доказательства: [LOG-214 README](log214/README.md), [LOG-214 results.json](log214/results.json), [LOG-214 review.md](log214/review.md).
+- Временный стенд `log214` на Schrodinger полностью удалён (`STAND_CLEAN`); живой демо-контейнер не менялся.

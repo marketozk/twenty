@@ -786,23 +786,24 @@ const verifyActiveWorkspaceAndMembership = async (
       return;
     }
 
-    const workspaceSchema = `workspace_${workspaceId.replaceAll('-', '')}`;
-    const [schemaReg] = await runner.query(
-      `SELECT COALESCE(to_regclass($1), to_regclass($2)) AS "exists"`,
-      [
-        `"workspace_${workspaceId}"."workspaceMember"`,
-        `"${workspaceSchema}"."workspaceMember"`,
-      ],
-    );
-    if (schemaReg?.exists) {
-      const [hyphenReg] = await runner.query(
-        `SELECT to_regclass($1) IS NOT NULL AS "exists"`,
-        [`"workspace_${workspaceId}"."workspaceMember"`],
+    const normalizedWorkspaceId = uuid(workspaceId);
+    const schemaCandidates = [
+      `workspace_${BigInt(`0x${normalizedWorkspaceId.replace(/-/g, '')}`).toString(36)}`,
+      `workspace_${normalizedWorkspaceId}`,
+      `workspace_${normalizedWorkspaceId.replace(/-/g, '')}`,
+    ];
+    let targetSchema: string | null = null;
+    for (const candidate of schemaCandidates) {
+      const [reg] = await runner.query(
+        'SELECT to_regclass($1) IS NOT NULL AS "exists"',
+        [`"${candidate}"."workspaceMember"`],
       );
-      const targetSchema =
-        hyphenReg?.exists === true
-          ? `workspace_${workspaceId}`
-          : workspaceSchema;
+      if (reg?.exists === true) {
+        targetSchema = candidate;
+        break;
+      }
+    }
+    if (targetSchema) {
       const [member] = await runner.query(
         `SELECT "userId" FROM "${targetSchema}"."workspaceMember" WHERE id=$1 AND "deletedAt" IS NULL`,
         [uuid(userPrincipal.id)],

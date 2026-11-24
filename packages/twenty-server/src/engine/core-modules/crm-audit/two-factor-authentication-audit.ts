@@ -322,13 +322,25 @@ const assertActorMatchesUserWorkspace = async (
     return;
   }
 
-  const schemaRows: { exists: string | null }[] = await runner.query(
-    'SELECT to_regclass($1) AS exists',
-    [`"workspace_${request.workspaceId}"."workspaceMember"`],
-  );
-  if (schemaRows[0]?.exists) {
+  const normalizedWorkspaceId = uuid(request.workspaceId);
+  const schemaCandidates = [
+    `workspace_${BigInt(`0x${normalizedWorkspaceId.replace(/-/g, '')}`).toString(36)}`,
+    `workspace_${normalizedWorkspaceId}`,
+  ];
+  let targetSchema: string | null = null;
+  for (const candidate of schemaCandidates) {
+    const schemaRows: { exists: string | null }[] = await runner.query(
+      'SELECT to_regclass($1) AS exists',
+      [`"${candidate}"."workspaceMember"`],
+    );
+    if (schemaRows[0]?.exists) {
+      targetSchema = candidate;
+      break;
+    }
+  }
+  if (targetSchema) {
     const memberRows: { userId: string }[] = await runner.query(
-      `SELECT "userId" FROM "workspace_${request.workspaceId}"."workspaceMember" WHERE id = $1 AND "deletedAt" IS NULL`,
+      `SELECT "userId" FROM "${targetSchema}"."workspaceMember" WHERE id = $1 AND "deletedAt" IS NULL`,
       [uuid(userPrincipal.id)],
     );
     if (!memberRows[0] || uuid(memberRows[0].userId) !== normalizedUserId) {

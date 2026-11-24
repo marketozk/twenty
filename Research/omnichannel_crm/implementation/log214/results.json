@@ -1,0 +1,119 @@
+{
+  "log": "LOG-214",
+  "date": "2026-11-25",
+  "issue": "ROB-765",
+  "scope": "Build isolated server candidate image marketozk/twenty:log214-server (LOG089-LOG213), execute end-to-end HTTP/JWT/GraphQL acceptance against live server + worker + PG 17 + Redis, fix 2 real production bugs caught during live acceptance (GLOBAL_OBJECT_CONTEXT in commandMenuItem audit invariants and workspace_<base36> schema resolution in 3 audit modules), verify gates, 33/33 Linux Python tests, and 5 targeted PG 17 suites",
+  "candidateImage": {
+    "tag": "marketozk/twenty:log214-server",
+    "imageId": "sha256:337f98be0ed94b08b6556dab64568a4126fe97dbe43c569826f97b171c99110b",
+    "dockerfile": "packages/twenty-docker/twenty/Dockerfile",
+    "target": "twenty-server",
+    "entrypoint": "/app/omnichannel/entrypoint.sh",
+    "cjsExports": true,
+    "esmExports": true,
+    "forkMigrationManifestCount": 10
+  },
+  "migrationsAndGates": {
+    "forkMigrationCount": 10,
+    "idempotentReplay": "pass",
+    "devSeedUnderRestrictedRuntimeRole": {
+      "status": "pass",
+      "workspaceStatus": "ACTIVE",
+      "auditEntriesWrittenDuringBootstrap": 1704,
+      "distinctResourceKinds": 19
+    },
+    "upgradeStatusStrictUnderRuntimeRole": "pass",
+    "ownerRoleAppendOnlyRefusalGate": "pass (exit 1, append-only privileges)",
+    "missingLedgerStartupRefusalGate": "pass (exit 1 before exec)",
+    "restoredLedgerStartupGate": "pass (exit 0)"
+  },
+  "liveHttpJwtAcceptance": {
+    "status": "pass",
+    "healthz": "200 OK (zero-IO liveness preserved)",
+    "workerBullMqSubscriptions": 27,
+    "authLoginCookieAndJwtAudited": true,
+    "adminPanelCrmAuditHealth": {
+      "unauthenticatedRejected": true,
+      "nonAdminRejected": true,
+      "fullAdminStatus": "OK",
+      "databaseReachable": true,
+      "appendOnlyPrivilegesVerified": true,
+      "hasRecentAuditLoss": false
+    },
+    "nativeCrmCrudOverGraphql": {
+      "companyLifecycle": ["create:success", "update:success", "update:success", "update:success", "delete:success"],
+      "noteCreate": "pass",
+      "taskCreate": "pass",
+      "dashboardCreate": "pass"
+    },
+    "postRollbackFailedAudit": {
+      "outcome": "failed",
+      "reasonCode": "crm.mutation.record_not_found",
+      "resourceKind": "crmRecord",
+      "action": "update"
+    },
+    "refreshRotationAndFamilySignOut": {
+      "parentRevokedReason": "USER_SIGN_OUT",
+      "childRevokedReason": "USER_SIGN_OUT",
+      "familyIdMatched": true,
+      "childRenewRejectedAfterParentSignOut": true,
+      "signOutAuditCorrelationIdPresent": true
+    },
+    "cleanStopRestartStop": {
+      "stop1ExitCodes": [0, 0],
+      "restartHealthz200": true,
+      "restartWorkerBullMqSubscriptions": 27,
+      "stop2ExitCodes": [0, 0],
+      "oomKilled": false
+    }
+  },
+  "productionBugsCaughtAndFixed": [
+    "navigation-menu-item-audit.ts: added missing GLOBAL_OBJECT_CONTEXT to VALID_COMMAND_MENU_ITEM_AVAILABILITY_TYPES (blocked live workspace provisioning / TwentyStandardApplicationService sync)",
+    "navigation-menu-item-audit.ts, core-workflow-and-view-audit.ts, two-factor-authentication-audit.ts: resolved canonical workspace_<base36> schema first instead of hex/hyphenated UUID (blocked live createDashboard and skipped workspaceMember verification on workflow/view/2FA)"
+  ],
+  "targetedPostgresTests": {
+    "status": "pass",
+    "suitesPassed": 5,
+    "suitesTotal": 5,
+    "testsPassed": 28,
+    "testsTotal": 28,
+    "durationSeconds": 375.587,
+    "suites": [
+      "test/fork-migration/crm-audit-page-layout.postgres-spec.ts",
+      "test/fork-migration/crm-audit-navigation-menu-item.postgres-spec.ts",
+      "test/fork-migration/crm-audit-command-menu-item.postgres-spec.ts",
+      "test/fork-migration/crm-audit-core-workflow-and-view.postgres-spec.ts",
+      "test/fork-migration/crm-audit-two-factor-authentication.postgres-spec.ts"
+    ]
+  },
+  "guards": {
+    "enterpriseDependencies": {
+      "status": "pass",
+      "violations": 0,
+      "codeFiles": 34825,
+      "runtimeFiles": 21471,
+      "edges": 138107
+    },
+    "forkMigrationSources": {
+      "status": "pass",
+      "verifiedSources": 10
+    },
+    "linuxPythonUnitTests": {
+      "status": "pass",
+      "passed": 33,
+      "skipped": 0,
+      "total": 33,
+      "includesLinuxStartupScriptTests": 7
+    }
+  },
+  "differentialTypecheck": {
+    "status": "pass-zero-new-diagnostics",
+    "checkedFiles": 4,
+    "newOrChangedLineDiagnostics": 0
+  },
+  "sourceSnapshot": {
+    "verifiedFiles": 4,
+    "allSha256Matched": true,
+    "standCleanup": "STAND_CLEAN (twenty-log214-server, twenty-log214-worker, pg-log214, redis-log214, net-log214, /opt/twenty-tests/twenty-rob764-log214 removed; live demo untouched)"
+  }
+}

@@ -185,6 +185,28 @@ const storage = new AsyncLocalStorage<NavigationMenuItemAuditRequest>();
 const active = new WeakSet<NavigationMenuItemAuditRequest>();
 const consumed = new WeakSet<NavigationMenuItemAuditRequest>();
 
+const resolveWorkspaceMemberSchema = async (
+  runner: QueryRunner,
+  workspaceId: string,
+): Promise<string | null> => {
+  const normalizedWorkspaceId = uuid(workspaceId);
+  const candidates = [
+    `workspace_${BigInt(`0x${normalizedWorkspaceId.replace(/-/g, '')}`).toString(36)}`,
+    `workspace_${normalizedWorkspaceId.replace(/-/g, '')}`,
+    `workspace_${normalizedWorkspaceId}`,
+  ];
+  for (const schema of candidates) {
+    const [reg] = await runner.query(
+      'SELECT to_regclass($1) IS NOT NULL AS "hasWorkspaceMemberTable"',
+      [`"${schema}"."workspaceMember"`],
+    );
+    if (reg?.hasWorkspaceMemberTable === true) {
+      return schema;
+    }
+  }
+  return null;
+};
+
 const uuid = (value: unknown): string => {
   if (typeof value !== 'string' || !isUUID(value)) {
     throw new Error('Navigation menu item audit identity is invalid');
@@ -2899,12 +2921,11 @@ const verifyActorAndUserWorkspace = async ({
         }
       } else {
         const memberId = uuid(userPrincipal.id);
-        const workspaceSchema = `workspace_${request.workspaceId.replace(/-/g, '')}`;
-        const [memberReg] = await runner.query(
-          `SELECT to_regclass($1) IS NOT NULL AS "hasWorkspaceMemberTable"`,
-          [`"${workspaceSchema}"."workspaceMember"`],
+        const workspaceSchema = await resolveWorkspaceMemberSchema(
+          runner,
+          request.workspaceId,
         );
-        if (memberReg?.hasWorkspaceMemberTable !== true) {
+        if (!workspaceSchema) {
           throw new Error(
             'Navigation menu item audit workspaceMember table unavailable',
           );
@@ -2940,12 +2961,11 @@ const verifyActorAndUserWorkspace = async ({
       verifiedUserWorkspaceId = uuid(membership.id);
     } else {
       const memberId = uuid(baseOperation.actor.id);
-      const workspaceSchema = `workspace_${request.workspaceId.replace(/-/g, '')}`;
-      const [memberReg] = await runner.query(
-        `SELECT to_regclass($1) IS NOT NULL AS "hasWorkspaceMemberTable"`,
-        [`"${workspaceSchema}"."workspaceMember"`],
+      const workspaceSchema = await resolveWorkspaceMemberSchema(
+        runner,
+        request.workspaceId,
       );
-      if (memberReg?.hasWorkspaceMemberTable !== true) {
+      if (!workspaceSchema) {
         throw new Error(
           'Navigation menu item audit workspaceMember table unavailable',
         );

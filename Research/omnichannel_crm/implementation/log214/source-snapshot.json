@@ -1,0 +1,27 @@
+{
+  "log": "LOG-214",
+  "date": "2026-11-25",
+  "candidateImage": "marketozk/twenty:log214-server",
+  "candidateImageId": "sha256:337f98be0ed94b08b6556dab64568a4126fe97dbe43c569826f97b171c99110b",
+  "verifiedFiles": 4,
+  "allSha256Matched": true,
+  "standCleanup": "STAND_CLEAN (twenty-log214-server, twenty-log214-worker, pg-log214, redis-log214, net-log214, /opt/twenty-tests/twenty-rob764-log214 removed; candidate image marketozk/twenty:log214-server retained; live demo untouched)",
+  "files": [
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/crm-audit/navigation-menu-item-audit.ts",
+      "sha256": "19e21f28117c7b6af0595539dea66b206334acc26244207651cc4698b52ea0b8"
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/crm-audit/core-workflow-and-view-audit.ts",
+      "sha256": "80741f6502545ea36ea7c3ba3869619429ec36ec8af43f96a9d0260bdd303a94"
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/crm-audit/two-factor-authentication-audit.ts",
+      "sha256": "fe9704d16432ded84ab2ad26ddac59b7aeb3154ad661adc64a461f9300f99638"
+    },
+    {
+      "path": "packages/twenty-server/test/fork-migration/crm-audit-command-menu-item.postgres-spec.ts",
+      "sha256": "d724ff07d0111fbf473ab95bcf7222406b1ee37d0630928d5ddd4a6409e94520"
+    }
+  ]
+}
