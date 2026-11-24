@@ -959,6 +959,7 @@ export const projectTimelineActivityType = (row: Record<string, unknown>) => ({
 
 const VALID_COMMAND_MENU_ITEM_AVAILABILITY_TYPES = new Set<string>([
   'GLOBAL',
+  'GLOBAL_OBJECT_CONTEXT',
   'RECORD_SELECTION',
   'FALLBACK',
 ]);

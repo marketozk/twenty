@@ -14,6 +14,7 @@ import {
   withApplicationMetadataAudit,
 } from 'src/engine/core-modules/crm-audit/application-metadata-audit';
 import {
+  assertCommandMenuItemRowInvariants,
   captureNavigationMenuItemAudit,
   withNavigationMenuItemAudit,
 } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
@@ -2216,5 +2217,52 @@ describe('CRM audit commandMenuItem lifecycle and cascades', () => {
     } finally {
       createQueryRunnerSpy.mockRestore();
     }
+  });
+
+  it('accepts every CommandMenuItemAvailabilityType enum value including GLOBAL_OBJECT_CONTEXT and rejects unknown values', () => {
+    const baseRow = {
+      id: randomUUID(),
+      workspaceId,
+      applicationId: randomUUID(),
+      universalIdentifier: randomUUID(),
+      deletedAt: null,
+      workflowVersionId: null,
+      coreWorkflowVersionId: null,
+      frontComponentId: null,
+      availabilityObjectMetadataId: null,
+      navigationTargetObjectMetadataId: null,
+      pageLayoutId: null,
+      engineComponentKey: EngineComponentKey.FRONT_COMPONENT_RENDERER,
+      label: 'Test Command',
+      icon: null,
+      shortLabel: null,
+      conditionalAvailabilityExpression: null,
+      conditionalPinnedExpression: null,
+      position: 0,
+      isPinned: false,
+      payload: null,
+      hotKeys: null,
+      overrides: null,
+      isActive: true,
+      isSystemSideEffect: false,
+    };
+
+    for (const availabilityType of Object.values(
+      CommandMenuItemAvailabilityType,
+    )) {
+      expect(() =>
+        assertCommandMenuItemRowInvariants(
+          { ...baseRow, availabilityType },
+          workspaceId,
+        ),
+      ).not.toThrow();
+    }
+
+    expect(() =>
+      assertCommandMenuItemRowInvariants(
+        { ...baseRow, availabilityType: 'UNKNOWN_TYPE' },
+        workspaceId,
+      ),
+    ).toThrow('Command menu item audit availabilityType is invalid');
   });
 });
