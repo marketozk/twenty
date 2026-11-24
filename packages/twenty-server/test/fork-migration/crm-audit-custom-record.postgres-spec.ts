@@ -109,7 +109,6 @@ it.each(['delete'] as const)(
 it.each([
   'message',
   'messageThread',
-  'task',
   'workflow',
   'dashboard',
   'recordShare',

@@ -83,7 +83,7 @@ jest.mock(
 );
 
 const f = createOmniNativeMessageFixture({
-  additionalTables: ['company', 'opportunity', 'customCase', 'task'],
+  additionalTables: ['company', 'opportunity', 'customCase', 'workflow'],
   configureMetadata: addCustomCrmMetadata,
   coreSchema: 'audit',
 });
@@ -316,35 +316,35 @@ beforeAll(async () => {
     customDocumentsUniversalId;
   custom.fieldIds.push(customDocuments.id);
   custom.fieldUniversalIdentifiers.push(customDocumentsUniversalId);
-  const task = Object.values(
+  const workflow = Object.values(
     base.flatObjectMetadataMaps.byUniversalIdentifier,
-  ).find((item) => item?.nameSingular === 'task')!;
+  ).find((item) => item?.nameSingular === 'workflow')!;
   const customCompany = Object.values(
     base.flatFieldMetadataMaps.byUniversalIdentifier,
   ).find(
     (item) => item?.objectMetadataId === custom.id && item.name === 'company',
   )!;
-  const taskField = {
+  const workflowField = {
     ...customCompany,
     id: randomUUID(),
     universalIdentifier: randomUUID(),
-    name: 'task',
-    label: 'task',
-    relationTargetObjectMetadataId: task.id,
+    name: 'workflow',
+    label: 'workflow',
+    relationTargetObjectMetadataId: workflow.id,
     relationTargetFieldMetadataId: null,
     settings: {
       ...customCompany.settings,
       relationType: 'MANY_TO_ONE',
-      joinColumnName: 'taskId',
+      joinColumnName: 'workflowId',
     },
   } as typeof customCompany;
   base.flatFieldMetadataMaps.byUniversalIdentifier[
-    taskField.universalIdentifier
-  ] = taskField;
-  base.flatFieldMetadataMaps.universalIdentifierById[taskField.id] =
-    taskField.universalIdentifier;
-  custom.fieldIds.push(taskField.id);
-  custom.fieldUniversalIdentifiers.push(taskField.universalIdentifier);
+    workflowField.universalIdentifier
+  ] = workflowField;
+  base.flatFieldMetadataMaps.universalIdentifierById[workflowField.id] =
+    workflowField.universalIdentifier;
+  custom.fieldIds.push(workflowField.id);
+  custom.fieldUniversalIdentifiers.push(workflowField.universalIdentifier);
   await f.initialize();
   await f.owner.query('INSERT INTO core.workspace(id)VALUES($1)', [
     f.workspaceId,
@@ -1757,7 +1757,7 @@ it('rolls back the loser of concurrent public upserts of an absent unique key', 
 });
 
 it.each([MetadataReadability.PRIVATE, MetadataReadability.INHERITED])(
-  'does not misclassify %s empty shares as no-share CREATE',
+  'keeps covered %s CREATE eligible for atomic Branch A share audit',
   (readability) => {
     const h = harness();
     const context = {
@@ -1780,10 +1780,27 @@ it.each([MetadataReadability.PRIVATE, MetadataReadability.INHERITED])(
         },
         context,
       ),
+    ).toBe(true);
+    expect(
+      h.createOne.isNativeAuditCreateEligible(
+        {
+          data: { name: 'uncovered' },
+          shareWith: [],
+          selectedFieldsResult: {
+            select: { id: true },
+            relations: {},
+            aggregate: {},
+          },
+        },
+        {
+          ...h.queryContext('workflow'),
+          featureFlagsMap: context.featureFlagsMap,
+        },
+      ),
     ).toBe(false);
   },
 );
-it('distinguishes OPEN default-everyone from explicit nondefault shares', () => {
+it('keeps covered OPEN CREATE with explicit shareWith eligible for Branch A audit', () => {
   const h = harness();
   const context = {
     ...h.queryContext('company'),
@@ -1828,7 +1845,7 @@ it('distinguishes OPEN default-everyone from explicit nondefault shares', () => 
       },
       context,
     ),
-  ).toBe(false);
+  ).toBe(true);
 });
 it('audits a covered nested CREATE added by the root pre-query hook', async () => {
   const h = harness();
@@ -2103,8 +2120,8 @@ it('rejects an unsupported descendant injected by a child prehook before any com
         ...input,
         data: input.data.map((row) => ({
           ...row,
-          task: {
-            create: { id: randomUUID(), title: 'unsupported', position: 1 },
+          workflow: {
+            create: { id: randomUUID(), name: 'unsupported', position: 1 },
           },
         })),
       };
@@ -2154,7 +2171,7 @@ it('audits a supported child prehook change and defers every child hook to commi
 it('preserves the complete legacy path for an initially unsupported nested graph', async () => {
   const h = harness(),
     parent = randomUUID(),
-    task = randomUUID();
+    workflow = randomUUID();
   await h.run(() =>
     h.createOne.execute(
       {
@@ -2162,7 +2179,9 @@ it('preserves the complete legacy path for an initially unsupported nested graph
           id: parent,
           name: 'legacy',
           position: 1,
-          task: { create: { id: task, title: 'legacy task', position: 1 } },
+          workflow: {
+            create: { id: workflow, name: 'legacy workflow', position: 1 },
+          },
         },
         selectedFields: { id: true },
       },
@@ -2171,43 +2190,45 @@ it('preserves the complete legacy path for an initially unsupported nested graph
   );
   expect(
     await f.owner.query(
-      `SELECT "taskId" FROM "${f.schemaName}"."_customCase" WHERE id=$1`,
+      `SELECT "workflowId" FROM "${f.schemaName}"."_customCase" WHERE id=$1`,
       [parent],
     ),
-  ).toEqual([{ taskId: task }]);
+  ).toEqual([{ workflowId: workflow }]);
   expect(
-    await f.owner.query(`SELECT id FROM "${f.schemaName}".task WHERE id=$1`, [
-      task,
-    ]),
+    await f.owner.query(
+      `SELECT id FROM "${f.schemaName}".workflow WHERE id=$1`,
+      [workflow],
+    ),
   ).toHaveLength(1);
   expect(await audit()).toHaveLength(0);
 });
 it('preserves unsupported CREATE in a strict owner without native audit registration', async () => {
   const h = harness(),
-    task = randomUUID();
+    workflow = randomUUID();
   await h.run(() =>
     h.dataSource.transaction(
       (scope) =>
         h.createOne.execute(
           {
-            data: { id: task, title: 'legacy strict', position: 1 },
+            data: { id: workflow, name: 'legacy strict', position: 1 },
             selectedFields: { id: true },
           },
-          h.queryContext('task', scope),
+          h.queryContext('workflow', scope),
         ),
       { commitOutcome: 'strict' },
     ),
   );
   expect(
-    await f.owner.query(`SELECT id FROM "${f.schemaName}".task WHERE id=$1`, [
-      task,
-    ]),
+    await f.owner.query(
+      `SELECT id FROM "${f.schemaName}".workflow WHERE id=$1`,
+      [workflow],
+    ),
   ).toHaveLength(1);
   expect(await audit()).toHaveLength(0);
 });
 it('poisons a registered owner when an unsupported CREATE error is caught by its caller', async () => {
   const h = harness(),
-    task = randomUUID();
+    workflow = randomUUID();
   await expect(
     h.run(() =>
       h.dataSource.transaction(
@@ -2218,10 +2239,10 @@ it('poisons a registered owner when an unsupported CREATE error is caught by its
           await expect(
             h.createOne.execute(
               {
-                data: { id: task, title: 'unsupported', position: 1 },
+                data: { id: workflow, name: 'unsupported', position: 1 },
                 selectedFields: { id: true },
               },
-              h.queryContext('task', scope),
+              h.queryContext('workflow', scope),
             ),
           ).rejects.toThrow(
             'Nested public CREATE exceeds native audit coverage',
@@ -2299,7 +2320,7 @@ it('does not retry a nested graph after a lost actual COMMIT acknowledgement', a
   expect(h.hooks.executePostQueryHooks).not.toHaveBeenCalled();
 });
 
-it('rejects real share writes injected by a child prehook before ShareWithService', async () => {
+it('audits real share writes injected by a child prehook through ShareWithService Branch A', async () => {
   const previousFlags = base.featureFlagsMap;
   const custom = Object.values(
     base.flatObjectMetadataMaps.byUniversalIdentifier,
@@ -2327,18 +2348,23 @@ it('rejects real share writes injected by a child prehook before ShareWithServic
             }
           : args,
     );
-    await expect(
-      h.run(() =>
-        h.createOne.execute(
-          { data, selectedFields: { id: true } },
-          h.queryContext('company'),
-        ),
+    await h.run(() =>
+      h.createOne.execute(
+        { data, selectedFields: { id: true } },
+        h.queryContext('company'),
       ),
-    ).rejects.toThrow('Nested public CREATE exceeds native audit coverage');
-    await expectNoNestedPublicRows(data);
-    expect(h.shares.validateShareWithOrThrow).not.toHaveBeenCalled();
-    expect(h.shares.insertRecordSharesForCreatedRecords).not.toHaveBeenCalled();
-    expect(h.hooks.executePostQueryHooks).not.toHaveBeenCalled();
+    );
+    expect(await audit()).toHaveLength(3);
+    expect(h.shares.validateShareWithOrThrow).toHaveBeenCalled();
+    expect(h.shares.insertRecordSharesForCreatedRecords).toHaveBeenCalledWith(
+      expect.objectContaining({
+        flatObjectMetadata: expect.objectContaining({
+          nameSingular: 'customCase',
+        }),
+        transactionScope: expect.any(Object),
+      }),
+    );
+    expect(h.hooks.executePostQueryHooks).toHaveBeenCalledTimes(3);
   } finally {
     base.featureFlagsMap = previousFlags;
     custom.readability = previousReadability;

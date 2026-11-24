@@ -1,0 +1,10 @@
+{
+  "status": "pass-no-new-diagnostics",
+  "baselineRootFiles": 416,
+  "currentRootFiles": 417,
+  "baselineDiagnostics": 150,
+  "currentDiagnostics": 150,
+  "newDiagnostics": [],
+  "changedFileDiagnostics": [],
+  "changedCodeDiagnostics": []
+}

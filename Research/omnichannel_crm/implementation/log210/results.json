@@ -1,0 +1,86 @@
+{
+  "log": "LOG-210",
+  "date": "2026-11-24",
+  "issue": "ROB-765",
+  "scope": "Expand native CRM audit coverage to note and task, enable Branch A ShareWithService atomic auditing on covered INHERITED/PRIVATE/shareWith CREATE operations, and move NotePostQueryHookService and TaskPostQueryHookService onto strict audited transactions with chunked FOR UPDATE target transitions and preserved batch events",
+  "targetedPostgresTests": {
+    "status": "pass",
+    "suitesPassed": 13,
+    "suitesTotal": 13,
+    "testsPassed": 269,
+    "testsTotal": 269,
+    "durationSeconds": 79.854,
+    "postReviewRerunNoteAndTaskSeconds": 12.644,
+    "suites": [
+      "test/fork-migration/crm-audit-note-and-task.postgres-spec.ts",
+      "test/fork-migration/crm-audit-fk-delete-effects-coverage.postgres-spec.ts",
+      "test/fork-migration/crm-audit-custom-record.postgres-spec.ts",
+      "test/fork-migration/crm-audit-native-company.postgres-spec.ts",
+      "test/fork-migration/crm-audit-native-lifecycle.postgres-spec.ts",
+      "test/fork-migration/crm-audit-native-member.postgres-spec.ts",
+      "test/fork-migration/crm-audit-public-update.postgres-spec.ts",
+      "test/fork-migration/crm-audit-public-destroy.postgres-spec.ts",
+      "test/fork-migration/crm-audit-public-merge.postgres-spec.ts",
+      "test/fork-migration/crm-audit-post-rollback-and-health.postgres-spec.ts",
+      "test/fork-migration/crm-audit-trash-and-file-remove.postgres-spec.ts",
+      "test/fork-migration/crm-audit-file-hard-delete.postgres-spec.ts",
+      "test/fork-migration/omni-conversation-target.postgres-spec.ts"
+    ]
+  },
+  "fullPostgresRegression": {
+    "status": "pass",
+    "suitesPassed": 147,
+    "suitesTotal": 147,
+    "testsPassed": 3318,
+    "testsTotal": 3318,
+    "durationSeconds": 838.784
+  },
+  "guards": {
+    "enterpriseDependencies": {
+      "status": "pass",
+      "violations": 0,
+      "codeFiles": 34820,
+      "runtimeFiles": 21468,
+      "edges": 138028
+    },
+    "forkMigrationSources": {
+      "status": "pass",
+      "verifiedSources": 10
+    },
+    "pythonUnitTests": {
+      "status": "pass",
+      "passed": 26,
+      "skippedLinuxOnlyOnWindows": 7,
+      "total": 33
+    }
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 416,
+    "currentRootFiles": 417,
+    "baselineDiagnostics": 150,
+    "currentDiagnostics": 150,
+    "newDiagnostics": 0,
+    "changedFileDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "reviews": {
+    "designReview": {
+      "blockersFound": 3,
+      "majorsFound": 2,
+      "minorsFound": 2,
+      "allResolved": true
+    },
+    "codeReview": {
+      "blockersFound": 0,
+      "majorsFound": 2,
+      "minorsFound": 3,
+      "allResolved": true
+    }
+  },
+  "sourceSnapshotVerified": {
+    "matched": 14,
+    "total": 14
+  },
+  "standCleanedUp": true
+}

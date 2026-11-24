@@ -164,11 +164,12 @@ const f = createOmniNativeMessageFixture({
       if (!FIXTURE_ACTIVE_OBJECTS.has(object.nameSingular)) {
         object.isActive = false;
       }
-      if (['company', 'person', 'opportunity'].includes(object.nameSingular)) {
+      if (
+        ['company', 'person', 'opportunity', 'workflow'].includes(
+          object.nameSingular,
+        )
+      ) {
         object.duplicateCriteria = [['name']];
-      }
-      if (object.nameSingular === 'task') {
-        object.duplicateCriteria = [['title']];
       }
     }
 
@@ -1348,17 +1349,17 @@ describe('LOG-209 Extended FK coverage for 10 standard system child tables in DE
       ),
     ).rejects.toThrow('Native audit coverage excludes this object or mutation');
 
-    // 4. Uncovered parent MERGE_MANY (task with live taskTarget) inside proven outer nativeAudit scope fails closed
+    // 4. Uncovered parent MERGE_MANY (workflow with live timelineActivity) inside proven outer nativeAudit scope fails closed
     // through both CommonBaseQueryRunnerService.execute and direct CommonMergeManyQueryRunnerService.run (isCoveredTargetObject === false).
-    const taskPrioId = randomUUID();
-    const taskDupId = randomUUID();
+    const workflowPrioId = randomUUID();
+    const workflowDupId = randomUUID();
     await f.owner.query(
-      `INSERT INTO "${f.schemaName}".task (id, title) VALUES ($1, 't-prio'), ($2, 't-dup')`,
-      [taskPrioId, taskDupId],
+      `INSERT INTO "${f.schemaName}".workflow (id, name) VALUES ($1, 'wf-prio'), ($2, 'wf-dup')`,
+      [workflowPrioId, workflowDupId],
     );
     await f.owner.query(
-      `INSERT INTO "${f.schemaName}"."taskTarget" (id, "taskId", "targetCompanyId") VALUES ($1, $2, $3)`,
-      [randomUUID(), taskDupId, companyId],
+      `INSERT INTO "${f.schemaName}"."timelineActivity" (id, "linkedRecordCachedName", "targetWorkflowId") VALUES ($1, 'wf-tl', $2)`,
+      [randomUUID(), workflowDupId],
     );
     await expect(
       h.run(() =>
@@ -1366,11 +1367,11 @@ describe('LOG-209 Extended FK coverage for 10 standard system child tables in DE
           async (scope) => {
             await h.mergeMany.execute(
               {
-                ids: [taskPrioId, taskDupId],
+                ids: [workflowPrioId, workflowDupId],
                 conflictPriorityIndex: 0,
                 selectedFields: { id: true },
               },
-              h.queryContext('task', scope),
+              h.queryContext('workflow', scope),
             );
           },
           { nativeAudit: { operationId: randomUUID() } },
@@ -1383,7 +1384,7 @@ describe('LOG-209 Extended FK coverage for 10 standard system child tables in DE
           async (scope) => {
             await h.mergeMany.run(
               {
-                ids: [taskPrioId, taskDupId],
+                ids: [workflowPrioId, workflowDupId],
                 conflictPriorityIndex: 0,
                 selectedFieldsResult: {
                   select: { id: true },
@@ -1392,11 +1393,11 @@ describe('LOG-209 Extended FK coverage for 10 standard system child tables in DE
                 },
               } as never,
               {
-                ...h.queryContext('task', scope),
+                ...h.queryContext('workflow', scope),
                 rolePermissionConfig: {
                   intersectionOf: { userWorkspaceRoleId: roleId },
                 },
-                repository: scope.getRepository('task', {
+                repository: scope.getRepository('workflow', {
                   shouldBypassPermissionChecks: true,
                 }),
                 featureFlagsMap: base.featureFlagsMap,
@@ -1409,8 +1410,8 @@ describe('LOG-209 Extended FK coverage for 10 standard system child tables in DE
       ),
     ).rejects.toThrow('Native audit coverage excludes this object or mutation');
     expect(
-      ((await f.read('task')) as Array<{ id: string }>).some(
-        (row) => row.id === taskDupId,
+      ((await f.read('workflow')) as Array<{ id: string }>).some(
+        (row) => row.id === workflowDupId,
       ),
     ).toBe(true);
 

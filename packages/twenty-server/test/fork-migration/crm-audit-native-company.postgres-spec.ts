@@ -241,10 +241,10 @@ it.each([
 it('refuses unsupported-object writes inside the bounded owner', async () => {
   for (const work of [
     (scope: WorkspaceTransactionScope) =>
-      scope.getRepository('task', permissions).delete(id),
+      scope.getRepository('workflow', permissions).delete(id),
     (scope: WorkspaceTransactionScope) =>
       scope
-        .getRepository('task', permissions)
+        .getRepository('workflow', permissions)
         .update(randomUUID(), { name: 'x' }),
   ])
     await expect(run<unknown>(work)).rejects.toThrow(

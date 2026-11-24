@@ -85,6 +85,7 @@ const FIXTURE_ACTIVE_OBJECTS = new Set([
   'person',
   'opportunity',
   'customCase',
+  'workflow',
   'task',
   'taskTarget',
   'recordShare',
@@ -100,6 +101,7 @@ const f = createOmniNativeMessageFixture({
     'company',
     'opportunity',
     'customCase',
+    'workflow',
     'task',
     'taskTarget',
     'recordShare',
@@ -118,7 +120,7 @@ const f = createOmniNativeMessageFixture({
         object.isActive = false;
       }
       if (
-        ['company', 'person', 'customCase', 'task'].includes(
+        ['company', 'person', 'customCase', 'workflow'].includes(
           object.nameSingular,
         )
       ) {
@@ -135,9 +137,9 @@ const f = createOmniNativeMessageFixture({
     const customCase = Object.values(
       maps.flatObjectMetadataMaps.byUniversalIdentifier,
     ).find((object) => object?.nameSingular === 'customCase')!;
-    const taskObject = Object.values(
+    const workflowObject = Object.values(
       maps.flatObjectMetadataMaps.byUniversalIdentifier,
-    ).find((object) => object?.nameSingular === 'task')!;
+    ).find((object) => object?.nameSingular === 'workflow')!;
     const personObject = Object.values(
       maps.flatObjectMetadataMaps.byUniversalIdentifier,
     ).find((object) => object?.nameSingular === 'person')!;
@@ -147,11 +149,11 @@ const f = createOmniNativeMessageFixture({
       (field) =>
         field?.objectMetadataId === personObject.id && field.name === 'company',
     )!;
-    const taskCompanyField = {
+    const workflowCompanyField = {
       ...personCompanyRelation,
       id: randomUUID(),
       universalIdentifier: randomUUID(),
-      objectMetadataId: taskObject.id,
+      objectMetadataId: workflowObject.id,
       name: 'company',
       label: 'Company',
       relationTargetObjectMetadataId: company.id,
@@ -162,14 +164,18 @@ const f = createOmniNativeMessageFixture({
       } as typeof personCompanyRelation.settings,
     };
     maps.flatFieldMetadataMaps.byUniversalIdentifier[
-      taskCompanyField.universalIdentifier
-    ] = taskCompanyField;
-    maps.flatFieldMetadataMaps.universalIdentifierById[taskCompanyField.id] =
-      taskCompanyField.universalIdentifier;
-    taskObject.fieldIds = [...taskObject.fieldIds, taskCompanyField.id];
-    taskObject.fieldUniversalIdentifiers = [
-      ...taskObject.fieldUniversalIdentifiers,
-      taskCompanyField.universalIdentifier,
+      workflowCompanyField.universalIdentifier
+    ] = workflowCompanyField;
+    maps.flatFieldMetadataMaps.universalIdentifierById[
+      workflowCompanyField.id
+    ] = workflowCompanyField.universalIdentifier;
+    workflowObject.fieldIds = [
+      ...workflowObject.fieldIds,
+      workflowCompanyField.id,
+    ];
+    workflowObject.fieldUniversalIdentifiers = [
+      ...workflowObject.fieldUniversalIdentifiers,
+      workflowCompanyField.universalIdentifier,
     ];
 
     for (const targetObject of [company, customCase]) {
@@ -546,7 +552,7 @@ beforeEach(async () => {
     [id1, id2, id3],
   );
   await f.owner.query(
-    `INSERT INTO "${f.schemaName}".task (id, title) VALUES ($1, 't1'), ($2, 't2')`,
+    `INSERT INTO "${f.schemaName}".workflow (id, name) VALUES ($1, 'wf1'), ($2, 'wf2')`,
     [id1, id2],
   );
   f.recordStock.releaseRecordStock.mockClear();
@@ -1100,12 +1106,12 @@ describe('Public CRM record merge audit (LOG-203)', () => {
       [hiddenPriorityCaseId, visibleDupCaseId],
     );
 
-    // 3. Uncovered live child (task -> company) fails closed and rolls back everything
+    // 3. Uncovered live child (workflow -> company) fails closed and rolls back everything
     const hFail = harness('user');
-    const uncoveredTaskId = randomUUID();
+    const uncoveredWorkflowId = randomUUID();
     await f.owner.query(
-      `INSERT INTO "${f.schemaName}".task (id, title, "companyId") VALUES ($1, 'uncovered-task', $2)`,
-      [uncoveredTaskId, cB],
+      `INSERT INTO "${f.schemaName}".workflow (id, name, "companyId") VALUES ($1, 'uncovered-wf', $2)`,
+      [uncoveredWorkflowId, cB],
     );
     await expect(
       hFail.mergeMany.execute(
@@ -1122,8 +1128,8 @@ describe('Public CRM record merge audit (LOG-203)', () => {
       ),
     ).toBe(true);
     await f.owner.query(
-      `DELETE FROM "${f.schemaName}".task WHERE id = $1`,
-      [uncoveredTaskId],
+      `DELETE FROM "${f.schemaName}".workflow WHERE id = $1`,
+      [uncoveredWorkflowId],
     );
 
     // 4. Uncovered soft-deleted FK child table refuses before DELETE
@@ -1732,30 +1738,30 @@ describe('Public CRM record merge audit (LOG-203)', () => {
     ).rejects.toThrow('rollback outer dryRun tx');
     expect(await audit()).toHaveLength(0);
 
-    // Uncovered object (task with duplicateCriteria): works outside scope with 0 audit, fails closed + poisons inside outer proven scope
-    const hTask = harness('user');
-    const tExtra = randomUUID();
+    // Uncovered object (workflow with duplicateCriteria): works outside scope with 0 audit, fails closed + poisons inside outer proven scope
+    const hWorkflow = harness('user');
+    const wfExtra = randomUUID();
     await f.owner.query(
-      `INSERT INTO "${f.schemaName}".task (id, title) VALUES ($1, 't3')`,
-      [tExtra],
+      `INSERT INTO "${f.schemaName}".workflow (id, name) VALUES ($1, 'wf3')`,
+      [wfExtra],
     );
-    await hTask.mergeMany.execute(
+    await hWorkflow.mergeMany.execute(
       { ids: [id1, id2], conflictPriorityIndex: 0, selectedFields: { id: true } },
-      hTask.queryContext('task'),
+      hWorkflow.queryContext('workflow'),
     );
     expect(await audit()).toHaveLength(0);
     await expect(
-      hTask.run(() =>
-        hTask.dataSource.transaction(
+      hWorkflow.run(() =>
+        hWorkflow.dataSource.transaction(
           async (scope) => {
             try {
-              await hTask.mergeMany.execute(
+              await hWorkflow.mergeMany.execute(
                 {
-                  ids: [id1, tExtra],
+                  ids: [id1, wfExtra],
                   conflictPriorityIndex: 0,
                   selectedFields: { id: true },
                 },
-                hTask.queryContext('task', scope),
+                hWorkflow.queryContext('workflow', scope),
               );
             } catch {
               // Poison must still fail transaction

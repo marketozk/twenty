@@ -1,0 +1,63 @@
+{
+  "log": "LOG-210",
+  "verifiedAgainstStand": "twenty-rob765-fa5d9d2655049242",
+  "verifiedCount": 14,
+  "files": {
+    "packages/twenty-server/src/engine/api/common/common-query-runners/common-create-many-query-runner/common-create-many-query-runner.service.ts": {
+      "sha256": "b1e6e83ee4e83344022c1e9a6814efeafc92cf1fa682f2f35d1c4c0424bd8323",
+      "bytes": 30016
+    },
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-record.ts": {
+      "sha256": "312b1e1166ea6ce83f9882689b4b68279c5901dfb82d0db9106ae15ce6ba2752",
+      "bytes": 18642
+    },
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-transaction.ts": {
+      "sha256": "28ae27c025f25cb2e4e2e68c5daf6eafc336207d98eca1f73141c13213886398",
+      "bytes": 28359
+    },
+    "packages/twenty-server/src/engine/twenty-orm/workspace-orm.manager.ts": {
+      "sha256": "6e833ef407aafbc1aa6c5aedc854fd624ae452cd315ccb613445be6f61682a60",
+      "bytes": 11507
+    },
+    "packages/twenty-server/src/modules/note/query-hooks/note-post-query-hook.service.ts": {
+      "sha256": "ba4e51152d4b55874a2c456b1b43328bb3e35e0183a8de8d0c56827b90dd7e58",
+      "bytes": 5388
+    },
+    "packages/twenty-server/src/modules/task/query-hooks/task-post-query-hook.service.ts": {
+      "sha256": "e6165404baa97b383bed4350688f00f9ba175bc5236536f732fbd2df9479695d",
+      "bytes": 5388
+    },
+    "packages/twenty-server/test/fork-migration/crm-audit-custom-record.postgres-spec.ts": {
+      "sha256": "5a0676829058f32f6f81021beb0e4ef10defee3979839284e31b68e93eea07c7",
+      "bytes": 6148
+    },
+    "packages/twenty-server/test/fork-migration/crm-audit-fk-delete-effects-coverage.postgres-spec.ts": {
+      "sha256": "88d20829912a6c2437f3a202507f3c0b901d0ca97613cac80c9ac7a87d7988ab",
+      "bytes": 54748
+    },
+    "packages/twenty-server/test/fork-migration/crm-audit-native-company.postgres-spec.ts": {
+      "sha256": "fe7a6cbc99c9f25c706fb21cca1aedb0a0e8857c6ac859b94d2b0895b62d89b2",
+      "bytes": 25389
+    },
+    "packages/twenty-server/test/fork-migration/crm-audit-native-lifecycle.postgres-spec.ts": {
+      "sha256": "81b4c6824a68274f48270da9c9dd54b6382b1b8d91d82b2eaedd9e0d46264810",
+      "bytes": 8547
+    },
+    "packages/twenty-server/test/fork-migration/crm-audit-note-and-task.postgres-spec.ts": {
+      "sha256": "e4b5ee7bfa73536a620c733ae0854ac3e5d9b490ebdf289d7ea53333d2b540e3",
+      "bytes": 62553
+    },
+    "packages/twenty-server/test/fork-migration/crm-audit-public-destroy.postgres-spec.ts": {
+      "sha256": "477006006da3417e55971bd67fa2e88fb4e96b7477a2b8349c6ab8c3a1be1063",
+      "bytes": 49342
+    },
+    "packages/twenty-server/test/fork-migration/crm-audit-public-merge.postgres-spec.ts": {
+      "sha256": "ed8387742b26a12a1a0d4394706e1d0a367842313124f3f2977571e528a070d2",
+      "bytes": 71850
+    },
+    "packages/twenty-server/test/fork-migration/crm-audit-public-update.postgres-spec.ts": {
+      "sha256": "0b2206cc4a7c1412f5ca28b1078d93255583eb2c3a0f4a47ef2496a5317cacc0",
+      "bytes": 90165
+    }
+  }
+}

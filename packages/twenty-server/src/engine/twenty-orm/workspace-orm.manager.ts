@@ -79,6 +79,14 @@ export class WorkspaceOrmManager {
     });
   }
 
+  getObjectMetadataId(nameSingular: string): string | undefined {
+    const objectIdByNameSingular = getWorkspaceContext().objectIdByNameSingular;
+
+    return Object.hasOwn(objectIdByNameSingular, nameSingular)
+      ? objectIdByNameSingular[nameSingular]
+      : undefined;
+  }
+
   getStandardPersonMetadata() {
     const object =
       getWorkspaceContext().flatObjectMetadataMaps.byUniversalIdentifier[

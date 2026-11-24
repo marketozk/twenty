@@ -5,6 +5,7 @@ import {
 import {
   getNativeCrmAuditContext,
   getNativeCrmMergeChildScope,
+  getNativeCrmTargetLifecycleScope,
 } from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
 import { computeTableName } from 'src/engine/utils/compute-table-name.util';
 
@@ -54,6 +55,8 @@ const AUDITED_OBJECTS: Record<string, string> = {
   company: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.company,
   person: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.person,
   opportunity: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.opportunity,
+  note: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.note,
+  task: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.task,
 };
 
 const AUDITED_FK_CHILD_OBJECTS: Record<string, string> = {
@@ -306,6 +309,17 @@ export const assertNativeCrmAuditWriteSupported = (
           return;
       }
     }
+    const targetLifecycleGrant = getNativeCrmTargetLifecycleScope(executor);
+    if (
+      targetLifecycleGrant &&
+      (metadata.nameSingular === 'noteTarget' ||
+        metadata.nameSingular === 'taskTarget') &&
+      targetLifecycleGrant.objectMetadataId === metadata.id.toLowerCase() &&
+      targetLifecycleGrant.kind === kind &&
+      definedEntries.length === 0 &&
+      shape.columnShapeByColumnName.deletedAt?.fieldMetadataType === 'DATE_TIME'
+    )
+      return;
     throw new Error('Native audit coverage excludes this object or mutation');
   }
   for (const [name, value] of Object.entries(data)) {

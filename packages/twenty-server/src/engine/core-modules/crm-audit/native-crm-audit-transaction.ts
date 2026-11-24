@@ -66,6 +66,10 @@ const scopes = new WeakMap<
 const standaloneShareWithScopes = new WeakSet<object>();
 const delegatedRecordShareExecutors = new WeakSet<object>();
 const mergeChildScopes = new WeakMap<object, NativeCrmMergeChildGrant>();
+const targetLifecycleScopes = new WeakMap<
+  object,
+  NativeCrmTargetLifecycleGrant
+>();
 
 export type NativeCrmMergeChildGrant =
   | Readonly<{
@@ -79,9 +83,19 @@ export type NativeCrmMergeChildGrant =
       allowedTargetRecordId: string;
     }>;
 
+export type NativeCrmTargetLifecycleGrant = Readonly<{
+  objectMetadataId: string;
+  kind: 'soft-delete' | 'restore';
+}>;
+
 export const getNativeCrmMergeChildScope = (
   executor: object,
 ): NativeCrmMergeChildGrant | undefined => mergeChildScopes.get(executor);
+
+export const getNativeCrmTargetLifecycleScope = (
+  executor: object,
+): NativeCrmTargetLifecycleGrant | undefined =>
+  targetLifecycleScopes.get(executor);
 
 export const runInNativeCrmMergeChildScope = async <TData>(
   scope: object,
@@ -117,7 +131,11 @@ export const runInNativeCrmMergeChildScope = async <TData>(
   } else {
     throw new Error('Native audit merge child grant kind is invalid');
   }
-  if (mergeChildScopes.has(binding.executor)) {
+  if (
+    mergeChildScopes.has(binding.executor) ||
+    targetLifecycleScopes.has(binding.executor) ||
+    delegatedRecordShareExecutors.has(binding.executor)
+  ) {
     throw new Error('Nested native audit merge child scope is unsupported');
   }
   mergeChildScopes.set(binding.executor, normalizedGrant);
@@ -125,6 +143,41 @@ export const runInNativeCrmMergeChildScope = async <TData>(
     return await work();
   } finally {
     mergeChildScopes.delete(binding.executor);
+  }
+};
+
+export const runInNativeCrmTargetLifecycleScope = async <TData>(
+  scope: object,
+  grant: NativeCrmTargetLifecycleGrant,
+  work: () => Promise<TData>,
+): Promise<TData> => {
+  const binding = scopes.get(scope);
+  if (!binding) {
+    throw new Error(
+      'Native audit target lifecycle scope requires a proven native audit scope',
+    );
+  }
+  const objectMetadataId = uuid(grant.objectMetadataId);
+  if (grant.kind !== 'soft-delete' && grant.kind !== 'restore') {
+    throw new Error('Native audit target lifecycle grant kind is invalid');
+  }
+  if (
+    targetLifecycleScopes.has(binding.executor) ||
+    mergeChildScopes.has(binding.executor) ||
+    delegatedRecordShareExecutors.has(binding.executor)
+  ) {
+    throw new Error(
+      'Nested native audit target lifecycle scope is unsupported',
+    );
+  }
+  targetLifecycleScopes.set(binding.executor, {
+    objectMetadataId,
+    kind: grant.kind,
+  });
+  try {
+    return await work();
+  } finally {
+    targetLifecycleScopes.delete(binding.executor);
   }
 };
 
@@ -255,7 +308,11 @@ export const runInNativeCrmAuditScopeIfPresent = async <TData>(
       runDelegatedRecordShareWrite: async <TWrite>(
         execute: () => Promise<TWrite>,
       ): Promise<TWrite> => {
-        if (delegatedRecordShareExecutors.has(binding.executor)) {
+        if (
+          delegatedRecordShareExecutors.has(binding.executor) ||
+          mergeChildScopes.has(binding.executor) ||
+          targetLifecycleScopes.has(binding.executor)
+        ) {
           throw new Error('Nested delegated recordShare write is unsupported');
         }
         delegatedRecordShareExecutors.add(binding.executor);

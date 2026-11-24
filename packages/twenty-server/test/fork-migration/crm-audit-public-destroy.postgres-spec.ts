@@ -91,6 +91,7 @@ const f = createOmniNativeMessageFixture({
     'customCase',
     'task',
     'taskTarget',
+    'workflow',
     'recordShare',
   ],
   coreSchema: 'fork',
@@ -398,7 +399,7 @@ beforeEach(async () => {
     [id, secondId],
   );
   await f.owner.query(
-    `INSERT INTO "${f.schemaName}".task (id) VALUES ($1), ($2)`,
+    `INSERT INTO "${f.schemaName}".workflow (id, name) VALUES ($1, 'wf1'), ($2, 'wf2')`,
     [id, secondId],
   );
   f.recordStock.releaseRecordStock.mockClear();
@@ -1121,21 +1122,21 @@ describe('Public physical deletion CRM audit (LOG-202)', () => {
     expect(await f.read('company')).toEqual(companyBefore);
     expect(await audit()).toHaveLength(0);
 
-    // Uncovered object (task): works outside native scope with 0 audit, fails closed and poisons inside proven outer scope
-    const hTask = harness('user');
-    await hTask.destroyOne.execute(
+    // Uncovered object (workflow): works outside native scope with 0 audit, fails closed and poisons inside proven outer scope
+    const hWorkflow = harness('user');
+    await hWorkflow.destroyOne.execute(
       { id, selectedFields: { id: true } },
-      hTask.queryContext('task'),
+      hWorkflow.queryContext('workflow'),
     );
     expect(await audit()).toHaveLength(0);
     await expect(
-      hTask.run(() =>
-        hTask.dataSource.transaction(
+      hWorkflow.run(() =>
+        hWorkflow.dataSource.transaction(
           async (scope) => {
             try {
-              await hTask.destroyOne.execute(
+              await hWorkflow.destroyOne.execute(
                 { id: secondId, selectedFields: { id: true } },
-                hTask.queryContext('task', scope),
+                hWorkflow.queryContext('workflow', scope),
               );
             } catch {
               // Poison must still fail transaction

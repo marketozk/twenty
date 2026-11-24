@@ -94,12 +94,7 @@ export class CommonCreateManyQueryRunnerService extends CommonBaseQueryRunnerSer
         !isNativeCrmAuditMetadata(
           flatObjectMetadata,
           context.authContext.workspace.id,
-        ) ||
-        resolveShareWithToWrite({
-          sharingMode: resolveObjectSharing({ ...context, flatObjectMetadata })
-            .sharingMode,
-          shareWith: args.shareWith,
-        }) !== null
+        )
       )
         return false;
       const relationFieldNames = getNestedRelationFieldNames({
