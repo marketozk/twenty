@@ -5881,3 +5881,9 @@ b1363bf2-a8b1-4f8c-be22-4c95a6f694ca и все 11 состояний задач 
 [Результаты](implementation/log211/results.json), [ревью](implementation/log211/review.md),
 [следующий участок](implementation/log211/next-boundary.md). ROB765 остаётся
 In Progress. Выкат и общая HTTP/JWT приёмка ожидают следующих проверок.
+
+24.11.2026 LOG211 опубликован. Code 56310c18462809e0ffceb79aacc76d65aea76d6f
+отправлен в GitHub, ref подтверждён через API. Описание ROB765, комментарий
+6aebc287-06ef-4bf6-bcc8-833d42756f1d и все 11 состояний задач прочитаны обратно
+и совпали. [Публикация](implementation/log211/publication.json).
+Следующий участок - закрытие оставшихся открытых границ ROB765 (`LOG212`).
