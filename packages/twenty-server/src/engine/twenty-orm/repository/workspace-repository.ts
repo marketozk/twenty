@@ -5,6 +5,7 @@ import {
 import {
   assertNativeCrmAuditWriteSupported,
   captureNativeCrmAuditWriteData,
+  isNativeCrmAuditFkChildMetadata,
   isNativeCrmAuditMetadata,
   readNativeCrmAuditRows,
   recordNativeCrmCreates,
@@ -2125,10 +2126,14 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
               )) {
                 if (
                   !metadata ||
-                  !isNativeCrmAuditMetadata(
+                  (!isNativeCrmAuditMetadata(
                     metadata,
                     this.options.internalContext.workspaceId,
-                  )
+                  ) &&
+                    !isNativeCrmAuditFkChildMetadata(
+                      metadata,
+                      this.options.internalContext.workspaceId,
+                    ))
                 )
                   continue;
                 const shape = this.options.tableShapeByObjectMetadataId(
@@ -2152,16 +2157,51 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
               }
               return undefined;
             },
-            async (shape, ids) => {
-              const protectedChildIds = await findOmniProtectedParentIds(
-                query,
-                this.options.internalContext.workspaceId,
-                shape.objectMetadataId,
-                shape.nameSingular,
-                ids,
-              );
-              if (protectedChildIds.size)
-                throw new Error('OMNI_PARENT_DELETE_REQUIRES_DOMAIN_COMMAND');
+            async (shape, rows, effectKind) => {
+              if (effectKind === 'cascade') {
+                const protectedChildIds = await findOmniProtectedParentIds(
+                  query,
+                  this.options.internalContext.workspaceId,
+                  shape.objectMetadataId,
+                  shape.nameSingular,
+                  rows.map((row) => row.id),
+                );
+                if (protectedChildIds.size)
+                  throw new Error('OMNI_PARENT_DELETE_REQUIRES_DOMAIN_COMMAND');
+              }
+              if (OMNI_NATIVE_REPOSITORIES.has(shape.nameSingular)) {
+                const decodeJsonColumn = (value: unknown): unknown =>
+                  typeof value === 'string' ? JSON.parse(value) : value;
+                const mappedRows = rows.map((row) => {
+                  if (shape.nameSingular === 'messageParticipant') {
+                    if (row.messageId === undefined)
+                      throw new Error(
+                        'OMNI_INVALID_NATIVE_OWNERSHIP_REFERENCE',
+                      );
+                    return {
+                      id: row.id,
+                      messageId: decodeJsonColumn(row.messageId),
+                    };
+                  }
+                  if (shape.nameSingular === 'messageThreadTarget') {
+                    if (row.messageThreadId === undefined)
+                      throw new Error(
+                        'OMNI_INVALID_NATIVE_OWNERSHIP_REFERENCE',
+                      );
+                    return {
+                      id: row.id,
+                      messageThreadId: decodeJsonColumn(row.messageThreadId),
+                    };
+                  }
+                  throw new Error('OMNI_INVALID_NATIVE_OWNERSHIP_SCOPE');
+                });
+                await assertOmniNativeWriteUnowned(
+                  query,
+                  this.options.internalContext.workspaceId,
+                  shape.nameSingular,
+                  mappedRows,
+                );
+              }
             },
           );
           nativeDeleteFiles = await prepareNativeCrmDeleteFiles(

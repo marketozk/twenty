@@ -1,0 +1,82 @@
+{
+  "log": "LOG-209",
+  "date": "2026-11-24",
+  "issue": "ROB-765",
+  "scope": "Expand FK coverage of prepareNativeCrmDeleteEffects and MERGE_MANY to all 10 standard system child tables (noteTarget, taskTarget, attachment, timelineActivity, agentChatThreadTarget, calendarEventTarget, calendarEventParticipant, messageThreadTarget, messageParticipant, messageListMember) with least-privilege merge child grants and fail-closed omni-ownership checks on both CASCADE and SET NULL",
+  "targetedPostgresTests": {
+    "status": "pass",
+    "suitesPassed": 10,
+    "suitesTotal": 10,
+    "testsPassed": 233,
+    "testsTotal": 233,
+    "durationSeconds": 76.117,
+    "suites": [
+      "test/fork-migration/crm-audit-fk-delete-effects-coverage.postgres-spec.ts",
+      "test/fork-migration/crm-audit-native-delete.postgres-spec.ts",
+      "test/fork-migration/crm-audit-public-destroy.postgres-spec.ts",
+      "test/fork-migration/crm-audit-public-merge.postgres-spec.ts",
+      "test/fork-migration/crm-audit-file-hard-delete.postgres-spec.ts",
+      "test/fork-migration/crm-audit-trash-and-file-remove.postgres-spec.ts",
+      "test/fork-migration/crm-audit-public-update.postgres-spec.ts",
+      "test/fork-migration/crm-audit-post-rollback-and-health.postgres-spec.ts",
+      "test/fork-migration/omni-parent-lifecycle.postgres-spec.ts",
+      "test/fork-migration/omni-parent-destroy.postgres-spec.ts"
+    ]
+  },
+  "fullPostgresRegression": {
+    "status": "pass",
+    "suitesPassed": 146,
+    "suitesTotal": 146,
+    "testsPassed": 3315,
+    "testsTotal": 3315,
+    "durationSeconds": 793.292
+  },
+  "guards": {
+    "enterpriseDependencies": {
+      "status": "pass",
+      "violations": 0,
+      "codeFiles": 34819,
+      "runtimeFiles": 21468,
+      "edges": 137987
+    },
+    "forkMigrationSources": {
+      "status": "pass",
+      "verifiedSources": 10
+    },
+    "pythonUnitTests": {
+      "status": "pass",
+      "passed": 33,
+      "total": 33
+    }
+  },
+  "differentialTypecheck": {
+    "status": "pass-no-new-diagnostics",
+    "baselineRootFiles": 512,
+    "currentRootFiles": 513,
+    "baselineDiagnostics": 274,
+    "currentDiagnostics": 274,
+    "newDiagnostics": 0,
+    "changedFileDiagnostics": 0,
+    "changedCodeDiagnostics": 0
+  },
+  "reviews": {
+    "designReview": {
+      "blockersFound": 2,
+      "majorsFound": 2,
+      "minorsFound": 2,
+      "allResolved": true
+    },
+    "codeReview": {
+      "blockersFound": 0,
+      "majorsFound": 5,
+      "minorsFound": 3,
+      "round2TestSubcaseFix": true,
+      "allResolved": true
+    }
+  },
+  "sourceSnapshotVerified": {
+    "matched": 8,
+    "total": 8
+  },
+  "standCleanedUp": true
+}

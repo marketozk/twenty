@@ -65,6 +65,68 @@ const scopes = new WeakMap<
 >();
 const standaloneShareWithScopes = new WeakSet<object>();
 const delegatedRecordShareExecutors = new WeakSet<object>();
+const mergeChildScopes = new WeakMap<object, NativeCrmMergeChildGrant>();
+
+export type NativeCrmMergeChildGrant =
+  | Readonly<{
+      objectMetadataId: string;
+      kind: 'soft-delete';
+    }>
+  | Readonly<{
+      objectMetadataId: string;
+      kind: 'update';
+      allowedJoinColumnName: string;
+      allowedTargetRecordId: string;
+    }>;
+
+export const getNativeCrmMergeChildScope = (
+  executor: object,
+): NativeCrmMergeChildGrant | undefined => mergeChildScopes.get(executor);
+
+export const runInNativeCrmMergeChildScope = async <TData>(
+  scope: object,
+  grant: NativeCrmMergeChildGrant,
+  work: () => Promise<TData>,
+): Promise<TData> => {
+  const binding = scopes.get(scope);
+  if (!binding) {
+    throw new Error(
+      'Native audit merge child scope requires a proven native audit scope',
+    );
+  }
+  const objectMetadataId = uuid(grant.objectMetadataId);
+  let normalizedGrant: NativeCrmMergeChildGrant;
+  if (grant.kind === 'soft-delete') {
+    normalizedGrant = {
+      objectMetadataId,
+      kind: 'soft-delete',
+    };
+  } else if (grant.kind === 'update') {
+    if (
+      typeof grant.allowedJoinColumnName !== 'string' ||
+      grant.allowedJoinColumnName.length === 0
+    ) {
+      throw new Error('Native audit merge child join column is invalid');
+    }
+    normalizedGrant = {
+      objectMetadataId,
+      kind: 'update',
+      allowedJoinColumnName: grant.allowedJoinColumnName,
+      allowedTargetRecordId: uuid(grant.allowedTargetRecordId),
+    };
+  } else {
+    throw new Error('Native audit merge child grant kind is invalid');
+  }
+  if (mergeChildScopes.has(binding.executor)) {
+    throw new Error('Nested native audit merge child scope is unsupported');
+  }
+  mergeChildScopes.set(binding.executor, normalizedGrant);
+  try {
+    return await work();
+  } finally {
+    mergeChildScopes.delete(binding.executor);
+  }
+};
 
 export const isDelegatedRecordShareAuditWrite = (
   executor: object,

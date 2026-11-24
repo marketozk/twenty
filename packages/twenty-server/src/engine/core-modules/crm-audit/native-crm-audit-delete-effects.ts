@@ -34,9 +34,10 @@ export const prepareNativeCrmDeleteEffects = async (
     schemaName: string,
     tableName: string,
   ) => ChildTable | undefined,
-  assertChildDeletionAllowed: (
+  assertChildMutationAllowed: (
     shape: NativeCrmAuditTableShape,
-    ids: string[],
+    rows: Awaited<ReturnType<typeof readNativeCrmAuditRows>>,
+    kind: 'cascade' | 'set-null',
   ) => Promise<void>,
 ): Promise<{
   cascadeTargets: Array<{
@@ -100,6 +101,7 @@ export const prepareNativeCrmDeleteEffects = async (
         workspaceId,
         reference.deleteAction === 'c' ? 'delete' : 'update',
         reference.deleteAction === 'c' ? undefined : { [column]: null },
+        { allowFkChildDeleteEffect: true },
       );
       const group = groups.get(childTable) ?? {
         ...child,
@@ -151,7 +153,7 @@ export const prepareNativeCrmDeleteEffects = async (
     );
     if (cascadeBefore.length) {
       const cascadeIds = cascadeBefore.map((row) => row.id);
-      await assertChildDeletionAllowed(group.shape, cascadeIds);
+      await assertChildMutationAllowed(group.shape, cascadeBefore, 'cascade');
       if (
         await hasReferencingRecords(
           scope,
@@ -164,6 +166,16 @@ export const prepareNativeCrmDeleteEffects = async (
           'Native delete excludes transitive foreign-key effects',
         );
       cascadeTargets.push({ shape: group.shape, before: cascadeBefore });
+    }
+    const setNullBefore = before.filter((row) =>
+      [...group.actions].some(
+        ([column, action]) =>
+          action === 'n' &&
+          capturedParentIds.has(JSON.parse(String(row[column]))),
+      ),
+    );
+    if (setNullBefore.length) {
+      await assertChildMutationAllowed(group.shape, setNullBefore, 'set-null');
     }
     for (const [column, action] of group.actions) {
       if (action !== 'n') continue;

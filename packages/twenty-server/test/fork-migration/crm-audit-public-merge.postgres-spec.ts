@@ -135,6 +135,42 @@ const f = createOmniNativeMessageFixture({
     const customCase = Object.values(
       maps.flatObjectMetadataMaps.byUniversalIdentifier,
     ).find((object) => object?.nameSingular === 'customCase')!;
+    const taskObject = Object.values(
+      maps.flatObjectMetadataMaps.byUniversalIdentifier,
+    ).find((object) => object?.nameSingular === 'task')!;
+    const personObject = Object.values(
+      maps.flatObjectMetadataMaps.byUniversalIdentifier,
+    ).find((object) => object?.nameSingular === 'person')!;
+    const personCompanyRelation = Object.values(
+      maps.flatFieldMetadataMaps.byUniversalIdentifier,
+    ).find(
+      (field) =>
+        field?.objectMetadataId === personObject.id && field.name === 'company',
+    )!;
+    const taskCompanyField = {
+      ...personCompanyRelation,
+      id: randomUUID(),
+      universalIdentifier: randomUUID(),
+      objectMetadataId: taskObject.id,
+      name: 'company',
+      label: 'Company',
+      relationTargetObjectMetadataId: company.id,
+      relationTargetFieldMetadataId: null,
+      settings: {
+        ...(personCompanyRelation.settings as Record<string, unknown>),
+        joinColumnName: 'companyId',
+      } as typeof personCompanyRelation.settings,
+    };
+    maps.flatFieldMetadataMaps.byUniversalIdentifier[
+      taskCompanyField.universalIdentifier
+    ] = taskCompanyField;
+    maps.flatFieldMetadataMaps.universalIdentifierById[taskCompanyField.id] =
+      taskCompanyField.universalIdentifier;
+    taskObject.fieldIds = [...taskObject.fieldIds, taskCompanyField.id];
+    taskObject.fieldUniversalIdentifiers = [
+      ...taskObject.fieldUniversalIdentifiers,
+      taskCompanyField.universalIdentifier,
+    ];
 
     for (const targetObject of [company, customCase]) {
       const field = {
@@ -1064,12 +1100,12 @@ describe('Public CRM record merge audit (LOG-203)', () => {
       [hiddenPriorityCaseId, visibleDupCaseId],
     );
 
-    // 3. Uncovered live child (taskTarget) fails closed and rolls back everything
+    // 3. Uncovered live child (task -> company) fails closed and rolls back everything
     const hFail = harness('user');
-    const ttId = randomUUID();
+    const uncoveredTaskId = randomUUID();
     await f.owner.query(
-      `INSERT INTO "${f.schemaName}"."taskTarget" (id, "taskId", "targetCompanyId") VALUES ($1, $2, $3)`,
-      [ttId, id1, cB],
+      `INSERT INTO "${f.schemaName}".task (id, title, "companyId") VALUES ($1, 'uncovered-task', $2)`,
+      [uncoveredTaskId, cB],
     );
     await expect(
       hFail.mergeMany.execute(
@@ -1086,8 +1122,8 @@ describe('Public CRM record merge audit (LOG-203)', () => {
       ),
     ).toBe(true);
     await f.owner.query(
-      `DELETE FROM "${f.schemaName}"."taskTarget" WHERE id = $1`,
-      [ttId],
+      `DELETE FROM "${f.schemaName}".task WHERE id = $1`,
+      [uncoveredTaskId],
     );
 
     // 4. Uncovered soft-deleted FK child table refuses before DELETE

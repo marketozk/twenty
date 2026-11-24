@@ -40,10 +40,14 @@ import { hasRecordFieldValue } from 'src/engine/api/graphql/graphql-query-runner
 import { mergeFieldValues } from 'src/engine/api/graphql/graphql-query-runner/utils/merge-field-values.util';
 import { WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
 import {
+  isNativeCrmAuditFkChildMetadata,
   isNativeCrmAuditMetadata,
   isNativeCrmAuditObject,
 } from 'src/engine/core-modules/crm-audit/native-crm-audit-record';
-import { isRegisteredNativeCrmAuditScope } from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
+import {
+  isRegisteredNativeCrmAuditScope,
+  runInNativeCrmMergeChildScope,
+} from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
 import { MetricsKeys } from 'src/engine/core-modules/metrics/types/metrics-keys.type';
 import { computeMorphOrRelationFieldJoinColumnName } from 'src/engine/metadata-modules/field-metadata/utils/compute-morph-or-relation-field-join-column-name.util';
 import { FlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/types/flat-entity-maps.type';
@@ -521,6 +525,7 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
     transactionScope,
     schemaName,
     targetObjectMetadataId,
+    isCoveredTargetObject,
     relationField,
     flatFieldMetadataMaps,
     flatIndexMaps,
@@ -531,6 +536,7 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
     transactionScope: WorkspaceTransactionScope;
     schemaName: string;
     targetObjectMetadataId: string;
+    isCoveredTargetObject: boolean;
     relationField: {
       objectMetadata: FlatObjectMetadata;
       joinColumnName: string;
@@ -675,19 +681,39 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
         duplicateKeyColumnGroups,
       });
 
+    const runMergeChildWrite = <TWrite>(
+      grant: Parameters<typeof runInNativeCrmMergeChildScope>[1],
+      execute: () => Promise<TWrite>,
+    ): Promise<TWrite> =>
+      isCoveredTargetObject &&
+      isNativeCrmAuditFkChildMetadata(
+        relationField.objectMetadata,
+        transactionScope.workspaceId,
+      ) &&
+      isRegisteredNativeCrmAuditScope(transactionScope)
+        ? runInNativeCrmMergeChildScope(transactionScope, grant, execute)
+        : execute();
+
     for (const idsChunk of chunk(idsToSoftDelete, QUERY_MAX_RECORDS)) {
-      const softDeleted = await relatedRepository.runMutation({
-        selectQueryBuilder: relatedRepository
-          .createQueryBuilder(alias)
-          .where({
-            id: In(idsChunk),
-            [joinColumnName]: In(idsToDelete),
-            ...(hasDeletedAtColumn ? { deletedAt: IsNull() } : {}),
+      const softDeleted = await runMergeChildWrite(
+        {
+          objectMetadataId: relationField.objectMetadata.id,
+          kind: 'soft-delete',
+        },
+        () =>
+          relatedRepository.runMutation({
+            selectQueryBuilder: relatedRepository
+              .createQueryBuilder(alias)
+              .where({
+                id: In(idsChunk),
+                [joinColumnName]: In(idsToDelete),
+                ...(hasDeletedAtColumn ? { deletedAt: IsNull() } : {}),
+              }),
+            rowLevelPermissionsApplied: false,
+            kind: 'soft-delete',
+            columnsToReturn: ['id'],
           }),
-        rowLevelPermissionsApplied: false,
-        kind: 'soft-delete',
-        columnsToReturn: ['id'],
-      });
+      );
 
       if (softDeleted.length !== idsChunk.length) {
         throw new CommonQueryRunnerException(
@@ -699,19 +725,28 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
     }
 
     for (const idsChunk of chunk(idsToMigrate, QUERY_MAX_RECORDS)) {
-      const migrated = await relatedRepository.runMutation({
-        selectQueryBuilder: relatedRepository
-          .createQueryBuilder(alias)
-          .where({
-            id: In(idsChunk),
-            [joinColumnName]: In(idsToDelete),
-            ...(hasDeletedAtColumn ? { deletedAt: IsNull() } : {}),
+      const migrated = await runMergeChildWrite(
+        {
+          objectMetadataId: relationField.objectMetadata.id,
+          kind: 'update',
+          allowedJoinColumnName: joinColumnName,
+          allowedTargetRecordId: priorityRecordId,
+        },
+        () =>
+          relatedRepository.runMutation({
+            selectQueryBuilder: relatedRepository
+              .createQueryBuilder(alias)
+              .where({
+                id: In(idsChunk),
+                [joinColumnName]: In(idsToDelete),
+                ...(hasDeletedAtColumn ? { deletedAt: IsNull() } : {}),
+              }),
+            rowLevelPermissionsApplied: false,
+            kind: 'update',
+            columnsToReturn: ['id'],
+            data: { [joinColumnName]: priorityRecordId },
           }),
-        rowLevelPermissionsApplied: false,
-        kind: 'update',
-        columnsToReturn: ['id'],
-        data: { [joinColumnName]: priorityRecordId },
-      });
+      );
 
       if (migrated.length !== idsChunk.length) {
         throw new CommonQueryRunnerException(
@@ -778,11 +813,17 @@ export class CommonMergeManyQueryRunnerService extends CommonBaseQueryRunnerServ
       this.getRelationFieldsPointingToCurrentObject(queryRunnerContext);
     const allMergedIds = new Set([priorityRecordId, ...idsToDelete]);
 
+    const isCoveredTargetObject = isNativeCrmAuditMetadata(
+      flatObjectMetadata,
+      transactionScope.workspaceId,
+    );
+
     for (const relationField of relationFields) {
       await this.mergeRelatedRecordsIntoPriorityRecord({
         transactionScope,
         schemaName,
         targetObjectMetadataId: flatObjectMetadata.id,
+        isCoveredTargetObject,
         relationField,
         flatFieldMetadataMaps,
         flatIndexMaps,

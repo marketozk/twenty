@@ -655,51 +655,61 @@ describe('LOG-206 TrashCleanupService audit and UPDATE toRemove durable file har
       [messageId, threadId],
     );
     await f.owner.query(
-      `INSERT INTO "${f.schemaName}"."messageParticipant" (id, "messageId", "personId", role, handle)
-       VALUES ($1, $2, $3, 'FROM', 'a@example.com')`,
-      [participantRefId, messageId, blockedPersonId],
+      `CREATE TABLE "${f.schemaName}".uncovered_trash_child (
+         id uuid PRIMARY KEY,
+         person_id uuid NOT NULL REFERENCES "${f.schemaName}".person(id) ON DELETE CASCADE
+       );
+       GRANT SELECT, INSERT, UPDATE, DELETE ON "${f.schemaName}".uncovered_trash_child TO "${f.roleName}";`,
     );
-    await f.owner.query(
-      `INSERT INTO "${f.schemaName}"."messageParticipant" (id, "messageId", role, handle, "deletedAt")
-       VALUES ($1, $2, 'TO', 'b@example.com', NOW() - INTERVAL '40 days')`,
-      [oldParticipantId, messageId],
-    );
-    await f.owner.query(
-      `INSERT INTO "${f.schemaName}".company (id, name, documents, "deletedAt")
-       VALUES
-         ($1, 'blocked co', $2::jsonb, NOW() - INTERVAL '45 days'),
-         ($3, 'clean co', NULL, NOW() - INTERVAL '44 days')`,
-      [
-        blockedCompanyId,
-        JSON.stringify([{ fileId: invalidFileId, label: 'pending.pdf' }]),
-        cleanCompanyId,
-      ],
-    );
+    try {
+      await f.owner.query(
+        `INSERT INTO "${f.schemaName}".uncovered_trash_child (id, person_id) VALUES ($1, $2)`,
+        [participantRefId, blockedPersonId],
+      );
+      await f.owner.query(
+        `INSERT INTO "${f.schemaName}"."messageParticipant" (id, "messageId", role, handle, "deletedAt")
+         VALUES ($1, $2, 'TO', 'b@example.com', NOW() - INTERVAL '40 days')`,
+        [oldParticipantId, messageId],
+      );
+      await f.owner.query(
+        `INSERT INTO "${f.schemaName}".company (id, name, documents, "deletedAt")
+         VALUES
+           ($1, 'blocked co', $2::jsonb, NOW() - INTERVAL '45 days'),
+           ($3, 'clean co', NULL, NOW() - INTERVAL '44 days')`,
+        [
+          blockedCompanyId,
+          JSON.stringify([{ fileId: invalidFileId, label: 'pending.pdf' }]),
+          cleanCompanyId,
+        ],
+      );
 
-    const trashService = makeTrashService([
-      'person',
-      'company',
-      'messageParticipant',
-    ]);
-    const deletedCount = await trashService.cleanupWorkspaceTrash({
-      workspaceId: f.workspaceId,
-      trashRetentionDays: 14,
-    });
-    // 2 clean persons + 1 clean company + 1 uncovered messageParticipant = 4.
-    expect(deletedCount).toBe(4);
+      const trashService = makeTrashService([
+        'person',
+        'company',
+        'messageParticipant',
+      ]);
+      const deletedCount = await trashService.cleanupWorkspaceTrash({
+        workspaceId: f.workspaceId,
+        trashRetentionDays: 14,
+      });
+      // 2 clean persons + 1 clean company + 1 uncovered messageParticipant = 4.
+      expect(deletedCount).toBe(4);
 
-    const remainingPersons = (await f.read('person')) as Array<{ id: string }>;
-    expect(remainingPersons.map((row) => row.id)).toEqual([blockedPersonId]);
-    const remainingCompanies = (await f.read('company')) as Array<{
-      id: string;
-    }>;
-    expect(remainingCompanies.map((row) => row.id)).toEqual([blockedCompanyId]);
-    const remainingParticipants = (await f.read(
-      'messageParticipant',
-    )) as Array<{ id: string }>;
-    expect(remainingParticipants.map((row) => row.id)).toEqual([
-      participantRefId,
-    ]);
+      const remainingPersons = (await f.read('person')) as Array<{ id: string }>;
+      expect(remainingPersons.map((row) => row.id)).toEqual([blockedPersonId]);
+      const remainingCompanies = (await f.read('company')) as Array<{
+        id: string;
+      }>;
+      expect(remainingCompanies.map((row) => row.id)).toEqual([blockedCompanyId]);
+      const remainingParticipants = (await f.read(
+        'messageParticipant',
+      )) as Array<{ id: string }>;
+      expect(remainingParticipants).toHaveLength(0);
+    } finally {
+      await f.owner.query(
+        `DROP TABLE IF EXISTS "${f.schemaName}".uncovered_trash_child`,
+      );
+    }
 
     const audits = await readAudits();
     expect(audits.map((entry) => entry.resourceId).sort()).toEqual(

@@ -2,7 +2,10 @@ import {
   STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS,
   TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER,
 } from 'twenty-shared/application-runtime';
-import { getNativeCrmAuditContext } from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
+import {
+  getNativeCrmAuditContext,
+  getNativeCrmMergeChildScope,
+} from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
 import { computeTableName } from 'src/engine/utils/compute-table-name.util';
 
 type ObjectRecord = { id: string } & Record<string, unknown>;
@@ -53,12 +56,36 @@ const AUDITED_OBJECTS: Record<string, string> = {
   opportunity: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.opportunity,
 };
 
+const AUDITED_FK_CHILD_OBJECTS: Record<string, string> = {
+  noteTarget: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.noteTarget,
+  taskTarget: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.taskTarget,
+  attachment: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.attachment,
+  timelineActivity: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.timelineActivity,
+  agentChatThreadTarget:
+    STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.agentChatThreadTarget,
+  calendarEventTarget:
+    STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.calendarEventTarget,
+  calendarEventParticipant:
+    STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.calendarEventParticipant,
+  messageThreadTarget:
+    STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.messageThreadTarget,
+  messageParticipant: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.messageParticipant,
+  messageListMember: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.messageListMember,
+};
+
 export const isNativeCrmAuditObject = (
   name: string,
   universalIdentifier: string,
 ): boolean =>
   Object.hasOwn(AUDITED_OBJECTS, name) &&
   AUDITED_OBJECTS[name] === universalIdentifier;
+
+export const isNativeCrmAuditFkChildObject = (
+  name: string,
+  universalIdentifier: string,
+): boolean =>
+  Object.hasOwn(AUDITED_FK_CHILD_OBJECTS, name) &&
+  AUDITED_FK_CHILD_OBJECTS[name] === universalIdentifier;
 
 export type NativeCrmAuditObjectMetadata = {
   id: string;
@@ -73,6 +100,32 @@ const STANDARD_OBJECT_IDS = new Set<string>(
   Object.values(STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS),
 );
 const UUID_PATTERN = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
+
+export const isNativeCrmAuditFkChildMetadata = (
+  metadata: NativeCrmAuditObjectMetadata,
+  workspaceId: string,
+): boolean => {
+  if (
+    metadata.workspaceId !== workspaceId ||
+    metadata.isSystem !== true ||
+    metadata.isRemote !== false ||
+    ![
+      metadata.id,
+      metadata.universalIdentifier,
+      metadata.applicationUniversalIdentifier,
+    ].every((value) => typeof value === 'string' && UUID_PATTERN.test(value))
+  )
+    return false;
+  if (
+    metadata.applicationUniversalIdentifier !==
+    TWENTY_STANDARD_APPLICATION_UNIVERSAL_IDENTIFIER
+  )
+    return false;
+  return isNativeCrmAuditFkChildObject(
+    metadata.nameSingular,
+    metadata.universalIdentifier,
+  );
+};
 
 export const isNativeCrmAuditMetadata = (
   metadata: NativeCrmAuditObjectMetadata,
@@ -168,6 +221,7 @@ export const assertNativeCrmAuditWriteSupported = (
   workspaceId: string,
   kind: string,
   data: Record<string, unknown> = {},
+  options?: { allowFkChildDeleteEffect?: boolean },
 ): void => {
   if (
     !getNativeCrmAuditContext(
@@ -179,9 +233,12 @@ export const assertNativeCrmAuditWriteSupported = (
     )
   )
     return;
+  const isCoveredPrimary = isNativeCrmAuditMetadata(metadata, workspaceId);
+  const isCoveredFkChild =
+    !isCoveredPrimary && isNativeCrmAuditFkChildMetadata(metadata, workspaceId);
   if (
     !['create', 'update', 'soft-delete', 'restore', 'delete'].includes(kind) ||
-    !isNativeCrmAuditMetadata(metadata, workspaceId) ||
+    (!isCoveredPrimary && !isCoveredFkChild) ||
     metadata.id !== shape.objectMetadataId ||
     metadata.nameSingular !== shape.nameSingular ||
     shape.tableName !==
@@ -192,6 +249,65 @@ export const assertNativeCrmAuditWriteSupported = (
       )
   )
     throw new Error('Native audit coverage excludes this object or mutation');
+  if (isCoveredFkChild) {
+    const definedEntries = Object.entries(data).filter(
+      ([, value]) => value !== undefined,
+    );
+    if (options?.allowFkChildDeleteEffect === true) {
+      if (kind === 'delete' && definedEntries.length === 0) return;
+      if (kind === 'update' && definedEntries.length === 1) {
+        const [[columnName, value]] = definedEntries;
+        const column = Object.hasOwn(shape.columnShapeByColumnName, columnName)
+          ? shape.columnShapeByColumnName[columnName]
+          : undefined;
+        if (
+          value === null &&
+          column &&
+          !column.compositeParentFieldName &&
+          (column.fieldMetadataType === 'RELATION' ||
+            column.fieldMetadataType === 'MORPH_RELATION')
+        )
+          return;
+      }
+      throw new Error('Native audit coverage excludes this object or mutation');
+    }
+    const mergeGrant = getNativeCrmMergeChildScope(executor);
+    if (
+      mergeGrant &&
+      mergeGrant.objectMetadataId === metadata.id.toLowerCase()
+    ) {
+      if (
+        mergeGrant.kind === 'soft-delete' &&
+        kind === 'soft-delete' &&
+        definedEntries.length === 0 &&
+        shape.columnShapeByColumnName.deletedAt?.fieldMetadataType ===
+          'DATE_TIME'
+      )
+        return;
+      if (
+        mergeGrant.kind === 'update' &&
+        kind === 'update' &&
+        definedEntries.length === 1
+      ) {
+        const [[columnName, value]] = definedEntries;
+        const column = Object.hasOwn(shape.columnShapeByColumnName, columnName)
+          ? shape.columnShapeByColumnName[columnName]
+          : undefined;
+        if (
+          columnName === mergeGrant.allowedJoinColumnName &&
+          typeof value === 'string' &&
+          UUID_PATTERN.test(value) &&
+          value.toLowerCase() === mergeGrant.allowedTargetRecordId &&
+          column &&
+          !column.compositeParentFieldName &&
+          (column.fieldMetadataType === 'RELATION' ||
+            column.fieldMetadataType === 'MORPH_RELATION')
+        )
+          return;
+      }
+    }
+    throw new Error('Native audit coverage excludes this object or mutation');
+  }
   for (const [name, value] of Object.entries(data)) {
     if (name === 'id' || value === undefined) continue;
     const column = shape.columnShapeByColumnName[name];

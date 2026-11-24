@@ -1,0 +1,39 @@
+{
+  "log": "LOG-209",
+  "verifiedAgainstStand": "twenty-rob764-7db2510d4b1040fa",
+  "verifiedCount": 8,
+  "files": {
+    "packages/twenty-server/src/engine/api/common/common-query-runners/common-merge-many-query-runner.service.ts": {
+      "sha256": "1d29bc415d1e51b9ec03ce773fb4e4b78f0a992e0d78bf990658b08fe17cb679",
+      "bytes": 40777
+    },
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-delete-effects.ts": {
+      "sha256": "438459ed5806be4f772ec0ebac03dc05e2168391654f57f8284121d1515daa59",
+      "bytes": 9360
+    },
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-record.ts": {
+      "sha256": "765c0007c64069f453660c8e7e9e0754a052e1979e74e4f4d87d8b8e30864379",
+      "bytes": 18027
+    },
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-transaction.ts": {
+      "sha256": "8a7fbb41ce0a98804b4672cdb38f7471435d04b01c734f8e449b1d0a1a3ea479",
+      "bytes": 26724
+    },
+    "packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts": {
+      "sha256": "6261f979ea86a78fe812508b36daedc1e4e9d2b8240211b72fff47c92707b2ab",
+      "bytes": 103619
+    },
+    "packages/twenty-server/test/fork-migration/crm-audit-fk-delete-effects-coverage.postgres-spec.ts": {
+      "sha256": "4cc69456fbf7de0976a0fe9477349632578b70677533661073652681a45c2552",
+      "bytes": 54711
+    },
+    "packages/twenty-server/test/fork-migration/crm-audit-public-merge.postgres-spec.ts": {
+      "sha256": "0fdc7be0381abd957e9d75aa79d4e15cbcd1c5432e3e1e6538b86c6c229a7593",
+      "bytes": 71662
+    },
+    "packages/twenty-server/test/fork-migration/crm-audit-trash-and-file-remove.postgres-spec.ts": {
+      "sha256": "fda9e14db788707efb4bb7b93ec640d27515bf48ec0132d17af7ef0d17d18d41",
+      "bytes": 47791
+    }
+  }
+}
