@@ -30,6 +30,7 @@ import { TimelineCalendarEventModule } from 'src/engine/core-modules/calendar/ti
 import { CaptchaModule } from 'src/engine/core-modules/captcha/captcha.module';
 import { CloudflareModule } from 'src/engine/core-modules/cloudflare/cloudflare.module';
 import { CodeInterpreterModule } from 'src/engine/core-modules/code-interpreter/code-interpreter.module';
+import { CrmAuditHealthModule } from 'src/engine/core-modules/crm-audit/crm-audit-health.module';
 import { DnsManagerModule } from 'src/engine/core-modules/dns-manager/dns-manager.module';
 import { DpaModule } from 'src/engine/core-modules/dpa/dpa.module';
 import { EmailModule } from 'src/engine/core-modules/email/email.module';
@@ -174,6 +175,7 @@ import { FileApiModule } from './file/file-api.module';
     EventLogsViewerModule,
     PreInstalledAppsModule,
     AppBillingModule,
+    CrmAuditHealthModule,
   ],
   providers: [
     {

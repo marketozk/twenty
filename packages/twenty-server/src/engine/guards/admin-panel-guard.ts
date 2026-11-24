@@ -14,6 +14,7 @@ export class AdminPanelGuard implements CanActivate {
     const request = ctx.getContext().req;
 
     return (
+      Boolean(request?.user) &&
       !isImpersonating(request.impersonationContext) &&
       userIsFullAdmin(request.user)
     );

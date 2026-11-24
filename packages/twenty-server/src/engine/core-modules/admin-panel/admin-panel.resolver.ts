@@ -16,6 +16,13 @@ import { UpgradeStatusService } from 'src/engine/core-modules/upgrade/services/u
 
 import { AdminResolver } from 'src/engine/api/graphql/graphql-config/decorators/admin-resolver.decorator';
 import { AdminPanelHealthService } from 'src/engine/core-modules/admin-panel/admin-panel-health.service';
+import {
+  CrmAuditHealthDTO,
+  CrmAuditHealthInput,
+  CrmAuditHealthStatus,
+} from 'src/engine/core-modules/admin-panel/dtos/crm-audit-health.dto';
+import { CrmAuditAlertSinkService } from 'src/engine/core-modules/crm-audit/crm-audit-alert-sink.service';
+import { CrmAuditHealthService } from 'src/engine/core-modules/crm-audit/crm-audit-health';
 import { AdminPanelQueueService } from 'src/engine/core-modules/admin-panel/admin-panel-queue.service';
 import { AdminChatThreadMessagesDTO } from 'src/engine/core-modules/admin-panel/dtos/admin-chat-thread-messages.dto';
 import { AdminPanelRecentUserDTO } from 'src/engine/core-modules/admin-panel/dtos/admin-panel-recent-user.dto';
@@ -156,6 +163,8 @@ export class AdminPanelResolver {
     private readonly workspaceRepository: Repository<WorkspaceEntity>,
     @InjectMessageQueue(MessageQueue.cronQueue)
     private readonly cronQueueService: MessageQueueService,
+    private readonly crmAuditHealthService: CrmAuditHealthService,
+    private readonly crmAuditAlertSinkService: CrmAuditAlertSinkService,
   ) {}
 
   @UseGuards(AdminPanelOrImpersonateGuard)
@@ -339,6 +348,68 @@ export class AdminPanelResolver {
   @Query(() => SystemHealthDTO)
   async getSystemHealthStatus(): Promise<SystemHealthDTO> {
     return this.adminPanelHealthService.getSystemHealthStatus();
+  }
+
+  @UseGuards(
+    AuthPrincipalGuard({
+      userSession: {
+        standard: true,
+        impersonated: false,
+        playground: false,
+        workspaceAgnostic: false,
+      },
+      apiKey: false,
+      oauthClient: false,
+      application: false,
+    }),
+    AdminPanelGuard,
+  )
+  @Query(() => CrmAuditHealthDTO)
+  async crmAuditHealth(
+    @Args() input?: CrmAuditHealthInput,
+  ): Promise<CrmAuditHealthDTO> {
+    const health = await this.crmAuditHealthService.checkHealth({
+      bypassCache: input?.bypassCache ?? false,
+      ...(typeof input?.recentWindowMs === 'number'
+        ? { recentWindowMs: input.recentWindowMs }
+        : {}),
+    });
+
+    const status =
+      health.status === 'ok'
+        ? CrmAuditHealthStatus.OK
+        : health.status === 'degraded'
+          ? CrmAuditHealthStatus.DEGRADED
+          : CrmAuditHealthStatus.UNAVAILABLE;
+
+    const countsByCode = Object.entries(health.countsByCode)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([code, count]) => ({ code, count }));
+
+    return {
+      status,
+      databaseReachable: health.databaseReachable,
+      appendOnlyPrivilegesVerified: health.appendOnlyPrivilegesVerified,
+      checkedAt: health.checkedAt,
+      fromCache: health.fromCache,
+      totalUnavailableCount: health.totalUnavailableCount,
+      recentUnavailableCount: health.recentUnavailableCount,
+      hasRecentAuditLoss: health.hasRecentAuditLoss,
+      recentWindowMs: health.recentWindowMs,
+      lastFailureCode: health.lastFailureCode,
+      lastFailureAt: health.lastFailureAt,
+      countsByCode,
+      recentFailures: health.recentFailures.map((entry) => ({
+        code: entry.code,
+        occurredAt: entry.occurredAt,
+        workspaceId: entry.workspaceId ?? null,
+        operationId: entry.operationId ?? null,
+        attemptId: entry.attemptId ?? null,
+        resourceKind: entry.resourceKind ?? null,
+        action: entry.action ?? null,
+      })),
+      alertSink: this.crmAuditAlertSinkService.getStatus(),
+    };
   }
 
   @UseGuards(AdminPanelGuard)

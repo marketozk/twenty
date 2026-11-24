@@ -66,8 +66,11 @@ export type CrmAuditDatabaseHealthStatus = {
   readonly totalUnavailableCount: number;
   readonly recentUnavailableCount: number;
   readonly hasRecentAuditLoss: boolean;
+  readonly recentWindowMs: number;
   readonly lastFailureCode: CrmAuditUnavailableCode | null;
   readonly lastFailureAt: string | null;
+  readonly countsByCode: Readonly<Record<string, number>>;
+  readonly recentFailures: readonly CrmAuditUnavailableRecord[];
 };
 
 type DatabaseProbeResult = {
@@ -94,7 +97,14 @@ const countsByCode = new Map<CrmAuditUnavailableCode, number>();
 const recentFailures: CrmAuditUnavailableRecord[] = [];
 const alertSinks = new Set<CrmAuditAlertSink>();
 let probeCache = new WeakMap<DataSource, CachedDatabaseProbe>();
-let inFlightProbes = new WeakMap<DataSource, Promise<DatabaseProbeResult>>();
+let inFlightProbes = new WeakMap<
+  DataSource,
+  { startedSeq: number; promise: Promise<DatabaseProbeResult> }
+>();
+let inFlightBypassProbes = new WeakMap<
+  DataSource,
+  { startedSeq: number; promise: Promise<DatabaseProbeResult> }
+>();
 
 const sanitizeToken = (value?: string): string | undefined =>
   typeof value === 'string' && SAFE_TOKEN.test(value) ? value : undefined;
@@ -274,8 +284,11 @@ export const checkCrmAuditDatabaseHealth = async (
       totalUnavailableCount: snapshot.totalUnavailableCount,
       recentUnavailableCount: snapshot.recentUnavailableCount,
       hasRecentAuditLoss: snapshot.hasRecentAuditLoss,
+      recentWindowMs: snapshot.recentWindowMs,
       lastFailureCode: snapshot.lastFailureCode,
       lastFailureAt: snapshot.lastFailureAt,
+      countsByCode: snapshot.countsByCode,
+      recentFailures: snapshot.recentFailures,
     });
   }
 
@@ -287,41 +300,38 @@ export const checkCrmAuditDatabaseHealth = async (
     probe = cached;
     fromCache = true;
   } else {
-    let pending = options?.bypassCache
-      ? undefined
-      : inFlightProbes.get(dataSource);
+    const targetInFlightMap = options?.bypassCache
+      ? inFlightBypassProbes
+      : inFlightProbes;
+    let pending = targetInFlightMap.get(dataSource);
 
     if (!pending) {
       const startedSeq = ++nextProbeSeq;
-      const created = runDatabaseProbe(dataSource, explicitNowMs)
-        .then((result) => {
-          if (cacheTtlMs > 0) {
-            const currentCached = probeCache.get(dataSource);
-            if (!currentCached || startedSeq >= currentCached.startedSeq) {
-              const completedAtMs = explicitNowMs ?? Date.now();
-              probeCache.set(dataSource, {
-                ...result,
-                startedSeq,
-                expiresAtMs: completedAtMs + cacheTtlMs,
-              });
-            }
+      const created = runDatabaseProbe(dataSource, explicitNowMs).finally(
+        () => {
+          if (targetInFlightMap.get(dataSource)?.promise === created) {
+            targetInFlightMap.delete(dataSource);
           }
-          return result;
-        })
-        .finally(() => {
-          if (inFlightProbes.get(dataSource) === created) {
-            inFlightProbes.delete(dataSource);
-          }
-        });
+        },
+      );
 
-      pending = created;
-
-      if (!options?.bypassCache) {
-        inFlightProbes.set(dataSource, created);
-      }
+      pending = { startedSeq, promise: created };
+      targetInFlightMap.set(dataSource, pending);
     }
 
-    probe = await pending;
+    probe = await pending.promise;
+
+    if (cacheTtlMs > 0) {
+      const currentCached = probeCache.get(dataSource);
+      if (!currentCached || pending.startedSeq >= currentCached.startedSeq) {
+        const completedAtMs = explicitNowMs ?? Date.now();
+        probeCache.set(dataSource, {
+          ...probe,
+          startedSeq: pending.startedSeq,
+          expiresAtMs: completedAtMs + cacheTtlMs,
+        });
+      }
+    }
   }
 
   // Re-read current time after awaited DB probe so concurrent failures are not hidden.
@@ -345,8 +355,11 @@ export const checkCrmAuditDatabaseHealth = async (
     totalUnavailableCount: snapshot.totalUnavailableCount,
     recentUnavailableCount: snapshot.recentUnavailableCount,
     hasRecentAuditLoss: snapshot.hasRecentAuditLoss,
+    recentWindowMs: snapshot.recentWindowMs,
     lastFailureCode: snapshot.lastFailureCode,
     lastFailureAt: snapshot.lastFailureAt,
+    countsByCode: snapshot.countsByCode,
+    recentFailures: snapshot.recentFailures,
   });
 };
 
@@ -360,6 +373,7 @@ export const resetCrmAuditHealthStateForTesting = (): void => {
   alertSinks.clear();
   probeCache = new WeakMap<DataSource, CachedDatabaseProbe>();
   inFlightProbes = new WeakMap();
+  inFlightBypassProbes = new WeakMap();
 };
 
 @Injectable()

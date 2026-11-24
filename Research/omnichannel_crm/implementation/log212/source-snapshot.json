@@ -1,0 +1,49 @@
+{
+  "log": "LOG-212",
+  "date": "2026-11-25",
+  "verifiedFiles": 10,
+  "allSha256Matched": true,
+  "standCleanup": "STAND_CLEAN (pg-log212 removed, net-log212 removed, /opt/twenty-tests/twenty-rob764-log212 removed)",
+  "files": [
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-health.ts",
+      "sha256": "03ae35bd38ab3961565c2c8219fa66a1adc602bb518f056f04e7d5ed80b3f61c"
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-alert-sink.service.ts",
+      "sha256": "07a3bb24edf7a68315c0b7ef087d4343c0f95f21463c0a2686fc325f370a24a1"
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/crm-audit/crm-audit-health.module.ts",
+      "sha256": "f8a2345d5f90e116e12e77ac827291b8319bf9202566cd251ef57c183b9f4b0d"
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/admin-panel/dtos/crm-audit-health.dto.ts",
+      "sha256": "2e7a682671fd156a7f618bf5857b7d648e710051813c7e5bfc5f33fcb6feba28"
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/admin-panel/admin-panel.resolver.ts",
+      "sha256": "887898a5d21fbd3cff21956e98deeadae1ca12d93613f5c78837bf4f87b453b1"
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/admin-panel/admin-panel.module.ts",
+      "sha256": "c913f5370ca0133a1eb75fcfb9a895b7987af04a1fe9a7c8de71682c8b190575"
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/core-engine.module.ts",
+      "sha256": "02c54868070d21450bfd1e001fe3e0389b1e5695c4acb1eb19b135777b7cea9d"
+    },
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/twenty-config/config-variables.ts",
+      "sha256": "3c9fcdba88ae54df22294fdf187b9d276f338f468c7db497f0ea5b23437e3e31"
+    },
+    {
+      "path": "packages/twenty-server/src/engine/guards/admin-panel-guard.ts",
+      "sha256": "6882f733ea0409ad6b24871e0e799e7d55447981b8da733f7d8602e142e1e822"
+    },
+    {
+      "path": "packages/twenty-server/test/fork-migration/crm-audit-admin-health-and-alert-sink.postgres-spec.ts",
+      "sha256": "63386f8f3cde01d043155be19ea3f1f31ae497aeea14508a2f9fd9dcee270e17"
+    }
+  ]
+}

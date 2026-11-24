@@ -1,0 +1,62 @@
+{
+  "log": "LOG-212",
+  "date": "2026-11-25",
+  "issue": "ROB-765",
+  "scope": "Protected administrative CRM audit health GraphQL endpoint (AdminPanelResolver.crmAuditHealth with AuthPrincipalGuard + hardened AdminPanelGuard) and configurable external alert sink (CrmAuditAlertSinkService + CrmAuditHealthModule + 5 env-only CRM_AUDIT_ALERT_* config variables) with zero Enterprise violations and zero DB migrations",
+  "targetedPostgresTests": {
+    "status": "pass",
+    "suitesPassed": 2,
+    "suitesTotal": 2,
+    "testsPassed": 13,
+    "testsTotal": 13,
+    "durationSeconds": 180.342,
+    "suites": [
+      "test/fork-migration/crm-audit-post-rollback-and-health.postgres-spec.ts",
+      "test/fork-migration/crm-audit-admin-health-and-alert-sink.postgres-spec.ts"
+    ]
+  },
+  "guards": {
+    "enterpriseDependencies": {
+      "status": "pass",
+      "violations": 0,
+      "codeFiles": 34825,
+      "runtimeFiles": 21471,
+      "edges": 138107
+    },
+    "forkMigrationSources": {
+      "status": "pass",
+      "verifiedSources": 10
+    },
+    "pythonUnitTests": {
+      "status": "pass",
+      "passed": 26,
+      "skippedLinuxOnlyOnWindows": 7,
+      "total": 33
+    }
+  },
+  "differentialTypecheck": {
+    "status": "pass-zero-diagnostics",
+    "checkedFiles": 10,
+    "changedFileDiagnostics": 0
+  },
+  "reviews": {
+    "designReview": {
+      "blockersFound": 3,
+      "majorsFound": 4,
+      "minorsFound": 2,
+      "allResolved": true
+    },
+    "codeReview": {
+      "blockersFound": 0,
+      "majorsFound": 4,
+      "minorsFound": 3,
+      "allResolved": true,
+      "notes": "Major 3 (env-only OUTBOUND_HTTP_* SSRF lookup via ConfigService) is an intentional security & zero-Enterprise-edge invariant documented explicitly in config-variables.ts."
+    }
+  },
+  "sourceSnapshot": {
+    "verifiedFiles": 10,
+    "allSha256Matched": true,
+    "standCleanup": "STAND_CLEAN (pg-log212 removed, net-log212 removed, /opt/twenty-tests/twenty-rob764-log212 removed)"
+  }
+}

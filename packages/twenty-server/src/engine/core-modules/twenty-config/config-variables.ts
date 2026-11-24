@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 
-import { plainToClass } from 'class-transformer';
+import { plainToClass, Transform } from 'class-transformer';
 import {
   IsDateString,
   IsDefined,
@@ -1406,6 +1406,89 @@ export class ConfigVariables {
   })
   @IsOptional()
   EVENT_SINKS: string[] = ['clickhouse'];
+
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.LOGGING,
+    description:
+      'Forward CRM audit unavailability alerts to ExceptionHandlerService when EXCEPTION_HANDLER_DRIVER is SENTRY',
+    type: ConfigVariableType.BOOLEAN,
+    isEnvOnly: true,
+  })
+  @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim() === '' ? true : value,
+  )
+  CRM_AUDIT_ALERT_SENTRY_ENABLED = true;
+
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.LOGGING,
+    description:
+      'Optional HTTP/HTTPS webhook URL that receives CRM audit unavailability alerts (SSRF checks use env-only OUTBOUND_HTTP_ALLOWED_INTERNAL_HOSTS / OUTBOUND_HTTP_SAFE_MODE_ENABLED)',
+    type: ConfigVariableType.STRING,
+    isEnvOnly: true,
+    isSensitive: true,
+    isHiddenInAdminPanel: true,
+  })
+  @IsOptionalOrEmptyString()
+  @IsString()
+  CRM_AUDIT_ALERT_WEBHOOK_URL: string;
+
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.LOGGING,
+    description:
+      'Optional HMAC-SHA256 signing secret for CRM audit unavailability alert webhook payloads',
+    type: ConfigVariableType.STRING,
+    isEnvOnly: true,
+    isSensitive: true,
+    isHiddenInAdminPanel: true,
+  })
+  @IsOptionalOrEmptyString()
+  @IsString()
+  CRM_AUDIT_ALERT_WEBHOOK_SECRET: string;
+
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.LOGGING,
+    description:
+      'Timeout in milliseconds for CRM audit unavailability alert webhook requests (clamped to 500-15000 ms)',
+    type: ConfigVariableType.NUMBER,
+    isEnvOnly: true,
+  })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (
+      value === undefined ||
+      value === null ||
+      (typeof value === 'string' && value.trim() === '')
+    ) {
+      return 3000;
+    }
+    const parsed = Number(value);
+
+    return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : 3000;
+  })
+  CRM_AUDIT_ALERT_WEBHOOK_TIMEOUT_MS = 3000;
+
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.LOGGING,
+    description:
+      'Minimum per-code cooldown interval in milliseconds between CRM audit unavailability alert deliveries (clamped to 0-3600000 ms)',
+    type: ConfigVariableType.NUMBER,
+    isEnvOnly: true,
+  })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (
+      value === undefined ||
+      value === null ||
+      (typeof value === 'string' && value.trim() === '')
+    ) {
+      return 30_000;
+    }
+    const parsed = Number(value);
+
+    return Number.isFinite(parsed) && parsed >= 0 ? Math.trunc(parsed) : 30_000;
+  })
+  CRM_AUDIT_ALERT_WEBHOOK_MIN_INTERVAL_MS = 30_000;
 
   @ConfigVariablesMetadata({
     group: ConfigVariablesGroup.SUPPORT_CHAT_CONFIG,
