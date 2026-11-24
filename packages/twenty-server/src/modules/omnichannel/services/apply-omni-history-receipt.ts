@@ -500,10 +500,11 @@ const applyIncomingReceipt = async (
     if (defaultQueue.length === 0)
       throw createOmniHistoryMissingConfigurationError();
     requireOne(z.object({ id: uuid }), defaultQueue);
+    // Unqualified ON CONFLICT handles deterministic PK races alongside (workspaceId, bindingId, providerChatId) under READ COMMITTED.
     const inserted = await query(
       `INSERT INTO core."omniConversation" (id,"workspaceId","bindingId","providerChatId","messageThreadId","queueId",mode,status,"policyId","policyVersion")
        VALUES ($1,$2,$3,$4,$5,$6,'human','open',$7,0)
-       ON CONFLICT ("workspaceId","bindingId","providerChatId") DO NOTHING RETURNING id`,
+       ON CONFLICT DO NOTHING RETURNING id`,
       [
         creatorConversationId,
         workspaceId,

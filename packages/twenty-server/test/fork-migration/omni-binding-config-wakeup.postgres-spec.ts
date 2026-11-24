@@ -766,4 +766,68 @@ describe('durable binding configuration wakeup processing', () => {
       expect(await snapshot()).toEqual(before);
     },
   );
+
+  it('fences concurrent reconcile backfills of the same event without PK/unique conflict errors and fails closed on mismatched conflict', async () => {
+    const event = await produce();
+    await fixture.owner.query('DELETE FROM core."omniBindingConfigWakeup"');
+    await fixture.owner.query('DELETE FROM crm_audit."crmAuditEntry"');
+    let insertsReady = 0;
+    let releaseInserts: () => void = () => undefined;
+    const insertBarrier = new Promise<void>((resolve) => {
+      releaseInserts = resolve;
+    });
+    const runSyncedReconcile = () =>
+      run((scope) =>
+        reconcileOmniBindingConfigWakeups(
+          {
+            ...scope,
+            executeRawQuery: async (sql, parameters) => {
+              if (sql.includes('INSERT INTO core."omniBindingConfigWakeup"')) {
+                insertsReady += 1;
+                if (insertsReady === 2) releaseInserts();
+                await insertBarrier;
+              }
+              return scope.executeRawQuery(sql, parameters);
+            },
+          },
+          context.principal,
+          { limit: 10 },
+          authorize,
+        ),
+      );
+    const [first, second] = await Promise.all([
+      runSyncedReconcile(),
+      runSyncedReconcile(),
+    ]);
+    // Both transactions scanned the missing event and raced INSERT ... ON CONFLICT DO NOTHING.
+    expect(first.scannedCount).toBe(1);
+    expect(second.scannedCount).toBe(1);
+    const totalEnqueued = [...first.enqueuedIds, ...second.enqueuedIds];
+    expect(totalEnqueued).toHaveLength(1);
+    const wakeups = await core('omniBindingConfigWakeup');
+    expect(wakeups).toHaveLength(1);
+    expect(wakeups[0].eventId).toBe(event.eventId);
+    expect(await audit()).toHaveLength(1);
+
+    // Fail-closed postcondition when an unexpected conflicting row does not match (workspaceId, eventId, bindingId).
+    await fixture.owner.query('DELETE FROM core."omniBindingConfigWakeup"');
+    await fixture.owner.query(
+      `CREATE FUNCTION core.log213_skip_wakeup_insert() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NULL; END $$`,
+    );
+    await fixture.owner.query(
+      'CREATE TRIGGER log213_skip_wakeup_insert BEFORE INSERT ON core."omniBindingConfigWakeup" FOR EACH ROW EXECUTE FUNCTION core.log213_skip_wakeup_insert()',
+    );
+    try {
+      await expect(reconcile({ limit: 10 })).rejects.toThrow(
+        'OMNI_BINDING_CONFIG_WAKEUP_ENQUEUE_POSTCONDITION',
+      );
+    } finally {
+      await fixture.owner.query(
+        'DROP TRIGGER log213_skip_wakeup_insert ON core."omniBindingConfigWakeup"',
+      );
+      await fixture.owner.query(
+        'DROP FUNCTION core.log213_skip_wakeup_insert()',
+      );
+    }
+  });
 });

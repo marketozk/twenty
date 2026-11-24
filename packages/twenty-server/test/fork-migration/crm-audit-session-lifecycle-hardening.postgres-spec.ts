@@ -1254,4 +1254,297 @@ describe('LOG-207 Session lifecycle hardening', () => {
     });
     expect(await readAudits()).toHaveLength(1);
   });
+
+  it('revokes entire refresh token family on signOut({ refreshToken }), handles partial/legacy/corrupted/mismatched claims fail-closed, and survives audit failure via SAVEPOINT', async () => {
+    const { refreshService, renewService, sessionService } = makeServices();
+
+    // 1. Pre-rotation parent signOut revokes both parent and rotated active child in the same family, leaving unrelated family active.
+    const fam1Parent = await refreshService.generateRefreshToken({
+      userId: userAId,
+      workspaceId,
+      targetedTokenType: JwtTokenTypeEnum.ACCESS,
+    });
+    const fam1Child = (
+      await renewService.generateTokensFromRefreshToken(fam1Parent.token)
+    ).refreshToken;
+    const fam2Token = await refreshService.generateRefreshToken({
+      userId: userAId,
+      workspaceId,
+      targetedTokenType: JwtTokenTypeEnum.ACCESS,
+    });
+    const fam1ParentId = (decode(fam1Parent.token) as { jti: string }).jti;
+    const fam1ChildId = (decode(fam1Child.token) as { jti: string }).jti;
+    const fam2Id = (decode(fam2Token.token) as { jti: string }).jti;
+
+    await owner.query('DELETE FROM crm_audit."crmAuditEntry"');
+    await sessionService.signOut({ refreshToken: fam1Parent.token });
+
+    const rowsAfterSignOut = await readTokens();
+    const pRow = rowsAfterSignOut.find((r) => r.id === fam1ParentId)!;
+    const cRow = rowsAfterSignOut.find((r) => r.id === fam1ChildId)!;
+    const otherRow = rowsAfterSignOut.find((r) => r.id === fam2Id)!;
+    expect(pRow.revokedAt).toBeInstanceOf(Date);
+    expect(pRow.context?.revokedReason).toBe(
+      UserSessionRevokedReason.UserSignOut,
+    );
+    expect(cRow.revokedAt).toBeInstanceOf(Date);
+    expect(cRow.context?.revokedReason).toBe(
+      UserSessionRevokedReason.UserSignOut,
+    );
+    expect(otherRow.revokedAt).toBeNull();
+
+    const famAudits = await readAudits();
+    expect(famAudits).toHaveLength(2);
+    expect(famAudits[0].correlationId).toBeDefined();
+    expect(new Set(famAudits.map((a) => a.operationId)).size).toBe(1);
+    expect(new Set(famAudits.map((a) => a.correlationId)).size).toBe(1);
+    expect(famAudits.map((a) => a.resourceId).sort()).toEqual(
+      [fam1ParentId, fam1ChildId].sort(),
+    );
+    for (const entry of famAudits) {
+      expect(entry.actor).toEqual({ kind: 'coreUser', id: userAId });
+      expect(entry.redactedDiff.values.revokedReason).toEqual({
+        before: null,
+        after: UserSessionRevokedReason.UserSignOut,
+      });
+    }
+    expect(JSON.stringify(famAudits)).not.toContain(fam1Parent.token);
+    expect(JSON.stringify(famAudits)).not.toContain(fam1Child.token);
+
+    // Repeated signOut is idempotent (0 extra audits).
+    await sessionService.signOut({ refreshToken: fam1Parent.token });
+    expect(await readAudits()).toHaveLength(2);
+
+    // 2. If presented token already has revokedReason (e.g. PasswordChanged) but a sibling in the same family is still active,
+    // signOut still revokes the sibling while preserving presented token's existing revokedReason.
+    const partialParent = await refreshService.generateRefreshToken({
+      userId: userAId,
+      workspaceId,
+      targetedTokenType: JwtTokenTypeEnum.ACCESS,
+    });
+    const partialChild = (
+      await renewService.generateTokensFromRefreshToken(partialParent.token)
+    ).refreshToken;
+    const partialParentId = (decode(partialParent.token) as { jti: string }).jti;
+    const partialChildId = (decode(partialChild.token) as { jti: string }).jti;
+    await owner.query(
+      `UPDATE core."appToken" SET context = context || jsonb_build_object('revokedReason', $2::text) WHERE id = $1`,
+      [partialParentId, UserSessionRevokedReason.PasswordChanged],
+    );
+    await owner.query('DELETE FROM crm_audit."crmAuditEntry"');
+
+    await sessionService.signOut({ refreshToken: partialParent.token });
+    const rowsAfterPartial = await readTokens();
+    const partialParentAfter = rowsAfterPartial.find(
+      (r) => r.id === partialParentId,
+    )!;
+    const partialChildAfter = rowsAfterPartial.find(
+      (r) => r.id === partialChildId,
+    )!;
+    expect(partialParentAfter.context?.revokedReason).toBe(
+      UserSessionRevokedReason.PasswordChanged,
+    );
+    expect(partialChildAfter.revokedAt).toBeInstanceOf(Date);
+    expect(partialChildAfter.context?.revokedReason).toBe(
+      UserSessionRevokedReason.UserSignOut,
+    );
+    expect(await readAudits()).toHaveLength(1);
+
+    // 2b. Server-level impersonation signOut (impersonator membership in otherWorkspaceId, target in workspaceId)
+    // revokes the entire family and records actor=userAId, initiator=impersonatorUserId without dropping audit.
+    const impParent = await refreshService.generateRefreshToken(
+      {
+        userId: userAId,
+        workspaceId,
+        targetedTokenType: JwtTokenTypeEnum.ACCESS,
+        isImpersonating: true,
+        impersonatorUserWorkspaceId: impersonatorWorkspaceId,
+        impersonatedUserWorkspaceId: userAWorkspaceId,
+      },
+      true,
+    );
+    const impChild = (
+      await renewService.generateTokensFromRefreshToken(impParent.token)
+    ).refreshToken;
+    const impParentId = (decode(impParent.token) as { jti: string }).jti;
+    const impChildId = (decode(impChild.token) as { jti: string }).jti;
+    await owner.query('DELETE FROM crm_audit."crmAuditEntry"');
+
+    await sessionService.signOut({ refreshToken: impParent.token });
+    const impSignOutAudits = await readAudits();
+    expect(impSignOutAudits).toHaveLength(2);
+    expect(impSignOutAudits.map((a) => a.resourceId).sort()).toEqual(
+      [impParentId, impChildId].sort(),
+    );
+    for (const entry of impSignOutAudits) {
+      expect(entry.actor).toEqual({ kind: 'coreUser', id: userAId });
+      expect(entry.initiator).toEqual({
+        kind: 'coreUser',
+        id: impersonatorUserId,
+      });
+    }
+
+    // 2c. Workspace-agnostic refresh family revokes all family rows with 0 workspace audits and no spurious error.
+    const agnosticParent = await refreshService.generateRefreshToken({
+      userId: userAId,
+      targetedTokenType: JwtTokenTypeEnum.WORKSPACE_AGNOSTIC,
+    });
+    const agnosticChild = (
+      await renewService.generateTokensFromRefreshToken(agnosticParent.token)
+    ).refreshToken;
+    const agnosticChildId = (decode(agnosticChild.token) as { jti: string }).jti;
+    await owner.query('DELETE FROM crm_audit."crmAuditEntry"');
+    const agnosticErrorSpy = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    await sessionService.signOut({ refreshToken: agnosticParent.token });
+    expect(
+      (await readTokens()).find((r) => r.id === agnosticChildId)!.context
+        ?.revokedReason,
+    ).toBe(UserSessionRevokedReason.UserSignOut);
+    expect(await readAudits()).toEqual([]);
+    expect(agnosticErrorSpy).not.toHaveBeenCalled();
+    agnosticErrorSpy.mockRestore();
+
+    // 3. Corrupted non-UUID familyId fails closed; legacy token without familyId revokes only itself.
+    const corruptRow = await owner.getRepository(AppTokenEntity).save({
+      userId: userAId,
+      workspaceId,
+      type: AppTokenType.RefreshToken,
+      expiresAt: new Date(Date.now() + 3600_000),
+      context: { familyId: 'not-a-uuid' } as never,
+    });
+    const corruptJwt = sign(
+      {
+        sub: userAId,
+        userId: userAId,
+        workspaceId,
+        type: JwtTokenTypeEnum.REFRESH,
+        targetedTokenType: JwtTokenTypeEnum.ACCESS,
+      },
+      jwtSecret,
+      { jwtid: corruptRow.id, expiresIn: '1h' },
+    );
+    await expect(
+      sessionService.signOut({ refreshToken: corruptJwt }),
+    ).rejects.toThrow('Refresh revocation family is invalid');
+
+    const legacyRow = await owner.getRepository(AppTokenEntity).save({
+      userId: userAId,
+      workspaceId,
+      type: AppTokenType.RefreshToken,
+      expiresAt: new Date(Date.now() + 3600_000),
+      context: { email: 'legacy-signout@example.test' },
+    });
+    const legacyJwt = sign(
+      {
+        sub: userAId,
+        userId: userAId,
+        workspaceId,
+        type: JwtTokenTypeEnum.REFRESH,
+        targetedTokenType: JwtTokenTypeEnum.ACCESS,
+      },
+      jwtSecret,
+      { jwtid: legacyRow.id.toUpperCase(), expiresIn: '1h' },
+    );
+    await sessionService.signOut({ refreshToken: legacyJwt });
+    const rowsAfterLegacy = await readTokens();
+    expect(
+      rowsAfterLegacy.find((r) => r.id === legacyRow.id)!.revokedAt,
+    ).toBeInstanceOf(Date);
+    expect(rowsAfterLegacy.find((r) => r.id === fam2Id)!.revokedAt).toBeNull();
+
+    // 4. Mismatched workspaceId, explicit null workspaceId against workspace row, or malformed impersonation claims -> no-op.
+    const badNullWsJwt = sign(
+      {
+        sub: userAId,
+        userId: userAId,
+        workspaceId: null,
+        type: JwtTokenTypeEnum.REFRESH,
+        targetedTokenType: JwtTokenTypeEnum.ACCESS,
+      },
+      jwtSecret,
+      { jwtid: fam2Id, expiresIn: '1h' },
+    );
+    const badWrongWsJwt = sign(
+      {
+        sub: userAId,
+        userId: userAId,
+        workspaceId: otherWorkspaceId,
+        type: JwtTokenTypeEnum.REFRESH,
+        targetedTokenType: JwtTokenTypeEnum.ACCESS,
+      },
+      jwtSecret,
+      { jwtid: fam2Id, expiresIn: '1h' },
+    );
+    const badImpClaimJwt = sign(
+      {
+        sub: userAId,
+        userId: userAId,
+        workspaceId,
+        impersonatorUserWorkspaceId: impersonatorWorkspaceId,
+        type: JwtTokenTypeEnum.REFRESH,
+        targetedTokenType: JwtTokenTypeEnum.ACCESS,
+      },
+      jwtSecret,
+      { jwtid: fam2Id, expiresIn: '1h' },
+    );
+    const badMissingImpIdJwt = sign(
+      {
+        sub: userAId,
+        userId: userAId,
+        workspaceId,
+        isImpersonating: true,
+        type: JwtTokenTypeEnum.REFRESH,
+        targetedTokenType: JwtTokenTypeEnum.ACCESS,
+      },
+      jwtSecret,
+      { jwtid: fam2Id, expiresIn: '1h' },
+    );
+    await sessionService.signOut({ refreshToken: badNullWsJwt });
+    await sessionService.signOut({ refreshToken: badWrongWsJwt });
+    await sessionService.signOut({ refreshToken: badImpClaimJwt });
+    await sessionService.signOut({ refreshToken: badMissingImpIdJwt });
+    expect((await readTokens()).find((r) => r.id === fam2Id)!.revokedAt).toBeNull();
+
+    // 5. Audit failure during family signOut survives via SAVEPOINT, revokes both parent and child, rolls back audit, and logs REFRESH_REVOCATION_AUDIT_UNAVAILABLE.
+    const spParent = await refreshService.generateRefreshToken({
+      userId: userAId,
+      workspaceId,
+      targetedTokenType: JwtTokenTypeEnum.ACCESS,
+    });
+    const spChild = (
+      await renewService.generateTokensFromRefreshToken(spParent.token)
+    ).refreshToken;
+    const spParentId = (decode(spParent.token) as { jti: string }).jti;
+    const spChildId = (decode(spChild.token) as { jti: string }).jti;
+    await owner.query('DELETE FROM crm_audit."crmAuditEntry"');
+    await owner.query(
+      `REVOKE INSERT ON crm_audit."crmAuditEntry" FROM "${role}"`,
+    );
+    const errorLogSpy = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    try {
+      await sessionService.signOut({ refreshToken: spParent.token });
+    } finally {
+      await owner.query(
+        `GRANT INSERT ON crm_audit."crmAuditEntry" TO "${role}"`,
+      );
+    }
+    const rowsAfterSp = await readTokens();
+    const spParentAfter = rowsAfterSp.find((r) => r.id === spParentId)!;
+    const spChildAfter = rowsAfterSp.find((r) => r.id === spChildId)!;
+    expect(spParentAfter.context?.revokedReason).toBe(
+      UserSessionRevokedReason.UserSignOut,
+    );
+    expect(spChildAfter.revokedAt).toBeInstanceOf(Date);
+    expect(spChildAfter.context?.revokedReason).toBe(
+      UserSessionRevokedReason.UserSignOut,
+    );
+    expect(await readAudits()).toEqual([]);
+    expect(errorLogSpy).toHaveBeenCalledWith(
+      expect.stringContaining('REFRESH_REVOCATION_AUDIT_UNAVAILABLE'),
+    );
+  });
 });

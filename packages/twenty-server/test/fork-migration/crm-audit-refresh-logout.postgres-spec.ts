@@ -924,7 +924,7 @@ it('blocks a renewal that read the token before logout acquired the authenticati
   expect(await audits()).toHaveLength(1);
 });
 
-it('serializes logout after an earlier renewal without claiming to revoke successor tokens', async () => {
+it('serializes logout after an earlier renewal and revokes the rotated successor in the same family', async () => {
   const { row, token } = await createToken(),
     { service, refresh, renew } = services();
   let ready!: () => void, release!: () => void;
@@ -952,11 +952,14 @@ it('serializes logout after an earlier renewal without claiming to revoke succes
   expect(rows.find((item) => item.id === row.id)?.context?.revokedReason).toBe(
     UserSessionRevokedReason.UserSignOut,
   );
+  expect(rows.find((item) => item.id !== row.id)?.context?.revokedReason).toBe(
+    UserSessionRevokedReason.UserSignOut,
+  );
   await expect(refresh.verifyRefreshToken(token)).rejects.toThrow('revoked');
   await expect(
     refresh.verifyRefreshToken(successor.refreshToken.token),
-  ).resolves.toBeDefined();
-  expect(await audits()).toHaveLength(3);
+  ).rejects.toThrow('revoked');
+  expect(await audits()).toHaveLength(4);
 });
 
 it('does not report success if audit savepoint recovery fails', async () => {

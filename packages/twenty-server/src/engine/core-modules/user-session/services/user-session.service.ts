@@ -930,7 +930,19 @@ export class UserSessionService {
       !isUUID(payload.sub) ||
       (isDefined(payload.userId) &&
         (!isNonEmptyString(payload.userId) ||
-          payload.userId.toLowerCase() !== payload.sub.toLowerCase()))
+          payload.userId.toLowerCase() !== payload.sub.toLowerCase())) ||
+      (payload.workspaceId !== undefined &&
+        payload.workspaceId !== null &&
+        (!isNonEmptyString(payload.workspaceId) ||
+          !isUUID(payload.workspaceId))) ||
+      (payload.isImpersonating === true &&
+        (!isNonEmptyString(payload.impersonatorUserWorkspaceId) ||
+          !isUUID(payload.impersonatorUserWorkspaceId))) ||
+      (payload.impersonatorUserWorkspaceId !== undefined &&
+        payload.impersonatorUserWorkspaceId !== null &&
+        (!isNonEmptyString(payload.impersonatorUserWorkspaceId) ||
+          !isUUID(payload.impersonatorUserWorkspaceId) ||
+          payload.isImpersonating !== true))
     ) {
       return;
     }
@@ -939,9 +951,16 @@ export class UserSessionService {
       throw new Error(
         'Refresh revocation requires ownership of the core transaction',
       );
-    const userId = payload.sub.toLowerCase(),
-      tokenId = payload.jti;
-    const initiatorMembershipId = payload.impersonatorUserWorkspaceId;
+    const userId = payload.sub.toLowerCase();
+    const tokenId = payload.jti.toLowerCase();
+    const expectedWorkspaceId =
+      typeof payload.workspaceId === 'string'
+        ? payload.workspaceId.toLowerCase()
+        : payload.workspaceId;
+    const initiatorMembershipId =
+      typeof payload.impersonatorUserWorkspaceId === 'string'
+        ? payload.impersonatorUserWorkspaceId.toLowerCase()
+        : undefined;
     const operationId = randomUUID();
     let auditLost = false;
     let committed = false;
@@ -957,104 +976,221 @@ export class UserSessionService {
             mode: 'exclusive',
           });
           const repository = runner.manager.getRepository(AppTokenEntity);
-          const before = await repository.findOne({
-            where: { id: tokenId, userId, type: AppTokenType.RefreshToken },
-            lock: { mode: 'pessimistic_write' },
+          // Read presented token before row locking so all appToken locks are acquired in ascending id order.
+          const initialPresented = await repository.findOneBy({
+            id: tokenId,
+            userId,
+            type: AppTokenType.RefreshToken,
           });
+          if (!initialPresented) return;
           if (
-            !before ||
-            (before.revokedAt && isDefined(before.context?.revokedReason))
+            expectedWorkspaceId === null &&
+            initialPresented.workspaceId !== null
           )
             return;
           if (
-            before.context !== null &&
-            (typeof before.context !== 'object' ||
-              Array.isArray(before.context))
+            typeof expectedWorkspaceId === 'string' &&
+            initialPresented.workspaceId?.toLowerCase() !== expectedWorkspaceId
+          )
+            return;
+          if (
+            initialPresented.context !== null &&
+            (typeof initialPresented.context !== 'object' ||
+              Array.isArray(initialPresented.context))
           )
             throw new Error('Refresh revocation context is invalid');
-          const revokedAt = before.revokedAt ?? new Date();
-          const revokedReason =
-            before.context?.revokedReason ??
-            UserSessionRevokedReason.UserSignOut;
-          const context = { ...before.context, revokedReason };
-          const result = await repository
-            .createQueryBuilder()
-            .update(AppTokenEntity)
-            .set({ revokedAt, context })
-            .where('id = :id', { id: before.id })
-            .returning(['id'])
-            .execute();
-          if (result.raw.length !== 1 || result.raw[0].id !== before.id)
-            throw new Error('Refresh revocation affected unexpected rows');
-          const validate = async () => {
-            const after = await repository.findOneBy({ id: before.id });
-            if (!after) throw new Error('Refresh revocation lost its target');
-            for (const [field, previous] of Object.entries(before)) {
-              if (field === 'updatedAt') continue;
-              const expected =
-                field === 'revokedAt'
-                  ? revokedAt
-                  : field === 'context'
-                    ? context
-                    : previous;
-              const actual = (after as unknown as Record<string, unknown>)[
-                field
-              ];
-              if (actual === undefined && expected === undefined) continue;
-              const normalize = (value: unknown) =>
-                value instanceof Date ? value.toISOString() : value;
-              if (
-                canonicalAuditJson(normalize(actual)) !==
-                canonicalAuditJson(normalize(expected))
+
+          const initialFamilyId = initialPresented.context?.familyId;
+          if (
+            initialFamilyId !== undefined &&
+            (typeof initialFamilyId !== 'string' || !isUUID(initialFamilyId))
+          )
+            throw new Error('Refresh revocation family is invalid');
+
+          const now = new Date();
+          let lockedRows: AppTokenEntity[];
+          if (typeof initialFamilyId === 'string') {
+            const familyId = initialFamilyId.toLowerCase();
+            // Matches RefreshTokenService.revokeRefreshTokenFamilyOnReuse scope (userId + familyId);
+            // always lock tokenId alongside revocable siblings in ascending id order to prevent TOCTOU.
+            lockedRows = await repository
+              .createQueryBuilder('token')
+              .where('token."userId" = :userId', { userId })
+              .andWhere('token.type = :type', {
+                type: AppTokenType.RefreshToken,
+              })
+              .andWhere(
+                `(
+                  token.id = :tokenId
+                  OR (
+                    LOWER(token.context->>'familyId') = :familyId
+                    AND (token."revokedAt" IS NULL OR token."expiresAt" > :now)
+                    AND (token."revokedAt" IS NULL OR (token.context->>'revokedReason') IS NULL)
+                  )
+                )`,
+                { tokenId, familyId, now },
               )
-                throw new Error(
-                  'Refresh revocation persisted state does not match',
-                );
+              .orderBy('token.id', 'ASC')
+              .setLock('pessimistic_write')
+              .getMany();
+          } else {
+            const lockedSingle = await repository.findOne({
+              where: { id: tokenId, userId, type: AppTokenType.RefreshToken },
+              lock: { mode: 'pessimistic_write' },
+            });
+            lockedRows = lockedSingle ? [lockedSingle] : [];
+          }
+
+          const lockedPresented = lockedRows.find(
+            (row) => row.id.toLowerCase() === tokenId,
+          );
+          if (!lockedPresented) return;
+          if (
+            expectedWorkspaceId === null &&
+            lockedPresented.workspaceId !== null
+          )
+            return;
+          if (
+            typeof expectedWorkspaceId === 'string' &&
+            lockedPresented.workspaceId?.toLowerCase() !== expectedWorkspaceId
+          )
+            return;
+          if (
+            lockedPresented.context !== null &&
+            (typeof lockedPresented.context !== 'object' ||
+              Array.isArray(lockedPresented.context))
+          )
+            throw new Error('Refresh revocation context is invalid');
+          const lockedFamilyId = lockedPresented.context?.familyId;
+          if (
+            lockedFamilyId !== undefined &&
+            (typeof lockedFamilyId !== 'string' || !isUUID(lockedFamilyId))
+          )
+            throw new Error('Refresh revocation family is invalid');
+          if (
+            (typeof initialFamilyId === 'string'
+              ? initialFamilyId.toLowerCase()
+              : undefined) !==
+            (typeof lockedFamilyId === 'string'
+              ? lockedFamilyId.toLowerCase()
+              : undefined)
+          )
+            throw new Error('Refresh revocation family is invalid');
+
+          const beforeRows = lockedRows.filter(
+            (row) =>
+              !row.revokedAt || !isDefined(row.context?.revokedReason),
+          );
+          if (beforeRows.length === 0) return;
+
+          const expectedById = new Map<string, AppTokenEntity>();
+          for (const row of beforeRows) {
+            if (
+              row.context !== null &&
+              (typeof row.context !== 'object' || Array.isArray(row.context))
+            )
+              throw new Error('Refresh revocation context is invalid');
+            const revokedAt = row.revokedAt ?? now;
+            const revokedReason =
+              row.context?.revokedReason ??
+              UserSessionRevokedReason.UserSignOut;
+            const context = { ...row.context, revokedReason };
+            const result = await repository
+              .createQueryBuilder()
+              .update(AppTokenEntity)
+              .set({ revokedAt, context })
+              .where('id = :id', { id: row.id })
+              .returning(['id'])
+              .execute();
+            if (result.raw.length !== 1 || result.raw[0].id !== row.id)
+              throw new Error('Refresh revocation affected unexpected rows');
+            expectedById.set(row.id, { ...row, revokedAt, context });
+          }
+
+          const snapshotsToValidate: AppTokenEntity[] = [
+            ...expectedById.values(),
+            ...(expectedById.has(lockedPresented.id) ? [] : [lockedPresented]),
+          ];
+          const validateAll = async () => {
+            for (const expected of snapshotsToValidate) {
+              const after = await repository.findOneBy({ id: expected.id });
+              if (!after) throw new Error('Refresh revocation lost its target');
+              for (const [field, expectedValue] of Object.entries(expected)) {
+                if (field === 'updatedAt') continue;
+                const actual = (after as unknown as Record<string, unknown>)[
+                  field
+                ];
+                if (actual === undefined && expectedValue === undefined)
+                  continue;
+                const normalize = (value: unknown) =>
+                  value instanceof Date ? value.toISOString() : value;
+                if (
+                  canonicalAuditJson(normalize(actual)) !==
+                  canonicalAuditJson(normalize(expectedValue))
+                )
+                  throw new Error(
+                    'Refresh revocation persisted state does not match',
+                  );
+              }
             }
           };
-          await validate();
+          await validateAll();
           // Credential revocation survives an unavailable audit, just like session logout.
           await runner.query('SAVEPOINT refresh_revocation_audit');
           try {
-            if (before.workspaceId) {
-              let initiator: { kind: 'coreUser'; id: string } | undefined;
-              if (initiatorMembershipId) {
-                const memberships: { userId: string }[] = await runner.query(
-                  'SELECT "userId" FROM core."userWorkspace" WHERE id=$1 AND "deletedAt" IS NULL',
-                  [initiatorMembershipId],
-                );
-                if (memberships.length !== 1)
-                  throw new Error('Refresh revocation initiator unavailable');
-                initiator = { kind: 'coreUser', id: memberships[0].userId };
-              }
+            const rowsByWorkspace = new Map<string, AppTokenEntity[]>();
+            for (const row of beforeRows) {
+              if (!row.workspaceId) continue;
+              const list = rowsByWorkspace.get(row.workspaceId) ?? [];
+              list.push(row);
+              rowsByWorkspace.set(row.workspaceId, list);
+            }
+            let initiator: { kind: 'coreUser'; id: string } | undefined;
+            if (rowsByWorkspace.size > 0 && initiatorMembershipId) {
+              const memberships: { userId: string }[] = await runner.query(
+                'SELECT "userId" FROM core."userWorkspace" WHERE id=$1 AND "deletedAt" IS NULL',
+                [initiatorMembershipId],
+              );
+              if (memberships.length !== 1)
+                throw new Error('Refresh revocation initiator unavailable');
+              initiator = { kind: 'coreUser', id: memberships[0].userId };
+            }
+            const workspaceIds = [...rowsByWorkspace.keys()].sort();
+            for (const wsId of workspaceIds) {
               const audit = new CrmAuditTransactionContext(runner, {
-                workspaceId: before.workspaceId,
+                workspaceId: wsId,
                 operationId,
                 ...(correlationId ? { correlationId } : {}),
                 actor: { kind: 'coreUser', id: userId },
                 ...(initiator ? { initiator } : {}),
               });
-              audit.record({
-                resourceKind: 'refreshToken',
-                resourceId: before.id,
-                action: 'update',
-                before: {
-                  revokedAt: before.revokedAt?.toISOString() ?? null,
-                  revokedReason: before.context?.revokedReason ?? null,
-                },
-                after: { revokedAt: revokedAt.toISOString(), revokedReason },
-                securityDescriptor: {
+              for (const row of rowsByWorkspace.get(wsId)!) {
+                const expected = expectedById.get(row.id)!;
+                audit.record({
                   resourceKind: 'refreshToken',
-                  resourceId: before.id,
-                  tokenOwner: {
-                    userId,
-                    access: 'currentWorkspaceAdministration',
+                  resourceId: row.id,
+                  action: 'update',
+                  before: {
+                    revokedAt: row.revokedAt?.toISOString() ?? null,
+                    revokedReason: row.context?.revokedReason ?? null,
                   },
-                },
-              });
+                  after: {
+                    revokedAt: expected.revokedAt!.toISOString(),
+                    revokedReason: expected.context!.revokedReason,
+                  },
+                  securityDescriptor: {
+                    resourceKind: 'refreshToken',
+                    resourceId: row.id,
+                    tokenOwner: {
+                      userId,
+                      access: 'currentWorkspaceAdministration',
+                    },
+                  },
+                });
+              }
               await audit.flush();
             }
-            await validate();
+            await validateAll();
           } catch {
             auditLost = true;
             await runner.query(
@@ -1062,7 +1198,7 @@ export class UserSessionService {
             );
           }
           await runner.query('RELEASE SAVEPOINT refresh_revocation_audit');
-          await validate();
+          await validateAll();
         },
       );
       committed = true;

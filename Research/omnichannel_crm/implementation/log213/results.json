@@ -1,0 +1,65 @@
+{
+  "log": "LOG-213",
+  "date": "2026-11-25",
+  "issue": "ROB-765",
+  "scope": "Upgrade UserSessionService.signOut({ refreshToken }) to revoke the entire refresh token family (without DB migrations) and fix deterministic-PK vs ON CONFLICT PG 17 races in admit-omni-human-text-command, omni-binding-config-wakeup, and apply-omni-history-receipt",
+  "targetedPostgresTests": {
+    "status": "pass",
+    "suitesPassed": 5,
+    "suitesTotal": 5,
+    "testsPassed": 166,
+    "testsTotal": 166,
+    "durationSeconds": 367.727,
+    "suites": [
+      "test/fork-migration/crm-audit-session-lifecycle-hardening.postgres-spec.ts",
+      "test/fork-migration/crm-audit-refresh-logout.postgres-spec.ts",
+      "test/fork-migration/omni-binding-config-wakeup.postgres-spec.ts",
+      "test/fork-migration/omni-human-text-command.postgres-spec.ts",
+      "test/fork-migration/omni-history-apply.postgres-spec.ts"
+    ]
+  },
+  "guards": {
+    "enterpriseDependencies": {
+      "status": "pass",
+      "violations": 0,
+      "codeFiles": 34825,
+      "runtimeFiles": 21471,
+      "edges": 138107
+    },
+    "forkMigrationSources": {
+      "status": "pass",
+      "verifiedSources": 10
+    },
+    "pythonUnitTests": {
+      "status": "pass",
+      "passed": 26,
+      "skippedLinuxOnlyOnWindows": 7,
+      "total": 33
+    }
+  },
+  "differentialTypecheck": {
+    "status": "pass-zero-new-diagnostics",
+    "checkedFiles": 7,
+    "newOrChangedLineDiagnostics": 0,
+    "notes": "user-session.service.ts has 0 diagnostics; remaining 18/1 diagnostics in untouched lines of older omni/spec files are pre-existing es2017 target lib notices (replaceAll/BigInt/Array.at/Error.cause)."
+  },
+  "reviews": {
+    "designReview": {
+      "blockersFound": 3,
+      "majorsFound": 5,
+      "minorsFound": 2,
+      "allResolved": true
+    },
+    "codeReview": {
+      "blockersFound": 1,
+      "majorsFound": 3,
+      "minorsFound": 3,
+      "allResolved": true
+    }
+  },
+  "sourceSnapshot": {
+    "verifiedFiles": 7,
+    "allSha256Matched": true,
+    "standCleanup": "STAND_CLEAN (pg-log213 removed, net-log213 removed, /opt/twenty-tests/twenty-rob764-log213 removed)"
+  }
+}

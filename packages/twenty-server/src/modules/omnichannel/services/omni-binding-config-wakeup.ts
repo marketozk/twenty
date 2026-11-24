@@ -372,10 +372,11 @@ export const reconcileOmniBindingConfigWakeups = async (
       invalidEventIds.push(eventId);
       continue;
     }
+    // Unqualified ON CONFLICT handles both deterministic PK(id) and (workspaceId, eventId) races under READ COMMITTED.
     const inserted = z.array(rowSchema).parse(
       await transaction.query(
         `INSERT INTO core."omniBindingConfigWakeup" (id,"workspaceId","eventId","bindingId") VALUES ($1,$2,$3,$4)
-       ON CONFLICT ("workspaceId","eventId") DO NOTHING RETURNING ${rowColumns}`,
+       ON CONFLICT DO NOTHING RETURNING ${rowColumns}`,
         [
           omniBindingConfigWakeupId(eventId),
           principal.workspaceId,
@@ -396,6 +397,30 @@ export const reconcileOmniBindingConfigWakeups = async (
         return fail('ENQUEUE_POSTCONDITION');
       recordChange(transaction, null, row);
       enqueuedIds.push(row.id);
+    } else {
+      const existingWakeups = z
+        .array(
+          z.object({
+            id: uuid,
+            workspaceId: uuid,
+            eventId: uuid,
+            bindingId: uuid,
+          }),
+        )
+        .parse(
+          await transaction.query(
+            'SELECT id,"workspaceId","eventId","bindingId" FROM core."omniBindingConfigWakeup" WHERE "workspaceId"=$1 AND "eventId"=$2',
+            [principal.workspaceId, eventId],
+          ),
+        );
+      if (
+        existingWakeups.length !== 1 ||
+        existingWakeups[0].id !== omniBindingConfigWakeupId(eventId) ||
+        existingWakeups[0].workspaceId !== principal.workspaceId ||
+        existingWakeups[0].eventId !== eventId ||
+        existingWakeups[0].bindingId !== principal.bindingId
+      )
+        return fail('ENQUEUE_POSTCONDITION');
     }
   }
   await transaction.audit.flush();

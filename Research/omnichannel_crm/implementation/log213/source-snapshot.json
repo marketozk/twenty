@@ -1,0 +1,37 @@
+{
+  "log": "LOG-213",
+  "date": "2026-11-25",
+  "verifiedFiles": 7,
+  "allSha256Matched": true,
+  "standCleanup": "STAND_CLEAN (pg-log213 removed, net-log213 removed, /opt/twenty-tests/twenty-rob764-log213 removed)",
+  "files": [
+    {
+      "path": "packages/twenty-server/src/engine/core-modules/user-session/services/user-session.service.ts",
+      "sha256": "5da7c32a33c9180f6c60fc465e84a4565e1844ee0ab493c941ce17511880eb26"
+    },
+    {
+      "path": "packages/twenty-server/src/modules/omnichannel/services/admit-omni-human-text-command.ts",
+      "sha256": "5d5eb80a5e34caf57e009f12a22dd624d309cf4eb260450ee910f04d8dacd079"
+    },
+    {
+      "path": "packages/twenty-server/src/modules/omnichannel/services/omni-binding-config-wakeup.ts",
+      "sha256": "7b7d53567dc515df069cc953647c5d2288aca29148054ebfdf1fd48a816f7acc"
+    },
+    {
+      "path": "packages/twenty-server/src/modules/omnichannel/services/apply-omni-history-receipt.ts",
+      "sha256": "7683077873ddb6c370d2792b35ec35ad4bea9af7c1e50a07ded2e11e3e0b0d93"
+    },
+    {
+      "path": "packages/twenty-server/test/fork-migration/crm-audit-session-lifecycle-hardening.postgres-spec.ts",
+      "sha256": "cc01f5232ca0e6cc96d3157af06993bd81002c1f0bf3bf464301c6a5fc4d3e77"
+    },
+    {
+      "path": "packages/twenty-server/test/fork-migration/crm-audit-refresh-logout.postgres-spec.ts",
+      "sha256": "4c59e71f36f06dc62db48afd21f80783d9194bd01ca0ee80773ad2bce87411c6"
+    },
+    {
+      "path": "packages/twenty-server/test/fork-migration/omni-binding-config-wakeup.postgres-spec.ts",
+      "sha256": "80cea6ebb0115236fad6b64136d22853788e4879f059dfe97c5e5c88ce441922"
+    }
+  ]
+}

@@ -455,10 +455,12 @@ export const admitOmniHumanTextCommand = async (
       [binding.messageChannelId, workspaceId, binding.connectedAccountId],
     ),
   );
+  // Unqualified ON CONFLICT handles both PK(id) and actor/key races under READ COMMITTED;
+  // unexpected conflicts fail closed when findCommand() returns no matching row.
   const inserted = await query(
     `INSERT INTO core."omniOutgoingCommand" (id,"workspaceId","conversationId","actorKind","actorId","initiatingActorId","idempotencyKey","payloadHash",payload,"policyId","policyVersion",generation,"senderClass","contentProvenance","outboundSequence","createdRestoreIncarnation")
     VALUES ($1,$2,$3,'workspaceMember',$4,$4,$5,$6,$7::jsonb,$8,0,$9,'human','human_direct',$10,$11)
-    ON CONFLICT ("workspaceId","actorKind","actorId","idempotencyKey") DO NOTHING RETURNING id`,
+    ON CONFLICT DO NOTHING RETURNING id`,
     [
       commandId,
       workspaceId,
