@@ -1,0 +1,25 @@
+{
+  "log": "LOG-210",
+  "date": "2026-11-24",
+  "branch": "codex/omnichannel-requirements",
+  "codeCommit": "beb315e713baa18579aef84c5f87a5832ffd64d8",
+  "githubRefVerified": true,
+  "linearIssue": "ROB-765",
+  "linearIssueId": "a09c797c-d9cf-4c82-93e4-67831dece30b",
+  "linearDescriptionReadbackVerified": true,
+  "linearCommentId": "b1363bf2-a8b1-4f8c-be22-4c95a6f694ca",
+  "linearCommentReadbackVerified": true,
+  "linearProjectIssueStatesVerified": {
+    "ROB-762": "Done",
+    "ROB-763": "Done",
+    "ROB-764": "Done",
+    "ROB-772": "Done",
+    "ROB-765": "In Progress",
+    "ROB-766": "Backlog",
+    "ROB-767": "Backlog",
+    "ROB-768": "Backlog",
+    "ROB-769": "Backlog",
+    "ROB-770": "Backlog",
+    "ROB-771": "Backlog"
+  }
+}
