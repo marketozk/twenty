@@ -57,6 +57,7 @@ const AUDITED_OBJECTS: Record<string, string> = {
   opportunity: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.opportunity,
   note: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.note,
   task: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.task,
+  dashboard: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.dashboard,
 };
 
 const AUDITED_FK_CHILD_OBJECTS: Record<string, string> = {

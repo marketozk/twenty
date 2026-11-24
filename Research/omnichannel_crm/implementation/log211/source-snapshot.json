@@ -1,0 +1,59 @@
+{
+  "log": "LOG-211",
+  "verifiedAgainstStand": "twenty-rob764-log211",
+  "verifiedCount": 13,
+  "files": {
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-record.ts": {
+      "sha256": "9d643d97174b2fd11854ab6ad5818597884d70c321da38b52a39e15e844662b5",
+      "bytes": 18704
+    },
+    "packages/twenty-server/src/engine/core-modules/crm-audit/native-crm-audit-transaction.ts": {
+      "sha256": "e2971f5698195051ea955cb67b57cbf272190ab1bdbc16b8c940d6a95574cadf",
+      "bytes": 65187
+    },
+    "packages/twenty-server/src/engine/core-modules/crm-audit/post-rollback-crm-audit-attempt.ts": {
+      "sha256": "b622c07d063dda90b536bd0391a4ad1390198a5939dac404056fe26e4bd020b8",
+      "bytes": 18920
+    },
+    "packages/twenty-server/src/engine/metadata-modules/page-layout/services/page-layout.service.ts": {
+      "sha256": "94ec6a00316ab550a196c712f765fc6a9972ba0f34bfc90a56e96fa94713d3bb",
+      "bytes": 25005
+    },
+    "packages/twenty-server/src/engine/twenty-orm/datasource/workspace-data-source.ts": {
+      "sha256": "2f618d98a6b43e751f6fe07c1b6c934206e3fcf192e7465b27a8a387d481807b",
+      "bytes": 16531
+    },
+    "packages/twenty-server/src/engine/twenty-orm/types/workspace-transaction-lifecycle.type.ts": {
+      "sha256": "5f599f5fe1cffe4927b84ba34ea83e10c3709b736ede6c623116627fe3a4d7e3",
+      "bytes": 1378
+    },
+    "packages/twenty-server/src/modules/dashboard-sync/services/dashboard-sync.service.ts": {
+      "sha256": "0686cef53bb669969bc0902e22706a4fa2741124d701d9fd1efaac9572608358",
+      "bytes": 7363
+    },
+    "packages/twenty-server/src/modules/dashboard/services/dashboard-duplication.service.ts": {
+      "sha256": "f6d9fc6e20292efe70c6321acd49ec3728d3420d8637c722a18e8e4ed1f1aa99",
+      "bytes": 14428
+    },
+    "packages/twenty-server/src/modules/dashboard/tools/__tests__/create-complete-dashboard.tool.spec.ts": {
+      "sha256": "65f929db0af5ca392beb936931461764cd9f30a4393eb35d77c758ab032025e0",
+      "bytes": 5378
+    },
+    "packages/twenty-server/src/modules/dashboard/tools/create-complete-dashboard.tool.ts": {
+      "sha256": "7c26fd21493bddfea617ef6bf059eb7d635f60c61c7f30a86885197b4444b42a",
+      "bytes": 16082
+    },
+    "packages/twenty-server/test/fork-migration/crm-audit-custom-record.postgres-spec.ts": {
+      "sha256": "dec7c49b7b08830820a1a82c4808361d05f0b003b10723d51839ed62b2d7812e",
+      "bytes": 6133
+    },
+    "packages/twenty-server/test/fork-migration/crm-audit-dashboard.postgres-spec.ts": {
+      "sha256": "1a1021a0ed5cddac1c699d100e2b17f9db9884d0cd1e465b2aa3ccf8b91fa7d3",
+      "bytes": 67554
+    },
+    "packages/twenty-server/test/fork-migration/crm-audit-page-layout.postgres-spec.ts": {
+      "sha256": "eda1cc2c34d7346c1624fc3b03214f8daea691cef9307cbba9744b7ccbd43fe1",
+      "bytes": 122737
+    }
+  }
+}

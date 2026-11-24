@@ -110,7 +110,6 @@ it.each([
   'message',
   'messageThread',
   'workflow',
-  'dashboard',
   'recordShare',
   'calendarEvent',
 ])(

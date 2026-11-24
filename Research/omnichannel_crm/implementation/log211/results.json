@@ -1,0 +1,91 @@
+{
+  "log": "LOG-211",
+  "date": "2026-11-24",
+  "issue": "ROB-765",
+  "scope": "Enable native CRM audit for dashboard (last user-facing standard CRM object outside workflow/ROB-769) and wrap all 4 runtime direct dashboard writers (DashboardDuplicationService, createCreateCompleteDashboardTool, DashboardSyncService, PageLayoutService.destroyAssociatedDashboards) under fail-closed audited transactions with WeakSet-verified single-use nativeAuditBinding",
+  "targetedPostgresTests": {
+    "status": "pass",
+    "suitesPassed": 5,
+    "suitesTotal": 5,
+    "testsPassed": 36,
+    "testsTotal": 36,
+    "suites": [
+      "test/fork-migration/crm-audit-dashboard.postgres-spec.ts",
+      "test/fork-migration/crm-audit-custom-record.postgres-spec.ts",
+      "test/fork-migration/crm-audit-note-and-task.postgres-spec.ts",
+      "test/fork-migration/crm-audit-fk-delete-effects-coverage.postgres-spec.ts",
+      "test/fork-migration/crm-audit-page-layout.postgres-spec.ts"
+    ]
+  },
+  "targetedUnitTests": {
+    "status": "pass",
+    "suitesPassed": 1,
+    "suitesTotal": 1,
+    "testsPassed": 4,
+    "testsTotal": 4,
+    "durationSeconds": 5.142,
+    "suites": [
+      "src/modules/dashboard/tools/__tests__/create-complete-dashboard.tool.spec.ts"
+    ]
+  },
+  "fullForkMigrationRegression": {
+    "status": "pass-with-1-preexisting-unrelated-failure",
+    "suitesTotal": 207,
+    "suitesPassed": 206,
+    "testsTotal": 5034,
+    "testsPassed": 5033,
+    "initialRunDurationSeconds": 2100.178,
+    "redisRecheckPassed": [
+      "test/fork-migration/crm-audit-queue-outcome.spec.ts"
+    ],
+    "allCrmAuditSuitesPassed": true,
+    "preexistingUnrelatedFailure": {
+      "suite": "test/fork-migration/omni-human-text-command.postgres-spec.ts",
+      "test": "fences the global actor/key race across two independently locked Conversations before counters advance",
+      "reason": "Pre-existing PK_8f710425081f885de68a1174f1b vs ON CONFLICT unique index ordering in admit-omni-human-text-command.ts under PG 17 (no files in modules/omnichannel touched by LOG-211)"
+    }
+  },
+  "guards": {
+    "enterpriseDependencies": {
+      "status": "pass",
+      "violations": 0,
+      "codeFiles": 34821,
+      "runtimeFiles": 21468,
+      "edges": 138084
+    },
+    "forkMigrationSources": {
+      "status": "pass",
+      "verifiedSources": 10
+    },
+    "pythonUnitTests": {
+      "status": "pass",
+      "passed": 26,
+      "skippedLinuxOnlyOnWindows": 7,
+      "total": 33
+    }
+  },
+  "differentialTypecheck": {
+    "status": "pass-zero-diagnostics",
+    "checkedFiles": 13,
+    "changedFileDiagnostics": 0
+  },
+  "reviews": {
+    "designReview": {
+      "blockersFound": 4,
+      "majorsFound": 3,
+      "minorsFound": 3,
+      "allResolved": true
+    },
+    "codeReview": {
+      "blockersFound": 0,
+      "majorsFound": 6,
+      "minorsFound": 3,
+      "allResolved": true
+    }
+  },
+  "sourceSnapshot": {
+    "verifiedFiles": 13,
+    "allSha256Matched": true,
+    "standCleanup": "STAND_CLEAN (containers=0, networks=0, directory removed)"
+  }
+}

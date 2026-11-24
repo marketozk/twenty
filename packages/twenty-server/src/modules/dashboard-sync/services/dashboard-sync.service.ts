@@ -1,12 +1,19 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { isDefined } from 'twenty-shared/utils';
 
+import { captureNativeCrmAuditBinding } from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
+import { recordPostRollbackNativeCrmAuditAttempt } from 'src/engine/core-modules/crm-audit/post-rollback-crm-audit-attempt';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { PageLayoutType } from 'twenty-shared/types';
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
+
+const DASHBOARD_SYNC_SYSTEM_ACTOR_ID =
+  'dashboard-sync:update-linked-dashboards';
+const DASHBOARD_SYNC_UPDATE_CHUNK_SIZE = 200;
 
 @Injectable()
 export class DashboardSyncService {
@@ -64,14 +71,71 @@ export class DashboardSyncService {
 
     try {
       await this.workspaceOrmManager.executeInWorkspaceContext(async () => {
-        const dashboardRepository = this.workspaceOrmManager.getRepository(
-          'dashboard',
-          {
-            shouldBypassPermissionChecks: true,
-          },
+        const nativeAudit = {
+          operationId: randomUUID(),
+          systemActorId: DASHBOARD_SYNC_SYSTEM_ACTOR_ID,
+        };
+        const auditBinding = captureNativeCrmAuditBinding(
+          workspaceId,
+          authContext,
+          nativeAudit,
         );
+        const dashboardObjectMetadataId =
+          this.workspaceOrmManager.getObjectMetadataId('dashboard');
 
-        await dashboardRepository.update({ pageLayoutId }, { updatedAt });
+        try {
+          await this.workspaceOrmManager.runInWorkspaceTransaction(
+            async (transactionScope) => {
+              const dashboardRepository = transactionScope.getRepository(
+                'dashboard',
+                {
+                  shouldBypassPermissionChecks: true,
+                },
+              );
+
+              const dashboards = await dashboardRepository.find({
+                where: { pageLayoutId },
+                select: ['id'],
+                order: { id: 'ASC' },
+                withDeleted: true,
+              });
+              const dashboardIds = dashboards.map((dashboard) =>
+                String(dashboard.id),
+              );
+
+              for (
+                let index = 0;
+                index < dashboardIds.length;
+                index += DASHBOARD_SYNC_UPDATE_CHUNK_SIZE
+              ) {
+                const chunk = dashboardIds.slice(
+                  index,
+                  index + DASHBOARD_SYNC_UPDATE_CHUNK_SIZE,
+                );
+
+                await dashboardRepository.update(chunk, { updatedAt });
+              }
+            },
+            { nativeAudit },
+          );
+        } catch (error) {
+          if (isDefined(dashboardObjectMetadataId)) {
+            await recordPostRollbackNativeCrmAuditAttempt({
+              runInAuditTransaction: (work, options) =>
+                this.workspaceOrmManager.runInWorkspaceTransaction(
+                  work,
+                  options,
+                ),
+              binding: auditBinding,
+              action: 'update',
+              resourceId: dashboardObjectMetadataId,
+              objectMetadataId: dashboardObjectMetadataId,
+              error,
+            });
+          }
+
+          throw error;
+        }
       }, authContext);
     } catch (error) {
       this.logger.error(

@@ -53,6 +53,11 @@ const INVALID_NATIVE_ATTRIBUTION_MESSAGES = new Set([
   'Native audit workspace mismatch',
   'Native audit impersonation requires a user actor',
   'Native audit operation was already committed',
+  'Native audit authUserWorkspaceId unavailable',
+  'Native audit userWorkspace mismatch',
+  'Untrusted native audit binding',
+  'Native audit binding was already consumed',
+  'Trusted native audit binding requires system context',
 ]);
 
 const SQLSTATE_REGEX = /^[0-9A-Z]{5}$/;
@@ -319,8 +324,36 @@ export const recordPostRollbackNativeCrmAuditAttempt = async (input: {
 
     if (
       !normalizedImpersonator ||
-      input.binding.operation.actor.kind !== 'workspaceMember'
+      (input.binding.operation.actor.kind !== 'workspaceMember' &&
+        input.binding.operation.actor.kind !== 'coreUser')
     ) {
+      return { recorded: false, skippedInvalidAttribution: true };
+    }
+  }
+
+  let normalizedPendingAuthUserWorkspaceId: string | undefined;
+  let normalizedPendingAgentId: string | undefined;
+  let normalizedPendingExpectedUserId: string | undefined;
+
+  if (input.binding.pendingAuthUserWorkspaceId !== undefined) {
+    normalizedPendingAuthUserWorkspaceId = normalizeUuid(
+      input.binding.pendingAuthUserWorkspaceId,
+    );
+    if (!normalizedPendingAuthUserWorkspaceId) {
+      return { recorded: false, skippedInvalidAttribution: true };
+    }
+  }
+  if (input.binding.pendingAgentId !== undefined) {
+    normalizedPendingAgentId = normalizeUuid(input.binding.pendingAgentId);
+    if (!normalizedPendingAgentId) {
+      return { recorded: false, skippedInvalidAttribution: true };
+    }
+  }
+  if (input.binding.pendingUserWorkspaceExpectedUserId !== undefined) {
+    normalizedPendingExpectedUserId = normalizeUuid(
+      input.binding.pendingUserWorkspaceExpectedUserId,
+    );
+    if (!normalizedPendingExpectedUserId) {
       return { recorded: false, skippedInvalidAttribution: true };
     }
   }
@@ -346,7 +379,95 @@ export const recordPostRollbackNativeCrmAuditAttempt = async (input: {
             : {}),
         };
 
+        if (normalizedPendingAuthUserWorkspaceId !== undefined) {
+          const rows = await executor.query(
+            'SELECT "userId" FROM core."userWorkspace" WHERE id = $1 AND "workspaceId" = $2 AND "deletedAt" IS NULL',
+            [normalizedPendingAuthUserWorkspaceId, operation.workspaceId],
+          );
+          const row = rows[0] as { userId?: unknown } | undefined;
+          const resolvedUserId = normalizeUuid(row?.userId);
+
+          if (rows.length !== 1 || !resolvedUserId) {
+            skippedInvalidAttribution = true;
+
+            return;
+          }
+
+          if (
+            normalizedPendingExpectedUserId !== undefined &&
+            normalizedPendingExpectedUserId !== resolvedUserId
+          ) {
+            skippedInvalidAttribution = true;
+
+            return;
+          }
+
+          if (input.binding.pendingUserWorkspaceActor) {
+            operation =
+              normalizedPendingAgentId !== undefined
+                ? {
+                    ...operation,
+                    actor: { kind: 'agent', id: normalizedPendingAgentId },
+                    initiator: { kind: 'coreUser', id: resolvedUserId },
+                  }
+                : {
+                    ...operation,
+                    actor: { kind: 'coreUser', id: resolvedUserId },
+                  };
+          } else {
+            if (
+              (operation.actor.kind === 'coreUser' &&
+                normalizeUuid(operation.actor.id) !== resolvedUserId) ||
+              (operation.initiator?.kind === 'coreUser' &&
+                normalizeUuid(operation.initiator.id) !== resolvedUserId)
+            ) {
+              skippedInvalidAttribution = true;
+
+              return;
+            }
+            const workspaceMemberPrincipal =
+              operation.actor.kind === 'workspaceMember'
+                ? operation.actor
+                : operation.initiator?.kind === 'workspaceMember'
+                  ? operation.initiator
+                  : undefined;
+            if (workspaceMemberPrincipal !== undefined) {
+              const memberId = normalizeUuid(workspaceMemberPrincipal.id);
+              const normalizedWorkspace = normalizeUuid(operation.workspaceId);
+              if (!memberId || !normalizedWorkspace) {
+                skippedInvalidAttribution = true;
+
+                return;
+              }
+              const workspaceSchema = `workspace_${BigInt('0x' + normalizedWorkspace.replaceAll('-', '')).toString(36)}`;
+              const memberRows = await executor.query(
+                `SELECT "userId" FROM "${workspaceSchema}"."workspaceMember" WHERE id = $1 AND "deletedAt" IS NULL`,
+                [memberId],
+              );
+              const memberRow = memberRows[0] as
+                | { userId?: unknown }
+                | undefined;
+              if (
+                memberRows.length !== 1 ||
+                normalizeUuid(memberRow?.userId) !== resolvedUserId
+              ) {
+                skippedInvalidAttribution = true;
+
+                return;
+              }
+            }
+          }
+        }
+
         if (normalizedImpersonator !== undefined) {
+          if (
+            operation.actor.kind !== 'workspaceMember' &&
+            operation.actor.kind !== 'coreUser'
+          ) {
+            skippedInvalidAttribution = true;
+
+            return;
+          }
           const rows = await executor.query(
             'SELECT "userId" FROM core."userWorkspace" WHERE id = $1 AND "deletedAt" IS NULL',
             [normalizedImpersonator],

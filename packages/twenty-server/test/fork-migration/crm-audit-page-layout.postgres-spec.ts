@@ -2430,6 +2430,14 @@ describe('CRM audit pageLayout, pageLayoutTab, and pageLayoutWidget lifecycle an
         executeInWorkspaceContext: jest
           .fn()
           .mockImplementation(async (fn) => fn()),
+        runInWorkspaceTransaction: jest.fn().mockImplementation(async (work) =>
+          work({
+            getRepository: jest.fn().mockReturnValue({
+              insert: jest.fn().mockResolvedValue(undefined),
+            }),
+          }),
+        ),
+        getObjectMetadataId: jest.fn().mockReturnValue(undefined),
         getRepository: jest.fn().mockReturnValue({
           insert: jest.fn().mockResolvedValue(undefined),
         }),

@@ -1,4 +1,5 @@
 import {
+  assertTrustedNativeCrmAuditBinding,
   captureNativeCrmAuditBinding,
   withNativeCrmAuditTransaction,
 } from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
@@ -85,14 +86,25 @@ export class WorkspaceDataSource {
     work: (transactionScope: WorkspaceTransactionScope) => Promise<T>,
     options: WorkspaceTransactionOptions = {},
   ): Promise<T> {
+    if (
+      options.nativeAudit !== undefined &&
+      options.nativeAuditBinding !== undefined
+    )
+      throw new Error('Native audit options and binding cannot be combined');
     const nativeAuditBinding =
-      options.nativeAudit === undefined
-        ? undefined
-        : captureNativeCrmAuditBinding(
+      options.nativeAuditBinding !== undefined
+        ? assertTrustedNativeCrmAuditBinding(
+            options.nativeAuditBinding,
             this.internalContext.workspaceId,
             this.authContext,
-            options.nativeAudit,
-          );
+          )
+        : options.nativeAudit === undefined
+          ? undefined
+          : captureNativeCrmAuditBinding(
+              this.internalContext.workspaceId,
+              this.authContext,
+              options.nativeAudit,
+            );
     if (nativeAuditBinding && options.commitOutcome === 'legacy')
       throw new Error('Native audit requires strict transaction ownership');
     if (nativeAuditBinding && options.nativeOwnershipLock === 'none')
@@ -239,6 +251,13 @@ export class WorkspaceDataSource {
               {
                 impersonatorUserWorkspaceId:
                   nativeAuditBinding.impersonatorUserWorkspaceId,
+                pendingAuthUserWorkspaceId:
+                  nativeAuditBinding.pendingAuthUserWorkspaceId,
+                pendingAgentId: nativeAuditBinding.pendingAgentId,
+                pendingUserWorkspaceActor:
+                  nativeAuditBinding.pendingUserWorkspaceActor,
+                pendingUserWorkspaceExpectedUserId:
+                  nativeAuditBinding.pendingUserWorkspaceExpectedUserId,
                 ambientCorrelationId: nativeAuditBinding.ambientCorrelationId,
                 ambientCausationId: nativeAuditBinding.ambientCausationId,
               },

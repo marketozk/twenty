@@ -1,12 +1,19 @@
+import { randomUUID } from 'node:crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
+import {
+  captureNativeCrmAuditBindingFromNavigationIdentity,
+  type NativeCrmAuditBinding,
+} from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
+import { recordPostRollbackNativeCrmAuditAttempt } from 'src/engine/core-modules/crm-audit/post-rollback-crm-audit-attempt';
 import { type CreatePageLayoutWidgetInput } from 'src/engine/metadata-modules/page-layout-widget/dtos/inputs/create-page-layout-widget.input';
 import {
   PageLayoutType,
   type PageLayoutWidgetGridPosition,
   type WidgetType,
 } from 'twenty-shared/types';
+import { isTransactionUnsafeToRetry } from 'src/engine/twenty-orm/error-handling/is-transaction-outcome-unknown';
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
 import {
   widgetPositionSchema,
@@ -124,6 +131,15 @@ AGGREGATION OPERATIONS: COUNT, SUM, AVG, MIN, MAX, COUNT_EMPTY, COUNT_NOT_EMPTY`
     }>;
   }) => {
     try {
+      const nativeAuditBinding =
+        captureNativeCrmAuditBindingFromNavigationIdentity({
+          workspaceId: context.workspaceId,
+          operationId: randomUUID(),
+          auditIdentity: context.auditIdentity,
+          authUserWorkspaceId: context.authUserWorkspaceId,
+          defaultSystemActorId: 'dashboard-tool:create-complete-dashboard',
+        });
+
       const tabTitle = parameters.tabTitle ?? 'Main';
       const widgets = parameters.widgets ?? [];
       const identifierMaps =
@@ -194,6 +210,7 @@ AGGREGATION OPERATIONS: COUNT, SUM, AVG, MIN, MAX, COUNT_EMPTY, COUNT_NOT_EMPTY`
         context,
         title: parameters.title,
         pageLayoutId: pageLayout.id,
+        nativeAuditBinding,
       });
 
       const result = {
@@ -250,6 +267,7 @@ type CreateDashboardRecordParams = {
   context: DashboardToolContextWithPermissions;
   title: string;
   pageLayoutId: string;
+  nativeAuditBinding: NativeCrmAuditBinding;
 };
 
 const createDashboardRecordOrRollBackLayout = async (
@@ -258,19 +276,21 @@ const createDashboardRecordOrRollBackLayout = async (
   try {
     return await createDashboardRecord(params);
   } catch (error) {
-    await params.deps.pageLayoutService
-      .destroy({
-        id: params.pageLayoutId,
-        workspaceId: params.context.workspaceId,
-        isLinkedDashboardAlreadyDestroyed: true,
-        ...(params.context.auditIdentity
-          ? { auditIdentity: params.context.auditIdentity }
-          : {}),
-        ...(params.context.authUserWorkspaceId
-          ? { authUserWorkspaceId: params.context.authUserWorkspaceId }
-          : {}),
-      })
-      .catch(() => undefined);
+    if (!isTransactionUnsafeToRetry(error)) {
+      await params.deps.pageLayoutService
+        .destroy({
+          id: params.pageLayoutId,
+          workspaceId: params.context.workspaceId,
+          isLinkedDashboardAlreadyDestroyed: true,
+          ...(params.context.auditIdentity
+            ? { auditIdentity: params.context.auditIdentity }
+            : {}),
+          ...(params.context.authUserWorkspaceId
+            ? { authUserWorkspaceId: params.context.authUserWorkspaceId }
+            : {}),
+        })
+        .catch(() => undefined);
+    }
 
     throw error;
   }
@@ -281,25 +301,52 @@ const createDashboardRecord = async ({
   context,
   title,
   pageLayoutId,
+  nativeAuditBinding,
 }: CreateDashboardRecordParams): Promise<string> => {
   const authContext = buildSystemAuthContext(context.workspaceId);
 
   return deps.workspaceOrmManager.executeInWorkspaceContext(async () => {
-    const dashboardRepository = deps.workspaceOrmManager.getRepository(
-      'dashboard',
-      context.rolePermissionConfig,
-    );
-
     const position = await deps.recordPositionService.buildRecordPosition({
       value: 'first',
       objectMetadata: { isCustom: false, nameSingular: 'dashboard' },
       workspaceId: context.workspaceId,
     });
 
-    const dashboard = { id: uuidv4(), title, pageLayoutId, position };
+    const dashboardId = uuidv4();
+    const dashboard = { id: dashboardId, title, pageLayoutId, position };
+    const dashboardObjectMetadataId =
+      typeof deps.workspaceOrmManager.getObjectMetadataId === 'function'
+        ? deps.workspaceOrmManager.getObjectMetadataId('dashboard')
+        : undefined;
 
-    await dashboardRepository.insert(dashboard);
+    try {
+      await deps.workspaceOrmManager.runInWorkspaceTransaction(
+        async (transactionScope) => {
+          const dashboardRepository = transactionScope.getRepository(
+            'dashboard',
+            context.rolePermissionConfig,
+          );
 
-    return dashboard.id;
+          await dashboardRepository.insert(dashboard);
+        },
+        { nativeAuditBinding },
+      );
+
+      return dashboardId;
+    } catch (error) {
+      if (dashboardObjectMetadataId !== undefined) {
+        await recordPostRollbackNativeCrmAuditAttempt({
+          runInAuditTransaction: (work, options) =>
+            deps.workspaceOrmManager.runInWorkspaceTransaction(work, options),
+          binding: nativeAuditBinding,
+          action: 'create',
+          resourceId: dashboardId,
+          objectMetadataId: dashboardObjectMetadataId,
+          error,
+        });
+      }
+
+      throw error;
+    }
   }, authContext);
 };

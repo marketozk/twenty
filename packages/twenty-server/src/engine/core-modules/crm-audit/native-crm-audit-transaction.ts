@@ -8,8 +8,17 @@ import {
   type CrmAuditOperation,
   type CrmAuditPrincipal,
 } from 'src/engine/core-modules/crm-audit/crm-audit.types';
+import {
+  membershipCleanupOperation,
+  type MembershipCleanupIdentity,
+} from 'src/engine/core-modules/crm-audit/membership-cleanup-identity';
 
-import { type NativeCrmAuditOptions } from 'src/engine/twenty-orm/types/workspace-transaction-lifecycle.type';
+import {
+  type NativeCrmAuditBinding,
+  type NativeCrmAuditOptions,
+} from 'src/engine/twenty-orm/types/workspace-transaction-lifecycle.type';
+
+export type { NativeCrmAuditBinding };
 
 // Structural authentication port: keeps core audit independent of full auth/ORM metadata graphs.
 type NativeCrmAuditAuth = { workspace: { id: string } } & (
@@ -31,17 +40,49 @@ type NativeCrmAuditAuth = { workspace: { id: string } } & (
   | { type: 'system' | 'pendingActivationUser' }
 );
 
-export type NativeCrmAuditBinding = Readonly<{
-  operation: CrmAuditOperation;
-  impersonatorUserWorkspaceId?: string;
-  ambientCorrelationId?: string;
-  ambientCausationId?: string;
-}>;
-
 export type NativeCrmAuditTransactionMeta = {
   impersonatorUserWorkspaceId?: string;
+  pendingAuthUserWorkspaceId?: string;
+  pendingAgentId?: string;
+  pendingUserWorkspaceActor?: boolean;
+  pendingUserWorkspaceExpectedUserId?: string;
   ambientCorrelationId?: string;
   ambientCausationId?: string;
+};
+
+type NativeCrmNavigationRequestLikeIdentity = {
+  auth?: NativeCrmAuditAuth;
+  workspace?: { id: string };
+  apiKey?: { id: string } | null;
+  user?: { id?: string } | null;
+  userWorkspaceId?: string;
+  workspaceMemberId?: string;
+  application?: { id: string } | null;
+  viaApplication?: { id: string } | null;
+  agentId?: string;
+  impersonatorUserWorkspaceId?: string;
+  impersonationContext?: { impersonatorUserWorkspaceId?: string };
+  systemActorId?: string;
+  correlationId?: string;
+  causationId?: string;
+};
+
+export type NativeCrmNavigationAuditIdentity =
+  | MembershipCleanupIdentity
+  | NativeCrmNavigationRequestLikeIdentity;
+
+const trustedNavigationBindings = new WeakSet<NativeCrmAuditBinding>();
+const consumedNavigationBindings = new WeakSet<NativeCrmAuditBinding>();
+
+const workspaceSchemaForNormalizedUuid = (workspaceId: string): string =>
+  `workspace_${BigInt('0x' + workspaceId.replaceAll('-', '')).toString(36)}`;
+
+const registerTrustedNavigationBinding = (
+  binding: NativeCrmAuditBinding,
+): NativeCrmAuditBinding => {
+  trustedNavigationBindings.add(binding);
+
+  return binding;
 };
 
 const contexts = new WeakMap<
@@ -689,6 +730,888 @@ export const captureNativeCrmAuditBinding = (
   });
 };
 
+const hasExplicitNavigationPrincipal = (
+  identity: NativeCrmNavigationRequestLikeIdentity,
+): boolean =>
+  identity.auth !== undefined ||
+  (identity.user !== undefined && identity.user !== null) ||
+  identity.workspaceMemberId !== undefined ||
+  (identity.apiKey !== undefined && identity.apiKey !== null) ||
+  (identity.application !== undefined && identity.application !== null) ||
+  (identity.viaApplication !== undefined && identity.viaApplication !== null) ||
+  identity.agentId !== undefined ||
+  identity.systemActorId !== undefined ||
+  identity.impersonatorUserWorkspaceId !== undefined ||
+  identity.impersonationContext?.impersonatorUserWorkspaceId !== undefined;
+
+export const captureNativeCrmAuditBindingFromNavigationIdentity = ({
+  workspaceId,
+  operationId,
+  auditIdentity,
+  authUserWorkspaceId,
+  defaultSystemActorId,
+}: {
+  workspaceId: string;
+  operationId: string;
+  auditIdentity?: NativeCrmNavigationAuditIdentity;
+  authUserWorkspaceId?: string;
+  defaultSystemActorId?: string;
+}): NativeCrmAuditBinding => {
+  const normalizedWorkspaceId = uuid(workspaceId);
+  const normalizedOperationId = uuid(operationId);
+  const normalizedAuthUserWorkspaceId =
+    authUserWorkspaceId !== undefined ? uuid(authUserWorkspaceId) : undefined;
+
+  let ambientLoaded = false;
+  let cachedAmbient:
+    | ReturnType<typeof captureCurrentCrmAuditOperation>
+    | undefined;
+  const getAmbient = () => {
+    if (!ambientLoaded) {
+      cachedAmbient = captureCurrentCrmAuditOperation(normalizedWorkspaceId);
+      ambientLoaded = true;
+    }
+
+    return cachedAmbient;
+  };
+
+  const buildAmbientMeta = (
+    trace?: { correlationId?: string; causationId?: string },
+  ) => ({
+    ...(trace?.correlationId !== undefined
+      ? { ambientCorrelationId: trace.correlationId }
+      : {}),
+    ...(trace?.causationId !== undefined
+      ? { ambientCausationId: trace.causationId }
+      : {}),
+  });
+
+  if (
+    auditIdentity !== undefined &&
+    auditIdentity !== null &&
+    typeof auditIdentity === 'object' &&
+    'actor' in auditIdentity &&
+    !('auth' in auditIdentity)
+  ) {
+    const cleanupIdentity = auditIdentity as MembershipCleanupIdentity;
+    if (cleanupIdentity.workspaceId === undefined)
+      throw new Error('CRM audit context requires scoped identity');
+    const cleanupOp = membershipCleanupOperation(
+      normalizedWorkspaceId,
+      cleanupIdentity,
+    );
+    if (!cleanupOp)
+      throw new Error('Authentication cannot perform audited CRM writes');
+
+    if (cleanupOp.actor.kind === 'system') {
+      if (normalizedAuthUserWorkspaceId !== undefined)
+        throw new Error(
+          'Native audit userWorkspace requires a user-scoped actor',
+        );
+      const trace = captureCurrentCrmAuditTrace(normalizedWorkspaceId);
+      const correlationId = cleanupOp.correlationId ?? trace?.correlationId;
+      const causationId = cleanupOp.causationId ?? trace?.causationId;
+
+      return registerTrustedNavigationBinding(
+        Object.freeze({
+          operation: Object.freeze({
+            workspaceId: normalizedWorkspaceId,
+            operationId: normalizedOperationId,
+            actor: Object.freeze({ ...cleanupOp.actor }),
+            ...(cleanupOp.initiator !== undefined
+              ? { initiator: Object.freeze({ ...cleanupOp.initiator }) }
+              : {}),
+            ...(correlationId !== undefined ? { correlationId } : {}),
+            ...(causationId !== undefined ? { causationId } : {}),
+          }),
+          ...buildAmbientMeta(trace),
+        }),
+      );
+    }
+
+    const ambient = getAmbient();
+    let impersonatorUserWorkspaceId: string | undefined;
+    let resolvedInitiator = cleanupOp.initiator;
+
+    if (ambient) {
+      if (ambient.impersonatorUserWorkspaceId !== undefined) {
+        if (
+          cleanupOp.actor.kind !== 'coreUser' &&
+          cleanupOp.actor.kind !== 'workspaceMember'
+        )
+          throw new Error(
+            'Native audit impersonation cannot combine with agent or application',
+          );
+        impersonatorUserWorkspaceId = uuid(ambient.impersonatorUserWorkspaceId);
+      }
+      const ambientActor = ambient.operation.actor;
+      if (
+        ambientActor.kind !== cleanupOp.actor.kind ||
+        ambientActor.id !== cleanupOp.actor.id
+      )
+        throw new Error('Native audit ambient principal conflict');
+      if (ambient.operation.initiator !== undefined) {
+        if (
+          cleanupOp.initiator !== undefined &&
+          (ambient.operation.initiator.kind !== cleanupOp.initiator.kind ||
+            ambient.operation.initiator.id !== cleanupOp.initiator.id)
+        )
+          throw new Error('Native audit ambient initiator conflict');
+        resolvedInitiator = ambient.operation.initiator;
+      } else if (cleanupOp.initiator !== undefined) {
+        if (
+          impersonatorUserWorkspaceId === undefined ||
+          cleanupOp.initiator.kind !== 'coreUser'
+        )
+          throw new Error('Native audit ambient initiator conflict');
+      }
+    }
+
+    let pendingUserWorkspaceExpectedUserId: string | undefined;
+    if (normalizedAuthUserWorkspaceId !== undefined) {
+      const userPrincipal =
+        cleanupOp.actor.kind === 'coreUser' ||
+        cleanupOp.actor.kind === 'workspaceMember'
+          ? cleanupOp.actor
+          : resolvedInitiator?.kind === 'coreUser' ||
+              resolvedInitiator?.kind === 'workspaceMember'
+            ? resolvedInitiator
+            : undefined;
+      if (!userPrincipal)
+        throw new Error(
+          'Native audit userWorkspace requires a user-scoped actor',
+        );
+      if (userPrincipal.kind === 'coreUser') {
+        pendingUserWorkspaceExpectedUserId = uuid(userPrincipal.id);
+      }
+    }
+
+    const correlationId =
+      cleanupOp.correlationId ?? ambient?.operation.correlationId;
+    const causationId = cleanupOp.causationId ?? ambient?.operation.causationId;
+
+    return registerTrustedNavigationBinding(
+      Object.freeze({
+        operation: Object.freeze({
+          workspaceId: normalizedWorkspaceId,
+          operationId: normalizedOperationId,
+          actor: Object.freeze({ ...cleanupOp.actor }),
+          ...(resolvedInitiator !== undefined
+            ? { initiator: Object.freeze({ ...resolvedInitiator }) }
+            : {}),
+          ...(correlationId !== undefined ? { correlationId } : {}),
+          ...(causationId !== undefined ? { causationId } : {}),
+        }),
+        ...(impersonatorUserWorkspaceId !== undefined
+          ? { impersonatorUserWorkspaceId }
+          : {}),
+        ...(normalizedAuthUserWorkspaceId !== undefined
+          ? { pendingAuthUserWorkspaceId: normalizedAuthUserWorkspaceId }
+          : {}),
+        ...(pendingUserWorkspaceExpectedUserId !== undefined
+          ? { pendingUserWorkspaceExpectedUserId }
+          : {}),
+        ...buildAmbientMeta(ambient?.operation),
+      }),
+    );
+  }
+
+  const reqLike = (
+    auditIdentity !== undefined &&
+    auditIdentity !== null &&
+    typeof auditIdentity === 'object'
+      ? auditIdentity
+      : {}
+  ) as NativeCrmNavigationRequestLikeIdentity;
+
+  if (
+    reqLike.workspace !== undefined &&
+    reqLike.workspace !== null &&
+    uuid(reqLike.workspace.id) !== normalizedWorkspaceId
+  )
+    throw new Error('Native audit workspace mismatch');
+
+  const explicitCorrelationId =
+    reqLike.correlationId !== undefined
+      ? identifier(reqLike.correlationId)
+      : undefined;
+  const explicitCausationId =
+    reqLike.causationId !== undefined
+      ? identifier(reqLike.causationId)
+      : undefined;
+  const explicitImpersonatorRaw =
+    reqLike.impersonatorUserWorkspaceId ??
+    reqLike.impersonationContext?.impersonatorUserWorkspaceId;
+  const explicitImpersonator =
+    explicitImpersonatorRaw !== undefined
+      ? uuid(explicitImpersonatorRaw)
+      : undefined;
+  const explicitAgentId =
+    reqLike.agentId !== undefined ? uuid(reqLike.agentId) : undefined;
+
+  const bindUserOrCoreUser = ({
+    workspaceMemberId,
+    userId,
+    applicationId,
+    agentId,
+  }: {
+    workspaceMemberId?: string;
+    userId?: string;
+    applicationId?: string;
+    agentId?: string;
+  }): NativeCrmAuditBinding => {
+    const ambient = getAmbient();
+    let resolvedApplicationId = applicationId;
+    let resolvedAgentId = agentId;
+    let resolvedAmbientInitiator: CrmAuditPrincipal | undefined;
+    let impersonatorUserWorkspaceId = explicitImpersonator;
+
+    if (ambient) {
+      const ambientActor = ambient.operation.actor;
+      const ambientInitiator = ambient.operation.initiator;
+      if (ambientActor.kind === 'coreUser') {
+        if (userId === undefined || ambientActor.id !== userId)
+          throw new Error('Native audit ambient user conflict');
+        if (ambientInitiator !== undefined) {
+          resolvedAmbientInitiator = ambientInitiator;
+        }
+      } else if (ambientActor.kind === 'workspaceMember') {
+        if (
+          workspaceMemberId === undefined ||
+          ambientActor.id !== workspaceMemberId
+        )
+          throw new Error('Native audit ambient member conflict');
+        if (ambientInitiator !== undefined) {
+          resolvedAmbientInitiator = ambientInitiator;
+        }
+      } else if (ambientActor.kind === 'application') {
+        if (
+          resolvedApplicationId !== undefined &&
+          resolvedApplicationId !== ambientActor.id
+        )
+          throw new Error('Native audit ambient application conflict');
+        const initiatorValid =
+          ambientInitiator === undefined
+            ? resolvedApplicationId === ambientActor.id
+            : (ambientInitiator.kind === 'coreUser' &&
+                userId !== undefined &&
+                ambientInitiator.id === userId) ||
+              (ambientInitiator.kind === 'workspaceMember' &&
+                workspaceMemberId !== undefined &&
+                ambientInitiator.id === workspaceMemberId);
+        if (!initiatorValid)
+          throw new Error('Native audit ambient initiator conflict');
+        resolvedApplicationId = ambientActor.id;
+      } else if (ambientActor.kind === 'agent') {
+        if (resolvedAgentId !== undefined && resolvedAgentId !== ambientActor.id)
+          throw new Error('Native audit ambient agent conflict');
+        const initiatorValid =
+          ambientInitiator === undefined
+            ? resolvedAgentId === ambientActor.id &&
+              resolvedApplicationId !== undefined
+            : (ambientInitiator.kind === 'coreUser' &&
+                userId !== undefined &&
+                ambientInitiator.id === userId) ||
+              (ambientInitiator.kind === 'workspaceMember' &&
+                workspaceMemberId !== undefined &&
+                ambientInitiator.id === workspaceMemberId) ||
+              (ambientInitiator.kind === 'application' &&
+                resolvedApplicationId !== undefined &&
+                ambientInitiator.id === resolvedApplicationId);
+        if (!initiatorValid)
+          throw new Error('Native audit ambient initiator conflict');
+        resolvedAgentId = ambientActor.id;
+      } else {
+        throw new Error('Native audit ambient principal conflict');
+      }
+
+      if (ambient.impersonatorUserWorkspaceId !== undefined) {
+        const ambientImpersonator = uuid(ambient.impersonatorUserWorkspaceId);
+        if (
+          impersonatorUserWorkspaceId !== undefined &&
+          impersonatorUserWorkspaceId !== ambientImpersonator
+        )
+          throw new Error('Native audit impersonation context conflict');
+        impersonatorUserWorkspaceId = ambientImpersonator;
+      } else if (
+        impersonatorUserWorkspaceId !== undefined &&
+        ambientInitiator === undefined
+      ) {
+        throw new Error('Native audit impersonation context conflict');
+      }
+    }
+
+    if (
+      (impersonatorUserWorkspaceId !== undefined ||
+        resolvedAmbientInitiator !== undefined) &&
+      (resolvedAgentId !== undefined || resolvedApplicationId !== undefined)
+    ) {
+      throw new Error(
+        'Native audit impersonation cannot combine with agent or application',
+      );
+    }
+
+    const baseUserPrincipal: CrmAuditPrincipal =
+      workspaceMemberId !== undefined
+        ? { kind: 'workspaceMember', id: workspaceMemberId }
+        : { kind: 'coreUser', id: userId! };
+
+    let actor: CrmAuditPrincipal;
+    let initiator: CrmAuditPrincipal | undefined;
+    if (resolvedAgentId !== undefined) {
+      actor = { kind: 'agent', id: resolvedAgentId };
+      initiator = baseUserPrincipal;
+    } else if (resolvedApplicationId !== undefined) {
+      actor = { kind: 'application', id: resolvedApplicationId };
+      initiator = baseUserPrincipal;
+    } else {
+      actor = baseUserPrincipal;
+      initiator = resolvedAmbientInitiator;
+    }
+
+    const correlationId =
+      explicitCorrelationId ?? ambient?.operation.correlationId;
+    const causationId = explicitCausationId ?? ambient?.operation.causationId;
+
+    return registerTrustedNavigationBinding(
+      Object.freeze({
+        operation: Object.freeze({
+          workspaceId: normalizedWorkspaceId,
+          operationId: normalizedOperationId,
+          actor: Object.freeze(actor),
+          ...(initiator !== undefined
+            ? { initiator: Object.freeze(initiator) }
+            : {}),
+          ...(correlationId !== undefined ? { correlationId } : {}),
+          ...(causationId !== undefined ? { causationId } : {}),
+        }),
+        ...(impersonatorUserWorkspaceId !== undefined
+          ? { impersonatorUserWorkspaceId }
+          : {}),
+        ...(normalizedAuthUserWorkspaceId !== undefined
+          ? { pendingAuthUserWorkspaceId: normalizedAuthUserWorkspaceId }
+          : {}),
+        ...(normalizedAuthUserWorkspaceId !== undefined && userId !== undefined
+          ? { pendingUserWorkspaceExpectedUserId: userId }
+          : {}),
+        ...buildAmbientMeta(ambient?.operation),
+      }),
+    );
+  };
+
+  if (hasExplicitNavigationPrincipal(reqLike)) {
+    if (reqLike.auth !== undefined) {
+      if (
+        (reqLike.workspace !== undefined && reqLike.workspace !== null) ||
+        (reqLike.apiKey !== undefined && reqLike.apiKey !== null) ||
+        (reqLike.user !== undefined && reqLike.user !== null) ||
+        reqLike.workspaceMemberId !== undefined ||
+        (reqLike.application !== undefined && reqLike.application !== null) ||
+        (reqLike.viaApplication !== undefined &&
+          reqLike.viaApplication !== null)
+      )
+        throw new Error('Ambiguous navigation audit authentication');
+      const auth = reqLike.auth;
+      if (uuid(auth.workspace.id) !== normalizedWorkspaceId)
+        throw new Error('Native audit workspace mismatch');
+      if (auth.type !== 'system' && reqLike.systemActorId !== undefined)
+        throw new Error('Only system authentication can name a system audit actor');
+
+      if (auth.type === 'system') {
+        if (
+          explicitImpersonator !== undefined ||
+          explicitAgentId !== undefined ||
+          normalizedAuthUserWorkspaceId !== undefined
+        )
+          throw new Error('Ambiguous navigation audit authentication');
+        const resolvedSystemActorId =
+          reqLike.systemActorId ?? defaultSystemActorId;
+        if (resolvedSystemActorId === undefined)
+          throw new Error('System audit actor requires a valid systemActorId');
+
+        return registerTrustedNavigationBinding(
+          captureNativeCrmAuditBinding(
+            normalizedWorkspaceId,
+            { type: 'system', workspace: { id: normalizedWorkspaceId } },
+            {
+              operationId: normalizedOperationId,
+              systemActorId: resolvedSystemActorId,
+              ...(explicitCorrelationId !== undefined
+                ? { correlationId: explicitCorrelationId }
+                : {}),
+              ...(explicitCausationId !== undefined
+                ? { causationId: explicitCausationId }
+                : {}),
+            },
+          ),
+        );
+      }
+
+      if (auth.type === 'apiKey') {
+        if (
+          explicitImpersonator !== undefined ||
+          explicitAgentId !== undefined ||
+          normalizedAuthUserWorkspaceId !== undefined
+        )
+          throw new Error('Ambiguous navigation audit authentication');
+
+        return registerTrustedNavigationBinding(
+          captureNativeCrmAuditBinding(normalizedWorkspaceId, auth, {
+            operationId: normalizedOperationId,
+            ...(explicitCorrelationId !== undefined
+              ? { correlationId: explicitCorrelationId }
+              : {}),
+            ...(explicitCausationId !== undefined
+              ? { causationId: explicitCausationId }
+              : {}),
+          }),
+        );
+      }
+
+      if (auth.type === 'application') {
+        if (
+          explicitImpersonator !== undefined ||
+          normalizedAuthUserWorkspaceId !== undefined
+        )
+          throw new Error('Ambiguous navigation audit authentication');
+        let effectiveAuth = auth;
+        if (explicitAgentId !== undefined) {
+          if (
+            auth.actingAgent !== undefined &&
+            uuid(auth.actingAgent.id) !== explicitAgentId
+          )
+            throw new Error('Native audit ambient agent conflict');
+          effectiveAuth =
+            auth.actingAgent !== undefined
+              ? auth
+              : { ...auth, actingAgent: { id: explicitAgentId } };
+        }
+
+        return registerTrustedNavigationBinding(
+          captureNativeCrmAuditBinding(normalizedWorkspaceId, effectiveAuth, {
+            operationId: normalizedOperationId,
+            ...(explicitCorrelationId !== undefined
+              ? { correlationId: explicitCorrelationId }
+              : {}),
+            ...(explicitCausationId !== undefined
+              ? { causationId: explicitCausationId }
+              : {}),
+          }),
+        );
+      }
+
+      if (auth.type === 'user') {
+        const workspaceMemberId = uuid(auth.workspaceMemberId);
+        const userId = auth.user !== undefined ? uuid(auth.user.id) : undefined;
+        const appId =
+          auth.application !== undefined
+            ? uuid(auth.application.id)
+            : undefined;
+        const viaAppId =
+          auth.viaApplication !== undefined
+            ? uuid(auth.viaApplication.id)
+            : undefined;
+        if (appId !== undefined && viaAppId !== undefined && appId !== viaAppId)
+          throw new Error('Native audit application context conflict');
+        const authAgentId =
+          auth.agentId !== undefined ? uuid(auth.agentId) : undefined;
+        if (
+          authAgentId !== undefined &&
+          explicitAgentId !== undefined &&
+          authAgentId !== explicitAgentId
+        )
+          throw new Error('Native audit ambient agent conflict');
+
+        return bindUserOrCoreUser({
+          workspaceMemberId,
+          userId,
+          applicationId: viaAppId ?? appId,
+          agentId: explicitAgentId ?? authAgentId,
+        });
+      }
+
+      throw new Error('Authentication cannot perform audited CRM writes');
+    }
+
+    const reqApiKeyId =
+      reqLike.apiKey?.id !== undefined ? uuid(reqLike.apiKey.id) : undefined;
+    const reqUserId =
+      reqLike.user?.id !== undefined ? uuid(reqLike.user.id) : undefined;
+    const reqWorkspaceMemberId =
+      reqLike.workspaceMemberId !== undefined
+        ? uuid(reqLike.workspaceMemberId)
+        : undefined;
+    const reqAppId =
+      reqLike.application?.id !== undefined
+        ? uuid(reqLike.application.id)
+        : undefined;
+    const reqViaAppId =
+      reqLike.viaApplication?.id !== undefined
+        ? uuid(reqLike.viaApplication.id)
+        : undefined;
+    if (
+      reqAppId !== undefined &&
+      reqViaAppId !== undefined &&
+      reqAppId !== reqViaAppId
+    )
+      throw new Error('Native audit application context conflict');
+    const resolvedReqAppId = reqViaAppId ?? reqAppId;
+
+    if (reqApiKeyId !== undefined) {
+      if (
+        reqUserId !== undefined ||
+        reqWorkspaceMemberId !== undefined ||
+        resolvedReqAppId !== undefined ||
+        explicitAgentId !== undefined ||
+        explicitImpersonator !== undefined ||
+        reqLike.systemActorId !== undefined ||
+        normalizedAuthUserWorkspaceId !== undefined
+      )
+        throw new Error('Ambiguous navigation audit authentication');
+
+      return registerTrustedNavigationBinding(
+        captureNativeCrmAuditBinding(
+          normalizedWorkspaceId,
+          {
+            type: 'apiKey',
+            workspace: { id: normalizedWorkspaceId },
+            apiKey: { id: reqApiKeyId },
+          },
+          {
+            operationId: normalizedOperationId,
+            ...(explicitCorrelationId !== undefined
+              ? { correlationId: explicitCorrelationId }
+              : {}),
+            ...(explicitCausationId !== undefined
+              ? { causationId: explicitCausationId }
+              : {}),
+          },
+        ),
+      );
+    }
+
+    if (reqWorkspaceMemberId !== undefined || reqUserId !== undefined) {
+      if (reqLike.systemActorId !== undefined)
+        throw new Error('Only system authentication can name a system audit actor');
+
+      return bindUserOrCoreUser({
+        workspaceMemberId: reqWorkspaceMemberId,
+        userId: reqUserId,
+        applicationId: resolvedReqAppId,
+        agentId: explicitAgentId,
+      });
+    }
+
+    if (resolvedReqAppId !== undefined) {
+      if (
+        explicitImpersonator !== undefined ||
+        reqLike.systemActorId !== undefined ||
+        normalizedAuthUserWorkspaceId !== undefined
+      )
+        throw new Error('Ambiguous navigation audit authentication');
+
+      return registerTrustedNavigationBinding(
+        captureNativeCrmAuditBinding(
+          normalizedWorkspaceId,
+          {
+            type: 'application',
+            workspace: { id: normalizedWorkspaceId },
+            application: { id: resolvedReqAppId },
+            ...(explicitAgentId !== undefined
+              ? { actingAgent: { id: explicitAgentId } }
+              : {}),
+          },
+          {
+            operationId: normalizedOperationId,
+            ...(explicitCorrelationId !== undefined
+              ? { correlationId: explicitCorrelationId }
+              : {}),
+            ...(explicitCausationId !== undefined
+              ? { causationId: explicitCausationId }
+              : {}),
+          },
+        ),
+      );
+    }
+
+    if (
+      explicitAgentId !== undefined &&
+      normalizedAuthUserWorkspaceId !== undefined &&
+      reqLike.systemActorId === undefined
+    ) {
+      const ambient = getAmbient();
+      if (
+        explicitImpersonator !== undefined ||
+        ambient?.impersonatorUserWorkspaceId !== undefined
+      )
+        throw new Error(
+          'Native audit impersonation cannot combine with agent or application',
+        );
+      let pendingUserWorkspaceExpectedUserId: string | undefined;
+      if (ambient) {
+        const ambientActor = ambient.operation.actor;
+        const ambientInitiator = ambient.operation.initiator;
+        if (ambientActor.kind === 'coreUser') {
+          if (ambientInitiator !== undefined)
+            throw new Error(
+              'Native audit impersonation cannot combine with agent or application',
+            );
+          pendingUserWorkspaceExpectedUserId = ambientActor.id;
+        } else if (
+          ambientActor.kind === 'agent' &&
+          ambientActor.id === explicitAgentId &&
+          ambientInitiator?.kind === 'coreUser'
+        ) {
+          pendingUserWorkspaceExpectedUserId = ambientInitiator.id;
+        } else {
+          throw new Error('Native audit ambient principal conflict');
+        }
+      }
+      const correlationId =
+        explicitCorrelationId ?? ambient?.operation.correlationId;
+      const causationId = explicitCausationId ?? ambient?.operation.causationId;
+
+      return registerTrustedNavigationBinding(
+        Object.freeze({
+          operation: Object.freeze({
+            workspaceId: normalizedWorkspaceId,
+            operationId: normalizedOperationId,
+            actor: Object.freeze({ kind: 'agent', id: explicitAgentId }),
+            ...(correlationId !== undefined ? { correlationId } : {}),
+            ...(causationId !== undefined ? { causationId } : {}),
+          }),
+          pendingAuthUserWorkspaceId: normalizedAuthUserWorkspaceId,
+          pendingAgentId: explicitAgentId,
+          pendingUserWorkspaceActor: true,
+          ...(pendingUserWorkspaceExpectedUserId !== undefined
+            ? { pendingUserWorkspaceExpectedUserId }
+            : {}),
+          ...buildAmbientMeta(ambient?.operation),
+        }),
+      );
+    }
+
+    if (
+      reqLike.systemActorId !== undefined &&
+      explicitAgentId === undefined &&
+      explicitImpersonator === undefined &&
+      normalizedAuthUserWorkspaceId === undefined
+    ) {
+      return registerTrustedNavigationBinding(
+        captureNativeCrmAuditBinding(
+          normalizedWorkspaceId,
+          { type: 'system', workspace: { id: normalizedWorkspaceId } },
+          {
+            operationId: normalizedOperationId,
+            systemActorId: reqLike.systemActorId,
+            ...(explicitCorrelationId !== undefined
+              ? { correlationId: explicitCorrelationId }
+              : {}),
+            ...(explicitCausationId !== undefined
+              ? { causationId: explicitCausationId }
+              : {}),
+          },
+        ),
+      );
+    }
+
+    throw new Error('Authentication cannot perform audited CRM writes');
+  }
+
+  if (normalizedAuthUserWorkspaceId !== undefined) {
+    const ambient = getAmbient();
+    let pendingUserWorkspaceExpectedUserId: string | undefined;
+    let pendingAgentId: string | undefined;
+    let pendingApplicationId: string | undefined;
+    let resolvedAmbientInitiator: CrmAuditPrincipal | undefined;
+    let impersonatorUserWorkspaceId: string | undefined;
+
+    if (ambient) {
+      const ambientActor = ambient.operation.actor;
+      const ambientInitiator = ambient.operation.initiator;
+      if (ambientActor.kind === 'coreUser') {
+        pendingUserWorkspaceExpectedUserId = ambientActor.id;
+        resolvedAmbientInitiator = ambientInitiator;
+      } else if (
+        ambientActor.kind === 'agent' &&
+        ambientInitiator?.kind === 'coreUser'
+      ) {
+        pendingAgentId = ambientActor.id;
+        pendingUserWorkspaceExpectedUserId = ambientInitiator.id;
+      } else if (
+        ambientActor.kind === 'application' &&
+        ambientInitiator?.kind === 'coreUser'
+      ) {
+        pendingApplicationId = ambientActor.id;
+        pendingUserWorkspaceExpectedUserId = ambientInitiator.id;
+      } else {
+        throw new Error('Native audit ambient principal conflict');
+      }
+      if (ambient.impersonatorUserWorkspaceId !== undefined) {
+        if (pendingAgentId !== undefined || pendingApplicationId !== undefined)
+          throw new Error(
+            'Native audit impersonation cannot combine with agent or application',
+          );
+        impersonatorUserWorkspaceId = uuid(ambient.impersonatorUserWorkspaceId);
+      }
+    }
+
+    const correlationId =
+      explicitCorrelationId ?? ambient?.operation.correlationId;
+    const causationId = explicitCausationId ?? ambient?.operation.causationId;
+
+    if (pendingApplicationId !== undefined) {
+      return registerTrustedNavigationBinding(
+        Object.freeze({
+          operation: Object.freeze({
+            workspaceId: normalizedWorkspaceId,
+            operationId: normalizedOperationId,
+            actor: Object.freeze({
+              kind: 'application',
+              id: pendingApplicationId,
+            }),
+            initiator: Object.freeze({
+              kind: 'coreUser',
+              id: pendingUserWorkspaceExpectedUserId!,
+            }),
+            ...(correlationId !== undefined ? { correlationId } : {}),
+            ...(causationId !== undefined ? { causationId } : {}),
+          }),
+          pendingAuthUserWorkspaceId: normalizedAuthUserWorkspaceId,
+          pendingUserWorkspaceExpectedUserId,
+          ...buildAmbientMeta(ambient?.operation),
+        }),
+      );
+    }
+
+    return registerTrustedNavigationBinding(
+      Object.freeze({
+        operation: Object.freeze({
+          workspaceId: normalizedWorkspaceId,
+          operationId: normalizedOperationId,
+          actor: Object.freeze(
+            pendingAgentId !== undefined
+              ? { kind: 'agent', id: pendingAgentId }
+              : {
+                  kind: 'coreUser',
+                  id:
+                    pendingUserWorkspaceExpectedUserId ??
+                    normalizedAuthUserWorkspaceId,
+                },
+          ),
+          ...(resolvedAmbientInitiator !== undefined
+            ? { initiator: Object.freeze(resolvedAmbientInitiator) }
+            : {}),
+          ...(correlationId !== undefined ? { correlationId } : {}),
+          ...(causationId !== undefined ? { causationId } : {}),
+        }),
+        ...(impersonatorUserWorkspaceId !== undefined
+          ? { impersonatorUserWorkspaceId }
+          : {}),
+        pendingAuthUserWorkspaceId: normalizedAuthUserWorkspaceId,
+        ...(pendingAgentId !== undefined ? { pendingAgentId } : {}),
+        pendingUserWorkspaceActor: true,
+        ...(pendingUserWorkspaceExpectedUserId !== undefined
+          ? { pendingUserWorkspaceExpectedUserId }
+          : {}),
+        ...buildAmbientMeta(ambient?.operation),
+      }),
+    );
+  }
+
+  let ambientForFallback:
+    | ReturnType<typeof captureCurrentCrmAuditOperation>
+    | undefined;
+  try {
+    ambientForFallback = getAmbient();
+  } catch (error) {
+    if (
+      defaultSystemActorId === undefined ||
+      !(error instanceof Error) ||
+      error.message !== 'Membership audit authentication is unavailable'
+    ) {
+      throw error;
+    }
+  }
+
+  if (ambientForFallback) {
+    const correlationId =
+      explicitCorrelationId ?? ambientForFallback.operation.correlationId;
+    const causationId =
+      explicitCausationId ?? ambientForFallback.operation.causationId;
+
+    return registerTrustedNavigationBinding(
+      Object.freeze({
+        operation: Object.freeze({
+          workspaceId: normalizedWorkspaceId,
+          operationId: normalizedOperationId,
+          actor: Object.freeze({ ...ambientForFallback.operation.actor }),
+          ...(ambientForFallback.operation.initiator !== undefined
+            ? {
+                initiator: Object.freeze({
+                  ...ambientForFallback.operation.initiator,
+                }),
+              }
+            : {}),
+          ...(correlationId !== undefined ? { correlationId } : {}),
+          ...(causationId !== undefined ? { causationId } : {}),
+        }),
+        ...(ambientForFallback.impersonatorUserWorkspaceId !== undefined
+          ? {
+              impersonatorUserWorkspaceId: uuid(
+                ambientForFallback.impersonatorUserWorkspaceId,
+              ),
+            }
+          : {}),
+        ...buildAmbientMeta(ambientForFallback.operation),
+      }),
+    );
+  }
+
+  if (defaultSystemActorId !== undefined) {
+    return registerTrustedNavigationBinding(
+      captureNativeCrmAuditBinding(
+        normalizedWorkspaceId,
+        { type: 'system', workspace: { id: normalizedWorkspaceId } },
+        {
+          operationId: normalizedOperationId,
+          systemActorId: defaultSystemActorId,
+          ...(explicitCorrelationId !== undefined
+            ? { correlationId: explicitCorrelationId }
+            : {}),
+          ...(explicitCausationId !== undefined
+            ? { causationId: explicitCausationId }
+            : {}),
+        },
+      ),
+    );
+  }
+
+  throw new Error('Authentication cannot perform audited CRM writes');
+};
+
+export const assertTrustedNativeCrmAuditBinding = (
+  binding: NativeCrmAuditBinding,
+  workspaceId: string,
+  auth: NativeCrmAuditAuth,
+): NativeCrmAuditBinding => {
+  if (auth.type !== 'system')
+    throw new Error('Trusted native audit binding requires system context');
+  if (!trustedNavigationBindings.has(binding))
+    throw new Error('Untrusted native audit binding');
+  if (consumedNavigationBindings.has(binding))
+    throw new Error('Native audit binding was already consumed');
+  const normalizedWorkspaceId = uuid(workspaceId);
+  if (
+    uuid(auth.workspace.id) !== normalizedWorkspaceId ||
+    uuid(binding.operation.workspaceId) !== normalizedWorkspaceId
+  )
+    throw new Error('Native audit workspace mismatch');
+  consumedNavigationBindings.add(binding);
+
+  return binding;
+};
+
 export const withNativeCrmAuditTransaction = async <T>(
   executor: object,
   scope: Parameters<typeof createCrmAuditWorkspaceExecutor>[0],
@@ -706,6 +1629,16 @@ export const withNativeCrmAuditTransaction = async <T>(
     meta?.impersonatorUserWorkspaceId !== undefined
       ? uuid(meta.impersonatorUserWorkspaceId)
       : undefined;
+  const normalizedPendingAuthUserWorkspaceId =
+    meta?.pendingAuthUserWorkspaceId !== undefined
+      ? uuid(meta.pendingAuthUserWorkspaceId)
+      : undefined;
+  const normalizedPendingAgentId =
+    meta?.pendingAgentId !== undefined ? uuid(meta.pendingAgentId) : undefined;
+  const normalizedPendingExpectedUserId =
+    meta?.pendingUserWorkspaceExpectedUserId !== undefined
+      ? uuid(meta.pendingUserWorkspaceExpectedUserId)
+      : undefined;
   const normalizedAmbientCorrelationId =
     meta?.ambientCorrelationId !== undefined
       ? identifier(meta.ambientCorrelationId)
@@ -716,7 +1649,8 @@ export const withNativeCrmAuditTransaction = async <T>(
       : undefined;
   if (
     normalizedImpersonator !== undefined &&
-    operation.actor.kind !== 'workspaceMember'
+    operation.actor.kind !== 'workspaceMember' &&
+    operation.actor.kind !== 'coreUser'
   )
     throw new Error('Native audit impersonation requires a user actor');
   operation = {
@@ -725,7 +1659,72 @@ export const withNativeCrmAuditTransaction = async <T>(
     ...(operation.initiator ? { initiator: { ...operation.initiator } } : {}),
   };
   const auditExecutor = createCrmAuditWorkspaceExecutor(scope);
+  if (normalizedPendingAuthUserWorkspaceId !== undefined) {
+    const rows = await auditExecutor.query(
+      'SELECT "userId" FROM core."userWorkspace" WHERE id = $1 AND "workspaceId" = $2 AND "deletedAt" IS NULL',
+      [normalizedPendingAuthUserWorkspaceId, operation.workspaceId],
+    );
+    const membershipRow = rows[0] as { userId?: unknown } | undefined;
+    if (rows.length !== 1 || typeof membershipRow?.userId !== 'string')
+      throw new Error('Native audit authUserWorkspaceId unavailable');
+    const resolvedUserId = uuid(membershipRow.userId);
+    if (
+      normalizedPendingExpectedUserId !== undefined &&
+      normalizedPendingExpectedUserId !== resolvedUserId
+    )
+      throw new Error('Native audit userWorkspace mismatch');
+    if (meta?.pendingUserWorkspaceActor) {
+      operation =
+        normalizedPendingAgentId !== undefined
+          ? {
+              ...operation,
+              actor: { kind: 'agent', id: normalizedPendingAgentId },
+              initiator: { kind: 'coreUser', id: resolvedUserId },
+            }
+          : {
+              ...operation,
+              actor: { kind: 'coreUser', id: resolvedUserId },
+            };
+    } else {
+      const workspaceMemberPrincipal =
+        operation.actor.kind === 'workspaceMember'
+          ? operation.actor
+          : operation.initiator?.kind === 'workspaceMember'
+            ? operation.initiator
+            : undefined;
+      if (
+        (operation.actor.kind === 'coreUser' &&
+          uuid(operation.actor.id) !== resolvedUserId) ||
+        (operation.initiator?.kind === 'coreUser' &&
+          uuid(operation.initiator.id) !== resolvedUserId)
+      ) {
+        throw new Error('Native audit userWorkspace mismatch');
+      }
+      if (workspaceMemberPrincipal !== undefined) {
+        const workspaceSchema = workspaceSchemaForNormalizedUuid(
+          operation.workspaceId,
+        );
+        const memberRows = await auditExecutor.query(
+          `SELECT "userId" FROM "${workspaceSchema}"."workspaceMember" WHERE id = $1 AND "deletedAt" IS NULL`,
+          [uuid(workspaceMemberPrincipal.id)],
+        );
+        const memberRow = memberRows[0] as { userId?: unknown } | undefined;
+        if (
+          memberRows.length !== 1 ||
+          typeof memberRow?.userId !== 'string' ||
+          uuid(memberRow.userId) !== resolvedUserId
+        ) {
+          throw new Error('Native audit userWorkspace mismatch');
+        }
+      }
+    }
+  }
   if (normalizedImpersonator !== undefined) {
+    if (
+      operation.actor.kind !== 'workspaceMember' &&
+      operation.actor.kind !== 'coreUser'
+    )
+      throw new Error('Native audit impersonation requires a user actor');
     // Server-level impersonation allows an admin userWorkspace from another workspace.
     const rows = await auditExecutor.query(
       'SELECT "userId" FROM core."userWorkspace" WHERE id = $1 AND "deletedAt" IS NULL',

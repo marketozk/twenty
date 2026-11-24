@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 
 import { isNonEmptyString } from '@sniptt/guards';
@@ -5,10 +6,15 @@ import { isDefined } from 'twenty-shared/utils';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
 import {
+  captureNativeCrmAuditBindingFromNavigationIdentity,
+  type NativeCrmAuditBinding,
+} from 'src/engine/core-modules/crm-audit/native-crm-audit-transaction';
+import {
   captureNavigationMenuItemAudit,
   withNavigationMenuItemAudit,
   type NavigationMenuItemAuditIdentity,
 } from 'src/engine/core-modules/crm-audit/navigation-menu-item-audit';
+import { recordPostRollbackNativeCrmAuditAttempt } from 'src/engine/core-modules/crm-audit/post-rollback-crm-audit-attempt';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { findFlatEntityByIdInFlatEntityMapsOrThrow } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps-or-throw.util';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
@@ -513,6 +519,20 @@ export class PageLayoutService {
         flatPageLayoutMaps: existingFlatPageLayoutMaps,
       });
 
+    const shouldDestroyAssociatedDashboards =
+      flatPageLayoutToDestroy.type === PageLayoutType.DASHBOARD &&
+      !isLinkedDashboardAlreadyDestroyed;
+    // Validate dashboard audit attribution before committing core pageLayout deletion
+    const dashboardAuditBinding = shouldDestroyAssociatedDashboards
+      ? captureNativeCrmAuditBindingFromNavigationIdentity({
+          workspaceId,
+          operationId: randomUUID(),
+          auditIdentity,
+          authUserWorkspaceId,
+          defaultSystemActorId: 'page-layout:destroy-associated-dashboards',
+        })
+      : undefined;
+
     const validateAndBuildResult = await withNavigationMenuItemAudit(
       getCascadeAudit({
         expectedParentPageLayoutDeleteIds: [flatPageLayoutToDestroy.id],
@@ -542,13 +562,11 @@ export class PageLayoutService {
       );
     }
 
-    if (
-      flatPageLayoutToDestroy.type === PageLayoutType.DASHBOARD &&
-      !isLinkedDashboardAlreadyDestroyed
-    ) {
+    if (shouldDestroyAssociatedDashboards && dashboardAuditBinding) {
       await this.destroyAssociatedDashboards({
         pageLayoutId: id,
         workspaceId,
+        auditBinding: dashboardAuditBinding,
       });
     }
 
@@ -635,28 +653,71 @@ export class PageLayoutService {
   private async destroyAssociatedDashboards({
     pageLayoutId,
     workspaceId,
+    auditBinding,
   }: {
     pageLayoutId: string;
     workspaceId: string;
+    auditBinding: NativeCrmAuditBinding;
   }): Promise<void> {
     const authContext = buildSystemAuthContext(workspaceId);
+    const deleteChunkSize = 1000;
 
     await this.workspaceOrmManager.executeInWorkspaceContext(async () => {
-      const dashboardRepository = this.workspaceOrmManager.getRepository(
-        'dashboard',
-        {
-          shouldBypassPermissionChecks: true,
-        },
-      );
+      const dashboardObjectMetadataId =
+        this.workspaceOrmManager.getObjectMetadataId('dashboard');
+      let dashboardIds: string[] = [];
 
-      const dashboards = await dashboardRepository.find({
-        where: {
-          pageLayoutId,
-        },
-      });
+      try {
+        await this.workspaceOrmManager.runInWorkspaceTransaction(
+          async (transactionScope) => {
+            const dashboardRepository = transactionScope.getRepository(
+              'dashboard',
+              {
+                shouldBypassPermissionChecks: true,
+              },
+            );
 
-      for (const dashboard of dashboards) {
-        await dashboardRepository.delete(dashboard.id);
+            const dashboards = await dashboardRepository.find({
+              where: {
+                pageLayoutId,
+              },
+              select: ['id'],
+              order: {
+                id: 'ASC',
+              },
+            });
+
+            dashboardIds = dashboards.map((dashboard) => String(dashboard.id));
+
+            for (
+              let index = 0;
+              index < dashboardIds.length;
+              index += deleteChunkSize
+            ) {
+              const chunk = dashboardIds.slice(index, index + deleteChunkSize);
+
+              await dashboardRepository.delete(chunk);
+            }
+          },
+          { nativeAuditBinding: auditBinding },
+        );
+      } catch (error) {
+        if (isDefined(dashboardObjectMetadataId)) {
+          await recordPostRollbackNativeCrmAuditAttempt({
+            runInAuditTransaction: (work, options) =>
+              this.workspaceOrmManager.runInWorkspaceTransaction(work, options),
+            binding: auditBinding,
+            action: 'delete',
+            resourceId:
+              dashboardIds.length === 1
+                ? dashboardIds[0]
+                : dashboardObjectMetadataId,
+            objectMetadataId: dashboardObjectMetadataId,
+            error,
+          });
+        }
+
+        throw error;
       }
     }, authContext);
   }
