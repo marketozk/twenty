@@ -1,3 +1,4 @@
+import { CrmAccessFoundationFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/crm-access-foundation.migration';
 import { CrmAuditOperationIndexFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/crm-audit-operation-index.migration';
 import { OmniIncomingApplicationResultFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/omni-incoming-application-result.migration';
 import { OmniMessageCurrentRevisionFastInstanceCommand } from 'src/database/commands/fork-upgrade/steps/omni-message-current-revision.migration';
@@ -61,6 +62,11 @@ export const FORK_MIGRATIONS: readonly ForkMigration[] = [
     ...FORK_SCHEMA_CHECKS[9],
     kind: CrmAuditOperationIndexFastInstanceCommand.kind,
     command: new CrmAuditOperationIndexFastInstanceCommand(),
+  },
+  {
+    ...FORK_SCHEMA_CHECKS[10],
+    kind: CrmAccessFoundationFastInstanceCommand.kind,
+    command: new CrmAccessFoundationFastInstanceCommand(),
   },
 ];
 

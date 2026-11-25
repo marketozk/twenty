@@ -1,0 +1,1181 @@
+[
+  {
+    "name": "core.crmAutomationArtifactScope",
+    "columns": [
+      {
+        "name": "artifactId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "artifactKind",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "capturedResourceScope",
+        "type": "jsonb",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "conversationId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "referenceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": true,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_crmAutomationArtifactScope_artifact",
+        "columns": [
+          "artifactId",
+          "artifactKind",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_crmAutomationArtifactScope_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_crmAutomationArtifactScope_kind",
+        "expression": "((btrim(\"artifactKind\") = \"artifactKind\") AND (\"artifactKind\" <> ''::text))"
+      },
+      {
+        "name": "CHK_crmAutomationArtifactScope_scope",
+        "expression": "(jsonb_typeof(\"capturedResourceScope\") = 'object'::text)"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_08f4b81c4043144ea8f541b3a2d",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_3af4c29914f1c1fc2c9c99743f7",
+        "columns": [
+          "workspaceId",
+          "conversationId"
+        ],
+        "target": "core.omniConversation",
+        "targetColumns": [
+          "workspaceId",
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": [
+      {
+        "name": "IDX_crmAutomationArtifactScope_conversation",
+        "definition": "CREATE INDEX \"IDX_crmAutomationArtifactScope_conversation\" ON core.\"crmAutomationArtifactScope\" USING btree (\"workspaceId\", \"conversationId\", \"artifactKind\")"
+      }
+    ]
+  },
+  {
+    "name": "core.crmQueueGrant",
+    "columns": [
+      {
+        "name": "action",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "bindingId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "effect",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "principalId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "principalKind",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "queueId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "revision",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'1'"
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_crmQueueGrant_grant",
+        "columns": [
+          "action",
+          "bindingId",
+          "principalId",
+          "principalKind",
+          "queueId",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_crmQueueGrant_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_crmQueueGrant_action",
+        "expression": "((btrim(action) = action) AND (action <> ''::text))"
+      },
+      {
+        "name": "CHK_crmQueueGrant_effect",
+        "expression": "(effect = ANY (ARRAY['allow'::text, 'deny'::text]))"
+      },
+      {
+        "name": "CHK_crmQueueGrant_principalKind",
+        "expression": "(\"principalKind\" = ANY (ARRAY['workspaceMember'::text, 'team'::text, 'role'::text, 'application'::text, 'agent'::text, 'apiKey'::text, 'workflow'::text]))"
+      },
+      {
+        "name": "CHK_crmQueueGrant_revision",
+        "expression": "(revision > 0)"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_64b288d52c7e2b89accd9c1ff5a",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_73c1c861fb9b97991266093247e",
+        "columns": [
+          "workspaceId",
+          "bindingId",
+          "queueId"
+        ],
+        "target": "core.omniQueue",
+        "targetColumns": [
+          "workspaceId",
+          "bindingId",
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": [
+      {
+        "name": "IDX_crmQueueGrant_principal",
+        "definition": "CREATE INDEX \"IDX_crmQueueGrant_principal\" ON core.\"crmQueueGrant\" USING btree (\"workspaceId\", \"principalKind\", \"principalId\", action)"
+      }
+    ]
+  },
+  {
+    "name": "core.crmRecordRevision",
+    "columns": [
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "objectMetadataId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "recordId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "revision",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'1'"
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_crmRecordRevision_record",
+        "columns": [
+          "objectMetadataId",
+          "recordId",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_crmRecordRevision_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_crmRecordRevision_revision",
+        "expression": "(revision > 0)"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_f88186f3c5f6777a0c647c5de9c",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "core.crmResourceAssignment",
+    "columns": [
+      {
+        "name": "assignmentKind",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "principalId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "principalKind",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "resourceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "resourceKind",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "revision",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'1'"
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_crmResourceAssignment_assignment",
+        "columns": [
+          "assignmentKind",
+          "principalId",
+          "principalKind",
+          "resourceId",
+          "resourceKind",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_crmResourceAssignment_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_crmResourceAssignment_kind",
+        "expression": "(\"assignmentKind\" = ANY (ARRAY['primary_owner'::text, 'team'::text]))"
+      },
+      {
+        "name": "CHK_crmResourceAssignment_principal",
+        "expression": "(((\"assignmentKind\" = 'primary_owner'::text) AND (\"principalKind\" = 'workspaceMember'::text)) OR ((\"assignmentKind\" = 'team'::text) AND (\"principalKind\" = 'team'::text)))"
+      },
+      {
+        "name": "CHK_crmResourceAssignment_resourceKind",
+        "expression": "((btrim(\"resourceKind\") = \"resourceKind\") AND (\"resourceKind\" <> ''::text))"
+      },
+      {
+        "name": "CHK_crmResourceAssignment_revision",
+        "expression": "(revision > 0)"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_86b1af5c500aad320c40d43977d",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": [
+      {
+        "name": "IDX_crmResourceAssignment_principal",
+        "definition": "CREATE INDEX \"IDX_crmResourceAssignment_principal\" ON core.\"crmResourceAssignment\" USING btree (\"workspaceId\", \"principalKind\", \"principalId\", \"resourceKind\")"
+      },
+      {
+        "name": "UQ_crmResourceAssignment_primary_owner",
+        "definition": "CREATE UNIQUE INDEX \"UQ_crmResourceAssignment_primary_owner\" ON core.\"crmResourceAssignment\" USING btree (\"workspaceId\", \"resourceKind\", \"resourceId\") WHERE (\"assignmentKind\" = 'primary_owner'::text)"
+      }
+    ]
+  },
+  {
+    "name": "core.crmResourceGrant",
+    "columns": [
+      {
+        "name": "action",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "effect",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "principalId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "principalKind",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "resourceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "resourceKind",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "revision",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'1'"
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_crmResourceGrant_grant",
+        "columns": [
+          "action",
+          "principalId",
+          "principalKind",
+          "resourceId",
+          "resourceKind",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_crmResourceGrant_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_crmResourceGrant_action",
+        "expression": "((btrim(action) = action) AND (action <> ''::text))"
+      },
+      {
+        "name": "CHK_crmResourceGrant_effect",
+        "expression": "(effect = ANY (ARRAY['allow'::text, 'deny'::text]))"
+      },
+      {
+        "name": "CHK_crmResourceGrant_principalKind",
+        "expression": "(\"principalKind\" = ANY (ARRAY['workspaceMember'::text, 'team'::text, 'role'::text, 'application'::text, 'agent'::text, 'apiKey'::text, 'workflow'::text]))"
+      },
+      {
+        "name": "CHK_crmResourceGrant_resourceKind",
+        "expression": "((btrim(\"resourceKind\") = \"resourceKind\") AND (\"resourceKind\" <> ''::text))"
+      },
+      {
+        "name": "CHK_crmResourceGrant_revision",
+        "expression": "(revision > 0)"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_871cd53af79f844673d17d794f3",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": [
+      {
+        "name": "IDX_crmResourceGrant_principal_resource",
+        "definition": "CREATE INDEX \"IDX_crmResourceGrant_principal_resource\" ON core.\"crmResourceGrant\" USING btree (\"workspaceId\", \"principalKind\", \"principalId\", \"resourceKind\", action)"
+      }
+    ]
+  },
+  {
+    "name": "core.crmStageRule",
+    "columns": [
+      {
+        "name": "action",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "effect",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "fieldMetadataId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "fromValue",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "objectMetadataId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "optionValue",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "principalId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "principalKind",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "revision",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'1'"
+      },
+      {
+        "name": "toValue",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_crmStageRule_rule",
+        "columns": [
+          "action",
+          "fieldMetadataId",
+          "fromValue",
+          "objectMetadataId",
+          "optionValue",
+          "principalId",
+          "principalKind",
+          "toValue",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_crmStageRule_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_crmStageRule_action",
+        "expression": "(action = ANY (ARRAY['read'::text, 'edit'::text, 'transition'::text, 'configure'::text]))"
+      },
+      {
+        "name": "CHK_crmStageRule_effect",
+        "expression": "(effect = ANY (ARRAY['allow'::text, 'deny'::text]))"
+      },
+      {
+        "name": "CHK_crmStageRule_principalKind",
+        "expression": "(\"principalKind\" = ANY (ARRAY['workspaceMember'::text, 'team'::text, 'role'::text, 'application'::text, 'agent'::text, 'apiKey'::text, 'workflow'::text]))"
+      },
+      {
+        "name": "CHK_crmStageRule_revision",
+        "expression": "(revision > 0)"
+      },
+      {
+        "name": "CHK_crmStageRule_shape",
+        "expression": "(((action = ANY (ARRAY['read'::text, 'edit'::text])) AND (\"optionValue\" <> '*'::text) AND (\"fromValue\" = '*'::text) AND (\"toValue\" = '*'::text)) OR ((action = 'transition'::text) AND (\"optionValue\" = '*'::text) AND (\"fromValue\" <> '*'::text) AND (\"toValue\" <> '*'::text)) OR ((action = 'configure'::text) AND (\"optionValue\" = '*'::text) AND (\"fromValue\" = '*'::text) AND (\"toValue\" = '*'::text)))"
+      },
+      {
+        "name": "CHK_crmStageRule_values",
+        "expression": "((btrim(\"optionValue\") = \"optionValue\") AND (\"optionValue\" <> ''::text) AND (btrim(\"fromValue\") = \"fromValue\") AND (\"fromValue\" <> ''::text) AND (btrim(\"toValue\") = \"toValue\") AND (\"toValue\" <> ''::text))"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_805f60f9debc14efaf54ec5c58b",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": [
+      {
+        "name": "IDX_crmStageRule_principal_field",
+        "definition": "CREATE INDEX \"IDX_crmStageRule_principal_field\" ON core.\"crmStageRule\" USING btree (\"workspaceId\", \"principalKind\", \"principalId\", \"objectMetadataId\", \"fieldMetadataId\", action)"
+      }
+    ]
+  },
+  {
+    "name": "core.crmTeam",
+    "columns": [
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "revision",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'1'"
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_crmTeam_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      },
+      {
+        "name": "UQ_crmTeam_workspace_name",
+        "columns": [
+          "name",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_crmTeam_name",
+        "expression": "((btrim(name) = name) AND (name <> ''::text))"
+      },
+      {
+        "name": "CHK_crmTeam_revision",
+        "expression": "(revision > 0)"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_d373552bee35234084718461a29",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "core.crmTeamMember",
+    "columns": [
+      {
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "id",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "revision",
+        "type": "bigint",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "'1'"
+      },
+      {
+        "name": "teamId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "updatedAt",
+        "type": "timestamp with time zone",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": "now()"
+      },
+      {
+        "name": "workspaceId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "name": "workspaceMemberId",
+        "type": "uuid",
+        "length": "",
+        "nullable": false,
+        "primary": false,
+        "array": false,
+        "default": null
+      }
+    ],
+    "uniques": [
+      {
+        "name": "UQ_crmTeamMember_team_member",
+        "columns": [
+          "teamId",
+          "workspaceId",
+          "workspaceMemberId"
+        ]
+      },
+      {
+        "name": "UQ_crmTeamMember_workspace_id",
+        "columns": [
+          "id",
+          "workspaceId"
+        ]
+      }
+    ],
+    "checks": [
+      {
+        "name": "CHK_crmTeamMember_revision",
+        "expression": "(revision > 0)"
+      }
+    ],
+    "foreignKeys": [
+      {
+        "name": "FK_1676f5b7ce406fcbdcddb9c42a9",
+        "columns": [
+          "workspaceId",
+          "teamId"
+        ],
+        "target": "core.crmTeam",
+        "targetColumns": [
+          "workspaceId",
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      },
+      {
+        "name": "FK_e4ceaa1a2c208f6cd936b2af710",
+        "columns": [
+          "workspaceId"
+        ],
+        "target": "core.workspace",
+        "targetColumns": [
+          "id"
+        ],
+        "onDelete": "RESTRICT",
+        "onUpdate": "NO ACTION"
+      }
+    ],
+    "indices": [
+      {
+        "name": "IDX_crmTeamMember_workspace_member",
+        "definition": "CREATE INDEX \"IDX_crmTeamMember_workspace_member\" ON core.\"crmTeamMember\" USING btree (\"workspaceId\", \"workspaceMemberId\")"
+      }
+    ]
+  }
+]

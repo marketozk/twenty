@@ -1,4 +1,5 @@
 import { verifyAuditOperationIndex } from 'src/engine/core-modules/omnichannel-storage/migrations/audit-operation-index.check';
+import { verifyCrmAccessFoundation } from 'src/engine/core-modules/omnichannel-storage/migrations/crm-access-foundation.check';
 import { verifyIncomingApplicationResult } from 'src/engine/core-modules/omnichannel-storage/migrations/incoming-application-result.check';
 import { verifyMessageCurrentRevision } from 'src/engine/core-modules/omnichannel-storage/migrations/message-current-revision.check';
 import { verifyAuditBootstrap } from 'src/engine/core-modules/omnichannel-storage/migrations/audit-bootstrap.check';
@@ -12,7 +13,7 @@ import { verifyMessagePersistence } from 'src/engine/core-modules/omnichannel-st
 import { verifyTrustedCapture } from 'src/engine/core-modules/omnichannel-storage/migrations/trusted-capture.check';
 
 if (
-  manifest.length !== 10 ||
+  manifest.length !== 11 ||
   manifest[0].migrationId !== 'omni-1793078228031-conversation-foundation' ||
   manifest[1].migrationId !== 'omni-1793091163781-audit-bootstrap' ||
   manifest[2].migrationId !== 'omni-1793094313685-message-persistence' ||
@@ -23,7 +24,8 @@ if (
   manifest[7].migrationId !== 'omni-1793163618643-message-current-revision' ||
   manifest[8].migrationId !==
     'omni-1793165655229-incoming-application-result' ||
-  manifest[9].migrationId !== 'omni-1793194359465-audit-operation-index'
+  manifest[9].migrationId !== 'omni-1793194359465-audit-operation-index' ||
+  manifest[10].migrationId !== 'omni-1795564629556-crm-access-foundation'
 ) {
   throw new Error('Fork schema manifest and explicit verifier registry differ');
 }
@@ -39,4 +41,5 @@ export const FORK_SCHEMA_CHECKS: readonly ForkMigrationCheck[] = [
   { ...manifest[7], verify: verifyMessageCurrentRevision },
   { ...manifest[8], verify: verifyIncomingApplicationResult },
   { ...manifest[9], verify: verifyAuditOperationIndex },
+  { ...manifest[10], verify: verifyCrmAccessFoundation },
 ];

@@ -64,6 +64,25 @@ class MigrationSourceTests(unittest.TestCase):
         ])
         self.assertEqual(verify_sources(repository), len(manifest))
 
+    def test_eleventh_crm_access_append_preserves_the_first_ten_sources(self):
+        repository = Path(__file__).resolve().parents[2]
+        manifest = json.loads((repository / "packages/twenty-server/src/engine/core-modules/omnichannel-storage/migrations/fork-schema-manifest.json").read_text(encoding="utf-8"))
+        self.assertGreaterEqual(len(manifest), 11)
+        self.assertEqual(manifest[10]["migrationId"], "omni-1795564629556-crm-access-foundation")
+        self.assertEqual([entry["checksum"] for entry in manifest[:10]], [
+            "3414e5e6106b5ffa75e1f95d5bfcf6e3da96f86a4a84d3b4de7e9b2fad85a108",
+            "a6347336b5c4dfd0a5eda047b0945acdca0c3a46a83f3bc4bcc609ba36582ed2",
+            "2fbd5c91d07f4934aff21d646dc69adf14e79aa5f77c807634d92eef05645ce7",
+            "0a09b9a98d78795565d154fec08497a5e39c909d49486433afe4e02cddb08e9d",
+            "8fd7b96cfcfbd4d0dad52fdf8db41d93403bcdeabc571cb5bab217d97a6087ac",
+            "1a8105afdea0ef51011f7dd3fface32098ca35f5b61718759a59e1474c0ebb48",
+            "16d9e337583612b09b0eae0d383dab8cb0e177f47e285bb39504469af4c4aaf4",
+            "b84451ed10c83419144d6f09212134f46b5f7aa0f11418ebe29e465f66767e49",
+            "10538f9e3f195c19f18c4b91b0f9ca5cdcdb79b7271d972cc32e10507b21959e",
+            "3a78a5d28cb503a97a823657d868bc83a4ca2e23dc4a849b7955ca86270be7df",
+        ])
+        self.assertEqual(verify_sources(repository), len(manifest))
+
 
 if __name__ == "__main__":
     unittest.main()

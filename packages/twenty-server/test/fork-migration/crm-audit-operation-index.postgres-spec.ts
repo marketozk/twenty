@@ -17,9 +17,10 @@ const db = new DataSource({
 });
 const workspaceId = randomUUID();
 const migration = FORK_MIGRATIONS[9];
-const apply = () => new ForkMigrationRunner(db, FORK_MIGRATIONS).apply();
+const apply = () =>
+  new ForkMigrationRunner(db, FORK_MIGRATIONS.slice(0, 10)).apply();
 const verify = () =>
-  new ForkSchemaVerifier(db, FORK_SCHEMA_CHECKS).verifyReady();
+  new ForkSchemaVerifier(db, FORK_SCHEMA_CHECKS.slice(0, 10)).verifyReady();
 const fingerprint = async () =>
   (
     await db.query<{ hash: string }[]>(

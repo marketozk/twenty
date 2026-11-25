@@ -1,0 +1,38 @@
+{
+  "log": "LOG-215",
+  "date": "2026-11-25",
+  "linearIssue": "ROB-766",
+  "migrationId": "omni-1795564629556-crm-access-foundation",
+  "migrationChecksum": "5e5b1717de6a58850511f29dde0b911ce80eb898b8090f576d501d6195299305",
+  "totalForkMigrations": 11,
+  "firstTenChecksumsUnchanged": true,
+  "pg17Suites": {
+    "passed": 4,
+    "failed": 0,
+    "testsPassed": 50,
+    "testsFailed": 0,
+    "durationSeconds": 96.584,
+    "suites": [
+      "test/fork-migration/crm-access-foundation.postgres-spec.ts",
+      "test/fork-migration/crm-audit-operation-index.postgres-spec.ts",
+      "test/fork-migration/audit-bootstrap-schema.postgres-spec.ts",
+      "test/fork-migration/omni-incoming-application-result.postgres-spec.ts"
+    ]
+  },
+  "typeormSchemaBuilderDiffCount": 0,
+  "typecheckDiagnostics": 0,
+  "linuxPythonTests": {
+    "passed": 34,
+    "failed": 0,
+    "skipped": 0,
+    "durationSeconds": 0.148
+  },
+  "enterpriseDependencyGuard": {
+    "status": "pass",
+    "violations": 0,
+    "edges": 138144
+  },
+  "sha256Matched": "18/18",
+  "standClean": true,
+  "liveDemoChanged": false
+}

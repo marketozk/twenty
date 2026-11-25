@@ -48,5 +48,10 @@
     "migrationId": "omni-1793194359465-audit-operation-index",
     "checksum": "3a78a5d28cb503a97a823657d868bc83a4ca2e23dc4a849b7955ca86270be7df",
     "sourcePath": "packages/twenty-server/src/database/commands/fork-upgrade/steps/crm-audit-operation-index.migration.ts"
+  },
+  {
+    "migrationId": "omni-1795564629556-crm-access-foundation",
+    "checksum": "5e5b1717de6a58850511f29dde0b911ce80eb898b8090f576d501d6195299305",
+    "sourcePath": "packages/twenty-server/src/database/commands/fork-upgrade/steps/crm-access-foundation.migration.ts"
   }
 ]
