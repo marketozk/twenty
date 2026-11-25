@@ -1,0 +1,23 @@
+{
+  "log": "LOG-215",
+  "date": "2026-11-25",
+  "branch": "codex/omnichannel-requirements",
+  "codeCommit": "313ba4be0984096ba9301efb701b5c267feb94f2",
+  "linearIssue": "ROB-766",
+  "linearIssueId": "8712c47c-01db-4f3a-8bd3-5993203b91c5",
+  "linearCommentId": "37a73bf5-f7d2-4a70-a25b-6e936fa1b95c",
+  "linearCommentUrl": "https://linear.app/robotrts/issue/ROB-766/3-realizovat-prava-na-klientov-sdelki-i-etapy#comment-37a73bf5",
+  "linearProjectIssueStatesVerified": {
+    "ROB-762": "Done",
+    "ROB-763": "Done",
+    "ROB-764": "Done",
+    "ROB-765": "Done",
+    "ROB-772": "Done",
+    "ROB-766": "In Progress",
+    "ROB-767": "Backlog",
+    "ROB-768": "Backlog",
+    "ROB-769": "Backlog",
+    "ROB-770": "Backlog",
+    "ROB-771": "Backlog"
+  }
+}
